@@ -441,6 +441,9 @@ describe ArangoDB do
             doc.parsed_response['error'].should eq(false)
             doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
           end
           
           it "can create a vertex, returnNew" do
@@ -451,9 +454,9 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             
-            doc.parsed_response['vertex']['old'].should eq(nil)
-            doc.parsed_response['vertex']['new']['_key'].should_not eq(nil)
-            doc.parsed_response['vertex']['new']['name'].should eq(name)
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new']['_key'].should_not eq(nil)
+            doc.parsed_response['new']['name'].should eq(name)
           end
 
           it "can get a vertex" do
@@ -494,6 +497,9 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.parsed_response['vertex']['name'].should eq(nil)
@@ -518,12 +524,12 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
             
-            doc.parsed_response['vertex']['old']['_key'].should eq(key)
-            doc.parsed_response['vertex']['old']['name'].should eq("Alice")
-            doc.parsed_response['vertex']['old']['name2'].should eq(nil)
-            doc.parsed_response['vertex']['new']['_key'].should eq(key)
-            doc.parsed_response['vertex']['new']['name'].should eq(nil)
-            doc.parsed_response['vertex']['new']['name2'].should eq("Bob")
+            doc.parsed_response['old']['_key'].should eq(key)
+            doc.parsed_response['old']['name'].should eq("Alice")
+            doc.parsed_response['old']['name2'].should eq(nil)
+            doc.parsed_response['new']['_key'].should eq(key)
+            doc.parsed_response['new']['name'].should eq(nil)
+            doc.parsed_response['new']['name2'].should eq("Bob")
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.parsed_response['vertex']['name'].should eq(nil)
@@ -555,6 +561,9 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.parsed_response['vertex']['name'].should eq(name)
@@ -576,12 +585,12 @@ describe ArangoDB do
             doc.parsed_response['vertex']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['vertex']['_key'].should eq(key)
            
-            doc.parsed_response['vertex']['old']['_key'].should eq(key)
-            doc.parsed_response['vertex']['old']['name'].should eq(name)
-            doc.parsed_response['vertex']['old']['name2'].should eq(nil)
-            doc.parsed_response['vertex']['new']['_key'].should eq(key)
-            doc.parsed_response['vertex']['new']['name'].should eq(name)
-            doc.parsed_response['vertex']['new']['name2'].should eq(name2)
+            doc.parsed_response['old']['_key'].should eq(key)
+            doc.parsed_response['old']['name'].should eq(name)
+            doc.parsed_response['old']['name2'].should eq(nil)
+            doc.parsed_response['new']['_key'].should eq(key)
+            doc.parsed_response['new']['name'].should eq(name)
+            doc.parsed_response['new']['name2'].should eq(name2)
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.parsed_response['vertex']['name'].should eq(name)
@@ -685,6 +694,9 @@ describe ArangoDB do
             doc.parsed_response['error'].should eq(false)
             doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
           end
           
           it "can create an edge, returnNew" do
@@ -700,8 +712,8 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 201 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             
-            doc.parsed_response['edge']['old'].should eq(nil)
-            doc.parsed_response['edge']['new']['value'].should eq("foo")
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new']['value'].should eq("foo")
           end
 
           it "can get an edge" do
@@ -756,6 +768,9 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.parsed_response['edge']['type2'].should eq(type)
@@ -787,17 +802,17 @@ describe ArangoDB do
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
 
-            doc.parsed_response['edge']['old']['_key'].should eq(key)
-            doc.parsed_response['edge']['old']['type'].should eq("married")
-            doc.parsed_response['edge']['old']['type2'].should eq(nil)
-            doc.parsed_response['edge']['old']['_from'].should eq(v1)
-            doc.parsed_response['edge']['old']['_to'].should eq(v2)
+            doc.parsed_response['old']['_key'].should eq(key)
+            doc.parsed_response['old']['type'].should eq("married")
+            doc.parsed_response['old']['type2'].should eq(nil)
+            doc.parsed_response['old']['_from'].should eq(v1)
+            doc.parsed_response['old']['_to'].should eq(v2)
 
-            doc.parsed_response['edge']['new']['_key'].should eq(key)
-            doc.parsed_response['edge']['new']['type'].should eq(nil)
-            doc.parsed_response['edge']['new']['type2'].should eq("divorced")
-            doc.parsed_response['edge']['new']['_from'].should eq(v1)
-            doc.parsed_response['edge']['new']['_to'].should eq(v2)
+            doc.parsed_response['new']['_key'].should eq(key)
+            doc.parsed_response['new']['type'].should eq(nil)
+            doc.parsed_response['new']['type2'].should eq("divorced")
+            doc.parsed_response['new']['_from'].should eq(v1)
+            doc.parsed_response['new']['_to'].should eq(v2)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.parsed_response['edge']['type2'].should eq(type)
@@ -836,6 +851,9 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
+            
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.parsed_response['edge']['type'].should eq(type)
@@ -863,16 +881,16 @@ describe ArangoDB do
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
             doc.parsed_response['edge']['_rev'].should eq(doc.headers['etag'])
             doc.parsed_response['edge']['_key'].should eq(key)
-            doc.parsed_response['edge']['old']['_key'].should eq(key)
-            doc.parsed_response['edge']['old']['type'].should eq("married")
-            doc.parsed_response['edge']['old']['type2'].should eq(nil)
-            doc.parsed_response['edge']['old']['_from'].should eq(v1)
-            doc.parsed_response['edge']['old']['_to'].should eq(v2)
-            doc.parsed_response['edge']['new']['_key'].should eq(key)
-            doc.parsed_response['edge']['new']['type'].should eq("married")
-            doc.parsed_response['edge']['new']['type2'].should eq("divorced")
-            doc.parsed_response['edge']['new']['_from'].should eq(v1)
-            doc.parsed_response['edge']['new']['_to'].should eq(v2)
+            doc.parsed_response['old']['_key'].should eq(key)
+            doc.parsed_response['old']['type'].should eq("married")
+            doc.parsed_response['old']['type2'].should eq(nil)
+            doc.parsed_response['old']['_from'].should eq(v1)
+            doc.parsed_response['old']['_to'].should eq(v2)
+            doc.parsed_response['new']['_key'].should eq(key)
+            doc.parsed_response['new']['type'].should eq("married")
+            doc.parsed_response['new']['type2'].should eq("divorced")
+            doc.parsed_response['new']['_from'].should eq(v1)
+            doc.parsed_response['new']['_to'].should eq(v2)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.parsed_response['edge']['type'].should eq(type)

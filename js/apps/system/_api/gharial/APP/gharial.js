@@ -129,12 +129,22 @@ function checkCollection (g, collection) {
   }
 }
 
-function setResponse (res, name, body, code) {
+function setResponse (res, name, body, code, returnOld, returnNew) {
   res.status(code);
   if (body._rev) {
     res.set('etag', body._rev);
   }
-  res.json({ error: false, [name]: body, code });
+  let result = { error: false, code };
+  if (returnOld) {
+    result.old = body.old;
+    delete body.old;
+  } 
+  if (returnNew) {
+    result.new = body.new;
+    delete body.new;
+  } 
+  result[name] = body;
+  res.json(result);
 }
 
 function matchVertexRevision (req, rev) {
@@ -568,7 +578,7 @@ router.post('/:graph/vertex/:collection', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'vertex', meta, waitForSync ? CREATED : ACCEPTED);
+  setResponse(res, 'vertex', meta, waitForSync ? CREATED : ACCEPTED, false, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
@@ -633,7 +643,7 @@ router.put('/:graph/vertex/:collection/:key', function (req, res) {
   }
   matchVertexRevision(req, doc._rev);
   const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
-  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
+  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
@@ -675,7 +685,7 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
   }
   matchVertexRevision(req, doc._rev);
   const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
-  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED);
+  setResponse(res, 'vertex', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
@@ -766,7 +776,7 @@ router.post('/:graph/edge/:collection', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'edge', meta, waitForSync ? CREATED : ACCEPTED);
+  setResponse(res, 'edge', meta, waitForSync ? CREATED : ACCEPTED, false, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
@@ -831,7 +841,7 @@ router.put('/:graph/edge/:collection/:key', function (req, res) {
   }
   matchVertexRevision(req, doc._rev);
   const meta = g[collection].replace(id, req.body, {waitForSync, returnOld, returnNew});
-  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
+  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
@@ -873,7 +883,7 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
   }
   matchVertexRevision(req, doc._rev);
   const meta = g[collection].update(id, req.body, {waitForSync, keepNull, returnOld, returnNew});
-  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED);
+  setResponse(res, 'edge', meta, waitForSync ? OK : ACCEPTED, returnOld, returnNew);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
