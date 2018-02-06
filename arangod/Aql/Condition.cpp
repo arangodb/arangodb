@@ -1396,8 +1396,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
     if (mustCollapse) {
       node = collapse(node);
       mustCollapse = false;
-    }
-
+    } // TODO collapse below? in preorder? maintain invariants...
 
     if (distributeOverChildren) {
       // we found an AND with at least one OR child, e.g.
