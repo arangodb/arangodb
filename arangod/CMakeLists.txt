@@ -522,8 +522,8 @@ target_link_libraries(arangoserver
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
   ${LIB_ARANGO_IRESEARCH}
-  gflags
   s2
+  gflags
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}

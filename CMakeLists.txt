@@ -441,7 +441,7 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/glog)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/glog/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/s2geometry/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/btree/include)
 

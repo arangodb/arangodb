@@ -39,7 +39,7 @@ include_directories(
     ${PYTHON_INCLUDE_DIRS})
 include_directories(src)
 
-add_library(s2 SHARED
+add_library(s2 STATIC
             src/s2/base/stringprintf.cc
             src/s2/base/strtoint.cc
             src/s2/id_set_lexicon.cc
@@ -134,7 +134,8 @@ add_library(s2 SHARED
             src/s2/util/coding/varint.cc
             src/s2/util/math/exactfloat/exactfloat.cc
             src/s2/util/math/mathutil.cc
-            src/s2/util/units/length-units.cc)
+            src/s2/util/units/length-units.cc
+	    ../glog/src/logging.cpp)
 add_library(s2testing STATIC src/s2/s2testing.cc)
 target_link_libraries(
     s2
@@ -410,8 +411,8 @@ if (GTEST_ROOT)
   endforeach()
 endif()
 
-add_subdirectory("doc/examples" examples)
+#add_subdirectory("doc/examples" examples)
 
-if (${SWIG_FOUND} AND ${PYTHONLIBS_FOUND})
-  add_subdirectory("src/python" python)
-endif()
+#if (${SWIG_FOUND} AND ${PYTHONLIBS_FOUND})
+#  add_subdirectory("src/python" python)
+#endif()

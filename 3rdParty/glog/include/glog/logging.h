@@ -23,27 +23,7 @@
 #ifndef ARANGOD_GLOG_SHAM_LOGGING_H
 #define ARANGOD_GLOG_SHAM_LOGGING_H
 
-#include <iostream>
-
-namespace google {
-class S2NullStream : public std::ostream {
-  class S2NullBuffer : public std::streambuf {
-  public:
-    int overflow( int c ) { return c; }
-  } m_nb;
-public:
-  S2NullStream() : std::ostream( &m_nb ) {}
-};
-  
-#ifdef NDEBUG
-  enum { DEBUG_MODE = 0 };
-#define IF_DEBUG_MODE(x)
-#else
-  enum { DEBUG_MODE = 1 };
-#define IF_DEBUG_MODE(x) x
-#endif
-  
-};
+#include <sstream>
 
 // Variables of type LogSeverity are widely taken to lie in the range
 // [0, NUM_SEVERITIES-1].  Be careful to preserve this assumption if
@@ -67,51 +47,91 @@ ERROR = GLOG_ERROR, FATAL = GLOG_FATAL ;
 #define DFATAL GLOG_FATAL
 #endif
 
-#ifndef NDEBUG
-#define VLOG(a) google::S2NullStream()
-#define DLOG(a) ((a) >= GLOG_INFO ? std::cout : std::cerr)
-#define LOG(a) ((a) > GLOG_WARNING ? std::cerr : std::cout)
-#define LOG_CHECK(a, cond) std::cout
-//          (!(cond) ? ((a) >= GLOG_INFO ? std::cerr : std::cout) : google::S2NullStream())
+namespace google {
+class LogStream {
+ public:
+  LogStream(LogSeverity severity) {
+    _severity = severity;
+  }
+  ~LogStream();
+  
+  template <typename T>
+  LogStream& operator<<(T const& obj) {
+    try {
+      _out << obj;
+    } catch (...) {
+      // ignore any errors here. logging should not have side effects
+    }
+    return *this;
+  }
+ private:
+  std::stringstream _out;
+  LogSeverity _severity;
+};
+  
+class LogVoidify {
+public:
+  LogVoidify() {}
+  void operator&(LogStream const&) {}
+};
+  
+#ifdef NDEBUG
+  enum { DEBUG_MODE = 0 };
+#define IF_DEBUG_MODE(x)
 #else
-#define VLOG(a) google::S2NullStream()
-#define DLOG(a) google::S2NullStream()
-#define LOG(a) (a > GLOG_WARNING) ? std::cerr : google::S2NullStream();
-#define LOG_CHECK(a, cond)                                       \
-          !(TRI_LIKELY(cond)) ? ((a > GLOG_INFO) ? \
-                std::cout : google::S2NullStream()) \
-            : google::S2NullStream()
+  enum { DEBUG_MODE = 1 };
+#define IF_DEBUG_MODE(x) x
 #endif
+  
+};
 
-#define LOG_IF(a, cond) std::cout
-//((cond) ? ((a) > GLOG_INFO ? std::cerr : std::cout) : google::S2NullStream())
-#define DLOG_IF(severity, condition) LOG_IF(GLOG_INFO, condition)
+#ifndef NDEBUG
+#define VLOG(a) ((a) < GLOG_FATAL) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define DLOG(a) ((a) < GLOG_ERROR) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define LOG(a) ((a) < GLOG_WARNING) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define LOG_IF(a, cond)                \
+          !(cond) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define DLOG_IF(a, cond)                \
+        !(cond) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#else
+#define VLOG(a) ((a) < GLOG_FATAL) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define DLOG(a) ((a) < GLOG_ERROR) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define LOG(a) ((a) < GLOG_WARNING) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#define LOG_IF(a, cond)                \
+          (!cond) ? (void)0  : google::LogVoidify() & (google::LogStream(a))
+#define DLOG_IF(a, cond)                \
+        (!cond && a < GLOG_WARNING) ? (void)0 : google::LogVoidify() & (google::LogStream(a))
+#endif
 
 // CHECK dies with a fatal error if condition is not true.  It is *not*
 // controlled by DCHECK_IS_ON(), so the check will be executed regardless of
 // compilation mode.  Therefore, it is safe to do things like:
 // CHECK(fp->Write(x) == 4)
 // FIXMe these won't crash the server
-#define CHECK(expr) LOG_CHECK(GLOG_FATAL, expr)
-#define CHECK_EQ(val1, val2) LOG_CHECK(GLOG_FATAL, val1 == val2)
-#define CHECK_NE(val1, val2) LOG_CHECK(GLOG_FATAL, val1 != val2)
-#define CHECK_LE(val1, val2) LOG_CHECK(GLOG_FATAL, val1 <= val2)
-#define CHECK_LT(val1, val2) LOG_CHECK(GLOG_FATAL, val1 < val2)
-#define CHECK_GE(val1, val2) LOG_CHECK(GLOG_FATAL, val1 >= val2)
-#define CHECK_GT(val1, val2) LOG_CHECK(GLOG_FATAL, val1 > val2)
+#ifdef CHECK
+#undef CHECK // Collision with CATCH define
+#endif
+
+#define CHECK(expr) LOG_IF(GLOG_FATAL, !(expr))
+#define CHECK_EQ(val1, val2) CHECK((val1) == (val2))
+#define CHECK_NE(val1, val2) CHECK((val1) != (val2))
+#define CHECK_LE(val1, val2) CHECK((val1) <= (val2))
+#define CHECK_LT(val1, val2) CHECK((val1) < (val2))
+#define CHECK_GE(val1, val2) CHECK((val1) >= (val2))
+#define CHECK_GT(val1, val2) CHECK((val1) > (val2))
 
 #define DVLOG(verboselevel) VLOG(verboselevel)
 //#define DLOG_ASSERT(condition) LOG_ASSERT(condition)
 
 // debug-only checking.  executed if NDEBUG is undefined
-#define DCHECK(expr) LOG_CHECK(GLOG_INFO, expr)
-#define DCHECK_EQ(val1, val2) LOG_CHECK(GLOG_INFO, (val1) == (val2))
-#define DCHECK_NE(val1, val2) LOG_CHECK(GLOG_INFO, (val1) != (val2))
-#define DCHECK_LE(val1, val2) LOG_CHECK(GLOG_INFO, (val1) <= (val2))
-#define DCHECK_LT(val1, val2) LOG_CHECK(GLOG_INFO, (val1) < (val2))
-#define DCHECK_GE(val1, val2) LOG_CHECK(GLOG_INFO, (val1) >= (val2))
-#define DCHECK_GT(val1, val2) LOG_CHECK(GLOG_INFO, (val1) > (val2))
-#define DCHECK_NOTNULL(val) LOG_CHECK(GLOG_INFO, (val) != 0)
+#define DCHECK(expr) DLOG_IF(GLOG_INFO, !(expr))
+#define DCHECK_EQ(val1, val2) DCHECK((val1) == (val2))
+#define DCHECK_NE(val1, val2) DCHECK((val1) != (val2))
+#define DCHECK_LE(val1, val2) DCHECK((val1) <= (val2))
+#define DCHECK_LT(val1, val2) DCHECK((val1) < (val2))
+#define DCHECK_GE(val1, val2) DCHECK((val1) >= (val2))
+#define DCHECK_GT(val1, val2) DCHECK((val1) > (val2))
+#define DCHECK_NOTNULL(val) DCHECK((val) != 0)
 
 /*#else
 

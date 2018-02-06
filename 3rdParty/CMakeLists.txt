@@ -200,6 +200,7 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 ################################################################################
 
 set(GFLAGS_INTTYPES_FORMAT "C99")
+set(GFLAGS_BUILD_SHARED_LIBS Off)
 set(GFLAGS_BUILD_STATIC_LIBS On)
 set(GFLAGS_BUILD_gflags_LIB Off)
 set(GFLAGS_BUILD_gflags_nothreads_LIB On)
