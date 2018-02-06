@@ -66,10 +66,10 @@ const getKey = (keySpaceId, key) => {
 };
 
 const executeJS = (code) => {
-  let password = '';
   let username = 'root';
+  let password = '';
 
-  if (helper.isLdapEnabledExternal) {
+  if (helper.isLdapEnabledExternal()) {
     username = 'arangoadmin';
     password = 'abc';
   }

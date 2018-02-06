@@ -103,7 +103,7 @@ describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  if (!helper.isLdapEnabledExternal) {
+  if (!helper.isLdapEnabledExternal()) {
     it('should check if all users are created', () => {
       helper.switchUser('root', '_system');
       expect(userSet.size).to.equal(helper.userCount);
@@ -152,19 +152,19 @@ describe('User Rights Management', () => {
                   db._create(colName);
                 }
                 if (colLevel['none'].has(name)) {
-                  if (helper.isLdapEnabledExternal) {
+                  if (helper.isLdapEnabledExternal()) {
                     users.grantCollection(':role:' + name, dbName, colName, 'none');
                   } else {
                     users.grantCollection(name, dbName, colName, 'none');
                   }
                 } else if (colLevel['ro'].has(name)) {
-                  if (helper.isLdapEnabledExternal) {
+                  if (helper.isLdapEnabledExternal()) {
                     users.grantCollection(':role:' + name, dbName, colName, 'ro');
                   } else {
                     users.grantCollection(name, dbName, colName, 'ro');
                   }
                 } else if (colLevel['rw'].has(name)) {
-                  if (helper.isLdapEnabledExternal) {
+                  if (helper.isLdapEnabledExternal()) {
                     users.grantCollection(':role:' + name, dbName, colName, 'rw');
                   } else {
                     users.grantCollection(name, dbName, colName, 'rw');
