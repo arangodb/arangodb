@@ -104,7 +104,7 @@ class GeneralResponse {
     _headers = std::move(headers);
   }
 
-  std::unordered_map<std::string, std::string> headers() const {
+  std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
   
@@ -158,7 +158,7 @@ class GeneralResponse {
   bool generateBody() const { return _generateBody; };  // used for head
   virtual bool setGenerateBody(bool) {
     return _generateBody;
-  };  // used for head
+  }  // used for head
       // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 

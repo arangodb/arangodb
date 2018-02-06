@@ -433,7 +433,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
-      _headers(),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
       _options(velocypack::Options::Defaults),
