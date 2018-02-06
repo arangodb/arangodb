@@ -21,10 +21,12 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestAqlUserFunctions.h"
+#include "RestAqlUserFunctionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Rest/HttpRequest.h"
+
+#include "VocBase/Methods/AqlUserFunctions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -38,16 +40,52 @@ RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
   bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parseSuccess);
 
-  if (parseSuccess) {
-    VPackBuilder result;
-    generateResult(rest::ResponseCode::OK, parsedBody->slice());
+  auto const type = _request->requestType();
+
+  if (type == rest::RequestType::PUT) {
+    bool parsingSuccess = true;
+    std::shared_ptr<VPackBuilder> parsedBody =
+      parseVelocyPackBody(parsingSuccess);
+
+    if (!parsingSuccess) {
+      return RestStatus::DONE;
+    }
+
+    VPackSlice body = parsedBody.get()->slice();
+
+    if (!body.isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                    "expecting JSON object body");
+      return RestStatus::DONE;
+    }
+
+    std::string const& prefix = _request->requestPath();
+ 
+    bool replacedExisting = false;
+    registerUserFunction(_vocbase, body, replacedExisting);
+
+    return RestStatus::DONE;
+
+  }
+  else if (type == rest::RequestType::DELETE_REQ) {
+  }
+  else if (type == rest::RequestType::GET) {
   }
 
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
 
 
+
+
+/*
+exports.unregister = unregisterFunction; => delete exactMatch=true (default)
+  exports.unregisterGroup = unregisterFunctionsGroup; delete exactMatch=false 
+
+exports.register = registerFunction; => put TODO: doppelt gemoppelt function name in body checken
+exports.toArray = toArrayFunctions; => get
+*/

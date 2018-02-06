@@ -46,6 +46,7 @@
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
+#include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCollectionHandler.h"
@@ -429,6 +430,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/aql-user-functions",
+      RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
