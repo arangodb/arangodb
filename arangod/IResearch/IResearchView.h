@@ -239,6 +239,15 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief link the specified 'cid' to the view using the specified 'link'
+  ///        definition (!link.isObject() == remove only)
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result link(
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Slice const link
+  );
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -326,6 +335,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
+    std::atomic<size_t> _segmentCount{}; // total number of segments in the writer
     irs::index_writer::ptr _writer;
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
@@ -338,26 +348,6 @@ class IResearchView final: public arangodb::ViewImplementation,
 
   struct MemoryStore: public DataStore {
     MemoryStore(); // initialize _directory and _writer during allocation
-  };
-
-  struct SyncState {
-    struct PolicyState {
-      size_t _intervalCount;
-      size_t _intervalStep;
-
-      std::shared_ptr<irs::index_writer::consolidation_policy_t> _policy;
-      PolicyState(
-        size_t intervalStep,
-        const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
-      );
-    };
-
-    size_t _cleanupIntervalCount;
-    size_t _cleanupIntervalStep;
-    std::vector<PolicyState> _consolidationPolicies;
-
-    SyncState() noexcept;
-    explicit SyncState(IResearchViewMeta::CommitMeta const& meta);
   };
 
   struct TidStore {
@@ -393,14 +383,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     arangodb::velocypack::Slice const& info
   );
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief run cleaners on data directories to remove unused files
-  /// @param maxMsec try not to exceed the specified time, casues partial cleanup
-  ///                0 == full cleanup
-  /// @return success
-  ///////////////////////////////////////////////////////////////////////////////
-  bool cleanup(size_t maxMsec = 0);
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
   //////////////////////////////////////////////////////////////////////////////
@@ -410,15 +392,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief process a finished transaction and release resources held by it
   ////////////////////////////////////////////////////////////////////////////////
   int finish(TRI_voc_tid_t tid, bool commit);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for a flush of all index data to its respective stores
-  /// @param meta configuraton to use for sync
-  /// @param maxMsec try not to exceed the specified time, casues partial sync
-  ///                0 == full sync
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  bool sync(SyncState& state, size_t maxMsec = 0);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
