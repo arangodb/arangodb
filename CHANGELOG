@@ -1,6 +1,10 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
 * fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
          returned 200 before.
 
