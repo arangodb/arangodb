@@ -103,12 +103,11 @@ module.exports =
         definition.mount,
         definition.noisy
       );
-      FoxxService.validateServiceFiles(definition.mount, manifest);
+      FoxxService.validateServiceFiles(basePath, manifest);
       return manifest;
     }
 
-    static validateServiceFiles (mount, manifest, rev) {
-      const servicePath = FoxxService.basePath(mount);
+    static validateServiceFiles (servicePath, manifest, rev) {
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
       }
