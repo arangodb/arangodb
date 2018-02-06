@@ -1,6 +1,7 @@
 devel
 -----
 
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
 * fix inconvenience: If we want to start server with a non-existing
   --javascript.app-path it will now be created (if possible)
