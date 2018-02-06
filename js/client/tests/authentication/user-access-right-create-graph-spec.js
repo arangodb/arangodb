@@ -102,11 +102,23 @@ describe('User Rights Management', () => {
                 db._create(colName);
               }
               if (colLevel['none'].has(name)) {
-                users.grantCollection(name, dbName, colName, 'none');
+                if (helper.isLdapEnabledExternal) {
+                  users.grantCollection(':role:' + name, dbName, colName, 'none');
+                } else {
+                  users.grantCollection(name, dbName, colName, 'none');
+                }
               } else if (colLevel['ro'].has(name)) {
-                users.grantCollection(name, dbName, colName, 'ro');
+                if (helper.isLdapEnabledExternal) {
+                  users.grantCollection(':role:' + name, dbName, colName, 'ro');
+                } else {
+                  users.grantCollection(name, dbName, colName, 'ro');
+                }
               } else if (colLevel['rw'].has(name)) {
-                users.grantCollection(name, dbName, colName, 'rw');
+                if (helper.isLdapEnabledExternal) {
+                  users.grantCollection(':role:' + name, dbName, colName, 'rw');
+                } else {
+                  users.grantCollection(name, dbName, colName, 'rw');
+                }
               }
             }
             helper.switchUser(name, dbName);
