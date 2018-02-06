@@ -1,4 +1,4 @@
 # Views available in ArangoDB
 
 
-* [ArangoSearch](IResearch.md)
+* [ArangoSearch](ArangoSearch.md)
