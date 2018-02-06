@@ -293,20 +293,24 @@ if(MSVC)
   )
 endif()
 
-if (USE_IQL)
-  add_custom_command(
-    OUTPUT iql/parser.cc
-    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    WORKING_DIRECTORY iql
-  )
+add_custom_command(
+  OUTPUT iql/parser.cc
+  MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy touch_iql_parser.cc
+  COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+  WORKING_DIRECTORY iql
+)
 
-  add_custom_command(
-    OUTPUT iql
-    COMMAND ${CMAKE_COMMAND} -E make_directory iql
-  )
-endif()
+add_custom_target(touch_iql_parser.cc
+  DEPENDS iql
+  COMMAND ${CMAKE_COMMAND} -E touch_nocreate parser.cc
+  WORKING_DIRECTORY iql
+)
+
+add_custom_command(
+  OUTPUT iql
+  COMMAND ${CMAKE_COMMAND} -E make_directory iql
+)
 
 add_custom_command(
   OUTPUT utils

@@ -10,6 +10,9 @@ devel
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible
 
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
 * fix internal issue #478: remove unused and undocumented REST API endpoints
   _admin/statistics/short and _admin/statistics/long.
   These APIs were available in ArangoDB's REST API, but have not been called by
@@ -33,6 +36,18 @@ devel
      (shards * replication is not divisible by DBServers).
   2. If there was failover / move shard case on the leading collection
      and creating the follower collection afterwards.
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a javascript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
+         this is not the case anymore.
 
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
 
