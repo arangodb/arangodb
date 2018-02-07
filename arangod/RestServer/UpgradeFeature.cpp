@@ -88,6 +88,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  std::vector<std::string> otherFeaturesToDisable = {
+    "Bootstrap",
+    "Endpoint",
+  };
+  ApplicationServer::forceDisableFeatures(otherFeaturesToDisable);
   
   ReplicationFeature* replicationFeature =
       ApplicationServer::getFeature<ReplicationFeature>("Replication");
@@ -154,6 +159,8 @@ void UpgradeFeature::start() {
     if (init->isInitDatabase()) {
       *_result = EXIT_SUCCESS;
     }
+
+    LOG_TOPIC(INFO, arangodb::Logger::STARTUP) << "--database.auto-upgrade true specified. Server will now shutdown.";
 
     server()->beginShutdown();
   }
