@@ -160,7 +160,8 @@ void UpgradeFeature::start() {
       *_result = EXIT_SUCCESS;
     }
 
-    LOG_TOPIC(INFO, arangodb::Logger::STARTUP) << "--database.auto-upgrade true specified. Server will now shutdown.";
+    LOG_TOPIC(INFO, arangodb::Logger::STARTUP)
+      << "Server will now shutdown due to upgrade, database init or admin restoration.";
 
     server()->beginShutdown();
   }
