@@ -162,15 +162,16 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       response->setContentType(rest::ContentType::JSON);
       result.openObject();
       result.add(VPackValue("documents"));
-
+      result.openArray();
       result.addExternal(arrayOfFunctions.get()->slice().begin());
+      result.close();
       result.add("error", VPackValue(false));
       result.add("code",
                  VPackValue(static_cast<int>(_response->responseCode())));
       result.close();
+      generateResult(rest::ResponseCode::OK, std::move(resultBuffer));
     }
 
-    generateResult(rest::ResponseCode::OK, std::move(resultBuffer));
 
     return RestStatus::DONE;
     
