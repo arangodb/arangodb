@@ -525,7 +525,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   applier->reconfigure(configuration);
-  applier->start(lastLogTick, true, barrierId);
+  applier->startTailing(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();
@@ -1864,7 +1864,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  applier->start(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick, barrierId);
   handleCommandApplierGetState();
 }
 

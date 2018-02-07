@@ -618,7 +618,7 @@ void HeartbeatThread::runSingleServer() {
         
         applier->reconfigure(config);
         LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
-        applier->start(lastLogTick, true, barrierId);
+        applier->startTailing(lastLogTick, true, barrierId);
         
       } else if (!applier->isRunning() && !applier->isShuttingDown()) {
         // try to restart the applier
@@ -638,7 +638,7 @@ void HeartbeatThread::runSingleServer() {
             builder.close();
             LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << builder.slice().toJson();
 
-            applier->start(0, false, 0);
+            applier->startTailing(0, false, 0);
             continue; // check again next time
           } 
         }

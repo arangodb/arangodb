@@ -95,6 +95,8 @@ class Syncer {
   Result sendRemoveBarrier();
   
   void setAborted(bool value);
+  
+  bool isAborted();
 
  protected:
   /// @brief reload all users

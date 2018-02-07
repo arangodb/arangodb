@@ -34,7 +34,7 @@ ReplicationApplierState::ReplicationApplierState()
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
       _safeResumeTick(0),
-      _state(ActivityState::INACTIVE),
+      _activity(Activity::INACTIVE),
       _preventStart(false),
       _stopInitialSynchronization(false),
       _progressMsg(),
@@ -53,7 +53,7 @@ ReplicationApplierState::~ReplicationApplierState() {}
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset(true);
 
-  _state = other._state;
+  _activity = other._activity;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
   _lastProcessedContinuousTick = other._lastProcessedContinuousTick;
   _lastAvailableContinuousTick = other._lastAvailableContinuousTick;
@@ -96,7 +96,20 @@ void ReplicationApplierState::reset(bool resetState) {
   _skippedOperations = 0;
   
   if (resetState) {
-    _state = ActivityState::INACTIVE;
+    _activity = Activity::INACTIVE;
+  }
+}
+
+static std::string ActivityToString(ReplicationApplierState::Activity activity) {
+  switch (activity) {
+    case ReplicationApplierState::Activity::INACTIVE:
+      return "inactive";
+    case ReplicationApplierState::Activity::INITAL:
+      return "initial";
+    case ReplicationApplierState::Activity::TAILING:
+      return "running";
+    case ReplicationApplierState::Activity::SHUTTING_DOWN:
+      return "shutdown";
   }
 }
 
@@ -104,7 +117,8 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
   result.openObject();
 
   if (full) {
-    result.add("running", VPackValue(isRunning()));
+    result.add("running", VPackValue(isTailing())); // isRunning
+    result.add("activity", VPackValue(ActivityToString(_activity)));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {
@@ -165,3 +179,4 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
 
   result.close();
 }
+

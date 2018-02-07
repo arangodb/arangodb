@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H
-#define ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H
+#define ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H 1
 
 #include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"

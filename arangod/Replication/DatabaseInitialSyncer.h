@@ -198,6 +198,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief maximum internal value for chunkSize
   static size_t const MaxChunkSize;
 };
-}
+} // arangodb
 
 #endif

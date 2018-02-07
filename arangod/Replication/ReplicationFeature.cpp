@@ -98,7 +98,7 @@ void ReplicationFeature::start() {
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() &&
       _replicationApplierAutoStart) {
-    _globalReplicationApplier->start(0, false, 0);
+    _globalReplicationApplier->startTailing(0, false, 0);
   }
 }
 
@@ -140,7 +140,7 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
                 << vocbase->name() << "'";
     } else {
       try {
-        vocbase->replicationApplier()->start(0, false, 0);
+        vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
                   << vocbase->name() << "': " << ex.what();

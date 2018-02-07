@@ -66,7 +66,8 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   static ReplicationApplierConfiguration loadConfiguration(TRI_vocbase_t* vocbase);
   
  protected:
-  std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  std::unique_ptr<InitialSyncer> buildInitalSyncer() const override;
+  std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) const override;
 
   std::string getStateFilename() const override;
    

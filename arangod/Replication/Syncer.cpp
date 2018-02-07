@@ -287,6 +287,16 @@ void Syncer::setAborted(bool value) {
   }
 }
 
+bool Syncer::isAborted() {
+  MUTEX_LOCKER(locker, _clientMutex);
+  
+  if (_client != nullptr) {
+    return _client->isAborted();
+  }
+  return true;
+}
+
+
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
   return VelocyPackHelper::extractIdValue(slice);
