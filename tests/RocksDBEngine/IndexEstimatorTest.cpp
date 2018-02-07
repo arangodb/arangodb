@@ -135,6 +135,7 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
 
   SECTION("test_blocker_logic_basic") {
     rocksdb::SequenceNumber currentSeq(0);
+    rocksdb::SequenceNumber expected = currentSeq;
     std::string serialization;
     RocksDBCuckooIndexEstimator<uint64_t> est(2048);
 
@@ -146,20 +147,24 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
       std::generate(toInsert.begin(), toInsert.end(),
                     [&index] { return ++index; });
       auto res = est.placeBlocker(iteration, ++currentSeq);
+      expected = currentSeq;
       REQUIRE(res.ok());
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, ++currentSeq);
       serialization.clear();
+      REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
 
       est.removeBlocker(iteration);
 
       // now make sure we apply it
-      est.serialize(serialization, ++currentSeq);
+      actual = est.serialize(serialization, ++currentSeq);
+      expected = currentSeq;
       serialization.clear();
+      REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration + 1))) ==
               est.computeEstimate());
     }
@@ -172,20 +177,24 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
       std::generate(toRemove.begin(), toRemove.end(),
                     [&index] { return ++index; });
       auto res = est.placeBlocker(iteration, ++currentSeq);
+      expected = currentSeq;
       REQUIRE(res.ok());
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // make sure we don't apply yet
-      est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, ++currentSeq);
       serialization.clear();
+      REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(10 - iteration))) ==
               est.computeEstimate());
 
       est.removeBlocker(iteration);
 
       // now make sure we apply it
-      est.serialize(serialization, ++currentSeq);
+      actual = est.serialize(serialization, ++currentSeq);
       serialization.clear();
+      expected = currentSeq;
+      REQUIRE(actual == expected);
       REQUIRE(
           (1.0 / std::max(1.0, static_cast<double>(10 - (iteration + 1)))) ==
           est.computeEstimate());
@@ -206,14 +215,16 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
                     [&index] { return ++index; });
       auto res = est.placeBlocker(iteration, ++currentSeq);
       REQUIRE(res.ok());
+      auto expected = currentSeq;
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
 
       // remove previous blocker
       est.removeBlocker(iteration - 1);
 
       // now make sure we applied last batch, but not this one
-      est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, ++currentSeq);
       serialization.clear();
+      REQUIRE(actual == expected);
       REQUIRE((1.0 / std::max(1.0, static_cast<double>(iteration))) ==
               est.computeEstimate());
     }
@@ -221,6 +232,7 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
 
   SECTION("test_blocker_logic_out_of_order") {
     rocksdb::SequenceNumber currentSeq(0);
+    rocksdb::SequenceNumber expected;
     std::string serialization;
     RocksDBCuckooIndexEstimator<uint64_t> est(2048);
 
@@ -233,20 +245,26 @@ TEST_CASE("IndexEstimator", "[indexestimator]") {
                     [&index] { return ++index; });
       auto res = est.placeBlocker(iteration, ++currentSeq);
       REQUIRE(res.ok());
+      if (0 == iteration) {
+        expected = currentSeq;
+      }
       est.bufferUpdates(++currentSeq, std::move(toInsert), std::move(toRemove));
       // remove only if not first blocker
       est.removeBlocker(std::max(static_cast<size_t>(1), iteration));
 
       // now make sure we haven't applied anything
-      est.serialize(serialization, ++currentSeq);
+      auto actual = est.serialize(serialization, ++currentSeq);
       serialization.clear();
+      REQUIRE(actual == expected);
       REQUIRE(1.0 == est.computeEstimate());
     }
 
     // now remove first blocker and make sure we apply everything
     est.removeBlocker(0);
-    est.serialize(serialization, ++currentSeq);
+    auto actual = est.serialize(serialization, ++currentSeq);
+    expected = currentSeq;
     serialization.clear();
+    REQUIRE(actual == expected);
     REQUIRE(0.1 == est.computeEstimate());
   }
 

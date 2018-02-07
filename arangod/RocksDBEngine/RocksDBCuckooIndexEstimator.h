@@ -231,13 +231,25 @@ class RocksDBCuckooIndexEstimator {
   RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator&&) =
       delete;
 
-  /// @brief serialize estimator
+  /**
+   * @brief Serialize estimator for persistence, applying any buffered updates
+   *
+   * Format is hard-coded, and must support older formats for backwards
+   * compatibility. The first 8 bytes consist of a sequence number S. All
+   * updates prior to and including S are reflected in the serialization. Any
+   * updates after S must be kept in the WALs and "replayed" during recovery.
+   *
+   * Applies any buffered updates and updates the "committed" seq/tick state.
+   *
+   * @param  serialized String for output
+   * @param  inputSeq   The current seq/tick at beginning of sync
+   * @return            The committed seq/tick
+   */
   rocksdb::SequenceNumber serialize(std::string& serialized,
                                     rocksdb::SequenceNumber inputSeq) {
-    // This format is always hard coded and the serialisation has to support
-    // older formats
-    // for backwards compatibility
     // We always have to start with the commit seq, type and then the length
+
+    // commit seq
     auto outputSeq = committableSeq(inputSeq);
     rocksutils::uint64ToPersistent(serialized, outputSeq);
 
@@ -248,8 +260,10 @@ class RocksDBCuckooIndexEstimator {
       // Sorry we need a consistent state, so we have to read-lock
       READ_LOCKER(locker, _lock);
 
+      // type
       serialized += SerializeFormat::NOCOMPRESSION;
 
+      // length
       uint64_t serialLength =
           (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
            sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
@@ -443,6 +457,17 @@ class RocksDBCuckooIndexEstimator {
     return _needToPersist.load();
   }
 
+  /**
+   * @brief Place a blocker to allow proper commit/serialize semantics
+   *
+   * Should be called immediately prior to internal RocksDB commit. If the
+   * commit succeeds, any inserts/removals should be buffered, then the blocker
+   * removed; otherwise simply remove the blocker.
+   *
+   * @param  trxId The identifier for the active transaction
+   * @param  seq   The sequence number immediately prior to call
+   * @return       May return error if we fail to allocate and place blocker
+   */
   Result placeBlocker(uint64_t trxId, rocksdb::SequenceNumber seq) {
     Result res = basics::catchToResult([&]() -> Result {
       TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
@@ -461,6 +486,16 @@ class RocksDBCuckooIndexEstimator {
     return res;
   }
 
+  /**
+   * @brief Removes an existing transaction blocker
+   *
+   * Should be called after transaction abort/rollback, or after buffering any
+   * updates in case of successful commit. If no blocker exists with the
+   * specified transaction identifier, then this will simply do nothing.
+   *
+   * @param trxId Identifier for active transaction (should match input to
+   *              earlier `placeBlocker` call)
+   */
   void removeBlocker(uint64_t trxId) {
     WRITE_LOCKER(locker, _lock);
     auto it = _blockers.find(trxId);
@@ -474,6 +509,18 @@ class RocksDBCuckooIndexEstimator {
     }
   }
 
+  /**
+   * @brief Buffer updates to this estimator to be applied when appropriate
+   *
+   * Buffers updates associated with a given commit seq/tick. Will hold updates
+   * until all previous blockers have been removed to ensure a consistent state
+   * for sync/recovery and avoid any missed updates.
+   *
+   * @param  seq      The seq/tick post-commit, prior to call
+   * @param  inserts  Vector of hashes to insert
+   * @param  removals Vector of hashes to remove
+   * @return          May return error if any functions throw (e.g. alloc)
+   */
   Result bufferUpdates(rocksdb::SequenceNumber seq, std::vector<Key>&& inserts,
                        std::vector<Key>&& removals) {
     Result res = basics::catchVoidToResult([&]() -> void {
@@ -496,7 +543,13 @@ class RocksDBCuckooIndexEstimator {
     return res;
   }
 
-  /// @brief Just fetches most recently set commit seq
+  /**
+   * @brief Fetches the most recently set "committed" seq/tick
+   *
+   * This value is set during serialization.
+   *
+   * @return The latest seq/tick through which the estimate is valid
+   */
   rocksdb::SequenceNumber commitSeq() const {
     READ_LOCKER(locker, _lock);
     return _committedSeq;
