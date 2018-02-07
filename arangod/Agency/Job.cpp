@@ -75,10 +75,7 @@ bool Job::finish(
 
   Builder pending, finished;
 
-  ///
-  /// this code prioritizes pending over todo.  comment is confusing
-  ///
-  // Get todo entry
+  // Get stuff done.
   bool started = false;
   { VPackArrayBuilder guard(&pending);
     if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
@@ -87,11 +84,7 @@ bool Job::finish(
     } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
       _snapshot(toDoPrefix + _jobId).toBuilder(pending);
     } else {
-      ///
-      /// what is assumption here?  that job disappeared from agency
-      ///  and therefore there is nothing to clean up?  Should _state
-      ///  change?
-      ///
+      // The job has gone to finished or failed. We don't exist anymore. 
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Nothing in pending to finish up for job " << _jobId;
       return false;
@@ -145,11 +138,8 @@ bool Job::finish(
     return true;
   }
 
-  ///
-  /// if code reaches here, what is expectation?  should _status change to
-  ///  block potential subsequent steps in this thread's execution path?
-  ///  Does "success" impact the decision?
-  ///
+  // Safe to keep _status untouched as of now.
+  // Needs revaluation.
   return false;
 }
 
@@ -381,9 +371,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
 
 }
 
-///
-/// ShortName comes "later" in server start sequence.  Could it be missing
-///  at this point, and would that cause a throw?
+
+// Lookup a shortID.
+// If the server does not have a shortName yet, return empty string.
 std::string Job::uuidLookup (std::string const& shortID) {
   for (auto const& uuid : _snapshot(mapUniqueToShortID).children()) {
     if ((*uuid.second)("ShortName").getString() == shortID) {

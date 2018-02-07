@@ -833,10 +833,7 @@ std::vector<std::string> Node::exists(
   for (auto const& sub : rel) {
     auto it = cur->children().find(sub);
     if (it != cur->children().end() &&
-        ///
-        /// is _ttl sent to other agents as a fixed value?  wondering
-        ///  if steady_clock could be used
-        ///
+        // system_clock is needed cause user readable time is stored in agency
         (it->second->_ttl == std::chrono::system_clock::time_point() ||
          it->second->_ttl >= std::chrono::system_clock::now())) {
       cur = it->second.get();

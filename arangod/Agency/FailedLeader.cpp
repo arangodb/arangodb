@@ -110,9 +110,8 @@ void FailedLeader::rollback() {
     }
   }
 
-  ///
-  /// server not specified to finish().  Why?
-  ///
+  // Failed leader will finish.
+  // FailedServer finishes, when all child jobs have finished or failed.
   finish("", _shard, false, "Timed out.", payload);
 
 }
@@ -152,9 +151,6 @@ bool FailedLeader::start() {
     _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                      "distributeShardsLike");
 
-  ///
-  /// like previous asked, why is only _shard passed to finish().
-  ///
   // Fail if got distributeShardsLike
   if (existing.size() == 5) {
     finish("", _shard, false, "Collection has distributeShardsLike");
@@ -171,9 +167,8 @@ bool FailedLeader::start() {
     findNonblockedCommonHealthyInSyncFollower(
       _snapshot, _database, _collection, _shard);
   if (commonHealthyInSync.empty()) {
-    ///
-    /// no finish() and no log message.  what is expectation?
-    ///
+    // Job should not finish, just because we have not found an in sync follower.
+    // One might show up later, subseqently we could continue and start this job.
     return false;
   } else {
     _to = commonHealthyInSync;
@@ -204,9 +199,8 @@ bool FailedLeader::start() {
         LOG_TOPIC(INFO, Logger::SUPERVISION)
           << "Failed to get key " + toDoPrefix + _jobId
           + " from agency snapshot";
-        ///
-        /// should this finish(), or is a loop expected?
-        ///
+        // Just return here.
+        // Only way we get here is that the job no longer is in pending.
         return false;
       }
     } else {
@@ -295,9 +289,7 @@ bool FailedLeader::start() {
   try {
     std::string jobId = _snapshot(blockedShardsPrefix + _shard).getString();
     if (!abortable(_snapshot, jobId)) {
-      ///
-      /// retry expected or should finish() happen?
-      ///
+      // If the blocking job is not abortable, just wait for better times.
       return false;
     } else {
       JobContext(PENDING, jobId, _snapshot, _agent).abort();
@@ -317,10 +309,7 @@ bool FailedLeader::start() {
   auto result = res.result->slice()[0];
 
   if (res.accepted && result.isNumber()) {
-      ///
-      /// retry expected or should finish() happen?
-      ///  Wait, is this the Expected good ending and everything below
-      ///  is diagnosis?
+    // Couldn't RAFT persist this. Will retry. Just return here.
     return true;
   }
 
@@ -394,17 +383,11 @@ JOB_STATUS FailedLeader::status() {
 
   if(!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
     finish("", _shard, true, "Collection " + _collection + " gone");
-    ///
-    /// should _status be set
-    ///
+    // If finish cannot complete, we should not set this job as finished.
     return FINISHED;
   }
 
-  ///
-  /// my standard clock question ... should steady clock apply since this
-  ///  is a timer on an internal object.
-  ///
-  // Timedout after 77 minutes
+  // As of now the human-readable persistence of events is based on system_clock
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
     rollback();
   }
@@ -430,7 +413,7 @@ JOB_STATUS FailedLeader::status() {
   }
 
   if (done) {
-    // Remove shard to /arango/Target/FailedServers/<server> array
+    // Remove shard from /arango/Target/FailedServers/<server> array
     Builder del;
     { VPackArrayBuilder a(&del);
       { VPackObjectBuilder o(&del);
@@ -440,16 +423,14 @@ JOB_STATUS FailedLeader::status() {
           del.add("val", VPackValue(_shard));
         }}}
 
+    // Not critical - best effort
     write_ret_t res = singleWriteTransaction(_agent, del);
-    ///
-    /// res not tested.  should it be validated before finish() is called?
-    ///
+    
     if (finish("", shard)) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
         << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;
-      ///
-      /// set _status?
-      ///
+
+      // _state is not evaluated
       return FINISHED;
     }
   }

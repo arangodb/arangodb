@@ -85,24 +85,27 @@ struct Job {
   virtual void run() = 0;
 
   void runHelper(std::string const& server, std::string const& shard) {
+    
     if (_status == FAILED) {  // happens when the constructor did not work
       return;
     }
+    
     try {
-      ///
-      /// currently the returned JOB_STATUS can differ from _status.  Should
-      ///  this call set _status as a precaution?  _status=status();
-      ///
-      status();   // This runs everything to to with state PENDING if needed!
+      // Deal with jobs, which are pending and finish/fail/continue.
+      status(); 
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in status() method: "
         << e.what();
       finish(server, shard, false, e.what());
     }
+    
+    // deal with status 
     try {
       if (_status == TODO) {
+        // still in ToDo
         start();
       } else if (_status == NOTFOUND) {
+        // create and try to start immediately if possible
         if (create(nullptr)) {
           start();
         }
@@ -110,27 +113,26 @@ struct Job {
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
         "start() method: " << e.what();
-
-      ///
-      /// this try/catch does not pass server and shard to finish() like
-      ///  previous try/catch.  why?
-      ///
+      // We don't need to clean blocked servers/shards,
+      // cause exception avoided start in first place
       finish("", "", false, e.what());
     }
   }
 
   virtual Result abort() = 0;
 
-  ///
-  /// if finish returns false, does anyone care?
-  ///
+  /**
+   * @brief finish Job in agency
+   * @return       Success
+   */
   virtual bool finish(
     std::string const& server, std::string const& shard, bool success = true,
     std::string const& reason = std::string(), query_t const payload = nullptr);
 
-  ///
-  /// should the return value be assumed to be equal to _status?
-  ///
+  /**
+   * @brief status of the last run.
+   * @return       this run's status 
+   */
   virtual JOB_STATUS status() = 0;
 
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
