@@ -360,7 +360,7 @@ arangosh> db.written.save("authors/2938210813",
 ```
 
 In order to get all books with their authors you can use a [graph
-traversal](../../AQL/Graphs/Traversals.md#working-with-collection-sets)
+traversal](../../AQL/Graphs/Traversals.html#working-with-collection-sets)
 
 ```json
 arangosh> db._query(
