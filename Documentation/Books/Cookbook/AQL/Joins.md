@@ -366,6 +366,52 @@ traversal](../../AQL/Graphs/Traversals.html#working-with-collection-sets)
 arangosh> db._query(
 ...> "FOR b IN books " +
 ...> "LET authorsByBook = ( " +
+...> "    FOR author IN INBOUND b._id written" +
+...> "    RETURN DISTINCT author " +
+...> ") " +
+...> "RETURN { " +
+...> "    book: b, " +
+...> "    authors: authorsByBook " +
+...> "} "
+...> ).toArray();
+[
+  {
+    "book" : {
+      "_key" : "2980088317",
+      "_id" : "books/2980088317",
+      "_rev" : "2980088317",
+      "title" : "The beauty of JOINS"
+    },
+    "authors" : [
+      {
+        "_key" : "2938210813",
+        "_id" : "authors/2938210813",
+        "_rev" : "2938210813",
+        "name" : {
+          "first" : "Maxima",
+          "last" : "Musterfrau"
+        }
+      },
+      {
+        "_key" : "2935261693",
+        "_id" : "authors/2935261693",
+        "_rev" : "2935261693",
+        "name" : {
+          "first" : "John",
+          "last" : "Doe"
+        }
+      }
+    ]
+  }
+]
+```
+
+Or if you also want the information stored in the edges.
+
+```json
+arangosh> db._query(
+...> "FOR b IN books " +
+...> "LET authorsByBook = ( " +
 ...> "    FOR author, writtenBy IN INBOUND b._id written " +
 ...> "    RETURN DISTINCT { " +
 ...> "        vertex: author, " +
@@ -422,52 +468,6 @@ arangosh> db._query(
           "_to" : "books/2980088317",
           "_rev" : "3012856317",
           "pages" : "11-20"
-        }
-      }
-    ]
-  }
-]
-```
-
-Or if you want only the information stored in the vertices.
-
-```json
-arangosh> db._query(
-...> "FOR b IN books " +
-...> "LET authorsByBook = ( " +
-...> "    FOR author IN INBOUND b._id written" +
-...> "    RETURN DISTINCT author " +
-...> ") " +
-...> "RETURN { " +
-...> "    book: b, " +
-...> "    authors: authorsByBook " +
-...> "} "
-...> ).toArray();
-[
-  {
-    "book" : {
-      "_key" : "2980088317",
-      "_id" : "books/2980088317",
-      "_rev" : "2980088317",
-      "title" : "The beauty of JOINS"
-    },
-    "authors" : [
-      {
-        "_key" : "2938210813",
-        "_id" : "authors/2938210813",
-        "_rev" : "2938210813",
-        "name" : {
-          "first" : "Maxima",
-          "last" : "Musterfrau"
-        }
-      },
-      {
-        "_key" : "2935261693",
-        "_id" : "authors/2935261693",
-        "_rev" : "2935261693",
-        "name" : {
-          "first" : "John",
-          "last" : "Doe"
         }
       }
     ]
