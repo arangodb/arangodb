@@ -1,5 +1,11 @@
 devel
 -----
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
 * fix internal issue #478: remove unused and undocumented REST API endpoints
   _admin/statistics/short and _admin/statistics/long.
   These APIs were available in ArangoDB's REST API, but have not been called by
@@ -119,6 +125,9 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* internal issue #1726: Supervision to remove deleted nodes from
+  Health did not function for multiple servers at the same time, as
+  agency transaction was malformed.
 
 v3.3.3 (XXXX-XX-XX)
 -------------------

@@ -24,6 +24,7 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -450,14 +451,43 @@ Result Syncer::applyCollectionDumpMarkerInternal(
     if (!_leaderId.empty()) {
       options.isSynchronousReplicationFrom = _leaderId;
     }
+    // we want the conflicting other key returned in case of unique constraint violation
+    options.indexOperationMode = Index::OperationMode::internal;
 
     try {
       // try insert first
       OperationResult opRes = trx.insert(coll->name(), slice, options); 
 
       if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        // perform an update
-        opRes = trx.replace(coll->name(), slice, options);
+        bool useReplace = true;
+
+        // conflicting key is contained in opRes.errorMessage() now
+        VPackSlice keySlice = slice.get(StaticStrings::KeyString);
+        
+        if (keySlice.isString()) {
+          // let's check if the key we have got is the same as the one
+          // that we would like to insert
+          if (keySlice.copyString() != opRes.errorMessage()) {
+            // different key
+            VPackBuilder tmp;
+            tmp.add(VPackValue(opRes.errorMessage()));
+
+            opRes = trx.remove(coll->name(), tmp.slice(), options);
+            if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+              useReplace = false;
+            }
+          }
+        }
+    
+        options.indexOperationMode = Index::OperationMode::normal;
+
+        if (useReplace) {
+          // perform a replace
+          opRes = trx.replace(coll->name(), slice, options);
+        } else {
+          // perform a re-insert
+          opRes = trx.insert(coll->name(), slice, options); 
+        }
       }
    
       return Result(opRes.result);

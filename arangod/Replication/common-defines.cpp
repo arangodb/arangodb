@@ -61,7 +61,6 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  // name == "_apps" || 
   if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
       name == "_configuration" || name == "_frontend" ||
       name == "_cluster_kickstarter_plans" ||
