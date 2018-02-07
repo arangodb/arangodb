@@ -207,8 +207,8 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
           ServerState::instance()->isSingleServerOrCoordinator()) {
         // this should not fail, we can not get here without database RW access
         af->userManager()->updateUser(
-          ExecContext::CURRENT->user(), [&](auth::User& entry) {
-            entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+          ExecContext::CURRENT->user(), [&](auth::User& u) {
+            u.grantCollection(vocbase->name(), name, auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
           });
       }

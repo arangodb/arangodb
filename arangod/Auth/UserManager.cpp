@@ -461,7 +461,7 @@ Result auth::UserManager::updateUser(std::string const& username,
     return TRI_ERROR_USER_EXTERNAL;
   }
 
-  auth::User user = it->second;
+  auth::User user = it->second; // make a copy
   TRI_ASSERT(!user.key().empty() && user.key() != 0);
   Result r = func(user);
   if (r.fail()) {

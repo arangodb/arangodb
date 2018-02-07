@@ -608,5 +608,5 @@ auth::Level auth::User::DBAuthContext::collectionAuthLevel(
     return pair->second;
   }
   notFound = true;
-  return auth::Level::NONE;
+  return _databaseAuthLevel;// auth::Level::NONE;
 }
