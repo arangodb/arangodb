@@ -432,7 +432,7 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
-      "/_api/aql-user-functions",
+      "/_api/aqlfunction",
       RestHandlerCreator<RestAqlUserFunctionsHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(

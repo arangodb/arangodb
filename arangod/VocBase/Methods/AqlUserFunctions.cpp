@@ -230,8 +230,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   bool isDeterministic = userFunction.get("isDeterministic").getBool();
   {
     ISOLATE;
+    bool throwV8Exception = (isolate != nullptr);
     V8ContextDealerGuard dealerGuard(res, isolate, vocbase, true /*allowModification*/);
-    V8Context* v8Context = nullptr //FIXME get correct context - this was already a nullptr for the JS case
     if(res.fail()){
       return res;
     }
@@ -256,7 +256,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
         res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
             TRI_StringifyV8Exception(isolate, &tryCatch));
         if (!tryCatch.CanContinue()) {
-          if (v8Context != nullptr) {
+          if (throwV8Exception) {
             tryCatch.ReThrow();
           }
           TRI_GET_GLOBALS();
@@ -312,7 +312,8 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   }
 
   arangodb::OperationResult result;
-  if (res.ok()){
+  replacedExisting = res.ok();
+  if (replacedExisting){
     result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
   } else {
     result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);

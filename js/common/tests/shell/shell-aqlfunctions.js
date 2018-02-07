@@ -115,7 +115,7 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief multiple databases
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testDatabases2 : function () {
       try {
         unregister("UnitTests::tryme");
@@ -265,7 +265,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString3 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true);
+      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! * / \n function (what) { return what * 2; }", true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -601,7 +601,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return true; }, true);
 
-      var actual = db._query({ query: "// foo\n /* bar\nbaz\n*/ RETURN UnitTests::tryme(4) // some comment" }).toArray();
+      var actual = db._query({ query: "// foo\n /* bar\nbaz\n* / RETURN UnitTests::tryme(4) // some comment" }).toArray();
       assertEqual([ true ], actual);
     },
 
@@ -615,7 +615,7 @@ function AqlFunctionsSuite () {
         // foo 
         /* bar
         baz
-        */
+        * /
         return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ]; // some comment
       }, true);
 
@@ -677,7 +677,7 @@ function AqlFunctionsSuite () {
 
       db._drop("UnitTestsFunc");
     }
-
+*/
   };
 }
 

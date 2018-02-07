@@ -96,7 +96,7 @@ var unregisterFunction = function (name) {
 
   validateName(name);
 
-  return db._connection.DELETE('/_api/aql-user-functions/' + encodeURIComponent(name), 'exactMatch=true');
+  return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(name), 'exactMatch=true');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +114,7 @@ var unregisterFunctionsGroup = function (group) {
     throw err;
   }
 
-  return db._connection.DELETE('/_api/aql-user-functions/' + encodeURIComponent(group), 'exactMatch=false');
+  return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(group), 'exactMatch=false');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -124,11 +124,12 @@ var unregisterFunctionsGroup = function (group) {
 var registerFunction = function (name, code, isDeterministic = false) {
   var db = internal.db;
 
-  var requestResult = db._connection.PUT('/_api/aql-user-functions/' + encodeURIComponent(name), '', {
-    name: name,
-    code: stringifyFunction(code),
-    isDeterministic: isDeterministic
-  });
+  var requestResult = db._connection.POST('/_api/aqlfunction/' + encodeURIComponent(name),
+                                          JSON.stringify({
+                                            name: name,
+                                            code: stringifyFunction(code),
+                                            isDeterministic: isDeterministic
+                                          }));
 
   // TODO arangosh.checkRequestResult(requestResult);
 
@@ -142,7 +143,7 @@ var registerFunction = function (name, code, isDeterministic = false) {
 var toArrayFunctions = function (group) {
   'use strict';
 
-  var requestResult = db._connection.GET('/_api/aql-user-functions/' + encodeURIComponent(group), '');
+  var requestResult = db._connection.GET('/_api/aqlfunction/' + encodeURIComponent(group), '');
 
   return requestResult;
 };
