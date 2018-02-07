@@ -69,7 +69,7 @@ void RestClusterHandler::handleCommandEndpoints() {
   } else if (ServerState::instance()->isSingleServer()) {
     
     ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isAutomaticFailoverEnabled() ||
+    if (!replication->isActiveFailoverEnabled() ||
         !AgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_FORBIDDEN,
                            "automatic failover is not enabled"));

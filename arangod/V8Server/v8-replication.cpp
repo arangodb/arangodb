@@ -648,7 +648,7 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   
   auto replicationFeature = ReplicationFeature::INSTANCE;
   if (replicationFeature != nullptr &&
-      replicationFeature->isAutomaticFailoverEnabled()) {
+      replicationFeature->isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();
