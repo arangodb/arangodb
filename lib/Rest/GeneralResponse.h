@@ -155,7 +155,7 @@ class GeneralResponse {
                   bool resolveExternals = true) = 0;
   
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
-  bool generateBody() const { return _generateBody; };  // used for head
+  bool generateBody() const { return _generateBody; }  // used for head
   virtual bool setGenerateBody(bool) {
     return _generateBody;
   }  // used for head
