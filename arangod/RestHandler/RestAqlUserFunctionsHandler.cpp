@@ -129,6 +129,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     }
   }
   else if (type == rest::RequestType::GET) {
+    LOG_DEVEL << "GET";
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[1].empty() ) {
@@ -144,36 +145,17 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       functionNamespace = suffixes[0];
     }
 
-    std::shared_ptr<VPackBuilder> arrayOfFunctions;
-
-    arrayOfFunctions.reset(new VPackBuilder());
-
-    auto res = toArrayUserFunctions(_vocbase, functionNamespace, *arrayOfFunctions.get());
-
-
-    VPackBuffer<uint8_t> resultBuffer;
-    VPackBuilder result(resultBuffer);
-    {
-      VPackObjectBuilder guard(&result);
-      resetResponse(rest::ResponseCode::OK);
-
-      auto response = _response.get();
-
-      response->setContentType(rest::ContentType::JSON);
-      result.openObject();
-      result.add(VPackValue("documents"));
-      result.openArray();
-      result.addExternal(arrayOfFunctions.get()->slice().begin());
-      result.close();
-      result.add("error", VPackValue(false));
-      result.add("code",
-                 VPackValue(static_cast<int>(_response->responseCode())));
-      result.close();
-      generateResult(rest::ResponseCode::OK, std::move(resultBuffer));
+    VPackBuilder arrayOfFunctions;
+    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    LOG_DEVEL << "Array Of Functions";
+    LOG_DEVEL << arrayOfFunctions.toJson();
+    if(res.ok()){
+      generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
+    } else {
+      generateError(res);
     }
-
-
     return RestStatus::DONE;
+
     
   }
 
