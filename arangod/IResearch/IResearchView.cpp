@@ -934,9 +934,9 @@ IResearchView::IResearchView(
     };
 
     size_t asyncMetaRevision = 0; // '0' differs from IResearchView constructor above
-    size_t cleanupIntervalStep; // will be initialized when states are updated below
+    size_t cleanupIntervalStep = std::numeric_limits<size_t>::max(); // will be initialized when states are updated below
     auto commitIntervalMsecRemainder = std::numeric_limits<size_t>::max(); // longest possible time for std::min(...)
-    size_t commitTimeoutMsec; // will be initialized when states are updated below
+    size_t commitTimeoutMsec = 0; // will be initialized when states are updated below
     IResearchViewMeta::CommitMeta::ConsolidationPolicies consolidationPolicies;
     DataStoreState states[] = {
       DataStoreState(_memoryNodes[0]._store),

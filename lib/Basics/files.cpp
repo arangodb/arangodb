@@ -2040,14 +2040,14 @@ static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
 
   if (path != nullptr) {
+    // delete directory iff directory is empty
     TRI_RMDIR(path);
   }
 }
 
+// The TempPath is set but not created
 void TRI_SetTempPath(std::string const& temp) {
   UserTempPath = temp;
-  // need to call TRI_GetTempPath to establish the path...
-  TRI_GetTempPath();
 }
 
 std::string TRI_GetTempPath() {
