@@ -10,6 +10,8 @@ devel
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible
 
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
 * fix inconvenience: If we want to start server with a non-existing
   --javascript.app-path it will now be created (if possible)
 
@@ -132,6 +134,9 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* internal issue #1726: Supervision to remove deleted nodes from
+  Health did not function for multiple servers at the same time, as
+  agency transaction was malformed.
 
 v3.3.3 (XXXX-XX-XX)
 -------------------
