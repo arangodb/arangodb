@@ -366,15 +366,8 @@ traversal](../../AQL/Graphs/Traversals.html#working-with-collection-sets)
 arangosh> db._query(
 ...> "FOR b IN books " +
 ...> "LET authorsByBook = ( " +
-...> "    FOR author, writtenBy " +
-...> "    IN " +
-...> "    INBOUND b._id " +
-...> "    written " +
-...> "    OPTIONS { " +
-...> "        bfs: true, " +
-...> "        uniqueVertices: 'global' " +
-...> "    } " +
-...> "    RETURN { " +
+...> "    FOR author, writtenBy IN INBOUND b._id written " +
+...> "    RETURN DISTINCT { " +
 ...> "        vertex: author, " +
 ...> "        edge: writtenBy " +
 ...> "    } " +
@@ -442,15 +435,8 @@ Or if you want only the information stored in the vertices.
 arangosh> db._query(
 ...> "FOR b IN books " +
 ...> "LET authorsByBook = ( " +
-...> "    FOR author " +
-...> "    IN " +
-...> "    INBOUND b._id " +
-...> "    written " +
-...> "    OPTIONS { " +
-...> "        bfs: true, " +
-...> "        uniqueVertices: 'global' " +
-...> "    } " +
-...> "    RETURN author " +
+...> "    FOR author IN INBOUND b._id written" +
+...> "    RETURN DISTINCT author " +
 ...> ") " +
 ...> "RETURN { " +
 ...> "    book: b, " +
@@ -495,15 +481,8 @@ Or again embed the authors directly into the book document.
 arangosh> db._query(
 ...> "FOR b IN books " +
 ...> "LET authors = ( " +
-...> "    FOR author " +
-...> "    IN " +
-...> "    INBOUND b._id " +
-...> "    written " +
-...> "    OPTIONS { " +
-...> "        bfs: true, " +
-...> "        uniqueVertices: 'global' " +
-...> "    } " +
-...> "    RETURN author " +
+...> "    FOR author IN INBOUND b._id written " +
+...> "    RETURN DISTINCT author " +
 ...> ") " +
 ...> "RETURN MERGE(b, {authors: authors}) "
 ...> ).toArray();
@@ -543,15 +522,8 @@ If you need the authors and their books, simply reverse the direction.
 > db._query(
 ...> "FOR a IN authors " +
 ...> "LET booksByAuthor = ( " +
-...> "    FOR b " +
-...> "    IN " +
-...> "    OUTBOUND a._id " +
-...> "    written " +
-...> "    OPTIONS { " +
-...> "        bfs: true, " +
-...> "        uniqueVertices: 'global' " +
-...> "    } " +
-...> "    RETURN b" +
+...> "    FOR b IN OUTBOUND a._id written " +
+...> "    RETURN DISTINCT b" +
 ...> ") " +
 ...> "RETURN MERGE(a, {books: booksByAuthor}) "
 ...> ).toArray();
