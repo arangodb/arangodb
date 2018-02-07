@@ -419,10 +419,10 @@ void HeartbeatThread::runSingleServer() {
   TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
-  if (!replication->isAutomaticFailoverEnabled()) {
+  if (!replication->isActiveFailoverEnabled()) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Automatic failover is disabled, yet "
       << "the heartbeat thread is running on a single server. "
-      << "Please add --replication.automatic-failover true";
+      << "Please add --replication.active-failover true";
     return;
   }
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();

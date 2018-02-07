@@ -42,7 +42,7 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
-      _enableReplicationFailover(false) {
+      _enableActiveFailover(false) {
 
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -63,15 +63,17 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  
   options->addHiddenOption("--replication.automatic-failover",
-                           "Enable auto-failover during asynchronous replication",
-                           new BooleanParameter(&_enableReplicationFailover));
+                           "Please use `--replication.active-failover` instead",
+                           new BooleanParameter(&_enableActiveFailover));
+  options->addOption("--replication.active-failover",
+                      "Enable active-failover during asynchronous replication",
+                      new BooleanParameter(&_enableActiveFailover));
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (_enableReplicationFailover && feature->agencyEndpoints().empty()) {
+  if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
     << "automatic failover needs to be started with agency endpoint configured";
     FATAL_ERROR_EXIT();
@@ -197,7 +199,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
     case ServerState::Mode::REDIRECT: {
       std::string endpoint;
       ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-      if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
+      if (replication != nullptr && replication->isActiveFailoverEnabled()) {
         GlobalReplicationApplier* applier = replication->globalReplicationApplier();
         if (applier != nullptr) {
           endpoint = applier->endpoint();
