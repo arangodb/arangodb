@@ -172,7 +172,7 @@ AstNode* Ast::createNodeExample(AstNode const* variable,
 
   return node;
 }
-  
+
 /// @brief create subquery node
 AstNode* Ast::createNodeSubquery() {
   return createNode(NODE_TYPE_SUBQUERY);
@@ -197,7 +197,7 @@ AstNode* Ast::createNodeFor(char const* variableName, size_t nameLength,
   return node;
 }
 
-/// @brief create an AST for node, using an existing output variable 
+/// @brief create an AST for node, using an existing output variable
 AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
   if (variable == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -205,7 +205,7 @@ AstNode* Ast::createNodeFor(Variable* variable, AstNode const* expression) {
 
   AstNode* node = createNode(NODE_TYPE_FOR);
   node->reserve(2);
-  
+
   AstNode* v = createNode(NODE_TYPE_VARIABLE);
   v->setData(static_cast<void*>(variable));
 
@@ -1636,19 +1636,19 @@ AstNode* Ast::replaceAttributeAccess(
     if (node == nullptr) {
       return nullptr;
     }
-  
+
     if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
       return node;
     }
-    
-    attributePath.clear(); 
+
+    attributePath.clear();
     AstNode* origNode = node;
 
     while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       attributePath.emplace_back(node->getString());
       node = node->getMember(0);
     }
-    
+
     if (attributePath.size() != attribute.size()) {
       // different attribute
       return origNode;
@@ -1808,7 +1808,7 @@ void Ast::validateAndOptimize() {
       auto collection = node->getMember(1);
       std::string name = collection->getString();
       ctx->writeCollectionsSeen.emplace(name);
-      
+
       auto it = ctx->collectionsFirstSeen.find(name);
 
       if (it != ctx->collectionsFirstSeen.end()) {
@@ -2119,7 +2119,7 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
 
   attributeName.clear();
   std::vector<std::string> attributePath;
-          
+
   auto visitor = [&](AstNode const* node, void* data) -> void {
     if (node == nullptr || !result) {
       return;
@@ -2145,7 +2145,7 @@ bool Ast::populateSingleAttributeAccess(AstNode const* node,
           attributeName = std::move(attributePath);
         } else {
           // have seen some attribute before. now check if it's the same attribute
-          size_t const n = attributeName.size(); 
+          size_t const n = attributeName.size();
           if (n != attributePath.size()) {
             // different attributes
             result = false;
@@ -2186,7 +2186,7 @@ bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
 
   // traversal state
   std::vector<std::string> attributePath;
-          
+
   auto visitor = [&](AstNode const* node, void* data) -> void {
     if (node == nullptr || !result) {
       return;
@@ -2211,7 +2211,7 @@ bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
           // different attribute
           result = false;
         } else {
-          size_t const n = attributeName.size(); 
+          size_t const n = attributeName.size();
           TRI_ASSERT(n == attributePath.size());
           for (size_t i = 0; i < n; ++i) {
             if (attributePath[i] != attributeName[i]) {
@@ -2738,7 +2738,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   }
 
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
-  
+
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
@@ -3019,10 +3019,10 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     return node;
   }
 
-  // when we are called, we should have a transaction object in 
+  // when we are called, we should have a transaction object in
   // place. note that the transaction has not necessarily been
   // started yet...
-  TRI_ASSERT(_query->trx() != nullptr); 
+  TRI_ASSERT(_query->trx() != nullptr);
 
   if (func->hasImplementation() && node->isSimple()) {
     Expression exp(nullptr, this, node);
@@ -3038,8 +3038,8 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     }
     // simply fall through to V8 now
   }
-  
-  // execute the expression using V8  
+
+  // execute the expression using V8
   return executeConstExpressionV8(node);
 }
 

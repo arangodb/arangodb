@@ -317,10 +317,27 @@ static inline void clearAttributeAccess(
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
+    namespace {
+    size_t countNodes(AstNode* node) {
+      if (node == nullptr) {
+        return 0;
+      }
+
+      size_t n = node->numMembers();
+      size_t sum = 1;
+      for (size_t i = 0; i < n; i++) {
+        sum += countNodes(node->getMember(i));
+      }
+
+      return sum;
+    }
+    }
+
 /// @brief destroy the condition
 Condition::~Condition() {
   // memory for nodes is not owned and thus not freed by the condition
   // all nodes belong to the AST
+  //LOG_TOPIC(ERR, Logger::FIXME) << "nodes in tree: " << ::countNodes(_root);
 }
 
 /// @brief export the condition as VelocyPack
@@ -1225,7 +1242,6 @@ AstNode* Condition::collapse(AstNode const* node) {
 
   for (size_t i = 0; i < n; ++i) {
     auto sub = node->getMemberUnchecked(i);
-
     bool const isSame = (node->type == sub->type) ||
                         (node->type == NODE_TYPE_OPERATOR_NARY_OR &&
                          sub->type == NODE_TYPE_OPERATOR_BINARY_OR) ||
@@ -1233,7 +1249,7 @@ AstNode* Condition::collapse(AstNode const* node) {
                          sub->type == NODE_TYPE_OPERATOR_BINARY_AND);
 
     if (isSame) {
-      // merge
+      // merge children one level up
       for (size_t j = 0; j < sub->numMembers(); ++j) {
         newOperator->addMember(sub->getMemberUnchecked(j));
       }
@@ -1305,7 +1321,7 @@ void normalizeCompare(AstNode* node) {
   }
 }
 
-/// @brief converts binary logical operators into n-ary operators
+/// @brief converts binary to n-ary, comparision normal and negation normal form
 AstNode* Condition::transformNodePreorder(AstNode* node) {
   if (node == nullptr) {
     return nullptr;
@@ -1353,8 +1369,10 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
         newOperator->addMember(optimized);
       }
 
-      return newOperator;//transformNodePreorder(newOperator);
-    } else if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
+      return newOperator;
+    }
+
+    if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
       // eliminate double-negatives
       return transformNodePreorder(sub->getMemberUnchecked(0));
     }
@@ -1370,7 +1388,7 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
   return node;
 }
 
-/// @brief converts binary logical operators into n-ary operators
+/// @brief converts from negation normal to disjunctive normal form
 AstNode* Condition::transformNodePostorder(AstNode* node) {
   if (node == nullptr ) {
     return node;
@@ -1395,8 +1413,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     if (mustCollapse) {
       node = collapse(node);
-      mustCollapse = false;
-    } // TODO collapse below? in preorder? maintain invariants...
+    }
 
     if (distributeOverChildren) {
       // we found an AND with at least one OR child, e.g.
@@ -1411,66 +1428,65 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       //
       auto newOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_OR);
 
-      std::vector<PermutationState> permutationStates;
-      permutationStates.reserve(n);
+      std::vector<PermutationState> clauses;
+      clauses.reserve(n);
 
       for (size_t i = 0; i < n; ++i) {
         auto sub = node->getMemberUnchecked(i);
 
         if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
-          permutationStates.emplace_back(sub, sub->numMembers());
+          clauses.emplace_back(sub, sub->numMembers());
         } else {
-          permutationStates.emplace_back(sub, 1);
+          clauses.emplace_back(sub, 1);
         }
       }
 
       size_t current = 0;
       bool done = false;
-      size_t const numPermutations = permutationStates.size();
+      size_t const numClauses = clauses.size();
 
       while (!done) {
         auto andOperator = _ast->createNode(NODE_TYPE_OPERATOR_NARY_AND);
-        andOperator->reserve(numPermutations);
+        andOperator->reserve(numClauses);
 
-        bool mustCollapseAnd = false;
-        for (size_t i = 0; i < numPermutations; ++i) {
-          auto const& state = permutationStates[i];
-          auto sub = state.getValue()->clone(_ast);
+        for (size_t i = 0; i < numClauses; ++i) {
+          auto const& clause = clauses[i];
+          auto sub = clause.getValue();//->clone(_ast);
           if (sub->type == NODE_TYPE_OPERATOR_NARY_AND) {
-            mustCollapseAnd = true;
+            // collapse, add children directly
+            for (size_t j = 0; j < sub->numMembers(); j++) {
+              andOperator->addMember(sub->getMember(j));
+            }
+          } else {
+            andOperator->addMember(sub);
           }
-          andOperator->addMember(sub);
         }
 
-        if (mustCollapseAnd) {
-          andOperator = collapse(andOperator);
-        }
         newOperator->addMember(andOperator);
 
-        // now permute
+        // now advance the clause permunation state
         while (true) {
-          if (++permutationStates[current].current <
-              permutationStates[current].n) {
+          auto& currentClause = clauses[current];
+          if (++currentClause.current < currentClause.n) {
             current = 0;
-            // abort inner iteration
+            // still have at least one more permutation with current position
+            // in current clause
             break;
           }
 
-          permutationStates[current].current = 0;
+          // done with current clause, reset it
+          currentClause.current = 0;
 
+          // move on to next clause
           if (++current >= n) {
+            // no more clauses left!
             done = true;
             break;
           }
-          // next inner iteration
         }
       }
 
       node = newOperator;
-    }
-
-    if (mustCollapse) {
-      node = collapse(node);
     }
 
     return node;
@@ -1535,7 +1551,7 @@ AstNode* Condition::fixRoot(AstNode* node, int level) {
 
     if (level == 0) {
       // recurse into next level
-      node->changeMember(j, fixRoot(sub, level + 1));
+      node->changeMember(j, fixRoot(sub, 1));
     } else if (i != j) {
       node->changeMember(j, sub);
     }
