@@ -100,10 +100,10 @@ void RocksDBBackgroundThread::run() {
       // and then prune them when they expired
       _engine->pruneWalFiles();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::FIXME)
+      LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::FIXME)
+      LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught unknown exception in rocksdb background";
     }
   }

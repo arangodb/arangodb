@@ -88,8 +88,25 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
                     uint64_t operationSize, TRI_voc_rid_t revisionId);
+
+  /**
+   * @brief Prepare collection for commit by placing index blockers
+   * @param trxId        Active transaction ID
+   * @param preCommitSeq Current seq/tick immediately before call
+   */
   void prepareCommit(uint64_t trxId, uint64_t preCommitSeq);
+
+  /**
+   * @brief Signal upstream abort/rollback to clean up index blockers
+   * @param trxId Active transaction ID
+   */
   void abortCommit(uint64_t trxId);
+
+  /**
+   * @brief Commit collection counts and buffer tracked index updates
+   * @param trxId     Active transaction ID
+   * @param commitSeq Seq/tick immediately after upstream commit
+   */
   void commitCounts(uint64_t trxId, uint64_t commitSeq);
 
   /// @brief Every index can track hashes inserted into this index

@@ -72,6 +72,20 @@ class RocksDBSettingsManager {
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
 
+  struct CMValue {
+    /// ArangoDB transaction ID
+    rocksdb::SequenceNumber _sequenceNum;
+    /// used for number of documents
+    uint64_t _count;
+    /// used for revision id
+    TRI_voc_rid_t _revisionId;
+
+    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
+        : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
+    explicit CMValue(arangodb::velocypack::Slice const&);
+    void serialize(arangodb::velocypack::Builder&) const;
+  };
+
  public:
   /// Retrieve initial settings values from database on engine startup
   void retrieveInitialValues();
@@ -102,8 +116,8 @@ class RocksDBSettingsManager {
   // NOTE: If this returns nullptr the recovery was not able to find any
   // estimator
   // for this index.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
-  stealIndexEstimator(uint64_t indexObjectId);
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> stealIndexEstimator(
+      uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
   uint64_t stealKeyGenerator(uint64_t indexObjectId);
@@ -123,34 +137,13 @@ class RocksDBSettingsManager {
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;
 
- protected:
-  struct CMValue {
-    /// ArangoDB transaction ID
-    rocksdb::SequenceNumber _sequenceNum;
-    /// used for number of documents
-    uint64_t _count;
-    /// used for revision id
-    TRI_voc_rid_t _revisionId;
-
-    CMValue(rocksdb::SequenceNumber sq, uint64_t cc, TRI_voc_rid_t rid)
-        : _sequenceNum(sq), _count(cc), _revisionId(rid) {}
-    explicit CMValue(arangodb::velocypack::Slice const&);
-    void serialize(arangodb::velocypack::Builder&) const;
-  };
-
+ private:
   void readCounterValues();
   void readSettings();
   void readIndexEstimates();
   void readKeyGenerators();
 
   bool lockForSync(bool force);
-  Result writeCounterValue(rocksdb::Transaction* rtrx, VPackBuilder& b,
-                           std::pair<uint64_t, CMValue> const& pair);
-  Result writeSettings(rocksdb::Transaction* rtrx, VPackBuilder& b,
-                       uint64_t seqNumber);
-  std::pair<Result, rocksdb::SequenceNumber> writeIndexEstimatorAndKeyGenerator(
-      rocksdb::Transaction* rtrx, VPackBuilder& b,
-      std::pair<uint64_t, CMValue> const& pair, rocksdb::SequenceNumber seq);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief counter values
@@ -167,9 +160,8 @@ class RocksDBSettingsManager {
   ///        Note the elements in this container will be moved into the
   ///        index classes and are only temporarily stored here during recovery.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_map<
-      uint64_t,
-      std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>
+  std::unordered_map<uint64_t,
+                     std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>>
       _estimators;
 
   //////////////////////////////////////////////////////////////////////////////

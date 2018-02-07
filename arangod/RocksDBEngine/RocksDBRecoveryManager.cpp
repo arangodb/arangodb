@@ -307,24 +307,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < currentSeqNum) {
-          /*LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "recovery adding hash'" << hash
-            << "' to estimator for index with objectId'" << objectId << "'";*/
-
           // We track estimates for this index
           est->insert(hash);
-        } /*else {
-          if (est.first == nullptr) {
-            LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "not tracking estimator for index with objectId' "
-              << objectId << "', estimator not found";
-          } else {
-            LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "not tracking estimator for index with objectId' "
-              << objectId << "' (synced at " << est.second << " >= "
-              << currentSeqNum << ")";
-          }
-        }*/
+        }
       }
     }
 
@@ -363,24 +348,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
         if (est != nullptr && est->commitSeq() < currentSeqNum) {
-          /*LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "recovery removing hash'" << hash
-            << "' from estimator for index with objectId'" << objectId << "'";*/
-
           // We track estimates for this index
           est->remove(hash);
-        } /*else {
-          if (est.first == nullptr) {
-            LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "not tracking estimator for index with objectId' "
-              << objectId << "', estimator not found";
-          } else {
-            LOG_TOPIC(TRACE, Logger::ENGINES)
-              << "not tracking estimator for index with objectId' "
-              << objectId << "' (synced at " << est.second << " >= "
-              << currentSeqNum << ")";
-          }
-        }*/
+        }
       }
     }
 
@@ -450,7 +420,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           rv = rocksutils::convertStatus(s);
           std::string msg = "error during WAL scan: " + rv.errorMessage();
           LOG_TOPIC(ERR, Logger::ENGINES) << msg;
-          rv.reset(rv.errorNumber(), msg); // update message
+          rv.reset(rv.errorNumber(), std::move(msg)); // update message
           break;
         }
 
