@@ -220,3 +220,6 @@ and - (dash) characters only. Please refer to
 [NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for
 more information on valid view names, which follow the same guidelines as
 collection names.
+
+### IFF
+[if and only if](https://en.m.wikipedia.org/wiki/If_and_only_if)
