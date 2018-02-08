@@ -145,6 +145,7 @@
           $('#switchTypes').text('JSON');
           this.renderBindParamTable();
         }
+        this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
         arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
       }
@@ -597,7 +598,7 @@
         var queryObject = this.getCachedQuery();
         var self = this;
 
-        if (queryObject !== null && queryObject !== undefined && queryObject !== '') {
+        if (queryObject !== null && queryObject !== undefined && queryObject !== '' && Object.keys(queryObject).length > 0) {
           this.aqlEditor.setValue(queryObject.query, 1);
 
           var queryName = localStorage.getItem('lastOpenQuery');
@@ -620,16 +621,7 @@
             try {
               // then fill values into input boxes
               self.bindParamTableObj = JSON.parse(queryObject.parameter);
-
-              var key;
-              _.each($('#arangoBindParamTable input'), function (element) {
-                key = $(element).attr('name');
-                if (typeof self.bindParamTableObj[key] === 'object') {
-                  $(element).val(JSON.parse(self.bindParamTableObj[key]));
-                } else {
-                  $(element).val(self.bindParamTableObj[key]);
-                }
-              });
+              self.fillBindParamTable(self.bindParamTableObj);
 
               // resave cached query
               self.setCachedQuery(self.aqlEditor.getValue(), JSON.stringify(self.bindParamTableObj));
@@ -1079,17 +1071,6 @@
           '</tr>'
         );
         counter++;
-        /* _.each($('#arangoBindParamTable input'), function (element) {
-          if ($(element).attr('name') === key) {
-            if (val instanceof Array) {
-              $(element).val(JSON.stringify(val)).addClass('arraytype');
-            } else if (typeof val === 'object') {
-              $(element).val('' + JSON.stringify(val) + '').addClass(typeof val + 'type');
-            } else {
-              $(element).val(val).addClass(typeof val + 'type');
-            }
-          }
-        });*/
       });
       if (counter === 0) {
         $('#arangoBindParamTable tbody').append(
@@ -1125,8 +1106,23 @@
               $(element).val(JSON.stringify(val)).addClass('arraytype');
             } else if (typeof val === 'object') {
               $(element).val(JSON.stringify(val)).addClass(typeof val + 'type');
-            } else {
+            } else if (typeof val === 'number') {
               $(element).val(val).addClass(typeof val + 'type');
+            } else {
+              var isNumber = false;
+              // check if a potential string value is a number
+              try {
+                if (typeof JSON.parse(val) === 'number') {
+                  isNumber = true;
+                }
+              } catch (ignore) {
+              }
+
+              if (!isNumber) {
+                $(element).val(val).addClass(typeof val + 'type');
+              } else {
+                $(element).val('"' + val + '"').addClass(typeof val + 'type');
+              }
             }
           }
         });
