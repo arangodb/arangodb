@@ -1,6 +1,8 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
 * fix internal issue #1848: AQL optimizer was trying to resolve attribute accesses
   to attributes of constant object values at query compile time, but only did so far
   the very first attribute in each object
