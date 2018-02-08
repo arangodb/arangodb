@@ -104,7 +104,7 @@ class GeneralResponse {
     _headers = std::move(headers);
   }
 
-  std::unordered_map<std::string, std::string> headers() const {
+  std::unordered_map<std::string, std::string> const& headers() const {
     return _headers;
   }
   
@@ -155,10 +155,10 @@ class GeneralResponse {
                   bool resolveExternals = true) = 0;
   
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
-  bool generateBody() const { return _generateBody; };  // used for head
+  bool generateBody() const { return _generateBody; }  // used for head
   virtual bool setGenerateBody(bool) {
     return _generateBody;
-  };  // used for head
+  }  // used for head
       // resonses
   void setOptions(VPackOptions options) { _options = std::move(options); };
 

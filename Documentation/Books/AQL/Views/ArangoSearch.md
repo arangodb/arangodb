@@ -6,7 +6,7 @@ integrate with and natively expose the full power of the
 [IResearch library](https://github.com/iresearch-toolkit/iresearch)
 to the ArangoDB user.
 
-It provides the capability to:
+They provide the capability to:
 * evaluate together documents located in different collections
 * filter documents based on AQL boolean expressions and functions
 * sort the resultset based on how closely each document matched the filter
@@ -96,11 +96,11 @@ PHRASE(attribute-name,
 
 Search for a phrase in the referenced attributes. 
 
-The phrase can be expressed as an arbitrary number of *phraseParts* optionally separated by *skipToken* number of tokens.
+The phrase can be expressed as an arbitrary number of *phraseParts* separated by *skipToken* number of tokens.
 
 - *attribute-name* - the path of the attribute to compare against in the document
 - *phrasePart* - a string to search in the token stream; may consist of several words; will be split using the specified *analyzer*
-- *skipTokens* number of words or tokens to treat as wildcard
+- *skipTokens* number of words or tokens to treat as wildcards
 - *analyzer* - string with the analyzer used, i.e. *"text_en"* or [one of the other available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
 ### STARTS_WITH()
@@ -109,7 +109,7 @@ The phrase can be expressed as an arbitrary number of *phraseParts* optionally s
 
 Match the value of the **attribute-name** that starts with **prefix**
 
-- *attribute-name* - the path of the attribute to compare agaainst in the document
+- *attribute-name* - the path of the attribute to compare against in the document
 - *prefix* - a string to search at the start of the text
 
 ### TOKENS()
@@ -164,13 +164,13 @@ or
 to match documents where 'description' contains a phrase 'quick brown'
 
     FOR doc IN VIEW someView
-      FILTER PHRASE(doc.description, 'quick brown', 'text_en')
+      FILTER PHRASE(doc.description, [ 'quick brown' ], 'text_en')
       RETURN doc
 
 or
 
     FOR doc IN VIEW someView
-      FILTER PHRASE(doc['description'], 'quick brown', 'text_en')
+      FILTER PHRASE(doc['description'], [ 'quick brown' ], 'text_en')
       RETURN doc
 
 to match documents where 'body' contains the phrase consisting of a sequence
@@ -178,13 +178,13 @@ like this:
 'quick' * 'fox jumps' (where the asterisk can be any single word)
 
     FOR doc IN VIEW someView
-      FILTER PHRASE(doc.body, 'quick', 1, 'fox jumps', 'text_en')
+      FILTER PHRASE(doc.body, [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 or
 
     FOR doc IN VIEW someView
-      FILTER PHRASE(doc['body'], 'quick', 1, 'fox jumps', 'text_en')
+      FILTER PHRASE(doc['body'], [ 'quick', 1, 'fox jumps' ], 'text_en')
       RETURN doc
 
 to match documents where 'story' starts with 'In the beginning'
