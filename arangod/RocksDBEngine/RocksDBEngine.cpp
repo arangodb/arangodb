@@ -749,7 +749,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
+    THROW_ARANGO_EXCEPTION(result);
   }
 
   VPackSlice fullParameters = RocksDBValue::data(value);
@@ -1206,7 +1206,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),
                                              key.string(), value.string());
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 

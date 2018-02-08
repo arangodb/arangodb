@@ -1,0 +1,12 @@
+{
+  "configuration": {
+    "test1": {
+      "description": "a string",
+      "type": "string"
+    },
+    "test2": {
+      "description": "another string",
+      "type": "string"
+    }
+  }
+}

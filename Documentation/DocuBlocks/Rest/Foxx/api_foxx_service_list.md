@@ -18,6 +18,11 @@ Additionally the object may contain the following attributes if they have been s
 - *name*: a string identifying the service type
 - *version*: a semver-compatible version string
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{excludeSystem,boolean,optional}
+Whether or not system services should be excluded from the result.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
