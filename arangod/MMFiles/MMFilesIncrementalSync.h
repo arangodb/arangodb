@@ -176,7 +176,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             markers.emplace_back(mmdr.vpack());
 
             if (++iterations % 10000 == 0) {
-              if (syncer.checkAborted()) {
+              if (syncer.isAborted()) {
                 return false;
               }
             }
@@ -184,7 +184,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           return true;
         });
 
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -224,7 +224,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         });
   }
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -352,7 +352,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 

@@ -1014,7 +1014,7 @@ retry:
       
       // start initial synchronization
       try {
-        std::unique_ptr<InitialSyncer> syncer = initialSyncer();
+        std::unique_ptr<InitialSyncer> syncer = _applier->buildInitalSyncer();// initialSyncer();
         Result r = syncer->run(_configuration._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();

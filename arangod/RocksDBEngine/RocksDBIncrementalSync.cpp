@@ -355,7 +355,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -465,7 +465,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 

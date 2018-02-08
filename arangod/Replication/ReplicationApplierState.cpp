@@ -34,7 +34,7 @@ ReplicationApplierState::ReplicationApplierState()
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
       _safeResumeTick(0),
-      _activity(Activity::INACTIVE),
+      _phase(ActivityPhase::INACTIVE),
       _preventStart(false),
       _stopInitialSynchronization(false),
       _progressMsg(),
@@ -53,7 +53,7 @@ ReplicationApplierState::~ReplicationApplierState() {}
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset(true);
 
-  _activity = other._activity;
+  _phase = other._phase;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
   _lastProcessedContinuousTick = other._lastProcessedContinuousTick;
   _lastAvailableContinuousTick = other._lastAvailableContinuousTick;
@@ -96,19 +96,19 @@ void ReplicationApplierState::reset(bool resetState) {
   _skippedOperations = 0;
   
   if (resetState) {
-    _activity = Activity::INACTIVE;
+    _phase = ActivityPhase::INACTIVE;
   }
 }
 
-static std::string ActivityToString(ReplicationApplierState::Activity activity) {
-  switch (activity) {
-    case ReplicationApplierState::Activity::INACTIVE:
+static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
+  switch (ph) {
+    case ReplicationApplierState::ActivityPhase::INACTIVE:
       return "inactive";
-    case ReplicationApplierState::Activity::INITAL:
+    case ReplicationApplierState::ActivityPhase::INITAL:
       return "initial";
-    case ReplicationApplierState::Activity::TAILING:
+    case ReplicationApplierState::ActivityPhase::TAILING:
       return "running";
-    case ReplicationApplierState::Activity::SHUTTING_DOWN:
+    case ReplicationApplierState::ActivityPhase::SHUTDOWN:
       return "shutdown";
   }
 }
@@ -118,7 +118,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
 
   if (full) {
     result.add("running", VPackValue(isTailing())); // isRunning
-    result.add("activity", VPackValue(ActivityToString(_activity)));
+    result.add("phase", VPackValue(ActivityToString(_phase)));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {

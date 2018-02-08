@@ -165,15 +165,15 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
 }
-  
+
 /// @brief check whether the initial synchronization should be aborted
-bool DatabaseInitialSyncer::checkAborted() {
+bool DatabaseInitialSyncer::isAborted() const {
   if (application_features::ApplicationServer::isStopping() ||
       (vocbase()->replicationApplier() != nullptr &&
        vocbase()->replicationApplier()->stopInitialSynchronization())) {
     return true;
   }
-  return false;
+  return Syncer::isAborted();
 }
 
 void DatabaseInitialSyncer::setProgress(std::string const& msg) {
@@ -348,7 +348,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
   uint64_t markersProcessed = 0;
 
   while (true) {
-    if (checkAborted()) {
+    if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -441,7 +441,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           sleepTime = 2.0;
         }
 
-        if (checkAborted()) {
+        if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
         this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
@@ -617,7 +617,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
       sleepTime = 2.0;
     }
 
-    if (checkAborted()) {
+    if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
@@ -748,7 +748,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
 Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                                                VPackSlice const& indexes, bool incremental,
                                                sync_phase_e phase) {
-  if (checkAborted()) {
+  if (isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 

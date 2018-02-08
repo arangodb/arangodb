@@ -62,10 +62,16 @@ class ReplicationApplier {
   virtual void forget() = 0;
   
   /// @brief test if the replication applier is running
-  bool isRunning() const;
+  bool isActive() const;
+  
+  /// @brief test if the repication applier is performing initial sync
+  bool isInitializing() const;
   
   /// @brief test if the replication applier is shutting down
   bool isShuttingDown() const;
+  
+  /// @brief set the applier state to tailing
+  void markThreadTailing();
   
   /// @brief set the applier state to stopped
   void markThreadStopped();
@@ -143,11 +149,12 @@ class ReplicationApplier {
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
 
- protected:
   virtual std::unique_ptr<InitialSyncer> buildInitalSyncer() const = 0;
   virtual std::unique_ptr<TailingSyncer> buildTailingSyncer(TRI_voc_tick_t initialTick,
                                                       bool useTick, TRI_voc_tick_t barrierId) const = 0;
   
+protected:
+
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
@@ -156,7 +163,8 @@ class ReplicationApplier {
   
 private:
   /// Perform some common ops for startReplication / startTailing
-  void doStart(std::function<void()>&&, ReplicationApplierState::Activity);
+  void doStart(std::function<void()>&&,
+               ReplicationApplierState::ActivityPhase);
   
   /// @brief stop the replication applier and join the apply thread
   void doStop(Result const& r, bool joinThread);

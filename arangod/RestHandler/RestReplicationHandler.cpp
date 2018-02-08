@@ -494,17 +494,17 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // will throw if invalid
   configuration.validate();
 
-  std::unique_ptr<InitialSyncer> syncer;
+  /*std::unique_ptr<InitialSyncer> syncer;
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(configuration));
   } else {
     syncer.reset(new DatabaseInitialSyncer(_vocbase, configuration));
-  }
+  }*/
 
   // forget about any existing replication applier configuration
   applier->forget();
 
-  // start initial synchronization
+  /*// start initial synchronization
   TRI_voc_tick_t barrierId = 0;
   TRI_voc_tick_t lastLogTick = 0;
   
@@ -522,10 +522,19 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("caught exception during slave creation: ") + ex.what());
   } catch (...) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during slave creation");
-  }
+  }*/
 
   applier->reconfigure(configuration);
-  applier->startTailing(lastLogTick, true, barrierId);
+  applier->startReplication();
+  
+  while(applier->isInitializing()) { // wait for initial sync
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    if (application_features::ApplicationServer::isStopping()) {
+      generateError(Result(TRI_ERROR_SHUTTING_DOWN));
+      return;
+    }
+  }
+  //applier->startTailing(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();

@@ -36,11 +36,11 @@ namespace arangodb {
 
 /// @brief state information about replication application
 struct ReplicationApplierState {
-  enum class Activity {
+  enum class ActivityPhase {
     INACTIVE, /// sleeping
     INITAL, /// running inital syncer
     TAILING, /// running tailing syncer
-    SHUTTING_DOWN /// cleaning up
+    SHUTDOWN /// cleaning up
   };
 
   ReplicationApplierState();
@@ -60,7 +60,7 @@ struct ReplicationApplierState {
   TRI_voc_tick_t _lastAppliedContinuousTick;
   TRI_voc_tick_t _lastAvailableContinuousTick;
   TRI_voc_tick_t _safeResumeTick;
-  Activity _activity;
+  ActivityPhase _phase;
   bool _preventStart;
   bool _stopInitialSynchronization;
   
@@ -70,16 +70,21 @@ struct ReplicationApplierState {
   
   /// performs inital sync or running tailing syncer
   bool isActive() const {
-    return (_activity == Activity::INITAL || _activity == Activity::TAILING);
+    return (_phase == ActivityPhase::INITAL || _phase == ActivityPhase::TAILING);
+  }
+  
+  /// performs inital sync or running tailing syncer
+  bool isInitializing() const {
+    return _phase == ActivityPhase::INITAL;
   }
   
   /// performs tailing sync
   bool isTailing() const {
-    return (_activity == Activity::TAILING);
+    return (_phase == ActivityPhase::TAILING);
   }
 
   bool isShuttingDown() const {
-    return (_activity == Activity::SHUTTING_DOWN);
+    return (_phase == ActivityPhase::SHUTDOWN);
   }
 
   void setError(int code, std::string const& msg) {

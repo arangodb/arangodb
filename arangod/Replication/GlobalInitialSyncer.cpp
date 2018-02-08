@@ -130,6 +130,8 @@ Result GlobalInitialSyncer::run(bool incremental) {
     for (auto const& database : VPackObjectIterator(databases)) {
       if (application_features::ApplicationServer::isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
+      } else if (isAborted()) {
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
       }
       
       VPackSlice it = database.value;

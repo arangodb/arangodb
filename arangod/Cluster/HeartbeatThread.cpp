@@ -468,7 +468,7 @@ void HeartbeatThread::runSingleServer() {
             << result._statusCode << ", incriminating body: " 
             << result.bodyRef() << ", timeout: " << timeout;
         
-        if (!applier->isRunning()) { // assume agency and leader are gone
+        if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
           ServerState::setServerMode(ServerState::Mode::DEFAULT);
         }
@@ -537,7 +537,7 @@ void HeartbeatThread::runSingleServer() {
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         
-        if (applier->isRunning()) {
+        if (applier->isActive()) {
           applier->stopAndJoin();
         }
         
@@ -579,7 +579,7 @@ void HeartbeatThread::runSingleServer() {
       
       if (applier->endpoint() != endpoint) {
         // configure applier for new endpoint
-        if (applier->isRunning()) {
+        if (applier->isActive()) {
           applier->stopAndJoin();
         }
         while (applier->isShuttingDown() && !isStopping()) {
@@ -598,7 +598,7 @@ void HeartbeatThread::runSingleServer() {
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         TRI_ASSERT(!config._skipCreateDrop);
-        GlobalInitialSyncer syncer(config);
+        /*GlobalInitialSyncer syncer(config);
         // sync incrementally on failover to other follower,
         // but not initially
         Result r = syncer.run(false);
@@ -611,16 +611,16 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "initial sync from leader finished";
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();
-        TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
+        TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();*/
 
         // forget about any existing replication applier configuration
         applier->forget();
-        
         applier->reconfigure(config);
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
-        applier->startTailing(lastLogTick, true, barrierId);
+        applier->startReplication();
+        //LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
+        //applier->startTailing(lastLogTick, true, barrierId);
         
-      } else if (!applier->isRunning() && !applier->isShuttingDown()) {
+      } else if (!applier->isActive() && !applier->isShuttingDown()) {
         // try to restart the applier
         if (applier->hasState()) {
           Result error = applier->lastError();
