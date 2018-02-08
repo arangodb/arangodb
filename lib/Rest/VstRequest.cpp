@@ -63,7 +63,6 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
                        VstInputMessage&& message, uint64_t messageId, bool isFake)
     : GeneralRequest(connectionInfo),
       _message(std::move(message)),
-      _headers(nullptr),
       _messageId(messageId) {
   _protocol = "vst";
   _contentType = ContentType::VPACK;

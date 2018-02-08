@@ -112,6 +112,7 @@ class StaticStrings {
   static std::string const MultiPartContentType;
   static std::string const NoSniff;
   static std::string const Origin;
+  static std::string const ResponseCode;
   static std::string const Queue;
   static std::string const Server;
   static std::string const StartThread;
