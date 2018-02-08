@@ -834,9 +834,9 @@ OperationResult transaction::Methods::anyLocal(
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
 
-  cursor->oneDocument([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
+  cursor->nextDocument([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
-  });
+  }, 1);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);

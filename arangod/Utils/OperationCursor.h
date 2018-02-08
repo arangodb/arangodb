@@ -118,11 +118,6 @@ struct OperationCursor {
     while (nextDocument(callback, batchSize)) {}
   }
   
-  /// @brief convenience function to retrieve a single result
-  void oneDocument(IndexIterator::DocumentCallback const& callback) {
-    nextDocument(callback, 1);
-  }
-
 /// @brief Skip the next toSkip many elements.
 ///        skipped will be increased by the amount of skipped elements afterwards
 ///        Check hasMore()==true before using this
