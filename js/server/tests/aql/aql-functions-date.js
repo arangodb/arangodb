@@ -1446,7 +1446,7 @@ testDateDaysInMonth() {
         [ "1000-12-24T04:12:00Z", -30579364080000 ],
         [ "1000-12-24Z", -30579379200000 ],
         [ "1000-12-24 04:12:00Z", -30579364080000 ],
-        [ "6789-12-31T23:59:58.99Z", 152104521598990 ],
+        [ "6789-12-31T23:59:58.099Z", 152104521598099 ],
         [ "6789-12-31Z", 152104435200000 ],
         [ "9999-12-31T23:59:59.999Z", 253402300799999 ],
         [ "9999-12-31Z", 253402214400000 ],
@@ -1485,15 +1485,86 @@ testDateDaysInMonth() {
       }); 
     },
 
+
+    testDateTimestampAlternative() {
+      const values = [
+        [ [2000, 4, 29], 956966400000 ],
+        [ [2012, 2, 12, 13, 24, 12], 1329053052000 ],
+        [ [2012, 2, 12, 23,59, 59, 991], 1329091199991 ],
+        [ [2012, 2, 12], 1329004800000 ],
+        [ [2012, 2, 12, 13, 24, 12], 1329053052000 ],
+        [ [2012, 2, 12], 1329004800000 ],
+        [ [1910, 1, 2, 3, 4, 5], -1893358555000 ],
+        [ [1910, 1, 2], -1893369600000 ],
+        [ [1970, 1, 1, 1, 5, 27], 3927000 ],
+        [ [1970, 1, 1, 12, 5, 27], 43527000 ],
+        [ [1970, 1, 1], 0 ],
+        [ [1221, 2, 28, 23, 59, 59], -23631004801000 ],
+        [ [1221, 2, 28, 23, 59, 59], -23631004801000 ],
+        [ [1221, 2, 28], -23631091200000 ],
+        [ [1221, 2, 28], -23631091200000 ],
+        [ [1000, 12, 24, 4, 12, 0], -30579364080000 ],
+        [ [1000, 12, 24], -30579379200000 ],
+        [ [1000, 12, 24, 4, 12, 0], -30579364080000 ],
+        [ [6789, 12, 31, 23, 59, 58, 99], 152104521598099 ],
+        [ [6789, 12, 31], 152104435200000 ],
+        [ [9999, 12, 31, 23, 59, 59, 999], 253402300799999 ],
+        [ [9999, 12, 31], 253402214400000 ],
+        [ [9999, 12, 31], 253402214400000 ],
+        [ [9999, 12, 31], 253402214400000 ],
+
+        [ ["2000", "4", "29"], 956966400000 ],
+        [ ["2012", "2", "12", "13", "24", "12"], 1329053052000 ],
+        [ ["2012", "2", "12", "23", "59", "59", "991"], 1329091199991 ],
+        [ ["2012", "2", "12"], 1329004800000 ],
+        [ ["2012", "2", "12", "13", "24", "12"], 1329053052000 ],
+        [ ["2012", "2", "12"], 1329004800000 ],
+        [ ["1910", "1", "2", "3", "4", "5"], -1893358555000 ],
+        [ ["1910", "1", "2"], -1893369600000 ],
+        [ ["1970", "1", "1", "1", "5", "27"], 3927000 ],
+        [ ["1970", "1", "1", "12", "5", "27"], 43527000 ],
+        [ ["1970", "1", "1"], "0" ],
+        [ ["1221", "2", "28", "23", "59", "59"], -23631004801000 ],
+        [ ["1221", "2", "28", "23", "59", "59"], -23631004801000 ],
+        [ ["1221", "2", "28"], -23631091200000 ],
+        [ ["1221", "2", "28"], -23631091200000 ],
+        [ ["1000", "12", "24", "4", "12", "0"], -30579364080000 ],
+        [ ["1000", "12", "24"], -30579379200000 ],
+        [ ["1000", "12", "24", "4", "12", "0"], -30579364080000 ],
+        [ ["6789", "12", "31", "23", "59", "58", "99"], 152104521598099 ],
+        [ ["6789", "12", "31"], 152104435200000 ],
+        [ ["9999", "12", "31", "23", "59", "59", "999"], 253402300799999 ],
+        [ ["9999", "12", "31"], 253402214400000 ],
+        [ ["9999", "12", "31"], 253402214400000 ],
+        [ ["9999", "12", "31"], 253402214400000 ]
+      ];
+
+      values.forEach(function (value) {
+        let query = "RETURN NOOPT(DATE_TIMESTAMP(" +
+            value[0].map(function(v) {
+              return JSON.stringify(v);
+            }).join(", ") + "))";
+        assertEqual([ value[1] ], getQueryResults(query));
+
+        query = "RETURN NOOPT(V8(DATE_TIMESTAMP(" +
+            value[0].map(function(v) {
+              return JSON.stringify(v);
+            }).join(", ") + ")))";
+        assertEqual([ value[1] ], getQueryResults(query));
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_iso8601 function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateIso8601Invalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISO8601()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1)");
+    testDateIso8601Invalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ISO8601())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ISO8601()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1)))");
 
-      var values = [ 
+      const values = [
         "foobar", 
         "2012fjh", 
         "  2012tjjgg", 
@@ -1515,9 +1586,10 @@ testDateDaysInMonth() {
         "2001-01-32",
         "2001-1-32"
       ];
-        
+
       values.forEach(function(value) {
-        assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ISO8601(@value)", { value: value });
+        assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(@value))", { value: value });
+        assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(@value)))", { value: value });
       });  
     },
 
@@ -1597,8 +1669,8 @@ testDateDaysInMonth() {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_ISO8601(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual);
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(DATE_ISO8601(@value))", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(V8(DATE_ISO8601(@value)))", { value: value[0] }));
       }); 
     },
 
@@ -1606,8 +1678,8 @@ testDateDaysInMonth() {
 /// @brief test date_iso8601 function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDateIso8601Alternative : function () {
-      var values = [
+    testDateIso8601Alternative() {
+      const values = [
         [ [ 1000, 1, 1, 0, 0, 0, 0 ], "1000-01-01T00:00:00.000Z" ],
         [ [ 9999, 12, 31, 23, 59, 59, 999 ], "9999-12-31T23:59:59.999Z" ],
         [ [ 2012, 1, 1, 13, 12, 14, 95 ], "2012-01-01T13:12:14.095Z" ],
@@ -1630,16 +1702,20 @@ testDateDaysInMonth() {
         [ [ "1000", "01", "01" ], "1000-01-01T00:00:00.000Z" ],
         [ [ "1000", "1", "1" ], "1000-01-01T00:00:00.000Z" ],
       ];
-      
+
       values.forEach(function (value) {
-        var query = "RETURN DATE_ISO8601(" + 
+        let query = "RETURN NOOPT(DATE_ISO8601(" +
             value[0].map(function(v) {
               return JSON.stringify(v);
-            }).join(", ") + ")";
-       
-        var actual = getQueryResults(query);
-        assertEqual([ value[1] ], actual);
-      }); 
+            }).join(", ") + "))";
+        assertEqual([ value[1] ], getQueryResults(query));
+
+        query = "RETURN NOOPT(V8(DATE_ISO8601(" +
+            value[0].map(function(v) {
+              return JSON.stringify(v);
+            }).join(", ") + ")))";
+        assertEqual([ value[1] ], getQueryResults(query));
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
