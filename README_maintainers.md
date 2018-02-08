@@ -534,6 +534,35 @@ Dependencies to build documentation:
 
   Run the installer and follow the instructions.
 
+Add / Synchronize external documentation
+========================================
+We maintain documentation along with their respective git repositories of their component - 
+be it a driver or another utility which shouldn't be directly in sync to the ArangoDB core documentation.
+The maintainer of the respective component can alter the documentation, and once a good point in 
+time is reached, it can be sync'ed over via `Documentation/Scripts/fetchRefs.sh`, which spiders 
+the `SUMMARY.md` files of all books, creates a clone of the external resource, adds a `don't edit this here` note to the files, and copies them over. 
+
+The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
+
+ - The git repository - the gitrepository containing the documentation - we will clone this.
+ - The directory name where to clone it under `Documentation/Books/repos` (so several integration points can share a working copy)
+ - Subdirectory - the sub-directory inside of the git repository to integrate
+ - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories
+ - Destination - may be empty if the sub-directory on the remote repo should be mapped into the book the `SUMMARY.md` is located in; else specify a file or directory.
+ 
+If private repositories with authentification need to be cloned, the integrator can specify a username/password pair to the script. He/She can also create a clone in the `Documentation/Books/repos/$1` directory - where the script would clone it. 
+
+The script will reset & pull the repos. 
+
+For testing the user can checkout other remote branches in that directory.
+
+Below the integration lines regular lines referencing the integrated .md's have to be put to add the .md's to the books summary.
+
+Please note that the SUMMARY.md integration checks will fail if unreferenced .md's are present, or .md's are missing. 
+
+The fetched .md's should be committed along with the changes of the `SUMMARY.md`
+
+
 Generate users documentation
 ============================
 If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
