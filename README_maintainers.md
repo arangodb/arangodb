@@ -544,7 +544,7 @@ the `SUMMARY.md` files of all books, creates a clone of the external resource, a
 
 The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
 
- - The git repository - the gitrepository containing the documentation - we will clone this.
+ - The git repository - the gitrepository containing the documentation - we will clone this; If authentification is required, prepend an `@` to `gituhb.com`
  - The directory name where to clone it under `Documentation/Books/repos` (so several integration points can share a working copy)
  - Subdirectory - the sub-directory inside of the git repository to integrate
  - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories
@@ -562,6 +562,19 @@ Please note that the SUMMARY.md integration checks will fail if unreferenced .md
 
 The fetched .md's should be committed along with the changes of the `SUMMARY.md`
 
+An example integrating an authentificated directory structure:
+
+    #   https://@github.com/arangodb/arangosync.git;arangosync;doc-integration/Manual;;/
+      * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+        * [Introduction](Scalability/DC2DC/Introduction.md)
+        * [Applicability](Scalability/DC2DC/Applicability.md)
+        * [Requirements](Scalability/DC2DC/Requirements.md)
+
+Another example, integrating a single README.md from an unauthentificated repo mapping it into `Drivers/js/`:
+
+    * [Drivers](Drivers/README.md)
+    # https://github.com/arangodb/arangojs.git;arangojs;;README.md;Drivers/js/
+      * [Javascript](Drivers/js/README.md)
 
 Generate users documentation
 ============================
