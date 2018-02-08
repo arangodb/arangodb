@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
 * fix inconvenience: If we want to start server with a non-existing
