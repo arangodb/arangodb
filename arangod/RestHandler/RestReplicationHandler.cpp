@@ -494,6 +494,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // will throw if invalid
   configuration.validate();
 
+  grantTemporaryRights();
+
   std::unique_ptr<InitialSyncer> syncer;
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(configuration));

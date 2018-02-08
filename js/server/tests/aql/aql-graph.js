@@ -449,6 +449,20 @@ function ahuacatlQueryNeighborsTestSuite () {
       db._drop("UnitTestsAhuacatlEdge");
     },
 
+    testNeighborsEdgeFilter : function () {
+      // try with bfs/uniqueVertices first
+      let query1 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: "global"} FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
+      
+      let actual = getQueryResults(query1);
+      assertEqual(actual, [ "v1" ]);
+
+      // now try without bfs/uniqueVertices
+      let query2 = `WITH ${vn} FOR v, e, p IN 0..9 OUTBOUND "${vn}/v1" UnitTestsAhuacatlEdge FILTER p.edges[*].what ALL != "v1->v2" && p.edges[*].what ALL != "v1->v3" RETURN v._key`;
+      
+      actual = getQueryResults(query2);
+      assertEqual(actual, [ "v1" ]);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks neighbors
 ////////////////////////////////////////////////////////////////////////////////

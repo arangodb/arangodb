@@ -171,7 +171,7 @@ describe('Shard distribution', function () {
       // And is followed by a numeric value
       const nr = parseInt(shard.slice(1));
       expect(nr).to.be.above(0);
-      return nr
+      return nr;
     };
 
     const sortShardsNumericly = function (l, r) {

@@ -114,6 +114,7 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
+  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -196,7 +197,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-path", true);
+  // Tests if this path is either a directory (ok) or does not exist (we create it in ::start)
+  // If it is something else this will throw an error.
+  ctx->normalizePath(_appPath, "javascript.app-path", false);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -218,6 +221,23 @@ void V8DealerFeature::start() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
+
+
+      // create app directory if it does not exist 
+      if (!basics::FileUtils::isDirectory(_appPath)) {
+        std::string systemErrorStr;
+        long errorNo;
+
+        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo,
+                                               systemErrorStr);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created javascript.app-path directory '" << _appPath << "'";
+        } else {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create javascript.app-path directory '" << _appPath << "': " << systemErrorStr;
+          FATAL_ERROR_EXIT();
+        }
+      }
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::V8) << "JavaScript using " << StringUtils::join(paths, ", ");
