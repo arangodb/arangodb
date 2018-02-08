@@ -1,6 +1,11 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fix internal issue #1848: AQL optimizer was trying to resolve attribute accesses
+  to attributes of constant object values at query compile time, but only did so far
+  the very first attribute in each object
+
+  this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
 
 * fix inconvenience: If we want to start server with a non-existing
   --javascript.app-path it will now be created (if possible)
@@ -20,7 +25,6 @@ v3.3.4 (XXXX-XX-XX)
 
 v3.3.3 (2018-01-16)
 -------------------
-
 
 * fix issue #4272: VERSION file keeps disappearing
 
@@ -81,6 +85,7 @@ v3.3.3 (2018-01-16)
 
 * fixed incorrect persistence of RAFT vote and term
 
+
 v3.3.2 (2018-01-04)
 -------------------
 
@@ -94,7 +99,8 @@ v3.3.2 (2018-01-04)
 
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
-* do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
+* do not reuse collection ids when restoring collections from a dump, but assign 
+  new collection ids, this should prevent collection id conflicts
 
 
 v3.3.1 (2017-12-28)

@@ -53,6 +53,20 @@ function ahuacatlOptimizerTestSuite () {
     tearDown : function () {
     },
 
+    testAttributeAccessOptimization : function () {
+      let query = "LET what = { a: [ 'foo' ], b: [ 'bar' ] } FOR doc IN what.a RETURN doc";
+      let actual = getQueryResults(query);
+      assertEqual([ 'foo' ], actual);
+      
+      query = "LET what = { a: [ 'foo' ], b: [ 'bar' ] } FOR doc IN what.b RETURN doc";
+      actual = getQueryResults(query);
+      assertEqual([ 'bar' ], actual);
+      
+      query = "LET what = { a: [ 'foo' ], b: [ 'bar' ], c: [ 'baz' ] } FOR doc IN what.c RETURN doc";
+      actual = getQueryResults(query);
+      assertEqual([ 'baz' ], actual);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test special case "empty for loop"
 ////////////////////////////////////////////////////////////////////////////////
