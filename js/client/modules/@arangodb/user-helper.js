@@ -179,11 +179,7 @@ exports.switchUser = (user, dbName) => {
     }
     password = 'abc';
   }
-  try {
-    arango.reconnect(arango.getEndpoint(), database, user, password);
-  } catch (e) {
-    print(e);
-  }
+  arango.reconnect(arango.getEndpoint(), database, user, password);
 };
 
 exports.generateAllUsers = () => {
