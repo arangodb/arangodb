@@ -197,7 +197,7 @@ renamed. Renaming a view will change the view name, but not the view identifier.
 The conceptual transformation function employed by a view type is implementation
 specific. The type is specified by the user when the view is created, and cannot
 be changed later. The following view types are currently supported:
-* [arangosearch](../Views/IResearch.md)
+* [arangosearch](../Views/ArangoSearch.md)
 
 ### View Identifier
 
@@ -220,3 +220,6 @@ and - (dash) characters only. Please refer to
 [NamingConventions](../DataModeling/NamingConventions/CollectionNames.md) for
 more information on valid view names, which follow the same guidelines as
 collection names.
+
+### IFF
+[if and only if](https://en.m.wikipedia.org/wiki/If_and_only_if)
