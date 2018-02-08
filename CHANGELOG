@@ -1,6 +1,13 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+* fix internal issue #1848
+    
+  AQL optimizer was trying to resolve attribute accesses
+  to attributes of constant object values at query compile time, but only did so far
+  the very first attribute in each object
+    
+  this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
 
 * fix inconvenience: If we want to start server with a non-existing
   --javascript.app-path it will now be created (if possible)
