@@ -76,7 +76,7 @@ void reloadAqlUserFunctions() {
 
 }
 
-// will do some AQLFOO: and return true if it deleted one 
+// will do some AQLFOO: and return true if it deleted one
 Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                                         std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
@@ -105,10 +105,9 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto queryResult = query.execute(queryRegistry);
-  
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     /// TODO reload?
-    
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       return Result(TRI_ERROR_REQUEST_CANCELED);
@@ -130,7 +129,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   reloadAqlUserFunctions();
   return Result();
 }
-  
+
 // will do some AQLFOO, and return the number of deleted
 Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                                     std::string const& functionFilterPrefix,
@@ -164,7 +163,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
   binds->add("@col", VPackValue(collectionName));
 
   binds->close();  // obj
- 
+
   std::string aql("RETURN LENGTH("
                   " FOR fn IN @@col"
                   "  FILTER UPPER(LEFT(fn.name, @fnLength)) == @ucName"
@@ -175,7 +174,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto queryResult = query.execute(queryRegistry);
-  
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
@@ -197,12 +196,11 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
 
 
 // documentation: will pull v8 context, or allocate if non already used
-  
+
 // needs the V8 context to test the function to throw evenual errors:
 Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                                       //// todo : drinnen: isolate get current / oder neues v8::Isolate*,
                                       velocypack::Slice userFunction,
-                                      
                                       bool& replacedExisting
                                       ) {
   Result res;
@@ -210,7 +208,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   if (!vname.isString()) {
     return Result(); //TODO
   }
-  
+
   std::string name = vname.copyString();
 
   if (!isValidFunctionName(name)) {
@@ -225,13 +223,13 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                       "expecting function or string");
   }
   std::string tmp = cvString.copyString();
-  
+
   std::string code = std::string("(") + tmp + "\n)";
   bool isDeterministic = userFunction.get("isDeterministic").getBool();
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-    V8ContextDealerGuard dealerGuard(res, isolate, vocbase, true /*allowModification*/);
+    V8ContextDealerGuard dealerGuard(res, &isolate, vocbase, true /*allowModification*/);
     if(res.fail()){
       return res;
     }
@@ -252,7 +250,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                                            false);
 
 
-      if (result.IsEmpty()) {
+      if (result.IsEmpty() || tryCatch.HasCaught() || !result->IsFunction()) {
         res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
             TRI_StringifyV8Exception(isolate, &tryCatch));
         if (!tryCatch.CanContinue()) {
@@ -262,17 +260,20 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
           TRI_GET_GLOBALS();
           v8g->_canceled = true;
         }
+            // return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE, "failed to test the function you wanted to save");
       }
     }
   }
-
+  if (!res.ok()) {
+    return res;
+  }
   std::string _key(name);
   basics::StringUtils::toupperInPlace(&_key);
-  
+
   //      name: name,
   // code: params.code,
   // isDeterministic: params.isDeterministic || false
-    
+
   VPackBuilder oneFunctionDocument;
   // TODO: replacedExisting
   oneFunctionDocument.openObject();
@@ -281,7 +282,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   oneFunctionDocument.add("code", VPackValue(code));
   oneFunctionDocument.add("isDeterministic", VPackValue(isDeterministic));
   oneFunctionDocument.close();
-  
+
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = false;
   opOptions.waitForSync = true;
@@ -300,7 +301,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     // TODO: this comes from the RestVocbaseBaseHandler generateTransactionError(collectionName, res, "");
     return res;
   }
-  
+
   std::unique_ptr<ManagedDocumentResult> mmdr;
   transaction::BuilderLeaser searchBuilder(&trx);
   searchBuilder->add(VPackValue(_key));
@@ -374,7 +375,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
   }
   binds->add("@col", VPackValue(collectionName));
   binds->close();  // obj
-  
+
   std::string aql("FOR function IN @@col");
   aql.append(filter + "RETURN function");
 
@@ -383,7 +384,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto queryResult = query.execute(queryRegistry);
-  
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {

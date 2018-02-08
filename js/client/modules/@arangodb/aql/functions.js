@@ -28,10 +28,9 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
-var arangodb = require('@arangodb');
+var arangosh = require('@arangodb/arangosh');
 
-var db = arangodb.db;
-var ArangoError = arangodb.ArangoError;
+var ArangoError = arangosh.ArangoError;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief validate a function name
@@ -61,30 +60,7 @@ var stringifyFunction = function (code, name) {
   if (typeof code === 'function') {
     code = String(code) + '\n';
   }
-
-  if (typeof code === 'string') {
-    code = '(' + code + '\n)';
-
-    if (!internal.parse) {
-      // no parsing possible. assume always valid
-      return code;
-    }
-
-    try {
-      if (internal.parse(code, name)) {
-        // parsing successful
-        return code;
-      }
-    } catch (e) {}
-  }
-
-  // fall-through intentional
-
-  var err = new ArangoError();
-  err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
-  err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
-
-  throw err;
+  return code;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -96,7 +72,9 @@ var unregisterFunction = function (name) {
 
   validateName(name);
 
-  return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(name), 'exactMatch=true');
+  var requestResult = db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(name) + '?group=false');
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -114,7 +92,7 @@ var unregisterFunctionsGroup = function (group) {
     throw err;
   }
 
-  return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(group), 'exactMatch=false');
+  return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(group) + '?group=true');
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -131,10 +109,9 @@ var registerFunction = function (name, code, isDeterministic = false) {
                                             isDeterministic: isDeterministic
                                           }));
 
-  // TODO arangosh.checkRequestResult(requestResult);
-
+  arangosh.checkRequestResult(requestResult);
   return requestResult;
-};
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsToArray
@@ -145,7 +122,8 @@ var toArrayFunctions = function (group) {
 
   var requestResult = db._connection.GET('/_api/aqlfunction/' + encodeURIComponent(group), '');
 
-  return requestResult;
+  arangosh.checkRequestResult(requestResult);
+  return requestResult.result;
 };
 
 exports.unregister = unregisterFunction;

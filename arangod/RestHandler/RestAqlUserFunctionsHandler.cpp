@@ -88,7 +88,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   }
   else if (type == rest::RequestType::DELETE_REQ) {
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-    if ((suffixes.size() != 1) || suffixes[1].empty() ) {
+    if ((suffixes.size() != 1) || suffixes[0].empty() ) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting _api/aqlfunction/<functionname or prefix>");
       return RestStatus::DONE;
@@ -112,9 +112,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       }
       else {
         generateError(res);
-
       }
-      
+      return RestStatus::DONE;
     }
     else {
      auto res = unregisterUserFunction(_vocbase,suffixes[0]);
@@ -124,15 +123,14 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
      }
      else {
        generateError(res);
-       return RestStatus::DONE;
      }
+     return RestStatus::DONE;
     }
   }
   else if (type == rest::RequestType::GET) {
-    LOG_DEVEL << "GET";
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
-    if ((suffixes.size() != 1) || suffixes[1].empty() ) {
+    if ((suffixes.size() != 1) || suffixes[0].empty() ) {
       extractStringParameter(StaticStrings::functionNamespace, functionNamespace);
       if (functionNamespace.empty()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -147,8 +145,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     VPackBuilder arrayOfFunctions;
     auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
-    LOG_DEVEL << "Array Of Functions";
-    LOG_DEVEL << arrayOfFunctions.toJson();
     if(res.ok()){
       generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
     } else {

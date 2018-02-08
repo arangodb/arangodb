@@ -1458,9 +1458,9 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   delete context;
 }
 
-V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, TRI_vocbase_t* vocbase, bool allowModification)
+V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate** pIsolate, TRI_vocbase_t* vocbase, bool allowModification)
   : _context(nullptr)
-  , _active(isolate ? false : true)
+  , _active(*pIsolate ? false : true)
 {
   if (_active) {
     if(!vocbase){
@@ -1472,12 +1472,14 @@ V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, T
       res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - could not acquire context");
       return;
     }
-    isolate = _context->_isolate;
+    *pIsolate = _context->_isolate;
+    _isolate = pIsolate;
   }
 }
 
 V8ContextDealerGuard::~V8ContextDealerGuard() {
   if (_active && _context) {
     V8DealerFeature::DEALER->exitContext(_context);
+    *_isolate = nullptr;
   }
 }

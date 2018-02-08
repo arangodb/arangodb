@@ -94,24 +94,16 @@ function AqlFunctionsSuite () {
       var actual;
 
       var result = aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 4; }, true);
-      print("####################################################################################");
-      print(result)
-      
-      print("####################################################################################");
-      result = aqlfunctions.toArray();
-      print("##result##")
-      print(result)
-      print("##result##")
 
-      //assertEqual("function (what) { return what * 4; }", aqlfunctions.toArray("UnitTests")[0].code);
+      assertEqual("function (what) { return what * 4; }", aqlfunctions.toArray("UnitTests")[0].code);
 
-      //actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
-      //assertEqual([ 16 ], actual);
+      actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
+      assertEqual([ 16 ], actual);
 
-      //db._useDatabase("_system");
-      //assertEqual("function (what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
-      //actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
-      //assertEqual([ 8 ], actual);
+      db._useDatabase("_system");
+      assertEqual("function (what) { return what * 2; }", aqlfunctions.toArray("UnitTests")[0].code);
+      actual = db._query({ query: "RETURN UnitTests::tryme::foo(4)" }).toArray();
+      assertEqual([ 8 ], actual);
 
       try {
         db._useDatabase("_system");
@@ -124,7 +116,7 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief multiple databases
 ////////////////////////////////////////////////////////////////////////////////
-/*
+
     testDatabases2 : function () {
       try {
         unregister("UnitTests::tryme");
@@ -159,6 +151,7 @@ function AqlFunctionsSuite () {
       assertEqual([ 12 ], actual);
 
       db._useDatabase("_system");
+
       assertEqual(0, aqlfunctions.toArray("UnitTests").length);
       try {
         db._query({ query: "RETURN UnitTests::tryme(4)" }).toArray();
@@ -195,6 +188,7 @@ function AqlFunctionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testToArray2 : function () {
+
       aqlfunctions.register("UnitTests::tryme::foo", function (what) { return what * 2; }, true);
       aqlfunctions.register("UnitTests::tryme::bar", function (what) { return what * 2; }, true);
       aqlfunctions.register("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
@@ -210,6 +204,7 @@ function AqlFunctionsSuite () {
 
       aqlfunctions.unregister("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
       aqlfunctions.unregister("UnitTests58::whyme::bar", function (what) { return what * 2; }, true);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +269,7 @@ function AqlFunctionsSuite () {
 
     testRegisterString3 : function () {
       unregister("UnitTests::tryme::foo");
-      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! * / \n function (what) { return what * 2; }", true);
+      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,7 +353,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function without surrounding function() 
+/// @brief register a function without surrounding function()
 ////////////////////////////////////////////////////////////////////////////////
 
     testRegisterNonFunction1 : function () {
@@ -373,7 +368,7 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register a function without surrounding function() 
+/// @brief register a function without surrounding function()
 ////////////////////////////////////////////////////////////////////////////////
 
     testRegisterNonFunction2 : function () {
@@ -610,7 +605,7 @@ function AqlFunctionsSuite () {
       unregister("UnitTests::tryme");
       aqlfunctions.register("UnitTests::tryme", function (what) { return true; }, true);
 
-      var actual = db._query({ query: "// foo\n /* bar\nbaz\n* / RETURN UnitTests::tryme(4) // some comment" }).toArray();
+      var actual = db._query({ query: "// foo\n /* bar\nbaz\n*/ RETURN UnitTests::tryme(4) // some comment" }).toArray();
       assertEqual([ true ], actual);
     },
 
@@ -620,11 +615,11 @@ function AqlFunctionsSuite () {
 
     testQueryFuncWithComments : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", function (what) { 
+      aqlfunctions.register("UnitTests::tryme", function (what) {
         // foo 
         /* bar
         baz
-        * /
+        */
         return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ]; // some comment
       }, true);
 
@@ -686,7 +681,7 @@ function AqlFunctionsSuite () {
 
       db._drop("UnitTestsFunc");
     }
-*/
+
   };
 }
 
@@ -698,4 +693,3 @@ function AqlFunctionsSuite () {
 jsunity.run(AqlFunctionsSuite);
 
 return jsunity.done();
-
