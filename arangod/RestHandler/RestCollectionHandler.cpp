@@ -203,7 +203,7 @@ void RestCollectionHandler::handleCommandGet() {
   }
   if (found.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(found);
   }
@@ -400,7 +400,7 @@ void RestCollectionHandler::handleCommandPut() {
     generateError(found);
   } else if (res.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(res);
   }
