@@ -58,6 +58,36 @@
       });
     },
 
+    // Install Foxx from public url
+    // info is expected to contain: "url" and "version"
+    installFromUrl: function (info, mount, callback, isLegacy, flag) {
+      var url = arangoHelper.databaseUrl('/_admin/aardvark/foxxes/url?mount=' + encodeURIComponent(mount));
+      if (isLegacy) {
+        url += '&legacy=true';
+      }
+      if (flag !== undefined) {
+        if (flag) {
+          url += '&replace=true';
+        } else {
+          url += '&upgrade=true';
+        }
+      }
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: url,
+        data: JSON.stringify(info),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(data);
+        },
+        error: function (err) {
+          callback(err);
+        }
+      });
+    },
+
     // Install Foxx from arango store
     // info is expected to contain: "name" and "version"
     installFromStore: function (info, mount, callback, flag) {

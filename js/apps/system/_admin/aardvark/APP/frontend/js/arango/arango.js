@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, localStorage */
+/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, Joi, localStorage */
 
 (function () {
   'use strict';
@@ -248,13 +248,6 @@
 
     fixTooltips: function (selector, placement) {
       arangoHelper.createTooltips(selector, placement);
-      /*
-      $(selector).tooltip({
-        placement: placement,
-        hide: false,
-        show: false
-      });
-      */
     },
 
     currentDatabase: function (callback) {
@@ -444,6 +437,32 @@
         },
         Shards: {
           route: '#shards'
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[disabled].disabled = true;
+      }
+      this.buildSubNavBar(menus);
+    },
+
+    buildServicesSubNav: function (activeKey, disabled) {
+      var menus = {
+        Store: {
+          route: '#services/install'
+        },
+        Upload: {
+          route: '#services/install/upload'
+        },
+        New: {
+          route: '#services/install/new'
+        },
+        GitHub: {
+          route: '#services/install/github'
+        },
+        Remote: {
+          route: '#services/install/remote'
         }
       };
 
@@ -1071,7 +1090,99 @@
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
-    }
+    },
 
+    createMountPointModal: function (callback, mode, mountpoint) {
+      var buttons = []; var tableContent = [];
+
+      var mountPoint;
+      if (mode === 'replace' && mountpoint) {
+        mountPoint = mountpoint;
+      }
+
+      tableContent.push(
+        window.modalView.createTextEntry(
+          'new-app-mount',
+          'Mountpoint',
+          mountPoint,
+          'The path the app will be mounted. Is not allowed to start with _',
+          'mountpoint',
+          false,
+          [
+            {
+              rule: Joi.string().required(),
+              msg: ''
+            }
+          ]
+        )
+      );
+
+      tableContent.push(
+        window.modalView.createCheckboxEntry(
+          'app_create_run_teardown',
+          'Run setup?',
+          true,
+          "Should this app's setup script be executed after installing the app?",
+          true
+        )
+      );
+
+      if (mode === 'replace') {
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'app_create_run_teardown',
+            'Keep configuration and dependency files?',
+            true,
+            "Should this app's configuration be saved before replacing the app?",
+            true
+          )
+        );
+
+        buttons.push(
+          window.modalView.createSuccessButton('Replace', callback)
+        );
+      } else {
+        buttons.push(
+          window.modalView.createSuccessButton('Install', callback)
+        );
+      }
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Create Foxx Service',
+        buttons,
+        tableContent
+      );
+
+      if (mode !== 'replace') {
+        window.modalView.modalBindValidation({
+          id: 'new-app-mount',
+          validateInput: function () {
+            return [
+              {
+                rule: Joi.string().regex(/^((APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+                msg: 'May not contain /APP'
+              },
+              {
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-%]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-%]'
+              },
+              {
+                rule: Joi.string().regex(/([^_]|_open\/)/),
+                msg: 'Mountpoints with _ are reserved for internal use'
+              },
+              {
+                rule: Joi.string().regex(/[^/]$/),
+                msg: 'May not end with /'
+              },
+              {
+                rule: Joi.string().required().min(1),
+                msg: 'Has to be non-empty'
+              }
+            ];
+          }
+        });
+      }
+    }
   };
 }());
