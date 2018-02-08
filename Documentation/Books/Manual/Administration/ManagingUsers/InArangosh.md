@@ -17,7 +17,7 @@ This is again for backward compatibility.
 Fire up *arangosh* and require the users module. Use it to create a new user:
 
 ```
-arangosh> var users = require('@arangodb/users');
+arangosh> const users = require('@arangodb/users');
 arangosh> users.save('JohnSmith', 'mypassword');
 ```
 

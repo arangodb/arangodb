@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
 * fix inconvenience: If we want to start server with a non-existing
   --javascript.app-path it will now be created (if possible)
 
@@ -91,6 +95,9 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* internal issue #1726: Supervision to remove deleted nodes from
+  Health did not function for multiple servers at the same time, as
+  agency transaction was malformed.
 
 v3.3.3 (2018-01-16)
 -------------------
