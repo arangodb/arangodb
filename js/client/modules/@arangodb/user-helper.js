@@ -32,6 +32,7 @@
 const internal = require('internal');
 let ldapEnabled;
 
+const request = require('@arangodb/request');
 const download = require('internal').download;
 const arango = require('internal').arango;
 const pu = require('@arangodb/process-utils');
@@ -133,6 +134,37 @@ exports.isLdapEnabledExternal = () => {
   return isLdapEnabled();
 };
 
+exports.loginUser = (user) => {
+  var baseUrl = function () {
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  };
+
+  const ldapEnabled = isLdapEnabled();
+  let password = '';
+
+  if (ldapEnabled) {
+    if (user === 'root') {
+      user = 'arangoadmin';
+    }
+    password = 'abc';
+  }
+
+  let res = false;
+  try {
+    res = request.post({
+      url: baseUrl() + '/_open/auth',
+      body: JSON.stringify({
+        'username': user,
+        'password': password
+      })
+    });
+  } catch (e) {
+    internal.print(e);
+  }
+
+  return res;
+};
+
 exports.switchUser = (user, dbName) => {
   const ldapEnabled = isLdapEnabled();
   let password = '';
@@ -147,7 +179,11 @@ exports.switchUser = (user, dbName) => {
     }
     password = 'abc';
   }
-  arango.reconnect(arango.getEndpoint(), database, user, password);
+  try {
+    arango.reconnect(arango.getEndpoint(), database, user, password);
+  } catch (e) {
+    print(e);
+  }
 };
 
 exports.generateAllUsers = () => {
@@ -200,6 +236,11 @@ exports.generateAllUsers = () => {
         if (ldapEnabled) {
           users.grantDatabase(role, '_system', sys);
           users.grantDatabase(':role:adminrole', '_system', sys);
+          print('LOGIN TO USER: ' + name);
+          // login to ldap user to update permission roles
+          exports.loginUser(name);
+          // login back to administrator
+          exports.loginUser('root');
         } else {
           users.grantDatabase(name, '_system', sys);
         }
@@ -214,6 +255,10 @@ exports.generateAllUsers = () => {
         if (ldapEnabled) {
           users.grantDatabase(role, dbName, db);
           users.grantDatabase(':role:adminrole', dbName, db);
+          // login to ldap user to update permission roles
+          exports.loginUser(name);
+          // login back to administrator
+          exports.loginUser('root');
         } else {
           users.grantDatabase(name, dbName, db);
         }
@@ -227,6 +272,10 @@ exports.generateAllUsers = () => {
         if (ldapEnabled) {
           users.grantCollection(role, dbName, colName, col);
           users.grantCollection(':role:adminrole', dbName, colName, col);
+          // login to ldap user to update permission roles
+          exports.loginUser(name);
+          // login back to administrator
+          exports.loginUser('root');
         } else {
           users.grantCollection(name, dbName, colName, col);
         }
