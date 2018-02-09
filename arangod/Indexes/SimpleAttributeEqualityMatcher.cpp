@@ -29,6 +29,8 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
+#include "Logger/Logger.h"
+
 using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
@@ -41,10 +43,10 @@ bool SimpleAttributeEqualityMatcher::matchOne(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) {
-    
+
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
-  
+
   size_t const n = node->numMembers();
 
   for (size_t i = 0; i < n; ++i) {
@@ -60,7 +62,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(
       } else if (accessFitsIndex(index, op->getMember(1), op->getMember(0), op,
                                  reference, nonNullAttributes, false)) {
         which = 1;
-      } 
+      }
       if (which >= 0) {
         // we can use the index
         calculateIndexCosts(index, op->getMember(which), itemsInIndex, estimatedItems, estimatedCost);
@@ -95,7 +97,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
     size_t& estimatedItems, double& estimatedCost) {
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 1;
-  
+
   _found.clear();
 
   size_t const n = node->numMembers();
@@ -151,9 +153,13 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  
+
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
 
   size_t const n = node->numMembers();
 
@@ -203,9 +209,13 @@ arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeOne(
 arangodb::aql::AstNode* SimpleAttributeEqualityMatcher::specializeAll(
     arangodb::Index const* index, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference) {
-  
+
   std::unordered_set<std::string> nonNullAttributes;
   _found.clear();
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
 
   size_t const n = node->numMembers();
 
@@ -322,7 +332,7 @@ void SimpleAttributeEqualityMatcher::calculateIndexCosts(
 bool SimpleAttributeEqualityMatcher::accessFitsIndex(
     arangodb::Index const* index, arangodb::aql::AstNode const* access,
     arangodb::aql::AstNode const* other, arangodb::aql::AstNode const* op,
-    arangodb::aql::Variable const* reference, 
+    arangodb::aql::Variable const* reference,
     std::unordered_set<std::string>& nonNullAttributes,
     bool isExecution) {
   if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
@@ -421,12 +431,12 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   return false;
 }
 
-size_t SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(aql::AstNode const* value) { 
+size_t SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(aql::AstNode const* value) {
   if (value->isArray()) {
     // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
     // them!
     return value->numMembers();
   }
-   
+
   return defaultEstimatedNumberOfArrayMembers; // just an estimate
 }

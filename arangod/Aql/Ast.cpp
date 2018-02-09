@@ -2246,6 +2246,7 @@ AstNode* Ast::clone(AstNode const* node) {
 
   // copy flags
   copy->flags = node->flags;
+  TEMPORARILY_UNLOCK_NODE(copy);
 
   // special handling for certain node types
   // copy payload...
@@ -2303,6 +2304,81 @@ AstNode* Ast::clone(AstNode const* node) {
 
     for (size_t i = 0; i < n; ++i) {
       copy->addMember(clone(node->getMemberUnchecked(i)));
+    }
+  }
+
+  return copy;
+}
+
+AstNode* Ast::shallowCopyForModify(AstNode const* node) {
+  AstNodeType const type = node->type;
+  if (type == NODE_TYPE_NOP) {
+    // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
+  AstNode* copy = createNode(type);
+  TRI_ASSERT(copy != nullptr);
+
+  // copy flags
+  copy->flags = (node->flags & ~AstNodeFlagType::FLAG_FINALIZED);
+
+  // special handling for certain node types
+  // copy payload...
+  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_OBJECT_ELEMENT ||
+      type == NODE_TYPE_FCALL_USER) {
+    copy->setStringValue(node->getStringValue(), node->getStringLength());
+  } else if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE ||
+             type == NODE_TYPE_FCALL) {
+    copy->setData(node->getData());
+  } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
+    copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_QUANTIFIER) {
+    copy->setIntValue(node->getIntValue(true));
+  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_NIN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
+             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
+    // copy sortedness information
+    copy->setBoolValue(node->getBoolValue());
+  } else if (type == NODE_TYPE_ARRAY) {
+    if (node->isSorted()) {
+      copy->setFlag(DETERMINED_SORTED, VALUE_SORTED);
+    } else {
+      copy->setFlag(DETERMINED_SORTED);
+    }
+  } else if (type == NODE_TYPE_VALUE) {
+    switch (node->value.type) {
+      case VALUE_TYPE_NULL:
+        copy->value.type = VALUE_TYPE_NULL;
+        break;
+      case VALUE_TYPE_BOOL:
+        copy->value.type = VALUE_TYPE_BOOL;
+        copy->setBoolValue(node->getBoolValue());
+        break;
+      case VALUE_TYPE_INT:
+        copy->value.type = VALUE_TYPE_INT;
+        copy->setIntValue(node->getIntValue());
+        break;
+      case VALUE_TYPE_DOUBLE:
+        copy->value.type = VALUE_TYPE_DOUBLE;
+        copy->setDoubleValue(node->getDoubleValue());
+        break;
+      case VALUE_TYPE_STRING:
+        copy->value.type = VALUE_TYPE_STRING;
+        copy->setStringValue(node->getStringValue(), node->getStringLength());
+        break;
+    }
+  }
+
+  // recursively clone subnodes
+  size_t const n = node->numMembers();
+  if (n > 0) {
+    copy->members.reserve(n);
+
+    for (size_t i = 0; i < n; ++i) {
+      copy->addMember(node->getMemberUnchecked(i));
     }
   }
 
@@ -3368,6 +3444,7 @@ AstNode* Ast::traverseAndModify(
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
       if (result != member) {
+        TEMPORARILY_UNLOCK_NODE(node);
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
@@ -3397,6 +3474,7 @@ AstNode* Ast::traverseAndModify(
       AstNode* result = traverseAndModify(member, visitor, data);
 
       if (result != member) {
+        TEMPORARILY_UNLOCK_NODE(node);
         node->changeMember(i, result);
       }
     }

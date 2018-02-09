@@ -314,8 +314,21 @@ bool transaction::Methods::sortOrs(
             parts[previousIn].valueNode, p.valueNode);
         parts[previousIn].valueNode = mergedIn;
         parts[i].valueNode = emptyArray;
-        root->getMember(previousIn)->getMember(0)->changeMember(1, mergedIn);
-        root->getMember(i)->getMember(0)->changeMember(1, emptyArray);
+
+        // must edit nodes in place; TODO change so we can replace with copy
+        auto n1 = root->getMember(previousIn)->getMember(0);
+        n1->flags = (n1->flags &
+                     ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);
+
+        TRI_DEFER(FINALIZE_SUBTREE(n1));
+        n1->changeMember(1, mergedIn);
+
+        auto n2 = root->getMember(i)->getMember(0);
+        n2->flags = (n2->flags &
+                     ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);
+
+        TRI_DEFER(FINALIZE_SUBTREE(n2));
+        n2->changeMember(1, emptyArray);
       } else {
         // note first IN
         previousIn = i;
@@ -2532,6 +2545,9 @@ transaction::Methods::getBestIndexHandlesForFilterCondition(
   TRI_ASSERT(root->type ==
              arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = indexesForCollection(collectionName);
+
+  // must edit root in place; TODO change so we can replace with copy
+  TEMPORARILY_UNLOCK_NODE(root);
 
   bool canUseForFilter = (root->numMembers() > 0);
   bool canUseForSort = false;

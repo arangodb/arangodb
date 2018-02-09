@@ -890,6 +890,7 @@ VPackSlice AstNode::computeValue() const {
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
   TRI_ASSERT(isConstant());
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
@@ -1385,7 +1386,7 @@ bool AstNode::isAttributeAccessForVariable(
     result.second.clear();
   }
   auto node = this;
-  
+
   basics::StringBuffer indexBuff(false);
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -1502,11 +1503,11 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN || 
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN ||
       type == NODE_TYPE_RANGE ||
-      type == NODE_TYPE_INDEXED_ACCESS || 
+      type == NODE_TYPE_INDEXED_ACCESS ||
       type == NODE_TYPE_PASSTHRU ||
-      type == NODE_TYPE_OBJECT_ELEMENT || 
+      type == NODE_TYPE_OBJECT_ELEMENT ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OPERATOR_UNARY_NOT ||
@@ -2593,6 +2594,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
 }
 
 void AstNode::stealComputedValue() {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   if (computedValue != nullptr) {
     delete[] computedValue;
     computedValue = nullptr;
@@ -2617,6 +2619,18 @@ void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
         break;
       }
     }
+  }
+}
+
+void AstNode::markFinalized(AstNode const* subtreeRoot) {
+  if ((nullptr == subtreeRoot) ||
+      subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
+    return;
+  }
+
+  const_cast<AstNode*>(subtreeRoot)->setFlag(AstNodeFlagType::FLAG_FINALIZED);
+  for (size_t i = 0; i < subtreeRoot->numMembers(); ++i) {
+    markFinalized(subtreeRoot->getMember(i));
   }
 }
 

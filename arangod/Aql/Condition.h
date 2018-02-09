@@ -274,7 +274,7 @@ class Condition {
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place
-  void deduplicateInOperation(AstNode*);
+  AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
   AstNode* mergeInOperations(transaction::Methods* trx, AstNode const*, AstNode const*);
