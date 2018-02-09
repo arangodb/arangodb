@@ -43,10 +43,9 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
+    // firgure out params
     bool parsingSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody =
-      parseVelocyPackBody(parsingSuccess);
-
+    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
     if (!parsingSuccess) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
@@ -61,32 +60,23 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       return RestStatus::DONE;
     }
 
+    // call internal function that does the work
     bool replacedExisting = false;
     auto res = registerUserFunction(_vocbase, body, replacedExisting);
+
     if (res.ok()) {
-      VPackBuffer<uint8_t> resultBuffer;
-      VPackBuilder result(resultBuffer);
-
-      auto response = _response.get();
-      resetResponse(rest::ResponseCode::OK);
-
-      response->setContentType(rest::ContentType::JSON);
+      VPackBuilder result;
       result.openObject();
-      result.add("replacedExisting",
-                 VPackValue(replacedExisting));
-      result.add("error", VPackValue(false));
-      result.add("code",
-                 VPackValue(static_cast<int>(_response->responseCode())));
+      result.add("replacedExisting", VPackValue(replacedExisting));
       result.close();
-      generateResult(rest::ResponseCode::OK, std::move(resultBuffer));
-
-    }
-    else {
+      generateOk(rest::ResponseCode::OK, result);
+    } else {
       generateError(res);
     }
     return RestStatus::DONE;
   }
   else if (type == rest::RequestType::DELETE_REQ) {
+    // figure out params
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[0].empty() ) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -94,40 +84,35 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       return RestStatus::DONE;
     }
 
+    // delete group or single function
+    Result res;
     bool deleteGroup = extractBooleanParameter(StaticStrings::deleteGroup, false);
-
     if (deleteGroup) {
       int deletedCount = 0;
-      Result res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
+      res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
 
       if (res.ok()) {
-        VPackBuffer<uint8_t> resultBuffer;
-        VPackBuilder result(resultBuffer);
-
-        auto response = _response.get();
-        resetResponse(rest::ResponseCode::OK);
-
-        response->setContentType(rest::ContentType::JSON);
+        VPackBuilder result;
+        result.openObject();
         result.add("deletedCount", VPackValue(static_cast<int>(deletedCount)));
+        result.close();
+        generateOk(rest::ResponseCode::OK, result);
       }
-      else {
+    } else { // delete single
+      res = unregisterUserFunction(_vocbase,suffixes[0]);
+      if (res.ok()) {
+        resetResponse(rest::ResponseCode::OK);
+      }
+    } // delete group or single
+
+    // error handling
+    if (res.fail()){
         generateError(res);
-      }
-      return RestStatus::DONE;
     }
-    else {
-     auto res = unregisterUserFunction(_vocbase,suffixes[0]);
-     
-     if (res.ok()) {
-       resetResponse(rest::ResponseCode::OK);
-     }
-     else {
-       generateError(res);
-     }
-     return RestStatus::DONE;
-    }
-  }
+    return RestStatus::DONE;
+  } // DELETE
   else if (type == rest::RequestType::GET) {
+    // figure out parameters - function namespace
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[0].empty() ) {
@@ -138,36 +123,24 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
                       StaticStrings::functionNamespace + "=<functionname or prefix>]");
         return RestStatus::DONE;
       }
-    }
-    else {
+    } else {
       functionNamespace = suffixes[0];
     }
 
+    // internal get
     VPackBuilder arrayOfFunctions;
     auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+
+    // error handling
     if(res.ok()){
       generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
     } else {
       generateError(res);
     }
     return RestStatus::DONE;
-
-    
-  }
+  } // GET
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
-
-
-
-
-
-/*
-exports.unregister = unregisterFunction; => delete exactMatch=true (default)
-  exports.unregisterGroup = unregisterFunctionsGroup; delete exactMatch=false 
-
-exports.register = registerFunction; => put TODO: doppelt gemoppelt function name in body checken
-exports.toArray = toArrayFunctions; => get
-*/
