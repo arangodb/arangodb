@@ -69,11 +69,9 @@ bool isValidFunctionNameFilter(std::string const& testName) {
 
 void reloadAqlUserFunctions() {
   std::string const def("reloadAql");
-
   V8DealerFeature::DEALER->addGlobalContextMethod(def);
 }
-
-}
+} // unnamed - namespace
 
 // will do some AQLFOO: and return true if it deleted one
 Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
@@ -90,11 +88,11 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                   "  FILTER fn._key == @fnName"
                   "  REMOVE { _key: fn._key } in @@col RETURN 1)");
 
-  std::shared_ptr<VPackBuilder> binds;
-  binds.reset(new VPackBuilder);
-  binds->openObject();
+
   std::string UCFN = basics::StringUtils::toupper(functionName);
 
+  auto binds = std::make_shared<VPackBuilder>();
+  binds->openObject();
   binds->add("fnName", VPackValue(UCFN));
   binds->add("@col", VPackValue(collectionName));
   binds->close();  // obj
@@ -110,8 +108,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       return Result(TRI_ERROR_REQUEST_CANCELED);
     }
-    return Result(queryResult.code,
-                  std::string("Error group-deleting user defined AQL"));
+    return Result(queryResult.code, std::string("Error group-deleting user defined AQL"));
   }
 
   VPackSlice countSlice = queryResult.result->slice();
@@ -143,24 +140,20 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                   "' contains invalid characters");
   }
 
-  std::string filter;
-  std::shared_ptr<VPackBuilder> binds;
-  binds.reset(new VPackBuilder);
-  binds->openObject();
-
   std::string uc(functionFilterPrefix);
   basics::StringUtils::toupperInPlace(&uc);
-
   if ((uc.length() < 2) ||
       (uc[uc.length() - 1 ] != ':') ||
       (uc[uc.length() - 2 ] != ':')) {
     uc += "::";
   }
+
+  auto binds = std::make_shared<VPackBuilder>();
+  binds->openObject();
   binds->add("fnLength", VPackValue(uc.length()));
   binds->add("ucName", VPackValue(uc));
   binds->add("@col", VPackValue(collectionName));
-
-  binds->close();  // obj
+  binds->close();
 
   std::string aql("RETURN LENGTH("
                   " FOR fn IN @@col"
@@ -327,12 +320,10 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     res = trx.finish(result.result);
   }
 
-  if (res.fail()) {
-    return res;
+  if (res.ok()) {
+    reloadAqlUserFunctions();
   }
 
-  reloadAqlUserFunctions();
-  // Note: Adding user functions to the _aql namespace is disallowed and will fail.
   return res;
 }
 
