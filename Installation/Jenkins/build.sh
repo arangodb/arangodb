@@ -181,8 +181,14 @@ case "$1" in
         BUILD_CONFIG=Debug
         CFLAGS="${CFLAGS} -O0"
         CXXFLAGS="${CXXFLAGS} -O0"
-        CONFIGURE_OPTIONS+=('-DV8_TARGET_ARCHS=Debug' "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}")
-
+        CONFIGURE_OPTIONS+=(
+            '-DV8_TARGET_ARCHS=Debug'
+            '-DUSE_MAINTAINER_MODE=On'
+            '-DUSE_FAILURE_TESTS=On'
+            '-DOPTDBG=On'
+            "-DCMAKE_BUILD_TYPE=${BUILD_CONFIG}"
+        )
+        
         echo "using debug compile configuration"
         shift
         ;;
