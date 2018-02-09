@@ -324,12 +324,10 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     res = trx.finish(result.result);
   }
 
-  if (res.fail()) {
-    return res;
+  if (res.ok()) {
+    reloadAqlUserFunctions();
   }
 
-  reloadAqlUserFunctions();
-  // Note: Adding user functions to the _aql namespace is disallowed and will fail.
   return res;
 }
 
