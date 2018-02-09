@@ -223,7 +223,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 
   // add "Server" response header
   if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
-    output->appendText("Server: ArangoDB\r\n");
+    output->appendText(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
 
   // add "Connection" response header

@@ -69,7 +69,7 @@ class MaintenanceHandler : public RestBaseHandler {
         }
         generateError(Result(TRI_ERROR_CLUSTER_NOT_LEADER));
         // return the endpoint of the actual leader
-        _response->setHeader(StaticStrings::LeaderEndpoint, endpoint);
+        _response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
         break;
       }
 
@@ -78,7 +78,7 @@ class MaintenanceHandler : public RestBaseHandler {
         // intentionally do not set "Location" header, but use a custom header that 
         // clients can inspect. if they find an empty endpoint, it means that there
         // is an ongoing leadership challenge
-        _response->setHeader(StaticStrings::LeaderEndpoint, "");
+        _response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
         break;
       }
 
