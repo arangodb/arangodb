@@ -333,15 +333,6 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
 Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                                       std::string const& functionFilterPrefix,
                                       velocypack::Builder& result) {
-  /*
-  if (!functionFilterPrefix.empty() && !isValidFunctionName(functionFilterPrefix)) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  std::string("Error filtering AQL User Function: '") +
-                  functionFilterPrefix +
-                  "' contains invalid characters");
-  }
-  */
-
   auto binds = std::make_shared<VPackBuilder>();
   binds->openObject();
   if (! functionFilterPrefix.empty()) {
@@ -401,10 +392,17 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_INTERNAL, "element, that stores aql function is not an object");
     }
 
-    auto name = resolved.get("name");
-    auto fn = resolved.get("code");
-    bool isDeterministic = resolved.get("isDeterministic").getBool();
-    auto ref=StringRef(fn);
+    VPackSlice name, fn;
+    bool isDeterministic;
+    StringRef ref;
+    try {
+      name = resolved.get("name");
+      fn = resolved.get("code");
+      isDeterministic = resolved.get("isDeterministic").getBool();
+      ref = StringRef(fn);
+    }
+    catch (...) {}
+    // We simply ignore invalid entries in the _functions collection:
     if (name.isString() && fn.isString() && (ref.length() > 2)) {
       ref = ref.substr(1, ref.length() - 2);
       tmp = basics::StringUtils::trim(ref.toString());
