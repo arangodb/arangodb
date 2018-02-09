@@ -101,13 +101,11 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     } else { // delete single
       res = unregisterUserFunction(_vocbase,suffixes[0]);
       if (res.ok()) {
-        VPackBuffer<uint8_t> resultBuffer;
-        VPackBuilder result(resultBuffer);
-
-        auto response = _response.get();
-        resetResponse(rest::ResponseCode::OK);
-
+        VPackBuilder result;
+        result.openObject();
         result.add("deletedCount", VPackValue(static_cast<int>(1)));
+        result.close();
+        generateOk(rest::ResponseCode::OK, result);
       }
     } // delete group or single
 
