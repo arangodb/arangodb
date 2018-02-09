@@ -238,13 +238,14 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
       int state = 0;
       if (result.IsEmpty()) {
         state = 1;
-        if (tryCatch.HasCaught()) {
-            state = 2;
-            if (!result->IsFunction()) {
-              state = 3;
-            }
-          }
       }
+      else if (tryCatch.HasCaught()) {
+        state = 2;
+      }
+      else if (!result->IsFunction()) {
+        state = 3;
+      }
+
       if (state != 0) {
         const std::string msg[] = {
           "",
