@@ -111,25 +111,13 @@ class UserManager {
   inline void refreshUser(std::string const& username) {}
 #endif
 
-  auth::Level configuredDatabaseAuthLevel(std::string const& username,
-                                          std::string const& dbname);
-  auth::Level configuredCollectionAuthLevel(std::string const& username,
-                                            std::string const& dbname,
-                                            std::string coll);
-  auth::Level canUseDatabase(std::string const& username,
-                             std::string const& dbname);
-  auth::Level canUseCollection(std::string const& username,
-                               std::string const& dbname,
-                               std::string const& coll);
-
-  // No Lock variants of the above to be used in callbacks
-  // Use with CARE! You need to make sure that the lock
-  // is held from outside.
-  auth::Level canUseDatabaseNoLock(std::string const& username,
-                                   std::string const& dbname);
-  auth::Level canUseCollectionNoLock(std::string const& username,
-                                     std::string const& dbname,
-                                     std::string const& coll);
+  auth::Level databaseAuthLevel(std::string const& username,
+                                std::string const& dbname,
+                                bool configured = false);
+  auth::Level collectionAuthLevel(std::string const& username,
+                                  std::string const& dbname,
+                                  std::string const& coll,
+                                  bool configured = false);
 
   /// Overwrite internally cached permissions, only use
   /// for testing purposes
@@ -152,19 +140,7 @@ class UserManager {
 #endif
 
  private:
-  // worker function for canUseDatabase
-  // must only be called with the read-lock on _authInfoLock being held
-  auth::Level configuredDatabaseAuthLevelInternal(std::string const& username,
-                                                  std::string const& dbname,
-                                                  size_t depth) const;
-
-  // internal method called by canUseCollection
-  // asserts that collection name is non-empty and already translated
-  // from collection id to name
-  auth::Level configuredCollectionAuthLevelInternal(std::string const& username,
-                                                    std::string const& dbname,
-                                                    std::string const& coll,
-                                                    size_t depth) const;
+  
   /// @brief load users and permissions from local database
   void loadFromDB();
   /// @brief store or replace user object

@@ -80,7 +80,6 @@
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -192,7 +191,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
 
   // get database name from request
   std::string const& dbName = request->databaseName();

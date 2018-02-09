@@ -44,7 +44,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -864,7 +863,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -876,8 +875,8 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (authentication->isActive()) {
-        auto level = authentication->userManager()->canUseDatabase(username, vocbase->name());
+      if (af->isActive()) {
+        auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
         if (level == auth::Level::NONE) {
           continue;
         }

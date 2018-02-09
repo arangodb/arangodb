@@ -125,14 +125,13 @@ class User {
 
  private:
   User(std::string&& key, TRI_voc_rid_t rid);
+  typedef std::unordered_map<std::string, auth::Level> CollLevelMap;
 
   struct DBAuthContext {
-    DBAuthContext(auth::Level dbLvl,
-                  std::unordered_map<std::string, auth::Level> const& coll)
+    DBAuthContext(auth::Level dbLvl, CollLevelMap const& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
 
-    DBAuthContext(auth::Level dbLvl,
-                  std::unordered_map<std::string, auth::Level>&& coll)
+    DBAuthContext(auth::Level dbLvl, CollLevelMap&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
     auth::Level collectionAuthLevel(std::string const& collectionName,
@@ -140,7 +139,7 @@ class User {
 
    public:
     auth::Level _databaseAuthLevel;
-    std::unordered_map<std::string, auth::Level> _collectionAccess;
+    CollLevelMap _collectionAccess;
   };
 
  private:

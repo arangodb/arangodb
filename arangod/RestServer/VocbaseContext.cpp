@@ -65,10 +65,10 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
     }
     auth::UserManager* um = auth->userManager();
     TRI_ASSERT(um != nullptr);
-    auth::Level dbLvl = um->canUseDatabase(req->user(), req->databaseName());
+    auth::Level dbLvl = um->databaseAuthLevel(req->user(), req->databaseName());
     auth::Level sysLvl = dbLvl;
     if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = um->canUseDatabase(req->user(), TRI_VOC_SYSTEM_DATABASE);
+      sysLvl = um->databaseAuthLevel(req->user(), TRI_VOC_SYSTEM_DATABASE);
     }
     return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ sysLvl,

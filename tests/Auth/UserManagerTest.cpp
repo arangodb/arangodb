@@ -71,7 +71,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
   SECTION("An unknown user will have no access") {
     auth::UserMap userEntryMap;
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.canUseDatabase("test", "test");
+    auth::Level authLevel = um.databaseAuthLevel("test", "test");
     REQUIRE(authLevel == auth::Level::NONE);
   }
 
@@ -82,7 +82,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     userEntryMap.emplace("test", testUser);
 
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.canUseDatabase("test", "test");
+    auth::Level authLevel = um.databaseAuthLevel("test", "test");
     REQUIRE(authLevel == auth::Level::RW);
   }
 
@@ -95,7 +95,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.canUseDatabase("test", "test");
+    auth::Level authLevel = um.databaseAuthLevel("test", "test");
     REQUIRE(authLevel == auth::Level::RO);
   }
 
@@ -108,7 +108,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.configuredDatabaseAuthLevel("test", "test");
+    auth::Level authLevel = um.databaseAuthLevel("test", "test", /*configured*/ true);
     REQUIRE(authLevel == auth::Level::RW);
   }
 
@@ -122,7 +122,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.canUseCollection("test", "test", "test");
+    auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
     REQUIRE(authLevel == auth::Level::RO);
   }
 
@@ -136,7 +136,7 @@ TEST_CASE("🥑🔐 UserManager", "[authentication]") {
     state->setServerMode(ServerState::Mode::READ_ONLY);
 
     um.setAuthInfo(userEntryMap);
-    auth::Level authLevel = um.configuredCollectionAuthLevel("test", "test", "test");
+    auth::Level authLevel = um.collectionAuthLevel("test", "test", "test", /*configured*/ true);
     REQUIRE(authLevel == auth::Level::RW);
   }
 

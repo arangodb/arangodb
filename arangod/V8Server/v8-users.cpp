@@ -26,7 +26,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Utils/ExecContext.h"
 
 #include "V8/v8-conv.h"
@@ -428,9 +427,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auth::Level lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = af->userManager()->canUseCollection(username, dbname, collection);
+      lvl = af->userManager()->collectionAuthLevel(username, dbname, collection);
     } else {
-      lvl = af->userManager()->canUseDatabase(username, dbname);
+      lvl = af->userManager()->databaseAuthLevel(username, dbname);
     }
     
     if (lvl == auth::Level::RO) {
@@ -440,9 +439,10 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, "none"));
   } else {
+    // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      auth::Level lvl = af->userManager()->canUseDatabase(username, vocbase->name());
+      auth::Level lvl = af->userManager()->databaseAuthLevel(username, vocbase->name());
       if (lvl != auth::Level::NONE) {
         std::string str = auth::Level::RO == lvl ? "ro" : "rw";
         result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase->name()),

@@ -26,7 +26,6 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -46,20 +45,22 @@ RestUsersHandler::RestUsersHandler(GeneralRequest* request,
 
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(auth != nullptr);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af == nullptr) { // nullptr happens only during shutdown
+    return RestStatus::FAIL;
+  }
 
   switch (type) {
     case RequestType::GET:
-      return getRequest(auth->userManager());
+      return getRequest(af->userManager());
     case RequestType::POST:
-      return postRequest(auth->userManager());
+      return postRequest(af->userManager());
     case RequestType::PUT:
-      return putRequest(auth->userManager());
+      return putRequest(af->userManager());
     case RequestType::PATCH:
-      return patchRequest(auth->userManager());
+      return patchRequest(af->userManager());
     case RequestType::DELETE_REQ:
-      return deleteRequest(auth->userManager());
+      return deleteRequest(af->userManager());
 
     default:
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -129,35 +130,18 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
       } else if (suffixes.size() == 3) {
         //_api/user/<user>/database/<dbname>
         // return specific database
-        bool configured = false;
-        std::string const& param = _request->value("configured", configured);
-        if (configured) {
-          configured = StringUtils::boolean(param);
-        }
-        auth::Level lvl;
-        if (configured) {
-          lvl = um->configuredDatabaseAuthLevel(user, suffixes[2]);
-        } else {
-          // return effective user rights
-          lvl = um->canUseDatabase(user, suffixes[2]);
-        }
+        bool configured = _request->parsedValue("configured", false);
+        auth::Level lvl = um->databaseAuthLevel(user, suffixes[2], configured);
+
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
       } else if (suffixes.size() == 4) {
-        bool configured = false;
-        std::string const& param = _request->value("configured", configured);
-        if (configured) {
-          configured = StringUtils::boolean(param);
-        }
+        bool configured = _request->parsedValue("configured", false);
         //_api/user/<user>/database/<dbname>/<collection>
-        auth::Level lvl;
-        if (configured) {
-          lvl = um->configuredCollectionAuthLevel(user, suffixes[2], suffixes[3]);
-        } else {
-          // return effective user rights
-          lvl = um->canUseCollection(user, suffixes[2], suffixes[3]);
-        }
+        auth::Level lvl = um->collectionAuthLevel(user, suffixes[2],
+                                                  suffixes[3], configured);
+
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());

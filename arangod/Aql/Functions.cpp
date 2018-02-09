@@ -39,7 +39,6 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
@@ -1773,8 +1772,8 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
 
 /// @brief function COLLECTIONS
 AqlValue Functions::Collections(arangodb::aql::Query* query,
-                          transaction::Methods* trx,
-                          VPackFunctionParameters const& parameters) {
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -1809,20 +1808,19 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     return basics::StringUtils::tolower(lhs->name()) < basics::StringUtils::tolower(rhs->name());
   });
 
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
 
   size_t const n = colls.size();
   for (size_t i = 0; i < n; ++i) {
-    auto& collection = colls[i];
+    LogicalCollection* coll = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
-    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), auth::Level::RO)) {
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
     builder->openObject();
-    builder->add("_id", VPackValue(collection->cid_as_string()));
-    builder->add("name", VPackValue(collection->name()));
+    builder->add("_id", VPackValue(coll->cid_as_string()));
+    builder->add("name", VPackValue(coll->name()));
     builder->close();
   }
 

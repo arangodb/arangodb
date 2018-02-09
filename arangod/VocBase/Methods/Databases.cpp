@@ -84,7 +84,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
         if (!af->isActive() ||
-            af->userManager()->canUseDatabase(user, db) != auth::Level::NONE) {
+            af->userManager()->databaseAuthLevel(user, db) != auth::Level::NONE) {
           names.push_back(db);
         }
       }

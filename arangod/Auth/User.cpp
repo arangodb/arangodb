@@ -538,20 +538,22 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
-auth::Level auth::User::collectionAuthLevel(
-    std::string const& dbname, std::string const& collectionName) const {
+auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
+                                            std::string const& cname) const {
   // disallow access to _system/_users for everyone
-  if (collectionName.empty()) {
+  if (cname.empty()) {
     return auth::Level::NONE;
   }
-  bool isSystem = collectionName[0] == '_';
+  
+  // we must have got a non-empty collection name when we get here
+  TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
+  bool isSystem = cname[0] == '_';
   if (isSystem) {
-    if (dbname == TRI_VOC_SYSTEM_DATABASE &&
-        collectionName == TRI_COL_NAME_USERS) {
+    if (dbname == TRI_VOC_SYSTEM_DATABASE && cname == TRI_COL_NAME_USERS) {
       return auth::Level::NONE;
-    } else if (collectionName == "_queues") {
+    } else if (cname == "_queues") {
       return auth::Level::RO;
-    } else if (collectionName == "_frontend") {
+    } else if (cname == "_frontend") {
       return auth::Level::RW;
     }
   }
@@ -563,7 +565,7 @@ auth::Level auth::User::collectionAuthLevel(
     if (isSystem) {
       return it->second._databaseAuthLevel;
     }
-    lvl = it->second.collectionAuthLevel(collectionName, notFound);
+    lvl = it->second.collectionAuthLevel(cname, notFound);
   } else {
     notFound = true;
   }
@@ -575,7 +577,7 @@ auth::Level auth::User::collectionAuthLevel(
       if (isSystem) {
         return it->second._databaseAuthLevel;
       }
-      lvl = it->second.collectionAuthLevel(collectionName, notFound);
+      lvl = it->second.collectionAuthLevel(cname, notFound);
     }
   }
 
@@ -597,9 +599,8 @@ bool auth::User::hasSpecificCollection(
 }
 
 auth::Level auth::User::DBAuthContext::collectionAuthLevel(
-    std::string const& collectionName, bool& notFound) const {
-  std::unordered_map<std::string, auth::Level>::const_iterator pair =
-      _collectionAccess.find(collectionName);
+    std::string const& cname, bool& notFound) const {
+  CollLevelMap::const_iterator pair = _collectionAccess.find(cname);
   if (pair != _collectionAccess.end()) {
     return pair->second;
   }
@@ -608,5 +609,5 @@ auth::Level auth::User::DBAuthContext::collectionAuthLevel(
     return pair->second;
   }
   notFound = true;
-  return auth::Level::NONE;
+  return _databaseAuthLevel;
 }

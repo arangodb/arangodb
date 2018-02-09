@@ -287,7 +287,7 @@ void auth::UserManager::createRootUser() {
 
   MUTEX_LOCKER(guard, _loadFromDBLock);      // must be first
   WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
-  auto it = _userCache.find("root");
+  UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
     LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "\"root\" already exists";
     return;
@@ -371,7 +371,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
 
   loadFromDB();
   WRITE_LOCKER(writeGuard, _userCacheLock);
-  auto const& it = _userCache.find(username);
+  UserMap::iterator const& it = _userCache.find(username);
 
   if (replace && it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
@@ -454,7 +454,7 @@ Result auth::UserManager::updateUser(std::string const& username,
   // we require a consistent view on the user object
   WRITE_LOCKER(writeGuard, _userCacheLock);
 
-  auto it = _userCache.find(username);
+  UserMap::iterator it = _userCache.find(username);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
   } else if (it->second.source() != auth::Source::LOCAL) {
@@ -561,7 +561,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   loadFromDB();
 
   WRITE_LOCKER(writeGuard, _userCacheLock);
-  auto const& it = _userCache.find(user);
+  UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -623,7 +623,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
   loadFromDB();
 
   READ_LOCKER(readGuard, _userCacheLock);
-  auto it = _userCache.find(username);
+  UserMap::iterator it = _userCache.find(username);
 
   // using local users might be forbidden
   AuthenticationFeature* af = AuthenticationFeature::instance();
@@ -654,119 +654,59 @@ bool auth::UserManager::checkPassword(std::string const& username,
   return false;
 }
 
-
-// worker function for configuredDatabaseAuthLevel
-// must only be called with the read-lock on _userCacheLock being held
-auth::Level auth::UserManager::configuredDatabaseAuthLevelInternal(
-    std::string const& username, std::string const& dbname,
-    size_t depth) const {
-  auto it = _userCache.find(username);
-
+auth::Level auth::UserManager::databaseAuthLevel(std::string const& username,
+                                                 std::string const& dbname,
+                                                 bool configured) {
+  if (dbname.empty()) {
+    return auth::Level::NONE;
+  }
+  
+  loadFromDB();
+  READ_LOCKER(readGuard, _userCacheLock);
+  
+  UserMap::iterator const& it = _userCache.find(username);
   if (it == _userCache.end()) {
     return auth::Level::NONE;
   }
-
-  auto const& entry = it->second;
-  return entry.databaseAuthLevel(dbname);
+  
+  auth::Level level = it->second.databaseAuthLevel(dbname);
+  if (configured) {
+    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+      return auth::Level::RO;
+    }
+  }
+  return level;
 }
 
-auth::Level auth::UserManager::configuredDatabaseAuthLevel(
-    std::string const& username, std::string const& dbname) {
+auth::Level auth::UserManager::collectionAuthLevel(std::string const& username,
+                                                   std::string const& dbname,
+                                                   std::string const& coll,
+                                                   bool configured) {
+  if (coll.empty()) {
+    return auth::Level::NONE;
+  }
+  
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
-  return configuredDatabaseAuthLevelInternal(username, dbname, 0);
-}
-
-auth::Level auth::UserManager::canUseDatabase(std::string const& username,
-                                              std::string const& dbname) {
-  auth::Level level = configuredDatabaseAuthLevel(username, dbname);
-  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-    return auth::Level::RO;
-  }
-  return level;
-}
-
-auth::Level auth::UserManager::canUseDatabaseNoLock(std::string const& username,
-                                                    std::string const& dbname) {
-  auth::Level level = configuredDatabaseAuthLevelInternal(username, dbname, 0);
-  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-    return auth::Level::RO;
-  }
-  return level;
-}
-
-// internal method called by configuredCollectionAuthLevel
-// asserts that collection name is non-empty and already translated
-// from collection id to name
-auth::Level auth::UserManager::configuredCollectionAuthLevelInternal(
-    std::string const& username, std::string const& dbname,
-    std::string const& coll, size_t depth) const {
-  // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
-
-  auto it = _userCache.find(username);
+  
+  UserMap::iterator const& it = _userCache.find(username);
   if (it == _userCache.end()) {
-    return auth::Level::NONE;
+    return auth::Level::NONE; // no user found
   }
-
-  auto const& entry = it->second;
-  return entry.collectionAuthLevel(dbname, coll);
-}
-
-auth::Level auth::UserManager::configuredCollectionAuthLevel(
-    std::string const& username, std::string const& dbname, std::string coll) {
-  if (coll.empty()) {
-    // no collection name given
-    return auth::Level::NONE;
-  }
-  if (coll[0] >= '0' && coll[0] <= '9') {
-    coll = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
-  }
-
-  loadFromDB();
-  READ_LOCKER(readGuard, _userCacheLock);
-
-  return configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
-}
-
-auth::Level auth::UserManager::canUseCollection(std::string const& username,
-                                                std::string const& dbname,
-                                                std::string const& coll) {
-  if (coll.empty()) {
-    // no collection name given
-    return auth::Level::NONE;
-  }
-
-  auth::Level level = configuredCollectionAuthLevel(username, dbname, coll);
-  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-    return auth::Level::RO;
-  }
-  return level;
-}
-
-auth::Level auth::UserManager::canUseCollectionNoLock(
-    std::string const& username, std::string const& dbname,
-    std::string const& coll) {
-  if (coll.empty()) {
-    // no collection name given
-    return auth::Level::NONE;
-  }
-
+  
   auth::Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
-    std::string tmpColl =
-        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
-    level = configuredCollectionAuthLevelInternal(username, dbname, tmpColl, 0);
+    std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+    level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
-    level = configuredCollectionAuthLevelInternal(username, dbname, coll, 0);
+    level = it->second.collectionAuthLevel(dbname, coll);
   }
-
-  static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-  if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
-    return auth::Level::RO;
+  
+  if (configured) {
+    static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
+    if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
+      return auth::Level::RO;
+    }
   }
   return level;
 }

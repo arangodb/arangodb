@@ -47,9 +47,9 @@ ExecContext* ExecContext::create(std::string const& user,
   auth::Level dbLvl = auth::Level::RW;
   auth::Level sysLvl = dbLvl;
   if (af->isActive()) {
-    dbLvl = af->userManager()->canUseDatabase(user, dbname);
+    dbLvl = af->userManager()->databaseAuthLevel(user, dbname);
     if (dbname != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = af->userManager()->canUseDatabase(user, TRI_VOC_SYSTEM_DATABASE);
+      sysLvl = af->userManager()->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
     }
   }
   return new ExecContext(false, user, dbname, sysLvl, dbLvl);
@@ -65,7 +65,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   if (af->isActive()) {
-    auth::Level allowed = af->userManager()->canUseDatabase(_user, db);
+    auth::Level allowed = af->userManager()->databaseAuthLevel(_user, db);
     return requested <= allowed;
   }
   return true;
@@ -91,8 +91,8 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
       return auth::Level::RO;
     } else if (coll == "_frontend") {
       return auth::Level::RW;
-    }  // fall through
-    return af->userManager()->canUseCollection(_user, dbname, coll);
+    }  // intentional fall through
+    return af->userManager()->collectionAuthLevel(_user, dbname, coll);
   }
   return auth::Level::RW;
 }
