@@ -398,7 +398,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
+    handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
 
     auto minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
                             engine->releasedTick());
