@@ -107,7 +107,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
         auto response = _response.get();
         resetResponse(rest::ResponseCode::OK);
 
-        response->setContentType(rest::ContentType::JSON);
         result.add("deletedCount", VPackValue(static_cast<int>(1)));
       }
     } // delete group or single
