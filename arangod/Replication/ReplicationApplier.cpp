@@ -279,10 +279,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   }
   
   TRI_ASSERT(!_state.isTailing() && !_state.isShuttingDown());
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
-      << ", useTick: " << useTick << ", barrierId: " << barrierId;
-
+  
   if (_configuration._endpoint.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
     setErrorNoLock(r);
