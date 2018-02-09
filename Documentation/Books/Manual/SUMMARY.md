@@ -149,7 +149,9 @@
 # Use cases / Advanced usage / Best practice (?)
 #
 * [Deployment](Deployment/README.md)
-  * [Single instance](Deployment/Single.md)
+  * [Single Instance](Deployment/Single.md)
+  * [Master/Slave](Deployment/MasterSlave/README.md)
+  * [Active Failover](Deployment/ActiveFailover/README.md)
   * [Cluster](Deployment/Cluster/README.md)  
     * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
     * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
