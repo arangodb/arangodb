@@ -454,10 +454,11 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+    let role = global.ArangoServerState.role();
     if (req.requestType !== actions.GET ||
-      !require('@arangodb/cluster').isCoordinator()) {
+        (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET requests are allowed and only to coordinators');
+        'only GET requests are allowed and only to coordinators or singles');
       return;
     }
 

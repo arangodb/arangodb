@@ -24,6 +24,7 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
@@ -100,13 +101,16 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
         (uint32_t)_configuration._sslProtocol);
 
     if (_connection != nullptr) {
+      std::string retryMsg = std::string("retrying failed HTTP request for endpoint '") +
+      _configuration._endpoint  + std::string("' for replication applier");
+      if (!_databaseName.empty()) {
+        retryMsg += std::string(" in database '") + _databaseName + std::string("'");
+      }
+                  
       SimpleHttpClientParams params(_configuration._requestTimeout, false);
       params.setMaxRetries(2);
-      params.setRetryWaitTime(2 * 1000 * 1000);
-      params.setRetryMessage(std::string("retrying failed HTTP request for endpoint '") +
-                             _configuration._endpoint +
-                             std::string("' for replication applier in database '" +
-                                         _databaseName + "'"));
+      params.setRetryWaitTime(2 * 1000 * 1000); // 2s
+      params.setRetryMessage(retryMsg);
       
       std::string username = _configuration._username;
       std::string password = _configuration._password;
@@ -284,6 +288,14 @@ void Syncer::setAborted(bool value) {
   }
 }
 
+bool Syncer::isAborted() const {
+  MUTEX_LOCKER(locker, _clientMutex);
+  if (_client != nullptr) {
+    return _client->isAborted();
+  }
+  return true;
+}
+
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
   return VelocyPackHelper::extractIdValue(slice);
@@ -437,14 +449,43 @@ Result Syncer::applyCollectionDumpMarkerInternal(
     if (!_leaderId.empty()) {
       options.isSynchronousReplicationFrom = _leaderId;
     }
+    // we want the conflicting other key returned in case of unique constraint violation
+    options.indexOperationMode = Index::OperationMode::internal;
 
     try {
       // try insert first
       OperationResult opRes = trx.insert(coll->name(), slice, options); 
 
       if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        // perform an update
-        opRes = trx.replace(coll->name(), slice, options);
+        bool useReplace = true;
+
+        // conflicting key is contained in opRes.errorMessage() now
+        VPackSlice keySlice = slice.get(StaticStrings::KeyString);
+        
+        if (keySlice.isString()) {
+          // let's check if the key we have got is the same as the one
+          // that we would like to insert
+          if (keySlice.copyString() != opRes.errorMessage()) {
+            // different key
+            VPackBuilder tmp;
+            tmp.add(VPackValue(opRes.errorMessage()));
+
+            opRes = trx.remove(coll->name(), tmp.slice(), options);
+            if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+              useReplace = false;
+            }
+          }
+        }
+    
+        options.indexOperationMode = Index::OperationMode::normal;
+
+        if (useReplace) {
+          // perform a replace
+          opRes = trx.replace(coll->name(), slice, options);
+        } else {
+          // perform a re-insert
+          opRes = trx.insert(coll->name(), slice, options); 
+        }
       }
    
       return Result(opRes.result);
@@ -700,7 +741,7 @@ Result Syncer::getMasterState() {
 
   // apply settings that prevent endless waiting here
   _client->params().setMaxRetries(1);
-  _client->params().setRetryWaitTime(500 * 1000);
+  _client->params().setRetryWaitTime(500 * 1000); // 0.5s
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
@@ -715,7 +756,6 @@ Result Syncer::getMasterState() {
 
   VPackBuilder builder;
   Result r = parseResponse(builder, response.get());
-
   if (r.fail()) {
     return r;
   }
