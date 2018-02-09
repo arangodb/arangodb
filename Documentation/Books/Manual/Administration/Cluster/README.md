@@ -4,9 +4,6 @@ This Section includes information related to the administration of an ArangoDB C
 
 For a general introduction to the ArangoDB Cluster, please refer to the Cluster [chapter](../../Scalability/Cluster/README.md).
 
-## Replacing Agents
-
-
 ## Replacing/Removing a Coordinator
 
 _Coordinators_ are effectively stateless and can be replaced, added and
