@@ -18,6 +18,12 @@
 #
 * [Highlights](Highlights.md)
 #
+* [Architecture](Architecture/README.md)
+  * [Replication](Administration/Replication/README.md)
+  * [Write-ahead log](Architecture/WriteAheadLog.md)
+  * [Storage Engines](Architecture/StorageEngines.md)
+#  * [Server Internals](Architecture/ServerInternals.md)
+#
 * [Scalability](Scalability/README.md)
   * [Master/Slave](Scalability/MasterSlave/README.md)
     * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
@@ -223,6 +229,12 @@
     * [Upgrading to 2.3](Administration/Upgrading/Upgrading23.md)
     * [Upgrading to 2.2](Administration/Upgrading/Upgrading22.md)
 #
+* [Security](Security/README.md)
+  * [Datacenter to datacenter replication](Security/DC2DC/README.md)
+#
+* [Monitoring](Monitoring/README.md)
+  * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
+#
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
@@ -230,18 +242,6 @@
   * [Arangobench](Troubleshooting/Arangobench.md)
   * [Cluster](Troubleshooting/Cluster/README.md)  
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
-#
-* [Monitoring](Monitoring/README.md)
-  * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
-#
-* [Security](Security/README.md)
-  * [Datacenter to datacenter replication](Security/DC2DC/README.md)
-#
-* [Architecture](Architecture/README.md)
-  * [Replication](Administration/Replication/README.md)
-  * [Write-ahead log](Architecture/WriteAheadLog.md)
-  * [Storage Engines](Architecture/StorageEngines.md)
-#  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
   * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
