@@ -869,6 +869,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                          StringUtils::itoa(dump._lastFoundTick));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
                          StringUtils::itoa(state.lastCommittedTick));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTSCANNED,
+                         StringUtils::itoa(dump._lastScannedTick));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          dump._fromTickIncluded ? "true" : "false");
