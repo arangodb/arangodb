@@ -66,15 +66,6 @@
     } \
   } while(0);
 
-#define CATCH_TO_RESULT(result, errorCode) \
-  catch (arangodb::basics::Exception const& e) { \
-    (result).reset(e.code(),e.message()); \
-  } catch (std::exception const& e) { \
-    (result).reset((errorCode),e.what()); \
-  } catch (...) { \
-    (result).reset((errorCode)); \
-  }
-
 namespace arangodb {
 namespace basics {
 
@@ -114,6 +105,12 @@ class Exception : public virtual std::exception {
   int const _line;
   int const _code;
 };
+
+Result catchToResult(std::function<Result()> fn,
+                     int defaultError = TRI_ERROR_INTERNAL);
+Result catchVoidToResult(std::function<void()> fn,
+                         int defaultError = TRI_ERROR_INTERNAL);
+
 }
 }
 

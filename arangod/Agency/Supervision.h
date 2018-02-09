@@ -204,6 +204,15 @@ class Supervision : public arangodb::Thread {
 
 };
 
+/**
+ * @brief Helper function to build transaction removing no longer
+ *        present servers from health monitoring
+ *
+ * @param  todelete  List of servers to be removed
+ * @return           Agency transaction
+ */
+query_t removeTransactionBuilder(std::vector<std::string> const&);
+
 inline std::string timepointToString(Supervision::TimePoint const& t) {
   time_t tt = std::chrono::system_clock::to_time_t(t);
   struct tm tb;

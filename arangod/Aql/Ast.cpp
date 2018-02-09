@@ -3003,7 +3003,7 @@ AstNode* Ast::optimizeAttributeAccess(AstNode* node, std::unordered_map<Variable
     size_t const n = what->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      AstNode const* member = what->getMember(0);
+      AstNode const* member = what->getMember(i);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringLength() == length &&

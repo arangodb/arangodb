@@ -112,7 +112,8 @@ class RocksDBIndex : public Index {
   void createCache();
   void destroyCache();
 
-  virtual void serializeEstimate(std::string& output, uint64_t seq) const;
+  virtual rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const;
 
   virtual bool deserializeEstimate(RocksDBSettingsManager* mgr);
 
@@ -148,11 +149,8 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId,
                                     bool unique);
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t>
-  estimator() const;
-
-  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
-                                      std::vector<uint64_t> const& removes);
+  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator();
+  virtual bool needToPersistEstimate() const;
 
  protected:
   inline bool useCache() const { return (_cacheEnabled && _cachePresent); }

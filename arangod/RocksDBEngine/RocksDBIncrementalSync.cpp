@@ -355,7 +355,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -416,6 +416,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -465,13 +468,16 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 

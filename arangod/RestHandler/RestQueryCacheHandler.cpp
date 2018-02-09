@@ -69,8 +69,8 @@ bool RestQueryCacheHandler::clearCache() {
     
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
   return true;

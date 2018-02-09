@@ -174,16 +174,21 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
       _total(0) {}
 
 bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  while (limit > 0) {
+  if (limit == 0) {
+    return false;
+  }
+  
+  do {
     MMFilesSimpleIndexElement element =
         _index->findRandom(nullptr, _initial, _position, _step, _total);
-    if (element) {
-      cb(LocalDocumentId{element.localDocumentId()});
-      --limit;
-    } else {
+    if (!element) {
       return false;
     }
-  }
+    
+    cb(LocalDocumentId{element.localDocumentId()});
+    --limit;
+  } while (limit > 0);
+
   return true;
 }
 

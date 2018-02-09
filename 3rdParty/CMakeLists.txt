@@ -151,6 +151,10 @@ if (USE_IRESEARCH)
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
 
+  if(MSVC)
+    set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
+  endif()
+
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
@@ -193,7 +197,7 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0 EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## SNAPPY
