@@ -47,6 +47,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
+namespace {
+
+arangodb::StringRef const VIEW_NODE_SUFFIX("\0v", 2);
+arangodb::StringRef const COLLECTION_NODE_SUFFIX("\0c", 2);
+
+}
+
 using namespace arangodb::aql;
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
@@ -374,6 +381,57 @@ static bool IsEmptyString(char const* p, size_t length) {
   }
 
   return true;
+}
+
+/*static*/ std::string AstNode::encodeDataSourceType(
+    char* const name, size_t size, AstNode::DataSourceType type
+) {
+  StringRef suffix;
+
+  switch (type) {
+    case AstNode::DataSourceType::View:
+      suffix = VIEW_NODE_SUFFIX;
+      break;
+    case AstNode::DataSourceType::Collection:
+      suffix = COLLECTION_NODE_SUFFIX;
+      break;
+    default: // shut up compiler
+      break;
+  }
+
+  std::string param(name, size + suffix.size());
+  std::memcpy(&param[0] + size, suffix.data(), suffix.size());
+  return param;
+}
+
+/*static*/ AstNode::DataSourceType AstNode::decodeDataSourceType(
+    std::string& param
+) {
+  auto decodeParam = [](std::string& param, StringRef const& expectedSuffix) -> bool {
+    auto const suffixPos = param.size() - expectedSuffix.size();
+
+    StringRef const suffix(
+      param.c_str() + suffixPos,
+      expectedSuffix.size()
+    );
+
+    if (suffix == expectedSuffix) {
+      param.resize(suffixPos);
+      return true;
+    }
+
+    return false;
+  };
+
+  if (decodeParam(param, COLLECTION_NODE_SUFFIX)) {
+    return DataSourceType::Collection;
+  }
+
+  if (decodeParam(param, VIEW_NODE_SUFFIX)) {
+    return DataSourceType::View;
+  }
+
+  return DataSourceType::Invalid;
 }
 
 /// @brief create the node

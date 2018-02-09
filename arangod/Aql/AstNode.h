@@ -199,6 +199,15 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
+  enum class DataSourceType {
+    Collection,
+    View,
+    Invalid
+  };
+
+  static std::string encodeDataSourceType(char* const name, size_t size, DataSourceType type);
+  static DataSourceType decodeDataSourceType(std::string& param);
+
   static std::unordered_map<int, std::string const> const Operators;
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;

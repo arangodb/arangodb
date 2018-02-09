@@ -507,12 +507,24 @@ class Parser;
   * bind parameters
   * --------------------------------------------------------------------------- */
 
-@@?(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
+@(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
   yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
+}
+
+ /* ---------------------------------------------------------------------------
+  * bind data source parameters
+  * --------------------------------------------------------------------------- */
+
+@@(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
+  /* bind parameters must start with a @
+     if followed by another @, this is a collection name parameter */
+  yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
+  yylval->strval.length = yyleng - 1;
+  return T_DATA_SOURCE_PARAMETER;
 }
 
  /* ---------------------------------------------------------------------------
