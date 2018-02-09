@@ -296,9 +296,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
-
   if (!res.ok()) {
-    // TODO: this comes from the RestVocbaseBaseHandler generateTransactionError(collectionName, res, "");
     return res;
   }
 
@@ -312,27 +310,21 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     res.reset(ex.code());
   }
 
-  arangodb::OperationResult result;
-  replacedExisting = res.ok();
-  if (replacedExisting){
-    result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
-  } else {
-    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
-  }
-  // Will commit if no error occured.
-  // or abort if an error occured.
-  // result stays valid!
-  res = trx.finish(result.result);
-
-  if (result.fail()) {
-    printf("resultfail\n");
-    // TODO: this comes from the RestVocbaseBaseHandler     generateTransactionError(result);
-    return res;
+  {
+    arangodb::OperationResult result;
+    replacedExisting = res.ok();
+    if (replacedExisting){
+      result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
+    } else {
+      result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+    }
+    // Will commit if no error occured.
+    // or abort if an error occured.
+    // result stays valid!
+    res = trx.finish(result.result);
   }
 
   if (res.fail()) {
-    printf("result not ok\n");
-    // TODO: this comes from the RestVocbaseBaseHandler     generateTransactionError(collectionName, res, "");
     return res;
   }
 
