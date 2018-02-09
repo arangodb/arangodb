@@ -151,10 +151,13 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     auto pair = rocksutils::stripObjectIds(inventoryColls);
     r = handleLeaderCollections(pair.first, incremental);
 
-    // all done here
-    sendFinishBatch();
-
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master took: " << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: " << r.errorMessage();
+    // all done here, do not try to finish batch if master is unresponsive
+    if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
+      sendFinishBatch();
+    }
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master took: "
+      << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: " << r.errorMessage();
+    
     return r;
   } catch (arangodb::basics::Exception const& ex) {
     sendFinishBatch();
@@ -167,15 +170,15 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
 }
-  
+
 /// @brief check whether the initial synchronization should be aborted
-bool DatabaseInitialSyncer::checkAborted() {
+bool DatabaseInitialSyncer::isAborted() const {
   if (application_features::ApplicationServer::isStopping() ||
       (vocbase()->replicationApplier() != nullptr &&
        vocbase()->replicationApplier()->stopInitialSynchronization())) {
     return true;
   }
-  return false;
+  return Syncer::isAborted();
 }
 
 void DatabaseInitialSyncer::setProgress(std::string const& msg) {
@@ -342,7 +345,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
   uint64_t markersProcessed = 0;
 
   while (true) {
-    if (checkAborted()) {
+    if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -435,7 +438,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           sleepTime = 2.0;
         }
 
-        if (checkAborted()) {
+        if (isAborted()) {
           return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
         }
         this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
@@ -614,7 +617,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
       sleepTime = 2.0;
     }
 
-    if (checkAborted()) {
+    if (isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
@@ -745,7 +748,7 @@ int64_t DatabaseInitialSyncer::getSize(arangodb::LogicalCollection* col) {
 Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
                                                VPackSlice const& indexes, bool incremental,
                                                sync_phase_e phase) {
-  if (checkAborted()) {
+  if (isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -1139,7 +1142,7 @@ Result DatabaseInitialSyncer::iterateCollections(
     VPackSlice const parameters = collection.first;
     VPackSlice const indexes = collection.second;
 
-    Result res =  handleCollection(parameters, indexes, incremental, phase);
+    Result res = handleCollection(parameters, indexes, incremental, phase);
 
     if (res.fail()) {
       return res;
