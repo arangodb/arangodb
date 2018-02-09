@@ -202,8 +202,8 @@ function AqlFunctionsSuite () {
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme").map(function (f) { return f.name; }).sort());
       assertEqual([ "UnitTests58::tryme::bar" ], aqlfunctions.toArray("UnitTests58::tryme::").map(function (f) { return f.name; }).sort());
 
-      aqlfunctions.unregister("UnitTests58::tryme::bar", function (what) { return what * 2; }, true);
-      aqlfunctions.unregister("UnitTests58::whyme::bar", function (what) { return what * 2; }, true);
+      aqlfunctions.unregister("UnitTests58::tryme::bar");
+      aqlfunctions.unregister("UnitTests58::whyme::bar");
 
     },
 
