@@ -27,6 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -72,10 +73,20 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
-                                                           RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+    
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (!found || (!value.empty() && value != "none")) {
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      }
+    }
+
     // create transaction+snapshot
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -85,24 +96,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->lastTick())));
     b.close();
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
+    if (serverId == 0) {
+      serverId = ctx->id();
     }
-     
-    if (!found || (!value.empty() && value != "none")) {
-      TRI_server_id_t serverId = 0;
 
-      if (found) {
-        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      } else {
-        serverId = ctx->id();
-      }
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
-    }
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -121,11 +120,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -153,7 +152,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         serverId = ctx->id();
       }
 
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
     }
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -328,7 +327,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     if (!found || (!value.empty() && value != "none")) {
       TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      _vocbase->updateReplicationClient(serverId, result.maxTick());
+      _vocbase->updateReplicationClient(serverId, result.maxTick(), InitialSyncer::defaultBatchTimeout);
     }
   }
 }
@@ -646,8 +645,8 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 

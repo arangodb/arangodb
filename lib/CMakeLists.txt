@@ -87,7 +87,7 @@ if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   if (DARWIN)
     set(LIB_ASM_SOURCES Basics/crc1.S)
   else()
-    set(LIB_ASM_SOURCES Basics/crc4.S)
+    set(LIB_ASM_SOURCES Basics/crc5.S)
   endif()
 
   add_definitions("-DENABLE_ASM_CRC32=1")

@@ -58,7 +58,18 @@ void RocksDBBackgroundThread::run() {
 
     try {
       if (!isStopping()) {
-        _engine->settingsManager()->sync(false);
+        double start = TRI_microtime();
+        Result res = _engine->settingsManager()->sync(false);
+        if (res.fail()) {
+          LOG_TOPIC(WARN, Logger::ENGINES)
+            << "background settings sync failed: " << res.errorMessage();
+        }
+
+        double end = TRI_microtime();
+        if ((end - start) > 0.5) {
+          LOG_TOPIC(WARN, Logger::ENGINES)
+            << "slow background settings sync: " << (end - start) << "sec";
+        }
       }
 
       bool force = isStopping();
@@ -73,8 +84,7 @@ void RocksDBBackgroundThread::run() {
         DatabaseFeature::DATABASE->enumerateDatabases(
             [force, &minTick](TRI_vocbase_t* vocbase) {
               vocbase->cursorRepository()->garbageCollect(force);
-              // FIXME: configurable interval tied to follower timeout
-              vocbase->garbageCollectReplicationClients(120.0);
+              vocbase->garbageCollectReplicationClients(TRI_microtime());
               auto clients = vocbase->getReplicationClients();
               for (auto c : clients) {
                 if (std::get<2>(c) < minTick) {
@@ -89,10 +99,10 @@ void RocksDBBackgroundThread::run() {
       // and then prune them when they expired
       _engine->pruneWalFiles();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::FIXME)
+      LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::FIXME)
+      LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught unknown exception in rocksdb background";
     }
   }

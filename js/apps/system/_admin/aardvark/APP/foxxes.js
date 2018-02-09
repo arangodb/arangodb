@@ -33,6 +33,7 @@ const marked = require('marked');
 const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
+const store = require('@arangodb/foxx/store');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -363,11 +364,11 @@ foxxRouter.patch('/devel', function (req, res) {
 
 router.get('/fishbowl', function (req, res) {
   try {
-    FoxxManager.update();
+    store.update();
   } catch (e) {
     console.warnLines(`Failed to update Foxx store: ${e.stack}`);
   }
-  res.json(FoxxManager.availableJson());
+  res.json(store.availableJson());
 })
 .summary('List of all foxx services submitted to the Foxx store.')
 .description(dd`
