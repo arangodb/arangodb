@@ -111,9 +111,9 @@ static void createBabiesError(VPackBuilder& builder,
                               Result error, bool silent) {
   if (!silent) {
     builder.openObject();
-    builder.add("error", VPackValue(true));
-    builder.add("errorNum", VPackValue(error.errorNumber()));
-    builder.add("errorMessage", VPackValue(error.errorMessage()));
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
     builder.close();
   }
 
@@ -812,23 +812,21 @@ std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
 /// @brief read all master pointers, using skip and limit.
 /// The resualt guarantees that all documents are contained exactly once
 /// as long as the collection is not modified.
-OperationResult transaction::Methods::any(std::string const& collectionName,
-                                          uint64_t skip, uint64_t limit) {
+OperationResult transaction::Methods::any(std::string const& collectionName) {
   if (_state->isCoordinator()) {
-    return anyCoordinator(collectionName, skip, limit);
+    return anyCoordinator(collectionName);
   }
-  return anyLocal(collectionName, skip, limit);
+  return anyLocal(collectionName);
 }
 
 /// @brief fetches documents in a collection in random order, coordinator
-OperationResult transaction::Methods::anyCoordinator(std::string const&,
-                                                     uint64_t, uint64_t) {
+OperationResult transaction::Methods::anyCoordinator(std::string const&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(
-    std::string const& collectionName, uint64_t skip, uint64_t limit) {
+    std::string const& collectionName) {
   TRI_voc_cid_t cid = resolver()->getCollectionIdLocal(collectionName);
 
   if (cid == 0) {
@@ -849,9 +847,9 @@ OperationResult transaction::Methods::anyLocal(
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, false);
 
-  cursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
+  cursor->nextDocument([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
-  });
+  }, 1);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);
@@ -1070,8 +1068,8 @@ static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> 
   if (resultBody != nullptr) {
     VPackSlice slice = resultBody->slice();
     if (slice.isObject()) {
-      VPackSlice num = slice.get("errorNum");
-      VPackSlice msg = slice.get("errorMessage");
+      VPackSlice num = slice.get(StaticStrings::ErrorNum);
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
       if (num.isNumber()) {
         if (msg.isString()) {
           // found an error number and an error message, so let's use it!
@@ -1505,7 +1503,7 @@ OperationResult transaction::Methods::insertLocal(
         VPackArrayIterator itResult(ourResult);
         while (itValue.valid() && itResult.valid()) {
           TRI_ASSERT((*itResult).isObject());
-          if (!(*itResult).hasKey("error")) {
+          if (!(*itResult).hasKey(StaticStrings::Error)) {
             doOneDoc(itValue.value(), itResult.value());
             count++;
           }
@@ -1855,7 +1853,7 @@ OperationResult transaction::Methods::modifyLocal(
           VPackArrayIterator itResult(ourResult);
           while (itValue.valid() && itResult.valid()) {
             TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey("error")) {
+            if (!(*itResult).hasKey(StaticStrings::Error)) {
               doOneDoc(itValue.value(), itResult.value());
               count++;
             }
@@ -2138,7 +2136,7 @@ OperationResult transaction::Methods::removeLocal(
           VPackArrayIterator itResult(ourResult);
           while (itValue.valid() && itResult.valid()) {
             TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey("error")) {
+            if (!(*itResult).hasKey(StaticStrings::Error)) {
               doOneDoc(itValue.value(), itResult.value());
               count++;
             }
@@ -2266,7 +2264,7 @@ OperationResult transaction::Methods::allLocal(
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   };
-  cursor->allDocuments(cb);
+  cursor->allDocuments(cb, 1000);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
     Result res = unlockRecursive(cid, AccessMode::Type::READ);

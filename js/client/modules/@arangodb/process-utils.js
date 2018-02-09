@@ -920,8 +920,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
-  if (options.cluster && options.singleresilient ||
-     !options.cluster && !options.singleresilient) {
+  if (options.cluster && options.resilientsingle ||
+     !options.cluster && !options.resilientsingle) {
     throw "invalid call to startInstanceCluster";
   }
 
@@ -977,7 +977,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
-  } else if (options.singleresilient) {
+  } else if (options.resilientsingle) {
     // for now start just two (TODO config parameter)
     for (i = 0; i < 2; i++) {
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
@@ -1051,7 +1051,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   // we need to find the leading server
-  if (options.singleresilient) {
+  if (options.resilientsingle) {
     const internal = require('internal');
     const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
     if (!reply.error && reply.code === 200) {
@@ -1248,7 +1248,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
-    } else if (options.cluster || options.singleresilient) {
+    } else if (options.cluster || options.resilientsingle) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
     } else if (options.agency) {

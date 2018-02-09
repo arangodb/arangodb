@@ -211,38 +211,48 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-
+    std::string const myId = ServerState::instance()->getId(); // local cluster UUID
+    
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
       std::string const leaderPath = "Plan/AsyncReplication/Leader";
-      std::string const myId = ServerState::instance()->getId();
       
       try {
         VPackBuilder myIdBuilder;
         myIdBuilder.add(VPackValue(myId));
         AgencyComm agency;
         AgencyCommResult res = agency.getValues(leaderPath);
-        VPackSlice leaderSlice;
         if (res.successful()) {
-          leaderSlice = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
-          if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
-            res = agency.casValue(leaderPath, leaderSlice, myIdBuilder.slice(),
-                                  /* ttl */ 0, /* timeout */ 5.0);
-            if (res.successful()) {
-              // sucessfull leadership takeover
-              ss->setFoxxmaster(myId);
+          VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+          if (!leader.isString() || leader.getStringLength() == 0) { // no leader in agency
+            if (leader.isNone()) {
+              res = agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            } else {
+              res = agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            }
+            if (res.successful()) { // sucessfull leadership takeover
+              leader = myIdBuilder.slice();
+            } // ignore for now, heartbeat thread will handle it
+          }
+          
+          if (leader.isString() && leader.getStringLength() > 0) {
+            ss->setFoxxmaster(leader.copyString());
+            if (leader == myIdBuilder.slice()) {
               LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
-            } // heartbeat thread will take care later
-          } else {
-            ss->setFoxxmaster(leaderSlice.copyString());
-            LOG_TOPIC(INFO, Logger::STARTUP) << "Following " << ss->getFoxxmaster();
+            } else {
+              LOG_TOPIC(INFO, Logger::STARTUP) << "Following leader: " << ss->getFoxxmaster();
+            }
           }
         }
       } catch(...) {} // weglaecheln
+    } else {
+      ss->setFoxxmaster(myId); // could be empty, but set anyway
     }
     
-    // will run foxx/manager.js internally and start queues etc
+    // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
     // Agency is not allowed to call this
