@@ -134,8 +134,8 @@ class User {
     DBAuthContext(auth::Level dbLvl, CollLevelMap&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
-    auth::Level collectionAuthLevel(std::string const& collectionName,
-                                    bool& notFound) const;
+    //auth::Level collectionAuthLevel(std::string const& collectionName,
+    //                                bool& notFound) const;
 
    public:
     auth::Level _databaseAuthLevel;

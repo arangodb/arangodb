@@ -41,12 +41,22 @@ const cols = ['*', colName];
 const userSet = new Set();
 const internal = require('internal');
 
+let conv = function(x) {
+  if (x === 'rw') return 2;
+  if (x === 'ro') return 1;
+  if (x === 'none') return 0;
+  return -1;
+};
+
 const createUsers = () => {
   db._useDatabase('_system');
   for (const db of dbs) {
     for (const dbLevel of rightLevels) {
       for (const col of cols) {
         for (const colLevel of rightLevels) {
+          if (db === '*' && col !== '*') {
+            continue;
+          }
           const name = `user_${db}_${dbLevel}_${col}_${colLevel}`;
           userSet.add({
             name,
@@ -56,7 +66,8 @@ const createUsers = () => {
             },
             col: {
               name: col,
-              permission: colLevel
+              permission: (conv(dbLevel) > conv(colLevel) ? dbLevel : colLevel)
+              //permission: colLevel
             }
           });
         }

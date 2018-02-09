@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage */
+/* global Blob, window, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage */
 
 (function () {
   'use strict';

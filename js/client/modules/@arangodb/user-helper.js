@@ -1,4 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
+/* global describe, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief Helper module to generate users with specific rights
@@ -159,7 +160,7 @@ exports.loginUser = (user) => {
       })
     });
   } catch (e) {
-    internal.print(e);
+    print(e);
   }
 
   return res;
