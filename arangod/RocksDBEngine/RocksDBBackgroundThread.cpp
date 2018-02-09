@@ -73,8 +73,7 @@ void RocksDBBackgroundThread::run() {
         DatabaseFeature::DATABASE->enumerateDatabases(
             [force, &minTick](TRI_vocbase_t* vocbase) {
               vocbase->cursorRepository()->garbageCollect(force);
-              // FIXME: configurable interval tied to follower timeout
-              vocbase->garbageCollectReplicationClients(120.0);
+              vocbase->garbageCollectReplicationClients(TRI_microtime());
               auto clients = vocbase->getReplicationClients();
               for (auto c : clients) {
                 if (std::get<2>(c) < minTick) {
