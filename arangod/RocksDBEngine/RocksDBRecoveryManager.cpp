@@ -385,8 +385,6 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
 /// parse the WAL with the above handler parser class
 Result RocksDBRecoveryManager::parseRocksWAL() {
-  std::unique_ptr<WBReader> handler;
-
   Result shutdownRv;
 
   Result res = basics::catchToResult([&]() -> Result {
@@ -398,7 +396,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    WBReader handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
+    WBReader handler(engine->settingsManager()->counterSeqs());
 
     auto minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
                             engine->releasedTick());
@@ -413,8 +411,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         s = iterator->status();
         if (s.ok()) {
           rocksdb::BatchResult batch = iterator->GetBatch();
-          handler->currentSeqNum = batch.sequence;
-          s = batch.writeBatchPtr->Iterate(handler.get());
+          handler.currentSeqNum = batch.sequence;
+          s = batch.writeBatchPtr->Iterate(&handler);
         }
 
 
@@ -431,8 +429,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
       if (rv.ok()) {
         LOG_TOPIC(TRACE, Logger::ENGINES)
-            << "finished WAL scan with " << handler->deltas.size();
-        for (auto& pair : handler->deltas) {
+            << "finished WAL scan with " << handler.deltas.size();
+        for (auto& pair : handler.deltas) {
           engine->settingsManager()->updateCounter(pair.first, pair.second);
           LOG_TOPIC(TRACE, Logger::ENGINES)
               << "WAL recovered " << pair.second.added() << " PUTs and "
@@ -440,16 +438,16 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         }
       }
     }
+
+    shutdownRv = handler.shutdownWBReader();
+
     return rv;
   });
 
-
-  shutdownRv = handler->shutdownWBReader();
-
-  if(res.ok()) {
+  if (res.ok()) {
     res = std::move(shutdownRv);
   } else {
-    if(shutdownRv.fail()){
+    if (shutdownRv.fail()){
       res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
     }
   }
