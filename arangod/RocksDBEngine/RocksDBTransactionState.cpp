@@ -87,6 +87,9 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   LOG_TRX(this, _nestingLevel)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
+
+  TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) || !AccessMode::isWriteOrExclusive(_type));
+  
   if (_nestingLevel == 0) {
     // set hints
     _hints = hints;

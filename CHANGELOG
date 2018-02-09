@@ -1,10 +1,28 @@
 devel
 -----
+
+
 * Index selectivity estimates for RocksDB engine are now eventually consistent.
   This change addresses a previous issue where some index updates could be
   "lost" from the view of the internal selectivity estimate, leading to
   inaccurate estimates. The issue is solved now, but there can be up to a second
   or so delay before updates are reflected in the estimates.
+
+* support `returnOld` and `returnNew` attributes for in the following HTTP REST 
+  APIs:
+
+  * /_api/gharial/<graph>/vertex/<collection>
+  * /_api/gharial/<graph>/edge/<collection>
+
+  The exception from this is that the HTTP DELETE verb for these APIs does not
+  support `returnOld` because that would make the existing API incompatible
+
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
 
 * fix internal issue #478: remove unused and undocumented REST API endpoints
   _admin/statistics/short and _admin/statistics/long.
@@ -13,13 +31,29 @@ devel
   superseded by other REST APIs and were partially dysfunctional. Therefore
   these two endpoints have been removed entirely.
 
-* fix internal issue #81: quotation marks disappeared when switching table/json
-  editor in the query editor ui
-
 * fixed issue #1532: reload users on restore
 
 * fixed internal issue #1475: when restoring a cluster dump to a single server
-  ignore indices of type primary and edge since we mustn't create them here.
+  ignore indexes of type primary and edge since we mustn't create them here.
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a JavaScript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
+         this is not the case anymore.
 
 * fix internal issue #1439: improve performance of any-iterator for RocksDB
 
@@ -27,37 +61,10 @@ devel
   Write-throttling is turned on by default, to reduce chances of compactions getting
   too far behind and blocking incoming writes.
 
-* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
-
 * UI: fixed an issue where a collection name gets wrongly cached within the
   documents overview of a collection.
 
-* UI: fixed a query editor caching and parsing issue
-
-* issue #4222: Permission error preventing AQL query import / export on webui
-
-* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
-  Former the index estimates were modified if the transaction commited or not.
-  Now they will only be modified if the transaction commited successfully.
-
-* UI: optimized login view for very small screen sizes
-
-* UI: optimized error messages for invalid query bind parameter
-
-* Truncate in RocksDB will now do intermediate commits every 10.000 documents
-  if truncate fails or the server crashes during this operation all deletes
-  that have been commited so far are persisted.
-
-* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
-  default value. This will mostly mean the default number block cache shard
-  bits is lower than before, allowing each shard to store more data and cause
-  less evictions from block cache
-
-* Updated Swagger UI to version 3.9.0
-
 * issue #1190: added option `--create-database` for arangoimport
-
-* issue #3504: added option `--force-same-database` for arangorestore
 
   with this option set to true, it is possible to make any arangorestore attempt
   fail if the specified target database does not match the database name
@@ -104,11 +111,74 @@ devel
 * UI: Shard distribution view now has an accordion view instead of displaying
   all shards of all collections at once.
 
+* internal issue #1726: Supervision to remove deleted nodes from
+  Health did not function for multiple servers at the same time, as
+  agency transaction was malformed.
 
-v3.3.3 (XXXX-XX-XX)
+
+v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fix timeout issues in replication client expiration
+
+
+v3.3.3 (2018-01-16)
+-------------------
+
+* fix issue #4272: VERSION file keeps disappearing
+
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
+* added option `--rocksdb.throttle` to control whether write-throttling is enabled
+  Write-throttling is turned on by default, to reduce chances of compactions getting
+  too far behind and blocking incoming writes.
+
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed a query editor caching and parsing issue
+
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
+* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
+  Former the index estimates were modified if the transaction commited or not.
+  Now they will only be modified if the transaction commited successfully.
+
+* UI: optimized login view for very small screen sizes
+
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* UI: optimized error messages for invalid query bind parameter
+
+* UI: upgraded swagger ui to version 3.9.0
+
+* issue #3504: added option `--force-same-database` for arangorestore
+
+  with this option set to true, it is possible to make any arangorestore attempt
+  fail if the specified target database does not match the database name
+  specified in the source dump's "dump.json" file. it can thus be used to
+  prevent restoring data into the "wrong" database
+
+  The option is set to `false` by default to ensure backwards-compatibility
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
 * fixed issue #4255: AQL SORT consuming too much memory
+
+* fixed incorrect persistence of RAFT vote and term
 
 
 v3.3.2 (2018-01-04)
@@ -3626,9 +3696,9 @@ v2.7.3 (2015-12-17)
   `syncCollection` if the collection was dropped right before synchronization
   and drop and (re-)create collection markers were located in the same WAL file
 
-
 * fixed an issue where overwriting the system sessions collection would break
   the web interface when authentication is enabled
+
 
 v2.7.2 (2015-12-01)
 -------------------

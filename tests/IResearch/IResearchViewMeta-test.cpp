@@ -74,7 +74,7 @@ SECTION("test_defaults") {
 
   for (auto& entry: meta._commit._consolidationPolicies) {
     CHECK(true == (1 == expectedItem.erase(entry.type())));
-    CHECK(true == (10 == entry.intervalStep()));
+    CHECK(true == (300 == entry.segmentThreshold()));
     CHECK(true == (false == !entry.policy()));
     CHECK(true == (0.85f == entry.threshold()));
   }
@@ -123,22 +123,22 @@ SECTION("test_inheritDefaults") {
 
       switch(entry.type()) {
        case ConsolidationPolicy::Type::BYTES:
-        CHECK(true == (101 == entry.intervalStep()));
+        CHECK(true == (101 == entry.segmentThreshold()));
         CHECK(true == (false == !entry.policy()));
         CHECK(true == (.11f == entry.threshold()));
         break;
        case ConsolidationPolicy::Type::BYTES_ACCUM:
-        CHECK(true == (151 == entry.intervalStep()));
+        CHECK(true == (151 == entry.segmentThreshold()));
         CHECK(true == (false == !entry.policy()));
         CHECK(true == (.151f == entry.threshold()));
         break;
        case ConsolidationPolicy::Type::COUNT:
-        CHECK(true == (201 == entry.intervalStep()));
+        CHECK(true == (201 == entry.segmentThreshold()));
         CHECK(true == (false == !entry.policy()));
         CHECK(true == (.21f == entry.threshold()));
         break;
        case ConsolidationPolicy::Type::FILL:
-        CHECK(true == (301 == entry.intervalStep()));
+        CHECK(true == (301 == entry.segmentThreshold()));
         CHECK(true == (false == !entry.policy()));
         CHECK(true == (.31f == entry.threshold()));
         break;
@@ -171,7 +171,7 @@ SECTION("test_readDefaults") {
 
     for (auto& entry: meta._commit._consolidationPolicies) {
       CHECK(true == (1 == expectedItem.erase(entry.type())));
-      CHECK(true == (10 == entry.intervalStep()));
+      CHECK(true == (300 == entry.segmentThreshold()));
       CHECK(true == (false == !entry.policy()));
       CHECK(true == (.85f == entry.threshold()));
     }
@@ -244,9 +244,9 @@ SECTION("test_readCustomizedValues") {
 
   {
     std::string errorField;
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"intervalStep\": 0.5, \"threshold\": 1 } } } }");
+    auto json = arangodb::velocypack::Parser::fromJson("{ \"commit\": { \"consolidate\": { \"bytes\": { \"segmentThreshold\": 0.5, \"threshold\": 1 } } } }");
     CHECK(false == meta.init(json->slice(), errorField, logicalView));
-    CHECK(std::string("commit=>consolidate=>bytes=>intervalStep") == errorField);
+    CHECK(std::string("commit=>consolidate=>bytes=>segmentThreshold") == errorField);
   }
 
   {
@@ -302,7 +302,7 @@ SECTION("test_readCustomizedValues") {
   {
     std::string errorField;
     auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"commit\": { \"consolidate\": { \"bytes_accum\": { \"intervalStep\": 0, \"threshold\": 0.2 }, \"fill\": { \"intervalStep\": 0 } } } \
+      \"commit\": { \"consolidate\": { \"bytes_accum\": { \"segmentThreshold\": 0, \"threshold\": 0.2 }, \"fill\": { \"segmentThreshold\": 0 } } } \
     }");
     CHECK(true == meta.init(json->slice(), errorField, logicalView));
     CHECK(true == (meta._commit._consolidationPolicies.empty()));
@@ -312,7 +312,7 @@ SECTION("test_readCustomizedValues") {
   std::string errorField;
   auto json = arangodb::velocypack::Parser::fromJson("{ \
         \"collections\": [ 42 ], \
-        \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"intervalStep\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"intervalStep\": 1501, \"threshold\": 0.151 }, \"count\": { \"intervalStep\": 2001 }, \"fill\": {} } }, \
+        \"commit\": { \"commitIntervalMsec\": 456, \"cleanupIntervalStep\": 654, \"commitTimeoutMsec\": 789, \"consolidate\": { \"bytes\": { \"segmentThreshold\": 1001, \"threshold\": 0.11 }, \"bytes_accum\": { \"segmentThreshold\": 1501, \"threshold\": 0.151 }, \"count\": { \"segmentThreshold\": 2001 }, \"fill\": {} } }, \
         \"dataPath\": \"somepath\", \
         \"locale\": \"ru_RU.KOI8-R\", \
         \"threadsMaxIdle\": 8, \
@@ -338,22 +338,22 @@ SECTION("test_readCustomizedValues") {
 
     switch(entry.type()) {
      case ConsolidationPolicy::Type::BYTES:
-      CHECK(true == (1001 == entry.intervalStep()));
+      CHECK(true == (1001 == entry.segmentThreshold()));
       CHECK(true == (false == !entry.policy()));
       CHECK(true == (.11f == entry.threshold()));
       break;
      case ConsolidationPolicy::Type::BYTES_ACCUM:
-      CHECK(true == (1501 == entry.intervalStep()));
+      CHECK(true == (1501 == entry.segmentThreshold()));
       CHECK(true == (false == !entry.policy()));
       CHECK(true == (.151f == entry.threshold()));
       break;
      case ConsolidationPolicy::Type::COUNT:
-      CHECK(true == (2001 == entry.intervalStep()));
+      CHECK(true == (2001 == entry.segmentThreshold()));
       CHECK(true == (false == !entry.policy()));
       CHECK(true == (.85f == entry.threshold()));
       break;
      case ConsolidationPolicy::Type::FILL:
-      CHECK(true == (10 == entry.intervalStep()));
+      CHECK(true == (300 == entry.segmentThreshold()));
       CHECK(true == (false == !entry.policy()));
       CHECK(true == (.85f == entry.threshold()));
       break;
@@ -369,10 +369,10 @@ SECTION("test_readCustomizedValues") {
 
 SECTION("test_writeDefaults") {
   std::unordered_map<std::string, std::unordered_map<std::string, double>> expectedCommitItemConsolidate = {
-    { "bytes",{ { "intervalStep", 10 },{ "threshold", .85f } } },
-    { "bytes_accum",{ { "intervalStep", 10 },{ "threshold", .85f } } },
-    { "count",{ { "intervalStep", 10 },{ "threshold", .85f } } },
-    { "fill",{ { "intervalStep", 10 },{ "threshold", .85f } } }
+    { "bytes",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
+    { "bytes_accum",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
+    { "count",{ { "segmentThreshold", 300 },{ "threshold", .85f } } },
+    { "fill",{ { "segmentThreshold", 300 },{ "threshold", .85f } } }
   };
   arangodb::iresearch::IResearchViewMeta meta;
   arangodb::velocypack::Builder builder;
@@ -466,10 +466,10 @@ SECTION("test_writeCustomizedValues") {
 
   std::unordered_set<TRI_voc_cid_t> expectedCollections = { 42, 52, 62 };
   std::unordered_map<std::string, std::unordered_map<std::string, double>> expectedCommitItemConsolidate = {
-    { "bytes",{ { "intervalStep", 101 },{ "threshold", .11f } } },
-    { "bytes_accum",{ { "intervalStep", 151 },{ "threshold", .151f } } },
-    { "count",{ { "intervalStep", 201 },{ "threshold", .21f } } },
-    { "fill",{ { "intervalStep", 301 },{ "threshold", .31f } } }
+    { "bytes",{ { "segmentThreshold", 101 },{ "threshold", .11f } } },
+    { "bytes_accum",{ { "segmentThreshold", 151 },{ "threshold", .151f } } },
+    { "count",{ { "segmentThreshold", 201 },{ "threshold", .21f } } },
+    { "fill",{ { "segmentThreshold", 301 },{ "threshold", .31f } } }
   };
   arangodb::velocypack::Builder builder;
   arangodb::velocypack::Slice tmpSlice;

@@ -34,6 +34,9 @@ start () {
     ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 . ) || exit 1
     ( cd $PIDDIR && chown arangodb:arangodb . && chmod 755 . ) || exit 1
 
+    local current=/var/tmp/arangod
+    ( mkdir -p $current && chown -R arangodb:arangodb $current ) || exit 1
+
     ulimit -H -n 131072 || true
     ulimit -S -n 131072 || true
 

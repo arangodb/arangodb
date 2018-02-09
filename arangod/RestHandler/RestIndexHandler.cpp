@@ -74,8 +74,9 @@ LogicalCollection* RestIndexHandler::collection(
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief get database infos
+// / @brief get index infos
 // //////////////////////////////////////////////////////////////////////////////
+
 RestStatus RestIndexHandler::getIndexes() {
   std::shared_ptr<LogicalCollection> tmpColl;
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -110,8 +111,8 @@ RestStatus RestIndexHandler::getIndexes() {
     TRI_ASSERT(indexes.slice().isArray());
     VPackBuilder tmp;
     tmp.openObject();
-    tmp.add("error", VPackValue(false));
-    tmp.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    tmp.add(StaticStrings::Error, VPackValue(false));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
     tmp.add("indexes", indexes.slice());
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
@@ -145,8 +146,8 @@ RestStatus RestIndexHandler::getIndexes() {
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
-      b.add("error", VPackValue(false));
-      b.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      b.add(StaticStrings::Error, VPackValue(false));
+      b.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
       b.close();
       output = VPackCollection::merge(output.slice(), b.slice(), false);
       generateResult(rest::ResponseCode::OK, output.slice());
@@ -208,8 +209,8 @@ RestStatus RestIndexHandler::createIndex() {
 
     VPackBuilder b;
     b.openObject();
-    b.add("error", VPackValue(false));
-    b.add("code", VPackValue(static_cast<int>(r)));
+    b.add(StaticStrings::Error, VPackValue(false));
+    b.add(StaticStrings::Code, VPackValue(static_cast<int>(r)));
     b.close();
     output = VPackCollection::merge(output.slice(), b.slice(), false);
 
@@ -255,8 +256,8 @@ RestStatus RestIndexHandler::dropIndex() {
     VPackBuilder b;
     b.openObject();
     b.add("id", idBuilder.slice());
-    b.add("error", VPackValue(false));
-    b.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    b.add(StaticStrings::Error, VPackValue(false));
+    b.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
   } else {

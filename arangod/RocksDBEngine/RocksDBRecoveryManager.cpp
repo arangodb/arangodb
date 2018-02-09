@@ -387,16 +387,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 Result RocksDBRecoveryManager::parseRocksWAL() {
   std::unique_ptr<WBReader> handler;
 
+  Result shutdownRv;
+
   Result res = basics::catchToResult([&]() -> Result {
     Result rv;
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    for (auto helper : engine->recoveryHelpers()) {
+    for (auto& helper : engine->recoveryHelpers()) {
       helper->prepare();
     }
 
     // Tell the WriteBatch reader the transaction markers to look for
-    handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
+    WBReader handler = std::make_unique<WBReader>(engine->settingsManager()->counterSeqs());
 
     auto minTick = std::min(engine->settingsManager()->earliestSeqNeeded(),
                             engine->releasedTick());
@@ -406,7 +408,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
     rv = rocksutils::convertStatus(s);
 
-    if(rv.ok()){
+    if (rv.ok()) {
       while (iterator->Valid()) {
         s = iterator->status();
         if (s.ok()) {
@@ -427,11 +429,10 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
         iterator->Next();
       }
 
-      if(rv.ok()){
+      if (rv.ok()) {
         LOG_TOPIC(TRACE, Logger::ENGINES)
             << "finished WAL scan with " << handler->deltas.size();
-        for (std::pair<uint64_t, RocksDBSettingsManager::CounterAdjustment> pair :
-             handler->deltas) {
+        for (auto& pair : handler->deltas) {
           engine->settingsManager()->updateCounter(pair.first, pair.second);
           LOG_TOPIC(TRACE, Logger::ENGINES)
               << "WAL recovered " << pair.second.added() << " PUTs and "
@@ -442,7 +443,8 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     return rv;
   });
 
-  auto shutdownRv = handler->shutdownWBReader();
+
+  shutdownRv = handler->shutdownWBReader();
 
   if(res.ok()) {
     res = std::move(shutdownRv);

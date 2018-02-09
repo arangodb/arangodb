@@ -47,6 +47,7 @@ using namespace arangodb::rest;
 GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const& configuration)
     : InitialSyncer(configuration) {
+   // has to be set here, otherwise broken
   _databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
@@ -60,13 +61,14 @@ GlobalInitialSyncer::~GlobalInitialSyncer() {
 Result GlobalInitialSyncer::run(bool incremental) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
+  } else if (application_features::ApplicationServer::isStopping()) {
+    return Result(TRI_ERROR_SHUTTING_DOWN);
   }
   
   setAborted(false);
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = getMasterState();
-    
   if (r.fail()) {
     return r;
   }
@@ -80,7 +82,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
   
   // create a WAL logfile barrier that prevents WAL logfile collection
   r = sendCreateBarrier(_masterInfo._lastLogTick);
-
   if (r.fail()) {
     return r;
   }
@@ -127,6 +128,12 @@ Result GlobalInitialSyncer::run(bool incremental) {
   try {
     // actually sync the database
     for (auto const& database : VPackObjectIterator(databases)) {
+      if (application_features::ApplicationServer::isStopping()) {
+        return Result(TRI_ERROR_SHUTTING_DOWN);
+      } else if (isAborted()) {
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      }
+      
       VPackSlice it = database.value;
       if (!it.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

@@ -367,7 +367,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type,
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
   }
-
+  
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;

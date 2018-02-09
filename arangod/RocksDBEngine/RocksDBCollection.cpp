@@ -738,6 +738,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // This should never happen...
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
+    trackWaitForSync(trx, options);
 
     if (found % 10000 == 0) {
       state->triggerIntermediateCommit();
@@ -938,10 +939,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
     TRI_ASSERT(!mdr.empty());
 
-    if (_logicalCollection->waitForSync()) {
-      trx->state()->waitForSync(true);
-      options.waitForSync = true;
-    }
+    trackWaitForSync(trx, options);
     return Result();
   }
 
@@ -1510,7 +1508,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
 
-   res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
+  res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
   if (!res.ok()) {
     return res;
   }
@@ -2001,7 +1999,7 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
 
 void RocksDBCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
                                          OperationOptions& options) {
-  if (_logicalCollection->waitForSync()) {
+  if (_logicalCollection->waitForSync() && !options.isRestore) {
     options.waitForSync = true;
   }
 

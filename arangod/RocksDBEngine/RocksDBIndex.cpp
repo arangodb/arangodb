@@ -106,8 +106,9 @@ rocksdb::Comparator const* RocksDBIndex::comparator() const {
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  builder.add("cacheInUse", VPackValue(useCache()));
-  if (useCache()) {
+  bool cacheInUse = useCache();
+  builder.add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
     builder.add("cacheSize", VPackValue(_cache->size()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
@@ -129,7 +130,6 @@ void RocksDBIndex::load() {
 
 void RocksDBIndex::unload() {
   if (useCache()) {
-    // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
