@@ -229,7 +229,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
-    V8ContextDealerGuard dealerGuard(res, &isolate, vocbase, true /*allowModification*/);
+    V8ContextDealerGuard dealerGuard(res, isolate, vocbase, true /*allowModification*/);
     if(res.fail()){
       return res;
     }

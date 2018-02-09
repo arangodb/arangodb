@@ -171,13 +171,13 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
 // in case the passed in isolate is a nullptr
 class V8ContextDealerGuard {
  public:
-  explicit V8ContextDealerGuard(Result&, v8::Isolate** pIsolate, TRI_vocbase_t* vocbase, bool allowModification);
+  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
   V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
   V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
   ~V8ContextDealerGuard();
 
  private:
-  v8::Isolate** _isolate;
+  v8::Isolate*& _isolate;
   V8Context* _context;
   bool _active;
 };
