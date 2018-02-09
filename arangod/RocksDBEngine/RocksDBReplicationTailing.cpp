@@ -589,6 +589,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
                                              bool includeSystem,
                                              TRI_voc_cid_t collectionId,
                                              VPackBuilder& builder) {
+  uint64_t lastScannedTick = tickStart;
   uint64_t lastTick = tickStart;
   uint64_t lastWrittenTick = tickStart;
 
@@ -615,6 +616,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       rocksdb::BatchResult batch = iterator->GetBatch();
       TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
 
+      if (batch.sequence <= tickEnd) {
+        lastScannedTick = batch.sequence;
+      }
+      
       if (!fromTickIncluded && batch.sequence <= tickStart &&
           batch.sequence <= tickEnd) {
         fromTickIncluded = true;
@@ -665,5 +670,6 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   if (fromTickIncluded) {
     result.includeFromTick();
   }
+  result.lastScannedTick(lastScannedTick);
   return result;
 }

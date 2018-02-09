@@ -1374,12 +1374,24 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (found) {
       active = StringUtils::boolean(header);
     }
+    
+    TRI_voc_tick_t lastScannedTick = 0;
+    header =
+        response->getHeaderField(TRI_REPLICATION_HEADER_LASTSCANNED, found);
+    if (found) {
+      lastScannedTick = StringUtils::uint64(header);
+    }
 
     header =
         response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
       TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
+      if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
+        // master did not have any news for us  
+        // still we can move forward the place from which to tail the WAL files
+        fetchTick = lastScannedTick - 1;
+      }
       if (lastIncludedTick > fetchTick) {
         fetchTick = lastIncludedTick;
         worked = true;

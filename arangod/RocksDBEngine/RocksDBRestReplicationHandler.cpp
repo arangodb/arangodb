@@ -587,6 +587,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
+    
+  std::string const& value3 = _request->value("serverId", found);
+
+  TRI_server_id_t serverId = 0;
+  if (found) {
+    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
+  }
 
   bool includeSystem = true;
   std::string const& value4 = _request->value("includeSystem", found);
@@ -659,6 +666,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.fromTickIncluded() ? "true" : "false");
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTSCANNED,
+                         StringUtils::itoa(result.lastScannedTick()));
 
   if (length > 0) {
     if (useVst) {
@@ -685,25 +694,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
         httpResponse->body().appendChar('\n');
       }
     }
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    }
-
-    // insert the start tick (minus 1 to be on the safe side) as the
-    // minimum tick we need to keep on the master. we cannot be sure
-    // the master's response makes it to the slave safely, so we must
-    // not insert the maximum of the WAL entries we sent. if we did,
-    // and the response does not make it to the slave, the master will
-    // note a higher tick than the slave will have received, which may
-    // lead to the master eventually deleting a WAL section that the
-    // slave will still request later
-    _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
   }
+    
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
