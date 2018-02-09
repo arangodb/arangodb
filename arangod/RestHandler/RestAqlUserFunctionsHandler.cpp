@@ -133,6 +133,14 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // error handling
     if(res.ok()){
+      VPackBuffer<uint8_t> resultBuffer;
+      VPackBuilder result(resultBuffer);
+
+      auto response = _response.get();
+      resetResponse(rest::ResponseCode::OK);
+
+      response->setContentType(rest::ContentType::JSON);
+      result.add("deletedCount", VPackValue(static_cast<int>(1)));
       generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
     } else {
       generateError(res);
