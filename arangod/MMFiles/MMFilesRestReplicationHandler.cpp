@@ -892,7 +892,15 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       // to avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
-    insertClient(dump._lastFoundTick);
+    // insert the start tick (minus 1 to be on the safe side) as the
+    // minimum tick we need to keep on the master. we cannot be sure
+    // the master's response makes it to the slave safely, so we must
+    // not insert the maximum of the WAL entries we sent. if we did,
+    // and the response does not make it to the slave, the master will
+    // note a higher tick than the slave will have received, which may
+    // lead to the master eventually deleting a WAL section that the
+    // slave will still request later
+    insertClient(tickStart == 0 ? tickStart : tickStart - 1);
   }
   // if no error
 }
