@@ -287,6 +287,9 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::WRITE);
+    
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -360,10 +363,13 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::WRITE);
 
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), std::string("unable to start transaction : ") + res.errorMessage());
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     trx.pinData(coll->cid());  // will throw when it fails

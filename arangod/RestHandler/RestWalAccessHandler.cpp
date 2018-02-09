@@ -26,6 +26,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/common-defines.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -346,12 +347,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     if (found) {
       serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
+
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
+      vocbase->updateReplicationClient(serverId, result.lastIncludedTick(), InitialSyncer::defaultBatchTimeout);
     });
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Wal tailing after " << tickStart
-    << ", lastIncludedTick " << result.lastIncludedTick()
-    << ", fromTickIncluded " << result.fromTickIncluded();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing after " << tickStart
+      << ", lastIncludedTick " << result.lastIncludedTick()
+      << ", fromTickIncluded " << result.fromTickIncluded();
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "No more data in WAL after " << tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
