@@ -1,6 +1,15 @@
 devel
 -----
 
+* support `returnOld` and `returnNew` attributes for in the following HTTP REST 
+  APIs:
+
+  * /_api/gharial/<graph>/vertex/<collection>
+  * /_api/gharial/<graph>/edge/<collection>
+
+  The exception from this is that the HTTP DELETE verb for these APIs does not
+  support `returnOld` because that would make the existing API incompatible
+
 * fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
