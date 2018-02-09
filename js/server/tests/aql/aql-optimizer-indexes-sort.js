@@ -142,7 +142,6 @@ function optimizerIndexesSortTestSuite () {
         return node.type;
       });
 
-      require("internal").db._explain(query);
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
       if (!require("@arangodb/cluster").isCluster()) {
         assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
