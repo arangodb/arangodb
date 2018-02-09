@@ -1,6 +1,8 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fix timeout issues in replication client expiration
+
 * added missing edge filter to neighbors-only traversals
   in case a filter condition was moved into the traverser and the traversal was
   executed in breadth-first mode and was returning each visited vertex exactly

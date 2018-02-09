@@ -1346,8 +1346,8 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
-  StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
-  StringUtils::itoa(_barrierId);
+    StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
+    StringUtils::itoa(_barrierId);
   
   TRI_voc_tick_t const originalFetchTick = fetchTick;
   worked = false;
@@ -1360,10 +1360,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   // send request
   std::string const progress =
-  "fetching master log from tick " + StringUtils::itoa(fetchTick) +
-  ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-  ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
-  std::to_string(_ongoingTransactions.size());
+    "fetching master log from tick " + StringUtils::itoa(fetchTick) +
+    ", first regular tick " + StringUtils::itoa(firstRegularTick) +
+    ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
+    std::to_string(_ongoingTransactions.size()) + ", chunk size " + std::to_string(_configuration._chunkSize);
+   
   setProgress(progress);
   
   std::string body;
