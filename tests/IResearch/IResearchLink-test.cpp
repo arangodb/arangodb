@@ -31,6 +31,11 @@
 
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AqlFunctionFeature.h"
+
+#if USE_ENTERPRISE
+  #include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -89,6 +94,10 @@ struct IResearchLinkSetup {
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::FlushFeature(&server), false); // do not start the thread
+
+    #if USE_ENTERPRISE
+      features.emplace_back(new arangodb::LdapFeature(&server), false); // required for AuthenticationFeature with USE_ENTERPRISE
+    #endif
 
     for (auto& f : features) {
       arangodb::application_features::ApplicationServer::server->addFeature(f.first);
@@ -184,9 +193,9 @@ SECTION("test_defaults") {
   // valid link creation
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"iresearch\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), 0);
@@ -209,7 +218,7 @@ SECTION("test_defaults") {
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
     CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    CHECK((std::string("iresearch") == link->typeName()));
+    CHECK((arangodb::iresearch::IResearchFeature::type() == link->typeName()));
     CHECK((false == link->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -236,9 +245,9 @@ SECTION("test_defaults") {
   // ensure jSON is still valid after unload()
   {
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42 }");
+    auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42 }");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"iresearch\" }");
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"id\": 42, \"type\": \"arangosearch\" }");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = vocbase.createView(viewJson->slice(), 0);
@@ -261,7 +270,7 @@ SECTION("test_defaults") {
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
     CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    CHECK((std::string("iresearch") == link->typeName()));
+    CHECK((arangodb::iresearch::IResearchFeature::type() == link->typeName()));
     CHECK((false == link->unique()));
 
     {
@@ -309,12 +318,12 @@ SECTION("test_write") {
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
   std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("test_write")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"iresearch\", \"view\": 42, \"includeAllFields\": true }");
+  auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 42, \
     \"name\": \"testView\", \
-    \"type\": \"iresearch\", \
+    \"type\": \"arangosearch\", \
     \"properties\": { \
       \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
     } \

@@ -740,6 +740,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       // This should never happen...
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
+    trackWaitForSync(trx, options);
 
     if (found % 10000 == 0) {
       state->triggerIntermediateCommit();
@@ -876,7 +877,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, documentId, newSlice, options);
-  
   if (res.ok()) {
     trackWaitForSync(trx, options);
     mdr.setManaged(newSlice.begin(), documentId); 
@@ -944,10 +944,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
     TRI_ASSERT(!mdr.empty());
 
-    if (_logicalCollection->waitForSync()) {
-      trx->state()->waitForSync(true);
-      options.waitForSync = true;
-    }
+    trackWaitForSync(trx, options);
     return Result();
   }
 
@@ -1077,7 +1074,6 @@ Result RocksDBCollection::replace(
 
   RocksDBOperationResult opResult = updateDocument(
       trx, oldDocumentId, oldDoc, documentId, newDoc, options);
-  
   if (opResult.ok()) {
     trackWaitForSync(trx, options);
 
@@ -1159,7 +1155,6 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), documentId.id(),
                           StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
   res = removeDocument(trx, oldDocumentId, oldDoc, options);
-  
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
@@ -1527,7 +1522,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
 
-   res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
+  res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
   if (!res.ok()) {
     return res;
   }
@@ -2016,7 +2011,7 @@ void RocksDBCollection::blackListKey(char const* data, std::size_t len) const {
 
 void RocksDBCollection::trackWaitForSync(arangodb::transaction::Methods* trx,
                                          OperationOptions& options) {
-  if (_logicalCollection->waitForSync()) {
+  if (_logicalCollection->waitForSync() && !options.isRestore) {
     options.waitForSync = true;
   }
 

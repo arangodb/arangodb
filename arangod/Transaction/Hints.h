@@ -39,12 +39,12 @@ class Hints {
     SINGLE_OPERATION = 1,
     LOCK_ENTIRELY = 2,
     LOCK_NEVER = 4,
-    NO_BEGIN_MARKER = 8,
-    NO_ABORT_MARKER = 16,
-    NO_THROTTLING = 32,
+    NO_BEGIN_MARKER = 8, // not supported in RocksDB
+    NO_ABORT_MARKER = 16, // not supported in RocksDB
+    NO_THROTTLING = 32, // not supported in RocksDB
     TRY_LOCK = 64,
-    NO_COMPACTION_LOCK = 128,
-    NO_USAGE_LOCK = 256,
+    NO_COMPACTION_LOCK = 128, // not supported in RocksDB
+    NO_USAGE_LOCK = 256, // not supported in RocksDB
     RECOVERY = 512,
     NO_DLD = 1024 // disable deadlock detection
   };

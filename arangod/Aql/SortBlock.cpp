@@ -124,8 +124,8 @@ class OurLessThan {
       _sortRegisters(sortRegisters) {
   }
 
-  bool operator()(std::pair<size_t, size_t> const& a,
-                  std::pair<size_t, size_t> const& b) const {
+  bool operator()(std::pair<uint32_t, uint32_t> const& a,
+                  std::pair<uint32_t, uint32_t> const& b) const {
     for (auto const& reg : _sortRegisters) {
       auto const& lhs = _buffer[a.first]->getValueReference(a.second, std::get<0>(reg));
       auto const& rhs = _buffer[b.first]->getValueReference(b.second, std::get<0>(reg));
@@ -269,17 +269,21 @@ void SortBlock::doSorting() {
   }
   
   // coords[i][j] is the <j>th row of the <i>th block
-  std::vector<std::pair<size_t, size_t>> coords;
+  std::vector<std::pair<uint32_t, uint32_t>> coords;
   coords.reserve(sum);
 
   // install the coords
-  size_t count = 0;
+  // we are intentionally using uint32_t here to save memory and
+  // have better cache utilization
+  uint32_t count = 0;
 
   for (auto const& block : _buffer) {
-    for (size_t i = 0; i < block->size(); i++) {
+    uint32_t const n = static_cast<uint32_t>(block->size());
+    
+    for (uint32_t i = 0; i < n; i++) {
       coords.emplace_back(std::make_pair(count, i));
     }
-    count++;
+    ++count;
   }
 
   // comparison function

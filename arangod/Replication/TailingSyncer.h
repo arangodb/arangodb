@@ -125,9 +125,6 @@ protected:
   
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
-  
-  /// @brief create correct initial syncer
-  virtual std::unique_ptr<InitialSyncer> initialSyncer() = 0;
 
  protected:
   

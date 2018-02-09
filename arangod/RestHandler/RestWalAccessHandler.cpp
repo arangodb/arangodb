@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestWalAccessHandler.h"
-
+#include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Replication/common-defines.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -35,7 +37,6 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -325,15 +326,15 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // set headers
   bool checkMore = result.lastIncludedTick() > 0 &&
                    result.lastIncludedTick() < result.latestTick();
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
   _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa(result.lastIncludedTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(result.latestTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.fromTickIncluded() ? "true" : "false");
 
   if (length > 0) {
@@ -346,12 +347,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     if (found) {
       serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
+
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
+      vocbase->updateReplicationClient(serverId, result.lastIncludedTick(), InitialSyncer::defaultBatchTimeout);
     });
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Wal tailing after " << tickStart
-    << ", lastIncludedTick " << result.lastIncludedTick()
-    << ", fromTickIncluded " << result.fromTickIncluded();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing after " << tickStart
+      << ", lastIncludedTick " << result.lastIncludedTick()
+      << ", fromTickIncluded " << result.fromTickIncluded();
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "No more data in WAL after " << tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
@@ -408,9 +410,9 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
     auto cc = r.lastIncludedTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
     generateResult(cc, std::move(buffer));
 
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                            r.fromTickIncluded() ? "true" : "false");
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+    _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(r.lastIncludedTick()));
   }
 }

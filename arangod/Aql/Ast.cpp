@@ -621,7 +621,16 @@ AstNode* Ast::createNodeView(char const* name) {
   AstNode* node = createNode(NODE_TYPE_VIEW);
   node->setStringValue(name, strlen(name));
 
-  return node;
+  auto* collections = _query->collections();
+
+  // all available view implementations allow read-only access to collections
+  if (!collections || collections->add(name, AccessMode::Type::READ)) {
+    return node;
+  }
+
+  _query->registerErrorCustom(TRI_ERROR_INTERNAL, "AQL Collections addition of LogicalView failure while creating VIEW node");
+
+  return nullptr;
 }
 
 /// @brief create an AST reference node
@@ -2956,7 +2965,7 @@ AstNode* Ast::optimizeAttributeAccess(AstNode* node, std::unordered_map<Variable
     size_t const n = what->numMembers();
 
     for (size_t i = 0; i < n; ++i) {
-      AstNode const* member = what->getMember(0);
+      AstNode const* member = what->getMember(i);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringLength() == length &&
@@ -3474,3 +3483,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 
   return node;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

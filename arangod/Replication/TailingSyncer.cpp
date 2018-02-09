@@ -1014,7 +1014,7 @@ retry:
       
       // start initial synchronization
       try {
-        std::unique_ptr<InitialSyncer> syncer = initialSyncer();
+        std::unique_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
         Result r = syncer->run(_configuration._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
@@ -1062,8 +1062,10 @@ void TailingSyncer::getLocalState() {
     return;
   }
  
+  // a _masterInfo._serverId value of 0 may occur if no proper connection could be
+  // established to the master initially
   if (_masterInfo._serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0) {
+      _applier->_state._serverId != 0 && _masterInfo._serverId != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE,
                                    std::string("encountered wrong master id in replication state file. found: ") +
                                    StringUtils::itoa(_masterInfo._serverId) + ", expected: " +
@@ -1269,20 +1271,20 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   
   bool found;
   std::string header =
-  response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+  response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
   
   if (found) {
     fromIncluded = StringUtils::boolean(header);
   }
   
   // fetch the tick from where we need to start scanning later
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
   if (!found) {
     // we changed the API in 3.3 to use last included
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+    header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
+                    _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastTick +
                     " is missing in determine-open-transactions response");
     }
   }
@@ -1341,8 +1343,8 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
-  StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
-  StringUtils::itoa(_barrierId);
+    StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
+    StringUtils::itoa(_barrierId);
   
   TRI_voc_tick_t const originalFetchTick = fetchTick;
   worked = false;
@@ -1355,10 +1357,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   // send request
   std::string const progress =
-  "fetching master log from tick " + StringUtils::itoa(fetchTick) +
-  ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-  ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
-  std::to_string(_ongoingTransactions.size());
+    "fetching master log from tick " + StringUtils::itoa(fetchTick) +
+    ", first regular tick " + StringUtils::itoa(firstRegularTick) +
+    ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
+    std::to_string(_ongoingTransactions.size()) + ", chunk size " + std::to_string(_configuration._chunkSize);
+   
   setProgress(progress);
   
   std::string body;
@@ -1389,32 +1392,32 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   }
   
   bool found;
-  std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  std::string header = response->getHeaderField(StaticStrings::ReplicationHeaderCheckMore, found);
   
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderCheckMore + " is missing");
   }
   
   bool checkMore = StringUtils::boolean(header);
   
   // was the specified from value included the result?
   bool fromIncluded = false;
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderFromPresent, found);
   if (found) {
     fromIncluded = StringUtils::boolean(header);
   }
   
   bool active = false;
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderActive, found);
   if (found) {
     active = StringUtils::boolean(header);
   }
   
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED +
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastIncluded +
                   " is missing in logger-follow response");
   }
   
@@ -1428,10 +1431,10 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     checkMore = false;
   }
   
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastTick, found);
   if (!found) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
+                  _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastTick +
                   " is missing in logger-follow response");
   }
   

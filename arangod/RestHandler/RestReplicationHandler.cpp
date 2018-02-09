@@ -494,38 +494,22 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // will throw if invalid
   configuration.validate();
 
-  std::unique_ptr<InitialSyncer> syncer;
-  if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(configuration));
-  } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, configuration));
-  }
+  // allow access to _users if appropriate
+  grantTemporaryRights();
 
   // forget about any existing replication applier configuration
   applier->forget();
-
-  // start initial synchronization
-  TRI_voc_tick_t barrierId = 0;
-  TRI_voc_tick_t lastLogTick = 0;
-  
-  try {
-    Result r = syncer->run(configuration._incremental);
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-    lastLogTick = syncer->getLastLogTick();
-    // steal the barrier from the syncer
-    barrierId = syncer->stealBarrier();
-  } catch (basics::Exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("caught exception during slave creation: ") + ex.what());
-  } catch (std::exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("caught exception during slave creation: ") + ex.what());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during slave creation");
-  }
-
   applier->reconfigure(configuration);
-  applier->start(lastLogTick, true, barrierId);
+  applier->startReplication();
+  
+  while(applier->isInitializing()) { // wait for initial sync
+    std::this_thread::sleep_for(std::chrono::microseconds(50000));
+    if (application_features::ApplicationServer::isStopping()) {
+      generateError(Result(TRI_ERROR_SHUTTING_DOWN));
+      return;
+    }
+  }
+  //applier->startTailing(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();
@@ -1279,6 +1263,11 @@ Result RestReplicationHandler::processRestoreUsersBatch(
   TRI_ASSERT(queryRegistry != nullptr);
 
   auto queryResult = query.execute(queryRegistry);
+
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
+    "Authentication");
+  authentication->authInfo()->outdate();
+  
   return Result{queryResult.code};
 }
 
@@ -1438,9 +1427,9 @@ Result RestReplicationHandler::processRestoreDataBatch(
 
     while (itRequest.valid()) {
       VPackSlice result = *itResult;
-      VPackSlice error = result.get("error");
+      VPackSlice error = result.get(StaticStrings::Error);
       if (error.isTrue()) {
-        error = result.get("errorNum");
+        error = result.get(StaticStrings::ErrorNum);
         if (error.isNumber()) {
           int code = error.getNumericValue<int>();
           if (code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
@@ -1535,17 +1524,8 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
   
   // look up the collection
   try {
-    CollectionGuard guard(_vocbase, name.c_str());
-
-    LogicalCollection* collection = guard.collection();
-
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, collection->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
-
-    // collection status lock was already acquired by collection guard 
-    // above
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+    SingleCollectionTransaction trx(ctx, name, AccessMode::Type::EXCLUSIVE);
     
     Result res = trx.begin();
 
@@ -1555,12 +1535,24 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
       THROW_ARANGO_EXCEPTION(res);
     }
 
+    LogicalCollection* collection = trx.documentCollection();
     auto physical = collection->getPhysical();
     TRI_ASSERT(physical != nullptr);
     for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
       std::shared_ptr<arangodb::Index> idx;
 
       // {"id":"229907440927234","type":"hash","unique":false,"fields":["x","Y"]}
+      if (! ServerState::instance()->isCoordinator()) {
+        arangodb::velocypack::Slice value = idxDef.get("type");
+        if (value.isString()) {
+          std::string const typeString = value.copyString();
+          if ((typeString == "primary") ||(typeString == "edge")) {
+            LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreIndexes silently ignoring primary or edge index: " <<
+              idxDef.toJson();
+            continue;
+          }
+        }
+      }
 
       res = physical->restoreIndex(&trx, idxDef, idx);
 
@@ -1856,7 +1848,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  applier->start(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick, barrierId);
   handleCommandApplierGetState();
 }
 
@@ -1963,7 +1955,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
           VPackBuilder b;
           {
             VPackObjectBuilder bb(&b);
-            b.add("error", VPackValue(false));
+            b.add(StaticStrings::Error, VPackValue(false));
           }
 
           generateResult(rest::ResponseCode::OK, b.slice());
@@ -2032,7 +2024,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2077,7 +2069,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2215,7 +2207,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
   }
 
   generateResult(rest::ResponseCode::OK, b.slice());
@@ -2264,7 +2256,7 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(lockHeld));
   }
 
@@ -2315,7 +2307,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   VPackBuilder b;
   {
     VPackObjectBuilder bb(&b);
-    b.add("error", VPackValue(false));
+    b.add(StaticStrings::Error, VPackValue(false));
     b.add("lockHeld", VPackValue(lockHeld));
   }
 

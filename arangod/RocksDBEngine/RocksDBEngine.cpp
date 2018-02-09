@@ -130,7 +130,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
       _intermediateCommitCount(
           transaction::Options::defaultIntermediateCommitCount),
       _pruneWaitTime(10.0),
-      _releasedTick(0) {
+      _releasedTick(0),
+      _useThrottle(true) {
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
@@ -197,6 +198,10 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
+  
+  options->addOption("--rocksdb.throttle",
+                     "enable write-throttling",
+                     new BooleanParameter(&_useThrottle));
 
 #ifdef USE_ENTERPRISE
   collectEnterpriseOptions(options);
@@ -389,8 +394,10 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  _listener.reset(new RocksDBThrottle);
-  _options.listeners.push_back(_listener);
+  if (_useThrottle) {
+    _listener.reset(new RocksDBThrottle);
+    _options.listeners.push_back(_listener);
+  }
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -527,7 +534,9 @@ void RocksDBEngine::start() {
   }
 
   // give throttle access to families
-  _listener->SetFamilies(cfHandles);
+  if (_useThrottle) {
+    _listener->SetFamilies(cfHandles);
+  }
 
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
@@ -750,7 +759,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
+    THROW_ARANGO_EXCEPTION(result);
   }
 
   VPackSlice fullParameters = RocksDBValue::data(value);
@@ -1214,7 +1223,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto status = rocksutils::convertStatus(res);
 
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 
@@ -1402,7 +1411,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' added to prunable list";
+          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' with start sequence " << f->StartSequence() << " added to prunable list";
           _prunableWalFiles.emplace(f->PathName(),
                                     TRI_microtime() + _pruneWaitTime);
         }

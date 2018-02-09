@@ -110,6 +110,43 @@ irs::sort::ptr make_from_array(
   return ptr;
 }
 
+irs::sort::ptr make_json(const irs::string_ref& args) {
+  if (args.null()) {
+    PTR_NAMED(irs::tfidf_sort, ptr);
+    return ptr;
+  }
+
+  rapidjson::Document json;
+
+  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
+    IR_FRMT_ERROR(
+      "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
+      args.c_str()
+    );
+
+    return nullptr;
+  }
+
+  switch (json.GetType()) {
+    case rapidjson::kFalseType:
+    case rapidjson::kTrueType:
+      return make_from_bool(json, args);
+    case rapidjson::kObjectType:
+      return make_from_object(json, args);
+    case rapidjson::kArrayType:
+      return make_from_array(json, args);
+    default: // wrong type
+      IR_FRMT_ERROR(
+        "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
+        args.c_str()
+      );
+
+      return nullptr;
+  }
+}
+
+REGISTER_SCORER_JSON(irs::tfidf_sort, make_json);
+
 NS_END // LOCAL
 
 NS_ROOT
@@ -283,48 +320,15 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
 NS_END // tfidf 
 
 DEFINE_SORT_TYPE_NAMED(iresearch::tfidf_sort, "tfidf");
-REGISTER_SCORER_JSON(irs::tfidf_sort, irs::tfidf_sort::make);
-
 DEFINE_FACTORY_DEFAULT(irs::tfidf_sort);
-
-/*static*/ sort::ptr tfidf_sort::make(const string_ref& args) {
-  if (args.null()) {
-    PTR_NAMED(tfidf_sort, ptr);
-    return ptr;
-  }
-
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-    case rapidjson::kFalseType:
-    case rapidjson::kTrueType:
-      return make_from_bool(json, args);
-    case rapidjson::kObjectType:
-      return make_from_object(json, args);
-    case rapidjson::kArrayType:
-      return make_from_array(json, args);
-    default: // wrong type
-      IR_FRMT_ERROR(
-        "Invalid jSON arguments passed while constructing tfidf scorer, arguments: %s", 
-        args.c_str()
-      );
-
-      return nullptr;
-  }
-}
 
 tfidf_sort::tfidf_sort(bool normalize) 
   : sort(tfidf_sort::type()),
     normalize_(normalize) {
+}
+
+/*static*/ void tfidf_sort::init() {
+  REGISTER_SCORER_JSON(tfidf_sort, make_json); // match registration above
 }
 
 sort::prepared::ptr tfidf_sort::prepare() const {

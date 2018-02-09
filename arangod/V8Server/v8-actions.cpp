@@ -415,7 +415,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
-
+  // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
   TRI_GET_GLOBAL_STRING(HeadersKey);
@@ -526,7 +526,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ParametersKey);
   req->ForceSet(ParametersKey, valuesObject);
 
-  // copy cookie -- only for http protocl
+  // copy cookie -- only for http protocol
   if (request->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
     v8::Handle<v8::Object> cookiesObject = v8::Object::New(isolate);
 
@@ -591,8 +591,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         break;
 
       case Endpoint::TransportType::VST:
-        response->setHeader(arangodb::StaticStrings::ContentTypeHeader,
-                            contentType);
+        response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader,
+                              contentType);
         break;
 
       default:
@@ -1608,9 +1608,7 @@ static void JS_DebugClearFailAt(
   TRI_V8_TRY_CATCH_END
 }
 
-void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules) {
+void TRI_InitV8DebugUtils(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_CLEAR_FAILAT"),

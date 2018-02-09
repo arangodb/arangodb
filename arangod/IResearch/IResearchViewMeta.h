@@ -74,21 +74,21 @@ struct IResearchViewMeta {
         FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
       };
 
-      ConsolidationPolicy(Type type, size_t intervalStep, float threshold);
+      ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
       ConsolidationPolicy(ConsolidationPolicy const& other);
       ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
       ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
       ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
       bool operator==(ConsolidationPolicy const& other) const noexcept;
       static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
-      size_t intervalStep() const noexcept;
       irs::index_writer::consolidation_policy_t const& policy() const noexcept;
+      size_t segmentThreshold() const noexcept;
       float threshold() const noexcept;
       Type type() const noexcept;
 
      private:
-      size_t _intervalStep; // apply consolidation policy with every Nth commit (0 == disable)
       irs::index_writer::consolidation_policy_t _policy;
+      size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
       float _threshold; // consolidation policy threshold
       Type _type;
     };
@@ -111,10 +111,10 @@ struct IResearchViewMeta {
     bool _locale;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
-    Mask(bool mask = false) noexcept;
+    explicit Mask(bool mask = false) noexcept;
   };
 
-  std::unordered_set<TRI_voc_cid_t> _collections; // known collection IDs having links to this view
+  std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
   CommitMeta _commit;
   std::string _dataPath; // data file path
   std::locale _locale; // locale used for ordering processed attribute names

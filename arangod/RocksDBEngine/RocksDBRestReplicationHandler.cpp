@@ -23,9 +23,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBRestReplicationHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -71,10 +73,20 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
-                                                           RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+    
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (!found || (!value.empty() && value != "none")) {
+      if (found) {
+        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+      }
+    }
+
     // create transaction+snapshot
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -84,24 +96,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->lastTick())));
     b.close();
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
+    if (serverId == 0) {
+      serverId = ctx->id();
     }
-     
-    if (!found || (!value.empty() && value != "none")) {
-      TRI_server_id_t serverId = 0;
 
-      if (found) {
-        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      } else {
-        serverId = ctx->id();
-      }
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
-    }
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -120,11 +120,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -152,7 +152,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         serverId = ctx->id();
       }
 
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+      _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
     }
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -287,14 +287,14 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
   _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(latest));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, StringUtils::itoa(latest));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.minTickIncluded() ? "true" : "false");
 
   if (length > 0) {
@@ -327,7 +327,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     if (!found || (!value.empty() && value != "none")) {
       TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      _vocbase->updateReplicationClient(serverId, result.maxTick());
+      _vocbase->updateReplicationClient(serverId, result.maxTick(), InitialSyncer::defaultBatchTimeout);
     }
   }
 }
@@ -340,9 +340,9 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
   // rocksdb only includes finished transactions in the WAL.
   _response->setContentType(rest::ContentType::DUMP);
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, "0");
   // always true to satisfy continuous syncer
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent, "true");
 }
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
@@ -645,8 +645,8 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
@@ -724,11 +724,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   response->setContentType(rest::ContentType::DUMP);
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          (context->more() ? "true" : "false"));
 
   _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
+      StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
 
   // transfer ownership of the buffer contents

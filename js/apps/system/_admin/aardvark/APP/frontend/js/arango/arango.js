@@ -843,15 +843,19 @@
           } else {
             this.CollectionTypes[identifier] = data.type;
             if (this.CollectionTypes[identifier] === 3) {
-              toRun(false, 'edge');
+              toRun(false, 'edge', data);
             } else {
-              toRun(false, 'document');
+              toRun(false, 'document', data);
             }
           }
         }.bind(this);
         this.arangoDocumentStore.getCollectionInfo(identifier, callback, toRun);
       } else {
-        toRun(false, this.CollectionTypes[identifier]);
+        if (this.CollectionTypes[identifier] === 3) {
+          toRun(false, 'edge');
+        } else {
+          toRun(false, 'document');
+        }
       }
     },
 

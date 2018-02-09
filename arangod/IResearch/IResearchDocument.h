@@ -110,10 +110,6 @@ struct Field {
     return *_analyzer;
   }
 
-  float_t boost() const {
-    return _boost;
-  }
-
   bool write(irs::data_output&) const noexcept {
     return true;
   }
@@ -121,7 +117,6 @@ struct Field {
   irs::flags const* _features{ &irs::flags::empty_instance() };
   std::shared_ptr<irs::token_stream> _analyzer;
   irs::string_ref _name;
-  float_t _boost{1.f};
 }; // Field
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +175,10 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
         size_t nameLength,
         IResearchLinkMeta const& meta,
         Filter filter
-    ): it(slice), nameLength(nameLength), meta(&meta), filter(filter) {
+    ) : it(slice),
+        nameLength(nameLength),
+        meta(&meta),
+        filter(filter) {
     }
 
     bool operator==(Level const& rhs) const noexcept {
@@ -216,12 +214,12 @@ class FieldIterator : public std::iterator<std::forward_iterator_tag, Field cons
   FieldIterator& operator=(FieldIterator const&) = delete;
 
   void next();
-  IResearchLinkMeta const* nextTop();
-  bool push(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
-  bool setValue(arangodb::velocypack::Slice const& value, IResearchLinkMeta const& context);
+  bool pushAndSetValue(arangodb::velocypack::Slice slice, IResearchLinkMeta const*& topMeta);
+  bool setRegularAttribute(IResearchLinkMeta const& context);
 
   void resetAnalyzers(IResearchLinkMeta const& context) {
-    auto const& analyzers = context._tokenizers;
+    auto const& analyzers = context._analyzers;
+
     _begin = analyzers.data();
     _end = _begin + analyzers.size();
   }
@@ -275,6 +273,16 @@ class DocumentPrimaryKey {
 
 bool appendKnownCollections(
   std::unordered_set<TRI_voc_cid_t>& set, const irs::index_reader& reader
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief go through the reader and call the callback with each TRI_voc_cid_t
+///        value found, the same TRI_voc_cid_t may repeat multiple times
+/// @return success (if the visitor returns false then also consider as failure)
+////////////////////////////////////////////////////////////////////////////////
+bool visitReaderCollections(
+  irs::index_reader const& reader,
+  std::function<bool(TRI_voc_cid_t cid)> const& visitor
 );
 
 NS_END // iresearch

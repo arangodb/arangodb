@@ -93,8 +93,8 @@ static std::string extractErrorMessage(std::string const& shardId,
                                                             "errorMessage", "");
 
   // add error number
-  if (slice.hasKey("errorNum")) {
-    VPackSlice const errorNum = slice.get("errorNum");
+  if (slice.hasKey(StaticStrings::ErrorNum)) {
+    VPackSlice const errorNum = slice.get(StaticStrings::ErrorNum);
     if (errorNum.isNumber()) {
       msg += " (errNum=" + arangodb::basics::StringUtils::itoa(
                                errorNum.getNumericValue<uint32_t>()) +
@@ -901,6 +901,13 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   return std::make_shared<CollectionInfoCurrent>(0);
 }
 
+std::shared_ptr<LogicalView> ClusterInfo::getView(
+    DatabaseID const& vocbase, CollectionID const& view
+) {
+  // FIXME TODO implement
+  return nullptr;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create database in coordinator, the return value is an ArangoDB
 /// error code and the errorMsg is set accordingly. One possible error
@@ -943,9 +950,9 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
               tmpHaveError = true;
               tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
               tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(
-                  slice, "errorMessage", "");
-              if (slice.hasKey("errorNum")) {
-                VPackSlice errorNum = slice.get("errorNum");
+                  slice, StaticStrings::ErrorMessage, "");
+              if (slice.hasKey(StaticStrings::ErrorNum)) {
+                VPackSlice errorNum = slice.get(StaticStrings::ErrorNum);
                 if (errorNum.isNumber()) {
                   tmpMsg += " (errorNum=";
                   tmpMsg += basics::StringUtils::itoa(
@@ -1142,14 +1149,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
 
-  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
-  if (json.hasKey("distributeShardsLike")) {
-    auto const otherCidString = json.get("distributeShardsLike").copyString();
-    if (!otherCidString.empty()) {
-      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
-    }
-  }
-
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1198,8 +1197,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
               tmpError += " shardID:" + p.key.copyString() + ":";
               tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
                   p.value, "errorMessage", "");
-              if (p.value.hasKey("errorNum")) {
-                VPackSlice const errorNum = p.value.get("errorNum");
+              if (p.value.hasKey(StaticStrings::ErrorNum)) {
+                VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
                 if (errorNum.isNumber()) {
                   tmpError += " (errNum=";
                   tmpError += basics::StringUtils::itoa(
@@ -1259,23 +1258,24 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
   _agencyCallbackRegistry->registerCallback(agencyCallback);
   TRI_DEFER(_agencyCallbackRegistry->unregisterCallback(agencyCallback));
 
-  VPackBuilder builder;
-  builder.add(json);
-
-
   std::vector<AgencyOperation> opers (
     { AgencyOperation("Plan/Collections/" + databaseName + "/" + collectionID,
-                      AgencyValueOperationType::SET, builder.slice()),
+                      AgencyValueOperationType::SET, json),
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
 
   std::vector<AgencyPrecondition> precs;
 
-  // Any of the shards locked?
-  if (otherCidShardMap != nullptr) {
-    for (auto const& shard : *otherCidShardMap) {
-      precs.emplace_back(
-        AgencyPrecondition("Supervision/Shards/" + shard.first,
-                           AgencyPrecondition::Type::EMPTY, true));
+  std::shared_ptr<ShardMap> otherCidShardMap = nullptr;
+  if (json.hasKey("distributeShardsLike")) {
+    auto const otherCidString = json.get("distributeShardsLike").copyString();
+    if (!otherCidString.empty()) {
+      otherCidShardMap = getCollection(databaseName, otherCidString)->shardIds();
+      // Any of the shards locked?
+      for (auto const& shard : *otherCidShardMap) {
+        precs.emplace_back(
+          AgencyPrecondition("Supervision/Shards/" + shard.first,
+                             AgencyPrecondition::Type::EMPTY, true));
+      }
     }
   }
 
@@ -2913,3 +2913,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   }
   return ret;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

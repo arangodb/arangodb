@@ -454,12 +454,12 @@ function CollectionSuite () {
           inital[i] = idx.figures;
         }
       });
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));
       }
       idxs = c.getIndexes(true);
-      // cache was filled same queries, hit rate must be biglier
+      // cache was filled with same queries, hit rate must be higher
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
           assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
@@ -470,14 +470,16 @@ function CollectionSuite () {
       // cache size should be 0 after unload
       c.unload();
       idxs = c.getIndexes(true);
-      idxs.forEach(function(idx) {
-        assertEqual(idx.figures.cacheSize, 0, idx);
+      idxs.forEach(function(idx, i) {
+        if (idx.figures.cacheInUse) {
+          assertTrue(Math.abs(inital[i].cacheSize > idx.figures.cacheSize));
+        }
       });
 
       // lets do some reads
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));        
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));        
       }
       idxs = c.getIndexes(true);
       // cache was empty, hit rate should be 0
@@ -488,9 +490,9 @@ function CollectionSuite () {
         }
       });
 
-      for(let i=0;i<10000;i++) {
-        c.outEdges("c/v"+(i/100));
-        c.inEdges("c/v"+(i/100));        
+      for(let i = 0; i < 10000; i++) {
+        c.outEdges("c/v" + (i / 100));
+        c.inEdges("c/v" + (i / 100));        
       }
       idxs = c.getIndexes(true);
       // cache was partially filled same queries, lifetime hit rate 
@@ -573,278 +575,11 @@ function CollectionCacheSuite () {
   };
 }
 
-function CollectionTruncateFailuresSuite() {
-  const cn = "UnitTestsTruncate";
-  let c;
-  const cleanUp = () => {
-    internal.debugClearFailAt();
-    try {
-      db._drop(cn);
-    } catch(_) { }
-  };
-
-  const docs = [];
-  for (let i = 0; i < 10000; ++i) {
-    docs.push({value: i % 250, value2: i % 100});
-  }
- 
-  return {
-
-    tearDown: cleanUp,
-
-    setUp: function () {
-      cleanUp();
-      c = db._create(cn);
-      c.ensureHashIndex("value");
-      c.ensureSkiplist("value2");
-
-      // Add two packs of 10.000 Documents.
-      // Intermediate commits will commit after 10.000 removals
-      c.save(docs);
-      c.save(docs);
-    },
-
-    testTruncateFailsAfterAllCommits: function () {
-      internal.debugSetFailAt("FailAfterAllCommits");
-      try {
-        c.truncate();
-        fail();
-      } catch (e) {
-        // Validate that we died with debug
-        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
-      }
-
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 0); 
-
-      // Test Primary
-      {
-        let q = `FOR x IN @@c RETURN x._key`;
-        let res = db._query(q, {"@c": cn}).toArray();
-        assertEqual(res.length, 0);
-      }
-
-      // Test Hash
-      {
-        let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
-        for (let i = 0; i < 250; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, 0);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, 0);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Selectivity Estimates
-      {
-        let indexes = c.getIndexes(true);
-        for (let i of indexes) {
-          switch (i.type) {
-            case 'primary':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'skiplist':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            default:
-              fail();
-          }
-        }
-      }
-    },
-
-    testTruncateFailsBeforeCommit: function () {
-      const docsWithEqHash = 20000 / 250;
-      const docsWithEqSkip = 20000 / 100;
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
-      internal.print(c.getIndexes(true));
-      try {
-        c.truncate();
-        fail();
-      } catch (e) {
-        // Validate that we died with debug
-        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
-      }
-      internal.print(c.getIndexes(true));
-
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 20000); 
-
-      // Test Primary
-      {
-        let q = `FOR x IN @@c RETURN x._key`;
-        let res = db._query(q, {"@c": cn}).toArray();
-        assertEqual(res.length, 20000);
-      }
-
-      // Test Hash
-      {
-        let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
-        for (let i = 0; i < 250; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, docsWithEqHash);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertEqual(res.length, docsWithEqSkip);
-        }
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Selectivity Estimates
-      {
-        let indexes = c.getIndexes(true);
-        for (let i of indexes) {
-          switch (i.type) {
-            case 'primary':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 0.0125);
-              break;
-            case 'skiplist':
-              assertEqual(i.selectivityEstimate, 0.005);
-              break;
-              default:
-              fail();
-          }
-        }
-      }
- 
-    },
-
-    testTruncateFailsBetweenCommits: function () {
-      internal.debugSetFailAt("FailAfterIntermediateCommit");
-      const docsWithEqHash = 20000 / 250;
-      const docsWithEqSkip = 20000 / 100;
-
-      try {
-        c.truncate();
-        fail();
-      } catch (e) {
-        // Validate that we died with debug
-        assertEqual(e.errorNum, ERRORS.ERROR_DEBUG.code);
-      }
-
-      // All docments should be removed through intermediate commits.
-      // We have two packs that fill up those commits.
-      // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 10000); 
-
-      // Test Primary
-      {
-        let q = `FOR x IN @@c RETURN x._key`;
-        let res = db._query(q, {"@c": cn}).toArray();
-        assertEqual(res.length, 10000);
-      }
-
-      // Test Hash
-      {
-        let sum = 0;
-        let q = `FOR x IN @@c FILTER x.value == @i RETURN x`;
-        for (let i = 0; i < 250; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertTrue(res.length < docsWithEqHash);
-          sum += res.length;
-        }
-        assertEqual(sum, 10000);
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 251}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Skiplist
-      {
-        let q = `FOR x IN @@c FILTER x.value2 == @i RETURN x`;
-        let sum = 0;
-        for (let i = 0; i < 100; ++i) {
-          // This validates that all documents can be found again
-          let res = db._query(q, {"@c": cn, i: i}).toArray();
-          assertTrue(res.length <  docsWithEqSkip);
-          sum += res.length;
-        }
-        assertEqual(sum, 10000);
-
-        // just validate that no other values are inserted.
-        let res2 = db._query(q, {"@c": cn, i: 101}).toArray();
-        assertEqual(res2.length, 0);
-      }
-
-      // Test Selectivity Estimates
-      // This may be fuzzy...
-      {
-        let indexes = c.getIndexes(true);
-        for (let i of indexes) {
-          switch (i.type) {
-            case 'primary':
-              assertEqual(i.selectivityEstimate, 1);
-              break;
-            case 'hash':
-              assertEqual(i.selectivityEstimate, 0.025);
-              break;
-            case 'skiplist':
-              assertEqual(i.selectivityEstimate, 0.01);
-              break;
-            default:
-              fail();
-          }
-        }
-      }
-    },
-
-  };
-}
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-//jsunity.run(CollectionSuite);
-//jsunity.run(CollectionCacheSuite);
-
-if (internal.debugCanUseFailAt()) {
-  jsunity.run(CollectionTruncateFailuresSuite);
-}
+jsunity.run(CollectionSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

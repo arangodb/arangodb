@@ -76,12 +76,9 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 #
-
-#
 * [Views](Views/README.md)
-#
-  * [IResearch](Views/IResearch.md)
-    * [Analyzers](Views/IResearch/Analyzers.md)
+  * [ArangoSearch](Views/ArangoSearch.md)
+    * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
@@ -270,6 +267,7 @@
   * [References](Appendix/References/README.md)
     * [db](Appendix/References/DBObject.md)
     * [collection](Appendix/References/CollectionObject.md)
+    * [cursor](Appendix/References/CursorObject.md)
   * [JavaScript Modules](Appendix/JavaScriptModules/README.md)
     * [@arangodb](Appendix/JavaScriptModules/ArangoDB.md)
     * [console](Appendix/JavaScriptModules/Console.md)
@@ -282,10 +280,9 @@
     * [Task Management](Appendix/JavaScriptModules/Tasks.md)
   * [Deprecated](Appendix/Deprecated/README.md)
       * [Simple Queries](Appendix/Deprecated/SimpleQueries/README.md)
-        * [Sequential Access](Appendix/Deprecated/SimpleQueries/Access.md)
         * [Pagination](Appendix/Deprecated/SimpleQueries/Pagination.md)
         * [Modification Queries](Appendix/Deprecated/SimpleQueries/ModificationQueries.md)
-        * [Geo Queries](Appendix/Deprecated/SimpleQueriesGeoQueries.md)
+        * [Geo Queries](Appendix/Deprecated/SimpleQueries/GeoQueries.md)
         * [Fulltext Queries](Appendix/Deprecated/SimpleQueries/FulltextQueries.md)
       * [Actions](Appendix/Deprecated/Actions/README.md)
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)

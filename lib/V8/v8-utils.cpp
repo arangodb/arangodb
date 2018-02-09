@@ -138,9 +138,9 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
       return;
     }
 
-    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Number::New(isolate, errorNumber));
-    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"), errorMessage);
+    errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
 
     TRI_GET_GLOBALS();
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
@@ -3529,7 +3529,7 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                                               external_status._exitStatus)));
   }
   if (external_status._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, external_status._errorMessage));
   }
   TRI_V8_TRY_CATCH_END;
@@ -3647,7 +3647,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   }
   if (external._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, external._errorMessage));
   }
   // return the result
@@ -4559,9 +4559,7 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
-extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
-                          std::string const& startupPath,
-                          std::string const& modules);
+extern void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context);
 
 void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                      std::string const& startupPath,
@@ -4818,5 +4816,5 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_PLATFORM"),
                                TRI_V8_ASCII_STRING(isolate, TRI_PLATFORM));
 
-  TRI_InitV8Env(isolate, context, startupPath, modules);
+  TRI_InitV8Env(isolate, context);
 }

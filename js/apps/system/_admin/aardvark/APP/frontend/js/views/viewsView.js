@@ -93,7 +93,7 @@
         window.modalView.createReadOnlyEntry(
           undefined,
           'Type',
-          'iresearch',
+          'arangosearch',
           undefined,
           undefined,
           false,
@@ -113,7 +113,7 @@
       var name = $('#newName').val();
       var options = JSON.stringify({
         name: name,
-        type: 'iresearch',
+        type: 'arangosearch',
         properties: {}
       });
 

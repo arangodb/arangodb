@@ -28,8 +28,10 @@
 #include "Basics/StaticStrings.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/KeyGenerator.h"
@@ -92,7 +94,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return "edge-index-iterator-mock";
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) {
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
@@ -173,7 +175,7 @@ class EdgeIndexMock final : public arangodb::Index {
       VPackBuilder& builder,
       bool withFigures,
       bool forPersistence
-  ) const {
+  ) const override {
     builder.openObject();
     Index::toVelocyPack(builder, withFigures, forPersistence);
     // hard-coded
@@ -182,7 +184,7 @@ class EdgeIndexMock final : public arangodb::Index {
     builder.close();
   }
 
-  void toVelocyPackFigures(VPackBuilder& builder) const {
+  void toVelocyPackFigures(VPackBuilder& builder) const override {
     Index::toVelocyPackFigures(builder);
 
     builder.add("from", VPackValue(VPackValueType::Object));
@@ -199,7 +201,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -227,7 +229,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -256,7 +258,7 @@ class EdgeIndexMock final : public arangodb::Index {
       size_t itemsInIndex,
       size_t& estimatedItems,
       double& estimatedCost
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.matchOne(
@@ -270,7 +272,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*,
       bool
-  ) {
+  ) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -309,7 +311,7 @@ class EdgeIndexMock final : public arangodb::Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.specializeOne(this, node, reference);
@@ -547,7 +549,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
 
   if (type == "edge") {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
-  } else if (type == "iresearch") {
+  } else if (arangodb::iresearch::IResearchFeature::type() == type) {
     index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
   }
 
@@ -761,7 +763,7 @@ arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, a
   return TRI_ERROR_INTERNAL;
 }
 
-bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) {
+bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const {
   before();
 
   if (token.id() > documents.size()) {
@@ -779,7 +781,7 @@ bool PhysicalCollectionMock::readDocument(arangodb::transaction::Methods* trx, a
   return true;
 }
 
-bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) {
+bool PhysicalCollectionMock::readDocumentWithCallback(arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token, arangodb::IndexIterator::DocumentCallback const& cb) const {
   before();
 
   if (token.id() > documents.size()) {
@@ -1251,6 +1253,7 @@ void StorageEngineMock::waitForSyncTimeout(double timeout) {
 
 arangodb::Result StorageEngineMock::flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) {
   TRI_ASSERT(false);
+  return arangodb::Result();
 }
 
 void StorageEngineMock::waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) {
@@ -1342,11 +1345,18 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 
 arangodb::Result TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
+  static std::atomic<TRI_voc_tid_t> lastId(0);
+
   ++beginTransactionCount;
+  _id = ++lastId; // ensure each transaction state has a unique ID
   useCollections(_nestingLevel);
   updateStatus(arangodb::transaction::Status::RUNNING);
   return arangodb::Result();
@@ -1356,6 +1366,10 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
+  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
+    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
+  });
   return arangodb::Result();
 }
 

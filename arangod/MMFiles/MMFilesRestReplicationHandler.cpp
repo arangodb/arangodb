@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionKeys.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -65,7 +67,7 @@ void MMFilesRestReplicationHandler::insertClient(
     TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
-      _vocbase->updateReplicationClient(serverId, lastServedTick);
+      _vocbase->updateReplicationClient(serverId, lastServedTick, InitialSyncer::defaultBatchTimeout);
     }
   }
 }
@@ -418,14 +420,14 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(state.lastCommittedTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
   if (length > 0) {
@@ -521,10 +523,10 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   _response->setContentType(rest::ContentType::DUMP);
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(dump._lastFoundTick));
 
   if (length > 0) {
@@ -898,8 +900,8 @@ void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
@@ -1031,10 +1033,10 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          (dump._hasMore ? "true" : "false"));
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
 
   // transfer ownership of the buffer contents
