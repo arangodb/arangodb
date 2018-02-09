@@ -494,36 +494,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // will throw if invalid
   configuration.validate();
 
-  /*std::unique_ptr<InitialSyncer> syncer;
-  if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(configuration));
-  } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, configuration));
-  }*/
-
   // forget about any existing replication applier configuration
   applier->forget();
-
-  /*// start initial synchronization
-  TRI_voc_tick_t barrierId = 0;
-  TRI_voc_tick_t lastLogTick = 0;
-  
-  try {
-    Result r = syncer->run(configuration._incremental);
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-    lastLogTick = syncer->getLastLogTick();
-    // steal the barrier from the syncer
-    barrierId = syncer->stealBarrier();
-  } catch (basics::Exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("caught exception during slave creation: ") + ex.what());
-  } catch (std::exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("caught exception during slave creation: ") + ex.what());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during slave creation");
-  }*/
-
   applier->reconfigure(configuration);
   applier->startReplication();
   

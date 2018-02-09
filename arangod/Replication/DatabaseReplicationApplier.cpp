@@ -145,7 +145,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   }
 }
 
-std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitalSyncer() const {
+std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
   return std::make_unique<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
 }
 

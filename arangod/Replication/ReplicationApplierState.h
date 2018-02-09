@@ -38,7 +38,7 @@ namespace arangodb {
 struct ReplicationApplierState {
   enum class ActivityPhase {
     INACTIVE, /// sleeping
-    INITAL, /// running inital syncer
+    INITIAL, /// running initial syncer
     TAILING, /// running tailing syncer
     SHUTDOWN /// cleaning up
   };
@@ -70,12 +70,13 @@ struct ReplicationApplierState {
   
   /// performs inital sync or running tailing syncer
   bool isActive() const {
-    return (_phase == ActivityPhase::INITAL || _phase == ActivityPhase::TAILING);
+    return (_phase == ActivityPhase::INITIAL ||
+            _phase == ActivityPhase::TAILING);
   }
   
   /// performs inital sync or running tailing syncer
   bool isInitializing() const {
-    return _phase == ActivityPhase::INITAL;
+    return _phase == ActivityPhase::INITIAL;
   }
   
   /// performs tailing sync

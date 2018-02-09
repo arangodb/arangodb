@@ -598,27 +598,11 @@ void HeartbeatThread::runSingleServer() {
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         TRI_ASSERT(!config._skipCreateDrop);
-        /*GlobalInitialSyncer syncer(config);
-        // sync incrementally on failover to other follower,
-        // but not initially
-        Result r = syncer.run(false);
-        if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader failed: "
-             << r.errorMessage();
-          continue; // try again next time
-        }
-        
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "initial sync from leader finished";
-        // steal the barrier from the syncer
-        TRI_voc_tick_t barrierId = syncer.stealBarrier();
-        TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();*/
 
         // forget about any existing replication applier configuration
         applier->forget();
         applier->reconfigure(config);
         applier->startReplication();
-        //LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
-        //applier->startTailing(lastLogTick, true, barrierId);
         
       } else if (!applier->isActive() && !applier->isShuttingDown()) {
         // try to restart the applier

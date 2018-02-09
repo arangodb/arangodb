@@ -1,27 +1,27 @@
 Syncing Collections
 ===================
 
-In order to synchronize data for a single collection from a Leader to a slave instance, there
+In order to synchronize data for a single collection from a master to a slave instance, there
 is the *syncCollection* function:
 
-It will fetch all documents of the specified collection from the Leader server's database and store
-them in the local instance. After the synchronization, the collection data on the Folloer will be
-identical to the data on the Leader, provided no further data changes happens.
-Any data changes that are performed after the synchronization was started will
+It will fetch all documents of the specified collection from the master database and store 
+them in the local instance. After the synchronization, the collection data on the slave will be
+identical to the data on the master, provided no further data changes happen on the master. 
+Any data changes that are performed on the master after the synchronization was started will
 not be captured by *syncCollection*, but need to be replicated using the regular replication
 applier mechanism.
   
-For the following example setup, we'll use the instance *tcp://leader.domain.org:8529* as the
+For the following example setup, we'll use the instance *tcp://master.domain.org:8529* as the 
 master, and the instance *tcp://slave.domain.org:8530* as a slave.
 
-The goal is to have all data from the collection *test* in database *_system* on Leader
+The goal is to have all data from the collection *test* in database *_system* on master 
 *tcp://master.domain.org:8529* be replicated to the collection *test* in database *_system* on 
-the replication client *tcp://follower.domain.org:8530*.
+the slave *tcp://slave.domain.org:8530*.
 
-On the **Leader**, the collection *test* needs to be present in the *_system* database, with
+On the **master**, the collection *test* needs to be present in the *_system* database, with
 any data in it.
 
-To transfer this collection to the **Follower**, issue the following commands there:
+To transfer this collection to the **slave**, issue the following commands there:
 
 ```js
 db._useDatabase("_system");

@@ -104,7 +104,7 @@ static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
   switch (ph) {
     case ReplicationApplierState::ActivityPhase::INACTIVE:
       return "inactive";
-    case ReplicationApplierState::ActivityPhase::INITAL:
+    case ReplicationApplierState::ActivityPhase::INITIAL:
       return "initial";
     case ReplicationApplierState::ActivityPhase::TAILING:
       return "running";

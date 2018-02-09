@@ -90,7 +90,7 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
   return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), std::string());
 }
 
-std::unique_ptr<InitialSyncer> GlobalReplicationApplier::buildInitalSyncer() const {
+std::unique_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
   return std::make_unique<arangodb::GlobalInitialSyncer>(_configuration);
 }
 

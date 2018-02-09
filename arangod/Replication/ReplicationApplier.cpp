@@ -318,9 +318,9 @@ void ReplicationApplier::startReplication() {
   }
   
   doStart([&](){
-    std::unique_ptr<InitialSyncer> syncer = buildInitalSyncer();
+    std::unique_ptr<InitialSyncer> syncer = buildInitialSyncer();
     _thread.reset(new FullApplierThread(this, std::move(syncer)));
-  }, ReplicationApplierState::ActivityPhase::INITAL);
+  }, ReplicationApplierState::ActivityPhase::INITIAL);
 }
   
 /// @brief start the replication applier

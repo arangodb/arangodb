@@ -1196,7 +1196,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                     p.value, "error", false)) {
               tmpError += " shardID:" + p.key.copyString() + ":";
               tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
-                  p.value, "error", "");
+                  p.value, "errorMessage", "");
               if (p.value.hasKey(StaticStrings::ErrorNum)) {
                 VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
                 if (errorNum.isNumber()) {
