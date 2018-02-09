@@ -340,30 +340,28 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                   "' contains invalid characters");
   }
   */
-  std::string filter;
 
-  std::shared_ptr<VPackBuilder> binds;
-  binds.reset(new VPackBuilder);
+  auto binds = std::make_shared<VPackBuilder>();
   binds->openObject();
-
   if (! functionFilterPrefix.empty()) {
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(&uc);
-
     if ((uc.length() < 2) ||
         (uc[uc.length() - 1 ] != ':') ||
         (uc[uc.length() - 2 ] != ':')) {
       uc += "::";
     }
-    filter = std::string(" FILTER LEFT(function._key, @fnLength) == @ucName ");
     binds->add("fnLength", VPackValue(uc.length()));
     binds->add("ucName", VPackValue(uc));
   }
   binds->add("@col", VPackValue(collectionName));
-  binds->close();  // obj
+  binds->close();
 
-  std::string aql("FOR function IN @@col");
-  aql.append(filter + "RETURN function");
+  std::string const aql(
+      "FOR function IN @@col "
+      "FILTER LEFT(function._key, @fnLength) == @ucName "
+      "RETURN function"
+  );
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
                              binds, nullptr, arangodb::aql::PART_MAIN);
@@ -386,23 +384,25 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
   if (!usersFunctionsSlice.isArray()) {
     return Result(TRI_ERROR_INTERNAL, "bad query result for AQL User Functions");
   }
+
   result.openArray();
   std::string tmp;
   for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
-    VPackSlice itt;
+    VPackSlice resolved;
     if (it.isExternal()) {
-        itt = it.resolveExternal();
+        resolved = it.resolveExternal();
     }
     else {
-      itt = it;
+      resolved = it;
     }
 
-    if (!itt.isObject()) {
-      /// std::cout << "it is not an object? "<< itt.toJson() << " but rather: " << itt.typeName() << std::endl;
+    if (!resolved.isObject()) {
+      return Result(TRI_ERROR_INTERNAL, "element, that stores aql function is not an object");
     }
-    auto name = itt.get("name");
-    auto fn = itt.get("code");
-    bool isDeterministic = itt.get("isDeterministic").getBool();
+
+    auto name = resolved.get("name");
+    auto fn = resolved.get("code");
+    bool isDeterministic = resolved.get("isDeterministic").getBool();
     auto ref=StringRef(fn);
     if (name.isString() && fn.isString() && (ref.length() > 2)) {
       ref = ref.substr(1, ref.length() - 2);
@@ -417,6 +417,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
       result.add(oneFunction.slice());
     }
   }
-  result.close();
+  result.close(); //close Array
+
   return Result();
 }

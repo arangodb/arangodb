@@ -84,30 +84,25 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       return RestStatus::DONE;
     }
 
-    // delete group or single function
     Result res;
+    int deletedCount = 0;
+
     bool deleteGroup = extractBooleanParameter(StaticStrings::deleteGroup, false);
     if (deleteGroup) {
-      int deletedCount = 0;
       res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
-
-      if (res.ok()) {
-        VPackBuilder result;
-        result.openObject();
-        result.add("deletedCount", VPackValue(static_cast<int>(deletedCount)));
-        result.close();
-        generateOk(rest::ResponseCode::OK, result);
-      }
     } else { // delete single
       res = unregisterUserFunction(_vocbase,suffixes[0]);
-      if (res.ok()) {
-        resetResponse(rest::ResponseCode::OK);
-      }
-    } // delete group or single
+      ++deletedCount;
+    }
 
-    // error handling
-    if (res.fail()){
-        generateError(res);
+    if (res.ok()) {
+      VPackBuilder result;
+      result.openObject();
+      result.add("deletedCount", VPackValue(static_cast<int>(deletedCount)));
+      result.close();
+      generateOk(rest::ResponseCode::OK, result);
+    } else {
+      generateError(res);
     }
     return RestStatus::DONE;
   } // DELETE
@@ -133,14 +128,6 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // error handling
     if(res.ok()){
-      VPackBuffer<uint8_t> resultBuffer;
-      VPackBuilder result(resultBuffer);
-
-      auto response = _response.get();
-      resetResponse(rest::ResponseCode::OK);
-
-      response->setContentType(rest::ContentType::JSON);
-      result.add("deletedCount", VPackValue(static_cast<int>(1)));
       generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
     } else {
       generateError(res);
