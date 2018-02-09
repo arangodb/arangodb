@@ -143,7 +143,14 @@ function setResponse (res, name, body, code, returnOld, returnNew) {
     result.new = body.new;
     delete body.new;
   } 
-  result[name] = body;
+  if (name === undefined) {
+    // special hack currently used for HTTP DELETE only
+    for (let att in body) {
+      result[att] = body[att];
+    }
+  } else {
+    result[name] = body;
+  }
   res.json(result);
 }
 
@@ -705,6 +712,7 @@ router.patch('/:graph/vertex/:collection/:key', function (req, res) {
 
 router.delete('/:graph/vertex/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -736,12 +744,17 @@ router.delete('/:graph/vertex/:collection/:key', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'removed', didRemove, waitForSync ? OK : ACCEPTED);
+  let meta = { removed: didRemove };
+  if (returnOld) {
+    meta.old = doc;
+  }
+  setResponse(res, undefined, meta, waitForSync ? OK : ACCEPTED, returnOld, false);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', vertexCollectionName)
   .pathParam('key', vertexKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
   .error('not found', 'The vertex does not exist.')
   .summary('Delete a vertex.')
   .description(dd`
@@ -903,6 +916,7 @@ router.patch('/:graph/edge/:collection/:key', function (req, res) {
 
 router.delete('/:graph/edge/:collection/:key', function (req, res) {
   const waitForSync = Boolean(req.queryParams.waitForSync);
+  const returnOld = Boolean(req.queryParams.returnOld);
   const name = req.pathParams.graph;
   const collection = req.pathParams.collection;
   const key = req.pathParams.key;
@@ -934,12 +948,17 @@ router.delete('/:graph/edge/:collection/:key', function (req, res) {
     }
     throw e;
   }
-  setResponse(res, 'removed', didRemove, waitForSync ? OK : ACCEPTED);
+  let meta = { removed: didRemove };
+  if (returnOld) {
+    meta.old = doc;
+  }
+  setResponse(res, undefined, meta, waitForSync ? OK : ACCEPTED, returnOld, false);
 })
   .pathParam('graph', graphName)
   .pathParam('collection', edgeCollectionName)
   .pathParam('key', edgeKey)
   .queryParam('waitForSync', waitForSyncFlag)
+  .queryParam('returnOld', returnOldFlag)
   .error('not found', 'The edge does not exist.')
   .summary('Delete an edge.')
   .description('Deletes an edge with the given id, if it is contained within the graph.');

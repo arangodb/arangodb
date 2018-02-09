@@ -648,6 +648,29 @@ describe ArangoDB do
             doc.code.should eq(sync ? 200 : 202)
             doc.parsed_response['error'].should eq(false)
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
+
+            doc = get_vertex(graph_name, user_collection, key)
+            doc.code.should eq(404)
+            doc.parsed_response['error'].should eq(true)
+            doc.parsed_response['errorMessage'].should include("document not found")
+            doc.parsed_response['code'].should eq(404)
+          end
+          
+          it "can delete a vertex, returnOld" do
+            name = "Alice"
+            doc = create_vertex( sync, graph_name, user_collection, {"name" => name})
+            key = doc.parsed_response['vertex']['_key']
+
+            doc = delete_vertex( sync, graph_name, user_collection, key, { "returnOld" => "true" })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['removed'].should eq(true)
+            doc.parsed_response['old']['_key'].should eq(key)
+            doc.parsed_response['old']['name'].should eq(name)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_vertex(graph_name, user_collection, key)
             doc.code.should eq(404)
@@ -984,6 +1007,36 @@ describe ArangoDB do
             doc.code.should eq(sync ? 200 : 202)
             doc.parsed_response['error'].should eq(false)
             doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['old'].should eq(nil)
+            doc.parsed_response['new'].should eq(nil)
+
+            doc = get_edge(graph_name, friend_collection, key)
+            doc.code.should eq(404)
+            doc.parsed_response['error'].should eq(true)
+            doc.parsed_response['errorMessage'].should include("document not found")
+            doc.parsed_response['code'].should eq(404)
+          end
+          
+          it "can delete an edge, returnOld" do
+            v1 = create_vertex( sync, graph_name, user_collection, {})
+            v1.code.should eq(sync ? 201 : 202)
+            v1 = v1.parsed_response['vertex']['_id']
+            v2 = create_vertex( sync, graph_name, user_collection, {})
+            v2.code.should eq(sync ? 201 : 202)
+            v2 = v2.parsed_response['vertex']['_id']
+            type = "married"
+            doc = create_edge( sync, graph_name, friend_collection, v1, v2, {"type" => type})
+            doc.code.should eq(sync ? 201 : 202)
+            key = doc.parsed_response['edge']['_key']
+
+            doc = delete_edge( sync, graph_name, friend_collection, key, { "returnOld" => "true" })
+            doc.code.should eq(sync ? 200 : 202)
+            doc.parsed_response['error'].should eq(false)
+            doc.parsed_response['code'].should eq(sync ? 200 : 202)
+            doc.parsed_response['old']['_from'].should eq(v1)
+            doc.parsed_response['old']['_to'].should eq(v2)
+            doc.parsed_response['old']['type'].should eq(type)
+            doc.parsed_response['new'].should eq(nil)
 
             doc = get_edge(graph_name, friend_collection, key)
             doc.code.should eq(404)
