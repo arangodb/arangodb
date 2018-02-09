@@ -416,6 +416,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -472,6 +475,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
