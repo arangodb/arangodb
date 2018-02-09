@@ -140,7 +140,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  shutdownRocksDBInstance(); 
+  shutdownRocksDBInstance();
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -151,11 +151,11 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     if (nullptr != _listener.get()) {
       _listener->StopThread();
     } // if
-    
+
     for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
       _db->DestroyColumnFamilyHandle(h);
     }
-    
+
     // now prune all obsolete WAL files
     try {
       determinePrunableWalFiles(0);
@@ -198,7 +198,7 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
-  
+
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
@@ -1345,6 +1345,18 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
     }
   }
   return TRI_ERROR_NO_ERROR;
+}
+
+void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto beginSeq = _db->GetLatestSequenceNumber();
+  while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
+    if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
+      // all synced up!
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
 }
 
 Result RocksDBEngine::registerRecoveryHelper(
