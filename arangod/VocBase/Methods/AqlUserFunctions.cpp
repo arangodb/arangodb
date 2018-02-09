@@ -67,7 +67,6 @@ bool isValidFunctionNameFilter(std::string const& testName) {
   return std::regex_match(testName, funcFilterRegEx);
 }
 
-
 void reloadAqlUserFunctions() {
   std::string const def("reloadAql");
 
@@ -107,7 +106,6 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   auto queryResult = query.execute(queryRegistry);
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    /// TODO reload?
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       return Result(TRI_ERROR_REQUEST_CANCELED);
@@ -194,12 +192,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
   return Result();
 }
 
-
-// documentation: will pull v8 context, or allocate if non already used
-
-// needs the V8 context to test the function to throw evenual errors:
 Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
-                                      //// todo : drinnen: isolate get current / oder neues v8::Isolate*,
                                       velocypack::Slice userFunction,
                                       bool& replacedExisting
                                       ) {
@@ -249,10 +242,26 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                                            TRI_V8_ASCII_STRING(isolate, "userFunction"),
                                            false);
 
-
-      if (result.IsEmpty() || tryCatch.HasCaught() || !result->IsFunction()) {
+      int state = 0;
+      if (result.IsEmpty()) {
+        state = 1;
+        if (tryCatch.HasCaught()) {
+            state = 2;
+            if (!result->IsFunction()) {
+              state = 3;
+            }
+          }
+      }
+      if (state != 0) {
+        const std::string msg[] = {
+          "",
+          "Empty result.",
+          "Exception occured",
+          "Is not a function"
+        };
         res.reset(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-            TRI_StringifyV8Exception(isolate, &tryCatch));
+                  TRI_StringifyV8Exception(isolate, &tryCatch) +
+                  msg[state]);
         if (!tryCatch.CanContinue()) {
           if (throwV8Exception) {
             tryCatch.ReThrow();
@@ -260,7 +269,6 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
           TRI_GET_GLOBALS();
           v8g->_canceled = true;
         }
-            // return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE, "failed to test the function you wanted to save");
       }
     }
   }
@@ -270,12 +278,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   std::string _key(name);
   basics::StringUtils::toupperInPlace(&_key);
 
-  //      name: name,
-  // code: params.code,
-  // isDeterministic: params.isDeterministic || false
-
   VPackBuilder oneFunctionDocument;
-  // TODO: replacedExisting
   oneFunctionDocument.openObject();
   oneFunctionDocument.add("_key", VPackValue(_key));
   oneFunctionDocument.add("name", VPackValue(name));
@@ -288,7 +291,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   opOptions.waitForSync = true;
   opOptions.returnNew = false;
   opOptions.silent = false;
-  opOptions.isSynchronousReplicationFrom = true; /// TODO
+  opOptions.isSynchronousReplicationFrom = true;
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -408,6 +411,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
     }
     auto name = itt.get("name");
     auto fn = itt.get("code");
+    bool isDeterministic = itt.get("isDeterministic").getBool();
     auto ref=StringRef(fn);
     if (name.isString() && fn.isString() && (ref.length() > 2)) {
       ref = ref.substr(1, ref.length() - 2);
@@ -417,6 +421,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
       oneFunction.openObject();
       oneFunction.add("name", name);
       oneFunction.add("code", VPackValue(tmp));
+      oneFunction.add("isDeterministic", VPackValue(isDeterministic));
       oneFunction.close();
       result.add(oneFunction.slice());
     }
