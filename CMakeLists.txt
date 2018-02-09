@@ -50,6 +50,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 option(SKIP_PACKAGING "" OFF)
+option(STATIC_EXECUTABLES "produce static executables" OFF)
+if (STATIC_EXECUTABLES)
+  set(CMAKE_EXE_LINKER_FLAGS "-static")
+endif()
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -501,16 +505,20 @@ option(USE_BACKTRACE
   OFF
 )
 
+# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# for the case that we are on libmusl and not on glibc
+find_package(Backtrace)
+
 if (USE_BACKTRACE)
   if (MSVC)
     set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
   else ()
-    set(BT_LIBS "" CACHE path "Debug Helper libraries")
+    set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
   endif ()
 
   add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
 else ()
-  set(BT_LIBS "" CACHE path "Debug Helper libraries")
+  set(BT_LIBS ${Backtrace_LIBRARY} CACHE path "Debug Helper libraries")
 endif ()
 
 ################################################################################
