@@ -207,7 +207,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
           endpoint = FixEndpointProto(endpoint);
         }
       }
-      response->setHeader(StaticStrings::LeaderEndpoint, endpoint);
+      response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
       writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
       // return the endpoint of the actual leader
     }
@@ -217,7 +217,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       // intentionally do not set "Location" header, but use a custom header that
       // clients can inspect. if they find an empty endpoint, it means that there
       // is an ongoing leadership challenge
-      response->setHeader(StaticStrings::LeaderEndpoint, "");
+      response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
       break;
 

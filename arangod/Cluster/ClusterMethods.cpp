@@ -286,7 +286,7 @@ static void mergeResultsAllShards(
 static void extractErrorCodes(ClusterCommResult const& res,
                               std::unordered_map<int, size_t>& errorCounter,
                               bool includeNotFound) {
-  auto resultHeaders = res.answer->headers();
+  auto const& resultHeaders = res.answer->headers();
   auto codes = resultHeaders.find(StaticStrings::ErrorCodes);
   if (codes != resultHeaders.end()) {
     auto parsedCodes = VPackParser::fromJson(codes->second);

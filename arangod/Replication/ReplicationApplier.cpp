@@ -279,7 +279,10 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
   }
   
   TRI_ASSERT(!_state.isTailing() && !_state.isShuttingDown());
-  
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
+      << ", useTick: " << useTick << ", barrierId: " << barrierId;
+
   if (_configuration._endpoint.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
     setErrorNoLock(r);
@@ -291,7 +294,17 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }
-  
+
+  { // Debug output
+    VPackBuilder b;
+    b.openObject();
+    _configuration.toVelocyPack(b, false, false);
+    b.close();
+
+    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+        << "starting applier with configuration " << b.slice().toJson();
+  }
+
   // reset error
   _state._lastError.reset();
   

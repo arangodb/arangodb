@@ -227,7 +227,7 @@ Result Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
   double now = TRI_microtime();
 
-  if (now <= _barrierUpdateTime + _barrierTtl - 120.0) {
+  if (now <= _barrierUpdateTime + _barrierTtl * 0.25) {
     // no need to extend the barrier yet
     return Result();
   }

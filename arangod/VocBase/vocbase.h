@@ -205,11 +205,19 @@ struct TRI_vocbase_t {
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }
-  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
+  // return all replication clients registered
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
-  /// garbage collect replication clients
-  void garbageCollectReplicationClients(double ttl);
+
+  // the ttl value is amount of seconds after which the client entry will
+  // expire and may be garbage-collected
+  void updateReplicationClient(TRI_server_id_t, double ttl);
+  // the ttl value is amount of seconds after which the client entry will
+  // expire and may be garbage-collected
+  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
+  // garbage collect replication clients that have an expire date later
+  // than the specified timetamp
+  void garbageCollectReplicationClients(double expireStamp);
   
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();

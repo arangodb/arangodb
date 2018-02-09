@@ -105,7 +105,7 @@ void RestClusterHandler::handleCommandEndpoints() {
       // endpoint value, and can tell the following two cases apart:
       // - endpoint value is not empty: there is a leader, and it is known
       // - endpoint value is empty: leadership challenge is ongoing, current leader is unknown
-      _response->setHeader(StaticStrings::LeaderEndpoint, "");
+      _response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
       return;
     }
       

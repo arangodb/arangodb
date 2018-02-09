@@ -494,6 +494,9 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   // will throw if invalid
   configuration.validate();
 
+  // allow access to _users if appropriate
+  grantTemporaryRights();
+
   // forget about any existing replication applier configuration
   applier->forget();
   applier->reconfigure(configuration);
