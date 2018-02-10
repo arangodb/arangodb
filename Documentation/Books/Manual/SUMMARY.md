@@ -125,6 +125,7 @@
 # Use cases / Advanced usage / Best practice (?)
 #
 * [Architecture](Architecture/README.md)
+  * [Modes](Architecture/ServerModes.md)
   * [Replication](Administration/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
