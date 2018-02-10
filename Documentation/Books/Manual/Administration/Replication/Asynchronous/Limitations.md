@@ -1,7 +1,7 @@
-Replication Limitations
-=======================
+Master/Slave Limitations
+=========================
 
-The replication in ArangoDB has a few limitations. Some of these limitations may be 
+The Master/Slave setup in ArangoDB has a few limitations. Some of these limitations may be 
 removed in later versions of ArangoDB:
 
 * there is no feedback from the slaves to the master. If a slave cannot apply an event
@@ -28,12 +28,10 @@ removed in later versions of ArangoDB:
 * master servers do not know which slaves are or will be connected to them. All servers
   in a replication setup are currently only loosely coupled. There currently is no way 
   for a client to query which servers are present in a replication.
-* when not using our mesos integration failover must be handled by clients or client APIs.
+* failover must be handled by clients or client APIs.
 * there currently is one replication applier per ArangoDB database. It is thus not 
   possible to have a slave apply operations from multiple masters into the same target
   database.
-* replication is set up on a per-database level. When using ArangoDB with multiple
-  databases, replication must be configured individually for each database.
 * the replication applier is single-threaded, but write operations on the master may
   be executed in parallel if they affect different collections. Thus the replication
   applier might not be able to catch up with a very powerful and loaded master.
