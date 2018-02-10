@@ -137,7 +137,7 @@ function optimizerIndexesSortTestSuite () {
       c.ensureSkiplist("value", "value2");
       internal.waitForEstimatorSync(); // make sure estimates are consistent
 
-      print(c.getIndexes(true));
+      require("internal").print(c.getIndexes(true));
 
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
 
