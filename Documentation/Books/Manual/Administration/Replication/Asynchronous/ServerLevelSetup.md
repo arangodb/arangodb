@@ -4,6 +4,8 @@ Server-level Setup
 This page describes the replication process based on a complete ArangoDB instance. That means that
 all included databases will be replicated. 
 
+**Note:** Server-level Setup is available in ArangoDB 3.3.0 and higher.
+
 Setting up a working master-slave replication requires two ArangoDB instances:
 * **master**: this is the instance that all data-modification operations should be directed to
 * **slave**: on this instance, we'll start a replication applier, and this will fetch data from the 
