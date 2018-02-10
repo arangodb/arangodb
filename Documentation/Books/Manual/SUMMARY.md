@@ -140,7 +140,6 @@
   * [Cluster](Scalability/Cluster/README.md)
     * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
     * [Implementation](Administration/Replication/Synchronous/Implementation.md)
-    * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Architecture](Scalability/Architecture.md)
     * [Data models](Scalability/DataModels.md)
     * [Limitations](Scalability/Limitations.md)
