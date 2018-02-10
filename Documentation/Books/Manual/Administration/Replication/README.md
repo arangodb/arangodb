@@ -1,19 +1,21 @@
-Introduction to Replication
+Replication
 ===========================
 
 Replication allows you to *replicate* data onto another machine. It
 forms the base of all disaster recovery and failover features ArangoDB
 offers. 
 
-ArangoDB offers **asynchronous** and **synchronous** replication,
-depending on which type of arangodb deployment you are using.
-Since ArangoDB 3.2 the *synchronous replication* replication is the *only* replication
-type used in a cluster whereas the asynchronous replication is only available between
-single-server nodes. Future versions of ArangoDB may reintroduce asynchronous
-replication for the cluster.
+ArangoDB offers **synchronous** and **asynchronous** replication.
 
-We will describe pros and cons of each of them in the following
-sections.
+Synchronous replication is used between the _DB-Servers_ of an ArangoDB
+Cluster.
+
+Asynchronous replication is used:
+- when ArangoDB is operating in _Master/Slave_ or _Active Failover_ mode
+- among multiple Data Centers
+
+For more information on the ArangoDB Server _modes_ please refer to the
+[_Server Modes_](../../Architecture/ServerModes.md) section.
 
 
 ### Asynchronous replication
@@ -46,11 +48,5 @@ factor. The number of followers can be controlled using the
 `replicationFactor` parameter is the total number of copies being
 kept, that is, it is one plus the number of followers. 
 
-### Satellite collections
 
-Satellite collections are synchronously replicated collections having a dynamic replicationFactor.
-They will replicate all data to all database servers allowing the database servers to join data
-locally instead of doing heavy network operations.
-
-Satellite collections are an enterprise only feature.
 
