@@ -2,7 +2,31 @@
 
 This Section includes information related to the administration of an ArangoDB Cluster.
 
-For a general introduction to the ArangoDB Cluster, please refer to the Cluster [chapter](../../Scalability/Cluster/README.md).
+For a general introduction to the ArangoDB Cluster, please refer to the
+Cluster [chapter](../../Scalability/Cluster/README.md).
+
+## Enabling synchronous replication
+
+Synchronous replication can be enabled per _collection_. When creating a
+_collection_ you may specify the number of _replicas_ using the
+*replicationFactor* parameter. The default value is set to `1` which
+effectively *disables* synchronous replication among _DBServers_. 
+
+Example:
+
+    127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 3})
+
+In the above case, any write operation will require 2 replicas to
+report success from now on. 
+
+## Preparing growth
+
+You may create a _collection_ with higher replication factor than
+available. When additional DBServers become available the _shards_ are
+automatically replicated to the newly available machines. 
+
+Multiple _replicas_ of the same _shard_ can never coexist on the same
+DBServer instance.
 
 ## Replacing/Removing a Coordinator
 
