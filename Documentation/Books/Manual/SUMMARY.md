@@ -18,30 +18,6 @@
 #
 * [Highlights](Highlights.md)
 #
-* [Architecture](Architecture/README.md)
-  * [Replication](Administration/Replication/README.md)
-  * [Write-ahead log](Architecture/WriteAheadLog.md)
-  * [Storage Engines](Architecture/StorageEngines.md)
-#  * [Server Internals](Architecture/ServerInternals.md)
-#
-* [Scalability](Scalability/README.md)
-  * [Master/Slave](Scalability/MasterSlave/README.md)
-    * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
-    * [Limitations](Administration/Replication/Asynchronous/Limitations.md)
-  * [Active Failover](Scalability/ActiveFailover/README.md)
-    * [Limitations](Scalability/ActiveFailover/Limitations.md)
-  * [Cluster](Scalability/Cluster/README.md)
-    * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
-    * [Implementation](Administration/Replication/Synchronous/Implementation.md)
-    * [Configuration](Administration/Replication/Synchronous/Configuration.md)
-    * [Architecture](Scalability/Architecture.md)
-    * [Data models](Scalability/DataModels.md)
-    * [Limitations](Scalability/Limitations.md)
-  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
-    * [Introduction](Scalability/DC2DC/Introduction.md)
-    * [Applicability](Scalability/DC2DC/Applicability.md)
-    * [Requirements](Scalability/DC2DC/Requirements.md)
-#
 * [Data models & modeling](DataModeling/README.md)
 # * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
@@ -93,7 +69,7 @@
 * [Views](Views/README.md)
   * [ArangoSearch](Views/ArangoSearch.md)
     * [Analyzers](Views/ArangoSearch/Analyzers.md)
-
+#
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
@@ -147,6 +123,30 @@
   * [Limitations](Transactions/Limitations.md)
 #
 # Use cases / Advanced usage / Best practice (?)
+#
+* [Architecture](Architecture/README.md)
+  * [Replication](Administration/Replication/README.md)
+  * [Write-ahead log](Architecture/WriteAheadLog.md)
+  * [Storage Engines](Architecture/StorageEngines.md)
+#  * [Server Internals](Architecture/ServerInternals.md)
+#
+* [Scalability](Scalability/README.md)
+  * [Master/Slave](Scalability/MasterSlave/README.md)
+    * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
+    * [Limitations](Administration/Replication/Asynchronous/Limitations.md)
+  * [Active Failover](Scalability/ActiveFailover/README.md)
+    * [Limitations](Scalability/ActiveFailover/Limitations.md)
+  * [Cluster](Scalability/Cluster/README.md)
+    * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
+    * [Implementation](Administration/Replication/Synchronous/Implementation.md)
+    * [Configuration](Administration/Replication/Synchronous/Configuration.md)
+    * [Architecture](Scalability/Architecture.md)
+    * [Data models](Scalability/DataModels.md)
+    * [Limitations](Scalability/Limitations.md)
+  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+    * [Introduction](Scalability/DC2DC/Introduction.md)
+    * [Applicability](Scalability/DC2DC/Applicability.md)
+    * [Requirements](Scalability/DC2DC/Requirements.md)
 #
 * [Deployment](Deployment/README.md)
   * [Single Instance](Deployment/Single.md)
