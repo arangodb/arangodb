@@ -1,7 +1,7 @@
-Architecture
-------------
+Cluster Architecture
+====================
 
-The cluster architecture of ArangoDB is a CP master/master model with no 
+The cluster architecture of ArangoDB is a _CP_ master/master model with no 
 single point of failure. With "CP" we mean that in the presence of a
 network partition, the database prefers internal consistency over 
 availability. With "master/master" we mean that clients can send their 
@@ -13,128 +13,118 @@ In this way, ArangoDB has been designed as a distributed multi-model
 database. This section gives a short outline on the cluster architecture and
 how the above features and capabilities are achieved.
 
-### Structure of an ArangoDB cluster
+## Structure of an ArangoDB Cluster
 
-An ArangoDB cluster consists of a number of ArangoDB instances
+An ArangoDB Cluster consists of a number of ArangoDB instances
 which talk to each other over the network. They play different roles,
 which will be explained in detail below. The current configuration 
-of the cluster is held in the "Agency", which is a highly-available
+of the Cluster is held in the _Agency_, which is a highly-available
 resilient key/value store based on an odd number of ArangoDB instances
 running [Raft Consensus Protocol](https://raft.github.io/).
 
-For the various instances in an ArangoDB cluster there are 4 distinct
-roles: Agents, Coordinators, Primary and Secondary DBservers. In the
-following sections we will shed light on each of them. Note that the
-tasks for all roles run the same binary from the same Docker image.
+For the various instances in an ArangoDB Cluster there are 3 distinct
+roles:
 
-#### Agents
+- _Agents_
+- _Coordinators_
+- _DBServers_. 
 
-One or multiple Agents form the Agency in an ArangoDB cluster. The
-Agency is the central place to store the configuration in a cluster. It
+In the following sections we will shed light on each of them. 
+
+### Agents
+
+One or multiple _Agents_ form the _Agency_ in an ArangoDB Cluster. The
+_Agency_ is the central place to store the configuration in a Cluster. It
 performs leader elections and provides other synchronization services for
-the whole cluster. Without the Agency none of the other components can
+the whole Cluster. Without the _Agency_ none of the other components can
 operate.
 
-While generally invisible to the outside it is the heart of the
-cluster. As such, fault tolerance is of course a must have for the
-Agency. To achieve that the Agents are using the [Raft Consensus
+While generally invisible to the outside the _Agency_ is the heart of the
+Cluster. As such, fault tolerance is of course a must have for the
+_Agency_. To achieve that the _Agents_ are using the [Raft Consensus
 Algorithm](https://raft.github.io/). The algorithm formally guarantees
-conflict free configuration management within the ArangoDB cluster.
+conflict free configuration management within the ArangoDB Cluster.
 
-At its core the Agency manages a big configuration tree. It supports
+At its core the _Agency_ manages a big configuration tree. It supports
 transactional read and write operations on this tree, and other servers
 can subscribe to HTTP callbacks for all changes to the tree.
 
-#### Coordinators
+### Coordinators
 
-Coordinators should be accessible from the outside. These are the ones
+_Coordinators_ should be accessible from the outside. These are the ones
 the clients talk to. They will coordinate cluster tasks like
 executing queries and running Foxx services. They know where the
 data is stored and will optimize where to run user supplied queries or
-parts thereof. Coordinators are stateless and can thus easily be shut down
+parts thereof. _Coordinators_ are stateless and can thus easily be shut down
 and restarted as needed.
 
-#### Primary DBservers
+### DBServers
 
-Primary DBservers are the ones where the data is actually hosted. They
-host shards of data and using synchronous replication a primary may
+DBservers are the ones where the data is actually hosted. They
+host shards of data and using synchronous replication a DBServer may
 either be leader or follower for a shard.
 
 They should not be accessed from the outside but indirectly through the
-coordinators. They may also execute queries in part or as a whole when
-asked by a coordinator.
+_Coordinators_. They may also execute queries in part or as a whole when
+asked by a _Coordinator_.
+ 
+## Cluster ID
 
-#### Secondaries
-
-Secondary DBservers are asynchronous replicas of primaries. If one is
-using only synchronous replication, one does not need secondaries at all.
-For each primary, there can be one or more secondaries. Since the
-replication works asynchronously (eventual consistency), the replication
-does not impede the performance of the primaries. On the other hand,
-their replica of the data can be slightly out of date. The secondaries
-are perfectly suitable for backups as they don't interfere with the
-normal cluster operation.
-
-#### Cluster ID
-
-Every non-Agency ArangoDB instance in a cluster is assigned a unique
+Every non-Agency ArangoDB instance in a Cluster is assigned a unique
 ID during its startup. Using its ID a node is identifiable
-throughout the cluster. All cluster operations will communicate
+throughout the Cluster. All cluster operations will communicate
 via this ID.
 
-### Sharding
+## Sharding
 
-Using the roles outlined above an ArangoDB cluster is able to distribute
-data in so called shards across multiple primaries. From the outside
+Using the roles outlined above an ArangoDB Cluster is able to distribute
+data in so called _shards_ across multiple DBServers. From the outside
 this process is fully transparent and as such we achieve the goals of
 what other systems call "master-master replication". In an ArangoDB
-cluster you talk to any coordinator and whenever you read or write data
+Cluster you talk to any _Coordinator_ and whenever you read or write data
 it will automatically figure out where the data is stored (read) or to
-be stored (write). The information about the shards is shared across the
-coordinators using the Agency.
+be stored (write). The information about the _shards_ is shared across the
+_Coordinators_ using the _Agency_.
 
 Also see [Sharding](../Administration/Sharding/README.md) in the
 Administration chapter.
 
-### Many sensible configurations
+## Many sensible configurations
 
 This architecture is very flexible and thus allows many configurations,
 which are suitable for different usage scenarios:
 
- 1. The default configuration is to run exactly one coordinator and
-    one primary DBserver on each machine. This achieves the classical
+ 1. The default configuration is to run exactly one _Coordinator_ and
+    one _DBServer_ on each machine. This achieves the classical
     master/master setup, since there is a perfect symmetry between the
     different nodes, clients can equally well talk to any one of the
-    coordinators and all expose the same view to the data store.
- 2. One can deploy more coordinators than DBservers. This is a sensible
+    _Coordinators_ and all expose the same view to the data store. _Agents_
+    can run on separate, less powerful machines.
+ 2. One can deploy more _Coordinators_ than _DBservers_. This is a sensible
     approach if one needs a lot of CPU power for the Foxx services, 
-    because they run on the coordinators.
- 3. One can deploy more DBservers than coordinators if more data capacity 
+    because they run on the _Coordinators_.
+ 3. One can deploy more _DBServers_ than _Coordinators_ if more data capacity 
     is needed and the query performance is the lesser bottleneck
- 4. One can deploy a coordinator on each machine where an application
-    server (e.g. a node.js server) runs, and the Agents and DBservers 
+ 4. One can deploy a _Coordinator_ on each machine where an application
+    server (e.g. a node.js server) runs, and the _Agents_ and _DBServers_ 
     on a separate set of machines elsewhere. This avoids a network hop 
     between the application server and the database and thus decreases
     latency. Essentially, this moves some of the database distribution
     logic to the machine where the client runs.
 
-These for shall suffice for now. The important piece of information here
-is that the coordinator layer can be scaled and deployed independently
-from the DBserver layer.
+As you acn see, the _Coordinator_ layer can be scaled and deployed independently
+from the _DBServer_ layer.
 
-### Replication
+### Synchronous replication with automatic fail-over
 
-ArangoDB offers two ways of data replication within a cluster, synchronous
-and asynchronous. In this section we explain some details and highlight
-the advantages and disadvantages respectively.
-
-#### Synchronous replication with automatic fail-over
+In an ArangoDB Cluster, the replication among the data stored by the _DBServers_
+is synchronous.
 
 Synchronous replication works on a per-shard basis. One configures for
-each collection, how many copies of each shard are kept in the cluster.
+each collection, how many copies of each _shard_ are kept in the Cluster.
 At any given time, one of the copies is declared to be the "leader" and
 all other replicas are "followers". Write operations for this shard
-are always sent to the DBserver which happens to hold the leader copy,
+are always sent to the _DBServer_ which happens to hold the leader copy,
 which in turn replicates the changes to all followers before the operation
 is considered to be done and reported back to the coordinator.
 Read operations are all served by the server holding the leader copy,
@@ -181,31 +171,7 @@ switching off synchronous replication. This is a suitable setting for
 less important or easily recoverable data for which low latency write 
 operations matter.
 
-#### Asynchronous replication with automatic fail-over
-
-Asynchronous replication works differently, in that it is organized
-using primary and secondary DBservers. Each secondary server replicates
-all the data held on a primary by polling in an asynchronous way. This
-process has very little impact on the performance of the primary. The
-disadvantage is that there is a delay between the confirmation of a
-write operation that is sent to the client and the actual replication of
-the data. If the master server fails during this delay, then committed
-and confirmed data can be lost.
-
-Nevertheless, we also offer automatic fail-over with this setup. Contrary 
-to the synchronous case, here the fail-over management is done from outside
-the ArangoDB cluster. In a future version we might move this management
-into the supervision process in the Agency, but as of now, the management
-is done via the Mesos framework scheduler for ArangoDB (see below).
-
-The granularity of the replication is a whole ArangoDB instance with
-all data that resides on that instance, which means that
-you need twice as many instances as without asynchronous replication. 
-Synchronous replication is more flexible in that respect, you can have 
-smaller and larger instances, and if one fails, the data can be rebalanced
-across the remaining ones.
-
-### Microservices and zero administation
+## Microservices and zero administation
 
 The design and capabilities of ArangoDB are geared towards usage in
 modern microservice architectures of applications. With the 
@@ -225,7 +191,7 @@ ArangoDB cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. See the next section for further
 capabilities in this direction.
 
-### Apache Mesos integration
+## Apache Mesos integration
 
 For the distributed setup, we use the Apache Mesos infrastructure by default.
 ArangoDB is a fully certified package for DC/OS and can thus
