@@ -39,8 +39,6 @@ replicate it to the follower.
    synchronous replication is resumed. This happens all transparently
    to the client.
 
-The current implementation of ArangoDB does not allow changing the replicationFactor later. This is subject to change. In the meantime the only way is to dump and restore the collection. [See the cookbook recipe about migrating](../../../../Cookbook/Administration/Migrate2.8to3.0.html#controling-the-number-of-shards-and-the-replication-factor).
-
 ### Automatic failover
 
 Whenever the leader of a shard is failing and there is a query trying to access data of that shard the coordinator will continue trying to contact the leader until it timeouts.
