@@ -7,7 +7,7 @@ offers.
 
 ArangoDB offers **synchronous** and **asynchronous** replication.
 
-Synchronous replication is used between the _DB-Servers_ of an ArangoDB
+Synchronous replication is used between the _DBServers_ of an ArangoDB
 Cluster.
 
 Asynchronous replication is used:
@@ -17,23 +17,13 @@ Asynchronous replication is used:
 For more information on the ArangoDB Server _modes_ please refer to the
 [_Server Modes_](../../Architecture/ServerModes.md) section.
 
-
-### Asynchronous replication
-
-In ArangoDB any write operation will be logged to the write-ahead
-log. When using Asynchronous replication slaves will connect to a
-master and apply all the events from the log in the same order
-locally. After that, they will have the same state of data as the
-master database.
-
-
 ### Synchronous replication
 
-Synchronous replication only works within a cluster and is typically
+Synchronous replication only works within an ArangoDB Cluster and is typically
 used for mission critical data which must be accessible at all
 times. Synchronous replication generally stores a copy of a shard's
-data on another db server and keeps it in sync. Essentially, when storing
-data after enabling synchronous replication the cluster will wait for
+data on another DBServer and keeps it in sync. Essentially, when storing
+data after enabling synchronous replication the Cluster will wait for
 all replicas to write all the data before greenlighting the write
 operation to the client. This will naturally increase the latency a
 bit, since one more network hop is needed for each write. However, it
@@ -47,6 +37,16 @@ factor. The number of followers can be controlled using the
 `replicationFactor` parameter whenever you create a collection, the
 `replicationFactor` parameter is the total number of copies being
 kept, that is, it is one plus the number of followers. 
+
+### Asynchronous replication
+
+In ArangoDB any write operation will be logged to the write-ahead
+log. When using asynchronous replication slaves (or followers) will 
+connect to a master (or leader) and apply all the events from the log
+in the same order locally. After that, they will have the same state of data as the
+master database.
+
+
 
 
 
