@@ -1,4 +1,4 @@
-# Master/Slave admnistration
+# Master/Slave administration
 
  
 
