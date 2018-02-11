@@ -1,1 +1,2 @@
-tmp
+# Master/Slave deployment
+
