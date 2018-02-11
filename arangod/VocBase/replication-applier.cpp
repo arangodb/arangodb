@@ -314,10 +314,20 @@ static VPackBuilder VPackApplyState(TRI_replication_applier_state_t const* state
 
 static void ApplyThread(void* data) {
   auto syncer = static_cast<arangodb::ContinuousSyncer*>(data);
+  TRI_ASSERT(syncer != nullptr);
 
   try {
-    syncer->run();
+    int res = syncer->run();
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier for database '" << syncer->databaseName() << "' stopped with error: " << TRI_errno_string(res);
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << syncer->databaseName() << "' failed with exception: " << ex.what(); 
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << syncer->databaseName() << "' failed with exception: " << ex.what(); 
   } catch (...) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << syncer->databaseName() << "' failed with unknown exception";
   }
   delete syncer;
 }

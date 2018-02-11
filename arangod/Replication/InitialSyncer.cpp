@@ -976,7 +976,6 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* coll,
   return res;
 }
 
-/// @brief incrementally fetch data from a collection
 /// @brief changes the properties of a collection, based on the VelocyPack
 /// provided
 int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,

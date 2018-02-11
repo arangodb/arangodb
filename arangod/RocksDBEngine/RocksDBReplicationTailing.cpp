@@ -162,6 +162,10 @@ public:
           _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCid)));
+          std::string const& cname = nameFromCid(_currentCid);
+          if (!cname.empty()) {
+            _builder.add("cname", VPackValue(cname));
+          }
           _builder.add("data", indexSlice);
           _builder.close();
         }
