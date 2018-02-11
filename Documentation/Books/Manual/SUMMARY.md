@@ -125,6 +125,7 @@
   * [Master/Slave](Scalability/MasterSlave/README.md)
     * [Limitations](Scalability/MasterSlave/Limitations.md)
   * [Active Failover](Scalability/ActiveFailover/README.md)
+    * [Architecture](Scalability/ActiveFailover/Architecture.md)
     * [Limitations](Scalability/ActiveFailover/Limitations.md)
   * [Cluster](Scalability/Cluster/README.md)
     * [Architecture](Scalability/Architecture.md)
