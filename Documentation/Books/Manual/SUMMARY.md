@@ -1,11 +1,7 @@
 #
 # Summary
 #
-# * [First Steps](FirstSteps/README.md) #TODO
-#  * [Getting Familiar](FirstSteps/GettingFamiliar.md) #TODO
 * [Getting Started](GettingStarted/README.md)
-  # move to administration (command line options)?
-  # * [Install and run the server](FirstSteps/Arangod.md) #TODO
   * [Installing](GettingStarted/Installing/README.md)
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
@@ -14,12 +10,10 @@
   * [Authentication](GettingStarted/Authentication.md)
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Highlights](Highlights.md)
 #
 * [Data models & modeling](DataModeling/README.md)
-# * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
@@ -40,7 +34,6 @@
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
-#  * [Modeling Relationships](DataModeling/ModelingRelationships.md)
 #
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
@@ -122,14 +115,11 @@
   * [Durability](Transactions/Durability.md)
   * [Limitations](Transactions/Limitations.md)
 #
-# Use cases / Advanced usage / Best practice (?)
-#
 * [Architecture](Architecture/README.md)
   * [Modes](Architecture/ServerModes.md)
   * [Replication](Administration/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
-#  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Scalability](Scalability/README.md)
   * [Master/Slave](Scalability/MasterSlave/README.md)
@@ -178,7 +168,6 @@
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
     * [Configuration](Administration/Arangosh/Configuration.md)
-    # relocate file?
     * [Details](GettingStarted/Arangosh.md)
   * [Arangoimport](Administration/Arangoimport.md)
   * [Arangodump](Administration/Arangodump.md)
@@ -289,6 +278,5 @@
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)
         * [Json Objects](Appendix/Deprecated/Actions/JsonExample.md)
         * [Modifying](Appendix/Deprecated/Actions/Modifying.md)
-  # Link to here from arangosh, actions, foxx, transactions
   * [Error codes and meanings](Appendix/ErrorCodes.md)
   * [Glossary](Appendix/Glossary.md)
