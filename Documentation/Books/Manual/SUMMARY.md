@@ -138,8 +138,6 @@
   * [Active Failover](Scalability/ActiveFailover/README.md)
     * [Limitations](Scalability/ActiveFailover/Limitations.md)
   * [Cluster](Scalability/Cluster/README.md)
-    * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
-    * [Implementation](Administration/Replication/Synchronous/Implementation.md)
     * [Architecture](Scalability/Architecture.md)
     * [Data models](Scalability/DataModels.md)
     * [Limitations](Scalability/Limitations.md)
