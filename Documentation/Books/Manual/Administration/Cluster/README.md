@@ -7,10 +7,18 @@ Cluster [chapter](../../Scalability/Cluster/README.md).
 
 ## Enabling synchronous replication
 
+For an introduction about _Synchronous Replication_ in Cluster, please refer
+to the [_Cluster Architecture_](../../Scalability/Architecture.md#synchronous-replication) section. 
+
 Synchronous replication can be enabled per _collection_. When creating a
 _collection_ you may specify the number of _replicas_ using the
 *replicationFactor* parameter. The default value is set to `1` which
 effectively *disables* synchronous replication among _DBServers_. 
+
+Whenever you specify a _replicationFactor_ greater than 1 when creating a
+collection, synchronous replication will be activated for this collection. 
+The Cluster will determine suitable _leaders_ and _followers_ for every 
+requested _shard_ (_numberOfShards_) within the Cluster.
 
 Example:
 
@@ -32,8 +40,8 @@ DBServer instance.
 
 ## Sharding
 
-For an introduction about Sharding in Cluster, please refer to the
-[_Cluster Architecture_](../../Scalability/Architecture.md) section. 
+For an introduction about _Sharding_ in Cluster, please refer to the
+[_Cluster Architecture_](../../Scalability/Architecture.md#sharding) section. 
 
 Number of _shards_ can be configured at _collection_ creation time, e.g. the UI,
 or the _ArangoDB Shell_:
