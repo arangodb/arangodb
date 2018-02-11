@@ -133,7 +133,7 @@
 #
 * [Scalability](Scalability/README.md)
   * [Master/Slave](Scalability/MasterSlave/README.md)
-    * [Limitations](Administration/Replication/Asynchronous/Limitations.md)
+    * [Limitations](Scalability/MasterSlave/Limitations.md)
   * [Active Failover](Scalability/ActiveFailover/README.md)
     * [Limitations](Scalability/ActiveFailover/Limitations.md)
   * [Cluster](Scalability/Cluster/README.md)
