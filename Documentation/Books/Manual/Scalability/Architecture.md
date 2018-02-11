@@ -86,8 +86,21 @@ it will automatically figure out where the data is stored (read) or to
 be stored (write). The information about the _shards_ is shared across the
 _Coordinators_ using the _Agency_.
 
-Also see [Sharding](../Administration/Sharding/README.md) in the
-Administration chapter.
+ArangoDB organizes its collection data in shards. Sharding
+allows to use multiple machines to run a cluster of ArangoDB
+instances that together constitute a single database. This enables
+you to store much more data, since ArangoDB distributes the data 
+automatically to the different servers. In many situations one can 
+also reap a benefit in data throughput, again because the load can
+be distributed to multiple machines.
+
+_Shards_ are configured per _collection_ so multiple _shards_ of data form
+the _collection_ as a whole. To determine in which _shard_ the data is to
+be stored ArangoDB performs a hash across the values. By default this
+hash is being created from the document __key_.
+
+For further information, please refer to the
+[_Cluster Administration_ ](../Administration/Cluster/README.md#sharding) section.
 
 ## Many sensible configurations
 
@@ -176,7 +189,7 @@ operations matter.
 The design and capabilities of ArangoDB are geared towards usage in
 modern microservice architectures of applications. With the 
 [Foxx services](../Foxx/README.md) it is very easy to deploy a data
-centric microservice within an ArangoDB cluster.
+centric microservice within an ArangoDB Cluster.
 
 In addition, one can deploy multiple instances of ArangoDB within the
 same project. One part of the project might need a scalable document
@@ -185,15 +198,16 @@ the full power of a multi-model database actually mixing the various
 data models. There are enormous efficiency benefits to be reaped by
 being able to use a single technology for various roles in a project.
 
-To simplify live of the devops in such a scenario we try as much as
-possible to use a zero administration approach for ArangoDB. A running
-ArangoDB cluster is resilient against failures and essentially repairs
+To simplify life of the _devops_ in such a scenario we try as much as
+possible to use a _zero administration_ approach for ArangoDB. A running
+ArangoDB Cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. See the next section for further
 capabilities in this direction.
 
 ## Apache Mesos integration
 
 For the distributed setup, we use the Apache Mesos infrastructure by default.
+
 ArangoDB is a fully certified package for DC/OS and can thus
 be deployed essentially with a few mouse clicks or a single command, once
 you have an existing DC/OS cluster. But even on a plain Apache Mesos cluster
