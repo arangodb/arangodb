@@ -67,40 +67,6 @@ either be leader or follower for a shard.
 They should not be accessed from the outside but indirectly through the
 _Coordinators_. They may also execute queries in part or as a whole when
 asked by a _Coordinator_.
- 
-## Cluster ID
-
-Every non-Agency ArangoDB instance in a Cluster is assigned a unique
-ID during its startup. Using its ID a node is identifiable
-throughout the Cluster. All cluster operations will communicate
-via this ID.
-
-## Sharding
-
-Using the roles outlined above an ArangoDB Cluster is able to distribute
-data in so called _shards_ across multiple DBServers. From the outside
-this process is fully transparent and as such we achieve the goals of
-what other systems call "master-master replication". In an ArangoDB
-Cluster you talk to any _Coordinator_ and whenever you read or write data
-it will automatically figure out where the data is stored (read) or to
-be stored (write). The information about the _shards_ is shared across the
-_Coordinators_ using the _Agency_.
-
-ArangoDB organizes its collection data in shards. Sharding
-allows to use multiple machines to run a cluster of ArangoDB
-instances that together constitute a single database. This enables
-you to store much more data, since ArangoDB distributes the data 
-automatically to the different servers. In many situations one can 
-also reap a benefit in data throughput, again because the load can
-be distributed to multiple machines.
-
-_Shards_ are configured per _collection_ so multiple _shards_ of data form
-the _collection_ as a whole. To determine in which _shard_ the data is to
-be stored ArangoDB performs a hash across the values. By default this
-hash is being created from the document __key_.
-
-For further information, please refer to the
-[_Cluster Administration_ ](../Administration/Cluster/README.md#sharding) section.
 
 ## Many sensible configurations
 
@@ -127,32 +93,107 @@ which are suitable for different usage scenarios:
 
 As you acn see, the _Coordinator_ layer can be scaled and deployed independently
 from the _DBServer_ layer.
+ 
+## Cluster ID
 
-### Synchronous replication with automatic fail-over
+Every non-Agency ArangoDB instance in a Cluster is assigned a unique
+ID during its startup. Using its ID a node is identifiable
+throughout the Cluster. All cluster operations will communicate
+via this ID.
+
+## Sharding
+
+Using the roles outlined above an ArangoDB Cluster is able to distribute
+data in so called _shards_ across multiple _DBServers_. From the outside
+this process is fully transparent and as such we achieve the goals of
+what other systems call "master-master replication". 
+
+In an ArangoDB Cluster you talk to any _Coordinator_ and whenever you read or write data
+it will automatically figure out where the data is stored (read) or to
+be stored (write). The information about the _shards_ is shared across the
+_Coordinators_ using the _Agency_.
+
+ArangoDB organizes its collection data in _shards_. Sharding
+allows to use multiple machines to run a cluster of ArangoDB
+instances that together constitute a single database. This enables
+you to store much more data, since ArangoDB distributes the data 
+automatically to the different servers. In many situations one can 
+also reap a benefit in data throughput, again because the load can
+be distributed to multiple machines.
+
+_Shards_ are configured per _collection_ so multiple _shards_ of data form
+the _collection_ as a whole. To determine in which _shard_ the data is to
+be stored ArangoDB performs a hash across the values. By default this
+hash is being created from the document __key_.
+
+For further information, please refer to the
+[_Cluster Administration_ ](../Administration/Cluster/README.md#sharding) section.
+
+## Synchronous replication 
 
 In an ArangoDB Cluster, the replication among the data stored by the _DBServers_
 is synchronous.
 
-Synchronous replication works on a per-shard basis. One configures for
-each collection, how many copies of each _shard_ are kept in the Cluster.
-At any given time, one of the copies is declared to be the "leader" and
-all other replicas are "followers". Write operations for this shard
-are always sent to the _DBServer_ which happens to hold the leader copy,
-which in turn replicates the changes to all followers before the operation
-is considered to be done and reported back to the coordinator.
-Read operations are all served by the server holding the leader copy,
+Synchronous replication works on a per-shard basis. Using the option _replicationFactor_,
+one configures for each _collection_ how many copies of each _shard_ are kept in the Cluster.
+
+At any given time, one of the copies is declared to be the _leader_ and
+all other replicas are _followers_. Write operations for this _shard_
+are always sent to the _DBServer_ which happens to hold the _leader_ copy,
+which in turn replicates the changes to all _followers_ before the operation
+is considered to be done and reported back to the _Coordinator_.
+Read operations are all served by the server holding the _leader_ copy,
 this allows to provide snapshot semantics for complex transactions.
 
-If a DBserver fails that holds a follower copy of a shard, then the leader
-can no longer synchronize its changes to that follower. After a short timeout
-(3 seconds), the leader gives up on the follower, declares it to be
-out of sync, and continues service without the follower. When the server
-with the follower copy comes back, it automatically resynchronizes its
-data with the leader and synchronous replication is restored.
+Using synchronous replication alone will guarantee consistency and high availabilty
+at the cost of reduced performance: write requests will have a higher latency
+(due to every write-request having to be executed on the followers) and 
+read requests will not scale out as only the _leader_ is being asked.
 
-If a DBserver fails that holds a leader copy of a shard, then the leader
+In a Cluster, synchronous replication will be managed by the _Coordinators_ for the client. 
+The data will always be stored on the _DBServers_.
+
+The following example will give you an idea of how synchronous operation
+has been implemented in ArangoDB Cluster:
+
+1. Connect to a coordinator via arangosh
+2. Create a collection
+
+    127.0.0.1:8530@_system> db._create("test", {"replicationFactor": 2})
+
+3. the coordinator will figure out a *leader* and 1 *follower* and create 1 *shard* (as this is the default)
+4. Insert data
+
+    127.0.0.1:8530@_system> db.test.insert({"replication": "😎"})
+
+5. The coordinator will write the data to the leader, which in turn will
+replicate it to the follower.
+6. Only when both were successful the result is reported to be successful
+
+    { 
+        "_id" : "test/7987", 
+        "_key" : "7987", 
+        "_rev" : "7987" 
+    }
+
+   When a follower fails, the leader will give up on it after 3 seconds
+   and proceed with the operation. As soon as the follower (or the network
+   connection to the leader) is back up, the two will resynchronize and
+   synchronous replication is resumed. This happens all transparently
+   to the client.
+
+## Automatic failover
+
+If a _DBServer_ that holds a _follower_ copy of a _shard_ fails, then the _leader_
+can no longer synchronize its changes to that _follower_. After a short timeout
+(3 seconds), the _leader_ gives up on the _follower_, declares it to be
+out of sync, and continues service without the _follower_. When the server
+with the _follower_ copy comes back, it automatically resynchronizes its
+data with the _leader_ and synchronous replication is restored.
+
+If a _DBserver_ that holds a _leader_ copy of a shard fails, then the _leader_
 can no longer serve any requests. It will no longer send a heartbeat to 
-the Agency. Therefore, a supervision process running in the Raft leader
+the _Agency_. Therefore, a _supervision_ process running in the Raft leader
 of the Agency, can take the necessary action (after 15 seconds of missing
 heartbeats), namely to promote one of the servers that hold in-sync
 replicas of the shard to leader for that shard. This involves a 
@@ -162,23 +203,55 @@ resumes. The other surviving replicas automatically resynchronize their
 data with the new leader. When the DBserver with the original leader
 copy comes back, it notices that it now holds a follower replica,
 resynchronizes its data with the new leader and order is restored.
+  
+The following example will give you an idea of how failover 
+has been implemented in ArangoDB Cluster:
 
-All shard data synchronizations are done in an incremental way, such that
+1. The _leader_ of a _shard_ (lets name it _DBServer001_) is going down.
+2. A _Coordinator_ is asked to return a document:
+
+    127.0.0.1:8530@_system> db.test.document("100069")
+
+3. The _Coordinator_ determines which server is responsible for this document and finds _DBServer001_
+4. The _Coordinator_ tries to contact _DBServer001_ and timeouts because it is not reachable.
+5. After a short while the _supervision_ (running in parallel on the _Agency_) will see that _heartbeats_ from _DBServer001_ are not coming in
+6. The _supervision_ promotes one of the _followers_ (say _DBServer002_), that is in sync, to be _leader_ and makes _DBServer001_ a _follower_.
+7. As the _Coordinator_ continues trying to fetch the document it will see that the _leader_ changed to _DBServer002_
+8. The _Coordinator_ tries to contact the new _leader_ (_DBServer002_) and returns the result:
+
+    { 
+        "_key" : "100069", 
+        "_id" : "test/100069", 
+        "_rev" : "513", 
+        "replication" : "😎"
+    }
+9. After a while the _supervision_ declares _DBServer001_ to be completely dead.
+10. A new _follower_ is determined from the pool of _DBservers_.
+11. The new _follower_ syncs its data from the _leade_r and order is restored.
+
+Please note that there may still be timeouts. Depending on when exactly
+the request has been done (in regard to the _supervision_) and depending
+on the time needed to reconfigure the Cluster the _Coordinator_ might fail
+with a timeout error!
+
+## Shard movement and resynchronization
+
+All _shard_ data synchronizations are done in an incremental way, such that
 resynchronizations are quick. This technology allows to move shards
-(follower and leader ones) between DBservers without service interruptions.
-Therefore, an ArangoDB cluster can move all the data on a specific DBserver
-to other DBservers and then shut down that server in a controlled way. 
-This allows to scale down an ArangoDB cluster without service interruption,
+(_follower_ and _leader_ ones) between _DBServers_ without service interruptions.
+Therefore, an ArangoDB Cluster can move all the data on a specific _DBServer_
+to other _DBServers_ and then shut down that server in a controlled way. 
+This allows to scale down an ArangoDB Cluster without service interruption,
 loss of fault tolerance or data loss. Furthermore, one can re-balance the
-distribution of the shards, either manually or automatically.
+distribution of the _shards_, either manually or automatically.
 
 All these operations can be triggered via a REST/JSON API or via the
 graphical web UI. All fail-over operations are completely handled within
-the ArangoDB cluster.
+the ArangoDB Cluster.
 
 Obviously, synchronous replication involves a certain increased latency for
 write operations, simply because there is one more network hop within the 
-cluster for every request. Therefore the user can set the replication factor
+Cluster for every request. Therefore the user can set the _replicationFactor_
 to 1, which means that only one copy of each shard is kept, thereby
 switching off synchronous replication. This is a suitable setting for
 less important or easily recoverable data for which low latency write 
