@@ -536,8 +536,9 @@ void RocksDBSettingsManager::loadKeyGenerators() {
 
 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
 RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res;
+
   WRITE_LOCKER(guard, _rwLock);
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
   auto it = _estimators.find(objectId);
   if (it != _estimators.end()) {
     // We swap out the stored estimate in order to move it to the caller
@@ -545,7 +546,7 @@ RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
     // Drop the now empty estimator
     _estimators.erase(objectId);
   }
-  return std::move(res);
+  return res;
 }
 
 uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {
