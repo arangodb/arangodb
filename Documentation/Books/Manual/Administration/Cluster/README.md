@@ -38,6 +38,11 @@ automatically replicated to the newly available machines.
 Multiple _replicas_ of the same _shard_ can never coexist on the same
 DBServer instance.
 
+## Moving / Rebalancing shards
+
+A _shard_ can be moved from a _DBServer_ to another, and the entire shard distribution
+can be rebalanced using the correponding buttons in the web [UI](../WebInterface/Cluster.md).
+
 ## Sharding
 
 For an introduction about _Sharding_ in Cluster, please refer to the
