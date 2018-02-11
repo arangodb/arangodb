@@ -49,11 +49,6 @@ The default value for _enforceReplicationFactor_ is true.
 **Note:** multiple _replicas_ of the same _shard_ can never coexist on the same
 _DBServer_ instance.
 
-## Moving / Rebalancing shards
-
-A _shard_ can be moved from a _DBServer_ to another, and the entire shard distribution
-can be rebalanced using the correponding buttons in the web [UI](../WebInterface/Cluster.md).
-
 ## Sharding
 
 For an introduction about _Sharding_ in Cluster, please refer to the
@@ -105,6 +100,10 @@ included in the list of attribute paths for the index:
 | a, b, c   | a, b      | not allowed |
 | a, b, c   | a, b, c   |     allowed |
 
+## Moving/Rebalancing _shards_
+
+A _shard_ can be moved from a _DBServer_ to another, and the entire shard distribution
+can be rebalanced using the correponding buttons in the web [UI](../WebInterface/Cluster.md).
 
 ## Replacing/Removing a _Coordinator_
 
