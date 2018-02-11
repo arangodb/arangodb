@@ -31,12 +31,23 @@ report success from now on.
 
 ## Preparing growth
 
-You may create a _collection_ with higher replication factor than
-available. When additional DBServers become available the _shards_ are
-automatically replicated to the newly available machines. 
+You may create a _collection_ with higher _replication factor_ than
+available _DBServers_. When additional _DBServers_ become available 
+the _shards_ are automatically replicated to the newly available _DBServers_. 
 
-Multiple _replicas_ of the same _shard_ can never coexist on the same
-DBServer instance.
+To create a _collection_ with higher _replication factor_ than
+available _DBServers_ please set the option _enforceReplicationFactor_ to _false_, 
+when creating the collection from _ArangoShell_ (the option is not available
+from the web interface), e.g.:
+
+```
+db._create("test", { replicationFactor: 4 }, { enforceReplicationFactor: false });
+```
+
+The default value for _enforceReplicationFactor_ is true. 
+
+**Note:** multiple _replicas_ of the same _shard_ can never coexist on the same
+_DBServer_ instance.
 
 ## Moving / Rebalancing shards
 
