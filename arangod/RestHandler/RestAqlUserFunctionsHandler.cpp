@@ -65,11 +65,14 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     auto res = registerUserFunction(_vocbase, body, replacedExisting);
 
     if (res.ok()) {
-      VPackBuilder result;
-      result.openObject();
-      result.add("replacedExisting", VPackValue(replacedExisting));
-      result.close();
-      generateOk(rest::ResponseCode::OK, result);
+      auto code = (replacedExisting)? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
+      VPackBuilder tmp;
+      tmp.add(VPackValue(VPackValueType::Object));
+      tmp.add("error", VPackValue(false));
+      tmp.add("code", VPackValue(static_cast<int>(code)));
+      tmp.close();
+
+      generateResult(code, tmp.slice());
     } else {
       generateError(res);
     }
