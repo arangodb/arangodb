@@ -384,7 +384,7 @@ static bool IsEmptyString(char const* p, size_t length) {
 }
 
 /*static*/ std::string AstNode::encodeDataSourceType(
-    char* const name, size_t size, AstNode::DataSourceType type
+    char const* name, size_t size, AstNode::DataSourceType type
 ) {
   StringRef suffix;
 
@@ -399,8 +399,10 @@ static bool IsEmptyString(char const* p, size_t length) {
       break;
   }
 
-  std::string param(name, size + suffix.size());
-  std::memcpy(&param[0] + size, suffix.data(), suffix.size());
+  std::string param;
+  param.reserve(size + suffix.size());
+  param.append(name, size);
+  param.append(suffix.data(), suffix.size());
   return param;
 }
 
@@ -408,6 +410,10 @@ static bool IsEmptyString(char const* p, size_t length) {
     std::string& param
 ) {
   auto decodeParam = [](std::string& param, StringRef const& expectedSuffix) -> bool {
+    if (param.size() < expectedSuffix.size()) {
+      return false;
+    }
+
     auto const suffixPos = param.size() - expectedSuffix.size();
 
     StringRef const suffix(

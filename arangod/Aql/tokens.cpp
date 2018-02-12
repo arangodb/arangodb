@@ -2036,7 +2036,7 @@ case 86:
 YY_RULE_SETUP
 {
   /* bind parameters must start with a @
-     if followed by another @, this is a collection name parameter */
+     if followed by another @, this is a collection name or a view name parameter */
   yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_PARAMETER;
@@ -2049,7 +2049,7 @@ case 87:
 YY_RULE_SETUP
 {
   /* bind parameters must start with a @
-     if followed by another @, this is a collection name parameter */
+     if followed by another @, this is a collection name or a view name parameter */
   yylval->strval.value = yyextra->query()->registerString(yytext + 1, yyleng - 1);
   yylval->strval.length = yyleng - 1;
   return T_DATA_SOURCE_PARAMETER;

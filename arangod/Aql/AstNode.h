@@ -205,7 +205,7 @@ struct AstNode {
     Invalid
   };
 
-  static std::string encodeDataSourceType(char* const name, size_t size, DataSourceType type);
+  static std::string encodeDataSourceType(char const* name, size_t size, DataSourceType type);
   static DataSourceType decodeDataSourceType(std::string& param);
 
   static std::unordered_map<int, std::string const> const Operators;
