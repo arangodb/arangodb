@@ -728,6 +728,7 @@ bool fromInArray(
     auto const* member = valueNode->getMemberUnchecked(i);
     TRI_ASSERT(member);
 
+    // edit in place for now; TODO change so we can replace instead
     TEMPORARILY_UNLOCK_NODE(&toNormalize);
     toNormalize.clearMembers();
     toNormalize.addMember(attributeNode);

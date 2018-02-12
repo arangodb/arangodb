@@ -748,6 +748,31 @@ struct AstNodeValueEqual {
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
 
+/** README
+ * Typically, the pattern should be that once an AstNode is created and inserted
+ * into the tree, it is immutable. Currently there are some places where this
+ * is not the case, so we cannot currently enforce it via typing.
+ *
+ * Instead, we have a flag which we set and check only in maintainer mode,
+ * `FLAG_FINALIZED` to signal that the node should not change state. This allows
+ * us to take a more functional style approach to building and modifying the
+ * Ast, allowing us to simply point to the same node multiple times instead of
+ * creating several copies when we need to e.g. distribute an AND operation.
+ *
+ * If you need to modify a node, try to replace it with a new one. You can
+ * create a copy-for-modify node via `Ast::shallowCopyForModify`. You can then
+ * set it to be finalized when it goes out of scope using
+ * `TRI_DEFER(FINALIZE_SUBTREE(node))`.
+ *
+ * If you cannot follow this pattern, for instance if you do not have access
+ * to the Ast or to the node's ancestors, then you might be able to get away
+ * with temporarily unlocking the node and modifying it in place. This could
+ * create correctness issues in our optmization code though, so do this with
+ * extreme caution. The correct way to do this is via the
+ * `TEMPORARILY_UNLOCK_NODE(node)` macro. It will relock the node when the macro
+ * instance goes out of scope.
+ */
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #define FINALIZE_SUBTREE(n) (arangodb::aql::AstNode::markFinalized(n))
 #define FINALIZE_SUBTREE_CONDITIONAL(n, b) if (b) { FINALIZE_SUBTREE(n); }

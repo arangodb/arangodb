@@ -2246,7 +2246,7 @@ AstNode* Ast::clone(AstNode const* node) {
 
   // copy flags
   copy->flags = node->flags;
-  TEMPORARILY_UNLOCK_NODE(copy);
+  TEMPORARILY_UNLOCK_NODE(copy); // if locked, unlock to copy properly
 
   // special handling for certain node types
   // copy payload...
@@ -3444,7 +3444,7 @@ AstNode* Ast::traverseAndModify(
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
       if (result != member) {
-        TEMPORARILY_UNLOCK_NODE(node);
+        TEMPORARILY_UNLOCK_NODE(node); // TODO change so we can replace instead
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
@@ -3474,7 +3474,7 @@ AstNode* Ast::traverseAndModify(
       AstNode* result = traverseAndModify(member, visitor, data);
 
       if (result != member) {
-        TEMPORARILY_UNLOCK_NODE(node);
+        TEMPORARILY_UNLOCK_NODE(node); // TODO change so we can replace instead
         node->changeMember(i, result);
       }
     }

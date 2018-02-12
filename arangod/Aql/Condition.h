@@ -282,10 +282,11 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary logical operators into n-ary operators
+  /// @brief converts binary to n-ary, comparision normal and negation normal
+  ///        form
   AstNode* transformNodePreorder(AstNode*);
 
-  /// @brief converts binary logical operators into n-ary operators
+  /// @brief converts from negation normal to disjunctive normal form
   AstNode* transformNodePostorder(AstNode*);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
