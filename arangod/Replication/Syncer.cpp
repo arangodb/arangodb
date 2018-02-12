@@ -674,53 +674,64 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
     return res;
   } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
+    return Result(ex.code(), std::string("caught exception while creating index: ") + ex.what());
   } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, std::string("caught exception while creating index: ") + ex.what());
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL, "caught unknown exception while creating index");
   }
 }
 
-/// @brief drops an index, based on the VelocyPack provided
 Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
-  std::string id;
-  if (slice.hasKey("data")) {
-    id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
-  } else {
-    id = VelocyPackHelper::getStringValue(slice, "id", "");
-  }
-  
-  if (id.empty()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "id not found in index drop slice");
-  }
-
-  TRI_idx_iid_t const iid = StringUtils::uint64(id);
-
-  TRI_vocbase_t* vocbase = resolveVocbase(slice);
-  if (vocbase == nullptr) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
-  try {
-    CollectionGuard guard(vocbase, col);
-    bool result = guard.collection()->dropIndex(iid);
-    if (!result) {
-      return Result(); // TODO: why do we ignore failures here?
+  auto cb = [&](VPackSlice const& slice) {
+    std::string id;
+    if (slice.hasKey("data")) {
+      id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
+    } else {
+      id = VelocyPackHelper::getStringValue(slice, "id", "");
+    }
+    
+    if (id.empty()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "id not found in index drop slice");
     }
 
+    TRI_idx_iid_t const iid = StringUtils::uint64(id);
+
+    TRI_vocbase_t* vocbase = resolveVocbase(slice);
+    if (vocbase == nullptr) {
+      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+    arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    try {
+      CollectionGuard guard(vocbase, col);
+      bool result = guard.collection()->dropIndex(iid);
+      if (!result) {
+        return Result(); // TODO: why do we ignore failures here?
+      }
+
+      return Result();
+    } catch (arangodb::basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+  };
+
+  Result r = cb(slice);
+  if (r.fail() &&
+      (r.is(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) ||
+       r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
+    // if dropping an index for a non-existing database or collection fails, this is not a real problem
     return Result();
-  } catch (arangodb::basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
   }
+
+  return r;
 }
 
 /// @brief get master state
