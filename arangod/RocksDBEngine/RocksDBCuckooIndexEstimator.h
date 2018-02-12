@@ -337,14 +337,18 @@ class RocksDBCuckooIndexEstimator {
 
   double computeEstimate() {
     READ_LOCKER(locker, _lock);
-    if (0 == (_nrTotal + _nrCuckood)) {
-      TRI_ASSERT(0 == _nrTotal);
-      TRI_ASSERT(0 == _nrCuckood);
+    if (0 == _nrTotal) {
+      TRI_ASSERT(0 == _nrUsed);
       // If we do not have any documents we have a rather constant estimate.
       return 1.0;
     }
-    return (static_cast<double>(_nrUsed) /
-            static_cast<double>(_nrTotal + _nrCuckood));
+    TRI_ASSERT(_nrUsed <= _nrTotal);
+    if (_nrUsed > _nrTotal) {
+      _nrTotal = _nrUsed; // should never happen, but will keep estimates valid
+                          // for production where the above assert is disabled
+    }
+
+    return (static_cast<double>(_nrUsed) / static_cast<double>(_nrTotal));
   }
 
   bool lookup(Key const& k) const {
@@ -399,6 +403,7 @@ class RocksDBCuckooIndexEstimator {
       ++_nrTotal;
       _needToPersist.store(true);
     }
+
     return true;
   }
 
@@ -419,9 +424,10 @@ class RocksDBCuckooIndexEstimator {
     bool found = false;
     {
       WRITE_LOCKER(guard, _lock);
-      --_nrTotal;
       Slot slot = findSlotNoCuckoo(pos1, pos2, fingerprint, found);
       if (found) {
+        // only decrease the total if we actually found it
+        --_nrTotal;
         if (!slot.decrease()) {
           // Removed last element. Have to remove
           slot.reset();
@@ -434,6 +440,7 @@ class RocksDBCuckooIndexEstimator {
       // removed by cuckoo
       // Reduce nrCuckood;
       if (_nrCuckood > 0) {
+        // not included in _nrTotal, just decrease here
         --_nrCuckood;
       }
       _needToPersist.store(true);
@@ -762,6 +769,8 @@ class RocksDBCuckooIndexEstimator {
     // If we get here we had to remove one of the elements.
     // Let's increas the cuckoo counter
     _nrCuckood++;
+    // and let's decrease the total so we don't have to recalculate later
+    _nrTotal = (_nrTotal >= counter) ? (_nrTotal - counter) : 0;
     return firstEmpty;
   }
 
@@ -951,7 +960,7 @@ class RocksDBCuckooIndexEstimator {
   char* _counterBase;          // base of original counter allocation
   uint64_t _nrUsed;            // number of pairs stored in the table
   uint64_t _nrCuckood;  // number of elements that have been removed by cuckoo
-  uint64_t _nrTotal;    // number of elements included in total
+  uint64_t _nrTotal;    // number of elements included in total (not cuckood)
   unsigned _maxRounds;  // maximum number of cuckoo rounds on insertion
 
   rocksdb::SequenceNumber mutable _committedSeq;
