@@ -767,7 +767,7 @@ def reststruct(cargo, r=Regexen()):
     try:
         (name, className, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
-        print >> sys.stderr, "RESTSTRUCT: 5 arguments required. You gave me: " + parameters(last)
+        print >> sys.stderr, "RESTSTRUCT: 5 arguments required (name, className, ptype, required, ptype2). You gave me: " + parameters(last)
         raise
 
     CheckReqOpt(required)
