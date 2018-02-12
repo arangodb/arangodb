@@ -187,7 +187,18 @@ retry:
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = runContinuousSync(errorMsg);
+    try {
+      res = runContinuousSync(errorMsg);
+    } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << _databaseName << "' failed with exception: " << ex.what();
+      res = ex.code();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << _databaseName << "' failed with exception: " << ex.what();
+      res = TRI_ERROR_INTERNAL;
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier for database '" << _databaseName << "' failed with unknown exception";
+      res = TRI_ERROR_INTERNAL;
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -736,10 +747,6 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
   std::string const cname = getCName(slice);
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
   
-  if (col == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
   VPackSlice data = slice.get("collection");
   if (!data.isObject()) {
     data = slice.get("data");
@@ -748,10 +755,31 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
   if (!data.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+      
+  if (col == nullptr) {
+    VPackSlice d = data.get("deleted");
+    if (d.isBool() && d.getBool()) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return TRI_ERROR_NO_ERROR;
+    }
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
 
-  arangodb::CollectionGuard guard(_vocbase, cid);
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-  return guard.collection()->updateProperties(data, doSync).errorNumber();
+  try {
+    arangodb::CollectionGuard guard(_vocbase, col->cid());
+    bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+    return guard.collection()->updateProperties(data, doSync).errorNumber();
+  } catch (basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      VPackSlice d = data.get("deleted");
+      if (d.isBool() && d.getBool()) {
+        // not a problem if a collection that is going to be deleted anyway
+        // does not exist on slave
+      }
+    }
+    throw;
+  }
 }
 
 /// @brief apply a single marker from the continuous log
@@ -1374,12 +1402,24 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (found) {
       active = StringUtils::boolean(header);
     }
+    
+    TRI_voc_tick_t lastScannedTick = 0;
+    header =
+        response->getHeaderField(TRI_REPLICATION_HEADER_LASTSCANNED, found);
+    if (found) {
+      lastScannedTick = StringUtils::uint64(header);
+    }
 
     header =
         response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
       TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
+      if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
+        // master did not have any news for us  
+        // still we can move forward the place from which to tail the WAL files
+        fetchTick = lastScannedTick - 1;
+      }
       if (lastIncludedTick > fetchTick) {
         fetchTick = lastIncludedTick;
         worked = true;

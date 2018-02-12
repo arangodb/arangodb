@@ -154,6 +154,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       return res;
     }
 
+    // the server-side inventory call will use the batch we already created
     std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
                       "&batchId=" + std::to_string(_batchId);
     if (_includeSystem) {
@@ -213,7 +214,6 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
     }
 
     sendFinishBatch();
-
 
     if (res != TRI_ERROR_NO_ERROR && errorMsg.empty()) {
       errorMsg = TRI_errno_string(res);
@@ -976,7 +976,6 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* coll,
   return res;
 }
 
-/// @brief incrementally fetch data from a collection
 /// @brief changes the properties of a collection, based on the VelocyPack
 /// provided
 int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
