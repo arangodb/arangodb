@@ -550,9 +550,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
                        TRI_voc_cid_t cid) {
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
-  if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-    return result;
-  }
+  TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
   std::shared_ptr<LogicalCollection> other =
     ci->getCollection(col->dbName(), cidString);
@@ -562,6 +560,13 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   if (!other->distributeShardsLike().empty()) {
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() + "' it is already distributed like '" + other->distributeShardsLike() + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
+  }
+
+  // We need to replace the distribute with the cid.
+  col->distributeShardsLike(cidString);
+
+  if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+    return result;
   }
 
   if (col->replicationFactor() != other->replicationFactor()) {
@@ -588,8 +593,6 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
     }
     result->emplace(shardId, it->second);
   }
-  // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString);
   return result;
 }
 
