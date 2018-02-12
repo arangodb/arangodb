@@ -62,12 +62,41 @@ class TransactionCollection;
 /// @brief transaction type
 class TransactionState {
  public:
+
+  /// @brief an implementation-dependent structure for storing runtime data
+  struct Cookie {
+    typedef std::unique_ptr<Cookie> ptr;
+    virtual ~Cookie() {}
+  };
+
+  typedef void(*RegistrationCallback)(TRI_voc_cid_t cid, TransactionState& state);
+  typedef std::function<void(TransactionState& state)> StatusChangeCallback;
+
   TransactionState() = delete;
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
   TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   virtual ~TransactionState();
+
+  /// @brief add a callback to be called for state instance creation events
+  /// @note not thread-safe on the assumption of static factory registration
+  static void addRegistrationCallback(RegistrationCallback callback);
+
+  /// @brief add a callback to be called for state change events
+  void addStatusChangeCallback(StatusChangeCallback const& callback);
+
+  /// @brief notify callbacks of association of 'cid' with this TransactionState
+  /// @note done separately from addCollection() to avoid creating a
+  ///       TransactionCollection instance for virtual entities, e.g. View
+  void applyRegistrationCallbacks(TRI_voc_cid_t cid);
+
+  /// @return a cookie associated with the specified key, nullptr if none
+  Cookie* cookie(void const* key) noexcept;
+
+  /// @brief associate the specified cookie with the specified key
+  /// @return the previously associated cookie, if any
+  Cookie::ptr cookie(void const* key, Cookie::ptr&& cookie);
 
   bool isRunningInCluster() const {
     return ServerState::isRunningInCluster(_serverRole);
@@ -165,15 +194,15 @@ class TransactionState {
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
   }
-  
+
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
                                         size_t& position) const;
-  
+
   /// @brief whether or not a transaction is an exclusive transaction on a single collection
   bool isExclusiveTransactionOnSingleCollection() const;
-  
+
   int checkCollectionPermission(TRI_voc_cid_t cid, AccessMode::Type) const;
 
   /// @brief release collection locks for a transaction
@@ -182,9 +211,9 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
-  
+
   /// @brief check the collection permissions
-  
+
  protected:
   /// @brief vocbase
   TRI_vocbase_t* _vocbase;
@@ -208,6 +237,10 @@ class TransactionState {
   int _nestingLevel;
 
   transaction::Options _options;
+
+ private:
+  std::map<void const*, Cookie::ptr> _cookies; // a collection of stored cookies
+  std::vector<StatusChangeCallback const*> _statusChangeCallbacks; // functrs to call for status change (pointer to allow for use of std::vector)
 };
 }
 

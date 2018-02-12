@@ -737,8 +737,6 @@ Result transaction::Methods::commit() {
     }
   }
 
-  CallbackInvoker invoker(this);
-
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -755,8 +753,6 @@ Result transaction::Methods::abort() {
     // transaction not created or not running
     return Result(TRI_ERROR_TRANSACTION_INTERNAL, "transaction not running on abort");
   }
-
-  CallbackInvoker invoker(this);
 
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
@@ -868,6 +864,8 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       }
       THROW_ARANGO_EXCEPTION(res);
     }
+
+    _state->applyRegistrationCallbacks(cid);
     _state->ensureCollections(_state->nestingLevel());
     collection = trxCollection(cid);
 
@@ -2809,32 +2807,43 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     throwCollectionNotFound(name);
   }
 
-  if (_state->isEmbeddedTransaction()) {
-    Result err;
-    auto visitor = [this, name, type, &err](TRI_voc_cid_t cid)->bool {
-      auto res = addCollectionEmbedded(cid, name, type);
-
-      if (err.ok()) {
-        err = res; // track first error
-      }
-
-      return true; // add the remaining collections
-    };
-
-    return resolver()->visitCollections(visitor, cid)
-      ? err : Result(TRI_ERROR_INTERNAL);
-  }
-
   Result err;
-  auto visitor = [this, name, type, &err](TRI_voc_cid_t cid)->bool {
-    auto res = addCollectionToplevel(cid, name, type);
+  bool visited = false;
+  auto visitor = _state->isEmbeddedTransaction()
+    ? std::function<bool(TRI_voc_cid_t)>(
+        [this, name, type, &err, cid, &visited](TRI_voc_cid_t ccid)->bool {
+          auto res = addCollectionEmbedded(ccid, name, type);
 
-    if (err.ok()) {
-      err = res; // track first error
-    }
+          _state->applyRegistrationCallbacks(ccid);
+          visited |= cid == ccid;
 
-    return true; // add the remaining collections
-  };
+          if (err.ok()) {
+            err = res; // track first error
+          }
+
+          return true; // add the remaining collections
+        }
+      )
+    : std::function<bool(TRI_voc_cid_t)>(
+        [this, name, type, &err, cid, &visited](TRI_voc_cid_t ccid)->bool {
+          auto res = addCollectionToplevel(ccid, name, type);
+
+          _state->applyRegistrationCallbacks(ccid);
+          visited |= cid == ccid;
+
+          if (err.ok()) {
+            err = res; // track first error
+          }
+
+          return true; // add the remaining collections
+        }
+      )
+    ;
+
+  // skip provided 'cid' if it was already done by the visitor
+  if (!visited) {
+    _state->applyRegistrationCallbacks(cid);
+  }
 
   return resolver()->visitCollections(visitor, cid)
     ? err : Result(TRI_ERROR_INTERNAL);
@@ -3109,17 +3118,6 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   outLength = length - (key - handle);
 
   return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief invoke a callback method when a transaction has finished
-void transaction::CallbackInvoker::invoke() noexcept {
-  for (auto const& cb : _trx->_callbacks) {
-    try {
-      cb(_trx);
-    } catch (...) {
-      // we must not propagate exceptions from here
-    }
-  }
 }
 
 // -----------------------------------------------------------------------------

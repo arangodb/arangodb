@@ -38,6 +38,7 @@
 
 NS_BEGIN(arangodb)
 
+class TransactionState; // forward declaration
 class ViewIterator; // forward declaration
 
 NS_BEGIN(aql)
@@ -74,70 +75,16 @@ struct IResearchLinkMeta;
 ///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple directory readers
+/// @brief index reader implementation with a cached primary-key reader lambda
 ////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final : public irs::index_reader {
+class PrimaryKeyIndexReader: public irs::index_reader {
  public:
-  CompoundReader(CompoundReader&& other) noexcept;
-  irs::sub_reader const& operator[](size_t subReaderId) const noexcept {
-    return *(_subReaders[subReaderId].first);
-  }
-  void add(irs::directory_reader const& reader);
-  virtual reader_iterator begin() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
-  virtual uint64_t docs_count() const override;
-  virtual reader_iterator end() const override;
-  virtual uint64_t live_docs_count() const override;
-
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept {
-    return _subReaders[subReaderId].second;
-  }
-
-  virtual size_t size() const noexcept override {
-    return _subReaders.size();
-  }
-
- private:
-  CompoundReader(irs::async_utils::read_write_mutex& mutex);
-
-  friend class IResearchView;
-
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
-
-  class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
-   public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
-      : _itr(itr) {
-    }
-
-    virtual void operator++() noexcept override {
-      ++_itr;
-    }
-    virtual reference operator*() noexcept override {
-      return *(_itr->first);
-    }
-    virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
-    }
-    virtual bool operator==(const reader_iterator_impl& other) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
-    }
-
-   private:
-    SubReadersType::const_iterator _itr;
-  };
-
-  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-
-  // order is important
-  ReadMutex _mutex;
-  std::unique_lock<ReadMutex> _lock;
-  std::vector<irs::directory_reader> _readers;
-  SubReadersType _subReaders;
+  virtual irs::sub_reader const& operator[](
+    size_t subReaderId
+  ) const noexcept = 0;
+  virtual irs::columnstore_reader::values_reader_f const& pkColumn(
+    size_t subReaderId
+  ) const noexcept = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -179,6 +126,11 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief destructor to clean up resources
   ///////////////////////////////////////////////////////////////////////////////
   virtual ~IResearchView();
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief apply any changes to 'state' required by this view
+  ///////////////////////////////////////////////////////////////////////////////
+  void apply(arangodb::TransactionState& state);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
@@ -286,10 +238,12 @@ class IResearchView final: public arangodb::ViewImplementation,
   AsyncSelf::ptr self() const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get an index reader containing the currently commited datastore
-  ///        record snapshot
+  /// @return pointer to an index reader containing the datastore record snapshot
+  ///         associated with 'state'
+  ///         (nullptr == no view snapshot associated with the specified state)
+  ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  CompoundReader snapshot();
+  PrimaryKeyIndexReader* snapshot(TransactionState& state, bool force = false);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
@@ -351,11 +305,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   };
 
   struct TidStore {
-    TidStore(
-      transaction::Methods& trx,
-      std::function<void(transaction::Methods*)> const& trxCallback
-    );
-
     mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
     std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
     MemoryStore _store;
@@ -415,7 +364,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   DataStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
-  std::function<void(transaction::Methods* trx)> _transactionCallback;
+  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
+  std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 };
 

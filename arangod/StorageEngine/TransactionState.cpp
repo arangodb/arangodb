@@ -34,6 +34,16 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
+namespace {
+
+  std::vector<arangodb::TransactionState::RegistrationCallback>& getRegistrationCallbacks() {
+    static std::vector<arangodb::TransactionState::RegistrationCallback> callbacks;
+
+    return callbacks;
+  }
+
+}
+
 using namespace arangodb;
 
 /// @brief transaction type
@@ -93,6 +103,45 @@ TransactionCollection* TransactionState::collection(
   }
 
   return trxCollection;
+}
+
+/*static*/ void TransactionState::addRegistrationCallback(
+    RegistrationCallback callback
+) {
+  getRegistrationCallbacks().emplace_back(callback);
+}
+
+void TransactionState::addStatusChangeCallback(
+    StatusChangeCallback const& callback
+) {
+  _statusChangeCallbacks.emplace_back(&callback);
+}
+
+void TransactionState::applyRegistrationCallbacks(TRI_voc_cid_t cid) {
+  for (auto& callback: getRegistrationCallbacks()) {
+    try {
+      callback(cid, *this);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
+}
+
+TransactionState::Cookie* TransactionState::cookie(
+    void const* key
+) noexcept {
+  auto itr = _cookies.find(key);
+
+  return itr == _cookies.end() ? nullptr : itr->second.get();
+}
+
+TransactionState::Cookie::ptr TransactionState::cookie(
+    void const* key,
+    TransactionState::Cookie::ptr&& cookie
+) {
+  _cookies[key].swap(cookie);
+
+  return std::move(cookie);
 }
 
 /// @brief add a collection to a transaction
@@ -178,7 +227,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
 }
-  
+
 /// @brief run a callback on all collections
 void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
   for (auto& trxCollection : _collections) {
@@ -381,4 +430,18 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
+
+  for (auto& callback: _statusChangeCallbacks) {
+    assert(callback);
+
+    try {
+      (*callback)(*this);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
