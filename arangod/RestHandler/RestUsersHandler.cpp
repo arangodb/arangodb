@@ -314,7 +314,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   if (suffixes.size() == 1) {
     // replace existing user
     std::string const& user = suffixes[0];
-    if (canAccessUser(user)) {
+    if (!canAccessUser(user)) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
