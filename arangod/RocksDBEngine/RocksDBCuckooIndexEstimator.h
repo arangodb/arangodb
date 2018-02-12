@@ -343,6 +343,10 @@ class RocksDBCuckooIndexEstimator {
       return 1.0;
     }
     TRI_ASSERT(_nrUsed <= _nrTotal);
+    if (_nrUsed > _nrTotal) {
+      _nrTotal = _nrUsed; // should never happen, but will keep estimates valid
+                          // for production where the above assert is disabled
+    }
 
     return (static_cast<double>(_nrUsed) / static_cast<double>(_nrTotal));
   }
@@ -766,7 +770,7 @@ class RocksDBCuckooIndexEstimator {
     // Let's increas the cuckoo counter
     _nrCuckood++;
     // and let's decrease the total so we don't have to recalculate later
-    _nrTotal -= counter;
+    _nrTotal = (_nrTotal >= counter) ? (_nrTotal - counter) : 0;
     return firstEmpty;
   }
 
