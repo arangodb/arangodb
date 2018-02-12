@@ -41,28 +41,89 @@ arangodb::Result diffPlanLocalForDatabases(
   VPackSlice const&, std::vector<std::string> const&,
   std::vector<std::string>&, std::vector<std::string>&);
 
-/// @brief calculate difference between plan and local for dbs/cols
-///        come up with list of actions, which need to be performed
+
+/**
+ * @brief          Difference Plan and local for phase 1 of Maintenance run 
+ *
+ * @param plan     Snapshot of agency's planned state
+ * @param local    Snapshot of local state
+ * @param serverId This server's UUID
+ * @param actions  Resulting actions from difference are packed in here
+ *
+ * @return         Result
+ */
 arangodb::Result diffPlanLocal(
-  VPackSlice const&, VPackSlice const&, std::string const& serverId,
-  std::vector<ActionDescription>&);
+  VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
+  std::vector<ActionDescription>& actions);
 
+/**
+ * @brief          Difference Plan and local for phase 1 of Maintenance run 
+ *
+ * @param plan     Snapshot of agency's planned state
+ * @param current  Snapshot of agency's current state
+ * @param local    Snapshot of local state
+ * @param serverId This server's UUID
+ * @param actions  Resulting actions from difference are packed in here
+ *
+ * @return         Result
+ */
 arangodb::Result executePlan (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&, std::string const&);
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local,
+  std::string const& serverId);
 
+/**
+ * @brief          Difference local and current states for phase 2 of Maintenance 
+ *
+ * @param local    Snapshot of local state
+ * @param current  Snapshot of agency's current state
+ * @param serverId This server's UUID
+ * @param report   Resulting agency transaction, which is to be sent
+ *
+ * @return         Result
+ */
 arangodb::Result diffLocalCurrent (
   VPackSlice const& local, VPackSlice const& current,
   std::string const& serverId, Transactions& report);
 
+/**
+ * @brief          Synchronise Shards
+ *
+ * @param local    Snapshot of local state
+ * @param current  Snapshot of agency's current state
+ * @param serverId This server's UUID
+ * @param report   Resulting agency transaction, which is to be sent
+ *
+ * @return         Result
+ */
 arangodb::Result synchroniseShards (
-  VPackSlice const&, VPackSlice const&, VPackSlice const&);
+  VPackSlice const& plan, VPackSlice const& current, VPackSlice const& local);
 
+/**
+ * @brief          Phase one: Execute plan, shard replication startups
+ *
+ * @param plan     Snapshot of agency's planned state
+ * @param current  Snapshot of agency's current state
+ * @param local    Snapshot of local state
+ * @param serverId This server's UUID
+ * @param report   Resulting agency transaction, which is to be sent
+ *
+ * @return         Result
+ */
 arangodb::Result phaseOne (
   VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local,
-  std::string const&);
+  std::string const& serverId);
 
+/**
+ * @brief          Phase two: Report in agency
+ *
+ * @param plan     Snapshot of agency's planned state
+ * @param current  Snapshot of agency's current state
+ * @param local    Snapshot of local state
+ *
+ * @return         Result
+ */
 arangodb::Result phaseTwo (
-  VPackSlice const& plan, VPackSlice const& cur);
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local);
 
 }}
 

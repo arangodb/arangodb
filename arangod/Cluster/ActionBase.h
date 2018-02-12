@@ -27,8 +27,10 @@
 
 #include "ActionDescription.h"
 
-#include "lib/Basics/Common.h"
-#include "lib/Basics/Result.h"
+#include "Basics/Common.h"
+#include "Basics/Result.h"
+//#include "lib/Logger/LogLevel.h"
+//#include "lib/Logger/Logger.h"
 
 #include <chrono>
 
@@ -58,9 +60,15 @@ protected:
   ActionDescription _description;
   ActionModel _model;
   
-};
+}; // class ActionBase
 
-}}
+} // namespace maintenance
+
+Result actionError(int errorCode, std::string const& errorMessage);
+Result actionWarn(int errorCode, std::string const& errorMessage);
+
+
+} // namespace arangodb
 
 #endif
 

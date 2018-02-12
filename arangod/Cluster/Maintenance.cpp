@@ -354,7 +354,7 @@ arangodb::Result arangodb::maintenance::phaseOne (
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo (
-  VPackSlice const& plan, VPackSlice const& cur) {
+  VPackSlice const& plan, VPackSlice const& cur, VPackSlice const& local) {
   arangodb::Result result;
   return result;
 }

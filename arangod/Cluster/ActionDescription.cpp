@@ -96,6 +96,11 @@ std::string ActionDescription::toJson() const {
   return toVelocyPack().toJson();
 }
 
+
+VPackSlice const& ActionDescription::properties() const {
+  return _properties.slice();
+}
+
 /// @brief hash implementation for ActionRegistry
 namespace std {
 std::size_t hash<ActionDescription>::operator()(

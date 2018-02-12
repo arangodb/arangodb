@@ -88,6 +88,13 @@ public:
   /// @brief Print this action to ostream
   std::ostream& print(std::ostream&) const;
 
+  /**
+   * @brief Hand out a pointer to our roperties
+   *
+   * @return           pointer to our roperties
+   */
+  VPackSlice const& properties() const;
+  
 private:
   /// @brief Action description
   std::map<std::string, std::string> _description;

@@ -52,32 +52,25 @@ arangodb::Result CreateCollection::run(
   auto vocbase = Databases::lookup();
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
-    errorMsg += database
-    LOG_TOPIC(ERR, Logger::Maintenance)
-      << "CreateCollection: Failed to lookup database " << database;
-    return arangodb::Result(ERROR_ARANGO_DATABASE_NOT_FOUND,
-      )
+    errorMsg += database;
+    return actionError(ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
-  Collections::create(vocbase);
-    static Result create(TRI_vocbase_t* vocbase, std::string const& name,
-                       TRI_col_type_e collectionType,
-                       velocypack::Slice const& properties,
-                       bool createWaitsForSyncReplication,
-                       bool enforceReplicationFactor, FuncCallback);
-
+  res = Collections::create(
+    vocbase, collection, TRI_COL_TYPE_DOCUMENT, _description.properties(),
+    true, true);
   
   return res;
 }
 
 arangodb::Result CreateCollection::kill(Signal const& signal) {
-  arangodb::Result res;
-  return res;
+  return actionError(
+    ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateCollection action");
 }
 
 arangodb::Result CreateCollection::progress(double& progress) {
-  arangodb::Result res;
-  return res;
+  progress = 0.5;
+  return arangodb::Result(ERROR_NO_ERROR);
 }
 
 
