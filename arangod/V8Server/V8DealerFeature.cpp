@@ -1479,7 +1479,10 @@ V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, T
 
 V8ContextDealerGuard::~V8ContextDealerGuard() {
   if (_active && _context) {
-    V8DealerFeature::DEALER->exitContext(_context);
+    try {
+      V8DealerFeature::DEALER->exitContext(_context);
+    }
+    catch (...) {}
     _isolate = nullptr;
   }
 }

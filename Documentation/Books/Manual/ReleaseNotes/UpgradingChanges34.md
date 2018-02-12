@@ -14,12 +14,23 @@ Client tools
 REST API
 --------
 
-- GET /_api/aqlfunction/ was migrated to the general way of ArangoDB Replies. 
-    It now returns an object: 
-	  `{code: 200, error: false, result: []} ` 
-	It now also returns the 'isDeterministic' property.
-- DELETE /_api/aqlfunction/ now returns the number of deleted functions.
-
+- GET /_api/aqlfunction/ was migrated to match the general structure of ArangoDB Replies. 
+    It now returns an object with a "result" attribute that contains the list of available AQL user functions: 
+```js
+	  {
+	    code: 200,
+		error: false,
+		result: [
+	      {
+		    "name":"UnitTests::mytest1",
+			"code":"function () { return 1; }",
+			"isDeterministic":false
+		}]}
+```
+    In previous versions, this REST API returned only the list of available AQL user functions on the top level of the response.
+	Each AQL user function description now also contains the 'isDeterministic' attribute.
+- DELETE /_api/aqlfunction/ now returns the number of deleted functions:
+	  `{code: 200, error: false, deletedCount: 10} `
 
 Miscellaneous
 -------------

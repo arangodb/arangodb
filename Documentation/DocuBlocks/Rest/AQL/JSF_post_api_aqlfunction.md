@@ -11,7 +11,7 @@ the fully qualified name of the user functions.
 a string representation of the function body.
 
 @RESTBODYPARAM{isDeterministic,boolean,optional,}
-an optional boolean value to indicate that the function
+an optional boolean value to indicate whether the function
 results are fully deterministic (function return value solely depends on
 the input value and return value is the same for repeated calls with same
 input). The *isDeterministic* attribute is currently not used but may be
@@ -19,7 +19,7 @@ used later for optimisations.
 
 @RESTDESCRIPTION
 
-In case of success, the HTTP 200 is returned.
+In case of success, HTTP 200 is returned.
 If the function isn't valid etc. HTTP 400 including a detailed error message will be returned.
 
 @RESTRETURNCODES
@@ -29,7 +29,7 @@ If the function already existed and was replaced by the
 call, the server will respond with *HTTP 200*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (*false* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -39,7 +39,7 @@ If the function can be registered by the server, the server will respond with
 *HTTP 201*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (*false* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -50,7 +50,7 @@ If the JSON representation is malformed or mandatory data is missing from the
 request, the server will respond with *HTTP 400*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (*true* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code

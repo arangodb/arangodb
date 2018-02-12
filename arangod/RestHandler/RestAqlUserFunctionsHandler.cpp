@@ -92,7 +92,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     Result res;
     int deletedCount = 0;
 
-    bool deleteGroup = extractBooleanParameter(StaticStrings::deleteGroup, false);
+    bool deleteGroup = extractBooleanParameter(StaticStrings::group, false);
     if (deleteGroup) {
       res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
     } else { // delete single
@@ -119,11 +119,11 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     
     if ((suffixes.size() != 1) || suffixes[0].empty() ) {
-      extractStringParameter(StaticStrings::functionNamespace, functionNamespace);
+      extractStringParameter(StaticStrings::prefix, functionNamespace);
       if (functionNamespace.empty()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                       "superfluous suffix, expecting _api/aqlfunction/[<functionname or prefix>|?" +
-                      StaticStrings::functionNamespace + "=<functionname or prefix>]");
+                      StaticStrings::prefix + "=<functionname or prefix>]");
         return RestStatus::DONE;
       }
     } else {

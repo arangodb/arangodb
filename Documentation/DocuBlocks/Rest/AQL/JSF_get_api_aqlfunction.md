@@ -20,7 +20,7 @@ The call will return a JSON array with all user functions found.
 on success *HTTP 200* is returned.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (*false* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -35,7 +35,7 @@ The fully qualified name of the user function
 A string representation of the function body
 
 @RESTSTRUCT{isDeterministic,JSF_aql_userfunction_struct,boolean,required,}
-an optional boolean value to indicate that the function
+an optional boolean value to indicate whether the function
 results are fully deterministic (function return value solely depends on
 the input value and return value is the same for repeated calls with same
 input). The *isDeterministic* attribute is currently not used but may be
@@ -46,7 +46,7 @@ used later for optimisations.
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (*true* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code

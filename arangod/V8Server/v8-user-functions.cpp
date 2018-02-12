@@ -21,15 +21,13 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "v8-user-functions.h"
-
-//#include "Basics/Result.h"
-
 #include "v8-vocbaseprivate.h"
 #include <v8.h>
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8/v8-conv.h"
+
+#include "v8-user-functions.h"
 
 #include "VocBase/Methods/AqlUserFunctions.h"
 
@@ -52,6 +50,7 @@ static void JS_UnregisterAQLUserFunction(v8::FunctionCallbackInfo<v8::Value> con
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
+  TRI_V8_RETURN(v8::Number::New(isolate, 1));
   TRI_V8_TRY_CATCH_END;
 }
 
@@ -110,20 +109,18 @@ static void JS_GetAqlUserFunctions(v8::FunctionCallbackInfo<v8::Value> const& ar
   }
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   
-  std::shared_ptr<VPackBuilder> result;
-
-  result.reset(new VPackBuilder);
+  VPackBuilder result;
   std::string functionFilterPrefix;
   if (args.Length() >= 1) {
     functionFilterPrefix = TRI_ObjectToString(args[0]);
   }
-  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, *result.get());
+  Result rv = toArrayUserFunctions(vocbase, functionFilterPrefix, result);
 
   if (rv.fail()) {
     TRI_V8_THROW_EXCEPTION(rv);
   }
 
-  v8::Handle<v8::Value> v8result = TRI_VPackToV8(isolate, result->slice());
+  v8::Handle<v8::Value> v8result = TRI_VPackToV8(isolate, result.slice());
 
   TRI_V8_RETURN(v8result);
   TRI_V8_TRY_CATCH_END;

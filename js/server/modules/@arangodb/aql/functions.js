@@ -31,8 +31,6 @@
 var internal = require('internal');
 var arangodb = require('@arangodb');
 
-var ArangoError = arangodb.ArangoError;
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsUnregister
 // //////////////////////////////////////////////////////////////////////////////
@@ -40,7 +38,6 @@ var ArangoError = arangodb.ArangoError;
 var unregisterFunction = function (name) {
   'use strict';
 
-  var func = null;
   if (UNREGISTER_AQL_USER_FUNCTION(name)) {
     require('@arangodb/aql').reload();
     return true;
@@ -68,8 +65,11 @@ var unregisterFunctionsGroup = function (group) {
 // / @brief was docuBlock aqlFunctionsRegister
 // //////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, code, isDeterministic = false) {
-
+var registerFunction = function (name, code, isDeterministic) {
+  'use strict';
+  if (typeof isDeterministic !== 'boolean') {
+   sDeterministic = false;
+  }
   if (typeof code === 'function') {
     code = String(code) + '\n';
   }
@@ -84,16 +84,7 @@ var registerFunction = function (name, code, isDeterministic = false) {
   return result;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock aqlFunctionsToArray
-// //////////////////////////////////////////////////////////////////////////////
-
-var toArrayFunctions = function (group) {
-  'use strict';
-  return GET_AQL_USER_FUNCTIONS(group);
-};
-
 exports.unregister = unregisterFunction;
 exports.unregisterGroup = unregisterFunctionsGroup;
 exports.register = registerFunction;
-exports.toArray = toArrayFunctions;
+exports.toArray = GET_AQL_USER_FUNCTIONS;

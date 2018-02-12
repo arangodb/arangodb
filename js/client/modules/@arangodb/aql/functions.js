@@ -34,24 +34,7 @@ var arangosh = require('@arangodb/arangosh');
 var ArangoError = require('@arangodb').ArangoError;
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief validate a function name
-// //////////////////////////////////////////////////////////////////////////////
-
-var validateName = function (name) {
-  'use strict';
-
-  if (typeof name !== 'string' ||
-    !name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
-    name.substr(0, 1) === '_') {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.code,
-      errorMessage: internal.errors.ERROR_QUERY_FUNCTION_INVALID_NAME.message
-    });
-  }
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief validate user function code
+// / @brief eventually convert function to string
 // //////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
@@ -70,8 +53,6 @@ var stringifyFunction = function (code, name) {
 var unregisterFunction = function (name) {
   'use strict';
 
-  validateName(name);
-
   var requestResult = db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(name) + '?group=false');
   arangosh.checkRequestResult(requestResult);
   return requestResult;
@@ -83,13 +64,6 @@ var unregisterFunction = function (name) {
 
 var unregisterFunctionsGroup = function (group) {
   'use strict';
-
-  if (group.length === 0) {
-    throw new ArangoError({
-      errorNum: internal.errors.ERROR_BAD_PARAMETER.code,
-      errorMessage: internal.errors.ERROR_BAD_PARAMETER.message
-    });
-  }
 
   return db._connection.DELETE('/_api/aqlfunction/' + encodeURIComponent(group) + '?group=true');
 };

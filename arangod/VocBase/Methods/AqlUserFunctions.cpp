@@ -53,7 +53,7 @@
 using namespace arangodb;
 
 namespace {
-std::string collectionName("_aqlfunctions");
+std::string const collectionName("_aqlfunctions");
   // Must not start with `_`, may contain alphanumerical characters, should have at least one set of double colons followed by more alphanumerical characters.
 std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
   // we may filter less restrictive:
@@ -115,7 +115,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
     return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL User Functions");
   }
 
-  if (countSlice[0].getInt() != 1) {
+  if (countSlice[0].getNumericValue<int>() != 1) {
     return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
                   std::string("no AQL User Function by name '") + functionName + "' found");
   }
@@ -178,7 +178,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
     return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL User Functions");
   }
 
-  deleteCount = countSlice[0].getInt();
+  deleteCount = countSlice[0].getNumericValue<int>();
   reloadAqlUserFunctions();
   return Result();
 }
@@ -230,12 +230,12 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
 		    "missing mandatory property - 'code'");
   }
-  
+
   bool isDeterministic = false;
-  try {
-    isDeterministic = userFunction.get("isDeterministic").getBool();
+  VPackSlice isDeterministicSlice = userFunction.get("isDeterministic");
+  if (isDeterministicSlice.isBoolean()) {
+    isDeterministic = isDeterministicSlice.getBoolean();
   }
-  catch (...) {}
 
   {
     ISOLATE;
@@ -308,7 +308,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = false;
   opOptions.waitForSync = true;
-  opOptions.returnNew = false;
+  /// opOptions.returnNew = false;
   opOptions.silent = false;
   opOptions.isSynchronousReplicationFrom = true;
 
@@ -404,12 +404,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
   std::string tmp;
   for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
     VPackSlice resolved;
-    if (it.isExternal()) {
-        resolved = it.resolveExternal();
-    }
-    else {
-      resolved = it;
-    }
+    resolved = it.resolveExternal();
 
     if (!resolved.isObject()) {
       return Result(TRI_ERROR_INTERNAL, "element, that stores aql function is not an object");
@@ -417,16 +412,14 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
 
     VPackSlice name, fn;
     bool isDeterministic;
-    StringRef ref;
-    try {
-      name = resolved.get("name");
-      fn = resolved.get("code");
-      isDeterministic = resolved.get("isDeterministic").getBool();
-      ref = StringRef(fn);
-    }
-    catch (...) {}
-    // We simply ignore invalid entries in the _functions collection:
-    if (name.isString() && fn.isString() && (ref.length() > 2)) {
+    name = resolved.get("name");
+    fn = resolved.get("code");
+    isDeterministic = resolved.get("isDeterministic").getBool();
+
+      // We simply ignore invalid entries in the _functions collection:
+    if (name.isString() && fn.isString() && (fn.getStringLength() > 2)) {
+      auto ref = StringRef(fn);
+
       ref = ref.substr(1, ref.length() - 2);
       tmp = basics::StringUtils::trim(ref.toString());
 

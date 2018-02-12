@@ -12,15 +12,15 @@ the name of the AQL user function.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{group,string,optional}
- - *true*: The function name provided in *name* is treated as
- a namespace prefix, and all functions in the specified namespace will be deleted.
- The returned number of deleted functions may become 0 if none matches the string.
- - *false*: The function name provided in *name* must be fully
- qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
+- *true*: The function name provided in *name* is treated as
+  a namespace prefix, and all functions in the specified namespace will be deleted.
+  The returned number of deleted functions may become 0 if none matches the string.
+- *false*: The function name provided in *name* must be fully
+  qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
 
 @RESTDESCRIPTION
 
-Removes an existing AQL user function or functiongroup, identified by *name*.
+Removes an existing AQL user function or function group, identified by *name*.
 
 @RESTRETURNCODES
 
@@ -29,7 +29,7 @@ If the function can be removed by the server, the server will respond with
 *HTTP 200*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*false* in this case)
+boolean flag to indicate whether an error occurred (*false* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -43,7 +43,7 @@ Any number `>= 0` when `group` is set to *true*
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (*true* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
@@ -59,7 +59,7 @@ a descriptive error message
 If the specified user user function does not exist, the server will respond with *HTTP 404*.
 
 @RESTREPLYBODY{error,boolean,required,}
-boolean flag to indicate that an error occurred (*true* in this case)
+boolean flag to indicate whether an error occurred (*true* in this case)
 
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code

@@ -24,12 +24,6 @@
 #ifndef ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H
 #define ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H 1
 
-#include "Basics/Common.h"
-#include "Utils/CollectionNameResolver.h"
-#include "V8/v8-globals.h"
-#include "V8Server/v8-vocbase.h"
-
-
 void TRI_InitV8UserFunctions(v8::Isolate* isolate,
                              v8::Handle<v8::Context>);
 
