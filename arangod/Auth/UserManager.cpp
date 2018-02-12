@@ -216,7 +216,8 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
   VPackBuilder data = entry.toVPackBuilder();
   bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
-  TRI_ASSERT((replace && hasKey) || (!replace && !hasKey));
+  bool hasRev = data.slice().hasKey(StaticStrings::RevString);
+  TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
@@ -380,9 +381,11 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   }
 
   std::string oldKey;  // will only be populated during replace
+  TRI_voc_rid_t oldRev = 0;
   if (replace) {
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
+    oldRev = oldEntry.rev();
     if (oldEntry.source() != auth::Source::LOCAL) {
       return TRI_ERROR_USER_EXTERNAL;
     }
@@ -397,6 +400,7 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
   if (replace) {
     TRI_ASSERT(!oldKey.empty());
     user._key = std::move(oldKey);
+    user._rev = oldRev;
   }
 
   Result r = storeUserInternal(user, replace);
