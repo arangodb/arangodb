@@ -99,7 +99,7 @@ class SortCondition {
 
   static std::shared_ptr<SortCondition> fromVelocyPack(
       ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
-      std::string name);
+      std::string const& name);
 
  private:
 

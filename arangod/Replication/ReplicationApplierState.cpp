@@ -111,6 +111,7 @@ static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
     case ReplicationApplierState::ActivityPhase::SHUTDOWN:
       return "shutdown";
   }
+  return "unknown";
 }
 
 void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) const {

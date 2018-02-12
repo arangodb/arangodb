@@ -1,6 +1,10 @@
 devel
 -----
 
+* renamed startup option `--replication.automatic-failover` to 
+  `--replication.active-failover`
+  using the old option name will still work in ArangoDB 3.4, but the old option
+  will be removed afterwards
 
 * Index selectivity estimates for RocksDB engine are now eventually consistent.
   This change addresses a previous issue where some index updates could be
@@ -17,7 +21,8 @@ devel
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible
 
-* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash 
+  silently without error log
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
