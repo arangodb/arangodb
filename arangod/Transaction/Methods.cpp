@@ -2840,13 +2840,15 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
       )
     ;
 
+  auto res = resolver()->visitCollections(visitor, cid)
+           ? err : Result(TRI_ERROR_INTERNAL);
+
   // skip provided 'cid' if it was already done by the visitor
   if (!visited) {
     _state->applyRegistrationCallbacks(cid);
   }
 
-  return resolver()->visitCollections(visitor, cid)
-    ? err : Result(TRI_ERROR_INTERNAL);
+  return res;
 }
 
 /// @brief add a collection by id, with the name supplied

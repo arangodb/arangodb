@@ -432,7 +432,7 @@ void TransactionState::updateStatus(transaction::Status status) {
   _status = status;
 
   for (auto& callback: _statusChangeCallbacks) {
-    assert(callback);
+    TRI_ASSERT(callback);
 
     try {
       (*callback)(*this);
