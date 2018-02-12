@@ -212,7 +212,7 @@ Result removeLargeRange(rocksdb::TransactionDB* db,
       }
     }
   
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range deleted in total: " << total;
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "removing large range, deleted in total: " << total;
 
     if (counter > 0) {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "intermediate delete write";

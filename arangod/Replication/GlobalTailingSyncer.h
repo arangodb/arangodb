@@ -51,7 +51,6 @@ class GlobalTailingSyncer : public TailingSyncer {
 
   /// @brief save the current applier state
   Result saveApplierState() override;
-  std::unique_ptr<InitialSyncer> initialSyncer() override;
 };
 }
 
