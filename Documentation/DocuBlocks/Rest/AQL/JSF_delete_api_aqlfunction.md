@@ -12,32 +12,15 @@ the name of the AQL user function.
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{group,string,optional}
-If set to *true*, then the function name provided in *name* is treated as
-a namespace prefix, and all functions in the specified namespace will be deleted.
-If set to *false*, the function name provided in *name* must be fully
-qualified, including any namespaces.
+ - *true*: The function name provided in *name* is treated as
+ a namespace prefix, and all functions in the specified namespace will be deleted.
+ The returned number of deleted functions may become 0 if none matches the string.
+ - *false*: The function name provided in *name* must be fully
+ qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
 
 @RESTDESCRIPTION
 
-Removes an existing AQL user function, identified by *name*.
-
-In case of success, the returned JSON object has the following properties:
-
-- *error*: boolean flag to indicate that an error occurred (*false*
-  in this case)
-
-- *code*: the HTTP status code
-
-The body of the response will contain a JSON object with additional error
-details. The object has the following attributes:
-
-- *error*: boolean flag to indicate that an error occurred (*true* in this case)
-
-- *code*: the HTTP status code
-
-- *errorNum*: the server error number
-
-- *errorMessage*: a descriptive error message
+Removes an existing AQL user function or functiongroup, identified by *name*.
 
 @RESTRETURNCODES
 
@@ -45,11 +28,48 @@ details. The object has the following attributes:
 If the function can be removed by the server, the server will respond with
 *HTTP 200*.
 
+@RESTREPLYBODY{error,boolean,required,}
+boolean flag to indicate that an error occurred (*false* in this case)
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{deletedCount,integer,required,int64}
+The number of deleted user functions, always `1` when `group` is set to *false*. 
+Any number `>= 0` when `group` is set to *true*
+
+
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
+@RESTREPLYBODY{error,boolean,required,}
+boolean flag to indicate that an error occurred (*true* in this case)
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{errorNum,integer,required,int64}
+the server error number
+
+@RESTREPLYBODY{errorMessage,string,required,string}
+a descriptive error message
+
+
 @RESTRETURNCODE{404}
 If the specified user user function does not exist, the server will respond with *HTTP 404*.
+
+@RESTREPLYBODY{error,boolean,required,}
+boolean flag to indicate that an error occurred (*true* in this case)
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{errorNum,integer,required,int64}
+the server error number
+
+@RESTREPLYBODY{errorMessage,string,required,string}
+a descriptive error message
+
 
 @EXAMPLES
 
