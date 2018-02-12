@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/CollectionFeature.h"
 #include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -35,7 +36,8 @@ using namespace arangodb::methods;
 
 CreateCollection::CreateCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
-  TRI_ASSERT(d.has("collection"));
+  TRI_ASSERT(d.has(COLLECTION));
+  TRI_ASSERT(d.has(DATABASE));
 }
 
 CreateCollection::~CreateCollection() {};
@@ -43,6 +45,28 @@ CreateCollection::~CreateCollection() {};
 arangodb::Result CreateCollection::run(
   std::chrono::duration<double> const&, bool& finished) {
   arangodb::Result res;
+
+  auto const& database = _description.get(DATABASE);
+  auto const& collection = _description.get(COLLECTION);
+
+  auto vocbase = Databases::lookup();
+  if (vocbase == nullptr) {
+    std::string errorMsg("CreateCollection: Failed to lookup database ");
+    errorMsg += database
+    LOG_TOPIC(ERR, Logger::Maintenance)
+      << "CreateCollection: Failed to lookup database " << database;
+    return arangodb::Result(ERROR_ARANGO_DATABASE_NOT_FOUND,
+      )
+  }
+
+  Collections::create(vocbase);
+    static Result create(TRI_vocbase_t* vocbase, std::string const& name,
+                       TRI_col_type_e collectionType,
+                       velocypack::Slice const& properties,
+                       bool createWaitsForSyncReplication,
+                       bool enforceReplicationFactor, FuncCallback);
+
+  
   return res;
 }
 

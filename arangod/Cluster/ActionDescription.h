@@ -35,6 +35,17 @@ namespace maintenance {
 
 enum Signal { GRACEFUL, IMMEDIATE };
 
+static std::string const KEY("_key");
+static std::string const FIELDS("fields");
+static std::string const TYPE("type");
+static std::string const INDEXES("indexes");
+static std::string const SHARDS("shards");
+static std::string const DATABASE("database");
+static std::string const COLLECTION("collection");
+static std::string const EDGE("edge");
+static std::string const NAME("name");
+static std::string const ID("id");
+
 /// @brief Maintenance operation description card
 struct ActionDescription {
   

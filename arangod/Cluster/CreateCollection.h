@@ -48,7 +48,6 @@ public:
   
   virtual arangodb::Result progress(double& progress) override final;
 
-
 };
 
 }}

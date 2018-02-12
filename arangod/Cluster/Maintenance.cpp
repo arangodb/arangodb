@@ -45,16 +45,7 @@ static std::vector<std::string> cmp {
 static std::string const currentCollections("/arango/Current/Collections");
 static std::string const planCollections("/arango/Plan/Collections");
 static std::string const PRIMARY("primary");
-static std::string const KEY("_key");
-static std::string const FIELDS("fields");
-static std::string const TYPE("type");
-static std::string const INDEXES("indexes");
-static std::string const SHARDS("shards");
-static std::string const DATABASE("database");
-static std::string const COLLECTION("collection");
-static std::string const EDGE("edge");
-static std::string const NAME("name");
-static std::string const ID("id");
+
 
 VPackBuilder createProps(VPackSlice const& s) {
   VPackBuilder builder;
@@ -293,8 +284,7 @@ arangodb::Result arangodb::maintenance::executePlan (
     registry->dispatch(action);
   }
 
-  return result;
-  
+  return result;  
 }
 
 /// @brief add new database to current
