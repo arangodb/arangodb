@@ -5147,6 +5147,8 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
          ++i) {
       if (replaceInfo.expressionParent->getMember(i) ==
           replaceInfo.expressionNode) {
+        // edit in place for now; TODO change to replace instead
+        TEMPORARILY_UNLOCK_NODE(replaceInfo.expressionParent);
         replaceInfo.expressionParent->removeMemberUnchecked(i);
         replaceInfo.expressionParent->addMember(replacement);
       }

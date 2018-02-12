@@ -700,7 +700,7 @@ struct AstNode {
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
-  static void markFinalized(AstNode const* subtreeRoot);
+  static void markFinalized(AstNode* subtreeRoot);
 
  public:
   /// @brief the node type
@@ -774,7 +774,8 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
  */
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define FINALIZE_SUBTREE(n) (arangodb::aql::AstNode::markFinalized(n))
+#define FINALIZE_SUBTREE(n) \
+  arangodb::aql::AstNode::markFinalized(const_cast<arangodb::aql::AstNode*>(n))
 #define FINALIZE_SUBTREE_CONDITIONAL(n, b) if (b) { FINALIZE_SUBTREE(n); }
 #define TEMPORARILY_UNLOCK_NODE(n) \
   bool wasFinalizedAlready = \

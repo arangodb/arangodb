@@ -2622,13 +2622,13 @@ void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
   }
 }
 
-void AstNode::markFinalized(AstNode const* subtreeRoot) {
+void AstNode::markFinalized(AstNode* subtreeRoot) {
   if ((nullptr == subtreeRoot) ||
       subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
     return;
   }
 
-  const_cast<AstNode*>(subtreeRoot)->setFlag(AstNodeFlagType::FLAG_FINALIZED);
+  subtreeRoot->setFlag(AstNodeFlagType::FLAG_FINALIZED);
   for (size_t i = 0; i < subtreeRoot->numMembers(); ++i) {
     markFinalized(subtreeRoot->getMember(i));
   }
