@@ -776,6 +776,7 @@ int ContinuousSyncer::changeCollection(VPackSlice const& slice) {
       if (d.isBool() && d.getBool()) {
         // not a problem if a collection that is going to be deleted anyway
         // does not exist on slave
+        return TRI_ERROR_NO_ERROR;
       }
     }
     throw;
