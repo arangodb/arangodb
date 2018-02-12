@@ -34,16 +34,6 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 
-namespace {
-
-  std::vector<arangodb::TransactionState::RegistrationCallback>& getRegistrationCallbacks() {
-    static std::vector<arangodb::TransactionState::RegistrationCallback> callbacks;
-
-    return callbacks;
-  }
-
-}
-
 using namespace arangodb;
 
 /// @brief transaction type
@@ -105,26 +95,10 @@ TransactionCollection* TransactionState::collection(
   return trxCollection;
 }
 
-/*static*/ void TransactionState::addRegistrationCallback(
-    RegistrationCallback callback
-) {
-  getRegistrationCallbacks().emplace_back(callback);
-}
-
 void TransactionState::addStatusChangeCallback(
     StatusChangeCallback const& callback
 ) {
   _statusChangeCallbacks.emplace_back(&callback);
-}
-
-void TransactionState::applyRegistrationCallbacks(TRI_voc_cid_t cid) {
-  for (auto& callback: getRegistrationCallbacks()) {
-    try {
-      callback(cid, *this);
-    } catch (...) {
-      // we must not propagate exceptions from here
-    }
-  }
 }
 
 TransactionState::Cookie* TransactionState::cookie(

@@ -135,6 +135,13 @@ class Methods {
 
  public:
 
+  typedef void(*StateRegistrationCallback)(TRI_voc_cid_t cid, TransactionState& state);
+
+  /// @brief add a callback to be called for state instance association events
+  ///        e.g. addCollection(...)
+  /// @note not thread-safe on the assumption of static factory registration
+  static void addStateRegistrationCallback(StateRegistrationCallback callback);
+
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
 

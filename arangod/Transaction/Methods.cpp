@@ -73,6 +73,29 @@ using namespace arangodb::transaction::helpers;
 
 namespace {
 
+// wrap vector inside a static function to ensure proper initialization order
+std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getStateRegistrationCallbacks() {
+  static std::vector<arangodb::transaction::Methods::StateRegistrationCallback> callbacks;
+
+  return callbacks;
+}
+
+/// @brief notify callbacks of association of 'cid' with this TransactionState
+/// @note done separately from addCollection() to avoid creating a
+///       TransactionCollection instance for virtual entities, e.g. View
+void applyStateRegistrationCallbacks(
+    TRI_voc_cid_t cid,
+    arangodb::TransactionState& state
+) {
+  for (auto& callback: getStateRegistrationCallbacks()) {
+    try {
+      callback(cid, state);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
+}
+
 static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -132,6 +155,12 @@ static OperationResult emptyResult(bool waitForSync) {
   return OperationResult(Result(), resultBuilder.steal(), nullptr, waitForSync);
 }
 }  // namespace
+
+/*static*/ void transaction::Methods::addStateRegistrationCallback(
+    StateRegistrationCallback callback
+) {
+  getStateRegistrationCallbacks().emplace_back(callback);
+}
 
 /// @brief Get the field names of the used index
 std::vector<std::vector<std::string>>
@@ -865,7 +894,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    _state->applyRegistrationCallbacks(cid);
+    applyStateRegistrationCallbacks(cid, *_state);
     _state->ensureCollections(_state->nestingLevel());
     collection = trxCollection(cid);
 
@@ -2814,7 +2843,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
         [this, name, type, &err, cid, &visited](TRI_voc_cid_t ccid)->bool {
           auto res = addCollectionEmbedded(ccid, name, type);
 
-          _state->applyRegistrationCallbacks(ccid);
+          applyStateRegistrationCallbacks(ccid, *_state);
           visited |= cid == ccid;
 
           if (err.ok()) {
@@ -2828,7 +2857,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
         [this, name, type, &err, cid, &visited](TRI_voc_cid_t ccid)->bool {
           auto res = addCollectionToplevel(ccid, name, type);
 
-          _state->applyRegistrationCallbacks(ccid);
+          applyStateRegistrationCallbacks(ccid, *_state);
           visited |= cid == ccid;
 
           if (err.ok()) {
@@ -2845,7 +2874,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
 
   // skip provided 'cid' if it was already done by the visitor
   if (!visited) {
-    _state->applyRegistrationCallbacks(cid);
+    applyStateRegistrationCallbacks(cid, *_state);
   }
 
   return res;

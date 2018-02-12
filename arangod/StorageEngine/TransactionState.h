@@ -69,7 +69,6 @@ class TransactionState {
     virtual ~Cookie() {}
   };
 
-  typedef void(*RegistrationCallback)(TRI_voc_cid_t cid, TransactionState& state);
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
 
   TransactionState() = delete;
@@ -79,17 +78,8 @@ class TransactionState {
   TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   virtual ~TransactionState();
 
-  /// @brief add a callback to be called for state instance creation events
-  /// @note not thread-safe on the assumption of static factory registration
-  static void addRegistrationCallback(RegistrationCallback callback);
-
   /// @brief add a callback to be called for state change events
   void addStatusChangeCallback(StatusChangeCallback const& callback);
-
-  /// @brief notify callbacks of association of 'cid' with this TransactionState
-  /// @note done separately from addCollection() to avoid creating a
-  ///       TransactionCollection instance for virtual entities, e.g. View
-  void applyRegistrationCallbacks(TRI_voc_cid_t cid);
 
   /// @return a cookie associated with the specified key, nullptr if none
   Cookie* cookie(void const* key) noexcept;

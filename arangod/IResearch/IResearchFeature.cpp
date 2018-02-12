@@ -34,6 +34,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
 
 #include "Aql/AqlValue.h"
@@ -48,10 +49,6 @@
 #include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
-
-NS_BEGIN(transaction)
-class Methods;
-NS_END // transaction
 
 NS_BEGIN(basics)
 class VPackStringBufferAdapter;
@@ -264,7 +261,7 @@ void IResearchFeature::prepare() {
   );
 
   // register 'arangosearch' TransactionState state-change callback factory
-  arangodb::TransactionState::addRegistrationCallback(
+  arangodb::transaction::Methods::addStateRegistrationCallback(
     transactionStateRegistrationCallback
   );
 
