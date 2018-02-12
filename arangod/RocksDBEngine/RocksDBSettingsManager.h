@@ -116,10 +116,12 @@ class RocksDBSettingsManager {
   // NOTE: If this returns nullptr the recovery was not able to find any
   // estimator
   // for this index.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> stealIndexEstimator(
       uint64_t indexObjectId);
 
   // Steal the key genenerator state that recovery has detected.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   uint64_t stealKeyGenerator(uint64_t indexObjectId);
 
   // Free up all index estimators that were not read by any index.
@@ -129,19 +131,21 @@ class RocksDBSettingsManager {
   // to reread it will be done.
   // So call it after ALL indexes for all databases
   // have been created in memory.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   void clearIndexEstimators();
 
   // Clear out key generator map for values not read by any collection.
+  // SHOULD ONLY BE CALLED DURING STARTUP
   void clearKeyGenerators();
 
   // Earliest sequence number needed for recovery (don't throw out newer WALs)
   rocksdb::SequenceNumber earliestSeqNeeded() const;
 
  private:
-  void readCounterValues();
-  void readSettings();
-  void readIndexEstimates();
-  void readKeyGenerators();
+  void loadCounterValues();
+  void loadSettings();
+  void loadIndexEstimates();
+  void loadKeyGenerators();
 
   bool lockForSync(bool force);
 
