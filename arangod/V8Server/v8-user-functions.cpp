@@ -89,7 +89,7 @@ static void JS_RegisterAqlUserFunction(v8::FunctionCallbackInfo<v8::Value> const
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  TRI_V8ToVPack(isolate, builder, args[0], false);
   bool replacedExisting;
   Result rv = registerUserFunction(vocbase, builder.slice(), replacedExisting);
   

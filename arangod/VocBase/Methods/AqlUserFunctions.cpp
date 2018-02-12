@@ -308,14 +308,12 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = false;
   opOptions.waitForSync = true;
-  /// opOptions.returnNew = false;
   opOptions.silent = false;
   opOptions.isSynchronousReplicationFrom = true;
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   res = trx.begin();
   if (!res.ok()) {
@@ -326,19 +324,13 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   transaction::BuilderLeaser searchBuilder(&trx);
   searchBuilder->add(VPackValue(_key));
   arangodb::velocypack::Builder existDocument;
-  try {
-    res = trx.documentFastPath(collectionName, mmdr.get(), searchBuilder->slice(), existDocument, false);
-  } catch (arangodb::basics::Exception const& ex) {
-    res.reset(ex.code());
-  }
-
   {
     arangodb::OperationResult result;
-    replacedExisting = res.ok();
-    if (replacedExisting){
+    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+
+    if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+      replacedExisting = true;
       result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
-    } else {
-      result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
     }
     // Will commit if no error occured.
     // or abort if an error occured.
@@ -410,12 +402,14 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_INTERNAL, "element, that stores aql function is not an object");
     }
 
-    VPackSlice name, fn;
-    bool isDeterministic;
+    VPackSlice name, fn, dtm;
+    bool isDeterministic = false;
     name = resolved.get("name");
     fn = resolved.get("code");
-    isDeterministic = resolved.get("isDeterministic").getBool();
-
+    dtm = resolved.get("isDeterministic");
+    if (dtm.isBoolean()) {
+      isDeterministic = dtm.getBool();
+    }
       // We simply ignore invalid entries in the _functions collection:
     if (name.isString() && fn.isString() && (fn.getStringLength() > 2)) {
       auto ref = StringRef(fn);
