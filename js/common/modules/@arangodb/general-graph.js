@@ -382,8 +382,14 @@ var bindEdgeCollections = function (self, edgeCollections) {
     // save
     var oldSave = wrap.insert;
     wrap.save = wrap.insert = function (from, to, data) {
+      var options = {};
       if (typeof from === 'object' && to === undefined) {
         data = from;
+        from = data._from;
+        to = data._to;
+      } else if (typeof from === 'object' && typeof to === 'object' && data === undefined) {
+        data = from;
+        options = to;
         from = data._from;
         to = data._to;
       } else if (typeof from === 'string' && typeof to === 'string' && typeof data === 'object') {
@@ -420,7 +426,7 @@ var bindEdgeCollections = function (self, edgeCollections) {
           }
         }
       );
-      return oldSave(data);
+      return oldSave(data, options);
     };
 
     // remove
@@ -580,9 +586,7 @@ var checkRWPermission = function (c) {
   let user = users.currentUser();
   if (user) {
     let p = users.permission(user, db._name(), c);
-    //print(`${user}: ${db._name()}/${c} = ${p}`);
     if (p !== 'rw') {
-      //print(`Denied ${user} access to ${db._name()}/${c}`);
       var err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
       err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
@@ -601,7 +605,6 @@ var checkROPermission = function(c) {
     let p = users.permission(user, db._name(), c);
     var err = new ArangoError();    
     if (p === 'none') {
-      //print(`Denied ${user} access to ${db._name()}/${c}`);
       err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
       err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
       throw err;

@@ -81,6 +81,7 @@ function HashIndexSuite() {
         collection.save({ _key: "test" + i, value: i });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureUniqueConstraint("value");
       assertEqual(1, idx.selectivityEstimate);
 
@@ -88,6 +89,7 @@ function HashIndexSuite() {
         collection.remove("test" + i);
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureUniqueConstraint("value");
       assertEqual(1, idx.selectivityEstimate);
     },
@@ -104,6 +106,7 @@ function HashIndexSuite() {
         collection.save({ value: i });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
       assertEqual(1, idx.selectivityEstimate);
 
@@ -111,6 +114,7 @@ function HashIndexSuite() {
         collection.save({ value: i });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
       assertTrue(idx.selectivityEstimate >= 0.45 && idx.selectivityEstimate <= 0.55);
 
@@ -118,6 +122,7 @@ function HashIndexSuite() {
         collection.save({ value: i });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
       assertTrue(idx.selectivityEstimate >= 0.3 && idx.selectivityEstimate <= 0.36);
     },
@@ -134,22 +139,25 @@ function HashIndexSuite() {
         collection.save({ value: 1 });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
-      assertTrue(idx.selectivityEstimate <= (1 / 1000 + 0.0001));
+      assertTrue(idx.selectivityEstimate <= ((1 / 1000) + 0.0001));
 
       for (i = 0; i < 1000; ++i) {
         collection.save({ value: 1 });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
-      assertTrue(idx.selectivityEstimate <= (2 / 2000 + 0.0001));
+      assertTrue(idx.selectivityEstimate <= ((2 / 2000) + 0.0001));
 
       for (i = 0; i < 1000; ++i) {
         collection.save({ value: 1 });
       }
 
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
-      assertTrue(idx.selectivityEstimate <= (2 / 3000 + 0.0001));
+      assertTrue(idx.selectivityEstimate <= ((2 / 3000) + 0.0001));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,9 +172,10 @@ function HashIndexSuite() {
         docs.push({value: i % 100});
       }
       collection.save(docs);
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       idx = collection.ensureHashIndex("value");
 
-      assertTrue(idx.selectivityEstimate === 100 / 1000);
+      assertEqual(idx.selectivityEstimate, 100 / 1000);
       try {
         internal.db._executeTransaction({
           collections: {write: cn},
@@ -187,8 +196,9 @@ function HashIndexSuite() {
         assertEqual(e.errorMessage, "banana");
         // Insert failed.
         // Validate that estimate is non modified
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         idx = collection.ensureHashIndex("value");
-        assertTrue(idx.selectivityEstimate === 100 / 1000);
+        assertEqual(idx.selectivityEstimate, 100 / 1000);
       }
     },
 
@@ -203,4 +213,3 @@ function HashIndexSuite() {
 jsunity.run(HashIndexSuite);
 
 return jsunity.done();
-

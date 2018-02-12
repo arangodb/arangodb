@@ -280,8 +280,8 @@ void MMFilesRestExportHandler::createCursor() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
     c->dump(builder);
     builder.close();
 
@@ -331,8 +331,8 @@ void MMFilesRestExportHandler::modifyCursor() {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
     builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue((int)_response->responseCode()));
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
     cursor->dump(builder);
     builder.close();
 
@@ -372,8 +372,8 @@ void MMFilesRestExportHandler::deleteCursor() {
   VPackBuilder result;
   result.openObject();
   result.add("id", VPackValue(id));
-  result.add("error", VPackValue(false));
-  result.add("code",
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code,
              VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   result.close();
 
