@@ -484,6 +484,7 @@ int MMFilesDumpLogReplication(
   // setup some iteration state
   int res = TRI_ERROR_NO_ERROR;
   TRI_voc_tick_t lastFoundTick = 0;
+  TRI_voc_tick_t lastScannedTick = 0;
   TRI_voc_tick_t lastDatabaseId = 0;
   TRI_voc_cid_t lastCollectionId = 0;
   bool hasMore = true;
@@ -553,6 +554,10 @@ int MMFilesDumpLogReplication(
 
         // get the marker's tick and check whether we should include it
         TRI_voc_tick_t foundTick = marker->getTick();
+
+        if (foundTick <= tickMax) {
+          lastScannedTick = foundTick;
+        }
 
         if (foundTick <= tickMin) {
           // marker too old
@@ -639,6 +644,7 @@ int MMFilesDumpLogReplication(
   MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   dump->_fromTickIncluded = fromTickIncluded;
+  dump->_lastScannedTick = lastScannedTick;
 
   if (res == TRI_ERROR_NO_ERROR) {
     if (lastFoundTick > 0) {

@@ -579,23 +579,36 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection slice is no object");
   }
-  
-  TRI_vocbase_t* vocbase = resolveVocbase(slice);
-  if (vocbase == nullptr) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
 
   VPackSlice data = slice.get("collection");
   if (!data.isObject()) {
     data = slice.get("data");
   }
-
+  
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "data slice is no object");
+  }
+
+  VPackSlice d = data.get("deleted");
+  bool const isDeleted = (d.isBool() && d.getBool());
+
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    if (isDeleted) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+  if (col == nullptr) {
+    if (isDeleted) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
@@ -845,7 +858,22 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 }
 
 /// @brief run method, performs continuous synchronization
+/// catches exceptions
 Result TailingSyncer::run() {
+  try {
+    return runInternal();
+  } catch (arangodb::basics::Exception const& ex) {
+    return Result(ex.code(), std::string("continuous synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, std::string("continuous synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, std::string("continuous synchronization for database '") + _databaseName + "' failed with unknown exception");
+  }
+}
+
+/// @brief run method, performs continuous synchronization
+/// internal method, may throw exceptions
+Result TailingSyncer::runInternal() {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -1044,7 +1072,7 @@ retry:
     return res;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief get local replication apply state
@@ -1353,10 +1381,8 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   worked = false;
   
   std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
-  "&firstRegular=" +
-  StringUtils::itoa(firstRegularTick) + "&serverId=" +
-  _localServerIdString + "&includeSystem=" +
-  (_configuration._includeSystem ? "true" : "false");
+    "&firstRegular=" + StringUtils::itoa(firstRegularTick) + "&serverId=" +
+    _localServerIdString + "&includeSystem=" + (_configuration._includeSystem ? "true" : "false");
   
   // send request
   std::string const progress =
@@ -1416,6 +1442,12 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   if (found) {
     active = StringUtils::boolean(header);
   }
+
+  TRI_voc_tick_t lastScannedTick = 0;
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTSCANNED, found);
+  if (found) {
+    lastScannedTick = StringUtils::uint64(header);
+  }
   
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
   if (!found) {
@@ -1426,6 +1458,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
   
+  if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
+    // master did not have any news for us  
+    // still we can move forward the place from which to tail the WAL files
+    fetchTick = lastScannedTick - 1;
+  }
   if (lastIncludedTick > fetchTick) {
     fetchTick = lastIncludedTick;
     worked = true;
