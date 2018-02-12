@@ -43,7 +43,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
-    // firgure out params
+    // JSF_post_api_aqlfunction.md
+    // POST /_api/aqlfunction
     bool parsingSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parsingSuccess);
     if (!parsingSuccess) {
@@ -79,7 +80,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     return RestStatus::DONE;
   }
   else if (type == rest::RequestType::DELETE_REQ) {
-    // figure out params
+    // JSF_delete_api_aqlfunction.md
+    // DELETE /_api/aqlfunction/{name}
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
     if ((suffixes.size() != 1) || suffixes[0].empty() ) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -110,9 +112,12 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     return RestStatus::DONE;
   } // DELETE
   else if (type == rest::RequestType::GET) {
-    // figure out parameters - function namespace
+    // JSF_get_api_aqlfunction.md
+    // GET /_api/aqlfunction - figure out parameters - function namespace
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
+
+    
     if ((suffixes.size() != 1) || suffixes[0].empty() ) {
       extractStringParameter(StaticStrings::functionNamespace, functionNamespace);
       if (functionNamespace.empty()) {

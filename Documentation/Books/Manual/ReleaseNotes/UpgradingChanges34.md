@@ -14,7 +14,10 @@ Client tools
 REST API
 --------
 
-- GET /_api/aqlfunction/ now also returns the 'isDeterministic' property.
+- GET /_api/aqlfunction/ was migrated to the general way of ArangoDB Replies. 
+    It now returns an object: 
+	  `{code: 200, error: false, result: []} ` 
+	It now also returns the 'isDeterministic' property.
 - DELETE /_api/aqlfunction/ now returns the number of deleted functions.
 
 

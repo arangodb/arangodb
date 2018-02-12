@@ -57,7 +57,7 @@ std::string collectionName("_aqlfunctions");
   // Must not start with `_`, may contain alphanumerical characters, should have at least one set of double colons followed by more alphanumerical characters.
 std::regex const funcRegEx("[a-zA-Z0-9][a-zA-Z0-9_]*(::[a-zA-Z0-9_]+)+", std::regex::ECMAScript);
   // we may filter less restrictive:
-std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)+", std::regex::ECMAScript);
+std::regex const funcFilterRegEx("[a-zA-Z0-9_]+(::[a-zA-Z0-9_]*)*", std::regex::ECMAScript);
 
 bool isValidFunctionName(std::string const& testName) {
   return std::regex_match(testName, funcRegEx);
@@ -73,7 +73,6 @@ void reloadAqlUserFunctions() {
 }
 } // unnamed - namespace
 
-// will do some AQLFOO: and return true if it deleted one
 Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                                         std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
@@ -125,7 +124,6 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   return Result();
 }
 
-// will do some AQLFOO, and return the number of deleted
 Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                                     std::string const& functionFilterPrefix,
                                     int& deleteCount) {
@@ -190,12 +188,20 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                                       bool& replacedExisting
                                       ) {
   Result res;
-  auto vname = userFunction.get("name");
-  if (!vname.isString()) {
-    return Result(); //TODO
+  std::string name;
+  try{
+    auto vname = userFunction.get("name");
+    if (!vname.isString()) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME, "function name has to be provided as a string");
+    }
+    name = vname.copyString();
+    if (name.empty()) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME, "function name has to be provided and must not be empty");
+    }
   }
-
-  std::string name = vname.copyString();
+  catch (...) {
+    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME, "missing mandatory property - 'name'");
+  }
 
   if (!isValidFunctionName(name)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
@@ -203,15 +209,34 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                   name +
                   "' is not a valid name.");
   }
-  auto cvString = userFunction.get("code");
-  if (!cvString.isString()) {
-        return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-                      "expecting function or string");
-  }
-  std::string tmp = cvString.copyString();
 
-  std::string code = std::string("(") + tmp + "\n)";
-  bool isDeterministic = userFunction.get("isDeterministic").getBool();
+  std::string code;
+  std::string tmp;
+  try {
+    auto cvString = userFunction.get("code");
+    if (!cvString.isString()) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+		    "expecting function or string");
+    }
+    tmp = cvString.copyString();
+
+    if (tmp.empty()) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+		    "expecting function - must not be empty.");
+    }
+    code = std::string("(") + tmp + "\n)";
+  }
+  catch (...) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+		    "missing mandatory property - 'code'");
+  }
+  
+  bool isDeterministic = false;
+  try {
+    isDeterministic = userFunction.get("isDeterministic").getBool();
+  }
+  catch (...) {}
+
   {
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
@@ -328,8 +353,6 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   return res;
 }
 
-// todo: document which result builder state is expected
-// will do some AQLFOO:
 Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                                       std::string const& functionFilterPrefix,
                                       velocypack::Builder& result) {

@@ -59,7 +59,7 @@ std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::deleteGroup("group");
 std::string const StaticStrings::replaceExisting("replaceExisting");
-std::string const StaticStrings::functionNamespace("namespace");
+std::string const StaticStrings::functionNamespace("prefix");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
