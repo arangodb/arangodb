@@ -24,6 +24,7 @@
 #include "Exceptions.h"
 #include "Logger/Logger.h"
 
+using namespace arangodb;
 using namespace arangodb::basics;
 
 /// @brief controls if backtraces are printed with exceptions
@@ -159,4 +160,29 @@ std::string Exception::FillFormatExceptionString(char const* format, ...) {
   buffer[sizeof(buffer) - 1] = '\0';  // Windows
 
   return std::string(buffer);
+}
+
+Result basics::catchToResult(std::function<Result()> fn, int defaultError) {
+  // TODO check whether there are other specific exceptions we should catch
+  Result result{TRI_ERROR_NO_ERROR};
+  try {
+    result = fn();
+  } catch (arangodb::basics::Exception const& e) {
+    result.reset(e.code(), e.message());
+  } catch (std::bad_alloc const& e) {
+    result.reset(TRI_ERROR_OUT_OF_MEMORY);
+  } catch (std::exception const& e) {
+    result.reset(defaultError, e.what());
+  } catch (...) {
+    result.reset(defaultError);
+  }
+  return result;
+}
+
+Result basics::catchVoidToResult(std::function<void()> fn, int defaultError) {
+  std::function<Result()> wrapped = [&fn]() -> Result {
+    fn();
+    return Result{TRI_ERROR_NO_ERROR};
+  };
+  return catchToResult(wrapped, defaultError);
 }

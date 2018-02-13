@@ -143,12 +143,12 @@ class V8Context {
   void handleCancelationCleanup();
 };
 
-class V8ContextGuard {
+class V8ContextEntryGuard {
  public:
-  explicit V8ContextGuard(V8Context* context);
-  V8ContextGuard(V8ContextGuard const&) = delete;
-  V8ContextGuard& operator=(V8ContextGuard const&) = delete;
-  ~V8ContextGuard();
+  explicit V8ContextEntryGuard(V8Context* context);
+  V8ContextEntryGuard(V8ContextEntryGuard const&) = delete;
+  V8ContextEntryGuard& operator=(V8ContextEntryGuard const&) = delete;
+  ~V8ContextEntryGuard();
 
  private:
   V8Context* _context;

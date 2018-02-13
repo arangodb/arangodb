@@ -30,7 +30,6 @@
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Utils/OperationCursor.h"
@@ -270,24 +269,21 @@ bool IndexBlock::initIndexes() {
     TRI_ASSERT(_condition != nullptr);
 
     if (_hasV8Expression) {
-      bool const isRunningInCluster =
-          arangodb::ServerState::instance()->isRunningInCluster();
-
       // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+      auto cleanup = [this]() {
+        if (arangodb::ServerState::instance()->isRunningInCluster()) {
+          // must invalidate the expression now as we might be called from
+          // different threads
+          for (auto const& e : _nonConstExpressions) {
+            e->expression->invalidate();
+          }
 
-              engine->getQuery()->exitContext();
-            }
-          }};
+          _engine->getQuery()->exitContext();
+        }
+      };
+
+      _engine->getQuery()->enterContext();
+      TRI_DEFER(cleanup());
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
