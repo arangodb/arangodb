@@ -1,11 +1,13 @@
 Configuration
 =============
 
-### Requirements
+Requirements
+------------
 
 Synchronous replication requires an operational ArangoDB cluster.
 
-### Enabling synchronous replication
+Enabling synchronous replication
+--------------------------------
 
 Synchronous replication can be enabled per collection. When creating a
 collection you may specify the number of replicas using the
@@ -19,7 +21,8 @@ Example:
 In the above case, any write operation will require 2 replicas to
 report success from now on. 
 
-### Preparing growth
+Preparing growth
+----------------
 
 You may create a collection with higher replication factor than
 available. When additional db servers become available the shards are

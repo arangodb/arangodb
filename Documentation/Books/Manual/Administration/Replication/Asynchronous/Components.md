@@ -1,14 +1,15 @@
 Components
 ==========
 
-### Replication Logger
+Replication Logger
+------------------
 
-#### Purpose
+### Purpose
 
 The replication logger will write all data-modification operations into the write-ahead log.
 This log may then be read by clients to replay any data modification on a different server.
 
-#### Checking the state
+### Checking the state
 
 To query the current state of the logger, use the *state* command:
   
@@ -55,9 +56,10 @@ maximum tick values per logfile:
 
     require("@arangodb/replication").logger.tickRanges();
 
-### Replication Applier
+Replication Applier
+-------------------
 
-#### Purpose
+### Purpose
 
 The purpose of the replication applier is to read data from a master database's event log, 
 and apply them locally. The applier will check the master database for new operations periodically. 
@@ -162,7 +164,7 @@ Here is an example of the state after the replication applier terminated itself 
 **Note**: the state of a database's replication applier is queryable via the HTTP API, too. 
 Please refer to [HTTP Interface for Replication](../../../../HTTP/Replications/index.html) for more details.
 
-#### All-in-one setup
+### All-in-one setup
 
 To copy the initial data from the **slave** to the master and start the
 continuous replication, there is an all-in-one command *setupReplication*:
@@ -199,7 +201,7 @@ stop the running applier, drop its configuration and do a resynchronization of d
 master. It will then use the provided configration, overwriting any previously existing replication
 configuration on the slave.
 
-#### Starting and Stopping
+### Starting and Stopping
 
 To manually start and stop the applier in the current database, the *start* and *stop* commands 
 can be used like this:
@@ -237,7 +239,7 @@ too. Thus stopping the replication applier on the slave manually should only be 
 is certainty that there are no ongoing transactions on the master.
 
 
-#### Configuration
+### Configuration
 
 To configure the replication applier of a specific database, use the *properties* command. Using 
 it without any arguments will return the applier's current configuration:
@@ -439,4 +441,3 @@ require("@arangodb/replication").applier.start("231848833079705");
 **Note**: The tick values should be treated as strings. Using numeric data types for tick
 values is unsafe because they might exceed the 32 bit value and the IEEE754 double accuracy
 ranges.
-

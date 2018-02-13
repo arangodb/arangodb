@@ -1,7 +1,8 @@
 HTTP Interface for Replication
 ==============================
 
-### Replication
+Replication
+-----------
 
 This is an introduction to ArangoDB's HTTP replication interface.
 The replication architecture and components are described in more details in 

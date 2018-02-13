@@ -1,7 +1,8 @@
 ArangoDB Cluster and Docker
----------------------------
+===========================
 
-### Networking
+Networking
+----------
 
 A bit of extra care has to be invested due to the way in which Docker isolates its network. By default it fully isolates the network and by doing so an endpoint like `--server.endpoint tcp://0.0.0.0:8529` will only bind to all interfaces inside the Docker container which does not include any external interface on the host machine. This may be sufficient if you just want to access it locally but in case you want to expose it to the outside you must facilitate Dockers port forwarding using the `-p` command line option. Be sure to check the [official Docker documentation](https://docs.docker.com/engine/reference/run/).
 
@@ -11,7 +12,7 @@ To simply make arangodb available on all host interfaces on port 8529:
 
 Another possibility is to start Docker via network mode `host`. This is possible but generally not recommended. To do it anyway check the Docker documentation for details.
 
-#### Docker and Cluster tasks
+### Docker and Cluster tasks
 
 To start the cluster via Docker is basically the same as starting [locally](Local.md)
 or on [multiple machines](Distributed.md). However just like with the single networking

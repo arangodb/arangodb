@@ -31,7 +31,8 @@ Using arangosh:
 
     arangosh> db._create("satellite", {"replicationFactor": "satellite"});
 
-### A full example
+A full example
+--------------
 
     arangosh> var explain = require("@arangodb/aql/explainer").explain
     arangosh> db._create("satellite", {"replicationFactor": "satellite"})
@@ -110,7 +111,8 @@ as the join is a satellite join all shards can do the join locally
 as the data is replicated to all servers reducing the network overhead
 dramatically.
 
-### Caveats
+Caveats
+-------
 
 The cluster will automatically keep all satellite collections on all servers in sync
 by facilitating the synchronous replication. This means that write will be executed

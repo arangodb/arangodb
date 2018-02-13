@@ -10,7 +10,9 @@ write permission to this directory or you need to modify the configuration file
 for the server process. In the latter case the database directory and the Foxx
 directory have to be writable by the user.
 
-## Single- and Multiuser Installation
+Single- and Multiuser Installation
+----------------------------------
+
 There are two main modes for the installer of ArangoDB.
 The installer lets you select:
 
@@ -20,7 +22,9 @@ The installer lets you select:
   Allow to install Arangodb as normal user.
   Requires manual starting of the database server.
 
-## CheckBoxes
+Installation Options
+--------------------
+
 The checkboxes allow you to chose weather you want to:
 
 - chose custom install paths
@@ -30,7 +34,6 @@ The checkboxes allow you to chose weather you want to:
 - create a desktop icon
 
 or not.
-
 
 ### Custom Install Paths
 
@@ -53,20 +56,24 @@ We are not using the roaming part of the user's profile, because doing so
 avoids the data being synced to the windows domain controller.
 
 ### Automatic Upgrade
+
 If this checkbox is selected the installer will attempt to perform an automatic
 update. For more information please see
 [Upgrading from Previous Version](#upgrading-from-previous-version).
 
 ### Keep Backup
+
 Select this to create a backup of your database directory during automatic upgrade.
 The backup will be created next to your current database directory suffixed by
 a time stamp.
 
 ### Add to Path
+
 Select this to add the binary directory to your system's path (multi user
 installation) or user's path (single user installation).
 
 ### Desktop Icon
+
 Select if you want the installer to create Desktop Icons that let you:
 
 - access the web inteface
@@ -74,6 +81,7 @@ Select if you want the installer to create Desktop Icons that let you:
 - start the database server (single user installation only)
 
 ## Upgrading from Previous Version
+
 If you are upgrading ArangoDB from an earlier version you need to copy your old
 database directory [to the new default paths](#custom-install-paths). Upgrading
 will keep your old data, password and choice of storage engine as it is.

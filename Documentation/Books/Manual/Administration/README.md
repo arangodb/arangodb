@@ -5,7 +5,8 @@ Most administration can be managed using the *arangosh*.
 
 
 Filesystems
-===========
+-----------
+
 As one would expect for a database, we recommend a locally mounted filesystems.
 
 NFS or similar network filesystems will not work.

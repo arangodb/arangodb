@@ -65,7 +65,12 @@ Export XML
 
     unix> arangoexport --type xml --collection test
 
-This exports the collection *test* into the output directory *export* as generic XML. The root element of the generated XML file is named *collection*. Each document in the collection is exported in a *doc* XML attribute. Each document attribute is export in a generic *att* element, which has a *type* attribute indicating the attribute value, and a *value* attribute containing the attribute's value.
+This exports the collection *test* into the output directory *export* as generic XML.
+The root element of the generated XML file is named *collection*.
+Each document in the collection is exported in a *doc* XML attribute.
+Each document attribute is exported as a generic *att* element, which has a
+*name* attribute with the attribute name, a *type* attribute indicating the
+attribute value type, and a *value* attribute containing the attribute's value.
 
 Export XGMML
 ------------
@@ -74,8 +79,9 @@ Export XGMML
 [GML](https://en.wikipedia.org/wiki/Graph_Modelling_Language).
 To view the XGMML file you can use for example [Cytoscape](http://cytoscape.org).
 
-## important note
-If you export all attributes (*--xgmml-label-only false*) keep in mind that a atrribute names type have to be the same type for all documents. It wont work if you have a attribute named rank that is in one document a string and in another document a integer.
+
+{% hint 'warn' %}
+If you export all attributes (*--xgmml-label-only false*) note that attribute types have to be the same for all documents. It wont work if you have an attribute named rank that is in one document a string and in another document an integer.
 
 Bad
 
@@ -98,37 +104,37 @@ Good
     {
         "rank": 2
     }
+{% endhint %}
 
-
-## XGMML specific options
+**XGMML specific options**
 
 *--xgmml-label-attribute* specify the name of the attribute that will become the label in the xgmml file.
 
 *--xgmml-label-only* set to true will only export the label without any attributes in edges or nodes.
 
 
-## export based on collections
+**Export based on collections**
 
     unix> arangoexport --type xgmml --graph-name mygraph --collection vertex --collection edge
 
 This exports the a unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
 
 
-## export based on a named graph
+**Export based on a named graph**
 
     unix> arangoexport --type xgmml --graph-name mygraph
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml*.
 
 
-## export XGMML without attributes
+**Export XGMML without attributes**
 
     unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-only true
 
 This exports the named graph mygraph into the xgmml file *mygraph.xgmml* without the *&lt;att&gt;* tag in nodes and edges.
 
 
-## export XGMML with a specific label
+**Export XGMML with a specific label**
 
     unix> arangoexport --type xgmml --graph-name mygraph --xgmml-label-attribute name
 

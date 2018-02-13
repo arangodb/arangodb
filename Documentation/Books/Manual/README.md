@@ -8,6 +8,8 @@ New and eager to try out ArangoDB? Start right away with our beginner's guide:
 [**Getting Started**](GettingStarted/README.md)
 {% endhint %}
 
+**Structure**
+
 The documentation is organized in four handbooks:
 
 - This manual describes ArangoDB and its features in detail for you as a user,
@@ -28,8 +30,8 @@ their own examples based on these .js based examples to improve understandabilit
 for their respective users, i.e. for the [java driver](https://github.com/arangodb/arangodb-java-driver#learn-more)
 some of the samples are re-implemented.
 
-### Overview
-
+**Key Features**
+ 
 ArangoDB is a native multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
 Key features include:
@@ -46,8 +48,8 @@ Key features include:
 * ArangoDB can be easily deployed as a [**fault-tolerant distributed state machine**](Deployment/Agency.md), which can serve as the animal brain of distributed appliances
 * It is **open source** (Apache License 2.0)
 
-### Community
-
+**Community**
+ 
 If you have questions regarding ArangoDB, Foxx, drivers, or this documentation don't hesitate to contact us on:
 
 - [GitHub](https://github.com/arangodb/arangodb/issues) for issues and misbehavior

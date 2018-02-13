@@ -82,7 +82,8 @@ FOR u IN users
   REPLACE u WITH { status: 'inactive', name: u.name } IN backup
 ```
 
-### Setting query options
+Setting query options
+---------------------
 
 *options* can be used to suppress query errors that may occur when trying to
 replace non-existing documents or when violating unique key constraints:
@@ -100,7 +101,8 @@ FOR i IN 1..1000
   REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
 
-### Returning the modified documents
+Returning the modified documents
+--------------------------------
 
 The modified documents can also be returned by the query. In this case, the `REPLACE` 
 statement must be followed by a `RETURN` statement (intermediate `LET` statements are
@@ -139,4 +141,3 @@ FOR u IN users
   LET replaced = NEW 
   RETURN UNSET(replaced, '_key', '_id', '_rev')
 ```
-

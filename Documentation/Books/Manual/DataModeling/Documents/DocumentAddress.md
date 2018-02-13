@@ -43,14 +43,16 @@ creating a document. `_id` and `_key` values are immutable once the document
 has been created. The `_rev` value is maintained by ArangoDB automatically.
 
 
-### Document Handle
+Document Handle
+---------------
 
 A document handle uniquely identifies a document in the database. It
 is a string and consists of the collection's name and the document key
 (`_key` attribute) separated by `/`.
 
 
-### Document Key
+Document Key
+------------
 
 A document key uniquely identifies a document in the collection it is
 stored in. It can and should be used by clients when specific documents
@@ -73,7 +75,8 @@ completely, or to force a specific regime for auto-generating the `_key`
 values.
 
 
-### Document Revision
+Document Revision
+-----------------
 
 As ArangoDB supports MVCC (Multiple Version Concurrency Control),
 documents can exist in more than one
@@ -131,7 +134,8 @@ order to find a particular revision of a document, you need the document
 handle or key, and the document revision.
 
 
-### Multiple Documents in a single Command
+Multiple Documents in a single Command
+--------------------------------------
 
 Beginning with ArangoDB 3.0 the basic document API has been extended
 to handle not only single documents but multiple documents in a single

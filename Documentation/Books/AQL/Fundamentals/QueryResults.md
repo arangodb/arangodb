@@ -1,7 +1,8 @@
 Query results
 =============
 
-### Result sets
+Result sets
+-----------
 
 The result of an AQL query is an array of values. The individual values in the
 result array may or may not have a homogeneous structure, depending on what is
