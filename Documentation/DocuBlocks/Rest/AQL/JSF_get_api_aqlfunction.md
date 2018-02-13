@@ -2,17 +2,17 @@
 @startDocuBlock JSF_get_api_aqlfunction
 @brief gets all reqistered AQL user functions
 
-@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions}
+@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions under 'result'}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{namespace,string,optional}
-Returns all registered AQL user functions from namespace *namespace*.
+Returns all registered AQL user functions from namespace *namespace* under *result*.
 
 @RESTDESCRIPTION
 Returns all registered AQL user functions.
 
-The call will return a JSON array with all user functions found.
+The call will return a JSON array with status codes and all user functions found under *result*.
 
 @RESTRETURNCODES
 
