@@ -1297,7 +1297,6 @@ AqlValue Functions::LTrim(arangodb::aql::Query* query,
 
   ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
 
-
   delete[] spaceChars;
 
   UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
@@ -1305,8 +1304,6 @@ AqlValue Functions::LTrim(arangodb::aql::Query* query,
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
-
-
 
 /// @brief function RTRIM
 AqlValue Functions::RTrim(arangodb::aql::Query* query,
@@ -1338,7 +1335,6 @@ AqlValue Functions::RTrim(arangodb::aql::Query* query,
 
   rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
 
-
   delete[] spaceChars;
 
   UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
@@ -1346,25 +1342,6 @@ AqlValue Functions::RTrim(arangodb::aql::Query* query,
   result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 /// @brief function LIKE
 AqlValue Functions::Like(arangodb::aql::Query* query,
