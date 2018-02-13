@@ -162,7 +162,7 @@ void registerRecoveryHelper() {
   }
 }
 
-void transactionStateRegistrationCallback(
+arangodb::Result transactionStateRegistrationCallback(
     TRI_voc_cid_t cid,
     arangodb::TransactionState& state
 ) {
@@ -172,13 +172,13 @@ void transactionStateRegistrationCallback(
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
       << "failure to find vocbase while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
 
-    return;
+    return arangodb::Result(TRI_ERROR_INTERNAL);
   }
 
   auto view = vocbase->lookupView(cid);
 
   if (!view || arangodb::iresearch::IResearchView::type() != view->type()) {
-    return; // not an IResearchView (noop)
+    return arangodb::Result(); // not an IResearchView (noop)
   }
 
   // TODO FIXME find a better way to look up an IResearch View
@@ -192,10 +192,12 @@ void transactionStateRegistrationCallback(
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
       << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
 
-    return;
+    return arangodb::Result(TRI_ERROR_INTERNAL);
   }
 
   impl->apply(state);
+
+  return arangodb::Result();
 }
 
 std::string const FEATURE_NAME("ArangoSearch");
