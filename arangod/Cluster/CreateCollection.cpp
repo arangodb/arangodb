@@ -85,7 +85,7 @@ arangodb::Result CreateCollection::run(
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
         << "Local collection " << collection << " successfully created";
     });
-  
+
   return res;
 }
 
