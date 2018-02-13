@@ -387,12 +387,11 @@ void DatabaseFeature::beginShutdown() {
   }
 }
 
-void DatabaseFeature::stop() {}
+void DatabaseFeature::stop() {
+  stopAppliers();
+}
 
 void DatabaseFeature::unprepare() {
-  // close all databases
-  closeDatabases();
-
   // delete the database manager thread
   if (_databaseManager != nullptr) {
     _databaseManager->beginShutdown();
@@ -1130,7 +1129,7 @@ void DatabaseFeature::updateContexts() {
       vocbase);
 }
 
-void DatabaseFeature::closeDatabases() {
+void DatabaseFeature::stopAppliers() {
   // stop the replication appliers so all replication transactions can end
   ReplicationFeature* replicationFeature =
       ApplicationServer::getFeature<ReplicationFeature>("Replication");

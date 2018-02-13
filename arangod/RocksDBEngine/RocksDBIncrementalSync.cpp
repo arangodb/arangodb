@@ -47,6 +47,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
     std::vector<std::pair<std::string, uint64_t>> const& markers) {
+  // first thing we do is extend the batch lifetime
+  syncer.sendExtendBatch();
+  syncer.sendExtendBarrier();
+
   std::string const baseUrl = syncer.ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
@@ -70,7 +74,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                     std::to_string(chunkSize) + "&low=" + lowString;
 
   std::string progress =
-      "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
+      "fetching keys chunk " + std::to_string(chunkId) + " from " + url;
   syncer.setProgress(progress);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -207,6 +211,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     return Result();
   }
 
+  syncer.sendExtendBatch();
+  syncer.sendExtendBarrier();
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
                                         << " documents for this chunk";
 
@@ -228,7 +235,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                       "&offset=" + std::to_string(offsetInChunk);
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
-               " for collection '" + collectionName + "' from " + url;
+               " (" + std::to_string(toFetch.size()) + " keys) for collection '" + collectionName + "' from " + url;
     syncer.setProgress(progress);
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(

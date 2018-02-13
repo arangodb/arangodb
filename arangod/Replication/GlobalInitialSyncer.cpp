@@ -57,7 +57,22 @@ GlobalInitialSyncer::~GlobalInitialSyncer() {
 }
 
 /// @brief run method, performs a full synchronization
+/// public method, catches exceptions
 Result GlobalInitialSyncer::run(bool incremental) {
+  try {
+    return runInternal(incremental);
+  } catch (arangodb::basics::Exception const& ex) {
+    return Result(ex.code(), std::string("initial synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, std::string("initial synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, std::string("initial synchronization for database '") + _databaseName + "' failed with unknown exception");
+  }
+}
+
+/// @brief run method, performs a full synchronization
+/// internal method, may throw exceptions
+Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
