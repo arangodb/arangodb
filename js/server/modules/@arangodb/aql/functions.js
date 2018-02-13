@@ -68,7 +68,7 @@ var unregisterFunctionsGroup = function (group) {
 var registerFunction = function (name, code, isDeterministic) {
   'use strict';
   if (typeof isDeterministic !== 'boolean') {
-   sDeterministic = false;
+   isDeterministic = false;
   }
   if (typeof code === 'function') {
     code = String(code) + '\n';
