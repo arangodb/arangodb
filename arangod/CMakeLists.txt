@@ -376,6 +376,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
+  RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
@@ -487,6 +488,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-statistics.cpp
   V8Server/v8-users.cpp
   V8Server/v8-user-structures.cpp
+  V8Server/v8-user-functions.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp
   V8Server/v8-vocbase.cpp
@@ -497,6 +499,7 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Transactions.cpp
+  VocBase/Methods/AqlUserFunctions.cpp
   VocBase/AuthInfo.cpp
   VocBase/AuthUserEntry.cpp
   VocBase/Graphs.cpp
