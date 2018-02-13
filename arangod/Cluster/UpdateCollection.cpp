@@ -22,7 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CreateCollection.h"
+#include "UpdateCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -37,15 +37,15 @@ using namespace arangodb::methods;
 constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 
-CreateCollection::CreateCollection(ActionDescription const& d) :
+UpdateCollection::UpdateCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));
 }
 
-CreateCollection::~CreateCollection() {};
+UpdateCollection::~UpdateCollection() {};
 
-arangodb::Result CreateCollection::run(
+arangodb::Result UpdateCollection::run(
   std::chrono::duration<double> const&, bool& finished) {
   arangodb::Result res;
 
@@ -55,41 +55,27 @@ arangodb::Result CreateCollection::run(
 
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
-    std::string errorMsg("CreateCollection: Failed to lookup database ");
+    std::string errorMsg("UpdateCollection: Failed to lookup database ");
     errorMsg += database;
     return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
-  auto cluster =
-    ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  
-  bool waitForRepl =
-    (properties.hasKey(WAIT_FOR_SYNC_REPL) &&
-     properties.get(WAIT_FOR_SYNC_REPL).isBool()) ?
-    properties.get(WAIT_FOR_SYNC_REPL).getBool() :
-    cluster->createWaitsForSyncReplication();
-  
-  bool enforceReplFact = 
-    (properties.hasKey(ENF_REPL_FACT) &&
-     properties.get(ENF_REPL_FACT).isBool()) ?
-    properties.get(ENF_REPL_FACT).getBool() : true;
-  
-  res = Collections::create(
-    vocbase, collection, TRI_COL_TYPE_DOCUMENT, _description.properties(),
-    waitForRepl, enforceReplFact, [=](LogicalCollection*) {
+  Result found = methods::Collections::lookup(
+    vocbase, collection, [&](LogicalCollection* coll) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "Local collection " << collection << " successfully created";
+        << "Updating local collection " + collection;
+      res = Collections::updateProperties(coll, properties);
     });
-
+  
   return res;
 }
 
-arangodb::Result CreateCollection::kill(Signal const& signal) {
+arangodb::Result UpdateCollection::kill(Signal const& signal) {
   return actionError(
-    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateCollection action");
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill UpdateCollection action");
 }
 
-arangodb::Result CreateCollection::progress(double& progress) {
+arangodb::Result UpdateCollection::progress(double& progress) {
   progress = 0.5;
   return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
