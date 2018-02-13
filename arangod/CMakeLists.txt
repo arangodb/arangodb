@@ -277,10 +277,10 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
   Cluster/CreateCollection.cpp
-  Cluster/DropCollection.cpp
-  Cluster/UpdateCollection.cpp
   Cluster/CreateDatabase.cpp
+  Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
+  Cluster/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
@@ -294,6 +294,7 @@ SET(ARANGOD_SOURCES
   Cluster/ShardDistributionReporter.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
+  Cluster/UpdateCollection.cpp
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp

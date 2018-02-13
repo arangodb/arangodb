@@ -22,50 +22,51 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "CreateDatabase.h"
+#include "EnsureIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/DatabaseFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-CreateDatabase::CreateDatabase(ActionDescription const& d) :
+EnsureIndex::EnsureIndex(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
-  TRI_ASSERT(d.has("database"));
+  TRI_ASSERT(d.has(COLLECTION));
+  TRI_ASSERT(d.has(DATABASE));
 }
 
-CreateDatabase::~CreateDatabase() {};
+EnsureIndex::~EnsureIndex() {};
 
-arangodb::Result CreateDatabase::run(
+arangodb::Result EnsureIndex::run(
   std::chrono::duration<double> const&, bool& finished) {
+  arangodb::Result res;
 
-  VPackSlice users;
   auto const& database = _description.get(DATABASE);
-  auto const& options = _description.properties();
-  auto* systemVocbase =
-    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  auto const& index = _description.get(COLLECTION);
 
-  if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
-    FATAL_ERROR_EXIT();
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    std::string errorMsg("EnsureIndex: Failed to lookup database ");
+    errorMsg += database;
+    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
-
-  return Databases::create(database, users, options);
-
-}
-
-arangodb::Result CreateDatabase::kill(Signal const& signal) {
-  arangodb::Result res;
+  
   return res;
 }
 
-arangodb::Result CreateDatabase::progress(double& progress) {
-  arangodb::Result res;
-  return res;
+arangodb::Result EnsureIndex::kill(Signal const& signal) {
+  return actionError(
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill EnsureIndex action");
+}
+
+arangodb::Result EnsureIndex::progress(double& progress) {
+  progress = 0.5;
+  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
 
