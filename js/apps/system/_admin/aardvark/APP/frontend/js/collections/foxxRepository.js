@@ -14,14 +14,13 @@
 
     parse: function (response) {
       var foxxes = [];
-      var version;
       _.each(response, function (foxx) {
-        version = Number.parseInt(foxx.latestVersion.charAt(0));
-        console.log(foxx);
-        console.log(version);
-        if (version >= 3) {
+        // hide legacy applications
+        if (!foxx.legacy) {
+          console.log(foxx);
           foxxes.push(foxx);
         }
+        // }
       });
       return foxxes;
     },

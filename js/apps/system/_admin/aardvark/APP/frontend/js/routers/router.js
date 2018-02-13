@@ -34,6 +34,7 @@
       'services/install/upload': 'installUploadService',
       'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
+      'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'users': 'userManagement',
@@ -544,6 +545,36 @@
 
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({
+          cache: false,
+          success: function () {
+            callback();
+          }
+        });
+      } else {
+        callback();
+      }
+    },
+
+    storeDetail: function (mount, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.storeDetail.bind(this), mount);
+        return;
+      }
+      var callback = function () {
+        if (this.hasOwnProperty('storeDetailView')) {
+          this.storeDetailView.remove();
+        }
+        this.storeDetailView = new window.StoreDetailView({
+          model: this.foxxRepo.get(decodeURIComponent(mount))
+        });
+
+        this.storeDetailView.model = this.foxxRepo.get(decodeURIComponent(mount));
+        this.storeDetailView.render();
+      }.bind(this);
+
+      if (this.foxxRepo.length === 0) {
+        this.foxxRepo.fetch({
           cache: false,
           success: function () {
             callback();

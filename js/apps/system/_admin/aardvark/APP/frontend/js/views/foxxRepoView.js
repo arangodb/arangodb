@@ -15,7 +15,7 @@
 
     events: {
       'click .installFoxx': 'installStoreService',
-      'click .foxxTile': 'openAppDetailView'
+      'click .paddingBox': 'goToServiceDetail'
     },
 
     initialize: function () {
@@ -36,6 +36,10 @@
       $(this.el).attr('category', 'general');
 
       return $(this.el);
+    },
+
+    goToServiceDetail: function () {
+      window.App.navigate('store/' + encodeURIComponent(this.model.get('name')), {trigger: true});
     },
 
     installStoreService: function (e) {
