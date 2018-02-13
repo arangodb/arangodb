@@ -236,7 +236,11 @@ class Ast {
   AstNode* createNodeReference(Variable const*);
 
   /// @brief create an AST parameter node
-  AstNode* createNodeParameter(char const*, size_t);
+  AstNode* createNodeParameter(
+    char const* name,
+    size_t length,
+    AstNode::DataSourceType dataSourceType = AstNode::DataSourceType::Invalid
+  );
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);

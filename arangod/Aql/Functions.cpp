@@ -29,7 +29,6 @@
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VPackStringBufferAdapter.h"
