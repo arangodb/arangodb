@@ -324,4 +324,5 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
   REG_ERROR(ERROR_ACTION_ALREADY_REGISTERED, "maintenance action already registered");
+  REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
 }

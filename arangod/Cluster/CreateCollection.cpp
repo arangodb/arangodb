@@ -26,7 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "RestServer/CollectionFeature.h"
+
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -49,28 +49,29 @@ arangodb::Result CreateCollection::run(
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
 
-  auto vocbase = Databases::lookup();
+  auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
     errorMsg += database;
-    return actionError(ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
   }
 
+  #warning replication parameters fixed for now
   res = Collections::create(
     vocbase, collection, TRI_COL_TYPE_DOCUMENT, _description.properties(),
-    true, true);
-  
+    true, true, [](LogicalCollection* collection) {});
+
   return res;
 }
 
 arangodb::Result CreateCollection::kill(Signal const& signal) {
   return actionError(
-    ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateCollection action");
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill CreateCollection action");
 }
 
 arangodb::Result CreateCollection::progress(double& progress) {
   progress = 0.5;
-  return arangodb::Result(ERROR_NO_ERROR);
+  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
 

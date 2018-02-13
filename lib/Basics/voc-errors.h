@@ -1708,6 +1708,11 @@ constexpr int TRI_ERROR_QUEUE_FULL                                              
 /// Action with this description has been registered already
 constexpr int TRI_ERROR_ACTION_ALREADY_REGISTERED                               = 5001;
 
+/// 5002: ERROR_ACTION_OPERATION_UNABORTABLE
+/// "this maintenance action cannot be stopped"
+/// This maintenance action cannot be stopped once it is started
+constexpr int TRI_ERROR_ACTION_OPERATION_UNABORTABLE                            = 5002;
+
 
 /// register all errors for ArangoDB
 void TRI_InitializeErrorMessages();

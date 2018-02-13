@@ -119,6 +119,100 @@ VPackBuilder compareIndexes(
 }
 
 
+void handlePlanShard(
+  VPackSlice const& db, VPackSlice const& cprops, VPackSlice const& ldb,
+  std::string const& dbname, std::string const& shname, std::string const& serverId,
+  std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
+  std::vector<ActionDescription>& actions) {
+  
+  // We only care for shards, where we find our own ID
+  if (db.copyString() == serverId)  {
+    colis.emplace(shname);
+    VPackBuilder props = createProps(cprops); // Only once might need often!
+
+    if (ldb.hasKey(shname)) {   // Have local collection with that name
+      auto const lcol = ldb.get(shname);
+      auto const properties = compareRelevantProps(cprops, lcol);
+                
+      // If comparison has brought any updates
+      if (properties.slice() != VPackSlice::emptyObjectSlice()) {
+        actions.push_back(
+          ActionDescription(
+            {{NAME, "AlterCollection"}, {COLLECTION, shname}}, properties));
+      }
+      
+      // Indexes
+      if (cprops.hasKey(INDEXES)) {
+        auto const& pindexes = cprops.get(INDEXES);
+        auto const& lindexes = lcol.get(INDEXES);
+        auto difference = compareIndexes(shname, pindexes, lindexes, indis);
+
+        if (difference.slice().length() != 0) {
+          for (auto const& index : VPackArrayIterator(difference.slice())) {
+            actions.push_back(
+              ActionDescription(
+                {{NAME, "EnsureIndex"}, {COLLECTION, shname}, {DATABASE, dbname},
+                 {TYPE, index.get(TYPE).copyString()},
+                 {FIELDS, index.get(FIELDS).toJson()}},
+                VPackBuilder(index)));
+          }
+        }
+      }
+    } else {                   // Create the sucker!
+      actions.push_back(
+        ActionDescription(
+          {{NAME, "CreateCollection"}, {COLLECTION, shname},
+                                       {DATABASE, dbname}}, props));
+    }
+  }
+}            
+
+
+void handleLocalShard(
+  std::string const& dbname, std::string const& colname, VPackSlice const& cprops, 
+  std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
+  std::vector<ActionDescription>& actions) {
+  
+  bool drop = false;
+  std::unordered_set<std::string>::const_iterator it;
+
+  if (colis.empty()) {
+    drop = true;
+  } else {
+    it = std::find(colis.begin(), colis.end(), colname);
+    if (it == colis.end()) {
+      drop = true;
+    }
+  }
+
+  if (drop) {
+    actions.push_back(
+      ActionDescription({{NAME, "DropCollection"},
+          {DATABASE, dbname}, {COLLECTION, colname}}));
+  } else {
+    colis.erase(it);
+
+    // We only drop indexes, when collection is not being dropped already
+    if (cprops.hasKey(INDEXES)) {
+      for (auto const& index :
+             VPackArrayIterator(cprops.get(INDEXES))) {
+        auto const& type = index.get(TYPE).copyString();
+        if (type != PRIMARY && type != EDGE) {
+          std::string const id = index.get(ID).copyString();
+          if (indis.find(id) != indis.end()) {
+            indis.erase(id);
+          } else {
+            actions.push_back(
+              ActionDescription({{NAME, "DropIndex"}, {DATABASE, dbname},
+                                 {COLLECTION, colname}, {ID, id}}));
+          }
+        }
+      }
+    }
+
+  }
+}
+
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal (
   VPackSlice const& plan, VPackSlice const& local, std::string const& serverId,
@@ -133,74 +227,19 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
 
   // Plan to local mismatch ----------------------------------------------------
   // Create or modify if local collections are affected
-  
   for (auto const& pdb : VPackObjectIterator(pdbs)) {
     auto const& dbname = pdb.key.copyString();
     if (local.hasKey(dbname)) {    // have database in both see to collections
       auto const& ldb = local.get(dbname);
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
-        auto const& cname = pcol.key.copyString();
         auto const& cprops = pcol.value;
-        VPackBuilder props;
-        auto const& shards = cprops.get(SHARDS);
-        for (auto const& shard : VPackObjectIterator(shards)) {
-          auto const& shname = shard.key.copyString();
-          //bool leader = true; // Want to understand leadership
+        for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) {
+          bool leader(true); // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
-
-            // We only care for shards, where we find our own ID
-            if (db.copyString() == serverId)  {
-
-              colis.emplace(shname);
-              if (props.isEmpty()) {             // Must not have name or id 
-                props = createProps(pcol.value); // Only once might need often!
-              }
-
-              if (ldb.hasKey(shname)) {   // Have local collection with that name
-                auto const lcol = ldb.get(shname);
-                auto const properties = 
-                  compareRelevantProps(pcol.value, lcol);
-                
-                // If comparison has brought any updates
-                if (properties.slice() != VPackSlice::emptyObjectSlice()) {
-                  actions.push_back(
-                    ActionDescription(
-                      {{NAME, "AlterCollection"}, {COLLECTION, shname}},
-                      properties));
-                }
-                
-                // Indexes
-                if (cprops.hasKey(INDEXES)) {
-                  auto const& pindexes = cprops.get(INDEXES);
-                  auto const& lindexes = lcol.get(INDEXES);
-                  auto difference =
-                    compareIndexes(shname, pindexes, lindexes, indis);
-
-                  if (difference.slice().length() != 0) {
-                    for (auto const& index :
-                           VPackArrayIterator(difference.slice())) {
-
-                      actions.push_back(
-                        ActionDescription({{NAME, "EnsureIndex"},
-                            {COLLECTION, shname}, {DATABASE, dbname},
-                            {TYPE, index.get(TYPE).copyString()},
-                            {FIELDS, index.get(FIELDS).toJson()}},
-                            VPackBuilder(index)));
-
-                    }
-                  }
-                }
-              } else {                   // Create the sucker!
-                actions.push_back(
-                  ActionDescription(
-                    {{NAME, "CreateCollection"}, {COLLECTION, shname},
-                     {DATABASE, dbname}}, props));
-              }
-
-            }
-            
-            // Only first entry is leader
-            //leader = false;
+            handlePlanShard(
+              db, cprops, ldb, dbname, shard.key.copyString(), serverId, colis,
+              indis, actions);
+            leader = false;
           }
         }
       }
@@ -212,50 +251,12 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
   
 
   // Compare local to plan -----------------------------------------------------
-  
   for (auto const& db : VPackObjectIterator(local)) {
     auto const& dbname = db.key.copyString();
     if (pdbs.hasKey(dbname)) {
       for (auto const& col : VPackObjectIterator(db.value)) {
-        bool drop = false;
-        auto const& colname = col.key.copyString();
-        std::unordered_set<std::string>::const_iterator it;
-
-        if (colis.empty()) {
-          drop = true;
-        } else {
-          it = std::find(colis.begin(), colis.end(), colname);
-          if (it == colis.end()) {
-            drop = true;
-          }
-        }
-
-        if (drop) {
-          actions.push_back(
-            ActionDescription({{NAME, "DropCollection"},
-                {DATABASE, dbname}, {COLLECTION, colname}}));
-        } else {
-          colis.erase(it);
-
-          // We only drop indexes, when collection is not being dropped already
-          if (col.value.hasKey(INDEXES)) {
-            for (auto const& index :
-                   VPackArrayIterator(col.value.get(INDEXES))) {
-              auto const& type = index.get(TYPE).copyString();
-              if (type != PRIMARY && type != EDGE) {
-                std::string const id = index.get(ID).copyString();
-                if (indis.find(id) != indis.end()) {
-                  indis.erase(id);
-                } else {
-                  actions.push_back(
-                    ActionDescription({{NAME, "DropIndex"},
-                        {DATABASE, dbname}, {COLLECTION, colname}, {ID, id}}));
-                }
-              }
-            }
-          }
-
-        }
+        handleLocalShard(
+          dbname, col.key.copyString(), col.value, colis, indis, actions);
       }
     } else {
       actions.push_back(
@@ -318,7 +319,7 @@ arangodb::Result arangodb::maintenance::diffLocalCurrent (
   // Iterate over local databases
   for (auto const& ldbo : VPackObjectIterator(local)) {
     std::string dbname = ldbo.key.copyString();
-    VPackSlice ldb = ldbo.value;
+    //VPackSlice ldb = ldbo.value;
 
     // Current has this database
     if (cdbs.hasKey(dbname)) {
