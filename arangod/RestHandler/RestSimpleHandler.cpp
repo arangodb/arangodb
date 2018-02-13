@@ -27,7 +27,6 @@
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
