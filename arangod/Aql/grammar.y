@@ -348,6 +348,13 @@ with_collection:
       $$ = parser->ast()->createNodeValueString($1.value, $1.length);
     }
   | bind_parameter {
+      char const* p = $1->getStringValue();
+      size_t const len = $1->getStringLength();
+
+      if (len < 2 || *p != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
+      }
+
       $$ = $1;
     }
   ;
@@ -1694,17 +1701,7 @@ bind_parameter:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      auto const param = AstNode::encodeDataSourceType(
-        $1.value, $1.length, AstNode::DataSourceType::Collection
-      );
-
-      auto const* internedParam = parser->query()->registerString(param);
-
-      if (!internedParam) {
-        ABORT_OOM
-      }
-
-      $$ = parser->ast()->createNodeParameter(internedParam, param.size());
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::Collection);
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);
@@ -1717,17 +1714,7 @@ bind_view:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      auto const param = AstNode::encodeDataSourceType(
-        $1.value, $1.length, AstNode::DataSourceType::View
-      );
-
-      auto const* internedParam = parser->query()->registerString(param);
-
-      if (!internedParam) {
-        ABORT_OOM
-      }
-
-      $$ = parser->ast()->createNodeParameter(internedParam, param.size());
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::View);
     }
   ;
 

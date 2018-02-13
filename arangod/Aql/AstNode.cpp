@@ -383,63 +383,6 @@ static bool IsEmptyString(char const* p, size_t length) {
   return true;
 }
 
-/*static*/ std::string AstNode::encodeDataSourceType(
-    char const* name, size_t size, AstNode::DataSourceType type
-) {
-  StringRef suffix;
-
-  switch (type) {
-    case AstNode::DataSourceType::View:
-      suffix = VIEW_NODE_SUFFIX;
-      break;
-    case AstNode::DataSourceType::Collection:
-      suffix = COLLECTION_NODE_SUFFIX;
-      break;
-    default: // shut up compiler
-      break;
-  }
-
-  std::string param;
-  param.reserve(size + suffix.size());
-  param.append(name, size);
-  param.append(suffix.data(), suffix.size());
-  return param;
-}
-
-/*static*/ AstNode::DataSourceType AstNode::decodeDataSourceType(
-    std::string& param
-) {
-  auto decodeParam = [](std::string& param, StringRef const& expectedSuffix) -> bool {
-    if (param.size() < expectedSuffix.size()) {
-      return false;
-    }
-
-    auto const suffixPos = param.size() - expectedSuffix.size();
-
-    StringRef const suffix(
-      param.c_str() + suffixPos,
-      expectedSuffix.size()
-    );
-
-    if (suffix == expectedSuffix) {
-      param.resize(suffixPos);
-      return true;
-    }
-
-    return false;
-  };
-
-  if (decodeParam(param, COLLECTION_NODE_SUFFIX)) {
-    return DataSourceType::Collection;
-  }
-
-  if (decodeParam(param, VIEW_NODE_SUFFIX)) {
-    return DataSourceType::View;
-  }
-
-  return DataSourceType::Invalid;
-}
-
 /// @brief create the node
 AstNode::AstNode(AstNodeType type)
     : type(type), flags(0), computedValue(nullptr) {
@@ -824,7 +767,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
+  if (computedValue != nullptr && !isDataSource()) {
     delete[] computedValue;
   }
 }

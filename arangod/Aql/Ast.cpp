@@ -586,6 +586,7 @@ AstNode* Ast::createNodeCollection(char const* name,
 
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name, strlen(name));
+  node->dataSourceType = AstNode::DataSourceType::Collection;
 
   _query->collections()->add(name, accessType);
 
@@ -620,6 +621,7 @@ AstNode* Ast::createNodeView(char const* name) {
 
   AstNode* node = createNode(NODE_TYPE_VIEW);
   node->setStringValue(name, strlen(name));
+  node->dataSourceType = AstNode::DataSourceType::View;
 
   auto* collections = _query->collections();
 
@@ -678,7 +680,11 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
 }
 
 /// @brief create an AST parameter node
-AstNode* Ast::createNodeParameter(char const* name, size_t length) {
+AstNode* Ast::createNodeParameter(
+    char const* name,
+    size_t length,
+    AstNode::DataSourceType dataSourceType /* = AstNode::DataSourceType::Invalid */
+) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -686,6 +692,7 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
 
   node->setStringValue(name, length);
+  node->dataSourceType = dataSourceType;
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name);
@@ -1395,17 +1402,13 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   auto func = [&](AstNode* node, void*) -> AstNode* {
     if (node->type == NODE_TYPE_PARAMETER) {
       // found a bind parameter in the query string
-      std::string param = node->getString();
+      std::string const param = node->getString();
 
       if (param.empty()) {
         // parameter name must not be empty
         _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         return nullptr;
       }
-
-      AstNode::DataSourceType const type = (param[0] == '@')
-        ? AstNode::decodeDataSourceType(param)
-        : AstNode::DataSourceType::Invalid;
 
       auto const& it = p.find(param);
 
@@ -1422,7 +1425,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
       TRI_ASSERT(!param.empty());
 
-      switch (type) {
+      switch (node->getDataSourceType()) {
         case AstNode::DataSourceType::Collection: {
           // bound collection parameter
           TRI_ASSERT(value.isString());
