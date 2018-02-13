@@ -62,9 +62,9 @@ class StaticStrings {
   static std::string const SilentString;
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
-  static std::string const group;
-  static std::string const replaceExisting;
-  static std::string const prefix;;
+  static std::string const Group;
+  static std::string const ReplaceExisting;
+  static std::string const Prefix;;
 
   // replication headers
   static std::string const ReplicationHeaderCheckMore;
