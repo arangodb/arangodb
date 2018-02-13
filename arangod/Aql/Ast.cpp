@@ -586,6 +586,7 @@ AstNode* Ast::createNodeCollection(char const* name,
 
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name, strlen(name));
+  node->dataSourceType = AstNode::DataSourceType::Collection;
 
   _query->collections()->add(name, accessType);
 
@@ -620,6 +621,7 @@ AstNode* Ast::createNodeView(char const* name) {
 
   AstNode* node = createNode(NODE_TYPE_VIEW);
   node->setStringValue(name, strlen(name));
+  node->dataSourceType = AstNode::DataSourceType::View;
 
   auto* collections = _query->collections();
 
@@ -678,7 +680,11 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
 }
 
 /// @brief create an AST parameter node
-AstNode* Ast::createNodeParameter(char const* name, size_t length) {
+AstNode* Ast::createNodeParameter(
+    char const* name,
+    size_t length,
+    AstNode::DataSourceType dataSourceType /* = AstNode::DataSourceType::Invalid */
+) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -686,6 +692,7 @@ AstNode* Ast::createNodeParameter(char const* name, size_t length) {
   AstNode* node = createNode(NODE_TYPE_PARAMETER);
 
   node->setStringValue(name, length);
+  node->dataSourceType = dataSourceType;
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name);
@@ -1402,6 +1409,7 @@ void Ast::injectBindParameters(BindParameters& parameters) {
         _query->registerError(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         return nullptr;
       }
+
       auto const& it = p.find(param);
 
       if (it == p.end()) {
@@ -1416,74 +1424,107 @@ void Ast::injectBindParameters(BindParameters& parameters) {
       auto& value = (*it).second.first;
 
       TRI_ASSERT(!param.empty());
-      if (param[0] == '@') {
-        // collection parameter
-        TRI_ASSERT(value.isString());
 
-        // check if the collection was used in a data-modification query
-        bool isWriteCollection = false;
+      switch (node->getDataSourceType()) {
+        case AstNode::DataSourceType::Collection: {
+          // bound collection parameter
+          TRI_ASSERT(value.isString());
 
-        for (auto const& it : _writeCollections) {
-          if (it->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(it->getStringValue(), it->getStringLength())) {
-            isWriteCollection = true;
-            break;
-          }
-        }
+          // check if the collection was used in a data-modification query
+          bool isWriteCollection = false;
 
-        // turn node into a collection node
-        char const* name = nullptr;
-        VPackValueLength length;
-        char const* stringValue = value.getString(length);
-
-        if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
-          // emergency translation of collection id to name
-          arangodb::CollectionNameResolver resolver(_query->vocbase());
-          std::string collectionName = resolver.getCollectionNameCluster(basics::StringUtils::uint64(stringValue, length));
-          if (collectionName.empty()) {
-            THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                          value.copyString().c_str());
-          }
-
-          name = _query->registerString(collectionName.c_str(), collectionName.size());
-        } else {
-          // TODO: can we get away without registering the string value here?
-          name = _query->registerString(stringValue, static_cast<size_t>(length));
-        }
-
-        TRI_ASSERT(name != nullptr);
-
-        node = createNodeCollection(name, isWriteCollection
-                                              ? AccessMode::Type::WRITE
-                                              : AccessMode::Type::READ);
-
-        if (isWriteCollection) {
-          // must update AST info now for all nodes that contained this
-          // parameter
-          for (size_t i = 0; i < _writeCollections.size(); ++i) {
-            if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
-                StringRef(param) == StringRef(_writeCollections[i]->getStringValue(), _writeCollections[i]->getStringLength())) {
-              _writeCollections[i] = node;
-              // no break here. replace all occurrences
+          for (auto const& it : _writeCollections) {
+            if (it->type == NODE_TYPE_PARAMETER && StringRef(param) == StringRef(it->getStringValue(), it->getStringLength())) {
+              isWriteCollection = true;
+              break;
             }
           }
-        }
-      } else {
-        node = nodeFromVPack(value, true);
 
-        if (node != nullptr) {
-          // already mark node as constant here
-          node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-          // mark node as simple
-          node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-          // mark node as executable on db-server
-          node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-          // mark node as non-throwing
-          node->setFlag(DETERMINED_THROWS);
-          // mark node as deterministic
-          node->setFlag(DETERMINED_NONDETERMINISTIC);
+          // turn node into a collection node
+          char const* name = nullptr;
+          VPackValueLength length;
+          char const* stringValue = value.getString(length);
 
-          // finally note that the node was created from a bind parameter
-          node->setFlag(FLAG_BIND_PARAMETER);
+          if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
+            // emergency translation of collection id to name
+            arangodb::CollectionNameResolver resolver(_query->vocbase());
+            std::string collectionName = resolver.getCollectionNameCluster(basics::StringUtils::uint64(stringValue, length));
+            if (collectionName.empty()) {
+              THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                                            value.copyString().c_str());
+            }
+
+            name = _query->registerString(collectionName.c_str(), collectionName.size());
+          } else {
+            // TODO: can we get away without registering the string value here?
+            name = _query->registerString(stringValue, static_cast<size_t>(length));
+          }
+
+          TRI_ASSERT(name != nullptr);
+
+          node = createNodeCollection(name, isWriteCollection
+                                      ? AccessMode::Type::WRITE
+                                      : AccessMode::Type::READ);
+
+          if (isWriteCollection) {
+            // must update AST info now for all nodes that contained this
+            // parameter
+            for (size_t i = 0; i < _writeCollections.size(); ++i) {
+              if (_writeCollections[i]->type == NODE_TYPE_PARAMETER &&
+                  StringRef(param) == StringRef(_writeCollections[i]->getStringValue(), _writeCollections[i]->getStringLength())) {
+                _writeCollections[i] = node;
+                // no break here. replace all occurrences
+              }
+            }
+          }
+        } break;
+        case AstNode::DataSourceType::View: {
+          // bound view parameter
+          TRI_ASSERT(value.isString());
+
+          // turn node into a view node
+          char const* name = nullptr;
+          VPackValueLength length;
+          char const* stringValue = value.getString(length);
+
+          if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
+            // emergency translation of collection id to name
+            arangodb::CollectionNameResolver resolver(_query->vocbase());
+            std::string viewName = resolver.getViewNameCluster(basics::StringUtils::uint64(stringValue, length));
+            if (viewName .empty()) {
+              THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
+                                            value.copyString().c_str());
+            }
+
+            name = _query->registerString(viewName.c_str(), viewName.size());
+          } else {
+            // TODO: can we get away without registering the string value here?
+            name = _query->registerString(stringValue, static_cast<size_t>(length));
+          }
+
+          TRI_ASSERT(name != nullptr);
+
+          node = createNodeView(name);
+        } break;
+        default: {
+          // regular bound parameter
+          node = nodeFromVPack(value, true);
+
+          if (node != nullptr) {
+            // already mark node as constant here
+            node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+            // mark node as simple
+            node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+            // mark node as executable on db-server
+            node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+            // mark node as non-throwing
+            node->setFlag(DETERMINED_THROWS);
+            // mark node as deterministic
+            node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+            // finally note that the node was created from a bind parameter
+            node->setFlag(FLAG_BIND_PARAMETER);
+          } break;
         }
       }
     } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {

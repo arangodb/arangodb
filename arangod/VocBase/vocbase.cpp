@@ -961,6 +961,21 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
   return (*it).second->name();
 }
 
+/// @brief gets a view name by a view id
+/// the name is fetched under a lock to make this thread-safe.
+/// returns empty string if the view does not exist.
+std::string TRI_vocbase_t::viewName(TRI_voc_cid_t id) const {
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+
+  auto it = _viewsById.find(id);
+
+  if (it == _viewsById.end()) {
+    return StaticStrings::Empty;
+  }
+
+  return (*it).second->name();
+}
+
 /// @brief looks up a collection by uuid
 LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
   // otherwise we'll look up the collection by name
