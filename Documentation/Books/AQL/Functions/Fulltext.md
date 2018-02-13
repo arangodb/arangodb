@@ -4,9 +4,8 @@ Fulltext functions
 AQL offers the following functions to filter data based on
 [fulltext indexes](../../Manual/Indexing/Fulltext.html).
 
-Currently, fulltext indexes are not yet supported with the RocksDB storage engine. Thus the function `FULLTEXT()` will be unavailable when using this storage engine. To use fulltext indexes, please use the MMFiles storage engine for the time being.
-
-### FULLTEXT()
+FULLTEXT()
+----------
 
 `FULLTEXT(coll, attribute, query, limit) → docArray`
 

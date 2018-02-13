@@ -906,12 +906,12 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
     size_t pos = 0;
 
     for (VPackSlice it : VPackArrayIterator(resultSlice)) {
-      if (!it.hasKey("error") || !it.get("error").getBool()) {
+      if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
         ++result._numCreated;
       } else {
         // got an error, now handle it
 
-        int errorCode = it.get("errorNum").getNumber<int>();
+        int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
         VPackSlice const which = babies.slice().at(pos);
         // special behavior in case of unique constraint violation . . .
         if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
@@ -968,10 +968,10 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
       if (resultSlice.isArray()) {
         size_t pos = 0;
         for (auto const& it : VPackArrayIterator(resultSlice)) {
-          if (!it.hasKey("error") || !it.get("error").getBool()) {
+          if (!it.hasKey(StaticStrings::Error) || !it.get(StaticStrings::Error).getBool()) {
             ++result._numUpdated;
           } else {
-            int errorCode = it.get("errorNum").getNumber<int>();
+            int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
 
             if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
               // "not found" can only occur when the original insert did not
@@ -1010,7 +1010,7 @@ void RestImportHandler::generateDocumentsCreated(
   try {
     VPackBuilder json;
     json.add(VPackValue(VPackValueType::Object));
-    json.add("error", VPackValue(false));
+    json.add(StaticStrings::Error, VPackValue(false));
     json.add("created", VPackValue(result._numCreated));
     json.add("errors", VPackValue(result._numErrors));
     json.add("empty", VPackValue(result._numEmpty));

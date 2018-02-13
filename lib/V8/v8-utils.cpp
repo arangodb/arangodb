@@ -138,9 +138,9 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
       return;
     }
 
-    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Number::New(isolate, errorNumber));
-    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"), errorMessage);
+    errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
 
     TRI_GET_GLOBALS();
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
@@ -418,10 +418,12 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj =
           tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                        v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                        v8::Number::New(isolate, message->GetStartColumn()));
+      if (!message.IsEmpty()) {
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                          v8::Number::New(isolate, message->GetLineNumber()));
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                          v8::Number::New(isolate, message->GetStartColumn()));
+      }
       exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), filename->ToString());
       tryCatch.ReThrow();
       return;
@@ -489,10 +491,12 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj =
           tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                        v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                        v8::Number::New(isolate, message->GetStartColumn()));
+      if (!message.IsEmpty()) {
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                          v8::Number::New(isolate, message->GetLineNumber()));
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                          v8::Number::New(isolate, message->GetStartColumn()));
+      }
       exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), args[0]);
       tryCatch.ReThrow();
       return;
@@ -1046,10 +1050,12 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Local<v8::Object> exceptionObj =
             tryCatch.Exception().As<v8::Object>();
         v8::Handle<v8::Message> message = tryCatch.Message();
-        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
-                          v8::Number::New(isolate, message->GetLineNumber()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
-                          v8::Number::New(isolate, message->GetStartColumn()));
+        if (!message.IsEmpty()) {
+          exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
+                            v8::Number::New(isolate, message->GetLineNumber()));
+          exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
+                            v8::Number::New(isolate, message->GetStartColumn()));
+        }
         exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"),
                           filename->ToString());
         tryCatch.ReThrow();
@@ -3529,7 +3535,7 @@ static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                                               external_status._exitStatus)));
   }
   if (external_status._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, external_status._errorMessage));
   }
   TRI_V8_TRY_CATCH_END;
@@ -3647,7 +3653,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   }
   if (external._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, external._errorMessage));
   }
   // return the result

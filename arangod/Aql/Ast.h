@@ -154,7 +154,7 @@ class Ast {
 
   /// @brief create an AST for node
   AstNode* createNodeFor(char const*, size_t, AstNode const*, bool);
-  
+
   /// @brief create an AST for node, using an existing output variable
   AstNode* createNodeFor(Variable*, AstNode const*);
 
@@ -240,7 +240,11 @@ class Ast {
                             std::vector<basics::AttributeName> const&);
 
   /// @brief create an AST parameter node
-  AstNode* createNodeParameter(char const*, size_t);
+  AstNode* createNodeParameter(
+    char const* name,
+    size_t length,
+    AstNode::DataSourceType dataSourceType = AstNode::DataSourceType::Invalid
+  );
 
   /// @brief create an AST quantifier node
   AstNode* createNodeQuantifier(int64_t);
@@ -404,7 +408,7 @@ class Ast {
   /// @brief determines the top-level attributes in an expression, grouped by
   /// variable
   static TopLevelAttributes getReferencedAttributes(AstNode const*, bool&);
-  
+
   static bool populateSingleAttributeAccess(AstNode const* node,
                                             Variable const* variable,
                                             std::vector<std::string>& attributeName);
@@ -412,7 +416,7 @@ class Ast {
   static bool variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
                                                        Variable const* variable,
                                                        std::vector<std::string> const& attributeName);
-  
+
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(AstNode* node,
                                          Variable const* variable,
@@ -420,6 +424,9 @@ class Ast {
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);
+
+  /// @brief clone a node, but do not recursively clone subtree
+  AstNode* shallowCopyForModify(AstNode const*);
 
   /// @brief deduplicate an array
   /// will return the original node if no modifications were made, and a new

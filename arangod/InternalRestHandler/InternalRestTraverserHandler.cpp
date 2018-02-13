@@ -23,7 +23,6 @@
 
 #include "InternalRestTraverserHandler.h"
 
-#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -132,9 +131,8 @@ void InternalRestTraverserHandler::queryEngine() {
   }
 
   auto& registry = _registry;  // For the guard
-  arangodb::basics::ScopeGuard guard{
-      []() -> void {},
-      [registry, &engineId]() -> void { registry->returnEngine(engineId); }};
+  auto cleanup = [registry, &engineId]() { registry->returnEngine(engineId); };
+  TRI_DEFER(cleanup());
 
   if (option == "lock") {
     if (count != 3) {

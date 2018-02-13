@@ -933,7 +933,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         (!groupVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
-       
+
     if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
       if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
         // user has explicitly asked for hash method
@@ -965,7 +965,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
         modified = true;
         continue;
-      } 
+      }
 
       // create a new plan with the adjusted COLLECT node
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
@@ -3028,14 +3028,14 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           stopSearching = true;
           break;
 
-        case EN::CALCULATION: 
+        case EN::CALCULATION:
           // check if the expression can be executed on a DB server safely
           if (!static_cast<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
             stopSearching = true;
             break;
-          } 
+          }
           // intentionally falls through
-        
+
         case EN::FILTER:
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
@@ -4510,7 +4510,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (node->getType() != EN::CALCULATION) {
     return false;
   }
-  
+
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
@@ -4521,7 +4521,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (flltxtNode->type != NODE_TYPE_FCALL) {
     return false;
   }
-  
+
   // get the ast node of the expression
   auto func = static_cast<Function const*>(flltxtNode->getData());
   // we're looking for "FULLTEXT()", which is a function call
@@ -4533,7 +4533,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
     return false;
   }
-  
+
   AstNode* collArg = fargs->getMember(0);
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
@@ -4543,14 +4543,15 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
       (limitArg != nullptr && !limitArg->isNumericValue())) {
     return false;
   }
-  
-  std::string cname = collArg->getString();
+
+  std::string name = collArg->getString();
+  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
   if (field.empty()) {
     return false;
   }
-  
+
   // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
   try {
@@ -4570,8 +4571,8 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (!index) { // no index found
     return false;
   }
-  
-  Ast* ast = plan->getAst();  
+
+  Ast* ast = plan->getAst();
   AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
@@ -4584,7 +4585,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(cond);
   condition->normalize(plan);
-  
+
   // we assume by now that collection `name` exists
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   aql::Collections* colls = plan->getAst()->query()->collections();
@@ -4598,7 +4599,6 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
       plan->getAst()->query()->trx()->addCollectionAtRuntime(cname);
     }
   }
-  
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
                              coll, elnode->outVariable(),
                              std::vector<transaction::Methods::IndexHandle>{
@@ -4621,7 +4621,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
       ln->setLimit(limit);
     }
   }
-  
+
   return true;
 }
 
@@ -4633,7 +4633,7 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
   bool modified = false;
   // inspect each return node and work upwards to SingletonNode
   plan->findEndNodes(nodes, true);
-  
+
   for (ExecutionNode* node : nodes) {
     ExecutionNode* current = node;
     LimitNode* limit = nullptr; // maybe we have an existing LIMIT x,y
@@ -4648,7 +4648,7 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
       current = current->getFirstDependency();  // inspect next node
     }
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -4658,7 +4658,7 @@ struct GeoIndexInfo {
   operator bool() const { return collectionNodeToReplace != nullptr &&
     collectionNodeOutVar && collection && index && valid; }
   void invalidate() { valid = false; }
-  
+
   /// node that will be replaced by (geo) IndexNode
   ExecutionNode* collectionNodeToReplace = nullptr;
   Variable const* collectionNodeOutVar = nullptr;
@@ -4667,7 +4667,7 @@ struct GeoIndexInfo {
   aql::Collection const* collection = nullptr;
   /// selected index
   std::shared_ptr<Index> index;
-  
+
   /// Filter calculations to modify
   std::map<ExecutionNode*, Expression*> exesToModify;
   std::set<AstNode const*> nodesToRemove;
@@ -4689,10 +4689,10 @@ struct GeoIndexInfo {
   // ============ Filter Info ===========
   geo::FilterType filterMode = geo::FilterType::NONE;
   AstNode const* filterMask = nullptr;
-  
+
   // ============ Limit Info ============
   size_t actualLimit = SIZE_MAX;
-  
+
   // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
   AstNode const* latitudeVar = nullptr;// access path to longitude
@@ -4718,14 +4718,14 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   }
   TRI_ASSERT(attributeAccess1.first != nullptr);
   TRI_ASSERT(attributeAccess2.first != nullptr);
-  
+
   ExecutionNode* setter1 = plan->getVarSetBy(attributeAccess1.first->id);
   ExecutionNode* setter2 = plan->getVarSetBy(attributeAccess2.first->id);
   if (setter1 == nullptr || setter1 != setter2 ||
       setter1->getType() != EN::ENUMERATE_COLLECTION) {
     return false;// expect access of doc.lat, doc.lng or doc.loc[0], doc.loc[1]
   }
-    
+
   //get logical collection
   auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
   if (info.collectionNodeToReplace != nullptr &&
@@ -4736,7 +4736,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
-  
+
   //check for suitiable indexes
   for (std::shared_ptr<Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
@@ -4744,7 +4744,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
     bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
     bool isGeo2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX && supportLegacy;
     bool isS2 = idx->type() == Index::IndexType::TRI_IDX_TYPE_S2_INDEX;
-    
+
     if ((isGeo2 || isS2) && fieldNum == 2) { // individual fields
       // check access paths of attributes in ast and those in index match
       if (idx->fields()[0] == attributeAccess1.second &&
@@ -4760,16 +4760,16 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
     } else if ((isGeo1 || isS2) && fieldNum == 1) {
       std::vector<basics::AttributeName> fields1 = idx->fields()[0];
       std::vector<basics::AttributeName> fields2 = idx->fields()[0];
-      
+
       VPackBuilder builder;
       idx->toVelocyPack(builder,true,false);
       bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
-      
+
       fields1.back().name += geoJson ? "[1]" : "[0]";
       fields2.back().name += geoJson ? "[0]" : "[1]";
       if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
         if (info.index != nullptr && info.index != idx) {
-          return false; 
+          return false;
         }
         info.index = idx;
         info.latitudeVar = latArg;
@@ -4797,7 +4797,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   if (setter == nullptr || setter->getType() != EN::ENUMERATE_COLLECTION) {
     return false; // expected access of the for doc.attribute
   }
-  
+
   //get logical collection
   auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter);
   if (info.collectionNodeToReplace != nullptr &&
@@ -4808,7 +4808,7 @@ static bool geoFuncArgCheck(ExecutionPlan* plan, AstNode const* args,
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
   std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
-  
+
   //check for suitable indexes
   for (std::shared_ptr<arangodb::Index> idx : coll->getIndexes()) {
     // check if current index is a geo-index
@@ -4920,7 +4920,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     return false;
   }
   TRI_ASSERT(info.collection == nullptr);
-  
+
   AstNode const* collArg = fargs->getMemberUnchecked(0);
   AstNode const* latArg = fargs->getMemberUnchecked(1);
   AstNode const* lngArg = fargs->getMemberUnchecked(2);
@@ -4929,7 +4929,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
       !lngArg->isNumericValue()) {
     return false;
   }
-  
+
   // NEAR and WITHIN just use the first geoindex found
   aql::Collections* colls = plan->getAst()->query()->collections();
   info.collection = colls->add(collArg->getString(), AccessMode::Type::READ);
@@ -4938,13 +4938,13 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
         if (info.index != nullptr && info.index != idx) {
-          return false; 
-        } 
+          return false;
+        }
       info.index = idx;
       break;
     }
   }
-  
+
   if (info.index && info.distanceCenter == nullptr) {
     info.sorted = true; // legacy functions are alwasy sorted
     info.ascending = true; // always ascending
@@ -4970,14 +4970,14 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
   if (node->getType() != EN::CALCULATION) {
     return false;
   }
-  
+
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
   if (expr == nullptr || expr->node() == nullptr) {
     return false; // not the right type of node
   }
-  
+
   if (checkLegacyGeoFunc(plan, expr->node(), info)) {
     info.collectionNodeToReplace = el;
     info.collectionNodeOutVar = el->outVariable();
@@ -5004,7 +5004,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
       info.filterMode != geo::FilterType::NONE) { // can't handle more than one
     return false;
   }
-  
+
   auto func = static_cast<Function const*>(funcNode->getData());
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   bool contains = func->name == "GEO_CONTAINS";
@@ -5012,7 +5012,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   if ((!contains && !intersect) || fargs->numMembers() != 2) {
     return false;
   }
-  
+
   AstNode* arg = fargs->getMemberUnchecked(1);
   if (geoFuncArgCheck(plan, arg, /*legacy*/false, info)) {
     TRI_ASSERT(contains || intersect);
@@ -5047,7 +5047,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
     }
     return false;
   };
-  
+
   switch (node->type) {
     case NODE_TYPE_FCALL:
       if (checkGeoFilterFunction(plan, node, info)) {
@@ -5087,7 +5087,7 @@ static bool optimizeSortNode(ExecutionPlan* plan,
     return false;
   }
   TRI_ASSERT(elements[0].var != nullptr);
-  
+
   // find the expression that is bound to the variable
   // get the expression node that holds the calculation
   ExecutionNode* setter = plan->getVarSetBy(elements[0].var->id);
@@ -5099,7 +5099,7 @@ static bool optimizeSortNode(ExecutionPlan* plan,
   if (expr == nullptr || expr->node() == nullptr) {
     return false; // the expression must exist and must have an astNode
   }
-  
+
   bool legacy = elements[0].ascending; // DESC is only supported on s2index
   if (!info.sorted && checkDistanceFunc(plan, expr->node(), legacy, info)) {
     info.sorted = true;// do not parse another SORT
@@ -5131,7 +5131,7 @@ static void optimizeFilterNode(ExecutionPlan* plan,
   if (expr == nullptr || expr->node() == nullptr) {
     return; // the expression must exist and must have an astNode
   }
-  
+
   std::vector<AstNodeType> parents; // parents and current node
   size_t orsInBranch = 0;
   Ast::traverseReadOnly(expr->node(),
@@ -5177,7 +5177,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
   };
-  
+
   TRI_ASSERT(info.index);
   auto cond = std::make_unique<Condition>(ast);
   bool hasCenter = info.distanceCenterLat || info.distanceCenter;
@@ -5198,7 +5198,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       TRI_ASSERT(!info.distanceCenterLat && !info.distanceCenterLng);
       args->addMember(info.distanceCenter);  // center location
     }
-    
+
     addLocationArg(args);
     AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
 
@@ -5223,7 +5223,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
     TRI_ASSERT(info.locationVar || info.longitudeVar && info.latitudeVar);
-    
+
     AstNode* args = ast->createNodeArray(2);
     args->addMember(info.filterMask);
     addLocationArg(args);
@@ -5235,7 +5235,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
       TRI_ASSERT(false);
     }
   }
-  
+
   cond->normalize(plan);
   return cond;
 }
@@ -5260,7 +5260,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   plan->registerNode(inode);
   plan->replaceNode(info.collectionNodeToReplace, inode);
   condition.release();
-  
+
   // remove expressions covered by our index
   Ast* ast = plan->getAst();
   for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
@@ -5277,7 +5277,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
             keep.push_back(child);
           }
         }
-        
+
         if (keep.size() > 2) {
           AstNode* n = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
           for (size_t i = 0; i < keep.size(); i++) {
@@ -5303,7 +5303,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
       pair.second->replaceNode(newNode);
     }
   }
-  
+
   if (info.actualLimit < SIZE_MAX) { // add or modify LIMIT
     if (ln == nullptr) {
       ln = new LimitNode(plan, plan->nextId(), 0, info.actualLimit);

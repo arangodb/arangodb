@@ -527,7 +527,7 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->start(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick, barrierId);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -648,7 +648,7 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   
   auto replicationFeature = ReplicationFeature::INSTANCE;
   if (replicationFeature != nullptr &&
-      replicationFeature->isAutomaticFailoverEnabled()) {
+      replicationFeature->isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

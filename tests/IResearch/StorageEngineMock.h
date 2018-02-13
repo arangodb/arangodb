@@ -214,6 +214,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   virtual bool useRawDocumentPointers() override { return false; }
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
+  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
   virtual void waitForSyncTimeout(double maxWait) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;

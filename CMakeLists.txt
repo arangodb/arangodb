@@ -876,11 +876,11 @@ add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
 ## cURL
 ################################################################################
 
+# This does not belong here! it should be handled in 3rdParty!
 add_definitions(-DCURL_STATICLIB=1)
-
 include_directories(
-  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.50.3/include/
-  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.50.3/include/curl/
+  ${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/curl/curl-7.57.0/include/
+  ${CMAKE_CURRENT_BINARY_DIR}/3rdParty/curl/curl-7.57.0/include/curl/
 )
 
 ################################################################################

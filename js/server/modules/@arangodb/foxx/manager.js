@@ -564,13 +564,6 @@ function _prepareService (serviceInfo, options = {}) {
       }
     } else {
       // Foxx Store
-      if (options.refresh) {
-        try {
-          store.update();
-        } catch (e) {
-          console.warnStack(e);
-        }
-      }
       const info = store.installationInfo(serviceInfo);
       if (!info) {
         throw new ArangoError({
