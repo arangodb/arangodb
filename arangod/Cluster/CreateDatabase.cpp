@@ -42,16 +42,20 @@ CreateDatabase::~CreateDatabase() {};
 
 arangodb::Result CreateDatabase::run(
   std::chrono::duration<double> const&, bool& finished) {
+
   arangodb::Result res;
-  VPackSlice users, options;
-  auto* database =
-    ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto* vocbase = database->systemDatabase();
-  if (vocbase == nullptr) {
+  VPackSlice users;
+  auto const& database = _description.get(DATABASE);
+  auto const& options = _description.properties();
+  auto* systemVocbase =
+    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+
+  if (systemVocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
-  return Databases::create(_description.get("database"), users, options);
+
+  return Databases::create(database, users, options);
 
 }
 

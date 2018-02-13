@@ -39,26 +39,27 @@ DropDatabase::~DropDatabase() {};
 
 arangodb::Result DropDatabase::run(
   std::chrono::duration<double> const&, bool& finished) {
-  arangodb::Result res;
-  VPackSlice users, options;
-  auto* database =
-    ApplicationServer::getFeature<DatabaseFeature>("Database");
-  auto* vocbase = database->systemDatabase();
-  if (vocbase == nullptr) {
+
+  auto const& database = _description.get(DATABASE);
+  auto* systemVocbase =
+    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  if (systemVocbase == nullptr) {
     LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
     FATAL_ERROR_EXIT();
   }
-  return Databases::drop(vocbase, _description.get("database"));
+
+  return Databases::drop(systemVocbase, database);
+  
 }
 
 arangodb::Result DropDatabase::kill(Signal const& signal) {
-  arangodb::Result res;
-  return res;
+  return actionError(
+    TRI_ERROR_ACTION_OPERATION_UNABORTABLE, "Cannot kill DropDatabase action");
 }
 
 arangodb::Result DropDatabase::progress(double& progress) {
-  arangodb::Result res;
-  return res;
+  progress = 0.5;
+  return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
 
 

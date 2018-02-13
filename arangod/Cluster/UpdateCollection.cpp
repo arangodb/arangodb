@@ -34,9 +34,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
-constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
-
 UpdateCollection::UpdateCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
   TRI_ASSERT(d.has(COLLECTION));
@@ -66,6 +63,12 @@ arangodb::Result UpdateCollection::run(
         << "Updating local collection " + collection;
       res = Collections::updateProperties(coll, properties);
     });
+  
+  if (found.fail()) {
+    std::string errorMsg("UpdateCollection: Failed to lookup local collection ");
+    errorMsg += collection + "in database " + database;
+    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
   
   return res;
 }

@@ -34,9 +34,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
-constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
-
 DropCollection::DropCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
   TRI_ASSERT(d.has(COLLECTION));
@@ -51,7 +48,6 @@ arangodb::Result DropCollection::run(
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
-  auto const& properties = _description.properties();
 
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
@@ -66,6 +62,12 @@ arangodb::Result DropCollection::run(
         << "Dropping local collection " + collection;
       res = Collections::drop(vocbase, coll, false, 120);
     });
+
+  if (found.fail()) {
+    std::string errorMsg("DropCollection: Failed to lookup local collection ");
+    errorMsg += collection + "in database " + database;
+    return actionError(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
   
   return res;
 }
@@ -79,5 +81,3 @@ arangodb::Result DropCollection::progress(double& progress) {
   progress = 0.5;
   return arangodb::Result(TRI_ERROR_NO_ERROR);
 }
-
-
