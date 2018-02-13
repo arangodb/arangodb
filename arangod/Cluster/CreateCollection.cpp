@@ -41,6 +41,9 @@ CreateCollection::CreateCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));
+  TRI_ASSERT(d.properties().hasKey(TYPE));
+  TRI_ASSERT(d.properties().get(TYPE).isInteger());
+  
 }
 
 CreateCollection::~CreateCollection() {};
@@ -73,14 +76,16 @@ arangodb::Result CreateCollection::run(
     (properties.hasKey(ENF_REPL_FACT) &&
      properties.get(ENF_REPL_FACT).isBool()) ?
     properties.get(ENF_REPL_FACT).getBool() : true;
+
+  TRI_col_type_e type(properties.get(TYPE).getNumericValue<TRI_col_type_e>());
   
   res = Collections::create(
-    vocbase, collection, TRI_COL_TYPE_DOCUMENT, _description.properties(),
-    waitForRepl, enforceReplFact, [=](LogicalCollection*) {
+    vocbase, collection, type, _description.properties(), waitForRepl,
+    enforceReplFact, [=](LogicalCollection*) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-      << "Local collection " << collection << " successfully created";
+        << "Local collection " << collection << " successfully created";
     });
-
+  
   return res;
 }
 
