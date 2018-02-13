@@ -28,7 +28,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"

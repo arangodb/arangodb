@@ -25,7 +25,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Variable.h"
-#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterMethods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
