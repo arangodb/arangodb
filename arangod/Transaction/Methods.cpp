@@ -322,8 +322,10 @@ bool transaction::Methods::sortOrs(
         n1->changeMember(1, mergedIn);
 
         auto n2 = root->getMember(i)->getMember(0);
-        TEMPORARILY_UNLOCK_NODE(n2);
-        n2->changeMember(1, emptyArray);
+        {
+          TEMPORARILY_UNLOCK_NODE(n2);
+          n2->changeMember(1, emptyArray);
+        }
       } else {
         // note first IN
         previousIn = i;
