@@ -94,7 +94,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return "edge-index-iterator-mock";
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) {
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
@@ -175,7 +175,7 @@ class EdgeIndexMock final : public arangodb::Index {
       VPackBuilder& builder,
       bool withFigures,
       bool forPersistence
-  ) const {
+  ) const override {
     builder.openObject();
     Index::toVelocyPack(builder, withFigures, forPersistence);
     // hard-coded
@@ -184,7 +184,7 @@ class EdgeIndexMock final : public arangodb::Index {
     builder.close();
   }
 
-  void toVelocyPackFigures(VPackBuilder& builder) const {
+  void toVelocyPackFigures(VPackBuilder& builder) const override {
     Index::toVelocyPackFigures(builder);
 
     builder.add("from", VPackValue(VPackValueType::Object));
@@ -201,7 +201,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -229,7 +229,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -258,7 +258,7 @@ class EdgeIndexMock final : public arangodb::Index {
       size_t itemsInIndex,
       size_t& estimatedItems,
       double& estimatedCost
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.matchOne(
@@ -272,7 +272,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*,
       bool
-  ) {
+  ) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -311,7 +311,7 @@ class EdgeIndexMock final : public arangodb::Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.specializeOne(this, node, reference);
@@ -1241,6 +1241,10 @@ void StorageEngineMock::unloadCollection(TRI_vocbase_t* vocbase, arangodb::Logic
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   TRI_ASSERT(false);
   return std::string();
+}
+
+void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
+  TRI_ASSERT(false);
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {

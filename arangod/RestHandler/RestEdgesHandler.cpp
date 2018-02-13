@@ -213,7 +213,7 @@ bool RestEdgesHandler::readEdges() {
       return false;
     }
 
-    resultDocument.add("error", VPackValue(false));
+    resultDocument.add(StaticStrings::Error, VPackValue(false));
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
@@ -280,7 +280,7 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
   resultBuilder.add("code", VPackValue(200));
   resultBuilder.add("stats", VPackValue(VPackValueType::Object));
   resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
@@ -359,7 +359,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         }
       }
     }
-    resultDocument.add("error", VPackValue(false));
+    resultDocument.add(StaticStrings::Error, VPackValue(false));
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
 
@@ -427,7 +427,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  resultBuilder.add("error", VPackValue(false));
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
   resultBuilder.add("code", VPackValue(200));
   resultBuilder.add("stats", VPackValue(VPackValueType::Object));
   resultBuilder.add("scannedIndex", VPackValue(scannedIndex));

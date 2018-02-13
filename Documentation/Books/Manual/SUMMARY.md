@@ -19,9 +19,10 @@
 * [Highlights](Highlights.md)
 #
 * [Scalability](Scalability/README.md)
-  * [Architecture](Scalability/Architecture.md)
-  * [Data models](Scalability/DataModels.md)
-  * [Limitations](Scalability/Limitations.md)
+  * [Cluster](Scalability/Cluster/README.md)
+    * [Architecture](Scalability/Architecture.md)
+    * [Data models](Scalability/DataModels.md)
+    * [Limitations](Scalability/Limitations.md)
   * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
     * [Introduction](Scalability/DC2DC/Introduction.md)
     * [Applicability](Scalability/DC2DC/Applicability.md)
@@ -75,12 +76,9 @@
   * [Working with Edges](Graphs/Edges/README.md)
   * [Pregel](Graphs/Pregel/README.md)
 #
-
-#
 * [Views](Views/README.md)
-#
-  * [ArangoSearch](Views/IResearch.md)
-    * [Analyzers](Views/IResearch/Analyzers.md)
+  * [ArangoSearch](Views/ArangoSearch.md)
+    * [Analyzers](Views/ArangoSearch/Analyzers.md)
 
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
@@ -204,6 +202,7 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
+  * [Cluster](Administration/Cluster/README.md)
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
@@ -225,6 +224,7 @@
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
+  * [Cluster](Troubleshooting/Cluster/README.md)  
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
 #
 * [Monitoring](Monitoring/README.md)
@@ -267,6 +267,7 @@
   * [References](Appendix/References/README.md)
     * [db](Appendix/References/DBObject.md)
     * [collection](Appendix/References/CollectionObject.md)
+    * [cursor](Appendix/References/CursorObject.md)
   * [JavaScript Modules](Appendix/JavaScriptModules/README.md)
     * [@arangodb](Appendix/JavaScriptModules/ArangoDB.md)
     * [console](Appendix/JavaScriptModules/Console.md)
@@ -279,10 +280,9 @@
     * [Task Management](Appendix/JavaScriptModules/Tasks.md)
   * [Deprecated](Appendix/Deprecated/README.md)
       * [Simple Queries](Appendix/Deprecated/SimpleQueries/README.md)
-        * [Sequential Access](Appendix/Deprecated/SimpleQueries/Access.md)
         * [Pagination](Appendix/Deprecated/SimpleQueries/Pagination.md)
         * [Modification Queries](Appendix/Deprecated/SimpleQueries/ModificationQueries.md)
-        * [Geo Queries](Appendix/Deprecated/SimpleQueriesGeoQueries.md)
+        * [Geo Queries](Appendix/Deprecated/SimpleQueries/GeoQueries.md)
         * [Fulltext Queries](Appendix/Deprecated/SimpleQueries/FulltextQueries.md)
       * [Actions](Appendix/Deprecated/Actions/README.md)
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)

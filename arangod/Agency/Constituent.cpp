@@ -113,7 +113,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   if (tmp != t || tmpVotedFor != votedFor) {
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term or votedFor, "
-      << "current role:" << roleStr[_role] << " term " << t << " votedFor: "
+      << "current role: " << roleStr[_role] << " term " << t << " votedFor: "
       << votedFor;
 
     Builder body;

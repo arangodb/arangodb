@@ -140,7 +140,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 }
 
 RocksDBEngine::~RocksDBEngine() {
-  shutdownRocksDBInstance(); 
+  shutdownRocksDBInstance();
 }
 
 /// shuts down the RocksDB instance. this is called from unprepare
@@ -151,11 +151,11 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     if (nullptr != _listener.get()) {
       _listener->StopThread();
     } // if
-    
+
     for (rocksdb::ColumnFamilyHandle* h : RocksDBColumnFamily::_allHandles) {
       _db->DestroyColumnFamilyHandle(h);
     }
-    
+
     // now prune all obsolete WAL files
     try {
       determinePrunableWalFiles(0);
@@ -198,7 +198,7 @@ void RocksDBEngine::collectOptions(
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
                      new DoubleParameter(&_pruneWaitTime));
-  
+
   options->addOption("--rocksdb.throttle",
                      "enable write-throttling",
                      new BooleanParameter(&_useThrottle));
@@ -759,7 +759,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
   auto result = rocksutils::convertStatus(res);
 
   if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(result.errorNumber());
+    THROW_ARANGO_EXCEPTION(result);
   }
 
   VPackSlice fullParameters = RocksDBValue::data(value);
@@ -1223,7 +1223,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   auto status = rocksutils::convertStatus(res);
 
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 
@@ -1347,6 +1347,18 @@ Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
   return TRI_ERROR_NO_ERROR;
 }
 
+void RocksDBEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) {
+  auto start = std::chrono::high_resolution_clock::now();
+  auto beginSeq = _db->GetLatestSequenceNumber();
+  while (std::chrono::high_resolution_clock::now() - start < maxWaitTime) {
+    if (_settingsManager->earliestSeqNeeded() >= beginSeq) {
+      // all synced up!
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
+}
+
 Result RocksDBEngine::registerRecoveryHelper(
     std::shared_ptr<RocksDBRecoveryHelper> helper) {
   try {
@@ -1411,7 +1423,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' added to prunable list";
+          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' with start sequence " << f->StartSequence() << " added to prunable list";
           _prunableWalFiles.emplace(f->PathName(),
                                     TRI_microtime() + _pruneWaitTime);
         }

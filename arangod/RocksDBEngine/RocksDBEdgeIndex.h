@@ -125,6 +125,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
+  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+  bool needToPersistEstimate() const override;
+
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   void batchInsert(
@@ -157,7 +160,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmup(arangodb::transaction::Methods* trx,
               std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
-  void serializeEstimate(std::string& output, uint64_t seq) const override;
+  rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const override;
 
   bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
@@ -172,11 +176,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
-
-  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
-                                      std::vector<uint64_t> const& removes) override;
 
  private:
   /// @brief create the iterator
@@ -197,14 +196,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
  private:
 
-  std::string _directionAttr;
-  bool _isFromIndex;
+  std::string const _directionAttr;
+  bool const _isFromIndex;
 
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
-  mutable uint64_t _estimatorSerializedSeq;
 };
 }  // namespace arangodb
 
