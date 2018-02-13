@@ -19,7 +19,8 @@ Otherwise you might see caching issues or accidentally break something.
 The interfaces will ensure the correct format of the documents and invalidate
 the UDF cache.
 
-### Registering an AQL user function
+Registering an AQL user function
+--------------------------------
 
 For testing, it may be sufficient to directly type the function code in the shell.
 To manage more complex code, you may write it in the code editor of your choice
@@ -137,7 +138,8 @@ expected number of arguments: minimum: 1, maximum: 1]
 ]
 ```
 
-### Deleting an existing AQL user function
+Deleting an existing AQL user function
+--------------------------------------
 
 `aqlfunctions.unregister(name)`
 
@@ -156,7 +158,9 @@ require("@arangodb/aql/functions").unregister("MYFUNCTIONS::TEMPERATURE::CELSIUS
 ```
 
 
-### Unregister Group
+Unregister Group
+----------------
+
 <!-- js/common/modules/@arangodb/aql/functions.js -->
 
 
@@ -179,7 +183,8 @@ require("@arangodb/aql/functions").unregisterGroup("MYFUNCTIONS");
 ```
 
 
-### Listing all AQL user functions
+Listing all AQL user functions
+------------------------------
 
 `aqlfunctions.toArray()`
 

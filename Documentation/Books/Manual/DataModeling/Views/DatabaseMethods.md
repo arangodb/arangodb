@@ -1,7 +1,9 @@
 Database Methods
 ================
 
-### View
+View
+----
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `db._view(view-name)`
@@ -41,7 +43,9 @@ Unknown view:
     @endDocuBlock viewDatabaseNameUnknown
 
 
-### Create
+Create
+------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `db._createView(view-name, view-type, view-properties)`
@@ -65,7 +69,9 @@ arangosh> v.properties();
 arangosh> db._dropView("example");
 ```
 
-### All Views
+All Views
+---------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `db._views()`
@@ -83,7 +89,9 @@ arangosh> db._views();
 arangosh> db._dropView("example");
 ```
 
-### Drop
+Drop
+----
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `db._dropView(view-name)`

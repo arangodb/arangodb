@@ -12,7 +12,7 @@ Also note that the server and database access levels are represented as
 
 This is again for backward compatibility.
 
-### Example
+**Example**
 
 Fire up *arangosh* and require the users module. Use it to create a new user:
 
