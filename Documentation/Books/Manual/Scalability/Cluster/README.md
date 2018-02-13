@@ -1,4 +1,5 @@
-# Cluster
+Cluster
+=======
 
 This chapter introduces ArangoDB's Cluster.
 
