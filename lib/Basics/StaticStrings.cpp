@@ -57,7 +57,10 @@ std::string const StaticStrings::SilentString("silent");
 std::string const StaticStrings::WaitForSyncString("waitForSync");
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
-  
+std::string const StaticStrings::Group("group");
+std::string const StaticStrings::ReplaceExisting("replaceExisting");
+std::string const StaticStrings::Prefix("prefix");
+
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
 std::string const StaticStrings::ReplicationHeaderLastIncluded("x-arango-replication-lastincluded");
