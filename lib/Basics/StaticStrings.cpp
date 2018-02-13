@@ -61,6 +61,7 @@ std::string const StaticStrings::IsSynchronousReplicationString(
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore("x-arango-replication-checkmore");
 std::string const StaticStrings::ReplicationHeaderLastIncluded("x-arango-replication-lastincluded");
+std::string const StaticStrings::ReplicationHeaderLastScanned("x-arango-replication-lastscanned");
 std::string const StaticStrings::ReplicationHeaderLastTick("x-arango-replication-lasttick");
 std::string const StaticStrings::ReplicationHeaderFromPresent("x-arango-replication-frompresent");
 std::string const StaticStrings::ReplicationHeaderActive("x-arango-replication-active");
