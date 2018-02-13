@@ -22,27 +22,21 @@
 
 #include "AqlUserFunctions.h"
 
-
-
 #include "Basics/StringUtils.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
-
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryString.h"
-
 #include "RestServer/QueryRegistryFeature.h"
-#include "V8/v8-globals.h"
-#include "V8/v8-utils.h"
-#include "V8Server/V8DealerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
-#include "VocBase/ManagedDocumentResult.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-
+#include "V8/v8-globals.h"
+#include "V8/v8-utils.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <v8.h>
 #include <velocypack/Builder.h>
@@ -77,7 +71,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                                         std::string const& functionName) {
   if (functionName.empty() || !isValidFunctionNameFilter(functionName)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  std::string("Error deleting AQL User Function: '") +
+                  std::string("error deleting AQL user function: '") +
                   functionName +
                   "' contains invalid characters");
   }
@@ -107,17 +101,17 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       return Result(TRI_ERROR_REQUEST_CANCELED);
     }
-    return Result(queryResult.code, std::string("Error group-deleting user defined AQL"));
+    return Result(queryResult.code, "error group-deleting user defined AQL");
   }
 
   VPackSlice countSlice = queryResult.result->slice();
   if (!countSlice.isArray() || (countSlice.length() != 1)) {
-    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL User Functions");
+    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
   }
 
   if (countSlice[0].getNumericValue<int>() != 1) {
     return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
-                  std::string("no AQL User Function by name '") + functionName + "' found");
+                  std::string("no AQL user function with name '") + functionName + "' found");
   }
 
   reloadAqlUserFunctions();
@@ -133,7 +127,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
   }
   if (!isValidFunctionNameFilter(functionFilterPrefix)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  std::string("Error deleting AQL User Function: '") +
+                  std::string("error deleting AQL user function: '") +
                   functionFilterPrefix +
                   "' contains invalid characters");
   }
@@ -170,12 +164,12 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_REQUEST_CANCELED);
     }
     return Result(queryResult.code,
-                  std::string("Error group-deleting user defined AQL"));
+                  std::string("Error group-deleting AQL user functions"));
   }
 
   VPackSlice countSlice = queryResult.result->slice();
   if (!countSlice.isArray() || (countSlice.length() != 1)) {
-    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL User Functions");
+    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
   }
 
   deleteCount = countSlice[0].getNumericValue<int>();
@@ -200,36 +194,24 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     }
   }
   catch (...) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME, "missing mandatory property - 'name'");
+    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME, "missing mandatory attribute 'name'");
   }
 
   if (!isValidFunctionName(name)) {
     return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME,
-                  std::string("Error creating AQL User Function: '") +
+                  std::string("error creating AQL user function: '") +
                   name +
-                  "' is not a valid name.");
+                  "' is not a valid name");
   }
 
-  std::string code;
-  std::string tmp;
-  try {
-    auto cvString = userFunction.get("code");
-    if (!cvString.isString()) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-		    "expecting function or string");
-    }
-    tmp = cvString.copyString();
+  auto cvString = userFunction.get("code");
+  if (!cvString.isString() || cvString.getStringLength() == 0) {
+    return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
+                  "expecting string with function definition");
+  }
 
-    if (tmp.empty()) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-		    "expecting function - must not be empty.");
-    }
-    code = std::string("(") + tmp + "\n)";
-  }
-  catch (...) {
-      return Result(TRI_ERROR_QUERY_FUNCTION_INVALID_CODE,
-		    "missing mandatory property - 'code'");
-  }
+  std::string tmp = cvString.copyString();
+  std::string code = std::string("(") + tmp + "\n)";
 
   bool isDeterministic = false;
   VPackSlice isDeterministicSlice = userFunction.get("isDeterministic");
@@ -272,7 +254,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
       }
 
       if (state != 0) {
-        const std::string msg[] = {
+        std::string const msg[] = {
           "",
           "Empty result.",
           "Exception occured",
@@ -376,14 +358,14 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_REQUEST_CANCELED);
     }
     return Result(queryResult.code,
-                  std::string("Error fetching user defined AQL functions with this query: ") +
+                  std::string("error fetching user defined AQL functions with this query: ") +
                   queryResult.details);
   }
 
   auto usersFunctionsSlice = queryResult.result->slice();
 
   if (!usersFunctionsSlice.isArray()) {
-    return Result(TRI_ERROR_INTERNAL, "bad query result for AQL User Functions");
+    return Result(TRI_ERROR_INTERNAL, "bad query result for AQL user functions");
   }
 
   result.openArray();
@@ -393,7 +375,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
     resolved = it.resolveExternal();
 
     if (!resolved.isObject()) {
-      return Result(TRI_ERROR_INTERNAL, "element, that stores aql function is not an object");
+      return Result(TRI_ERROR_INTERNAL, "element that stores AQL user function is not an object");
     }
 
     VPackSlice name, fn, dtm;
