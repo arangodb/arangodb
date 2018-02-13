@@ -316,18 +316,13 @@ bool transaction::Methods::sortOrs(
         parts[i].valueNode = emptyArray;
 
         // must edit nodes in place; TODO change so we can replace with copy
-        auto n1 = root->getMember(previousIn)->getMember(0);
-        n1->flags = (n1->flags &
-                     ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);
 
-        TRI_DEFER(FINALIZE_SUBTREE(n1));
+        auto n1 = root->getMember(previousIn)->getMember(0);
+        TEMPORARILY_UNLOCK_NODE(n1);
         n1->changeMember(1, mergedIn);
 
         auto n2 = root->getMember(i)->getMember(0);
-        n2->flags = (n2->flags &
-                     ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED);
-
-        TRI_DEFER(FINALIZE_SUBTREE(n2));
+        TEMPORARILY_UNLOCK_NODE(n2);
         n2->changeMember(1, emptyArray);
       } else {
         // note first IN

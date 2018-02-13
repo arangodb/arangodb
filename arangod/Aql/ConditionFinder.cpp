@@ -27,8 +27,6 @@
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
 
-#include "Logger/Logger.h"
-
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 

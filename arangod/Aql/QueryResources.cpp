@@ -26,7 +26,6 @@
 #include "Aql/ResourceUsage.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

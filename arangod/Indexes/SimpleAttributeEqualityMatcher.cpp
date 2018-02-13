@@ -29,8 +29,6 @@
 #include "Indexes/Index.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/Logger.h"
-
 using namespace arangodb;
 
 SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(

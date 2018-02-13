@@ -696,7 +696,7 @@ struct AstNode {
   ///        n-ary-and
   void removeMembersInOtherAndNode(AstNode const* other);
 
-  /// @brief If the node has not been marked finalized, mark it's subtree so.
+  /// @brief If the node has not been marked finalized, mark its subtree so.
   /// If it runs into a finalized node, it assumes the whole subtree beneath
   /// it is marked already and exits early; otherwise it will finalize the node
   /// and recurse on its subtree.
