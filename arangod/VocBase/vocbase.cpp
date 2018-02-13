@@ -961,6 +961,21 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
   return (*it).second->name();
 }
 
+/// @brief gets a view name by a view id
+/// the name is fetched under a lock to make this thread-safe.
+/// returns empty string if the view does not exist.
+std::string TRI_vocbase_t::viewName(TRI_voc_cid_t id) const {
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+
+  auto it = _viewsById.find(id);
+
+  if (it == _viewsById.end()) {
+    return StaticStrings::Empty;
+  }
+
+  return (*it).second->name();
+}
+
 /// @brief looks up a collection by uuid
 LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
   // otherwise we'll look up the collection by name
@@ -1734,15 +1749,13 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
-  try {
-    auto it = _replicationClients.find(serverId);
+  auto it = _replicationClients.find(serverId);
 
-    if (it != _replicationClients.end()) {
-      (*it).second.first = expires;
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
+  if (it != _replicationClients.end()) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
+    (*it).second.first = expires;
+  } else {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "replication client entry for server '" << serverId << "' not found";
   }
 }
 
@@ -1764,11 +1777,15 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
       // insert new client entry
       _replicationClients.emplace(
           serverId, std::make_pair(expires, lastFetchedTick));
+      LOG_TOPIC(TRACE, Logger::REPLICATION) << "inserting replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
     } else {
       // update an existing client entry
       (*it).second.first = expires;
       if (lastFetchedTick > 0) {
         (*it).second.second = lastFetchedTick;
+        LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
+      } else {
+        LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
       }
     }
   } catch (...) {

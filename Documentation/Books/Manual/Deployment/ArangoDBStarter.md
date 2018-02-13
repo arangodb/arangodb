@@ -1,3 +1,6 @@
+Native and Docker Clusters
+==========================
+
 Automatic native Clusters
 -------------------------
 Similarly to how the Mesos framework aranges an ArangoDB cluster in a

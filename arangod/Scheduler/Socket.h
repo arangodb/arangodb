@@ -93,7 +93,10 @@ bool doSslHandshake(T& socket) {
   }
 
   if (ec) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    // this message will also be emitted if a connection is attempted
+    // with a wrong protocol (e.g. HTTP instead of SSL/TLS). so it's
+    // definitely not worth logging an error here
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "unable to perform ssl handshake: " << ec.message() << " : "
         << ec.value();
     return false;

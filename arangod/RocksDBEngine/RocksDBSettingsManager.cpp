@@ -231,10 +231,10 @@ RocksDBSettingsManager::RocksDBSettingsManager(rocksdb::TransactionDB* db)
 
 /// retrieve initial values from the database
 void RocksDBSettingsManager::retrieveInitialValues() {
-  readSettings();
-  readIndexEstimates();
-  readCounterValues();
-  readKeyGenerators();
+  loadSettings();
+  loadIndexEstimates();
+  loadCounterValues();
+  loadKeyGenerators();
 
   EngineSelectorFeature::ENGINE->releaseTick(_initialReleasedTick);
 }
@@ -321,8 +321,8 @@ void RocksDBSettingsManager::removeCounter(uint64_t objectId) {
 std::unordered_map<uint64_t, rocksdb::SequenceNumber>
 RocksDBSettingsManager::counterSeqs() {
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> seqs;
-  {  // block all updates
-    WRITE_LOCKER(guard, _rwLock);
+  {  // block all updates while we copy
+    READ_LOCKER(guard, _rwLock);
     for (auto it : _counters) {
       seqs.emplace(it.first, it.second._sequenceNum);
     }
@@ -411,7 +411,8 @@ Result RocksDBSettingsManager::sync(bool force) {
   return rocksutils::convertStatus(s);
 }
 
-void RocksDBSettingsManager::readSettings() {
+void RocksDBSettingsManager::loadSettings() {
+  WRITE_LOCKER(guard, _rwLock);
   RocksDBKey key;
   key.constructSettingsValue(RocksDBSettingsType::ServerTick);
 
@@ -464,7 +465,7 @@ void RocksDBSettingsManager::readSettings() {
   }
 }
 
-void RocksDBSettingsManager::readIndexEstimates() {
+void RocksDBSettingsManager::loadIndexEstimates() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
@@ -506,7 +507,7 @@ void RocksDBSettingsManager::readIndexEstimates() {
   }
 }
 
-void RocksDBSettingsManager::readKeyGenerators() {
+void RocksDBSettingsManager::loadKeyGenerators() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
@@ -535,7 +536,9 @@ void RocksDBSettingsManager::readKeyGenerators() {
 
 std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>
 RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res(nullptr);
+  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> res;
+
+  WRITE_LOCKER(guard, _rwLock);
   auto it = _estimators.find(objectId);
   if (it != _estimators.end()) {
     // We swap out the stored estimate in order to move it to the caller
@@ -543,10 +546,11 @@ RocksDBSettingsManager::stealIndexEstimator(uint64_t objectId) {
     // Drop the now empty estimator
     _estimators.erase(objectId);
   }
-  return std::move(res);
+  return res;
 }
 
 uint64_t RocksDBSettingsManager::stealKeyGenerator(uint64_t objectId) {
+  WRITE_LOCKER(guard, _rwLock);
   uint64_t res = 0;
   auto it = _generators.find(objectId);
   if (it != _generators.end()) {
@@ -564,13 +568,17 @@ void RocksDBSettingsManager::clearIndexEstimators() {
   // by recovery.
 
   // TODO REMOVE RocksDB Keys of all not stolen values?
+  WRITE_LOCKER(guard, _rwLock);
   _estimators.clear();
 }
 
-void RocksDBSettingsManager::clearKeyGenerators() { _generators.clear(); }
+void RocksDBSettingsManager::clearKeyGenerators() {
+  WRITE_LOCKER(guard, _rwLock);
+  _generators.clear();
+}
 
 /// Parse counter values from rocksdb
-void RocksDBSettingsManager::readCounterValues() {
+void RocksDBSettingsManager::loadCounterValues() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 

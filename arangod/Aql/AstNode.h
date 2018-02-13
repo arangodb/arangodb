@@ -202,6 +202,12 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
+  enum class DataSourceType : uintptr_t {
+    Invalid = 0,
+    Collection,
+    View,
+  };
+
   static std::unordered_map<int, std::string const> const Operators;
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
@@ -373,6 +379,25 @@ struct AstNode {
 
   /// @brief whether or not a value node is of array type
   inline bool isObject() const { return (type == NODE_TYPE_OBJECT); }
+
+  inline bool isDataSource() const noexcept {
+    switch (type) {
+      case NODE_TYPE_COLLECTION:
+      case NODE_TYPE_VIEW:
+        return true;
+      case NODE_TYPE_PARAMETER:
+        return value.type == VALUE_TYPE_STRING
+          && value.length
+          && value.value._string
+          && '@' == value.value._string[0];
+      default:
+        return false;
+    }
+  }
+
+  inline DataSourceType getDataSourceType() const noexcept {
+    return dataSourceType;
+  }
 
   /// @brief whether or not a value node is of type attribute access that
   /// refers to a variable reference
@@ -713,8 +738,13 @@ struct AstNode {
   AstNodeValue value;
 
  private:
-  /// @brief precomputed VPack value (used when executing expressions)
-  uint8_t mutable* computedValue;
+  union {
+    /// @brief precomputed VPack value (used when executing expressions)
+    uint8_t mutable* computedValue;
+
+    /// @brief type of the data source
+    DataSourceType dataSourceType;
+  };
 
   /// @brief the node's sub nodes
   std::vector<AstNode*> members;

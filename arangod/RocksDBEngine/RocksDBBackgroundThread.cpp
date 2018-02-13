@@ -46,6 +46,8 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  double const startTime = TRI_microtime();
+
   while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
@@ -66,9 +68,9 @@ void RocksDBBackgroundThread::run() {
         }
 
         double end = TRI_microtime();
-        if ((end - start) > 0.5) {
+        if ((end - start) > 0.75) {
           LOG_TOPIC(WARN, Logger::ENGINES)
-            << "slow background settings sync: " << (end - start) << "sec";
+            << "slow background settings sync: " << Logger::FIXED(end - start, 6) << " s";
         }
       }
 
@@ -94,10 +96,17 @@ void RocksDBBackgroundThread::run() {
             });
       }
 
-      // determine which WAL files can be pruned
-      _engine->determinePrunableWalFiles(minTick);
-      // and then prune them when they expired
-      _engine->pruneWalFiles();
+      // only start pruning of obsolete WAL files a few minutes after
+      // server start. if we start pruning too early, replication slaves
+      // will not have a chance to reconnect to a restarted master in
+      // time so the master may purge WAL files that replication slaves
+      // would still like to peek into
+      if (TRI_microtime() >= startTime + 180.0) {
+        // determine which WAL files can be pruned
+        _engine->determinePrunableWalFiles(minTick);
+        // and then prune them when they expired
+        _engine->pruneWalFiles();
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();

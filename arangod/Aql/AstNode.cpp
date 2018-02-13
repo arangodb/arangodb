@@ -47,6 +47,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
+namespace {
+
+arangodb::StringRef const VIEW_NODE_SUFFIX("\0v", 2);
+arangodb::StringRef const COLLECTION_NODE_SUFFIX("\0c", 2);
+
+}
+
 using namespace arangodb::aql;
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
@@ -760,7 +767,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
+  if (computedValue != nullptr && !isDataSource()) {
     delete[] computedValue;
   }
 }

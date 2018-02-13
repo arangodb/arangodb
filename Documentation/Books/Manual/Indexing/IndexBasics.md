@@ -1,5 +1,5 @@
 Index basics
-------------
+============
 
 Indexes allow fast access to documents, provided the indexed attribute(s)
 are used in a query. While ArangoDB automatically indexes some system
@@ -21,7 +21,8 @@ indexing `_key`, `_rev`, `_from`, and `_to` is.
 
 ArangoDB provides the following index types:
 
-### Primary Index
+Primary Index
+-------------
 
 For each collection there will always be a *primary index* which is a hash index 
 for the [document keys](../Appendix/Glossary.md#document-key) (`_key` attribute)
@@ -45,7 +46,8 @@ The primary index of a collection cannot be dropped or changed, and there is no
 mechanism to create user-defined primary indexes.
 
 
-### Edge Index
+Edge Index
+----------
 
 Every [edge collection](../Appendix/Glossary.md#edge-collection) also has an 
 automatically created *edge index*. The edge index provides quick access to
@@ -77,7 +79,8 @@ indexes.
 An edge index cannot be dropped or changed.
 
 
-### Hash Index
+Hash Index
+----------
 
 A hash index can be used to quickly find documents with specific attribute values.
 The hash index is unsorted, so it supports equality lookups but no range queries or sorting.
@@ -144,7 +147,8 @@ Hash indexes support [indexing array values](#indexing-array-values) if the inde
 attribute name is extended with a <i>[\*]</i>.
 
 
-### Skiplist Index
+Skiplist Index
+--------------
 
 A skiplist is a sorted index structure. It can be used to quickly find documents 
 with specific attribute values, for range queries and for returning documents from
@@ -236,7 +240,8 @@ Skiplist indexes support [indexing array values](#indexing-array-values) if the 
 attribute name is extended with a <i>[\*]</i>`.
 
 
-### Persistent Index
+Persistent Index
+----------------
 
 The persistent index is a sorted index with persistence. The index entries are written to
 disk when documents are stored or updated. That means the index entries do not need to be
@@ -260,7 +265,8 @@ operations, but only if either all index attributes are provided in a query, or 
 prefix of the index attributes is specified.
 
 
-### Geo Index
+Geo Index
+---------
 
 Users can create additional geo indexes on one or multiple attributes in collections. 
 A geo index is used to find places on the surface of the earth fast. 
@@ -279,7 +285,8 @@ the distance function. Otherwise it will not be used for other types of queries
 or conditions.
 
 
-### Fulltext Index
+Fulltext Index
+--------------
 
 A fulltext index can be used to find words, or prefixes of words inside documents. 
 A fulltext index can be created on a single attribute only, and will index all words 
@@ -297,7 +304,8 @@ minimum length will be included in the index.
 The fulltext index is used via dedicated functions in AQL or the simple queries, but will
 not be enabled for other types of queries or conditions.
 
-### Indexing attributes and sub-attributes
+Indexing attributes and sub-attributes
+--------------------------------------
 
 Top-level as well as nested attributes can be indexed. For attributes at the top level,
 the attribute names alone are required. To index a single field, pass an array with a
@@ -319,7 +327,8 @@ db.posts.ensureIndex({ type: "hash", fields: [ "name.last" ] })
 db.posts.ensureIndex({ type: "hash", fields: [ "name.last", "name.first" ] })
 ```
 
-### Indexing array values
+Indexing array values
+---------------------
 
 If an index attribute contains an array, ArangoDB will store the entire array as the index value
 by default. Accessing individual members of the array via the index is not possible this
@@ -470,7 +479,8 @@ only if the query filters on the indexed attribute using the `IN` operator. The 
 comparison operators (`==`, `!=`, `>`, `>=`, `<`, `<=`, `ANY`, `ALL`, `NONE`) currently
 cannot use array indexes.
 
-### Vertex centric indexes
+Vertex centric indexes
+----------------------
 
 As mentioned above, the most important indexes for graphs are the edge
 indexes, indexing the `_from` and `_to` attributes of edge collections.
