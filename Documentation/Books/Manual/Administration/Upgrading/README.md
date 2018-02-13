@@ -1,12 +1,14 @@
 General Upgrade Information
 ===========================
 
-### Recommended major upgrade procedure
+Recommended major upgrade procedure
+-----------------------------------
 
 To upgrade an existing ArangoDB 2.x to 3.0 please use the procedure described
 [here](../../Administration/Upgrading/Upgrading30.md).
 
-### Recommended minor upgrade procedure
+Recommended minor upgrade procedure
+-----------------------------------
 
 To upgrade an existing ArangoDB database to a newer version of ArangoDB 
 (e.g. 3.0 to 3.1, or 3.1 to 3.2), the following method is recommended:
@@ -36,7 +38,8 @@ version of ArangoDB with an older ArangoDB version. For example, it is
 unsupported and is likely to cause problems when using 3.2 datafiles
 with an ArangoDB 3.0 instance.
 
-### Switching the storage engine
+Switching the storage engine
+----------------------------
 
 In order to use a different storage engine with an existing data directory,
 it is required to first create a logical backup of the data using *arangodump*.
