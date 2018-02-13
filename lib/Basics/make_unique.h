@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BASICS_MAKE__UNIQUE_H
 #define ARANGODB_BASICS_MAKE__UNIQUE_H 1
 
+#if __cplusplus == 201103L
+
 #include <cstddef>
 #include <memory>
 #include <type_traits>
@@ -35,8 +37,6 @@
 // c++98: 199711 (not supported)
 // c++11: 201103 (no std::make_unique)
 // c++14: 201402 (std::make_unique included)
-
-#if __cplusplus == 201103L
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Provide a make_unique() function for C++11 too

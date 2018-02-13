@@ -181,7 +181,7 @@ else()
   if(MINGW)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-format")
   endif()
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
   if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 #    NDEBUG controlled by ArangoDB build on global level at the moment
 #    add_definitions(-DNDEBUG)
