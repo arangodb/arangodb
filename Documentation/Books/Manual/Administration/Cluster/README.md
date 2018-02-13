@@ -1,10 +1,12 @@
-# Cluster administration
+Cluster administration
+======================
 
 This Section includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the Cluster [chapter](../../Scalability/Cluster/README.md).
 
-## Replacing/Removing a Coordinator
+Replacing/Removing a Coordinator
+--------------------------------
 
 _Coordinators_ are effectively stateless and can be replaced, added and
 removed without more consideration than meeting the necessities of the
@@ -24,7 +26,8 @@ integrated as a new _Coordinator_ into the cluster. You may also just
 restart the _Coordinator_ as before and it will reintegrate itself into
 the cluster.
 
-## Replacing/Removing a DBServer
+Replacing/Removing a DBServer
+-----------------------------
 
 _DBServers_ are where the data of an ArangoDB cluster is stored. They
 do not publish a we UI and are not meant to be accessed by any other
