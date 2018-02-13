@@ -149,6 +149,9 @@ exports.loginUser = (user) => {
     }
     password = 'abc';
   }
+  if (user === 'bob') {
+    password = '';
+  }
 
   let res = false;
   try {
@@ -179,6 +182,9 @@ exports.switchUser = (user, dbName) => {
       user = 'arangoadmin';
     }
     password = 'abc';
+  }
+  if (user === 'bob') {
+    password = '';
   }
   arango.reconnect(arango.getEndpoint(), database, user, password);
 };
