@@ -1538,6 +1538,26 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintNull());
 }
 
+/// @brief function IS_DATESTRING
+AqlValue Functions::IsDatestring(arangodb::aql::Query* query,
+                                 transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!value.isString()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  system_clock::time_point tp;
+
+  return AqlValue(AqlValueHintBool(
+    basics::parse_dateTime(value.slice().copyString(), tp)
+  ));
+}
+
 /// @brief function DATE_DAYOFWEEK
 AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
                                   transaction::Methods* trx,

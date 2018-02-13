@@ -22,44 +22,37 @@
 
 #include "Basics/datetime.h"
 #include "lib/Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 #include <iostream>
-#include <vector>
 #include <regex>
+#include <vector>
 
-
-bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::system_clock::time_point& date_tp) {
-
-    // static std::regex integer("^(\\+|-)?[0-9]+$"); // \\ is ECMA style
-
-//    std::cout << std::endl;
+bool arangodb::basics::parse_dateTime(
+    std::string const& dateTimeIn,
+    std::chrono::system_clock::time_point& date_tp) {
     using namespace date;
     using namespace std::chrono;
 
-    std::istringstream in;
-    milliseconds ms = milliseconds{0};
-    minutes min = minutes{0};
-    year_month_day ymd;
-    year_month ym;
-    year y;
+    std::string dateTime = dateTimeIn;
+    std::string strDate, strTime;
 
-    std::string strDate = dateTime;
-    boost::algorithm::trim(strDate); // right left trim
-    std::string strTime = "";
-    std::string strOffset = "";
-    std::string leftover = "";
-    
-    bool failed;
+    boost::algorithm::trim(dateTime);
 
-    // if(std::regex_match(strDate, integer)) { // system_time
-    //     date_tp = system_clock::time_point(milliseconds{
-    //         basics::StringUtils::int64(strDate)});
-    //     return true;
-    // }
+    std::regex iso8601_regex("(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?(((\\ |T)\\d\\d\\:\\d\\d(\\:\\d\\d(\\.\\d{1,3})?)?(z|Z|(\\+|\\-)\\d\\d\\:\\d\\d)?)?|(z|Z)?)?");
+
+    if (!std::regex_match(dateTime, iso8601_regex)) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "regex failed for datetime '" << dateTime << "'";
+        return false;
+    }
+
+    strDate = dateTime;
 
     if (strDate.back() == 'Z' || strDate.back() == 'z') {
         strDate.pop_back();
     }
+
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "parse datetime '" << strDate << "'";
 
     if (strDate.find("T") != std::string::npos || strDate.find(" ") != std::string::npos) { // split into ymd / time
         std::vector<std::string> strs;
@@ -68,75 +61,106 @@ bool arangodb::basics::parse_dateTime(std::string const& dateTime, std::chrono::
         strDate = strs[0];
         strTime = strs[1];
      } // if
-     
-     // std::cout << "PARSE DATE: " << strDate << std::endl;
-     
-     // parse Date YYYY-MM-DD
-     in = std::istringstream{strDate};
-     in >> parse("%Y", y);
-     failed = in.fail();
-     leftover.clear();
-     getline(in, leftover);
-     
-     if (failed || leftover.size()) {
-        in = std::istringstream{strDate};
-        in >> parse("%Y-%m", ym);
-        failed = in.fail();     
-        leftover.clear();
-        getline(in, leftover);
-        
-        if (failed || leftover.size()) {        
-            in = std::istringstream{strDate};
-            in >> parse("%Y-%m-%d", ymd);
-            failed = in.fail();
-            leftover.clear();
-            getline(in, leftover);
-            
-            if (failed || leftover.size()) {
-                std::cout << "failed to parse " << strDate << std::endl;
-                return false;
-            } else {
-                date_tp = sys_days(ymd);
-            }
-        } else {
-            date_tp = sys_days(ym/1);
+
+    // parse date component
+    int parsedYear, parsedMonth = 1, parsedDay = 1, numParsedComponents;
+
+    numParsedComponents = sscanf(strDate.c_str(), "%d-%d-%d", &parsedYear, &parsedMonth, &parsedDay);
+
+    if (numParsedComponents == 0 || numParsedComponents == EOF) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "sscanf parse failed with " << numParsedComponents;
+        return false;
+    }
+
+    if (1 < numParsedComponents &&
+      (parsedMonth < 1 || 12 < parsedMonth)) {
+            return false;
+    }
+
+    if (2 < numParsedComponents &&
+       (parsedDay < 1 || 31 < parsedDay)) {
+        return false;
+    }
+
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "parsed YMD " <<
+    parsedYear << " " << parsedMonth << " " << parsedDay;
+
+    date_tp = sys_days(year{parsedYear}/parsedMonth/parsedDay);
+
+     // parse Time HH:MM:SS(.SSS)((+|-)HH:MM)
+     if (1 < strTime.size()) {
+        /* REGEX GROUPS
+        12:34:56.789-12:34
+        submatch 0: '12:34:56.789-12:34'
+        submatch 1: '12'
+        submatch 2: '34'
+        submatch 3: ':56.789'
+        submatch 4: '56'
+        submatch 5: '.789'
+        submatch 6: '789'
+        submatch 7: '-12:34'
+        submatch 8: '-'
+        submatch 9: '12'
+        submatch 10: '34'
+        */
+
+        std::regex time_regex("(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,3}))?)?((\\+|\\-)(\\d\\d)\\:(\\d\\d))?");
+        std::smatch time_parts;
+         
+        if (!std::regex_match(strTime, time_parts, time_regex)) {
+            LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
+            return false;
         }
-     } else {
-         date_tp = sys_days(y/1/1);
-     }
-     // end parse date
-     
-     // parse Time HH:MM:SS(.SSS)(Z|((+|-)HH:MM)
-     
-     if (1 < strTime.size()) {         
-         std::string addition = "";
-         std::string abbrev;
-         
-         if (strTime.find("-") != std::string::npos || strTime.find("+") != std::string::npos) {
-            addition = "%Ez";
-         }
 
-         // std::cout << "PARSE TIME: " << strTime << std::endl;
-         in = std::istringstream{strTime};
-         in >> parse("%H:%M"+addition, ms, abbrev, min);
-         failed = in.fail();
-         leftover.clear();
-         getline(in, leftover);
+         // hour
+         hours parsedHours{atoi(time_parts[1].str().c_str())};
 
-         if (failed || leftover.size()) {
-             in = std::istringstream{strTime};
-             in >> parse("%H:%M:%S"+addition, ms, abbrev, min);
-             failed = in.fail();
-             leftover.clear();
-             getline(in, leftover);
-         }
-         
-         if (failed || leftover.size()) {
-             std::cout << "CANT PARSE TIME"  << failed << " " << leftover.size() << " '" << leftover << "'" << std::endl;
+         if (hours{23} < parsedHours) {
              return false;
          }
-         // std::cout << "parsed time " << ms << " " << min << std::endl;
-         date_tp += ms - min;
+         date_tp += parsedHours;
+
+         // minute
+         minutes parsedMinutes{atoi(time_parts[2].str().c_str())};
+
+         if (minutes{59} < parsedMinutes) {
+             return false;
+         }
+         date_tp += parsedMinutes;
+
+         // seconds
+         seconds parsedSeconds{atoi(time_parts[4].str().c_str())};
+
+         if (seconds{59} < parsedSeconds) {
+             return false;
+         }
+         date_tp += parsedSeconds;
+
+         // milliseconds .9 -> 900ms
+         date_tp += milliseconds{atoi( (time_parts[6].str() + "00").substr(0,3).c_str() )};
+
+         // time offset
+         if (time_parts[8].str().size()) {
+             hours parsedHours{atoi(time_parts[9].str().c_str())}; // hours
+
+             if (hours{23} < parsedHours) {
+                 return false;
+             }
+             minutes offset = parsedHours;
+
+             minutes parsedMinutes{atoi(time_parts[10].str().c_str())}; // minutes
+
+            if (minutes{59} < parsedMinutes) {
+                return false;
+            }
+            offset += parsedMinutes;
+
+            if (time_parts[8].str() == "-") {
+                offset *= -1;
+            }
+            date_tp -= offset;
+         }
     } // if
+
     return true;
 }

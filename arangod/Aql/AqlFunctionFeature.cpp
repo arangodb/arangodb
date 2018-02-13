@@ -221,7 +221,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
   add({"IS_DATESTRING", ".", true, false, true,
-       true});
+       true, &Functions::IsDatestring});
   add({"IS_KEY", ".", true, false, true, true, &Functions::IsKey});
   add({"TYPENAME", ".", true, false, true, true,
        &Functions::Typename});

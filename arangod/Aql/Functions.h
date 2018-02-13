@@ -170,6 +170,8 @@ struct Functions {
                                VPackFunctionParameters const&);
    static AqlValue DateTimestamp(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
+   static AqlValue IsDatestring(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
    static AqlValue DateDayOfWeek(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
    static AqlValue DateYear(arangodb::aql::Query*, transaction::Methods*,

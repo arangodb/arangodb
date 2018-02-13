@@ -46,8 +46,8 @@ function ahuacatlDateFunctionsTestSuite () {
 /// @brief test is_datestring function
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIsDateString : function () {
-      var values = [
+    testIsDateString() {
+      const values = [
         [ "2000-04-29", true ],
         [ "2000-04-29Z", true ],
         [ "2012-02-12 13:24:12", true ],
@@ -62,6 +62,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "1910-01-02T03:04:05Z", true ],
         [ "1910-01-02 03:04:05Z", true ],
         [ "1910-01-02", true ],
+        [ "1910-02-31", true ],
         [ "1910-01-02Z", true ],
         [ "1970-01-01T01:05:27", true ],
         [ "1970-01-01T01:05:27Z", true ],
@@ -91,6 +92,7 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "2012-01-01Z", true ],
         [ "  2012-01-01Z", true ],
         [ "  2012-01-01z", true ],
+        [ "  2012-12-31z   ", true ],
         [ "foo2012-01-01z", false ],
         [ "2012-01-01foo", false ],
         [ "foo", false ],
@@ -115,8 +117,8 @@ function ahuacatlDateFunctionsTestSuite () {
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN IS_DATESTRING(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual, value);
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(IS_DATESTRING(@value))", { value: value[0] }));
+        assertEqual([ value[1] ], getQueryResults("RETURN NOOPT(V8(IS_DATESTRING(@value)))", { value: value[0] }));
       });
     },
 
@@ -125,8 +127,10 @@ function ahuacatlDateFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIsDateStringInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_DATESTRING()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_DATESTRING('foo', 'bar')");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(IS_DATESTRING())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(IS_DATESTRING()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(IS_DATESTRING('foo', 'bar'))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(IS_DATESTRING('foo', 'bar')))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
