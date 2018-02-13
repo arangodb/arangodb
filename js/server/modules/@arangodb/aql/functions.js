@@ -1,5 +1,5 @@
 /* jshint strict: false */
-
+/* global UNREGISTER_AQL_USER_FUNCTION, UNREGISTER_AQL_USER_FUNCTION_GROUP, REGISTER_AQL_USER_FUNCTION, GET_AQL_USER_FUNCTIONS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief AQL user functions management
@@ -29,7 +29,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
-var arangodb = require('@arangodb');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock aqlFunctionsUnregister
