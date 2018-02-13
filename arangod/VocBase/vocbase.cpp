@@ -1749,15 +1749,13 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
 
-  try {
-    auto it = _replicationClients.find(serverId);
+  auto it = _replicationClients.find(serverId);
 
-    if (it != _replicationClients.end()) {
-      (*it).second.first = expires;
-    }
-  } catch (...) {
-    // silently fail...
-    // all we would be missing is the progress information of a slave
+  if (it != _replicationClients.end()) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
+    (*it).second.first = expires;
+  } else {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "replication client entry for server '" << serverId << "' not found";
   }
 }
 
@@ -1779,11 +1777,15 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId,
       // insert new client entry
       _replicationClients.emplace(
           serverId, std::make_pair(expires, lastFetchedTick));
+      LOG_TOPIC(TRACE, Logger::REPLICATION) << "inserting replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
     } else {
       // update an existing client entry
       (*it).second.first = expires;
       if (lastFetchedTick > 0) {
         (*it).second.second = lastFetchedTick;
+        LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl << ", last tick: " << lastFetchedTick;
+      } else {
+        LOG_TOPIC(TRACE, Logger::REPLICATION) << "updating replication client entry for server '" << serverId << "' using TTL " << ttl;
       }
     }
   } catch (...) {

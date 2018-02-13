@@ -114,6 +114,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(TRI_vocbase_
 
     _contexts.emplace(id, context.get());
   }
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "created replication context " << id;
+
   return context.release();
 }
 
@@ -132,6 +134,8 @@ bool RocksDBReplicationManager::remove(RocksDBReplicationId id) {
       // not found
       return false;
     }
+
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication context " << id; 
 
     context = it->second;
     TRI_ASSERT(context != nullptr);
@@ -212,6 +216,7 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
     }
       
     // remove from the list
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing deleted replication context " << context->id(); 
     _contexts.erase(context->id());
   }
 
@@ -328,6 +333,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   // remove contexts outside the lock
   for (auto it : found) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "garbage collecting replication context " << it->id(); 
     delete it;
   }
 

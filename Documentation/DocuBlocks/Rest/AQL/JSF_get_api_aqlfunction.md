@@ -2,27 +2,61 @@
 @startDocuBlock JSF_get_api_aqlfunction
 @brief gets all reqistered AQL user functions
 
-@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions}
+@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions under 'result'}
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{namespace,string,optional}
-Returns all registered AQL user functions from namespace *namespace*.
+Returns all registered AQL user functions from namespace *namespace* under *result*.
 
 @RESTDESCRIPTION
 Returns all registered AQL user functions.
 
-The call will return a JSON array with all user functions found. Each user
-function will at least have the following attributes:
-
-- *name*: The fully qualified name of the user function
-
-- *code*: A string representation of the function body
+The call will return a JSON array with status codes and all user functions found under *result*.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-if success *HTTP 200* is returned.
+on success *HTTP 200* is returned.
+
+@RESTREPLYBODY{error,boolean,required,}
+boolean flag to indicate whether an error occurred (*false* in this case)
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{result,array,required,JSF_aql_userfunction_struct}
+All functions, or the ones matching the *namespace* parameter 
+
+@RESTSTRUCT{name,JSF_aql_userfunction_struct,string,required,}
+The fully qualified name of the user function
+
+@RESTSTRUCT{code,JSF_aql_userfunction_struct,string,required,}
+A string representation of the function body
+
+@RESTSTRUCT{isDeterministic,JSF_aql_userfunction_struct,boolean,required,}
+an optional boolean value to indicate whether the function
+results are fully deterministic (function return value solely depends on
+the input value and return value is the same for repeated calls with same
+input). The *isDeterministic* attribute is currently not used but may be
+used later for optimisations.
+
+
+@RESTRETURNCODE{400}
+If the user function name is malformed, the server will respond with *HTTP 400*.
+
+@RESTREPLYBODY{error,boolean,required,}
+boolean flag to indicate whether an error occurred (*true* in this case)
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{errorNum,integer,required,int64}
+the server error number
+
+@RESTREPLYBODY{errorMessage,string,required,string}
+a descriptive error message
+
 
 @EXAMPLES
 

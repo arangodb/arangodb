@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,33 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H
-#define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_COMMON_H 1
+#ifndef ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H
+#define ARANGOD_V8_SERVER_V8_USERFUNCTIONS_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
-
-namespace arangodb {
-
-class RocksDBReplicationResult : public Result {
- public:
-  RocksDBReplicationResult(int errorNumber, uint64_t lastTick);
-  RocksDBReplicationResult(int errorNumber, char const* errorMessage, uint64_t lastTick);
-  uint64_t maxTick() const;
-  uint64_t lastScannedTick() const { return _lastScannedTick; }
-  void lastScannedTick(uint64_t lastScannedTick) { _lastScannedTick = lastScannedTick; }
-  bool minTickIncluded() const;
-  void includeMinTick();
-
- private:
-  uint64_t _maxTick;
-  uint64_t _lastScannedTick;
-  bool _minTickIncluded;
-};
-
-}  // namespace arangodb
+void TRI_InitV8UserFunctions(v8::Isolate* isolate,
+                             v8::Handle<v8::Context>);
 
 #endif
