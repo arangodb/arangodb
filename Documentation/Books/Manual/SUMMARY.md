@@ -239,6 +239,7 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Incompatible changes in 3.4](ReleaseNotes/UpgradingChanges34.md)
   * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
   * [Incompatible changes in 3.3](ReleaseNotes/UpgradingChanges33.md)
   * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)
