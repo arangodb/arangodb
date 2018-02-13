@@ -320,23 +320,17 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     return res;
   }
 
-  std::unique_ptr<ManagedDocumentResult> mmdr;
-  transaction::BuilderLeaser searchBuilder(&trx);
-  searchBuilder->add(VPackValue(_key));
-  arangodb::velocypack::Builder existDocument;
-  {
-    arangodb::OperationResult result;
-    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+  arangodb::OperationResult result;
+  result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
 
-    if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-      replacedExisting = true;
-      result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
-    }
-    // Will commit if no error occured.
-    // or abort if an error occured.
-    // result stays valid!
-    res = trx.finish(result.result);
+  if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+    replacedExisting = true;
+    result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
   }
+  // Will commit if no error occured.
+  // or abort if an error occured.
+  // result stays valid!
+  res = trx.finish(result.result);
 
   if (res.ok()) {
     reloadAqlUserFunctions();
