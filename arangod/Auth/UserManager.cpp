@@ -310,6 +310,7 @@ void auth::UserManager::createRootUser() {
         "root", initDatabaseFeature->defaultPassword(), auth::Source::LOCAL);
     user.setActive(true);
     user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
+    user.grantCollection(StaticStrings::SystemDatabase, "*", auth::Level::RW);
     user.grantDatabase("*", auth::Level::RW);
     user.grantCollection("*", "*", auth::Level::RW);
     storeUserInternal(user, false);

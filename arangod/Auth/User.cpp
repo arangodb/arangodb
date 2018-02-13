@@ -529,29 +529,32 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
     return it->second._databaseAuthLevel;
   }
   auth::Level lvl = auth::Level::NONE;
-  it = _dbAccess.find("*");
-  if (it != _dbAccess.end()) {
-    lvl = it->second._databaseAuthLevel;
+  if (dbname != "*") { // take best from wildcard or _system
+    it = _dbAccess.find("*");
+    if (it != _dbAccess.end()) {
+      lvl = it->second._databaseAuthLevel;
+    }
+    it = _dbAccess.find(StaticStrings::SystemDatabase);
+    if (it != _dbAccess.end()) {
+      lvl = std::max(it->second._databaseAuthLevel, lvl);
+    }
   }
-  it = _dbAccess.find(StaticStrings::SystemDatabase);
-  if (it != _dbAccess.end()) {
-    lvl = std::max(it->second._databaseAuthLevel, lvl);
-  }
+  
   return lvl;
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
 auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
                                             std::string const& cname) const {
-  // disallow access to _system/_users for everyone
-  if (cname.empty()) {
-    return auth::Level::NONE;
+  if (cname.empty() || (dbname == "*" && cname != "*")) {
+    return auth::Level::NONE; // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
   TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
   
   bool isSystem = cname[0] == '_';
   if (isSystem) {
+    // disallow access to _system/_users for everyone
     if (dbname == TRI_VOC_SYSTEM_DATABASE && cname == TRI_COL_NAME_USERS) {
       return auth::Level::NONE;
     } else if (cname == "_queues") {
@@ -562,29 +565,31 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   }
 
   auth::Level lvl = auth::Level::NONE;
-  auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {
-    if (isSystem) {
-      return it->second._databaseAuthLevel;
+  if (dbname != "*") { // skip special rules for wildcard
+    auto it = _dbAccess.find(dbname);
+    if (it != _dbAccess.end()) {
+      if (isSystem) { // First handle system collections
+        return it->second._databaseAuthLevel;
+      }
+      // Second try to find a specific grant
+      CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
+      if (pair != it->second._collectionAccess.end()) {
+        return pair->second; // found specific collection grant
+      }
+      
+      // Third look for wildcard grant in this database
+      lvl = it->second._databaseAuthLevel;
+      pair = it->second._collectionAccess.find("*");
+      if (pair != it->second._collectionAccess.end()) {
+        // found wildcard collection grant, take better default
+        lvl = std::max(pair->second, lvl);
+      }
+      // nothing found yet
     }
-    
-    CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
-    if (pair != it->second._collectionAccess.end()) {
-      return pair->second; // found specific collection grant
-    }
-    // look for wildcard grant in this database
-    pair = it->second._collectionAccess.find("*");
-    lvl = it->second._databaseAuthLevel;
-    if (pair != it->second._collectionAccess.end()) {
-      // found wildcard collection grant, take better default
-      lvl = std::max(pair->second, lvl);
-    }
-    // nothing found yet
   }
   
-  // the lookup into the default database is only allowed if there were
-  // no rights for it defined in the database
-  it = _dbAccess.find("*");
+  // Fourth step is to look into */* and compare with dbname/*
+  auto it = _dbAccess.find("*");
   if (it != _dbAccess.end()) {
     CollLevelMap::const_iterator pair = it->second._collectionAccess.find("*");
     if (pair != it->second._collectionAccess.end()) {
