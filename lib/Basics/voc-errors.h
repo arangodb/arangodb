@@ -1162,6 +1162,16 @@ constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         
 /// is in use.
 constexpr int TRI_ERROR_QUERY_IN_USE                                            = 1592;
 
+/// 1593: ERROR_QUERY_USER_ASSERT
+/// "user provided expression '%s' failed assert"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       = 1593;
+
+/// 1594: ERROR_QUERY_USER_WARN
+/// "user provided expression '%s' failed"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
+
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"
 /// Will be raised when a cursor is requested via its id but a cursor with that

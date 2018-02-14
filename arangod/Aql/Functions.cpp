@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
@@ -4157,4 +4158,37 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
                     TRI_ERROR_QUERY_FUNCTION_INVALID_CODE);
     return AqlValue(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
   }
+}
+
+AqlValue Functions::Assert(arangodb::aql::Query* query, transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "ASSERT", 2, 2);
+  auto const expr = ExtractFunctionParameterValue(parameters, 0);
+  auto const message = ExtractFunctionParameterValue(parameters, 1);
+  if(!message.isString()){
+    RegisterWarning(query, "ASSERT", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  }
+  if(!expr.toBoolean()){
+    std::string msg = message.slice().copyString();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_USER_ASSERT,msg);
+  }
+  return AqlValue(AqlValueHintBool(true));
+
+}
+
+AqlValue Functions::Warn(arangodb::aql::Query* query, transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "WARN", 2, 2);
+  auto const expr = ExtractFunctionParameterValue(parameters, 0);
+  auto const message = ExtractFunctionParameterValue(parameters, 1);
+  if(!message.isString()){
+    RegisterWarning(query, "WARN", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+  }
+  if(!expr.toBoolean()){
+    std::string msg = message.slice().copyString();
+    query->registerWarning(TRI_ERROR_QUERY_USER_WARN, msg.data());
+    return AqlValue(AqlValueHintBool(false));
+  }
+  return AqlValue(AqlValueHintBool(true));
 }

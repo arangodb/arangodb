@@ -218,6 +218,8 @@
     "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
+    "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "user provided expression '%s' failed assert" },
+    "ERROR_QUERY_USER_WARN"        : { "code" : 1594, "message" : "user provided expression '%s' failed" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
     "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
     "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1650, "message" : "internal transaction error" },

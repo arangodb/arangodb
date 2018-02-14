@@ -272,6 +272,9 @@ ERROR_QUERY_BAD_JSON_PLAN,1590,"bad execution plan JSON","Will be raised when an
 ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a query is not found by the HTTP API."
 ERROR_QUERY_IN_USE,1592,"query with this ID is in use","Will be raised when an Id of a query is found by the HTTP API but the query is in use."
 
+ERROR_QUERY_USER_ASSERT,1593,"user provided expression '%s' failed assert","Will be raised if and user provided expression fails to evalutate to true"
+ERROR_QUERY_USER_WARN,1594,"user provided expression '%s' failed","Will be raised if and user provided expression fails to evalutate to true"
+
 ################################################################################
 ## ArangoDB cursor errors
 ################################################################################
