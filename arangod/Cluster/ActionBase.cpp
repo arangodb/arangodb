@@ -46,3 +46,4 @@ Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
   LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
+

@@ -57,8 +57,13 @@ public:
 
 protected:
 
+  std::string const& get(std::string const&) const;
+  VPackSlice const& properties() const;
+
   ActionDescription _description;
   ActionModel _model;
+
+  
   
 }; // class ActionBase
 

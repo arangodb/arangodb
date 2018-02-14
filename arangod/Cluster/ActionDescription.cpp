@@ -47,14 +47,16 @@ std::string ActionDescription::get(std::string const& p) const {
   return _description.at(p);
 }
 
-/// @brief Does this description have a "p" parameter?
-void ActionDescription::set(std::string const& key, std::string const& value) {
-  _description.emplace(key, value);
-}
-
-/// @brief Does this description have a "p" parameter?
-void ActionDescription::set(std::pair<std::string, std::string> const& kvpair) {
-  _description.emplace(kvpair);
+/// @brief Get parameter
+Result ActionDescription::get(std::string const& p, std::string& r) const noexcept {
+  Result result;
+  auto const& it = _description.find(p);
+  if (it == _description.end()) {
+    result.reset(TRI_ERROR_FAILED);
+  } else {
+    r = it->second;
+  }
+  return result;
 }
 
 /// @brief Hash function
@@ -97,7 +99,7 @@ std::string ActionDescription::toJson() const {
 }
 
 
-VPackSlice const& ActionDescription::properties() const {
+VPackSlice ActionDescription::properties() const {
   return _properties.slice();
 }
 

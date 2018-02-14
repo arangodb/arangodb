@@ -46,7 +46,12 @@ static std::string const EDGE("edge");
 static std::string const NAME("name");
 static std::string const ID("id");
 
-/// @brief Maintenance operation description card
+/**
+ * @brief Action description for mainenance actions
+ *
+ * This structure holds once initialized constant parameters of a maintenance
+ * action. Members are declared const, thus thread safety guards are ommited.
+ */
 struct ActionDescription {
   
 public:
@@ -70,14 +75,24 @@ public:
   /// @brief Check for a description key
   bool has(std::string const& p) const noexcept;
 
-  /// @brief Get a description key
+  /**
+   * @brief Get a string value from description
+   *
+   * @param  key   Key to get
+   * @exception    std::out_of_range if the we do not have an element
+   *               with the specified key
+   * @return       Value to specified key
+   */
   std::string get(std::string const& key) const;
 
-  /// @brief Set a description key
-  void set(std::string const& key, std::string const& value);
-
-  /// @brief Set a description key
-  void set(std::pair<std::string, std::string> const& kvpair);
+  /**
+   * @brief Get a string value from description
+   *
+   * @param  key   Key to get
+   * @param  value If key is found the value is assigned to this variable
+   * @return       Success (key found?)
+   */
+  Result get(std::string const& key, std::string& value) const noexcept;
 
   /// @brief Print this action to ostream
   VPackBuilder toVelocyPack() const;
@@ -93,14 +108,14 @@ public:
    *
    * @return           pointer to our roperties
    */
-  VPackSlice const& properties() const;
+  VPackSlice properties() const;
   
 private:
   /// @brief Action description
-  std::map<std::string, std::string> _description;
+  std::map<std::string, std::string> const _description;
 
-  /// @bries Properties passed on to actual action
-  VPackBuilder _properties;
+  /// @brief Properties passed on to actual action
+  VPackBuilder const _properties;
 };
 
 inline std::ostream& operator<< (std::ostream& o, ActionDescription const& d) {
