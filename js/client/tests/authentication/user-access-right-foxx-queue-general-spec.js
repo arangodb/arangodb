@@ -31,6 +31,7 @@
 'use strict';
 
 const expect = require('chai').expect;
+const helper = require('@arangodb/user-helper');
 const foxxManager = require('@arangodb/foxx/manager');
 const fs = require('fs');
 const internal = require('internal');
@@ -47,6 +48,7 @@ describe('Foxx service', () => {
   const mount = '/queue_test_mount';
 
   before(() => {
+    helper.switchUser("root");
     foxxManager.install(fs.join(basePath, 'queue'), mount);
   });
 

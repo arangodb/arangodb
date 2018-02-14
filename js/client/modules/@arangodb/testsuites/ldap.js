@@ -57,7 +57,7 @@ const tests = {
     name: 'ldapModeRoles', // TODO: needs to be renamed
     conf: {
       'server.authentication': true,
-      'server.authentication-system-only': false,
+      'server.authentication-system-only': true,
       'ldap.enabled': true,
       'ldap.server': '127.0.0.1',
       'ldap.port': '389',

@@ -534,9 +534,11 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
     if (it != _dbAccess.end()) {
       lvl = it->second._databaseAuthLevel;
     }
-    it = _dbAccess.find(StaticStrings::SystemDatabase);
-    if (it != _dbAccess.end()) {
-      lvl = std::max(it->second._databaseAuthLevel, lvl);
+    if (dbname != StaticStrings::SystemDatabase) {
+      it = _dbAccess.find(StaticStrings::SystemDatabase);
+      if (it != _dbAccess.end()) {
+        lvl = std::max(it->second._databaseAuthLevel, lvl);
+      }
     }
   }
   
@@ -577,26 +579,35 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
         return pair->second; // found specific collection grant
       }
       
-      // Third look for wildcard grant in this database
+      // Fallback step 1.
       lvl = it->second._databaseAuthLevel;
       pair = it->second._collectionAccess.find("*");
       if (pair != it->second._collectionAccess.end()) {
         // found wildcard collection grant, take better default
         lvl = std::max(pair->second, lvl);
       }
-      // nothing found yet
     }
   }
   
-  // Fourth step is to look into */* and compare with dbname/*
+  // Fallback step 2. is to look into the "*" database
   auto it = _dbAccess.find("*");
   if (it != _dbAccess.end()) {
-    CollLevelMap::const_iterator pair = it->second._collectionAccess.find("*");
-    if (pair != it->second._collectionAccess.end()) {
-      // found wildcard collection grant, take better default
-      lvl = std::max(pair->second, lvl);
+    lvl = std::max(it->second._databaseAuthLevel, lvl);
+    if (!isSystem) {
+      CollLevelMap::const_iterator pair = it->second._collectionAccess.find("*");
+      if (pair != it->second._collectionAccess.end()) {
+        // found wildcard collection grant, take better default
+        lvl = std::max(pair->second, lvl);
+      }
     }
     // nothing found
+  }
+  if (dbname != StaticStrings::SystemDatabase) {
+    // Fallback step 3. look into _system
+    it = _dbAccess.find(StaticStrings::SystemDatabase);
+    if (it != _dbAccess.end()) {
+      lvl = std::max(it->second._databaseAuthLevel, lvl);
+    }
   }
 
   return lvl;

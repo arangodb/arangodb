@@ -255,8 +255,9 @@ For a database "*foo*":
 For a collection named "*bar*":
 1. Check if there is a specific database grant for *bar*, if yes use the granted access level
 2. Choose a the higher access level of:
-    * A wildcard access grant (in this example `grantCollection('user', 'foo', '*', 'rw')`) in the same database
+    * Any wildcard access grant in the same database, or on "*/*" (in this example `grantCollection('user', 'foo', '*', 'rw')`) 
     * The access level for the current database (in this example `grantDatabase('user', 'foo', 'rw'`)
+    * The access level for the `_system` database
     
 An exception to this are system collections, here only the access level for the database is used.
 

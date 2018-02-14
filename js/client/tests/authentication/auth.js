@@ -404,6 +404,11 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
+      print ("LDAP is", helper.isLdapEnabledExternal() ? "enabled" : "disabled");
+      if (helper.isLdapEnabledExternal()) {
+        return;
+      }
+
       var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
 
       var res = request.get({
@@ -456,7 +461,11 @@ function AuthSuite () {
     },
     
     testExpOptional: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb" }, 'HS256');
+      if (helper.isLdapEnabledExternal()) {
+        return;
+      }
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", 
+                                             "iss": "arangodb" }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",
