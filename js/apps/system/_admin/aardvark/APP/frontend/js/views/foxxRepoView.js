@@ -20,9 +20,12 @@
       'click .foxxDesc': 'goToServiceDetail'
     },
 
-    initialize: function () {
+    initialize: function (options) {
       this.categories = [];
       this.fetchCategories();
+      if (options.functionsCollection) {
+        this.functionsCollection = options.functionsCollection;
+      }
     },
 
     openAppDetailView: function () {
@@ -45,7 +48,8 @@
           thumbnail: thumbnailUrl
         }));
       }.bind(this));
-      $(this.el).attr('category', 'general');
+      // set categories for each foxx
+      $(this.el).attr('category', this.model.get('categories'));
 
       return $(this.el);
     },
@@ -65,12 +69,21 @@
       this.applyFilter();
     },
 
+    onlyUnique: function (value, index, self) {
+      return self.indexOf(value) === index;
+    },
+
     fetchCategories: function () {
       var self = this;
 
-      _.each(['general', 'security', 'helper', 'tutorial'], function (level) {
-        self.categories.push(level);
+      var tmpArray = [];
+      _.each(window.App.foxxRepo.models, function (foxx) {
+        _.each(foxx.get('categories'), function (category) {
+          tmpArray.push(category);
+        });
       });
+      // remove duplicates
+      self.categories = tmpArray.filter(this.onlyUnique);
     },
 
     renderCategories: function (e) {
@@ -128,7 +141,15 @@
       if (isCategory) {
         // both filters active
         _.each($('#availableFoxxes').children(), function (entry) {
-          if (self.categoryOptions[$(entry).attr('category')].active === false) {
+          var categories = $(entry).attr('category').split(',');
+          var found = false;
+          _.each(categories, function (category) {
+            if (self.categoryOptions[category].active === true) {
+              found = true;
+            }
+          });
+
+          if (!found) {
             $(entry).hide();
             $(entry).attr('shown', 'false');
           } else {
@@ -187,9 +208,9 @@
           }
         }
         if (flag !== undefined) {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
+          this.functionsCollection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
         } else {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
+          this.functionsCollection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
         }
         window.modalView.hide();
         arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
