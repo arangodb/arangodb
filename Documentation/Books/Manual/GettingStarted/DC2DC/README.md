@@ -304,7 +304,7 @@ Give restarted instances some time to "catch up".
 
 ### 'What if ...'
 
-Please consult the [reference manual](../../TroubleShooting/DC2DC/README.md) for details descriptions of what to do in case of certain
+Please consult the [reference manual](../../Troubleshooting/DC2DC/README.md) for details descriptions of what to do in case of certain
 problems and how & what information to provide to support so they can assist you best when needed.
 
 ### Metrics
