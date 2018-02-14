@@ -76,7 +76,7 @@ switching your applications to the target (backup) datacenter.
 
 This is what you must do in that case:
 
-1. [Stop synchronization](../../Administration/DC2DC/README.md#stoping-synchronization) using:
+1. [Stop synchronization](../../Administration/DC2DC/README.md#stopping-synchronization) using:
 
    ```bash
    arangosync stop sync ...
@@ -88,7 +88,7 @@ This is what you must do in that case:
    arangosync abort sync ...
    ```
 
-   See [Stoping synchronization](../../Administration/DC2DC/README.md#stoping-synchronization)
+   See [Stopping synchronization](../../Administration/DC2DC/README.md#stopping-synchronization)
    for how to cleanup the source datacenter when it becomes available again.
 1. Verify that configuration has completely stopped using:
    ```bash
