@@ -168,8 +168,8 @@ struct TRI_vocbase_t {
   std::unordered_map<std::string, arangodb::LogicalCollection*>
       _collectionsByUuid;  // collections by uuid
 
-  arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
-  std::atomic<std::thread::id> _viewsLockWriteOwner; // current thread owning '_viewsLock' write lock (workaround for non-recusrive ReadWriteLock)
+  mutable arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
+  mutable std::atomic<std::thread::id> _viewsLockWriteOwner; // current thread owning '_viewsLock' write lock (workaround for non-recusrive ReadWriteLock)
   std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalView>>
       _viewsByName;  // views by name
   std::unordered_map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>>
@@ -278,6 +278,11 @@ struct TRI_vocbase_t {
   /// the name is fetched under a lock to make this thread-safe.
   /// returns empty string if the collection does not exist.
   std::string collectionName(TRI_voc_cid_t id);
+
+  /// @brief get a view name by a view id
+  /// the name is fetched under a lock to make this thread-safe.
+  /// returns empty string if the view does not exist.
+  std::string viewName(TRI_voc_cid_t id) const;
 
   /// @brief looks up a collection by uuid
   arangodb::LogicalCollection* lookupCollectionByUuid(std::string const&) const;

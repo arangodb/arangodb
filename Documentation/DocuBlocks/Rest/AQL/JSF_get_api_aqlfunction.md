@@ -2,7 +2,7 @@
 @startDocuBlock JSF_get_api_aqlfunction
 @brief gets all reqistered AQL user functions
 
-@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions under 'result'}
+@RESTHEADER{GET /_api/aqlfunction, Return registered AQL user functions}
 
 @RESTQUERYPARAMETERS
 
@@ -61,7 +61,7 @@ a descriptive error message
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionsGetAll}
-  var url = "/_api/aqlfunction";
+  var url = "/_api/aqlfunction/test";
 
   var response = logCurlRequest('GET', url);
 

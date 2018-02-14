@@ -19,7 +19,8 @@ Apart from that, AQL also offers several language constructs:
   as well as [COLLECT](../Operations/Collect.md) for grouping,
   which also offers efficient aggregation.
 
-### APPEND()
+APPEND()
+--------
 
 `APPEND(anyArray, values, unique) → newArray`
 
@@ -40,11 +41,13 @@ APPEND([ 1, 2, 3 ], [ 3, 4, 5, 2, 9 ], true)
 // [ 1, 2, 3, 4, 5, 9 ]
 ```
 
-### COUNT()
+COUNT()
+-------
 
 This is an alias for [LENGTH()](#length).
 
-### FIRST()
+FIRST()
+-------
 
 `FIRST(anyArray) → firstElement`
 
@@ -54,7 +57,8 @@ Get the first element of an array. It is the same as `anyArray[0]`.
 - returns **firstElement** (any|null): the first element of *anyArray*, or *null* if
   the array is empty.
 
-### FLATTEN()
+FLATTEN()
+---------
 
 `FLATTEN(anyArray, depth) → flatArray`
 
@@ -78,7 +82,8 @@ FLATTEN( [ 1, 2, [ 3, 4 ], 5, [ 6, 7 ], [ 8, [ 9, 10 ] ] ], 2 )
 // [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]
 ```
 
-### INTERSECTION()
+INTERSECTION()
+--------------
 
 `INTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -90,7 +95,8 @@ occur in all arguments.
 - returns **newArray** (array): a single array with only the elements, which exist in all
   provided arrays. The element order is random. Duplicates are removed.
 
-### LAST()
+LAST()
+
 
 `LAST(anyArray) → lastElement`
 
@@ -100,7 +106,8 @@ Get the last element of an array. It is the same as `anyArray[-1]`.
 - returns **lastElement** (any|null): the last element of *anyArray* or *null* if the
   array is empty.
 
-### LENGTH()
+LENGTH()
+--------
 
 `LENGTH(anyArray) → length`
 
@@ -123,7 +130,8 @@ collection and the [character length](String.md#length) of a string.
 |false|0|
 |null|0|
 
-### MINUS()
+MINUS()
+-------
 
 `MINUS(array1, array2, ... arrayN) → newArray`
 
@@ -135,7 +143,8 @@ Return the difference of all arrays specified.
   but not in any of the subsequent arrays. The order of the result array is undefined
   and should not be relied on. Duplicates will be removed.
 
-### NTH()
+NTH()
+-----
 
 `NTH(anyArray, position) → nthElement`
 
@@ -154,7 +163,8 @@ NTH( [ "foo", "bar", "baz" ], 3 )  // null
 NTH( [ "foo", "bar", "baz" ], -1 ) // null
 ```
 
-### OUTERSECTION()
+OUTERSECTION()
+--------------
 
 `OUTERSECTION(array1, array2, ... arrayN) → newArray`
 
@@ -170,7 +180,8 @@ OUTERSECTION( [ 1, 2, 3 ], [ 2, 3, 4 ], [ 3, 4, 5 ] )
 // [ 1, 5 ]
 ```
 
-### POP()
+POP()
+-----
 
 `POP(anyArray) → newArray`
 
@@ -185,7 +196,8 @@ POP( [ 1, 2, 3, 4 ] ) // [ 1, 2, 3 ]
 POP( [ 1 ] ) // []
 ```
 
-### POSITION()
+POSITION()
+----------
 
 `POSITION(anyArray, search, returnIndex) → position`
 
@@ -202,7 +214,8 @@ Return whether *search* is contained in *array*. Optionally return the position.
 To determine if or at which position a string occurs in another string, see the
 [CONTAINS() string function](String.md#contains).
 
-### PUSH()
+PUSH()
+------
 
 `PUSH(anyArray, value, unique) → newArray`
 
@@ -227,7 +240,8 @@ PUSH([ 1, 2, 2, 3 ], 2, true)
 // [ 1, 2, 2, 3 ]
 ```
 
-### REMOVE_NTH()
+REMOVE_NTH()
+------------
 
 `REMOVE_NTH(anyArray, position) → newArray`
 
@@ -247,7 +261,8 @@ REMOVE_NTH( [ "a", "b", "c", "d", "e" ], -2 )
 // [ "a", "b", "c", "e" ]
 ```
 
-### REMOVE_VALUE()
+REMOVE_VALUE()
+--------------
 
 `REMOVE_VALUE(anyArray, value, limit) → newArray`
 
@@ -267,7 +282,8 @@ REMOVE_VALUE( [ "a", "b", "b", "a", "c" ], "a", 1 )
 // [ "b", "b", "a", "c" ]
 ```
 
-### REMOVE_VALUES()
+REMOVE_VALUES()
+---------------
 
 `REMOVE_VALUES(anyArray, values) → newArray`
 
@@ -283,7 +299,8 @@ REMOVE_VALUES( [ "a", "a", "b", "c", "d", "e", "f" ], [ "a", "f", "d" ] )
 // [ "b", "c", "e" ]
 ```
 
-### REVERSE()
+REVERSE()
+---------
 
 `REVERSE(anyArray) → reversedArray`
 
@@ -293,7 +310,8 @@ Return an array with its elements reversed.
 - returns **reversedArray** (array): a new array with all elements of *anyArray* in
   reversed order
 
-### SHIFT()
+SHIFT()
+-------
 
 `SHIFT(anyArray) → newArray`
 
@@ -308,7 +326,8 @@ SHIFT( [ 1, 2, 3, 4 ] ) // [ 2, 3, 4 ]
 SHIFT( [ 1 ] ) // []
 ```
 
-### SLICE()
+SLICE()
+-------
 
 `SLICE(anyArray, start, length) → newArray`
 
@@ -331,7 +350,8 @@ SLICE( [ 1, 2, 3, 4, 5 ], 0, -2 ) // [ 1, 2, 3 ]
 SLICE( [ 1, 2, 3, 4, 5 ], -3, 2 ) // [ 3, 4 ]
 ```
 
-### SORTED()
+SORTED()
+--------
 
 `SORTED(anyArray) → newArray`
 
@@ -342,7 +362,8 @@ order for AQL value types.
 - returns **newArray** (array): *anyArray*, with elements sorted
 
 
-### SORTED_UNIQUE()
+SORTED_UNIQUE()
+---------------
 
 `SORTED_UNIQUE(anyArray) → newArray`
 
@@ -354,7 +375,8 @@ be made unique.
 - returns **newArray** (array): *anyArray*, with elements sorted and duplicates
   removed
 
-### UNION()
+UNION()
+-------
 
 `UNION(array1, array2, ... arrayN) → newArray`
 
@@ -387,7 +409,8 @@ UNIQUE(
 // [ 1, 2, 3 ]
 ```
 
-### UNION_DISTINCT()
+UNION_DISTINCT()
+----------------
 
 `UNION_DISTINCT(array1, array2, ... arrayN) → newArray`
 
@@ -406,7 +429,8 @@ UNION_DISTINCT(
 // [ 1, 2, 3 ]
 ```
 
-### UNIQUE()
+UNIQUE()
+--------
 
 `UNIQUE(anyArray) → newArray`
 
@@ -416,7 +440,8 @@ function will use the comparison order.
 - **anyArray** (array): array with elements of arbitrary type
 - returns **newArray** (array): *anyArray* without duplicates, in any order
 
-### UNSHIFT()
+UNSHIFT()
+---------
 
 `UNSHIFT(anyArray, value, unique) → newArray`
 
