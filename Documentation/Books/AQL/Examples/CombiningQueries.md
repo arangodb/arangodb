@@ -1,7 +1,8 @@
 Combining queries
 =================
 
-### Subqueries
+Subqueries
+----------
 
 Wherever an expression is allowed in AQL, a subquery can be placed. A subquery
 is a query part that can introduce its own local variables without affecting

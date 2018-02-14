@@ -15,6 +15,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/AccessMode.h"
+#include <iostream>
 %}
 
 %union {
@@ -205,6 +206,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %token T_INTEGER "integer number"
 %token T_DOUBLE "number"
 %token T_PARAMETER "bind parameter"
+%token T_DATA_SOURCE_PARAMETER "bind data source parameter"
 
 %token T_ASSIGN "assignment"
 
@@ -282,6 +284,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> T_INTEGER
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER;
+%type <strval> T_DATA_SOURCE_PARAMETER;
 %type <node> with_collection;
 %type <node> sort_list;
 %type <node> sort_element;
@@ -328,6 +331,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> view_name;
 %type <node> in_or_into_collection;
 %type <node> bind_parameter;
+%type <node> bind_view;
 %type <strval> variable_name;
 %type <node> numeric_value;
 %type <intval> update_or_replace;
@@ -346,9 +350,11 @@ with_collection:
   | bind_parameter {
       char const* p = $1->getStringValue();
       size_t const len = $1->getStringLength();
-      if (len < 1 || *p != '@') {
+
+      if (len < 2 || *p != '@') {
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
       }
+
       $$ = $1;
     }
   ;
@@ -1398,11 +1404,6 @@ graph_collection:
       $$ = parser->ast()->createNodeValueString($1.value, $1.length);
     }
   | bind_parameter {
-      char const* p = $1->getStringValue();
-      size_t const len = $1->getStringLength();
-      if (len < 1 || *p != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
-      }
       $$ = $1;
     }
   | graph_direction T_STRING {
@@ -1410,11 +1411,6 @@ graph_collection:
       $$ = parser->ast()->createNodeCollectionDirection($1, tmp);
     }
   | graph_direction bind_parameter {
-      char const* p = $2->getStringValue();
-      size_t const len = $2->getStringLength();
-      if (len < 1 || *p != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
-      }
       $$ = parser->ast()->createNodeCollectionDirection($1, $2);
     }
   ;
@@ -1446,11 +1442,6 @@ graph_subject:
     }
   | T_GRAPH bind_parameter {
       // graph name
-      char const* p = $2->getStringValue();
-      size_t const len = $2->getStringLength();
-      if (len < 1 || *p == '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), p, yylloc.first_line, yylloc.first_column);
-      }
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {
@@ -1687,12 +1678,8 @@ collection_name:
   | T_QUOTED_STRING {
       $$ = parser->ast()->createNodeCollection($1.value, arangodb::AccessMode::Type::WRITE);
     }
-  | T_PARAMETER {
-      if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameter($1.value, $1.length);
+  | bind_parameter {
+      $$ = $1;
     }
   ;
 
@@ -1703,11 +1690,31 @@ view_name:
   | T_QUOTED_STRING {
       $$ = parser->ast()->createNodeView($1.value);
     }
-  ; // TODO: add parameter case
+  | bind_view {
+      $$ = $1;
+    }
+  ;
 
 bind_parameter:
-    T_PARAMETER {
+    T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::Collection);
+    }
+  | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);
+    }
+  ;
+
+bind_view:
+    T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::View);
     }
   ;
 
