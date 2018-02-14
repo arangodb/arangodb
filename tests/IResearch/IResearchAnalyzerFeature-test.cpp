@@ -175,28 +175,6 @@ struct StorageEngineWrapper {
   StorageEngineMock& operator*() { return instance; }
 };
 
-// vocbase shutodown() must be exlicitly called or dropped collections are not deallocated
-struct VocbaseWrapper {
-  std::unique_ptr<TRI_vocbase_t> instance;
-  ~VocbaseWrapper() {
-    if (instance) {
-      instance->shutdown();
-    }
-  }
-  VocbaseWrapper& operator=(std::unique_ptr<TRI_vocbase_t>&& other) {
-    if (instance) {
-      instance->shutdown();
-    }
-
-    instance = std::move(other);
-
-    return *this;
-  }
-  TRI_vocbase_t* operator->() { return instance.get(); }
-  TRI_vocbase_t& operator*() { return *instance; }
-  TRI_vocbase_t* get() { return instance.get(); }
-};
-
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -205,7 +183,7 @@ NS_END
 
 struct IResearchAnalyzerFeatureSetup {
   StorageEngineWrapper engine; // can only nullify 'ENGINE' after all TRI_vocbase_t and ApplicationServer have been destroyed
-  VocbaseWrapper system; // ensure destruction after 'server'
+  std::unique_ptr<Vocbase> system; // ensure destruction after 'server'
   arangodb::application_features::ApplicationServer server;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
@@ -221,7 +199,7 @@ struct IResearchAnalyzerFeatureSetup {
     features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
+    system = irs::memory::make_unique<Vocbase>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
