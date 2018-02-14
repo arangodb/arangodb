@@ -190,7 +190,7 @@ APPLY( "SUBSTRING", [ "this is a test", 0, 7 ] )
 
 `ASSERT(expression, message) → retVal`
 
-The 2 functions evaluate an expression. In chase the expression evaluates to
+The 2 functions evaluate an expression. In case the expression evaluates to
 *true* both functions will return *true*. If the expression evaluates to
 *false* *ASSERT* will throw an error and *WARN* will issue a warning and return
 *false*. This behavior allows the use of *ASSERT* and *WARN* in *FILTER*

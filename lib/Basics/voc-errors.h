@@ -1163,12 +1163,12 @@ constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         
 constexpr int TRI_ERROR_QUERY_IN_USE                                            = 1592;
 
 /// 1593: ERROR_QUERY_USER_ASSERT
-/// "user provided expression '%s' failed assert"
+/// "%s"
 /// Will be raised if and user provided expression fails to evalutate to true
 constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       = 1593;
 
 /// 1594: ERROR_QUERY_USER_WARN
-/// "user provided expression '%s' failed"
+/// "%s"
 /// Will be raised if and user provided expression fails to evalutate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 

@@ -5620,7 +5620,7 @@ function AQL_DATE_FORMAT (value, format) {
 function AQL_ASSERT (expression, message) {
   'use strict';
   if(!AQL_TO_BOOL(expression)) {
-    THROW('ASSERT', INTERNAL.errors.ERROR_QUERY_USER_ASSERT, message);
+    THROW('', INTERNAL.errors.ERROR_QUERY_USER_ASSERT, message);
   }
   return true;
 }
@@ -5633,7 +5633,7 @@ function AQL_ASSERT (expression, message) {
 function AQL_WARN (expression, message) {
   'use strict';
   if(!AQL_TO_BOOL(expression)) {
-    WARN('WARN', INTERNAL.errors.ERROR_QUERY_USER_WARN, message);
+    WARN('', INTERNAL.errors.ERROR_QUERY_USER_WARN, message);
     return false;
   }
   return true;
