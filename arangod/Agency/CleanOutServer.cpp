@@ -363,7 +363,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         continue;
       }
 
-      for (auto const& shard : collection("shards").children()) {
+      for (auto const& shard : collection.hasAsChildren("shards").first) {
 
         // Only shards, which are affected
         int found = -1;
@@ -433,7 +433,7 @@ bool CleanOutServer::checkFeasibility() {
   for (auto const& database : databases) {
     for (auto const& collptr : database.second->children()) {
       try {
-        uint64_t replFact = (*collptr.second)("replicationFactor").getUInt();
+        uint64_t replFact = (*collptr.second).hasAsUInt("replicationFactor").first;
         if (replFact > numRemaining) {
           tooLargeCollections.push_back(collptr.first);
           tooLargeFactors.push_back(replFact);

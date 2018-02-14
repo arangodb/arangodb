@@ -158,7 +158,7 @@ bool FailedServer::start() {
       for (auto const& collptr : database.second->children()) {
         auto const& collection = *(collptr.second);
 
-        auto const& replicationFactor = collection("replicationFactor");
+        auto const& replicationFactor = collection.hasAsNode("replicationFactor").first;
 
         if (replicationFactor.slice().getUInt() == 1) {
           continue;  // no point to try salvaging unreplicated data
@@ -168,7 +168,7 @@ bool FailedServer::start() {
           continue;  // we only deal with the master
         }
 
-        for (auto const& shard : collection("shards").children()) {
+        for (auto const& shard : collection.hasAsChildren("shards").first) {
 
           size_t pos = 0;
 

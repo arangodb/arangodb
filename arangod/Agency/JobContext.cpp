@@ -38,8 +38,6 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
 
   std::string path = pos[status] + id;
   auto typePair = snapshot.hasAsString(path + "/type");
-//  auto const& job  = snapshot(path);
-//  auto const& type = job("type").getString();
   std::string type;
 
   if (typePair.second) {

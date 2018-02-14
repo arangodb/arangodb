@@ -79,10 +79,10 @@ bool Job::finish(
   bool started = false;
   { VPackArrayBuilder guard(&pending);
     if (_snapshot.exists(pendingPrefix + _jobId).size() == 3) {
-      _snapshot(pendingPrefix + _jobId).toBuilder(pending);
+      _snapshot.hasAsBuilder(pendingPrefix + _jobId, pending);
       started = true;
     } else if (_snapshot.exists(toDoPrefix + _jobId).size() == 3) {
-      _snapshot(toDoPrefix + _jobId).toBuilder(pending);
+      _snapshot.hasAsBuilder(toDoPrefix + _jobId, pending);
     } else {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Nothing in pending to finish up for job " << _jobId;
@@ -151,8 +151,8 @@ std::string Job::randomIdleGoodAvailableServer(
 
   // ungood;
   try {
-    for (auto const& srv : snap(healthPrefix).children()) {
-      if ((*srv.second)("Status").getString() != "GOOD") {
+    for (auto const& srv : snap.hasAsChildren(healthPrefix).first) {
+      if ((*srv.second).hasAsString("Status").first != "GOOD") {
         ex.push_back(srv.first);
       }
     }
@@ -160,7 +160,7 @@ std::string Job::randomIdleGoodAvailableServer(
 
   // blocked;
   try {
-    for (auto const& srv : snap(blockedServersPrefix).children()) {
+    for (auto const& srv : snap.hasAsChildren(blockedServersPrefix).first) {
       ex.push_back(srv.first);
     }
   } catch (...) {}
@@ -282,7 +282,7 @@ std::vector<Job::shard_t> Job::clones(
   std::string databasePath = planColPrefix + database,
     planPath = databasePath + "/" + collection + "/shards";
 
-  auto myshards = sortedShardList(snapshot(planPath));
+  auto myshards = sortedShardList(snapshot.hasAsNode(planPath).first);
   auto steps = std::distance(
     myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
@@ -292,9 +292,9 @@ std::vector<Job::shard_t> Job::clones(
     auto const otherCollection = colptr.first;
 
     if (otherCollection != collection &&
-        col.has("distributeShardsLike") &&
-        col("distributeShardsLike").slice().copyString() == collection) {
-      ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
+        col.hasAsSlice("distributeShardsLike").second &&
+        col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
+      ret.emplace_back(otherCollection, sortedShardList(col.hasAsNode("shards").first)[steps]);
     }
 
   }
@@ -311,8 +311,8 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
   auto nclones = cs.size();                    // #clones
   std::unordered_map<std::string,bool> good;
 
-  for (const auto& i : snap(healthPrefix).children()) {
-    good[i.first] = ((*i.second)("Status").getString() == "GOOD");
+  for (const auto& i : snap.hasAsChildren(healthPrefix).first) {
+    good[i.first] = ((*i.second).hasAsString("Status").first == "GOOD");
   }
 
   std::unordered_map<std::string,size_t> currentServers;
@@ -324,7 +324,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       planColPrefix + db + "/" + clone.collection + "/shards/"
       + clone.shard;
     size_t i = 0;
-    for (const auto& server : VPackArrayIterator(snap(currentShardPath).getArray())) {
+    for (const auto& server : VPackArrayIterator(snap.hasAsArray(currentShardPath).first)) {
       auto id = server.copyString();
       if (i++ == 0) {
         // Skip leader
@@ -344,7 +344,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       // check if it is also part of the plan...because if not the soon to be leader
       // will drop the collection
       bool found = false;
-      for (const auto& plannedServer : VPackArrayIterator(snap(plannedShardPath).getArray())) {
+      for (const auto& plannedServer : VPackArrayIterator(snap.hasAsArray(plannedShardPath).first)) {
         if (plannedServer == server) {
           found = true;
           continue;
@@ -370,7 +370,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
 
 std::string Job::uuidLookup (std::string const& shortID) {
   for (auto const& uuid : _snapshot.hasAsChildren(mapUniqueToShortID).first) {
-    if ((*uuid.second)("ShortName").getString() == shortID) {
+    if ((*uuid.second).hasAsString("ShortName").first == shortID) {
       return uuid.first;
     }
   }

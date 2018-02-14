@@ -941,6 +941,27 @@ std::pair<Node const &, bool> Node::hasAsNode (
 } // hasAsNode
 
 
+std::pair<Node &, bool> Node::hasAsWritableNode (
+  std::string const & url) {
+
+  // *this is bogus initializer
+  std::pair<Node &, bool> fail_pair={*this, false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node & target(operator()(url));
+    std::pair<Node &, bool> good_pair={target, true};
+    return good_pair;
+  } catch (...) {
+    // do nothing, fail_pair second already false
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "hasAsWritableNode had exception processing " << url;
+  } // catch
+
+  return fail_pair;
+} // hasAsWritableNode
+
+
 std::pair<NodeType, bool> Node::hasAsType (
   std::string const & url) const {
 
@@ -958,7 +979,7 @@ std::pair<NodeType, bool> Node::hasAsType (
   } // catch
 
   return ret_pair;
-} // hasAsNode
+} // hasAsType
 
 
 std::pair<Slice, bool> Node::hasAsSlice(
@@ -1000,6 +1021,25 @@ std::pair<uint64_t, bool> Node::hasAsUInt (
 
   return ret_pair;
 } // hasAsUInt
+
+
+std::pair<bool, bool> Node::hasAsBool (
+  std::string const & url) const {
+  std::pair<bool, bool> ret_pair(false, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.getBool();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "hasAsBool had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsBool
 
 
 std::pair<std::string, bool> Node::hasAsString (
@@ -1082,6 +1122,28 @@ std::pair<Builder, bool> Node::hasAsBuilder (
 
   return ret_pair;
 } // hasAsBuilder
+
+
+std::pair<Slice, bool> Node::hasAsArray(
+  std::string const & url) const {
+
+  // *this is bogus initializer
+  std::pair<Slice, bool> ret_pair =
+    {arangodb::basics::VelocyPackHelper::EmptyObjectValue(), false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first = target.getArray();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "hasAsArray had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsArray
 
 
 std::string Node::getString() const {

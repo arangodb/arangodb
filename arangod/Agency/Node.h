@@ -134,15 +134,6 @@ class Node {
   /// @brief Get node specified by path vector
   Node const& operator()(std::vector<std::string> const& pv) const;
 
-  /// @brief Get node specified by path string
-  Node& operator()(std::string const& path);
-
-  /// @brief Get node specified by path string
-  Node const& operator()(std::string const& path) const;
-
-  /// @brief Get node specified by path string, always throw if not there
-  Node const& get(std::string const& path) const;
-
   /// @brief Remove child by name
   bool removeChild(std::string const& key);
 
@@ -222,33 +213,28 @@ class Node {
   /// @brief Part of relative path which exists
   bool has(std::string const&) const;
 
-  /// @brief Get integer value (throws if type NODE or if conversion fails)
-  int64_t getInt() const;
-
   /// @brief Is UInt
   bool isInt() const;
-
-  /// @brief Get insigned value (throws if type NODE or if conversion fails)
-  uint64_t getUInt() const;
 
   /// @brief Is UInt
   bool isUInt() const;
 
-  /// @brief Get bool value (throws if type NODE or if conversion fails)
-  bool getBool() const;
-
   /// @brief Is boolean
   bool isBool() const;
-
-  /// @brief Get double value (throws if type NODE or if conversion fails)
-  double getDouble() const;
 
   /// @brief Is double
   bool isDouble() const;
 
+  /// @brief Is string
+  bool isString() const;
+
   /// @brief accessor to Node object
   /// @return  second is true if url exists, first populated if second true
   std::pair<Node const &, bool> hasAsNode(std::string const &) const;
+
+  /// @brief accessor to Node object
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Node &, bool> hasAsWritableNode(std::string const &);
 
   /// @brief accessor to Node's type
   /// @return  second is true if url exists, first populated if second true
@@ -261,6 +247,10 @@ class Node {
   /// @brief accessor to Node's uint64_t value
   /// @return  second is true if url exists, first populated if second true
   std::pair<uint64_t, bool> hasAsUInt(std::string const &) const;
+
+  /// @brief accessor to Node's bool value
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<bool, bool> hasAsBool(std::string const &) const;
 
   /// @brief accessor to Node's std::string value
   /// @return  second is true if url exists, first populated if second true
@@ -278,17 +268,49 @@ class Node {
   /// @return  second is true if url exists, first populated if second true
   std::pair<Builder, bool> hasAsBuilder(std::string const &) const;
 
-//private:
-  /// @brief Is string
-  bool isString() const;
+  /// @brief accessor to Node's Array
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Slice, bool> hasAsArray(std::string const &) const;
+
+
+  //
+  // These two operator() functions could be "protected" once
+  //  unit tests updated.
+  //
+public:
+  /// @brief Get node specified by path string
+  Node& operator()(std::string const& path);
+
+  /// @brief Get node specified by path string
+  Node const& operator()(std::string const& path) const;
+
+  //
+  // The protected accessors are the "old" interface.  They throw.
+  //  Please use the hasAsXXX replacements.
+  //
+protected:
+  /// @brief Get node specified by path string, always throw if not there
+  Node const& get(std::string const& path) const;
+
+  /// @brief Get integer value (throws if type NODE or if conversion fails)
+  int64_t getInt() const;
+
+  /// @brief Get insigned value (throws if type NODE or if conversion fails)
+  uint64_t getUInt() const;
+
+  /// @brief Get bool value (throws if type NODE or if conversion fails)
+  bool getBool() const;
+
+  /// @brief Get double value (throws if type NODE or if conversion fails)
+  double getDouble() const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
-public:
   /// @brief Get array value
   Slice getArray() const;
 
+public:
   /// @brief Clear key value store
   void clear();
 

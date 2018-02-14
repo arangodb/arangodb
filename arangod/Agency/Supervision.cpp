@@ -73,7 +73,7 @@ struct HealthRecord {
       shortName = node.hasAsString("ShortName").first;
     }
     if (endpoint.empty()) {
-      endpoint = node("Endpoint").getString();
+      endpoint = node.hasAsString("Endpoint").first;
     }
     if (node.has("Status")) {
       status = node.hasAsString("Status").first;
@@ -316,7 +316,7 @@ void handleOnStatusCoordinator(
 
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     // if the current foxxmaster server failed => reset the value to ""
-    if (snapshot.has(foxxmaster) && snapshot(foxxmaster).getString() == serverID) {
+    if (snapshot.hasAsString(foxxmaster).first == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
         { VPackObjectBuilder d(&create);
@@ -333,7 +333,7 @@ void handleOnStatusSingle(
   // if the current leader server failed => reset the value to ""
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
 
-    if (snapshot.has(asyncReplLeader) && snapshot(asyncReplLeader).getString() == serverID) {
+    if (snapshot.hasAsString(asyncReplLeader).first == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
         { VPackObjectBuilder d(&create);
@@ -431,10 +431,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Get last health entries from transient and persistent key value stores
       if (_transient.has(healthPrefix + serverID)) {
-        transist = _transient(healthPrefix + serverID);
+        transist = _transient.hasAsNode(healthPrefix + serverID).first;
       }
       if (_snapshot.has(healthPrefix + serverID)) {
-        persist = _snapshot(healthPrefix + serverID);
+        persist = _snapshot.hasAsNode(healthPrefix + serverID).first;
       }
 
       // New health record (start with old add current information from sync)
@@ -664,8 +664,7 @@ void Supervision::run() {
 // Guarded by caller
 bool Supervision::isShuttingDown() {
   _lock.assertLockedByCurrentThread();
-  return (_snapshot.has("Shutdown") && _snapshot("Shutdown").isBool()) ?
-    _snapshot("/Shutdown").getBool() : false;
+  return _snapshot.hasAsBool("Shutdown").first;
 }
 
 // Guarded by caller
@@ -746,7 +745,7 @@ void Supervision::workJobs() {
       TODO, (*todoEnt.second).hasAsString("jobId").first, _snapshot, _agent).run();
   }
 
-  for (auto const& pendEnt : _snapshot(pendingPrefix).children()) {
+  for (auto const& pendEnt : _snapshot.hasAsChildren(pendingPrefix).first) {
     JobContext(
       PENDING, (*pendEnt.second).hasAsString("jobId").first, _snapshot, _agent).run();
   }
@@ -764,7 +763,7 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      if (col.has("replicationFactor") && col("replicationFactor").isUInt()) {
+      if (col.hasAsUInt("replicationFactor").second) {
         replicationFactor = col.hasAsUInt("replicationFactor").first;
       } else {
         LOG_TOPIC(DEBUG, Logger::SUPERVISION)
@@ -888,8 +887,8 @@ void Supervision::shrinkCluster() {
   size_t targetNumDBServers;
   std::string const NDBServers ("/Target/NumberOfDBServers");
 
-  if (_snapshot.has(NDBServers) && _snapshot(NDBServers).isUInt()) {
-    targetNumDBServers = _snapshot(NDBServers).getUInt();
+  if (_snapshot.hasAsUInt(NDBServers).second) {
+    targetNumDBServers = _snapshot.hasAsUInt(NDBServers).first;
   } else {
     LOG_TOPIC(TRACE, Logger::SUPERVISION)
       << "Targeted number of DB servers not set yet";
@@ -922,9 +921,8 @@ void Supervision::shrinkCluster() {
     for (auto const& database : databases) {
       for (auto const& collptr : database.second->children()) {
         auto const& node = *collptr.second;
-        if (node.has("replicationFactor") &&
-            node("replicationFactor").isUInt()) {
-          auto replFact = node("replicationFactor").getUInt();
+        if (node.hasAsUInt("replicationFactor").second) {
+          auto replFact = node.hasAsUInt("replicationFactor").first;
           if (replFact > maxReplFact) {
             maxReplFact = replFact;
           }
