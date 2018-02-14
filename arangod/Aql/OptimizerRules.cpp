@@ -4555,8 +4555,8 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
   try {
-    auto indexes = plan->getAst()->query()->trx()->indexesForCollection(cname);
-    for (auto idx : indexes) {
+    auto indexes = plan->getAst()->query()->trx()->indexesForCollection(name);
+    for (auto& idx : indexes) {
       if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         TRI_ASSERT(idx->fields().size() == 1);
         if (basics::AttributeName::isIdentical(idx->fields()[0], field, false)) {
@@ -4587,16 +4587,15 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->normalize(plan);
 
   // we assume by now that collection `name` exists
-  TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   aql::Collections* colls = plan->getAst()->query()->collections();
-  aql::Collection* coll = colls->get(cname);
+  aql::Collection* coll = colls->get(name);
   if (coll == nullptr) { // TODO: cleanup this mess
-    coll = colls->add(cname, AccessMode::Type::READ);
+    coll = colls->add(name, AccessMode::Type::READ);
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(vocbase->lookupCollection(cname));
+      coll->setCollection(vocbase->lookupCollection(name));
       // FIXME: does this need to happen in the coordinator?
-      plan->getAst()->query()->trx()->addCollectionAtRuntime(cname);
+      plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
     }
   }
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
