@@ -1266,9 +1266,9 @@ Result RestReplicationHandler::processRestoreUsersBatch(
 
   auto queryResult = query.execute(queryRegistry);
 
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-    "Authentication");
-  authentication->authInfo()->outdate();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  af->userManager()->outdate();
+  af->tokenCache()->invalidateBasicCache();
   
   return Result{queryResult.code};
 }

@@ -22,7 +22,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Manuel Baesler
+// / @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -34,9 +34,12 @@ const optionsDocumentation = [
   '   - `ldapPort : Port of the ldap server'
 ];
 
-const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const request = require('@arangodb/request');
+// const helper = require('@arangodb/user-helper');
+const _ = require('lodash');
+// const fs = require('fs');
+// const pu = require('@arangodb/process-utils');
+const tu = require('@arangodb/test-utils');
+// const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -49,137 +52,50 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // / @brief TEST: ldap
 // //////////////////////////////////////////////////////////////////////////////
 
-function ldap (options) {
-  print(`LDAP FQDN is: ${options.ldapHost}:${options.ldapPort} ${options.caCertFilePath}`);
-  const results = { failed: 0 };
-  const tests = [
-    {
-      name: 'ldapBasicLDAP',
-      conf: {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'ldap.enabled': true,
-        'ldap.server': options.ldapHost,
-        'ldap.port': options.ldapPort,
-        'ldap.prefix': 'uid=',
-        'ldap.suffix': ',dc=example,dc=com',
-        'ldap.search-filter': 'objectClass=simpleSecurityObject',
-        'ldap.search-attribute': 'uid',
-        'ldap.permissions-attribute-name': 'description'
-      },
-      user: {
-        name: 'fermi',
-        pass: 'password'
-      },
-      result: {
-        statusCode: 200
-      }
-    },
-    {
-      name: 'ldapBindSearchAuth',
-      conf: {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'ldap.enabled': true,
-        'ldap.server': options.ldapHost,
-        'ldap.port': options.ldapPort,
-        'ldap.basedn': 'dc=example,dc=com',
-        'ldap.search-filter': 'objectClass=simpleSecurityObject',
-        'ldap.search-attribute': 'uid',
-        'ldap.binddn': 'cn=admin,dc=example,dc=com',
-        'ldap.bindpasswd': 'hallo',
-        'ldap.permissions-attribute-name': 'description'
-      },
-      user: {
-        name: 'albert',
-        pass: 'password'
-      },
-      result: {
-        statusCode: 200
-      }
-    },
-    {
-      name: 'ldapBindSearchAuthWrongUser',
-      conf: {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'ldap.enabled': true,
-        'ldap.server': options.ldapHost,
-        'ldap.port': options.ldapPort,
-        'ldap.basedn': 'dc=example,dc=com',
-        'ldap.search-filter': 'objectClass=simpleSecurityObject',
-        'ldap.search-attribute': 'uid',
-        'ldap.binddn': 'cn=admin,dc=example,dc=com',
-        'ldap.bindpasswd': 'hallo',
-        'ldap.permissions-attribute-name': 'description'
-      },
-      user: {
-        name: 'werner',
-        pass: 'password'
-      },
-      result: {
-        statusCode: 401
-      }
-    },
-    {
-      name: 'ldapUrlBindSearchAuth',
-      conf: {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'ldap.enabled': true,
-        'ldap.url': `ldap://${options.ldapHost}:${options.ldapPort}/dc=example,dc=com?uid?sub`,
-        'ldap.search-filter': 'objectClass=simpleSecurityObject',
-        'ldap.binddn': 'cn=admin,dc=example,dc=com',
-        'ldap.bindpasswd': 'hallo',
-        'ldap.permissions-attribute-name': 'description'
-      },
-      user: {
-        name: 'fermi',
-        pass: 'password'
-      },
-      result: {
-        statusCode: 200
-      }
-    },
-    {
-      name: 'ldapUrlBindSearchTlsAuth',
-      conf: {
-        'server.authentication': true,
-        'server.authentication-system-only': false,
-        'ldap.enabled': true,
-        'ldap.url': `ldap://${options.ldapHost}:${options.ldapPort}/dc=example,dc=com?uid?sub`,
-        'ldap.search-filter': 'objectClass=simpleSecurityObject',
-        'ldap.binddn': 'cn=admin,dc=example,dc=com',
-        'ldap.bindpasswd': 'hallo',
-        'ldap.permissions-attribute-name': 'description',
-        'ldap.tls': true,
-        'ldap.tls-cacert-file': options.caCertFilePath,
-        'ldap.tls-cert-check-strategy': 'hard'
+const tests = {
+  ldapModeRoles: {
+    name: 'ldapModeRoles', // TODO: needs to be renamed
+    conf: {
+      'server.authentication': true,
+      'server.authentication-system-only': true,
+      'ldap.enabled': true,
+      'ldap.server': '127.0.0.1',
+      'ldap.port': '389',
+      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
+      'ldap.bindpasswd': 'password',
+      'ldap.basedn': 'dc=arangodb,dc=com',
+      'ldap.roles-attribute-name': 'sn',
+      'ldap.superuser-role': 'adminrole',
+      // 'log.level': 'ldap=trace',
+      'javascript.allow-admin-execute': 'true',
+      'server.local-authentication': 'true'
+    }
+  }
+};
 
-      },
-      user: {
-        name: 'fermi',
-        pass: 'password'
-      },
-      result: {
-        statusCode: 200
-      }
-    }];
+function parseOptions (options) {
+  let toReturn = tests;
+
+  _.each(toReturn, function (opt) {
+    if (options.ldapHost) {
+      opt.ldapHost = options.ldapHost;
+    }
+    if (options.ldapPort) {
+      opt.ldapPort = options.ldapPort;
+    }
+  });
+  return toReturn;
+}
+
+/*
+function startLdap (options) {
+  const results = { failed: 0 };
+  const opts = parseOptions(options);
+
+  print(`LDAP Server is: ${opts.ldapHost}:${opts.ldapPort}`);
 
   if (options.skipLdap === true) {
     print('skipping LDAP tests!');
-    return {
-      failed: 0,
-      ldap: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  } // if
-
-  if (options.cluster) {
-    print('skipping LDAP tests on cluster!');
     return {
       failed: 0,
       ldap: {
@@ -196,9 +112,19 @@ function ldap (options) {
   fs.makeDirectory(dummyDir);
   pu.cleanupDBDirectoriesAppend(dummyDir);
 
+  if (options.cluster) {
+    options['server.jwt-secret'] = 'ldap';
+    options.dbServers = 2;
+    options.coordinators = 2;
+
+    for (const test of tests) {
+      test.conf['server.jwt-secret'] = 'ldap';
+    }
+  }
+
   for (const t of tests) {
     let cleanup = true;
-    const adbInstance = pu.startInstance('tcp', options, t.conf, 'ldap');
+    let adbInstance = pu.startInstance('tcp', options, t.conf, 'ldap');
     if (adbInstance === false) {
       results.failed += 1;
       results[t.name] = {
@@ -210,15 +136,15 @@ function ldap (options) {
     }
 
     const res = request.post({
-      url: `${adbInstance.arangods[0].url}/_open/auth`,
+      url: `${adbInstance.url}/_open/auth`,
       body: JSON.stringify(
         {
           username: t.user.name,
-          password: t.user.pass
+          password: t.user.password
         })
     });
 
-    if (t.result.statusCode !== res.statusCode) {
+    if (res.statusCode !== 200) {
       results.failed += 1;
       results[t.name] = {
         failed: 1,
@@ -241,17 +167,43 @@ function ldap (options) {
   print(results);
   return results;
 }
+*/
 
-exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['ldap'] = ldap;
+function authenticationLdapRoleClient (options) {
+  if (options.skipLdap === true) {
+    print('skipping Ldap Authentication tests!');
+    return {
+      authenticationLdapPermissions: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  const opts = parseOptions(options);
+  if (options.cluster) {
+    // options['server.jwt-secret'] = 'ldap';
+    options.dbServers = 2;
+    options.coordinators = 2;
+    opts.ldapModeRoles.conf['server.jwt-secret'] = 'ldap';
+  }
+
+  print(CYAN + 'Client LDAP Permissoin tests...' + RESET);
+  // let testCases = tu.scanTestPath('js/client/tests/ldap');
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
+
+  print(opts.ldapModeRoles);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
+}
+
+function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
+  // testFns['ldap_start'] = startLdap;
+  testFns['ldap'] = authenticationLdapRoleClient;
+
   // defaultFns.push('ldap'); // turn off ldap tests by default
-  opts['ldapHost'] = '127.0.0.1';
-  opts['ldapPort'] = 3890;
-  opts['caCertFilePath'] = '~/ca_cert.pem';
-
-  // turn off ldap tests by default. only enable them in enterprise version
+  // turn off ldap tests by default.
   opts['skipLdap'] = true;
 
+  // only enable them in enterprise version
   let version = {};
   if (global.ARANGODB_CLIENT_VERSION) {
     version = global.ARANGODB_CLIENT_VERSION(true);
@@ -262,4 +214,6 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
-};
+}
+
+exports.setup = setup;
