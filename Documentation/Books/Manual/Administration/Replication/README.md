@@ -1,5 +1,5 @@
 Replication
-===========================
+===========
 
 Replication allows you to *replicate* data onto another machine. It
 forms the base of all disaster recovery and failover features ArangoDB
@@ -18,7 +18,8 @@ synchronous)
 For more information on the ArangoDB Server _modes_ please refer to the
 [_Server Modes_](../../Architecture/ServerModes.md) section.
 
-## Synchronous replication
+Synchronous replication
+-----------------------
 
 Synchronous replication only works within an ArangoDB Cluster and is typically
 used for mission critical data which must be accessible at all
@@ -39,7 +40,8 @@ factor. The number of _followers_ can be controlled using the
 `replicationFactor` parameter is the total number of copies being
 kept, that is, it is one plus the number of _followers_. 
 
-## Asynchronous replication
+Asynchronous replication
+------------------------
 
 In ArangoDB any write operation is logged in the _write-ahead
 log_. 

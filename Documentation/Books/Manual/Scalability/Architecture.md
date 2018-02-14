@@ -13,7 +13,8 @@ In this way, ArangoDB has been designed as a distributed multi-model
 database. This section gives a short outline on the cluster architecture and
 how the above features and capabilities are achieved.
 
-## Structure of an ArangoDB Cluster
+Structure of an ArangoDB Cluster
+--------------------------------
 
 An ArangoDB Cluster consists of a number of ArangoDB instances
 which talk to each other over the network. They play different roles,
@@ -68,7 +69,8 @@ They should not be accessed from the outside but indirectly through the
 _Coordinators_. They may also execute queries in part or as a whole when
 asked by a _Coordinator_.
 
-## Many sensible configurations
+Many sensible configurations
+----------------------------
 
 This architecture is very flexible and thus allows many configurations,
 which are suitable for different usage scenarios:
@@ -94,14 +96,16 @@ which are suitable for different usage scenarios:
 As you acn see, the _Coordinator_ layer can be scaled and deployed independently
 from the _DBServer_ layer.
  
-## Cluster ID
+Cluster ID
+----------
 
 Every non-Agency ArangoDB instance in a Cluster is assigned a unique
 ID during its startup. Using its ID a node is identifiable
 throughout the Cluster. All cluster operations will communicate
 via this ID.
 
-## Sharding
+Sharding
+--------
 
 Using the roles outlined above an ArangoDB Cluster is able to distribute
 data in so called _shards_ across multiple _DBServers_. From the outside
@@ -129,7 +133,8 @@ hash is being created from the document __key_.
 For further information, please refer to the
 [_Cluster Administration_ ](../Administration/Cluster/README.md#sharding) section.
 
-## Synchronous replication 
+Synchronous replication 
+------------------------
 
 In an ArangoDB Cluster, the replication among the data stored by the _DBServers_
 is synchronous.
@@ -182,7 +187,8 @@ replicate it to the follower.
    synchronous replication is resumed. This happens all transparently
    to the client.
 
-## Automatic failover
+Automatic failover
+------------------
 
 If a _DBServer_ that holds a _follower_ copy of a _shard_ fails, then the _leader_
 can no longer synchronize its changes to that _follower_. After a short timeout
@@ -234,7 +240,8 @@ the request has been done (in regard to the _supervision_) and depending
 on the time needed to reconfigure the Cluster the _Coordinator_ might fail
 with a timeout error!
 
-## Shard movement and resynchronization
+Shard movement and resynchronization
+------------------------------------
 
 All _shard_ data synchronizations are done in an incremental way, such that
 resynchronizations are quick. This technology allows to move shards
@@ -257,7 +264,8 @@ switching off synchronous replication. This is a suitable setting for
 less important or easily recoverable data for which low latency write 
 operations matter.
 
-## Microservices and zero administation
+Microservices and zero administation
+------------------------------------
 
 The design and capabilities of ArangoDB are geared towards usage in
 modern microservice architectures of applications. With the 
@@ -277,7 +285,8 @@ ArangoDB Cluster is resilient against failures and essentially repairs
 itself in case of temporary failures. See the next section for further
 capabilities in this direction.
 
-## Apache Mesos integration
+Apache Mesos integration
+------------------------
 
 For the distributed setup, we use the Apache Mesos infrastructure by default.
 

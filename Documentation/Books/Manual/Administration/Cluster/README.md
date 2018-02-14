@@ -1,11 +1,13 @@
-# Cluster administration
+Cluster administration
+======================
 
 This Section includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the
 Cluster [chapter](../../Scalability/Cluster/README.md).
 
-## Enabling synchronous replication
+Enabling synchronous replication
+--------------------------------
 
 For an introduction about _Synchronous Replication_ in Cluster, please refer
 to the [_Cluster Architecture_](../../Scalability/Architecture.md#synchronous-replication) section. 
@@ -29,7 +31,8 @@ Example:
 In the above case, any write operation will require 2 replicas to
 report success from now on. 
 
-## Preparing growth
+Preparing growth
+----------------
 
 You may create a _collection_ with higher _replication factor_ than
 available _DBServers_. When additional _DBServers_ become available 
@@ -49,7 +52,8 @@ The default value for _enforceReplicationFactor_ is true.
 **Note:** multiple _replicas_ of the same _shard_ can never coexist on the same
 _DBServer_ instance.
 
-## Sharding
+Sharding
+--------
 
 For an introduction about _Sharding_ in Cluster, please refer to the
 [_Cluster Architecture_](../../Scalability/Architecture.md#sharding) section. 
@@ -100,12 +104,14 @@ included in the list of attribute paths for the index:
 | a, b, c   | a, b      | not allowed |
 | a, b, c   | a, b, c   |     allowed |
 
-## Moving/Rebalancing _shards_
+Moving/Rebalancing _shards_
+---------------------------
 
 A _shard_ can be moved from a _DBServer_ to another, and the entire shard distribution
 can be rebalanced using the correponding buttons in the web [UI](../WebInterface/Cluster.md).
 
-## Replacing/Removing a _Coordinator_
+Replacing/Removing a _Coordinator_
+----------------------------------
 
 _Coordinators_ are effectively stateless and can be replaced, added and
 removed without more consideration than meeting the necessities of the
@@ -125,7 +131,8 @@ integrated as a new _Coordinator_ into the cluster. You may also just
 restart the _Coordinator_ as before and it will reintegrate itself into
 the cluster.
 
-## Replacing/Removing a _DBServer_
+Replacing/Removing a _DBServer_
+-------------------------------
 
 _DBServers_ are where the data of an ArangoDB cluster is stored. They
 do not publish a we UI and are not meant to be accessed by any other
