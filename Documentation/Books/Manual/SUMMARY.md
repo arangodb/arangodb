@@ -21,9 +21,10 @@
 * [Highlights](Highlights.md)
 #
 * [Scalability](Scalability/README.md)
-  * [Architecture](Scalability/Architecture.md)
-  * [Data models](Scalability/DataModels.md)
-  * [Limitations](Scalability/Limitations.md)
+  * [Cluster](Scalability/Cluster/README.md)
+    * [Architecture](Scalability/Architecture.md)
+    * [Data models](Scalability/DataModels.md)
+    * [Limitations](Scalability/Limitations.md)
   * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
     * [Introduction](Scalability/DC2DC/Introduction.md)
     * [Applicability](Scalability/DC2DC/Applicability.md)
@@ -209,6 +210,7 @@
       * [Implementation](Administration/Replication/Synchronous/Implementation.md)
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
+  * [Cluster](Administration/Cluster/README.md)
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
@@ -230,6 +232,7 @@
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
+  * [Cluster](Troubleshooting/Cluster/README.md)  
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
 #
 * [Monitoring](Monitoring/README.md)
@@ -244,6 +247,7 @@
 #  * [Server Internals](Architecture/ServerInternals.md)
 #
 * [Release notes](ReleaseNotes/README.md)
+  * [Incompatible changes in 3.4](ReleaseNotes/UpgradingChanges34.md)
   * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
   * [Incompatible changes in 3.3](ReleaseNotes/UpgradingChanges33.md)
   * [Whats New in 3.2](ReleaseNotes/NewFeatures32.md)

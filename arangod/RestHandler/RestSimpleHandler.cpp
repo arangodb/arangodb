@@ -27,7 +27,6 @@
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -263,8 +262,8 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       result.add(VPackValue(VPackValueType::Object));
       result.add("removed", VPackValue(removed));
       result.add("ignored", VPackValue(ignored));
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+      result.add(StaticStrings::Error, VPackValue(false));
+      result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
       if (!silent) {
         result.add("old", queryResult.result->slice());
       }
@@ -365,8 +364,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
         TRI_ASSERT(postFilter.isNone());
       }
       result.addExternal(queryResult.result->slice().begin());
-      result.add("error", VPackValue(false));
-      result.add("code",
+      result.add(StaticStrings::Error, VPackValue(false));
+      result.add(StaticStrings::Code,
                  VPackValue(static_cast<int>(_response->responseCode())));
     }
 

@@ -129,8 +129,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       : currentSeqNum(0), _seqStart(seqs) {}
 
   Result shutdownWBReader() {
-    Result rv;
-    try {
+    Result rv = basics::catchVoidToResult([&]() -> void {
       // update ticks after parsing wal
       LOG_TOPIC(TRACE, Logger::ENGINES) << "max tick found in WAL: " << _maxTick
                                         << ", last HLC value: " << _maxHLC;
@@ -161,7 +160,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           collection->keyGenerator()->track(k.data(), k.size());
         }
       }
-    } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
+    });
     return rv;
   }
 
@@ -212,13 +211,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> findEstimator(
+  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(
       uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     Index* index = engine->mapObjectToIndex(objectId);
     if (index == nullptr) {
-      return std::make_pair(nullptr, 0);
+      return nullptr;
     }
     return static_cast<RocksDBIndex*>(index)->estimator();
   }
@@ -255,7 +254,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
           if (tick > _maxTick && (_maxTick == 0 || tick - _maxTick < 2048)) {
             storeMaxTick(tick);
           }
-        } 
+        }
         // else we got a non-numeric key. simply ignore it
       }
     } else if (column_family_id ==
@@ -307,9 +306,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
-        if (est.first != nullptr && est.second < currentSeqNum) {
+        if (est != nullptr && est->commitSeq() < currentSeqNum) {
           // We track estimates for this index
-          est.first->insert(hash);
+          est->insert(hash);
         }
       }
     }
@@ -348,9 +347,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hash != 0) {
         uint64_t objectId = RocksDBKey::objectId(key);
         auto est = findEstimator(objectId);
-        if (est.first != nullptr && est.second < currentSeqNum) {
+        if (est != nullptr && est->commitSeq() < currentSeqNum) {
           // We track estimates for this index
-          est.first->remove(hash);
+          est->remove(hash);
         }
       }
     }
@@ -386,10 +385,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
 
 /// parse the WAL with the above handler parser class
 Result RocksDBRecoveryManager::parseRocksWAL() {
-  Result rv;
   Result shutdownRv;
 
-  try {
+  Result res = basics::catchToResult([&]() -> Result {
+    Result rv;
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     for (auto& helper : engine->recoveryHelpers()) {
@@ -421,7 +420,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
           rv = rocksutils::convertStatus(s);
           std::string msg = "error during WAL scan: " + rv.errorMessage();
           LOG_TOPIC(ERR, Logger::ENGINES) << msg;
-          rv.reset(rv.errorNumber(), msg); // update message
+          rv.reset(rv.errorNumber(), std::move(msg)); // update message
           break;
         }
 
@@ -441,15 +440,17 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     }
 
     shutdownRv = handler.shutdownWBReader();
-  } CATCH_TO_RESULT(rv,TRI_ERROR_INTERNAL);
 
-  if (rv.ok()) {
-    rv = std::move(shutdownRv);
+    return rv;
+  });
+
+  if (res.ok()) {
+    res = std::move(shutdownRv);
   } else {
-    if (shutdownRv.fail()) {
-      rv.reset(rv.errorNumber(), rv.errorMessage() + " - " + shutdownRv.errorMessage());
+    if (shutdownRv.fail()){
+      res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
     }
   }
 
-  return rv;
+  return res;
 }

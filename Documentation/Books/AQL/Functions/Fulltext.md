@@ -4,7 +4,8 @@ Fulltext functions
 AQL offers the following functions to filter data based on
 [fulltext indexes](../../Manual/Indexing/Fulltext.html).
 
-### FULLTEXT()
+FULLTEXT()
+----------
 
 `FULLTEXT(coll, attribute, query, limit) → docArray`
 

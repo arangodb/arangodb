@@ -18,28 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SCOPE_GUARD_H
-#define ARANGODB_BASICS_SCOPE_GUARD_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_AQL_USER_FUNCTIONS_HANDLER_H 1
 
-#include "Basics/Common.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-namespace basics {
-class ScopeGuard {
+class RestAqlUserFunctionsHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  ScopeGuard(std::function<void()> onEnter, std::function<void()> onExit)
-      : _onExit(onExit) {
-    onEnter();
-  }
+  RestAqlUserFunctionsHandler(GeneralRequest*, GeneralResponse*);
 
-  ~ScopeGuard() { _onExit(); }
-
-  std::function<void()> _onExit;
+ public:
+  char const* name() const override final { return "RestAqlUserFunctionsHandler"; }
+  bool isDirect() const override { return false; }
+  RestStatus execute() override;
 };
-}
 }
 
 #endif

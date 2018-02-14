@@ -45,14 +45,15 @@ QueryResources::~QueryResources() {
   for (auto& it : _strings) {
     TRI_FreeString(it);
   }
-    
+
   _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
 
   // free nodes
+  //LOG_TOPIC(ERR, Logger::FIXME) << "nodes allocated: " << _nodes.size();
   for (auto& it : _nodes) {
     delete it;
   }
-  
+
   _resourceMonitor->decreaseMemoryUsage(_nodes.size() * sizeof(AstNode) + _nodes.capacity() * sizeof(AstNode*));
 }
 
@@ -61,13 +62,13 @@ void QueryResources::steal() {
   _strings.clear();
   _nodes.clear();
 }
-  
+
 /// @brief add a node to the list of nodes
-void QueryResources::addNode(AstNode* node) { 
+void QueryResources::addNode(AstNode* node) {
   size_t capacity;
 
   if (_nodes.empty()) {
-    // reserve some initial space for nodes 
+    // reserve some initial space for nodes
     capacity = 64;
   } else {
     capacity = _nodes.size() + 1;
@@ -86,9 +87,9 @@ void QueryResources::addNode(AstNode* node) {
 
   // may throw
   _resourceMonitor->increaseMemoryUsage(sizeof(AstNode));
-  
+
   // will not fail
-  _nodes.emplace_back(node); 
+  _nodes.emplace_back(node);
 }
 
 /// @brief register a string
@@ -129,16 +130,16 @@ char* QueryResources::registerEscapedString(char const* p, size_t length,
   return registerLongString(copy, outLength);
 }
 
-char* QueryResources::registerLongString(char* copy, size_t length) {  
+char* QueryResources::registerLongString(char* copy, size_t length) {
   if (copy == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   try {
     size_t capacity;
-    
+
     if (_strings.empty()) {
-      // reserve some initial space for string storage 
+      // reserve some initial space for string storage
       capacity = 8;
     } else {
       capacity = (std::max)(_strings.size() + 8, _strings.capacity());
@@ -146,7 +147,7 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
 
     TRI_ASSERT(capacity > _strings.size());
     TRI_ASSERT(capacity >= _strings.capacity());
-    
+
     // reserve space
     _resourceMonitor->increaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
     try {
@@ -156,8 +157,8 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
       _resourceMonitor->decreaseMemoryUsage(((capacity - _strings.size()) * sizeof(char*)) + length);
       throw;
     }
-    
-    // will not fail 
+
+    // will not fail
     _strings.emplace_back(copy);
     _stringsLength += length;
 

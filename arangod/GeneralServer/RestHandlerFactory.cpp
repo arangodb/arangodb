@@ -54,61 +54,12 @@ class MaintenanceHandler : public RestBaseHandler {
   size_t queue() const override { return JobQueue::AQL_QUEUE; }
 
   RestStatus execute() override {
-    // use this to redirect requests
-    switch (_mode) {
-      case ServerState::Mode::REDIRECT: {
-        std::string endpoint;
-        ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-        if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
-          GlobalReplicationApplier* applier = replication->globalReplicationApplier();
-          if (applier != nullptr) {
-            endpoint = applier->endpoint();
-            // replace tcp:// with http://, and ssl:// with https://
-            endpoint = fixEndpointProtocol(endpoint);
-          }
-        }
-        generateError(Result(TRI_ERROR_CLUSTER_NOT_LEADER));
-        // return the endpoint of the actual leader
-        _response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
-        break;
-      }
-
-      case ServerState::Mode::TRYAGAIN: {
-        generateError(Result(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING));
-        // intentionally do not set "Location" header, but use a custom header that 
-        // clients can inspect. if they find an empty endpoint, it means that there
-        // is an ongoing leadership challenge
-        _response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
-        break;
-      }
-
-      case ServerState::Mode::INVALID: {
-        generateError(Result(TRI_ERROR_SHUTTING_DOWN));
-        break;
-      }
-
-      case ServerState::Mode::MAINTENANCE: 
-      default: {
-        resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-        break;
-      }
-    }
+    ReplicationFeature::prepareFollowerResponse(_response.get(), _mode);
     return RestStatus::DONE;
   }
 
   void handleError(const Exception& error) override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-  }
-
-  // replace tcp:// with http://, and ssl:// with https://
-  std::string fixEndpointProtocol(std::string const& endpoint) const {
-    if (endpoint.find("tcp://", 0, 6) == 0) {
-      return "http://" + endpoint.substr(6); // strlen("tcp://")
-    }
-    if (endpoint.find("ssl://", 0, 6) == 0) {
-      return "https://" + endpoint.substr(6); // strlen("ssl://")
-    }
-    return endpoint;
   }
 };
 }
@@ -160,6 +111,7 @@ RestHandler* RestHandlerFactory::createHandler(
     case ServerState::Mode::REDIRECT:
     case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/cluster/health") == std::string::npos &&
           path.find("/_admin/server/role") == std::string::npos &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
           path.find("/_api/cluster/") == std::string::npos &&
