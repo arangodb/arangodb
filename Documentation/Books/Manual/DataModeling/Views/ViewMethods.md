@@ -1,7 +1,9 @@
 View Methods
 ============
 
-### Drop
+Drop
+----
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.drop()`
@@ -20,7 +22,9 @@ arangosh> v.drop();
 arangosh> v;
 ```
 
-### Query Name
+Query Name
+----------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.name()`
@@ -38,7 +42,9 @@ arangosh> v.name();
 arangosh> db._dropView("example");
 ```
 
-### Modify Name
+Modify Name
+-----------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.rename(new-name)`
@@ -61,7 +67,9 @@ arangosh> v.name();
 arangosh> db._dropView("example-renamed");
 ```
 
-### Query Type
+Query Type
+----------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.type()`
@@ -79,7 +87,9 @@ arangosh> v.type();
 arangosh> db._dropView("example");
 ```
 
-### Query Properties
+Query Properties
+----------------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.properties()`
@@ -98,7 +108,9 @@ arangosh> v.properties();
 arangosh> db._dropView("example");
 ```
 
-### Modify Properties
+Modify Properties
+-----------------
+
 <!-- arangod/V8Server/v8-views.cpp -->
 
 `view.properties(view-property-modification)`

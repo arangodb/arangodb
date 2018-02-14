@@ -27,7 +27,6 @@
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -158,18 +157,19 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // an expression that does not require V8
     executeExpression(result);
   } else {
-    // must have a V8 context here to protect Expression::execute()
-    arangodb::basics::ScopeGuard guard{
-        [&]() -> void { _engine->getQuery()->enterContext(); },
-        [&]() -> void {
-          if (_isRunningInCluster) {
-            // must invalidate the expression now as we might be called from
-            // different threads
-            _expression->invalidate();
+    auto cleanup = [this]() {
+      if (_isRunningInCluster) {
+        // must invalidate the expression now as we might be called from
+        // different threads
+        _expression->invalidate();
 
-            _engine->getQuery()->exitContext();
-          }
-        }};
+        _engine->getQuery()->exitContext();
+      }
+    };
+    
+    // must have a V8 context here to protect Expression::execute()
+    _engine->getQuery()->enterContext();
+    TRI_DEFER(cleanup());
 
     ISOLATE;
     v8::HandleScope scope(isolate);  // do not delete this!

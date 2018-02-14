@@ -1463,6 +1463,8 @@ arangodb::aql::AstNode* RocksDBVPackIndex::specializeCondition(
     }
   }
 
+  // edit in place; TODO replace node instead
+  TEMPORARILY_UNLOCK_NODE(node);
   while (node->numMembers() > 0) {
     node->removeMemberUnchecked(0);
   }

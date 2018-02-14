@@ -1,4 +1,5 @@
-# Cluster troubleshooting
+Cluster troubleshooting
+=======================
 
 * Cluster frontend is unresponsive
 	* Check if the _Coordinator_/s in question are started up.

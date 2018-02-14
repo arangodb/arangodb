@@ -327,7 +327,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
-          
+
           // we need to know the depth at which a filter condition will
           // access a path. Otherwise there are too many results
           TRI_ASSERT(node->numMembers() == 2);
@@ -471,6 +471,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
     if (conditionIsImpossible) {
       return false;
     }
+    // edit in-place; TODO replace instead?
+    TEMPORARILY_UNLOCK_NODE(parentOfReplace);
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
@@ -588,9 +590,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       auto andNode = orNode->getMemberUnchecked(0);
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
+      // edit in-place; TODO: replace node instead
+      TEMPORARILY_UNLOCK_NODE(andNode);
       std::unordered_set<Variable const*> varsUsedByCondition;
-      
+
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
@@ -631,7 +634,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
-        
+
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
@@ -649,7 +652,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          
+
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
@@ -658,7 +661,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            
+
             if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.

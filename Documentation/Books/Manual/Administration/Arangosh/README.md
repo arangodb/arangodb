@@ -89,7 +89,8 @@ use the load command:
 Exiting arangosh can be done using the key combination ```<CTRL> + D``` or by
 typing ```quit<CR>```
 
-### Escaping
+Escaping
+--------
 
 In AQL, escaping is done traditionally with the backslash character: `\`.
 As seen above, this leads to double backslashes when specifying Windows paths.

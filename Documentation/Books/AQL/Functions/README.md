@@ -26,7 +26,8 @@ COLLECTIONS()
 In contrast to collection and variable names, function names are case-insensitive, 
 i.e. *LENGTH(foo)* and *length(foo)* are equivalent.
 
-### Extending AQL
+Extending AQL
+-------------
  
 It is possible to extend AQL with user-defined functions. These functions need to
 be written in JavaScript, and have to be registered before they can be used in a query.

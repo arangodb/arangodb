@@ -1,11 +1,10 @@
 HTTP Interface for Collections
 ==============================
 
-### Collections
-
 This is an introduction to ArangoDB's HTTP interface for collections.
 
-#### Collection
+ Collections
+ -----------
 
 A collection consists of documents. It is uniquely identified by its 
 [collection identifier](../../Manual/Appendix/Glossary.html#collection-identifier).
@@ -16,7 +15,8 @@ Collections have a type that is specified by the user when the collection
 is created. There are currently two types: document and edge. The default 
 type is document.
 
-#### Collection Identifier
+Collection Identifier
+---------------------
 
 A collection identifier lets you refer to a collection in a database. 
 It is a string value and is unique within the database. Up to including 
@@ -33,7 +33,8 @@ or use them locally.
 
 Note: collection ids have been returned as integers up to including ArangoDB 1.1
 
-#### Collection Name
+Collection Name
+---------------
 
 A collection name identifies a collection in a database. It is a string 
 and is unique within the database. Unlike the collection identifier it is 
@@ -42,7 +43,8 @@ of letters, digits, and the _ (underscore) and - (dash) characters only.
 Please refer to Naming Conventions in ArangoDB for more information on valid 
 collection names.
 
-#### Key Generator
+Key Generator
+-------------
 
 ArangoDB allows using key generators for each collection. Key generators 
 have the purpose of auto-generating values for the _key attribute of a document 
@@ -88,4 +90,3 @@ For example: Assume that the collection identifier is *7254820* and
 the collection name is *demo*, then the URL of that collection is:
 
     http://localhost:8529/_api/collection/demo
-

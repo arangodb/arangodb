@@ -37,9 +37,14 @@ class GlobalInitialSyncer : public InitialSyncer {
 
  public:
   /// @brief run method, performs a full synchronization
+  /// public method, catches exceptions
   arangodb::Result run(bool incremental) override;
   
  private:
+
+  /// @brief run method, performs a full synchronization
+  /// internal method, may throw exceptions
+  arangodb::Result runInternal(bool incremental);
   
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();

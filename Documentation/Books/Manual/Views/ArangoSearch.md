@@ -36,7 +36,7 @@ stages) and scorers (used during the sorting stage) allowing full control over
 the behaviour of the engine.
 
 
-### ArangoSearch Scorers:
+### ArangoSearch Scorers
 
 ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
@@ -132,7 +132,7 @@ ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
 [View definition/modification](#view-definitionmodification).
 
-### Analyzers:
+### Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of 
 [named analyzers](ArangoSearch/Analyzers.md) which

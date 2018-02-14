@@ -426,6 +426,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                          StringUtils::itoa(dump._lastFoundTick));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(state.lastCommittedTick));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(dump._lastScannedTick));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
   _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
@@ -456,10 +458,19 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       // to avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
-    insertClient(dump._lastFoundTick);
   }
-  // if no error
+
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  insertClient(tickStart == 0 ? tickStart : tickStart - 1);
 }
+
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not

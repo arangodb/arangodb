@@ -6,7 +6,7 @@ and to help you with specific problems.
 You can participate and [write your own recipes][2]. 
 You only need to write a recipe in markdown and make a [pull request to our repository][2]. 
 
-## Recipes
+**Recipes**
 
 There will be some simple recipes to bring you closer to ArangoDB and show you the amount of possibilities
 of our Database. 
