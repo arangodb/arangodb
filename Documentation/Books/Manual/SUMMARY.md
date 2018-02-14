@@ -1,11 +1,9 @@
 #
 # Summary
 #
-# * [First Steps](FirstSteps/README.md) #TODO
-#  * [Getting Familiar](FirstSteps/GettingFamiliar.md) #TODO
+## GETTING FAMILIAR 
+#
 * [Getting Started](GettingStarted/README.md)
-  # move to administration (command line options)?
-  # * [Install and run the server](FirstSteps/Arangod.md) #TODO
   * [Installing](GettingStarted/Installing/README.md)
     * [Linux](GettingStarted/Installing/Linux.md)
     * [Mac OS X](GettingStarted/Installing/MacOSX.md)
@@ -18,23 +16,10 @@
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
-  # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Highlights](Highlights.md)
 #
-* [Scalability](Scalability/README.md)
-  * [Cluster](Scalability/Cluster/README.md)
-    * [Architecture](Scalability/Architecture.md)
-    * [Data models](Scalability/DataModels.md)
-    * [Limitations](Scalability/Limitations.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
-  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
-    * [Introduction](Scalability/DC2DC/Introduction.md)
-    * [Applicability](Scalability/DC2DC/Applicability.md)
-    * [Requirements](Scalability/DC2DC/Requirements.md)
-#
 * [Data models & modeling](DataModeling/README.md)
-# * [Collections](FirstSteps/CollectionsAndDocuments.md) #TODO
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
@@ -57,6 +42,14 @@
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
 #  * [Modeling Relationships](DataModeling/ModelingRelationships.md)
 #
+* [ArangoDB Programs](Programs/README.md)
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter](Programs/Starter/README.md)
+    * [Options](Programs/Starter/options.md)
+    * [Security](Programs/Starter/security.md)
+#
+## CORE TOPICS	
+#
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
   * [Which index to use when](Indexing/WhichIndex.md)
@@ -68,6 +61,13 @@
     * [Fulltext Indexes](Indexing/Fulltext.md)
     * [Geo Indexes](Indexing/Geo.md)
     * [Vertex Centric Indexes](Indexing/VertexCentric.md)
+#
+* [Transactions](Transactions/README.md)
+  * [Transaction invocation](Transactions/TransactionInvocation.md)
+  * [Passing parameters](Transactions/Passing.md)
+  * [Locking and isolation](Transactions/LockingAndIsolation.md)
+  * [Durability](Transactions/Durability.md)
+  * [Limitations](Transactions/Limitations.md)
 #
 * [Graphs](Graphs/README.md)
   * [General Graphs](Graphs/GeneralGraphs/README.md)
@@ -84,7 +84,15 @@
 * [Views](Views/README.md)
   * [ArangoSearch](Views/ArangoSearch.md)
     * [Analyzers](Views/ArangoSearch/Analyzers.md)
-
+#	
+## ADVANCED TOPICS	
+#
+* [Architecture](Architecture/README.md)
+  * [Modes](Architecture/ServerModes.md)
+  * [Replication](Administration/Replication/README.md)
+  * [Write-ahead log](Architecture/WriteAheadLog.md)
+  * [Storage Engines](Architecture/StorageEngines.md)
+#
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
@@ -129,18 +137,32 @@
   * [Related modules](Foxx/Modules.md)
     * [Authentication](Foxx/Auth.md)
     * [OAuth 1.0a](Foxx/OAuth1.md)
-    * [OAuth 2.0](Foxx/OAuth2.md)
-* [Transactions](Transactions/README.md)
-  * [Transaction invocation](Transactions/TransactionInvocation.md)
-  * [Passing parameters](Transactions/Passing.md)
-  * [Locking and isolation](Transactions/LockingAndIsolation.md)
-  * [Durability](Transactions/Durability.md)
-  * [Limitations](Transactions/Limitations.md)
+    * [OAuth 2.0](Foxx/OAuth2.md)	
+#	
+## SCALING
 #
-# Use cases / Advanced usage / Best practice (?)
+* [Scalability](Scalability/README.md)
+  * [Master/Slave](Scalability/MasterSlave/README.md)
+    * [Limitations](Scalability/MasterSlave/Limitations.md)
+  * [Active Failover](Scalability/ActiveFailover/README.md)
+    * [Architecture](Scalability/ActiveFailover/Architecture.md)
+    * [Limitations](Scalability/ActiveFailover/Limitations.md)
+  * [Cluster](Scalability/Cluster/README.md)
+    * [Architecture](Scalability/Architecture.md)
+    * [Data models](Scalability/DataModels.md)
+    * [Limitations](Scalability/Limitations.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
+  * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+    * [Introduction](Scalability/DC2DC/Introduction.md)
+    * [Applicability](Scalability/DC2DC/Applicability.md)
+    * [Requirements](Scalability/DC2DC/Requirements.md)
+#	
+## OPERATIONS		
 #
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/Single.md)
+  * [Master/Slave](Deployment/MasterSlave/README.md)
+  * [Active Failover](Deployment/ActiveFailover/README.md)
   * [Cluster](Deployment/Cluster/README.md)  
     * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
     * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)
@@ -157,12 +179,6 @@
     * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 #
-* [ArangoDB Programs](Programs/README.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](Programs/Starter/README.md)
-    * [Options](Programs/Starter/options.md)
-    * [Security](Programs/Starter/security.md)
-#
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Dashboard](Administration/WebInterface/Dashboard.md)
@@ -177,7 +193,6 @@
   * [ArangoDB Shell](Administration/Arangosh/README.md)
     * [Shell Output](Administration/Arangosh/Output.md)
     * [Configuration](Administration/Arangosh/Configuration.md)
-    # relocate file?
     * [Details](GettingStarted/Arangosh.md)
   * [Arangoimport](Administration/Arangoimport.md)
   * [Arangodump](Administration/Arangodump.md)
@@ -202,24 +217,18 @@
   * [Encryption](Administration/Encryption/README.md)
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
-    * [Events](Administration/Auditing/AuditEvents.md)
-  * [Replication](Administration/Replication/README.md)
-    * [Asynchronous Replication](Administration/Replication/Asynchronous/README.md)
-      * [Components](Administration/Replication/Asynchronous/Components.md)
-      * [Per-Database Setup](Administration/Replication/Asynchronous/DatabaseSetup.md)
-      * [Server-Level Setup](Administration/Replication/Asynchronous/ServerLevelSetup.md)
-      * [Syncing Collections](Administration/Replication/Asynchronous/SyncingCollections.md)
-      * [Replication Limitations](Administration/Replication/Asynchronous/Limitations.md)
-    * [Synchronous Replication](Administration/Replication/Synchronous/README.md)
-      * [Implementation](Administration/Replication/Synchronous/Implementation.md)
-      * [Configuration](Administration/Replication/Synchronous/Configuration.md)
-    * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
+    * [Events](Administration/Auditing/AuditEvents.md)  
+  * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md) 
+  * [Master/Slave](Administration/MasterSlave/README.md)
+    * [Components](Administration/Replication/Asynchronous/Components.md)
+    * [Per-Database Setup](Administration/Replication/Asynchronous/DatabaseSetup.md)
+    * [Server-Level Setup](Administration/Replication/Asynchronous/ServerLevelSetup.md)
+    * [Syncing Collections](Administration/Replication/Asynchronous/SyncingCollections.md)
+  * [Active Failover](Administration/ActiveFailover/README.md)  
   * [Cluster](Administration/Cluster/README.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ 
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   * [Sharding](Administration/Sharding/README.md)
-#    * [Authentication](Administration/Sharding/Authentication.md)
-#    * [Firewall setup](Administration/Sharding/FirewallSetup.md)
   * [Upgrading](Administration/Upgrading/README.md)
     * [Upgrading to 3.3](Administration/Upgrading/Upgrading33.md)
     * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
@@ -232,6 +241,14 @@
     * [Upgrading to 2.3](Administration/Upgrading/Upgrading23.md)
     * [Upgrading to 2.2](Administration/Upgrading/Upgrading22.md)
 #
+* [Security](Security/README.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
+  * [Datacenter to datacenter replication](Security/DC2DC/README.md)
+#
+* [Monitoring](Monitoring/README.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
+  * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
+#
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
@@ -239,20 +256,9 @@
   * [Arangobench](Troubleshooting/Arangobench.md)
   * [Cluster](Troubleshooting/Cluster/README.md)  
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
-  * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
+  * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  
 #
-* [Monitoring](Monitoring/README.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
-  * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
-#
-* [Security](Security/README.md)
-# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
-  * [Datacenter to datacenter replication](Security/DC2DC/README.md)
-#
-* [Architecture](Architecture/README.md)
-  * [Write-ahead log](Architecture/WriteAheadLog.md)
-  * [Storage Engines](Architecture/StorageEngines.md)
-#  * [Server Internals](Architecture/ServerInternals.md)
+## OTHER
 #
 * [Release notes](ReleaseNotes/README.md)
   * [Incompatible changes in 3.4](ReleaseNotes/UpgradingChanges34.md)
@@ -305,6 +311,5 @@
         * [Delivering HTML Pages](Appendix/Deprecated/Actions/HtmlExample.md)
         * [Json Objects](Appendix/Deprecated/Actions/JsonExample.md)
         * [Modifying](Appendix/Deprecated/Actions/Modifying.md)
-  # Link to here from arangosh, actions, foxx, transactions
   * [Error codes and meanings](Appendix/ErrorCodes.md)
   * [Glossary](Appendix/Glossary.md)
