@@ -1,6 +1,20 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* internal issue #1726: supervision failed to remove multiple servers
+  from health monitoring at once.
+
+
+v3.3.3 (2018-01-26)
+-------------------
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
 * fix timeout issues in replication client expiration
 
 * added missing edge filter to neighbors-only traversals
@@ -29,9 +43,8 @@ v3.3.4 (XXXX-XX-XX)
 * fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
          to a javascript file.
 
-* fixed issue #4395: If your foxx app includes an `APP` folder it got accidently removed by selfhealing
-         this is not the case anymore.
-
+* fixed issue #4395: If your foxx app includes an `APP` folder it got
+         accidently removed by selfhealing this is not the case anymore.
 
 v3.3.3 (2018-01-16)
 -------------------

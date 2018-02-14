@@ -73,7 +73,7 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
 WalAccessResult RocksDBWalAccess::openTransactions(
     uint64_t tickStart, uint64_t tickEnd, WalAccess::Filter const& filter,
     TransactionCallback const&) const {
-  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0);
+  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0, 0);
 }
 
 /// WAL parser. Premise of this code is that transactions
@@ -667,9 +667,10 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
   
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  uint64_t firstTick = UINT64_MAX;  // first tick actually read
-  uint64_t lastTick = tickStart;    // lastTick at start of a write batch
-  uint64_t lastWrittenTick = 0;     // lastTick at the end of a write batch
+  uint64_t firstTick = UINT64_MAX;      // first tick actually read
+  uint64_t lastTick = tickStart;        // lastTick at start of a write batch
+  uint64_t lastScannedTick = tickStart; // last tick we looked at
+  uint64_t lastWrittenTick = 0;         // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
   auto handler = std::make_unique<MyWALParser>(filter, func);
@@ -682,7 +683,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
     return WalAccessResult(r.errorNumber(), tickStart == latestTick,
-                           0, latestTick);
+                           0, 0, latestTick);
   }
 
   if (chunkSize < 16384) {
@@ -707,6 +708,9 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     // record the first tick we are actually considering
     if (firstTick == UINT64_MAX) {
       firstTick = batch.sequence;
+    }
+    if (batch.sequence <= tickEnd) {
+      lastScannedTick = batch.sequence;
     }
     
     //LOG_TOPIC(INFO, Logger::FIXME) << "found batch-seq: " << batch.sequence;
@@ -733,7 +737,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   }
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
-                         lastWrittenTick, latestTick);
+                         lastWrittenTick, lastScannedTick, latestTick);
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }

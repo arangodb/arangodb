@@ -82,7 +82,13 @@ Result executeTransaction(
 
   if (tryCatch.HasCaught()) {
     //we have some javascript error that is not an arangoError
-    std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
+    std::string msg;
+    if (!tryCatch.Message().IsEmpty()) {
+      v8::String::Utf8Value m(tryCatch.Message()->Get());
+      if (*m != nullptr) {
+        msg = *m;
+      }
+    }
     rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
   }
 
@@ -287,12 +293,20 @@ Result executeTransactionJS(
 
     action = v8::Local<v8::Function>::Cast(function);
     if (tryCatch.HasCaught()) {
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.Message()->Get());
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
+      if (!tryCatch.Message().IsEmpty()) {
+        v8::String::Utf8Value tryCatchMessage(tryCatch.Message()->Get());
+        if (*tryCatchMessage != nullptr) {
+          actionError += " - ";
+          actionError += *tryCatchMessage;
+        }
+      }
+      v8::String::Utf8Value tryCatchStackTrace(tryCatch.StackTrace());
+      if (*tryCatchStackTrace != nullptr) {
+        actionError += " - ";
+        actionError += *tryCatchStackTrace;
+      }
       rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
-      tryCatch.Reset(); //reset as we have transferd the error message into the Result
+      tryCatch.Reset(); //reset as we have transferred the error message into the Result
       return rv;
     }
     action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionSource"));

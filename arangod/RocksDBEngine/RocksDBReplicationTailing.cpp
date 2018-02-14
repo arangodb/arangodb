@@ -167,6 +167,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCid)));
+          std::string const& cname = nameFromCid(_currentCid);
+          if (!cname.empty()) {
+            _builder.add("cname", VPackValue(cname));
+          }
           _builder.add("data", indexSlice);
           _builder.close();
         }
@@ -602,6 +606,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   TRI_ASSERT(tickStart <= tickEnd);
   uint64_t lastTick = tickStart;// generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;// contains end tick of last wb
+  uint64_t lastScannedTick = tickStart;
   
   //LOG_TOPIC(WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   //tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
@@ -636,6 +641,11 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     
     rocksdb::BatchResult batch = iterator->GetBatch();
     TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
+
+    if (batch.sequence <= tickEnd) {
+      lastScannedTick = batch.sequence;
+    }
+
     if (!minTickIncluded && batch.sequence <= tickStart &&
         batch.sequence <= tickEnd) {
       minTickIncluded = true;
@@ -668,6 +678,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   }
 
   RocksDBReplicationResult result(TRI_ERROR_NO_ERROR, lastWrittenTick);
+  result.lastScannedTick(lastScannedTick);
   if (!s.ok()) {  // TODO do something?
     result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }

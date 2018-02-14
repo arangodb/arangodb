@@ -14,6 +14,7 @@ add_executable(
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
+  Agency/SupervisionTest.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
