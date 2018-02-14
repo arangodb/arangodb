@@ -816,9 +816,9 @@ std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
   } \
   TRI_DEFER(FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready));
 #else
-#define FINALIZE_SUBTREE(n) ()
-#define FINALIZE_SUBTREE_CONDITIONAL(n, b) ()
-#define TEMPORARILY_UNLOCK_NODE(n) ()
+#define FINALIZE_SUBTREE(n) while (0) { (void) (n); } do { } while (0)
+#define FINALIZE_SUBTREE_CONDITIONAL(n, b) while (0) { (void) (n); } do { } while (0)
+#define TEMPORARILY_UNLOCK_NODE(n) while (0) { (void) (n); } do { } while (0)
 #endif
 
 
