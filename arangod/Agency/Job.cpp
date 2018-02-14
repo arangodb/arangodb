@@ -292,7 +292,7 @@ std::vector<Job::shard_t> Job::clones(
     auto const otherCollection = colptr.first;
 
     if (otherCollection != collection &&
-        col.hasAsSlice("distributeShardsLike").second &&
+        col.has("distributeShardsLike") && // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
       ret.emplace_back(otherCollection, sortedShardList(col.hasAsNode("shards").first)[steps]);
     }
