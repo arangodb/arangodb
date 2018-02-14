@@ -1730,7 +1730,8 @@ static void JS_KeyspaceDrop(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auto it = h->data.find(name);
 
     if (it == h->data.end()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "Keyspace does not exists");
     }
 
     delete (*it).second;

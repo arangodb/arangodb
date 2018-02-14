@@ -36,6 +36,7 @@ const users = require('@arangodb/users');
 const helper = require('@arangodb/user-helper');
 const namePrefix = helper.namePrefix;
 const rightLevels = helper.rightLevels;
+const errors = require('@arangodb').errors;
 
 const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
@@ -119,12 +120,14 @@ describe('User Rights Management', () => {
                 // User needs rw on _system
                 users.grantDatabase(testUser, '_system', 'rw');
               } else {
+                let didGrant = false;
                 try {
                   users.grantDatabase(testUser, '_system', 'rw');
-                  expect(false).to.equal(true, `${name} was able to update a user with insufficient rights.`);
+                  didGrant = true;
                 } catch (e) {
-                  //print(e);
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                 }
+                expect(didGrant).to.equal(false, `${name} was able to update a user with insufficient rights.`);
               }
             });
           });
