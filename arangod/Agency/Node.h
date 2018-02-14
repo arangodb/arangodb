@@ -80,10 +80,10 @@ class Store;
 /// optimisation by avoiding to build it before necessary.
 class Node {
  public:
-  // @brief Slash-segmented path
+  /// @brief Slash-segmented path
   typedef std::vector<std::string> PathType;
 
-  // @brief Child nodes
+  /// @brief Child nodes
   typedef std::unordered_map<std::string, std::shared_ptr<Node>> Children;
 
   /// @brief Construct with name
@@ -246,12 +246,38 @@ class Node {
   /// @brief Is double
   bool isDouble() const;
 
-  /// @brief Is double
+  /// @brief accessor to Node object
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Node const &, bool> hasAsNode(std::string const &) const;
+
+  /// @brief accessor to Node's Slice value
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Slice, bool> hasAsSlice(std::string const &) const;
+
+  /// @brief accessor to Node's std::string value
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<std::string, bool> hasAsString(std::string const &) const;
+
+  /// @brief accessor to Node's _children
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Children, bool> hasAsChildren(std::string const &) const;
+
+  /// @brief accessor to Node then write to builder
+  /// @return  second is true if url exists, first is ignored
+  std::pair<void *, bool> hasAsBuilder(std::string const &, Builder&, bool showHidden = false) const;
+
+  /// @brief accessor to Node's value as a Builder object
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<Builder, bool> hasAsBuilder(std::string const &) const;
+
+//private:
+  /// @brief Is string
   bool isString() const;
 
   /// @brief Get string value (throws if type NODE or if conversion fails)
   std::string getString() const;
 
+public:
   /// @brief Get array value
   Slice getArray() const;
 
