@@ -14,7 +14,7 @@
       'latestVersion': 'Unknown Version',
       'legacy': false,
       'categories': 'No category',
-      'thumbnailUrl': 'https://www.arangodb.com/wp-content/uploads/2013/04/ArangoDB-Foxx-logo-bg.png'
+      'defaultThumbnailUrl': 'img/ArangoDB-Foxx-logo-bg.png'
     },
 
     httpGetAsync: function (theUrl, callback, callbackscnd) {

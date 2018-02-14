@@ -20,11 +20,16 @@
     },
 
     events: {
-      'click #install-service': 'installService'
+      'click #installService': 'installService'
     },
 
     installService: function () {
       arangoHelper.createMountPointModal(this.installFoxxFromStore.bind(this));
+    },
+
+    installCallback: function (result) {
+      window.App.navigate('#services', {trigger: true});
+      window.App.applicationsView.installCallback(result);
     },
 
     installFoxxFromStore: function (e) {
@@ -40,14 +45,12 @@
           }
         }
         if (flag !== undefined) {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
+          this.collection.installFromStore({name: this.model.get('name'), version: this.model.get('latestVersion')}, mount, this.installCallback.bind(this), flag);
         } else {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
+          this.collection.installFromStore({name: this.model.get('name'), version: this.model.get('latestVersion')}, mount, this.installCallback.bind(this));
         }
         window.modalView.hide();
-        arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
-        this.toInstall = null;
-        this.version = null;
+        arangoHelper.arangoNotification('Services', 'Installing ' + this.model.get('name') + '.');
       }
     },
 
@@ -59,11 +62,20 @@
           if (error) {
             arangoHelper.arangoError('DB', 'Could not get current database');
           } else {
+            var thumbnailUrl = this.model.get('defaultThumbnailUrl');
+            if (this.model.get('manifest')) {
+              try {
+                if (this.model.get('manifest').thumbnail) {
+                  thumbnailUrl = this.model.getThumbnailUrl();
+                }
+              } catch (ignore) {
+              }
+            }
             $(this.el).html(this.template.render({
               app: this.model,
               baseUrl: arangoHelper.databaseUrl('', db),
               installed: true,
-              image: this.model.getThumbnailUrl()
+              image: thumbnailUrl
             }));
             this.model.fetchReadme(self.renderReadme);
           }
@@ -81,7 +93,6 @@
     },
 
     renderReadme: function (readme) {
-      console.log(readme);
       $('#readme').html('<pre>' + readme + '</pre>');
     },
 

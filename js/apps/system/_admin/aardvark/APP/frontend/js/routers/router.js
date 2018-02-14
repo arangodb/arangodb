@@ -566,7 +566,8 @@
           this.storeDetailView.remove();
         }
         this.storeDetailView = new window.StoreDetailView({
-          model: this.foxxRepo.get(decodeURIComponent(mount))
+          model: this.foxxRepo.get(decodeURIComponent(mount)),
+          collection: this.foxxList
         });
 
         this.storeDetailView.model = this.foxxRepo.get(decodeURIComponent(mount));

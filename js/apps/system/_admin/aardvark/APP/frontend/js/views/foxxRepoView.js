@@ -15,7 +15,9 @@
 
     events: {
       'click .installFoxx': 'installStoreService',
-      'click .paddingBox': 'goToServiceDetail'
+      'click .borderBox': 'goToServiceDetail',
+      'click img': 'goToServiceDetail',
+      'click .foxxDesc': 'goToServiceDetail'
     },
 
     initialize: function () {
@@ -29,8 +31,18 @@
 
     render: function () {
       this.model.fetchThumbnail(function () {
+        var thumbnailUrl = this.model.get('defaultThumbnailUrl');
+        if (this.model.get('manifest')) {
+          try {
+            if (this.model.get('manifest').thumbnail) {
+              thumbnailUrl = this.model.getThumbnailUrl();
+            }
+          } catch (ignore) {
+          }
+        }
         $(this.el).html(this.template.render({
-          model: this.model.toJSON()
+          model: this.model.toJSON(),
+          thumbnail: thumbnailUrl
         }));
       }.bind(this));
       $(this.el).attr('category', 'general');
@@ -38,7 +50,7 @@
       return $(this.el);
     },
 
-    goToServiceDetail: function () {
+    goToServiceDetail: function (e) {
       window.App.navigate('store/' + encodeURIComponent(this.model.get('name')), {trigger: true});
     },
 

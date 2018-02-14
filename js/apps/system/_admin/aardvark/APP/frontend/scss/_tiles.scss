@@ -517,6 +517,7 @@ div {
     img.icon {
       float: left;
       height: 50px;
+      image-rendering: -webkit-optimize-contrast;
       margin-left: 10px;
       margin-top: -90px;
       padding: 0;

@@ -17,7 +17,6 @@
       _.each(response, function (foxx) {
         // hide legacy applications
         if (!foxx.legacy) {
-          console.log(foxx);
           foxxes.push(foxx);
         }
         // }

@@ -102,7 +102,6 @@ window.ArangoUsers = Backbone.Collection.extend({
   loadUserSettings: function (callback) {
     var self = this;
 
-    console.log(frontendConfig.authenticationEnabled);
     var url;
     if (!frontendConfig.authenticationEnabled) {
       url = arangoHelper.databaseUrl('/_api/user/root');
