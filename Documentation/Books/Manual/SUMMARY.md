@@ -14,7 +14,7 @@
   * [Authentication](GettingStarted/Authentication.md)
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;doc/Manual;;/ 
+#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
@@ -154,7 +154,7 @@
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 #
 * [ArangoDB Programs](Programs/README.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;doc/Manual;;/ 
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/options.md)
     * [Security](Programs/Starter/security.md)
