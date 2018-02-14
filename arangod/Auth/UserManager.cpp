@@ -191,6 +191,7 @@ void auth::UserManager::loadFromDB() {
         }
 
         _outdated = false;
+        // cannot hold _userCacheLock while  invalidating token cache
         AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
       }
     }
@@ -446,7 +447,7 @@ Result auth::UserManager::enumerateUsers(
     }
   }
 
-  // cannot invalidate token cache while holding _userCache write lock
+  // cannot hold _userCacheLock while  invalidating token cache
   if (!toUpdate.empty()) {
     AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
     reloadAllUsers();  // trigger auth reload in cluster
@@ -479,9 +480,9 @@ Result auth::UserManager::updateUser(std::string const& username,
     return r;
   }
   r = storeUserInternal(user, /*replace*/ true);
-  // cannot invalidate token cache while holding _userCache write lock
+  
+  // cannot hold _userCacheLock while  invalidating token cache
   writeGuard.unlock();
-
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
@@ -581,13 +582,13 @@ Result auth::UserManager::removeUser(std::string const& user) {
   if (oldEntry.source() != auth::Source::LOCAL) {
     return TRI_ERROR_USER_EXTERNAL;
   }
-
   Result res = RemoveUserInternal(oldEntry);
   if (res.ok()) {
     _userCache.erase(it);
   }
 
-  // cannot invalidate token cache while holding _userCache write lock
+  // cannot hold _userCacheLock while  invalidating token cache
+  writeGuard.unlock();
   AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   reloadAllUsers();  // trigger auth reload in cluster
 
@@ -618,7 +619,7 @@ Result auth::UserManager::removeAllUsers() {
     _outdated = true;
   }
 
-  // cannot invalidate token cache while holding _userCache write lock
+  // cannot hold _userCacheLock while  invalidating token cache
   AuthenticationFeature::instance()->tokenCache()->invalidateBasicCache();
   reloadAllUsers();
   return res;
