@@ -314,6 +314,18 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   return name;
 }
 
+std::string CollectionNameResolver::getViewNameCluster(
+    TRI_voc_cid_t cid
+) const {
+  if (!ServerState::isClusterRole(_serverRole)) {
+    // This handles the case of a standalone server
+    return _vocbase->viewName(cid);
+  }
+
+  // FIXME not supported
+  return StaticStrings::Empty;
+}
+
 bool CollectionNameResolver::visitCollections(
     std::function<bool(TRI_voc_cid_t)> const& visitor, TRI_voc_cid_t cid
 ) const {

@@ -121,9 +121,16 @@ class CollectionNameResolver {
   std::string getCollectionName(std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a cluster-wide view name for a cluster-wide view id
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getViewNameCluster(TRI_voc_cid_t cid) const;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that map to the specified 'cid'
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
+
   bool visitCollections(
     std::function<bool(TRI_voc_cid_t)> const& visitor, TRI_voc_cid_t cid
   ) const;

@@ -141,9 +141,22 @@ void IndexBlock::executeExpressions() {
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    _condition->getMember(toReplace->orMember)
-        ->getMember(toReplace->andMember)
-        ->changeMember(toReplace->operatorMember, evaluatedNode);
+    auto oldCondition = _condition;
+    auto newCondition = ast->shallowCopyForModify(oldCondition);
+    _condition = newCondition;
+    TRI_DEFER(FINALIZE_SUBTREE(_condition));
+
+    auto oldOrMember = _condition->getMember(toReplace->orMember);
+    auto orMember = ast->shallowCopyForModify(oldOrMember);
+    TRI_DEFER(FINALIZE_SUBTREE(orMember));
+    newCondition->changeMember(toReplace->orMember, orMember);
+
+    auto oldAndMember = orMember->getMember(toReplace->andMember);
+    auto andMember = ast->shallowCopyForModify(oldAndMember);
+    TRI_DEFER(FINALIZE_SUBTREE(andMember));
+    orMember->changeMember(toReplace->andMember, andMember);
+
+    andMember->changeMember(toReplace->operatorMember, evaluatedNode);
   }
   DEBUG_END_BLOCK();
 }
@@ -402,7 +415,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
-  
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -424,7 +437,7 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-    
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -443,10 +456,10 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
- 
+
 
     // TODO: optimize for the case when produceResult() is false
-    // in this case we do not need to fetch the documents at all 
+    // in this case we do not need to fetch the documents at all
     bool res = _cursor->nextDocument(callback, atMost - _returned);
 
     if (res) {
@@ -522,7 +535,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           return;
         }
       }
-      
+
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   } else {
@@ -568,7 +581,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
-   
+
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)
