@@ -111,11 +111,15 @@ public:
   VPackSlice properties() const;
   
 private:
-  /// @brief Action description
-  std::map<std::string, std::string> const _description;
 
-  /// @brief Properties passed on to actual action
+  /// Note: members are const. No thread safety guards needed.
+  
+  /** @brief discriminatory properties */
+  std::map<std::string, std::string> const _description; 
+
+  /** @brief non-discriminatory properties */
   VPackBuilder const _properties;
+  
 };
 
 inline std::ostream& operator<< (std::ostream& o, ActionDescription const& d) {
