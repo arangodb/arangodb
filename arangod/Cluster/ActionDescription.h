@@ -56,31 +56,45 @@ struct ActionDescription {
   
 public:
   
-  /// @brief Construct with properties
-  ActionDescription(std::map<std::string, std::string> const&,
-                    VPackBuilder const& = VPackBuilder());
+  /**
+   * @brief Construct with properties
+   * @param  desc  Descriminatory properties, which are considered for hash
+   * @param  supp  Non discriminatory properties
+   */
+  ActionDescription(std::map<std::string, std::string> const& desc,
+                    VPackBuilder const& suppl = VPackBuilder());
 
-  /// @brief Clean up
+  /**
+   * @brief Clean up
+   */ 
   virtual ~ActionDescription();
 
-  /// @brief Equality
-  bool operator== (ActionDescription const&) const noexcept;
+  /**
+   * @brief Check equality (only _description considered)
+   * @param  other  Other descriptor
+   */
+  bool operator== (ActionDescription const& other) const noexcept;
 
-  /// @brief Hash function
-  std::size_t hash() const;
+  /**
+   * @brief Calculate hash of _description as concatenation
+   * @param  other  Other descriptor
+   */
+  std::size_t hash() const noexcept;
 
   /// @brief Name of action
-  std::string name() const;
+  std::string name() const noexcept;
 
-  /// @brief Check for a description key
-  bool has(std::string const& p) const noexcept;
+  /**
+   * @brief Check if key exists in discrimantory container
+   * @param  key   Key to lookup
+   * @return       true if key is found
+   */
+  bool has(std::string const& keu) const noexcept;
 
   /**
    * @brief Get a string value from description
-   *
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have an element
-   *               with the specified key
+   * @exception    std::out_of_range if the we do not have this key in discrimatory container
    * @return       Value to specified key
    */
   std::string get(std::string const& key) const;
@@ -94,21 +108,32 @@ public:
    */
   Result get(std::string const& key, std::string& value) const noexcept;
 
-  /// @brief Print this action to ostream
+  /**
+   * @brief Dump to JSON(vpack)
+   * @return       JSON Velocypack of all paramters
+   */
   VPackBuilder toVelocyPack() const;
 
-  /// @brief Print this action to ostream
+  /**
+   * @brief Dump to JSON(string)
+   * @return       JSON string of all paramters
+   */
   std::string toJson() const;
 
-  /// @brief Print this action to ostream
-  std::ostream& print(std::ostream&) const;
+  /**
+   * @brief Dump to JSON(output stream)
+   * @param  os    Output stream reference
+   * @return       Output stream reference
+   */
+  std::ostream& print(std::ostream& os) const;
 
   /**
-   * @brief Hand out a pointer to our roperties
-   *
-   * @return           pointer to our roperties
+   * @brief Get non discrimantory properties
+   *            Get non discrimantory properties.
+   *            This function does not throw as builder is always when here.
+   * @return    Non discriminatory properties
    */
-  VPackSlice properties() const;
+  VPackSlice properties() constm noexcept;
   
 private:
 

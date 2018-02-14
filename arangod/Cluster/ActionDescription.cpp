@@ -32,7 +32,9 @@ using namespace arangodb::maintenance;
 /// @brief ctor
 ActionDescription::ActionDescription(
   std::map<std::string, std::string> const& d, VPackBuilder const& p) :
-  _description(d), _properties(p) {}
+  _description(d), _properties(p) {
+  TRI_ASSERT(d.find(NAME) != d.end());
+}
 
 /// @brief Default dtor
 ActionDescription::~ActionDescription() {}
@@ -60,7 +62,7 @@ Result ActionDescription::get(std::string const& p, std::string& r) const noexce
 }
 
 /// @brief Hash function
-std::size_t ActionDescription::hash() const {
+std::size_t ActionDescription::hash() const noexcept {
   std::string propstr;
   for (auto const& i : _description) {
     propstr += i.first + i.second;
@@ -74,8 +76,8 @@ bool ActionDescription::operator==(
   return _description==other._description;
 }
 
-/// @brief Get action name
-std::string ActionDescription::name() const {
+/// @brief Get action name. Cannot throw. See constructor
+std::string const& ActionDescription::name() const noexcept {
   return _description.at("name");
 }
 
@@ -99,7 +101,8 @@ std::string ActionDescription::toJson() const {
 }
 
 
-VPackSlice ActionDescription::properties() const {
+/// @brief non discrimantory properties.
+VPackSlice ActionDescription::properties() const noexcept {
   return _properties.slice();
 }
 
