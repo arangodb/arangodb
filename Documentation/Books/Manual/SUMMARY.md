@@ -155,7 +155,7 @@
 #
 * [ArangoDB Programs](Programs/README.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [Starter](Programs/Starter/README.md)
+  * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/options.md)
     * [Security](Programs/Starter/security.md)
 #
