@@ -44,7 +44,7 @@ const colName = `${namePrefix}Collection`;
 const rightLevels = ['rw', 'ro', 'none'];
 
 const userSet = new Set();
-const roleSet = new Set();
+//const roleSet = new Set();
 const systemLevel = {};
 const dbLevel = {};
 const colLevel = {};
@@ -221,32 +221,33 @@ exports.generateAllUsers = () => {
       for (let col of rightLevels) {
         let name = `${namePrefix}_${sys}_${db}_${col}`;
         let password = '';
-        let role;
 
         if (ldapEnabled) {
-          role = `:role:${namePrefix}_${sys}_${db}_${col}`;
-          users.save(role, null, true);
-          roleSet.add({
-            role: role,
-            user: name,
-            password: password
-          });
-        } else {
-          users.save(name, password, true);
-        }
-        userSet.add(name);
+          users.save(":role:" + name, password, true);
+          users.grantDatabase(":role:" + name, '_system', sys);
+          users.grantDatabase(":role:" + name, dbName, db);
+          users.grantCollection(":role:" + name, dbName, colName, col);
 
-        if (ldapEnabled) {
-          users.grantDatabase(role, '_system', sys);
-          users.grantDatabase(':role:adminrole', '_system', sys);
-          print('LOGIN TO USER: ' + name);
           // login to ldap user to update permission roles
           exports.loginUser(name);
           // login back to administrator
           exports.loginUser('root');
         } else {
+          users.save(name, password, true);
           users.grantDatabase(name, '_system', sys);
+          users.grantDatabase(name, dbName, db);
+          users.grantCollection(name, dbName, colName, col);
         }
+        userSet.add(name);
+
+        /*if (ldapEnabled) {
+          //users.grantDatabase(':role:adminrole', '_system', sys);
+          print('LOGIN TO USER: ' + name);
+          // login to ldap user to update permission roles
+          exports.loginUser(name);
+          // login back to administrator
+          exports.loginUser('root');
+        }*/
 
         let sysPerm = users.permission(name, '_system');
         if (sys !== sysPerm) {
@@ -255,16 +256,14 @@ exports.generateAllUsers = () => {
         }
         systemLevel[sys].add(name);
 
-        if (ldapEnabled) {
-          users.grantDatabase(role, dbName, db);
+        /*if (ldapEnabled) {
           users.grantDatabase(':role:adminrole', dbName, db);
           // login to ldap user to update permission roles
           exports.loginUser(name);
           // login back to administrator
           exports.loginUser('root');
         } else {
-          users.grantDatabase(name, dbName, db);
-        }
+        }*/
         let dbPerm = users.permission(name, dbName);
         if (db !== dbPerm) {
           internal.print('Wrong db permissions for user ' + name);
@@ -272,16 +271,14 @@ exports.generateAllUsers = () => {
         }
         dbLevel[db].add(name);
 
-        if (ldapEnabled) {
-          users.grantCollection(role, dbName, colName, col);
+        /*if (ldapEnabled) {
           users.grantCollection(':role:adminrole', dbName, colName, col);
           // login to ldap user to update permission roles
           exports.loginUser(name);
           // login back to administrator
           exports.loginUser('root');
         } else {
-          users.grantCollection(name, dbName, colName, col);
-        }
+        }*/
         let colPerm = users.permission(name, dbName, colName);
         if (col !== colPerm) {
           internal.print('Wrong collection permissions for user ' + name);
@@ -297,10 +294,10 @@ exports.systemLevel = systemLevel;
 exports.dbLevel = dbLevel;
 exports.colLevel = colLevel;
 exports.userSet = userSet;
-exports.roleSet = roleSet;
+//exports.roleSet = roleSet;
 exports.namePrefix = namePrefix;
 exports.dbName = dbName;
 exports.colName = colName;
 exports.rightLevels = rightLevels;
 exports.userCount = 3 * 3 * 3;
-exports.roleCount = 3 * 3 * 3;
+//exports.roleCount = 3 * 3 * 3;

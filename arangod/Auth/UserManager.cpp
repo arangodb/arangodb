@@ -265,7 +265,13 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       }
 #ifdef USE_ENTERPRISE
       if (StringUtils::isPrefix(entry.username(), ":role:")) {
-        applyRolesToAllUsers(); // we changed a role
+        for (UserMap::value_type& pair : _userCache) {
+          if (pair.second.source() != auth::Source::LOCAL &&
+              pair.second.roles().find(entry.username()) != pair.second.roles().end()) {
+            pair.second._dbAccess.clear();
+            applyRoles(pair.second);
+          }
+        }
       }
 #endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {  // user was outdated

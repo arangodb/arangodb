@@ -60,7 +60,7 @@ describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  if (!helper.isLdapEnabledExternal()) {
+  //if (!helper.isLdapEnabledExternal()) {
     it('should check if all users are created', () => {
       helper.switchUser('root', '_system');
       expect(userSet.size).to.equal(helper.userCount);
@@ -68,8 +68,8 @@ describe('User Rights Management', () => {
         expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
       }
     });
-  }
-  if (helper.isLdapEnabledExternal()) {
+  //}
+  /*if (helper.isLdapEnabledExternal()) {
     it('should check if all roles are created', () => {
       helper.switchUser('root', '_system');
       expect(roleSet.size).to.equal(helper.roleCount);
@@ -77,7 +77,7 @@ describe('User Rights Management', () => {
         expect(users.document(role.role), `Could not find role: ${role.role}`).to.not.be.undefined;
       }
     });
-  }
+  }*/
 
   it('should test rights for', () => {
     for (let name of userSet) {
@@ -144,13 +144,14 @@ describe('User Rights Management', () => {
                       expect(false).to.equal(true, 'Precondition failed, document already inserted.');
                     } catch (e) {}
                   }
+                  let saveSuccess = false;
                   try {
                     let col = db._collection(colName);
                     col.save({
                       _key: '123',
                       foo: 'bar'
                     });
-                    expect(true).to.equal(false, `${name} created a document with insufficient rights.`);
+                    saveSuccess = true;
                   } catch (e) {
                     if (hasReadAccess) {
                       expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
@@ -158,6 +159,7 @@ describe('User Rights Management', () => {
                       expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                     }
                   }
+                  expect(saveSuccess).to.equal(false, `${name} created a document with insufficient rights.`);
 
                   if (hasReadAccess) {
                     let col = db._collection(colName);
