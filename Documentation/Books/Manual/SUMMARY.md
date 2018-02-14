@@ -89,7 +89,7 @@
 #
 * [Architecture](Architecture/README.md)
   * [Modes](Architecture/ServerModes.md)
-  * [Replication](Administration/Replication/README.md)
+  * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
 #
@@ -218,12 +218,12 @@
   * [Auditing](Administration/Auditing/README.md)
     * [Configuration](Administration/Auditing/AuditConfiguration.md)
     * [Events](Administration/Auditing/AuditEvents.md)  
-  * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md) 
+  * [Satellite Collections](Administration/Satellites.md) 
   * [Master/Slave](Administration/MasterSlave/README.md)
-    * [Components](Administration/Replication/Asynchronous/Components.md)
-    * [Per-Database Setup](Administration/Replication/Asynchronous/DatabaseSetup.md)
-    * [Server-Level Setup](Administration/Replication/Asynchronous/ServerLevelSetup.md)
-    * [Syncing Collections](Administration/Replication/Asynchronous/SyncingCollections.md)
+    * [Components](Administration/MasterSlave/Components.md)
+    * [Per-Database Setup](Administration/MasterSlave/DatabaseSetup.md)
+    * [Server-Level Setup](Administration/MasterSlave/ServerLevelSetup.md)
+    * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)  
   * [Cluster](Administration/Cluster/README.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ 
