@@ -212,24 +212,24 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   std::vector<std::string> ret;
 
   // Get servers from plan
-  Node::Children const& dbservers = snapshot(plannedServers).children();
+  Node::Children const& dbservers = snapshot.hasAsChildren(plannedServers).first;
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
 
-  // Remove cleaned servers from ist
-  try {
+  // Remove cleaned servers from list (test first to avoid warning log
+  if (snapshot.has(cleanedPrefix)) try {
     for (auto const& srv :
-           VPackArrayIterator(snapshot(cleanedPrefix).slice())) {
+           VPackArrayIterator(snapshot.hasAsSlice(cleanedPrefix).first)) {
       ret.erase(
         std::remove(ret.begin(), ret.end(), srv.copyString()),
         ret.end());
     }
   } catch (...) {}
 
-  // Remove failed servers from list
-  try {
-    for (auto const& srv : snapshot(failedServersPrefix).children()) {
+  // Remove failed servers from list (test first to avoid warning log)
+  if (snapshot.has(failedServersPrefix)) try {
+    for (auto const& srv : snapshot.hasAsChildren(failedServersPrefix).first) {
       ret.erase(
         std::remove(ret.begin(), ret.end(), srv.first), ret.end());
     }
@@ -286,7 +286,7 @@ std::vector<Job::shard_t> Job::clones(
   auto steps = std::distance(
     myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
-  for (const auto& colptr : snapshot(databasePath).children()) { // collections
+  for (const auto& colptr : snapshot.hasAsChildren(databasePath).first) { // collections
 
     auto const col = *colptr.second;
     auto const otherCollection = colptr.first;
@@ -369,7 +369,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
 }
 
 std::string Job::uuidLookup (std::string const& shortID) {
-  for (auto const& uuid : _snapshot(mapUniqueToShortID).children()) {
+  for (auto const& uuid : _snapshot.hasAsChildren(mapUniqueToShortID).first) {
     if ((*uuid.second)("ShortName").getString() == shortID) {
       return uuid.first;
     }
@@ -391,13 +391,14 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   if (!snapshot.has(pendingPrefix + jobId)) {
     return false;
   }
-  auto const& job = snapshot(pendingPrefix + jobId);
-  if (!job.has("type")) {
+  auto const& job = snapshot.hasAsNode(pendingPrefix + jobId);
+  if (!job.second || !job.first.has("type")) {
     return false;
   }
-  auto const& type = job("type").getString();
+  auto const& tmp_type = job.first.hasAsString("type");
 
-  if (type == "failedServer" || type == "failedLeader") {
+  std::string type = tmp_type.first;
+  if (!tmp_type.second || type == "failedServer" || type == "failedLeader") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {
@@ -422,8 +423,8 @@ void Job::doForAllShards(Node const& snapshot,
     std::string curPath = curColPrefix + database + "/" + collection
                           + "/" + shard + "/servers";
 
-		Slice plan = snapshot(planPath).slice();
-		Slice current = snapshot(curPath).slice();
+		Slice plan = snapshot.hasAsSlice(planPath).first;
+		Slice current = snapshot.hasAsSlice(curPath).first;
 
     worker(plan, current, planPath);
   }

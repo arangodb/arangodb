@@ -250,9 +250,17 @@ class Node {
   /// @return  second is true if url exists, first populated if second true
   std::pair<Node const &, bool> hasAsNode(std::string const &) const;
 
+  /// @brief accessor to Node's type
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<NodeType, bool> hasAsType(std::string const &) const;
+
   /// @brief accessor to Node's Slice value
   /// @return  second is true if url exists, first populated if second true
   std::pair<Slice, bool> hasAsSlice(std::string const &) const;
+
+  /// @brief accessor to Node's uint64_t value
+  /// @return  second is true if url exists, first populated if second true
+  std::pair<uint64_t, bool> hasAsUInt(std::string const &) const;
 
   /// @brief accessor to Node's std::string value
   /// @return  second is true if url exists, first populated if second true

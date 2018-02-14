@@ -934,10 +934,30 @@ std::pair<Node const &, bool> Node::hasAsNode (
   } catch (...) {
     // do nothing, fail_pair second already false
     LOG_TOPIC(WARN, Logger::SUPERVISION)
-      << "hasAsSlice had exception processing " << url;
+      << "hasAsNode had exception processing " << url;
   } // catch
 
   return fail_pair;
+} // hasAsNode
+
+
+std::pair<NodeType, bool> Node::hasAsType (
+  std::string const & url) const {
+
+  std::pair<NodeType, bool> ret_pair={NODE, false};
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first = target.type();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, fail_pair second already false
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "hasAsType had exception processing " << url;
+  } // catch
+
+  return ret_pair;
 } // hasAsNode
 
 
@@ -947,7 +967,6 @@ std::pair<Slice, bool> Node::hasAsSlice(
   // *this is bogus initializer
   std::pair<Slice, bool> ret_pair =
     {arangodb::basics::VelocyPackHelper::EmptyObjectValue(), false};
-//  ret_pair.second = false;
 
   // retrieve node, throws if does not exist
   try {
@@ -962,6 +981,25 @@ std::pair<Slice, bool> Node::hasAsSlice(
 
   return ret_pair;
 } // hasAsSlice
+
+
+std::pair<uint64_t, bool> Node::hasAsUInt (
+  std::string const & url) const {
+  std::pair<uint64_t, bool> ret_pair(0, false);
+
+  // retrieve node, throws if does not exist
+  try {
+    Node const & target(operator()(url));
+    ret_pair.first=target.getUInt();
+    ret_pair.second = true;
+  } catch (...) {
+    // do nothing, ret_pair second already false
+    LOG_TOPIC(WARN, Logger::SUPERVISION)
+      << "hasAsUInt had exception processing " << url;
+  } // catch
+
+  return ret_pair;
+} // hasAsUInt
 
 
 std::pair<std::string, bool> Node::hasAsString (
