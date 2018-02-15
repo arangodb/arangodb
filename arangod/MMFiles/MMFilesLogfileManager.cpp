@@ -122,7 +122,6 @@ MMFilesLogfileManager::MMFilesLogfileManager(ApplicationServer* server)
   startsAfter("Database");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
-  startsAfter("FeatureCache");
   startsAfter("MMFilesEngine");
   
   startsBefore("Aql");
