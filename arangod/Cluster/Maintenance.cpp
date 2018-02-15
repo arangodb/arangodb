@@ -26,8 +26,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Cluster/ActionRegistry.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -36,8 +39,10 @@
 
 #include <algorithm>
 
+using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::maintenance;
+using namespace arangodb::methods;
 
 static std::vector<std::string> cmp {
   "journalSize", "waitForSync", "doCompact", "indexBuckets"};
@@ -118,12 +123,70 @@ VPackBuilder compareIndexes(
 }
 
 
+void handleLeadership(
+  std::string const& database, std::string const& collection, 
+  VPackSlice const& lcol, std::string const& leaderId, bool shouldBeLeader) {
+  
+  auto vocbase = Databases::lookup(database);
+  if (vocbase == nullptr) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "database " << database << " no longer exists"; 
+  }
+
+  Result found = methods::Collections::lookup(
+    vocbase, collection, [&](LogicalCollection* coll) {
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "Updating local collection " + collection;
+      auto& followers = coll->followers();
+      auto const& localLeader = lcol.get(LEADER).copyString();
+      if (shouldBeLeader) {
+        if (!localLeader.empty()) {  // assume leadership
+          followers->setTheLeader(std::string());
+          followers->clear();
+        } else {
+          // If someone (the Supervision most likely) has thrown
+          // out a follower from the plan, then the leader
+          // will not notice until it fails to replicate an operation
+          // to the old follower. This here is to drop such a follower
+          // from the local list of followers. Will be reported
+          // to Current in due course. This is not needed for 
+          // correctness but is a performance optimization.
+        }  
+      } else {  // !shouldBeLeader
+        if (localLeader.empty()) {
+          // Note that the following does not delete the follower list
+          // and that this is crucial, because in the planned leader 
+          // resign case, updateCurrentForCollections will report the
+          // resignation together with the old in-sync list to the
+          // agency. If this list would be empty, then the supervision
+          // would be very angry with us!
+          followers->setTheLeader(leaderId);
+        }
+        // Note that if we have been a follower to some leader
+        // we do not immediately adjust the leader here, even if
+        // the planned leader differs from what we have set locally.
+        // The setting must only be adjusted once we have
+        // synchronized with the new leader and negotiated
+        // a leader/follower relationship!
+      }
+    });
+  
+  if (found.fail()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "failed to lookup local collection " << collection << "in database " << database;
+  }
+  
+}
+
+
 void handlePlanShard(
   VPackSlice const& db, VPackSlice const& cprops, VPackSlice const& ldb,
   std::string const& dbname, std::string const& shname, std::string const& serverId,
   std::string const& leaderId, std::unordered_set<std::string>& colis,
   std::unordered_set<std::string>& indis,
   std::vector<ActionDescription>& actions) {
+
+  bool shouldBeLeader = serverId == leaderId;
+  
   
   // We only care for shards, where we find our own ID
   if (db.copyString() == serverId)  {
@@ -133,7 +196,10 @@ void handlePlanShard(
     if (ldb.hasKey(shname)) {   // Have local collection with that name
       auto const lcol = ldb.get(shname);
       auto const properties = compareRelevantProps(cprops, lcol);
-                
+
+      #warning handleLeaderShip commented out
+      // handleLeadership(dbname, shname, lcol, leaderId, shouldBeLeader);
+      
       // If comparison has brought any updates
       if (properties.slice() != VPackSlice::emptyObjectSlice()) {
         actions.push_back(
@@ -153,8 +219,7 @@ void handlePlanShard(
             actions.push_back(
               ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
                   {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
-                  {FIELDS, index.get(FIELDS).toJson()},
-                  {LEADER, (leaderId == serverId) ? std::string() : leaderId}
+                  {FIELDS, index.get(FIELDS).toJson()}
                 }, VPackBuilder(index))
               );
           }
@@ -163,9 +228,9 @@ void handlePlanShard(
     } else {                   // Create the sucker!
       actions.push_back(
         ActionDescription({
-            {NAME, "CreateCollection"},
-            {COLLECTION, shname},
-            {DATABASE, dbname}}, props));
+            {NAME, "CreateCollection"}, {COLLECTION, shname}, {DATABASE, dbname},
+            {LEADER, shouldBeLeader ? std::string() : leaderId}},
+          props));
     }
   }
 }            

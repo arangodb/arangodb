@@ -39,7 +39,7 @@ std::string const COLLECTION = "collection";
 std::string const EDGE = "edge";
 std::string const NAME = "name";
 std::string const ID = "id";
-std::string const LEADER = "leader";
+std::string const LEADER = "theLeader";
 std::string const GLOB_UID = "globallyUniqueId";
 std::string const OBJECT_ID = "objectId";
 
