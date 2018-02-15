@@ -26,6 +26,9 @@
       if (options.functionsCollection) {
         this.functionsCollection = options.functionsCollection;
       }
+      if (options.upgrade) {
+        this._upgrade = options.upgrade;
+      }
     },
 
     openAppDetailView: function () {
@@ -45,7 +48,8 @@
         }
         $(this.el).html(this.template.render({
           model: this.model.toJSON(),
-          thumbnail: thumbnailUrl
+          thumbnail: thumbnailUrl,
+          upgrade: this._upgrade
         }));
       }.bind(this));
       // set categories for each foxx
@@ -199,8 +203,8 @@
       if (window.modalView.modalTestAll()) {
         var mount, flag;
         if (this._upgrade) {
-          mount = this.mount;
-          flag = $('#new-app-teardown').prop('checked');
+          mount = window.App.replaceAppData.mount;
+          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
@@ -208,12 +212,17 @@
           }
         }
         if (flag !== undefined) {
-          this.functionsCollection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
+          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
         } else {
-          this.functionsCollection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
+          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
         }
         window.modalView.hide();
-        arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
+
+        if (this._upgrade) {
+          arangoHelper.arangoNotification('Services', 'Upgrading ' + this.toInstall + '.');
+        } else {
+          arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
+        }
         this.toInstall = null;
         this.version = null;
       }

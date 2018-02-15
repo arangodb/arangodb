@@ -113,12 +113,12 @@
     },
 
     replaceApp: function () {
-      var mount = this.model.get('mount');
-      window.foxxInstallView.upgrade(mount, function () {
-        window.App.applicationDetail(encodeURIComponent(mount));
-      });
-      $('.createModalDialog .arangoHeader').html('Replace Service');
-      $('#infoTab').click();
+      window.App.replaceApp = true;
+      window.App.replaceAppData = {
+        model: this.model,
+        mount: this.model.get('mount')
+      };
+      window.App.navigate('services/install', {trigger: true});
     },
 
     updateConfig: function () {

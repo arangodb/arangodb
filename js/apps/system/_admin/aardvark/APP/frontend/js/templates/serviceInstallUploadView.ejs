@@ -15,7 +15,7 @@
   Upload a Foxx service bundle. The Foxx service bundle should be a zip archive containing all service files as a directory structure, including the manifest and any required <code style="padding: 0px 2px; font-weight: 10pt;">node_modules</code> dependencies. If your service doesn't have any dependencies, configuration or scripts you can also upload a single JavaScript file that will act as the service's entry point or "main" file.
           </p>
           <table>
-            <tr class="tableRow">
+            <tr class="tableRow" style="display: none">
               <th class="collectionInfoTh">
                 Enable Legacy Mode:
               </th>
@@ -32,7 +32,11 @@
         <div id="upload-foxx-zip">Upload File</div>
       </div>
       <div class="modal-footer">
-        <button id="installUploadService" class="button-success" style="float:right" disabled>Install</button>
+        <% if (upgrade) { %>
+          <button id="installUploadService" class="button-success" style="float:right" disabled>Replace</button>
+        <% } else { %>
+          <button id="installUploadService" class="button-success" style="float:right" disabled>Install</button>
+        <% } %>
       </div>
     </div>
   </div>

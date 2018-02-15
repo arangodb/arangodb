@@ -17,13 +17,20 @@
       return this;
     },
 
+    initialize: function () {
+      if (window.App.replaceApp) {
+        this._upgrade = true;
+      }
+    },
+
     events: {
       'click #installUploadService': 'installFromUpload'
     },
 
     render: function () {
       $(this.el).html(this.template.render({
-        services: this.collection
+        services: this.collection,
+        upgrade: this._upgrade
       }));
 
       this.prepareUpload();
@@ -66,8 +73,8 @@
       if (window.foxxData.data && window.modalView.modalTestAll()) {
         var mount, flag, isLegacy;
         if (this._upgrade) {
-          mount = this.mount;
-          flag = Boolean($('#new-app-teardown').prop('checked'));
+          mount = window.App.replaceAppData.mount;
+          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
@@ -89,8 +96,12 @@
       var self = this;
 
       if (window.App.naviView) {
+        var replaceString = 'New';
+        if (this._upgrade) {
+          replaceString = 'Replace (' + window.App.replaceAppData.mount + ')';
+        }
         $('#subNavigationBar .breadcrumb').html(
-          '<a href="#services">Services:</a> New'
+          '<a href="#services">Services:</a> ' + replaceString
         );
         arangoHelper.buildServicesSubNav('Upload');
       } else {

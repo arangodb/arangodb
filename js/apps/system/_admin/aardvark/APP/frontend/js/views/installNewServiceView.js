@@ -21,10 +21,17 @@
       'click #installNewService': 'installNewService'
     },
 
+    initialize: function () {
+      if (window.App.replaceApp) {
+        this._upgrade = true;
+      }
+    },
+
     render: function () {
       // if repo not fetched yet, wait
       $(this.el).html(this.template.render({
-        services: this.collection
+        services: this.collection,
+        upgrade: this._upgrade
       }));
 
       this.renderSelects();
@@ -43,8 +50,8 @@
       if (window.modalView.modalTestAll()) {
         var mount, flag;
         if (this._upgrade) {
-          mount = this.mount;
-          flag = $('#new-app-teardown').prop('checked');
+          mount = window.App.replaceAppData.mount;
+          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
@@ -143,8 +150,12 @@
       var self = this;
 
       if (window.App.naviView) {
+        var replaceString = 'New';
+        if (this._upgrade) {
+          replaceString = 'Replace (' + window.App.replaceAppData.mount + ')';
+        }
         $('#subNavigationBar .breadcrumb').html(
-          '<a href="#services">Services:</a> New'
+          '<a href="#services">Services:</a> ' + replaceString
         );
         arangoHelper.buildServicesSubNav('New');
       } else {

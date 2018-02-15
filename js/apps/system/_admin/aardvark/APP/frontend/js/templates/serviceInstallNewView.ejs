@@ -81,7 +81,11 @@
         </table>
     </div>
     <div class="modal-footer">
-      <button id="installNewService" class="button-success" style="float:right">Install</button>
+      <% if (upgrade) { %>
+        <button id="installNewService" class="button-success" style="float:right">Replace</button>
+      <% } else { %>
+        <button id="installNewService" class="button-success" style="float:right">Install</button>
+      <% } %>
     </div>
   </div>
 </script>

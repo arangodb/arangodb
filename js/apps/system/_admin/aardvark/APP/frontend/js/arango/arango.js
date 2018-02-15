@@ -1092,12 +1092,28 @@
       });
     },
 
+    getFoxxFlag: function () {
+      var flag;
+
+      if ($('#new-app-replace').prop('checked')) {
+        flag = true;
+      } else {
+        if ($('#new-app-teardown').prop('checked')) {
+          flag = false;
+        }
+      }
+
+      return flag;
+    },
+
     createMountPointModal: function (callback, mode, mountpoint) {
       var buttons = []; var tableContent = [];
 
       var mountPoint;
-      if (mode === 'replace' && mountpoint) {
-        mountPoint = mountpoint;
+
+      if (window.App.replaceApp) {
+        mountPoint = window.App.replaceAppData.mount;
+        mountPoint = mountPoint.substr(1, mountPoint.length);
       }
 
       tableContent.push(
@@ -1119,7 +1135,7 @@
 
       tableContent.push(
         window.modalView.createCheckboxEntry(
-          'app_create_run_teardown',
+          'new-app-teardown',
           'Run setup?',
           true,
           "Should this app's setup script be executed after installing the app?",
@@ -1127,14 +1143,14 @@
         )
       );
 
-      if (mode === 'replace') {
+      if (window.App.replaceApp) {
         tableContent.push(
           window.modalView.createCheckboxEntry(
-            'app_create_run_teardown',
+            'new-app-replace',
             'Keep configuration and dependency files?',
             true,
             "Should this app's configuration be saved before replacing the app?",
-            true
+            false
           )
         );
 
@@ -1147,14 +1163,19 @@
         );
       }
 
+      var titleString = 'Create Foxx Service';
+      if (window.App.replaceApp) {
+        titleString = 'Replace Foxx Service (' + window.App.replaceAppData.mount + ')';
+      }
+
       window.modalView.show(
         'modalTable.ejs',
-        'Create Foxx Service',
+        titleString,
         buttons,
         tableContent
       );
 
-      if (mode !== 'replace') {
+      if (!window.App.replaceApp) {
         window.modalView.modalBindValidation({
           id: 'new-app-mount',
           validateInput: function () {
@@ -1180,6 +1201,16 @@
                 msg: 'Has to be non-empty'
               }
             ];
+          }
+        });
+      } else {
+        $('#new-app-mount').attr('disabled', 'true');
+        $('#new-app-replace').attr('checked', false);
+        $('#new-app-replace').on('click', function () {
+          if ($('#new-app-replace').prop('checked')) {
+            $('#new-app-teardown').attr('disabled', true);
+          } else {
+            $('#new-app-teardown').attr('disabled', false);
           }
         });
       }

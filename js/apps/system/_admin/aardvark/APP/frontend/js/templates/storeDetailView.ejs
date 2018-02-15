@@ -32,9 +32,6 @@
               <span>Author: </span><span><%= app.attributes.author %></span>
             </p>
             <p>
-              <span>Mode: </span><span class="mode <%=app.get('development')?'development':'production'%>"><%=app.get('development')?'Development':'Production'%></span>
-            </p>
-            <p>
               <span>Version: </span><span class="version"><%= app.attributes.latestVersion %></span>
             </p>
             <p>
@@ -47,6 +44,9 @@
             </p>
             <p>
               <span>Categories: </span><span><%= app.attributes.categories %></span>
+            </p>
+            <p>
+              <span></span>
             </p>
           </div>
           <div class="header_right">

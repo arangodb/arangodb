@@ -27,7 +27,11 @@
         </div>
     </div>
     <div class="modal-footer">
-      <button id="installUrlService" class="button-success" style="float:right" disabled>Install</button>
+      <% if (upgrade) { %>
+        <button id="installUrlService" class="button-success" style="float:right" disabled>Replace</button>
+      <% } else { %>
+        <button id="installUrlService" class="button-success" style="float:right" disabled>Install</button>
+      <% } %>
     </div>
   </div>
 

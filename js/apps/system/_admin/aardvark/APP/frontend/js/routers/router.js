@@ -66,6 +66,22 @@
       }
 
       if (this.lastRoute) {
+        // service replace logic
+        var replaceUrlFirst = this.lastRoute.split('/')[0];
+        var replaceUrlSecond = this.lastRoute.split('/')[1];
+        var replaceUrlThird = this.lastRoute.split('/')[2];
+        if (replaceUrlFirst !== '#service') {
+          if (window.App.replaceApp) {
+            if (replaceUrlSecond !== 'install' && replaceUrlThird) {
+              window.App.replaceApp = false;
+              // console.log('set replace to false!');
+            }
+          } else {
+            // console.log('set replace to false!');
+            window.App.replaceApp = false;
+          }
+        }
+
         if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split('/').length === 3) {
           this.documentView.cleanupEditor();
         }
@@ -93,6 +109,11 @@
       $('#content').show();
       if (callback) {
         callback.apply(this, args);
+      }
+
+      if (this.lastRoute === '#services') {
+        window.App.replaceApp = false;
+        // console.log('set replace to false!');
       }
 
       if (this.graphViewer) {

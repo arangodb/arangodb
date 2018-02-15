@@ -25,6 +25,10 @@
 
     initialize: function (options) {
       this.functionsCollection = options.functionsCollection;
+
+      if (window.App.replaceApp) {
+        this._upgrade = true;
+      }
     },
 
     waitForResponse: function () {
@@ -61,7 +65,8 @@
         var subView = new window.FoxxRepoView({
           collection: self.functionsCollection,
           model: foxx,
-          appsView: self
+          appsView: self,
+          upgrade: self._upgrade
         });
         self._installedSubViews[foxx.get('name')] = subView;
       });
@@ -103,8 +108,12 @@
     },
 
     breadcrumb: function () {
+      var replaceString = 'New';
+      if (this._upgrade) {
+        replaceString = 'Replace (' + window.App.replaceAppData.mount + ')';
+      }
       $('#subNavigationBar .breadcrumb').html(
-        '<a href="#services">Services:</a> New'
+        '<a href="#services">Services:</a> ' + replaceString
       );
     }
   });
