@@ -288,12 +288,13 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
                       "authentication successful", messageId);
   } else {
     _authenticatedUser.clear();
-    ServerState::Mode mode = ServerState::serverMode();
+    ServerState::Mode const mode = ServerState::serverMode();
     if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
       try {
         VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
         resp.setContentType(fakeRequest.contentTypeResponse());
         ReplicationFeature::prepareFollowerResponse(&resp, mode);
+        addResponse(&resp, nullptr);
       } catch (...) {
         closeStream();
       }
