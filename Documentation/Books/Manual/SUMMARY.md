@@ -14,6 +14,10 @@
   * [Authentication](GettingStarted/Authentication.md)
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
+#   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter](GettingStarted/Starter/README.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
+  * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
   # * [Coming from MongoDB](GettingStarted/ComingFromMongoDb.md) #TODO
 #
 * [Highlights](Highlights.md)
@@ -23,6 +27,7 @@
     * [Architecture](Scalability/Architecture.md)
     * [Data models](Scalability/DataModels.md)
     * [Limitations](Scalability/Limitations.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
     * [Introduction](Scalability/DC2DC/Introduction.md)
     * [Applicability](Scalability/DC2DC/Applicability.md)
@@ -144,12 +149,19 @@
         * [Cluster: Local test setups](Deployment/Local.md)
         * [Cluster: Processes](Deployment/Distributed.md)
         * [Cluster: Docker](Deployment/Docker.md)
+#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Multiple Datacenters](Deployment/DC2DC.md)
     * [Cluster](Deployment/DC2DC/Cluster.md)
     * [Kafka & Zookeeper](Deployment/DC2DC/KafkaZookeeper.md)
     * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
     * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
+#
+* [ArangoDB Programs](Programs/README.md)
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter](Programs/Starter/README.md)
+    * [Options](Programs/Starter/options.md)
+    * [Security](Programs/Starter/security.md)
 #
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
@@ -203,6 +215,7 @@
       * [Configuration](Administration/Replication/Synchronous/Configuration.md)
     * [Satellite Collections](Administration/Replication/Synchronous/Satellites.md)
   * [Cluster](Administration/Cluster/README.md)
+#   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ 
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
   * [Sharding](Administration/Sharding/README.md)
 #    * [Authentication](Administration/Sharding/Authentication.md)
@@ -225,12 +238,15 @@
   * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
   * [Arangobench](Troubleshooting/Arangobench.md)
   * [Cluster](Troubleshooting/Cluster/README.md)  
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)
 #
 * [Monitoring](Monitoring/README.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Monitoring/DC2DC/README.md)
 #
 * [Security](Security/README.md)
+# https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Security/DC2DC/README.md)
 #
 * [Architecture](Architecture/README.md)
