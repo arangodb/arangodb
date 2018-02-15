@@ -56,7 +56,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Authentication");
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("FeatureCache");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");

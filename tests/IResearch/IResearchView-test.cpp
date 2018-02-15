@@ -61,7 +61,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -141,7 +140,6 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
@@ -212,7 +210,6 @@ struct IResearchViewSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };

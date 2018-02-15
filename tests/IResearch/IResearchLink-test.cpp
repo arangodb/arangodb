@@ -47,7 +47,6 @@
 #include "Logger/LogTopic.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -80,9 +79,8 @@ struct IResearchLinkSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
@@ -150,7 +148,6 @@ struct IResearchLinkSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };

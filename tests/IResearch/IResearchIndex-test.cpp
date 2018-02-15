@@ -196,7 +196,6 @@ struct IResearchIndexSetup {
       f.first->unprepare();
     }
 
-    //arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
