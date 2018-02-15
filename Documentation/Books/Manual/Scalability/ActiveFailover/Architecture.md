@@ -1,4 +1,5 @@
-# Active Failover Architecture
+Active Failover Architecture
+============================
 
 Consider the case for two *arangod* instances:
 

@@ -143,6 +143,7 @@
 #
 * [Scalability](Scalability/README.md)
   * [Master/Slave](Scalability/MasterSlave/README.md)
+    * [Architecture](Scalability/MasterSlave/Architecture.md)
     * [Limitations](Scalability/MasterSlave/Limitations.md)
   * [Active Failover](Scalability/ActiveFailover/README.md)
     * [Architecture](Scalability/ActiveFailover/Architecture.md)
@@ -220,7 +221,7 @@
     * [Events](Administration/Auditing/AuditEvents.md)  
   * [Satellite Collections](Administration/Satellites.md) 
   * [Master/Slave](Administration/MasterSlave/README.md)
-    * [Components](Administration/MasterSlave/Components.md)
+    * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
     * [Per-Database Setup](Administration/MasterSlave/DatabaseSetup.md)
     * [Server-Level Setup](Administration/MasterSlave/ServerLevelSetup.md)
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)

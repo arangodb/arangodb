@@ -4,21 +4,21 @@ Server-level Setup
 This page describes the replication process based on a complete ArangoDB instance. That means that
 all included databases will be replicated. 
 
-**Note:** Server-level Setup is available in ArangoDB 3.3.0 and higher.
+**Note:** Server-level Setup is available only from version 3.3.0.
 
 Setting up a working master-slave replication requires two ArangoDB instances:
-* **master**: this is the instance that all data-modification operations should be directed to
-* **slave**: on this instance, we'll start a replication applier, and this will fetch data from the 
-  master database's write-ahead log and apply its operations locally
+* **master**: this is the instance where all data-modification operations should be directed to
+* **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_ on it, and it will fetch data from the 
+  master _write-ahead log_ and apply its operations locally
   
-For the following example setup, we'll use the instance *tcp://master.domain.org:8529* as the 
-master, and the instance *tcp://slave.domain.org:8530* as a slave.
+For the following example setup, we will use the instance *tcp://master.domain.org:8529* as the 
+_master_, and the instance *tcp://slave.domain.org:8530* as a _slave_.
 
-The goal is to have all data of all databases on master *tcp://master.domain.org:8529* 
-be replicated to the slave instance *tcp://slave.domain.org:8530*.
+The goal is to have all data of all databases on _master_ *tcp://master.domain.org:8529* 
+be replicated to the _slave_ instance *tcp://slave.domain.org:8530*.
 
 On the **master**, nothing special needs to be done, as all write operations will automatically be
-logged in the master's write-ahead log (WAL).
+logged in the master's _write-ahead log_ (WAL).
 
 All-in-one setup
 ----------------
@@ -58,7 +58,7 @@ configuration on the **slave**.
 
 
 Stopping synchronization
------------------------
+------------------------
 
 The initial synchronization and continuous replication applier can also be started separately.
 To start replication on the **slave**, make sure there currently is no replication applier running.

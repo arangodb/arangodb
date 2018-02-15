@@ -1,7 +1,7 @@
 Cluster administration
 ======================
 
-This Section includes information related to the administration of an ArangoDB Cluster.
+This _Section_ includes information related to the administration of an ArangoDB Cluster.
 
 For a general introduction to the ArangoDB Cluster, please refer to the
 Cluster [chapter](../../Scalability/Cluster/README.md).

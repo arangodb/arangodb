@@ -1,22 +1,22 @@
 Per-Database Setup
 ==================
 
-This page describes the replication process based on a specific database within an ArangoDB instance.
+This page describes the master/slave replication process based on a specific database within an ArangoDB instance.
 That means that only the specified database will be replicated. 
 
 Setting up a working master-slave replication requires two ArangoDB instances:
-* **master**: this is the instance that all data-modification operations should be directed to
-* **slave**: on this instance, we'll start a replication applier, and this will fetch data from the 
-  master database's write-ahead log and apply its operations locally
+* **master**: this is the instance where all data-modification operations should be directed to
+* **slave**: this is the instance that replicates the data from the master. We will start a _replication applier_ on it, and it will fetch data from the 
+  master database's _write-ahead log_ and apply its operations locally
   
-For the following example setup, we'll use the instance *tcp://master.domain.org:8529* as the 
-master, and the instance *tcp://slave.domain.org:8530* as a slave.
+For the following example setup, we will use the instance *tcp://master.domain.org:8529* as the 
+_master_, and the instance *tcp://slave.domain.org:8530* as a _slave_.
 
-The goal is to have all data from the database *_system* on master *tcp://master.domain.org:8529* 
-be replicated to the database *_system* on the slave *tcp://slave.domain.org:8530*.
+The goal is to have all data from the database *_system* on _master_ *tcp://master.domain.org:8529* 
+be replicated to the database *_system* on the _slave_ *tcp://slave.domain.org:8530*.
 
-On the **master**, nothing special needs to be done, as all write operations will automatically be
-logged in the master's write-ahead log (WAL).
+On the _master_, nothing special needs to be done, as all write operations will automatically be
+logged in the master's _write-ahead log_ (WAL).
 
 All-in-one setup
 ----------------

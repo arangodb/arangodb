@@ -1,7 +1,7 @@
 Syncing Collections
 ===================
 
-In order to synchronize data for a single collection from a master to a slave instance, there
+In order to synchronize data for a single collection from a _master_ to a _slave_ instance, there
 is the *syncCollection* function:
 
 It will fetch all documents of the specified collection from the master database and store 
