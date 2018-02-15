@@ -1464,6 +1464,10 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
   size_t values = 0;
   matchAttributes(node, reference, found, values, nonNullAttributes, false);
 
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
+
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;
 

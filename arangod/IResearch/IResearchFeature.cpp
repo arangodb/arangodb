@@ -33,6 +33,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
+#include "VocBase/LogicalView.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -46,10 +49,6 @@
 #include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
-
-NS_BEGIN(transaction)
-class Methods;
-NS_END // transaction
 
 NS_BEGIN(basics)
 class VPackStringBufferAdapter;
@@ -163,6 +162,44 @@ void registerRecoveryHelper() {
   }
 }
 
+arangodb::Result transactionStateRegistrationCallback(
+    TRI_voc_cid_t cid,
+    arangodb::TransactionState& state
+) {
+  auto* vocbase = state.vocbase();
+
+  if (!vocbase) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failure to find vocbase while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
+
+    return arangodb::Result(TRI_ERROR_INTERNAL);
+  }
+
+  auto view = vocbase->lookupView(cid);
+
+  if (!view || arangodb::iresearch::IResearchView::type() != view->type()) {
+    return arangodb::Result(); // not an IResearchView (noop)
+  }
+
+  // TODO FIXME find a better way to look up an IResearch View
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+  #else
+    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+  #endif
+
+  if (!impl) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
+
+    return arangodb::Result(TRI_ERROR_INTERNAL);
+  }
+
+  impl->apply(state);
+
+  return arangodb::Result();
+}
+
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
 
@@ -219,10 +256,15 @@ void IResearchFeature::prepare() {
   // load all known scorers
   ::iresearch::scorers::init();
 
-  // register 'iresearch' view
+  // register 'arangosearch' view
   ViewTypesFeature::registerViewImplementation(
      IResearchView::type(),
      IResearchView::make
+  );
+
+  // register 'arangosearch' TransactionState state-change callback factory
+  arangodb::transaction::Methods::addStateRegistrationCallback(
+    transactionStateRegistrationCallback
   );
 
   registerRecoveryHelper();

@@ -77,7 +77,10 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
                                    // not the variable value (used in KEEP
                                    // nodes)
-  FLAG_BIND_PARAMETER = 32768  // node was created from a bind parameter
+  FLAG_BIND_PARAMETER = 32768,  // node was created from a bind parameter
+  FLAG_FINALIZED = 65536,       // node has been finalized and should not be
+                                // modified; only set and checked in
+                                // maintainer mode
 };
 
 /// @brief enumeration of AST node value types
@@ -309,7 +312,9 @@ struct AstNode {
   }
 
   /// @brief reset flags in case a node is changed drastically
-  inline void clearFlags() { flags = 0; }
+  inline void clearFlags() {
+    flags = 0;
+  }
 
   /// @brief recursively clear flags
   void clearFlagsRecursive();
@@ -526,11 +531,13 @@ struct AstNode {
 
   /// @brief reserve space for members
   void reserve(size_t n) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.reserve(n);
   }
 
   /// @brief add a member to the node
   void addMember(AstNode* node) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     if (node == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -549,6 +556,7 @@ struct AstNode {
 
   /// @brief change a member of the node
   void changeMember(size_t i, AstNode* node) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     if (i >= members.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
     }
@@ -557,6 +565,7 @@ struct AstNode {
 
   /// @brief remove a member from the node
   inline void removeMemberUnchecked(size_t i) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.erase(members.begin() + i);
   }
 
@@ -576,11 +585,13 @@ struct AstNode {
   /// @brief sort members with a custom comparison function
   void sortMembers(
       std::function<bool(AstNode const*, AstNode const*)> const& func) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     std::sort(members.begin(), members.end(), func);
   }
 
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     if (i > members.size()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "member out of range");
     }
@@ -588,14 +599,18 @@ struct AstNode {
   }
 
   inline void clearMembers() {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     members.clear();
   }
 
   /// @brief set the node's value type
-  inline void setValueType(AstNodeValueType type) { value.type = type; }
+  inline void setValueType(AstNodeValueType type) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    value.type = type;
+  }
 
   /// @brief check whether this node value is of expectedType
-  inline bool isValueType(AstNodeValueType expectedType) {
+  inline bool isValueType(AstNodeValueType expectedType) const {
     return value.type == expectedType;
   }
 
@@ -603,7 +618,10 @@ struct AstNode {
   inline bool getBoolValue() const { return value.value._bool; }
 
   /// @brief set the bool value of a node
-  inline void setBoolValue(bool v) { value.value._bool = v; }
+  inline void setBoolValue(bool v) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    value.value._bool = v;
+  }
 
   /// @brief return the int value of a node
   /// this will return 0 for all non-value nodes and for all non-int value
@@ -614,13 +632,19 @@ struct AstNode {
   inline int64_t getIntValue(bool) const { return value.value._int; }
 
   /// @brief set the int value of a node
-  inline void setIntValue(int64_t v) { value.value._int = v; }
+  inline void setIntValue(int64_t v) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    value.value._int = v;
+  }
 
   /// @brief return the double value of a node
   double getDoubleValue() const;
 
   /// @brief set the string value of a node
-  inline void setDoubleValue(double v) { value.value._double = v; }
+  inline void setDoubleValue(double v) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    value.value._double = v;
+  }
 
   /// @brief return the string value of a node
   inline char const* getStringValue() const { return value.value._string; }
@@ -632,7 +656,8 @@ struct AstNode {
 
   /// @brief set the string value of a node
   inline void setStringValue(char const* v, size_t length) {
-    // note: v may contain the NUL byte and is not necessarily
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  // note: v may contain the NUL byte and is not necessarily
     // null-terminated itself (if from VPack)
     value.type = VALUE_TYPE_STRING;
     value.value._string = v;
@@ -656,10 +681,14 @@ struct AstNode {
   inline void* getData() const { return value.value._data; }
 
   /// @brief set the data value of a node
-  inline void setData(void* v) { value.value._data = v; }
+  inline void setData(void* v) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+    value.value._data = v;
+  }
 
   /// @brief set the data value of a node
   inline void setData(void const* v) {
+    TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
     value.value._data = const_cast<void*>(v);
   }
 
@@ -691,6 +720,12 @@ struct AstNode {
   ///        Can only be applied if this and other are of type
   ///        n-ary-and
   void removeMembersInOtherAndNode(AstNode const* other);
+
+  /// @brief If the node has not been marked finalized, mark its subtree so.
+  /// If it runs into a finalized node, it assumes the whole subtree beneath
+  /// it is marked already and exits early; otherwise it will finalize the node
+  /// and recurse on its subtree.
+  static void markFinalized(AstNode* subtreeRoot);
 
  public:
   /// @brief the node type
@@ -742,5 +777,49 @@ struct AstNodeValueEqual {
 /// @brief append the AstNode to an output stream
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const*);
 std::ostream& operator<<(std::ostream&, arangodb::aql::AstNode const&);
+
+/** README
+ * Typically, the pattern should be that once an AstNode is created and inserted
+ * into the tree, it is immutable. Currently there are some places where this
+ * is not the case, so we cannot currently enforce it via typing.
+ *
+ * Instead, we have a flag which we set and check only in maintainer mode,
+ * `FLAG_FINALIZED` to signal that the node should not change state. This allows
+ * us to take a more functional style approach to building and modifying the
+ * Ast, allowing us to simply point to the same node multiple times instead of
+ * creating several copies when we need to e.g. distribute an AND operation.
+ *
+ * If you need to modify a node, try to replace it with a new one. You can
+ * create a copy-for-modify node via `Ast::shallowCopyForModify`. You can then
+ * set it to be finalized when it goes out of scope using
+ * `TRI_DEFER(FINALIZE_SUBTREE(node))`.
+ *
+ * If you cannot follow this pattern, for instance if you do not have access
+ * to the Ast or to the node's ancestors, then you might be able to get away
+ * with temporarily unlocking the node and modifying it in place. This could
+ * create correctness issues in our optmization code though, so do this with
+ * extreme caution. The correct way to do this is via the
+ * `TEMPORARILY_UNLOCK_NODE(node)` macro. It will relock the node when the macro
+ * instance goes out of scope.
+ */
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#define FINALIZE_SUBTREE(n) \
+  arangodb::aql::AstNode::markFinalized(const_cast<arangodb::aql::AstNode*>(n))
+#define FINALIZE_SUBTREE_CONDITIONAL(n, b) if (b) { FINALIZE_SUBTREE(n); }
+#define TEMPORARILY_UNLOCK_NODE(n) \
+  bool wasFinalizedAlready = \
+      (n)->hasFlag(arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
+  if (wasFinalizedAlready) { \
+    (n)->flags = ((n)->flags & \
+                  ~arangodb::aql::AstNodeFlagType::FLAG_FINALIZED); \
+  } \
+  TRI_DEFER(FINALIZE_SUBTREE_CONDITIONAL(n, wasFinalizedAlready));
+#else
+#define FINALIZE_SUBTREE(n) while (0) { (void) (n); } do { } while (0)
+#define FINALIZE_SUBTREE_CONDITIONAL(n, b) while (0) { (void) (n); } do { } while (0)
+#define TEMPORARILY_UNLOCK_NODE(n) while (0) { (void) (n); } do { } while (0)
+#endif
+
 
 #endif
