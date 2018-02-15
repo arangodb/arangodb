@@ -682,7 +682,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& username,
   }
   
   auth::Level level = it->second.databaseAuthLevel(dbname);
-  if (configured) {
+  if (!configured) {
     if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
       return auth::Level::RO;
     }
@@ -714,7 +714,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& username,
     level = it->second.collectionAuthLevel(dbname, coll);
   }
   
-  if (configured) {
+  if (!configured) {
     static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
     if (level > auth::Level::RO && !ServerState::writeOpsEnabled()) {
       return auth::Level::RO;
