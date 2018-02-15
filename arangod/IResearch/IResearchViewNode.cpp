@@ -286,7 +286,10 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get view implementation while creating IResearchView ExecutionBlock";
 
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get view implementation while creating IResearchView ExecutionBlock"
+    );
   }
 
   auto* trx = engine.getQuery()->trx();
@@ -295,8 +298,10 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get transaction state while creating IResearchView ExecutionBlock";
 
-    // FIXME better to return `NoResultsNode`
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get transaction state while creating IResearchView ExecutionBlock"
+    );
   }
 
   auto& state = *(trx->state());
@@ -306,7 +311,10 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
 
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView"
+    );
   }
 
   if (_sortCondition.empty()) {
