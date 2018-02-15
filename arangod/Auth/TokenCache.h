@@ -52,13 +52,13 @@ class TokenCache {
     friend class auth::TokenCache;
 
    public:
-    Entry() : _authorized(false), _expiry(0) {}
+    Entry() : _authenticated(false), _expiry(0) {}
 
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authorized(a), _expiry(t) {}
+        : _username(username), _authenticated(a), _expiry(t) {}
 
     std::string const& username() const { return _username; }
-    bool authorized() const { return _authorized; }
+    bool authenticated() const { return _authenticated; }
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
 
@@ -66,7 +66,7 @@ class TokenCache {
     /// username
     std::string _username;
     /// User exists and password was checked
-    bool _authorized;
+    bool _authenticated;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
   };
@@ -82,7 +82,10 @@ class TokenCache {
   void setJwtSecret(std::string const&);
   std::string jwtSecret() const noexcept;
   /// Get the jwt token, which should be used for communicatin
-  std::string const& jwtToken() const noexcept { return _jwtToken; }
+  std::string const& jwtToken() const noexcept {
+    TRI_ASSERT(!_jwtToken.empty());
+    return _jwtToken;
+  }
 
   std::string generateRawJwt(velocypack::Slice const&) const;
   std::string generateJwt(velocypack::Slice const&) const;

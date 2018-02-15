@@ -165,21 +165,22 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
     // insufficient!!
     WRITE_LOCKER(writeLocker, _jwtLock);
     // intentionally copy the entry from the cache
-    auth::TokenCache::Entry const& user = _jwtCache.get(jwt);
-    if (user.expired()) {
+    auth::TokenCache::Entry const& entry = _jwtCache.get(jwt);
+    if (entry.expired()) {
       try {
         _jwtCache.remove(jwt);
       } catch (std::range_error const&) {
       }
+      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) <<  "JWT Token expired";
       return auth::TokenCache::Entry();  // unauthorized
     }
     // LDAP rights might need to be refreshed
-    _userManager->refreshUser(user.username());
-    return user;
+    _userManager->refreshUser(entry.username());
+    return entry;
   } catch (std::range_error const&) {
     // mop: not found
   }
-
+  
   std::vector<std::string> const parts = StringUtils::split(jwt, '.');
   if (parts.size() != 3) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Secret contains "
@@ -198,7 +199,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   }
 
   auth::TokenCache::Entry entry = validateJwtBody(body);
-  if (!entry._authorized) {
+  if (!entry._authenticated) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "Couldn't validate jwt body " << body;
     return auth::TokenCache::Entry();
@@ -322,9 +323,11 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
       return authResult;  // unauthenticated
     }
     authResult._expiry = expiresSecs;
+  } else {
+    authResult._expiry = 0;
   }
 
-  authResult._authorized = true;
+  authResult._authenticated = true;
   return authResult;
 }
 
@@ -348,6 +351,9 @@ std::string auth::TokenCache::generateRawJwt(VPackSlice const& body) const {
 
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
                           "." + StringUtils::encodeBase64(body.toJson()));
+  if (_jwtSecret.empty()) {
+    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Using cluster without JWT Token";
+  }
 
   std::string signature =
       sslHMAC(_jwtSecret.c_str(), _jwtSecret.length(), fullMessage.c_str(),

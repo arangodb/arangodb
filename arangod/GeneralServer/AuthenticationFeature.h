@@ -80,7 +80,6 @@ class AuthenticationFeature final
   bool _localAuthentication;
 
   std::string _jwtSecretProgramOption;
-  std::string _jwtToken;
   bool _active;
 
   static AuthenticationFeature* INSTANCE;

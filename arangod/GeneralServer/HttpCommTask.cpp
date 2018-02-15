@@ -592,7 +592,7 @@ bool HttpCommTask::processRead(double startTime) {
   } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
-  } else {  // not authenticated, might be because _users is out of sync
+  } else {  // not authenticated, might be because _users is out of sync    
     ServerState::Mode mode = ServerState::serverMode();
     if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
       HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
@@ -855,13 +855,13 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         request->setAuthenticationMethod(authMethod);
         if (_auth->isActive()) {
           auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
-          request->setAuthorized(entry.authorized());
+          request->setAuthenticated(entry.authenticated());
           request->setUser(std::move(entry._username));
         } else {
-          request->setAuthorized(true);
+          request->setAuthenticated(true);
         }
         
-        if (request->authorized()) {
+        if (request->authenticated()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }

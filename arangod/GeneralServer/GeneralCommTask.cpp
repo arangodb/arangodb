@@ -348,7 +348,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   std::string const& path = request->requestPath();
   std::string const& username = request->user();
-  rest::ResponseCode result = request->authorized()
+  rest::ResponseCode result = request->authenticated()
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
 
@@ -365,7 +365,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request->authorized()) {
+  if (!request->authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint

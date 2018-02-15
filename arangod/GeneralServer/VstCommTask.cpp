@@ -272,9 +272,9 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   
   if (_auth->isActive()) { // will just fail if method is NONE
     auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
-    _authorized = entry.authorized();
+    _authorized = entry.authenticated();
     if (_authorized) {
-      _authenticatedUser = std::move(entry.username());
+      _authenticatedUser = std::move(entry._username);
     }
   } else {
     _authorized = true;
@@ -387,7 +387,7 @@ bool VstCommTask::processRead(double startTime) {
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
-      request->setAuthorized(_authorized);
+      request->setAuthenticated(_authorized);
       request->setUser(_authenticatedUser);
       if (_authorized) {
         // if we don't call checkAuthentication we need to refresh

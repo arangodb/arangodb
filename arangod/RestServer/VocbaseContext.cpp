@@ -50,7 +50,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
                               /*dbLevel*/ auth::Level::RW);
   }
 
-  if (req->authorized()) {
+  if (req->authenticated()) {
     // superusers will have an empty username. This MUST be invalid
     // for users authenticating with name / password
     if (req->user().empty()) {

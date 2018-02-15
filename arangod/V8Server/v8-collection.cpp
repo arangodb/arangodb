@@ -1924,14 +1924,14 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
       bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
       bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : paramEdges) {
       bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
       bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
   }
