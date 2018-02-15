@@ -233,6 +233,8 @@ SECTION("testResultTest1") {
   res3.value.show();
   CHECK((res3.value.byMoveAssign));
 
+  std::unique_ptr<Verbose> val;
+  ResultValue<Verbose*>(val.get());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generate tests
