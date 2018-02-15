@@ -190,7 +190,7 @@ static void writeError(int code, GeneralResponse* response) {
 
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
-                                                 ServerState::Mode mode) {
+                                                 arangodb::ServerState::Mode mode) {
   switch (mode) {
     case ServerState::Mode::REDIRECT: {
       std::string endpoint;
