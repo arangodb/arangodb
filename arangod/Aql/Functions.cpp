@@ -1244,21 +1244,19 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
 
   uint32_t numWhitespaces = whitespace.countChar32();
   UErrorCode errorCode = U_ZERO_ERROR;
-  UChar32 *spaceChars = new UChar32[numWhitespaces];
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
-  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
   if (howToTrim <= 1) {
-    ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
+    ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
   if (howToTrim == 2 || howToTrim == 0) {
-    rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
+    rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
-
-  delete[] spaceChars;
 
   UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
@@ -1288,15 +1286,13 @@ AqlValue Functions::LTrim(arangodb::aql::Query* query,
 
   uint32_t numWhitespaces = whitespace.countChar32();
   UErrorCode errorCode = U_ZERO_ERROR;
-  UChar32 *spaceChars = new UChar32[numWhitespaces];
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
-  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
-  ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
-
-  delete[] spaceChars;
+  ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
   UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
@@ -1326,15 +1322,13 @@ AqlValue Functions::RTrim(arangodb::aql::Query* query,
 
   uint32_t numWhitespaces = whitespace.countChar32();
   UErrorCode errorCode = U_ZERO_ERROR;
-  UChar32 *spaceChars = new UChar32[numWhitespaces];
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
-  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
-  rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars);
-
-  delete[] spaceChars;
+  rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
 
   UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
