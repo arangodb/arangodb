@@ -67,6 +67,7 @@ auth::TokenCache::~TokenCache() {
 
 void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   WRITE_LOCKER(writeLocker, _jwtLock);
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Setting jwt secret " << jwtSecret;
   _jwtSecret = jwtSecret;
   _jwtCache.clear();
   generateJwtToken();
@@ -208,7 +209,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
   std::string const message = header + "." + body;
   if (!validateJwtHMAC256Signature(message, signature)) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
-        << "Couldn't validate jwt signature " << signature << " " << _jwtSecret;
+        << "Couldn't validate jwt signature " << signature
+        << " against " << _jwtSecret;
     return auth::TokenCache::Entry();
   }
 
@@ -279,20 +281,26 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
       parseJson(StringUtils::decodeBase64(body), "jwt body");
   auth::TokenCache::Entry authResult;
   if (bodyBuilder.get() == nullptr) {
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid JWT body";
     return authResult;  // unauthenticated
   }
 
   VPackSlice const bodySlice = bodyBuilder->slice();
   if (!bodySlice.isObject()) {
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid JWT value";
     return authResult;  // unauthenticated
   }
 
   VPackSlice const issSlice = bodySlice.get("iss");
   if (!issSlice.isString()) {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+      << "missing iss value";
     return authResult;  // unauthenticated
   }
 
   if (issSlice.copyString() != "arangodb") {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+      << "invalid iss value";
     return authResult;  // unauthenticated
   }
 
@@ -306,6 +314,8 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
     // mop: hmm...nothing to do here :D
     // authResult._username = "root";
   } else {
+    LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
+      << "Lacking preferred_username or server_id";
     return authResult;  // unauthenticated
   }
 
@@ -313,6 +323,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
   if (bodySlice.hasKey("exp")) {
     VPackSlice const expSlice = bodySlice.get("exp");
     if (!expSlice.isNumber()) {
+      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "invalid exp value";
       return authResult;  // unauthenticated
     }
 
@@ -320,6 +331,7 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(
     double expiresSecs = expSlice.getNumber<double>();
     double now = TRI_microtime();
     if (now >= expiresSecs || expiresSecs == 0) {
+      LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "expired JWT token";
       return authResult;  // unauthenticated
     }
     authResult._expiry = expiresSecs;

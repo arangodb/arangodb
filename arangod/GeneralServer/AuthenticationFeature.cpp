@@ -142,6 +142,7 @@ void AuthenticationFeature::prepare() {
   
   std::string jwtSecret = _jwtSecretProgramOption;
   if (jwtSecret.empty()) {
+    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
       jwtSecret += (1 + RandomGenerator::interval(m));

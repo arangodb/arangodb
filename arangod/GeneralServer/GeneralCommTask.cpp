@@ -358,6 +358,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
       !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(request);
     result = rest::ResponseCode::UNAUTHORIZED;
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Access forbidden to " << path;
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -389,6 +390,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
+          LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Upgrading rights for " << path;
         }
       }
     }

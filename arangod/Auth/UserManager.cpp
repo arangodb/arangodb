@@ -575,6 +575,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   WRITE_LOCKER(writeGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
+    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
@@ -666,7 +667,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
   return false;
 }
 
-auth::Level auth::UserManager::databaseAuthLevel(std::string const& username,
+auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
                                                  std::string const& dbname,
                                                  bool configured) {
   if (dbname.empty()) {
@@ -676,8 +677,9 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& username,
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
   
-  UserMap::iterator const& it = _userCache.find(username);
+  UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
+    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE;
   }
   
@@ -690,7 +692,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& username,
   return level;
 }
 
-auth::Level auth::UserManager::collectionAuthLevel(std::string const& username,
+auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
                                                    std::string const& dbname,
                                                    std::string const& coll,
                                                    bool configured) {
@@ -701,8 +703,9 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& username,
   loadFromDB();
   READ_LOCKER(readGuard, _userCacheLock);
   
-  UserMap::iterator const& it = _userCache.find(username);
+  UserMap::iterator const& it = _userCache.find(user);
   if (it == _userCache.end()) {
+    LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User not found: " << user;
     return auth::Level::NONE; // no user found
   }
   

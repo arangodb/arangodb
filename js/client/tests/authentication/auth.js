@@ -30,7 +30,6 @@
 
 var jsunity = require("jsunity");
 var arango = require("@arangodb").arango;
-var helper = require('@arangodb/user-helper');
 var db = require("internal").db;
 var users = require("@arangodb/users");
 var request = require('@arangodb/request');
@@ -404,10 +403,6 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
-      if (helper.isLdapEnabledExternal()) {
-        return;
-      }
-
       var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600}, 'HS256');
 
       var res = request.get({
@@ -460,9 +455,6 @@ function AuthSuite () {
     },
     
     testExpOptional: function() {
-      if (helper.isLdapEnabledExternal()) {
-        return;
-      }
       var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", 
                                              "iss": "arangodb" }, 'HS256');
       // not supported
