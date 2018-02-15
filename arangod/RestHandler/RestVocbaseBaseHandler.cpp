@@ -302,11 +302,11 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add("error", VPackValue(true));
-    builder.add("code", VPackValue(static_cast<int32_t>(
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int32_t>(
                             rest::ResponseCode::PRECONDITION_FAILED)));
-    builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
-    builder.add("errorMessage", VPackValue("precondition failed"));
+    builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
+    builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
       builder.add(StaticStrings::KeyString,

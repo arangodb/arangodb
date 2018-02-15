@@ -85,12 +85,12 @@ class MMFilesEngine final : public StorageEngine {
 
   // flush wal wait for collector
   void stop() override;
-  
+
   // minimum timeout for the synchronous replication
   double minimumSyncReplicationTimeout() const override { return 0.5; }
-  
+
   bool supportsDfdb() const override { return true; }
-  
+
   bool useRawDocumentPointers() override { return true; }
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
@@ -170,11 +170,13 @@ class MMFilesEngine final : public StorageEngine {
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
   void waitForSyncTick(TRI_voc_tick_t tick) override;
-  
+
   void waitForSyncTimeout(double maxWait) override;
-  
+
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
+
+  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override {}
 
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
@@ -255,7 +257,7 @@ class MMFilesEngine final : public StorageEngine {
   arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
                                     arangodb::LogicalCollection const*,
                                     std::string const& oldName) override;
-  
+
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
   arangodb::Result renameView(TRI_vocbase_t* vocbase,

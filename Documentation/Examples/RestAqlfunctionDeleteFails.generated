@@ -6,7 +6,7 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"no AQL user function with name 'myfunction::x::y' found"</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">404</span>, 
-  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1582</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"user function '%s()' not found"</span> 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1582</span> 
 }

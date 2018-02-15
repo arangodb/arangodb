@@ -1,7 +1,8 @@
 HTTP Interface for Simple Queries
 =================================
 
-### Simple Queries
+Simple Queries
+--------------
 
 This is an introduction to ArangoDB's HTTP interface for simple queries.
 

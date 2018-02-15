@@ -1243,6 +1243,10 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return std::string();
 }
 
+void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
+  TRI_ASSERT(false);
+}
+
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }
@@ -1345,10 +1349,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 
@@ -1366,10 +1368,8 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 

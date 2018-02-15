@@ -369,6 +369,211 @@ TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]")
   // should not recreate iterator each loop iteration in case of deterministic/independent inner loop scope
 }
 
+TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-query]") {
+  IResearchQuerySetup s;
+  UNUSED(s);
+
+  static std::vector<std::string> const EMPTY;
+
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"name\": \"testView\", \
+    \"type\": \"arangosearch\" \
+  }");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::LogicalCollection* logicalCollection1{};
+  arangodb::LogicalCollection* logicalCollection2{};
+  arangodb::LogicalCollection* logicalCollection3{};
+  arangodb::LogicalCollection* logicalCollectionWithTheSameNameAsView{};
+
+  // add collection_1
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_1\" }");
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection1));
+  }
+
+  // add collection_2
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection2));
+  }
+
+  // add collection_3
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_3\" }");
+    logicalCollection3 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection3));
+  }
+
+  // add logical collection with the same name as view
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    logicalCollectionWithTheSameNameAsView = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollectionWithTheSameNameAsView));
+  }
+
+  // add view
+  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  REQUIRE((false == !view));
+
+  // add link to collection
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+      "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
+      "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+  }
+
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsCollectionWithTheSameNameAsView;
+
+  // populate view with the data
+  {
+    arangodb::OperationOptions opt;
+    TRI_voc_tick_t tick;
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into collections
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder.slice();
+      REQUIRE(root.isArray());
+
+      size_t i = 0;
+
+      arangodb::LogicalCollection* collections[] {
+        logicalCollection1, logicalCollection2
+      };
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocsView.emplace_back();
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
+
+        insertedDocsCollectionWithTheSameNameAsView.emplace_back();
+        logicalCollectionWithTheSameNameAsView->insert(&trx, doc, insertedDocsCollectionWithTheSameNameAsView.back(), opt, tick, false);
+
+        CHECK(res.ok());
+        ++i;
+      }
+    }
+
+    // insert into collection_3
+    std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
+
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential_order.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder.slice();
+      REQUIRE(root.isArray());
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocsCollection.emplace_back();
+        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, tick, false);
+        CHECK(res.ok());
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  // bind collection and view with the same name
+  {
+    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+      },
+      boundParameters
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // bind collection and view with the same name
+  //
+  // FIXME
+  // will not return any results because of the:
+  // https://github.com/arangodb/backlog/issues/342
+  {
+    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN d";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+      },
+      boundParameters
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(0 == resultIt.size());
+  }
+}
+
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);

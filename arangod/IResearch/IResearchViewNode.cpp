@@ -282,24 +282,36 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
   auto* impl = static_cast<IResearchView*>(view()->getImplementation());
 #endif
 
+  if (!impl) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get view implementation while creating IResearchView ExecutionBlock";
+
+    return nullptr;
+  }
+
   auto* trx = engine.getQuery()->trx();
 
-  if (!impl || !trx) {
+  if (!trx || !(trx->state())) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get transaction state while creating IResearchView ExecutionBlock";
+
     // FIXME better to return `NoResultsNode`
     return nullptr;
   }
 
-  if (trx->state() && trx->state()->waitForSync() && !impl->sync()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to sync while creating snapshot for IResearch view '" << impl->id()
-      << "', previous snapshot will be used instead";
-  }
+  auto& state = *(trx->state());
+  auto* reader = impl->snapshot(state);
 
-  auto reader = impl->snapshot();
+  if (!reader) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
+
+    return nullptr;
+  }
 
   if (_sortCondition.empty()) {
     // unordered case
-    return new IResearchViewUnorderedBlock(std::move(reader), engine, *this);
+    return new IResearchViewUnorderedBlock(*reader, engine, *this);
   }
 
 //FIXME uncomment when the following method will be there:
@@ -307,11 +319,11 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
 //
 //  if (!isInInnerLoop()) {
 //    // optimized execution for simple queries
-//    return new IResearchViewOrderedBlock(std::move(reader), engine, *this);
+//    return new IResearchViewOrderedBlock(*reader, engine, *this);
 //  }
 
   // generic case
-  return new IResearchViewBlock(std::move(reader), engine, *this);
+  return new IResearchViewBlock(*reader, engine, *this);
 }
 
 NS_END // iresearch

@@ -114,7 +114,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
 }
 
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
-  // initalize builder with vpackbuffer. then we do not need to
+  // initialize builder with vpackbuffer. then we do not need to
   // steal the header and can avoid the shared pointer
   VPackBuilder builder;
   builder.openArray();
