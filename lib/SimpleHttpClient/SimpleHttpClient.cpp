@@ -185,8 +185,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
-    // 1 microsecond == 10^-6 seconds
-    std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
+    usleep(static_cast<TRI_usleep_t>(_params._retryWaitTime));
   }
 
   return result;

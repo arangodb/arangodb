@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierState.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

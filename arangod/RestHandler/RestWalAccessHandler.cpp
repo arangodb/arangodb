@@ -26,6 +26,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/common-defines.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -36,7 +37,6 @@
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

@@ -34,9 +34,9 @@
 #include "Logger/Logger.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/TailingSyncer.h"
+#include "Replication/common-defines.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
-#include "VocBase/replication-common.h"
 
 using namespace arangodb;
 

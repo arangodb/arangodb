@@ -124,6 +124,11 @@ class TailingSyncer : public Syncer {
   
   /// @brief save the current applier state
   virtual Result saveApplierState() = 0;
+  
+private:
+  /// @brief run method, performs continuous synchronization
+  /// internal method, may throw exceptions
+  arangodb::Result runInternal();
 
  protected:
   

@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Transaction/Context.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

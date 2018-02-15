@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/common-defines.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
