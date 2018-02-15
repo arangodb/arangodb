@@ -359,108 +359,123 @@ arangosh> db.written.save("authors/2938210813",
 }
 ```
 
-In order to get all books with their authors you can use NEIGHBORS.
+In order to get all books with their authors you can use a [graph
+traversal](../../AQL/Graphs/Traversals.html#working-with-collection-sets)
 
 ```json
 arangosh> db._query(
-........>"FOR b IN books RETURN " + 
-........>"  { " +
-........>"    book: b, " +
-........>"    authors: NEIGHBORS(books," + 
-........>"                       written," + 
-........>"                       b._id," + 
-........>"                      'inbound'" +
-........>" ) }"
-........>).toArray();
-[ 
-  { 
-    "book" : { 
-      "_id" : "books/2980088317", 
-      "_rev" : "2980088317", 
-      "_key" : "2980088317", 
-      "title" : "The beauty of JOINS" 
-    }, 
-    "authors" : [ 
-      { 
-        "edge" : { 
-          "_id" : "written/3006237181", 
-          "_from" : "authors/2935261693", 
-          "_to" : "books/2980088317", 
-          "_rev" : "3006237181", 
-          "_key" : "3006237181", 
-          "pages" : "1-10" 
-        }, 
-        "vertex" : { 
-          "_id" : "authors/2935261693", 
-          "_rev" : "2935261693", 
-          "_key" : "2935261693", 
-          "name" : { 
-            "first" : "John", 
-            "last" : "Doe" 
-          } 
-        } 
-      }, 
-      { 
-        "edge" : { 
-          "_id" : "written/3012856317", 
-          "_from" : "authors/2938210813", 
-          "_to" : "books/2980088317", 
-          "_rev" : "3012856317", 
-          "_key" : "3012856317", 
-          "pages" : "11-20" 
-        }, 
-        "vertex" : { 
-          "_id" : "authors/2938210813", 
-          "_rev" : "2938210813", 
-          "_key" : "2938210813", 
-          "name" : { 
-            "first" : "Maxima", 
-            "last" : "Musterfrau" 
-          } 
-        } 
-      } 
-    ] 
-  } 
+...> "FOR b IN books " +
+...> "LET authorsByBook = ( " +
+...> "    FOR author, writtenBy IN INBOUND b written " +
+...> "    RETURN { " +
+...> "        vertex: author, " +
+...> "        edge: writtenBy " +
+...> "    } " +
+...> ") " +
+...> "RETURN { " +
+...> "    book: b, " +
+...> "    authors: authorsByBook " +
+...> "} "
+...> ).toArray();
+[
+  {
+    "book" : {
+      "_key" : "2980088317",
+      "_id" : "books/2980088317",
+      "_rev" : "2980088317",
+      "title" : "The beauty of JOINS"
+    },
+    "authors" : [
+      {
+        "vertex" : {
+          "_key" : "2935261693",
+          "_id" : "authors/2935261693",
+          "_rev" : "2935261693",
+          "name" : {
+            "first" : "John",
+            "last" : "Doe"
+          }
+        },
+        "edge" : {
+          "_key" : "2935261693",
+          "_id" : "written/2935261693",
+          "_from" : "authors/2935261693",
+          "_to" : "books/2980088317",
+          "_rev" : "3006237181",
+          "pages" : "1-10"
+        }
+      },
+      {
+        "vertex" : {
+          "_key" : "2938210813",
+          "_id" : "authors/2938210813",
+          "_rev" : "2938210813",
+          "name" : {
+            "first" : "Maxima",
+            "last" : "Musterfrau"
+          }
+        },
+        "edge" : {
+          "_key" : "6833274",
+          "_id" : "written/6833274",
+          "_from" : "authors/2938210813",
+          "_to" : "books/2980088317",
+          "_rev" : "3012856317",
+          "pages" : "11-20"
+        }
+      }
+    ]
+  }
 ]
 ```
 
-Or if you want to hide the information stored in the edge.
+Or if you want only the information stored in the vertices.
 
 ```json
 arangosh> db._query(
-........>"FOR b IN books RETURN {" +
-........>"     book: b, authors: " +
-........>"          NEIGHBORS(books, written, b._id, 'inbound')[*].vertex }"
-........>).toArray();
-[ 
-  { 
-    "book" : { 
-      "title" : "The beauty of JOINS", 
-      "_id" : "books/2980088317", 
-      "_rev" : "2980088317", 
-      "_key" : "2980088317" 
-    }, 
-    "authors" : [ 
-      { 
-        "_id" : "authors/2935261693", 
-        "_rev" : "2935261693", 
-        "_key" : "2935261693", 
-        "name" : { 
-          "first" : "John", 
-          "last" : "Doe" 
-        } 
-      }, 
-      { 
-        "_id" : "authors/2938210813", 
-        "_rev" : "2938210813", 
-        "_key" : "2938210813", 
-        "name" : { 
-          "first" : "Maxima", 
-          "last" : "Musterfrau" 
-        } 
-      } 
-    ] 
-  } 
+...> "FOR b IN books " +
+...> "LET authorsByBook = ( " +
+...> "    FOR author IN INBOUND b written " +
+...> "    OPTIONS { " +
+...> "        bfs: true, " +
+...> "        uniqueVertices: 'global' " +
+...> "    } " +
+...> "    RETURN author " +
+...> ") " +
+...> "RETURN { " +
+...> "    book: b, " +
+...> "    authors: authorsByBook " +
+...> "} "
+...> ).toArray();
+[
+  {
+    "book" : {
+      "_key" : "2980088317",
+      "_id" : "books/2980088317",
+      "_rev" : "2980088317",
+      "title" : "The beauty of JOINS"
+    },
+    "authors" : [
+      {
+        "_key" : "2938210813",
+        "_id" : "authors/2938210813",
+        "_rev" : "2938210813",
+        "name" : {
+          "first" : "Maxima",
+          "last" : "Musterfrau"
+        }
+      },
+      {
+        "_key" : "2935261693",
+        "_id" : "authors/2935261693",
+        "_rev" : "2935261693",
+        "name" : {
+          "first" : "John",
+          "last" : "Doe"
+        }
+      }
+    ]
+  }
 ]
 ```
 
@@ -468,85 +483,97 @@ Or again embed the authors directly into the book document.
 
 ```json
 arangosh> db._query(
-........>"FOR b IN books RETURN merge(" +
-........>"      b, " +
-........>"        {" +
-........>"          authors:" +
-........>"          NEIGHBORS(books, written, b._id, 'inbound')[*].vertex})"
-........>).toArray();
-[ 
-  { 
-    "_id" : "books/2980088317", 
-    "_rev" : "2980088317", 
-    "_key" : "2980088317", 
-    "title" : "The beauty of JOINS", 
-    "authors" : [ 
-      { 
-        "_id" : "authors/2935261693", 
-        "_rev" : "2935261693", 
-        "_key" : "2935261693", 
-        "name" : { 
-          "first" : "John", 
-          "last" : "Doe" 
-        } 
-      }, 
-      { 
-        "_id" : "authors/2938210813", 
-        "_rev" : "2938210813", 
-        "_key" : "2938210813", 
-        "name" : { 
-          "first" : "Maxima", 
-          "last" : "Musterfrau" 
-        } 
-      } 
-    ] 
-  } 
+...> "FOR b IN books " +
+...> "LET authors = ( " +
+...> "    FOR author IN INBOUND b written " +
+...> "    OPTIONS { " +
+...> "        bfs: true, " +
+...> "        uniqueVertices: 'global' " +
+...> "    } " +
+...> "    RETURN author " +
+...> ") " +
+...> "RETURN MERGE(b, {authors: authors}) "
+...> ).toArray();
+[
+  {
+    "_id" : "books/2980088317",
+    "_key" : "2980088317",
+    "_rev" : "2980088317",
+    "title" : "The beauty of JOINS",
+    "authors" : [
+      {
+        "_key" : "2938210813",
+        "_id" : "authors/2938210813",
+        "_rev" : "2938210813",
+        "name" : {
+          "first" : "Maxima",
+          "last" : "Musterfrau"
+        }
+      },
+      {
+        "_key" : "2935261693",
+        "_id" : "authors/2935261693",
+        "_rev" : "2935261693",
+        "name" : {
+          "first" : "John",
+          "last" : "Doe"
+        }
+      }
+    ]
+  }
 ]
 ```
 
 If you need the authors and their books, simply reverse the direction.
 
 ```json
-arangosh> db._query(
-........>"FOR a IN authors RETURN " +
-........>"  merge(a, " +
-........>"        {books: NEIGHBORS(authors, written, a._id, 'outbound')[*].vertex})"
-........>).toArray();
-[ 
-  { 
-    "_id" : "authors/2938210813", 
-    "_rev" : "2938210813", 
-    "_key" : "2938210813", 
-    "name" : { 
-      "first" : "Maxima", 
-      "last" : "Musterfrau" 
-    }, 
-    "books" : [ 
-      { 
-        "_id" : "books/2980088317", 
-        "_rev" : "2980088317", 
-        "_key" : "2980088317", 
-        "title" : "The beauty of JOINS" 
-      } 
-    ] 
-  }, 
-  { 
-    "_id" : "authors/2935261693", 
-    "_rev" : "2935261693", 
-    "_key" : "2935261693", 
-    "name" : { 
-      "first" : "John", 
-      "last" : "Doe" 
-    }, 
-    "books" : [ 
-      { 
-        "_id" : "books/2980088317", 
-        "_rev" : "2980088317", 
-        "_key" : "2980088317", 
-        "title" : "The beauty of JOINS" 
-      } 
-    ] 
-  } 
+> db._query(
+...> "FOR a IN authors " +
+...> "LET booksByAuthor = ( " +
+...> "    FOR b IN OUTBOUND a written " +
+...> "    OPTIONS { " +
+...> "        bfs: true, " +
+...> "        uniqueVertices: 'global' " +
+...> "    } " +
+...> "    RETURN b" +
+...> ") " +
+...> "RETURN MERGE(a, {books: booksByAuthor}) "
+...> ).toArray();
+[
+  {
+    "_id" : "authors/2935261693",
+    "_key" : "2935261693",
+    "_rev" : "2935261693",
+    "name" : {
+      "first" : "John",
+      "last" : "Doe"
+    },
+    "books" : [
+      {
+        "_key" : "2980088317",
+        "_id" : "books/2980088317",
+        "_rev" : "2980088317",
+        "title" : "The beauty of JOINS"
+      }
+    ]
+  },
+  {
+    "_id" : "authors/2938210813",
+    "_key" : "2938210813",
+    "_rev" : "2938210813",
+    "name" : {
+      "first" : "Maxima",
+      "last" : "Musterfrau"
+    },
+    "books" : [
+      {
+        "_key" : "2980088317",
+        "_id" : "books/2980088317",
+        "_rev" : "2980088317",
+        "title" : "The beauty of JOINS"
+      }
+    ]
+  }
 ]
 ```
 
