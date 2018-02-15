@@ -21,11 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_VOC_BASE_REPLICATION_COMMON_H
-#define ARANGOD_VOC_BASE_REPLICATION_COMMON_H 1
+#ifndef ARANGOD_REPLICATION_COMMON_DEFINES_H
+#define ARANGOD_REPLICATION_COMMON_DEFINES_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/voc-types.h"
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP response header for "check for more data?"
@@ -59,10 +59,9 @@
 
 #define TRI_REPLICATION_HEADER_ACTIVE "x-arango-replication-active"
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief replication operations
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb {
 
+/// @brief replication operations
 typedef enum {
   REPLICATION_INVALID = 0,
 
@@ -83,6 +82,7 @@ typedef enum {
   REPLICATION_VIEW_CREATE = 2110,
   REPLICATION_VIEW_DROP = 2111,
   REPLICATION_VIEW_CHANGE = 2112,
+  REPLICATION_VIEW_RENAME = 2113,
 
   REPLICATION_TRANSACTION_START = 2200,
   REPLICATION_TRANSACTION_COMMIT = 2201,
@@ -95,23 +95,15 @@ typedef enum {
   REPLICATION_MAX
 } TRI_replication_operation_e;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_GetTimeStampReplication(char*, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a timestamp string in a target buffer
-////////////////////////////////////////////////////////////////////////////////
-
 void TRI_GetTimeStampReplication(double, char*, size_t);
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine whether a collection should be included in replication
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem);
 bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
+
+}
 
 #endif

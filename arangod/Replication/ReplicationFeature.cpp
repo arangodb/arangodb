@@ -30,6 +30,7 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -41,7 +42,7 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
-      _enableReplicationFailover(false) {
+      _enableActiveFailover(false) {
 
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -62,15 +63,17 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                         "replication.auto-start");
   options->addOldOption("database.replication-applier",
                         "replication.auto-start");
-  
   options->addHiddenOption("--replication.automatic-failover",
-                           "Enable auto-failover during asynchronous replication",
-                           new BooleanParameter(&_enableReplicationFailover));
+                           "Please use `--replication.active-failover` instead",
+                           new BooleanParameter(&_enableActiveFailover));
+  options->addOption("--replication.active-failover",
+                      "Enable active-failover during asynchronous replication",
+                      new BooleanParameter(&_enableActiveFailover));
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (_enableReplicationFailover && feature->agencyEndpoints().empty()) {
+  if (_enableActiveFailover && feature->agencyEndpoints().empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
     << "automatic failover needs to be started with agency endpoint configured";
     FATAL_ERROR_EXIT();
@@ -95,7 +98,7 @@ void ReplicationFeature::start() {
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() &&
       _replicationApplierAutoStart) {
-    _globalReplicationApplier->start(0, false, 0);
+    _globalReplicationApplier->startTailing(0, false, 0);
   }
 }
 
@@ -137,7 +140,7 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
                 << vocbase->name() << "'";
     } else {
       try {
-        vocbase->replicationApplier()->start(0, false, 0);
+        vocbase->replicationApplier()->startTailing(0, false, 0);
       } catch (std::exception const& ex) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
                   << vocbase->name() << "': " << ex.what();
@@ -155,5 +158,71 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
 
   if (vocbase->replicationApplier() != nullptr) {
     vocbase->replicationApplier()->stopAndJoin();
+  }
+}
+
+// replace tcp:// with http://, and ssl:// with https://
+static std::string FixEndpointProto(std::string const& endpoint) {
+  if (endpoint.find("tcp://", 0, 6) == 0) {
+    return "http://" + endpoint.substr(6); // strlen("tcp://")
+  }
+  if (endpoint.find("ssl://", 0, 6) == 0) {
+    return "https://" + endpoint.substr(6); // strlen("ssl://")
+  }
+  return endpoint;
+}
+
+static void writeError(int code, GeneralResponse* response) {
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(code));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
+  builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
+  builder.close();
+  
+  VPackOptions options(VPackOptions::Defaults);
+  options.escapeUnicode = true;
+  response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+}
+
+
+/// @brief fill a response object with correct response for a follower
+void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
+                                                 ServerState::Mode mode) {
+  switch (mode) {
+    case ServerState::Mode::REDIRECT: {
+      std::string endpoint;
+      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+      if (replication != nullptr && replication->isActiveFailoverEnabled()) {
+        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+        if (applier != nullptr) {
+          endpoint = applier->endpoint();
+          // replace tcp:// with http://, and ssl:// with https://
+          endpoint = FixEndpointProto(endpoint);
+        }
+      }
+      response->setHeaderNC(StaticStrings::LeaderEndpoint, endpoint);
+      writeError(TRI_ERROR_CLUSTER_NOT_LEADER, response);
+      // return the endpoint of the actual leader
+    }
+    break;
+      
+    case ServerState::Mode::TRYAGAIN:
+      // intentionally do not set "Location" header, but use a custom header that
+      // clients can inspect. if they find an empty endpoint, it means that there
+      // is an ongoing leadership challenge
+      response->setHeaderNC(StaticStrings::LeaderEndpoint, "");
+      writeError(TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, response);
+      break;
+
+    case ServerState::Mode::INVALID:
+      writeError(TRI_ERROR_SHUTTING_DOWN, response);
+      break;
+    case ServerState::Mode::MAINTENANCE:
+    default: {
+      break;
+    }
   }
 }

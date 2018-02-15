@@ -1047,7 +1047,7 @@ retry:
       
       // start initial synchronization
       try {
-        std::unique_ptr<InitialSyncer> syncer = initialSyncer();
+        std::unique_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
         Result r = syncer->run(_configuration._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
@@ -1095,8 +1095,10 @@ void TailingSyncer::getLocalState() {
     return;
   }
  
+  // a _masterInfo._serverId value of 0 may occur if no proper connection could be
+  // established to the master initially
   if (_masterInfo._serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0) {
+      _applier->_state._serverId != 0 && _masterInfo._serverId != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE,
                                    std::string("encountered wrong master id in replication state file. found: ") +
                                    StringUtils::itoa(_masterInfo._serverId) + ", expected: " +

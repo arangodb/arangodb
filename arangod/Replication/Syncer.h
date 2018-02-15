@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/common-defines.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
@@ -95,6 +95,8 @@ class Syncer {
   Result sendRemoveBarrier();
   
   void setAborted(bool value);
+  
+  virtual bool isAborted() const;
 
  protected:
   /// @brief reload all users
@@ -191,7 +193,7 @@ class Syncer {
   httpclient::GeneralClientConnection* _connection;
   
   /// @brief a mutex for assigning and freeing the _client object
-  Mutex _clientMutex;
+  mutable Mutex _clientMutex;
 
   /// @brief the http client we're using
   httpclient::SimpleHttpClient* _client;

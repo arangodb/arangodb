@@ -77,7 +77,3 @@ Result GlobalTailingSyncer::saveApplierState() {
   }
   return TRI_ERROR_INTERNAL;
 }
-
-std::unique_ptr<InitialSyncer> GlobalTailingSyncer::initialSyncer() {
-  return std::make_unique<GlobalInitialSyncer>(_configuration);
-}

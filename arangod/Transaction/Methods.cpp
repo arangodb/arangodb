@@ -110,9 +110,9 @@ static void createBabiesError(VPackBuilder& builder,
                               Result error, bool silent) {
   if (!silent) {
     builder.openObject();
-    builder.add("error", VPackValue(true));
-    builder.add("errorNum", VPackValue(error.errorNumber()));
-    builder.add("errorMessage", VPackValue(error.errorMessage()));
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::ErrorNum, VPackValue(error.errorNumber()));
+    builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
     builder.close();
   }
 
@@ -1055,8 +1055,8 @@ static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> 
   if (resultBody != nullptr) {
     VPackSlice slice = resultBody->slice();
     if (slice.isObject()) {
-      VPackSlice num = slice.get("errorNum");
-      VPackSlice msg = slice.get("errorMessage");
+      VPackSlice num = slice.get(StaticStrings::ErrorNum);
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
       if (num.isNumber()) {
         if (msg.isString()) {
           // found an error number and an error message, so let's use it!
@@ -1488,7 +1488,7 @@ OperationResult transaction::Methods::insertLocal(
         VPackArrayIterator itResult(ourResult);
         while (itValue.valid() && itResult.valid()) {
           TRI_ASSERT((*itResult).isObject());
-          if (!(*itResult).hasKey("error")) {
+          if (!(*itResult).hasKey(StaticStrings::Error)) {
             doOneDoc(itValue.value(), itResult.value());
             count++;
           }
@@ -1836,7 +1836,7 @@ OperationResult transaction::Methods::modifyLocal(
           VPackArrayIterator itResult(ourResult);
           while (itValue.valid() && itResult.valid()) {
             TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey("error")) {
+            if (!(*itResult).hasKey(StaticStrings::Error)) {
               doOneDoc(itValue.value(), itResult.value());
               count++;
             }
@@ -2117,7 +2117,7 @@ OperationResult transaction::Methods::removeLocal(
           VPackArrayIterator itResult(ourResult);
           while (itValue.valid() && itResult.valid()) {
             TRI_ASSERT((*itResult).isObject());
-            if (!(*itResult).hasKey("error")) {
+            if (!(*itResult).hasKey(StaticStrings::Error)) {
               doOneDoc(itValue.value(), itResult.value());
               count++;
             }
