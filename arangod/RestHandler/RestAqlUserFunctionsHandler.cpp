@@ -39,7 +39,6 @@ RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request
   : RestVocbaseBaseHandler(request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
-
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::POST) {
@@ -78,8 +77,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       generateError(res);
     }
     return RestStatus::DONE;
-  }
-  else if (type == rest::RequestType::DELETE_REQ) {
+  } else if (type == rest::RequestType::DELETE_REQ) {
     // JSF_delete_api_aqlfunction.md
     // DELETE /_api/aqlfunction/{name}
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -110,24 +108,31 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       generateError(res);
     }
     return RestStatus::DONE;
-  } // DELETE
-  else if (type == rest::RequestType::GET) {
+    // DELETE
+  } else if (type == rest::RequestType::GET) {
     // JSF_get_api_aqlfunction.md
     // GET /_api/aqlfunction - figure out parameters - function namespace
     std::string functionNamespace;
     std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-    
-    if ((suffixes.size() != 1) || suffixes[0].empty() ) {
-      extractStringParameter(StaticStrings::Prefix, functionNamespace);
-      if (functionNamespace.empty()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                      "superfluous suffix, expecting _api/aqlfunction/[<functionname or prefix>|?" +
-                      StaticStrings::Prefix + "=<functionname or prefix>]");
-        return RestStatus::DONE;
+    if (!suffixes.empty()) {
+      if ((suffixes.size() != 1) || suffixes[0].empty() ) {
+        extractStringParameter(StaticStrings::Prefix, functionNamespace);
+        if (functionNamespace.empty()) {
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                        "superfluous suffix, expecting _api/aqlfunction/[<functionname or prefix>|?" +
+                        StaticStrings::Prefix + "=<functionname or prefix>]");
+          return RestStatus::DONE;
+        }
+      } else {
+        functionNamespace = suffixes[0];
       }
     } else {
-      functionNamespace = suffixes[0];
+      extractStringParameter(StaticStrings::Prefix, functionNamespace);
+      if (functionNamespace.empty()) {
+        // compatibility mode
+        extractStringParameter("namespace", functionNamespace);
+      }
     }
 
     // internal get
@@ -135,7 +140,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
     auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
-    if(res.ok()){
+    if (res.ok()) {
       generateOk(rest::ResponseCode::OK, arrayOfFunctions.slice());
     } else {
       generateError(res);
