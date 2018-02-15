@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine, _ */
+/* global marked, Backbone, $, window, arangoHelper, templateEngine, _ */
 (function () {
   'use strict';
 
@@ -54,6 +54,14 @@
       }
     },
 
+    resize: function (auto) {
+      if (auto) {
+        $('.innerContent').css('height', 'auto');
+      } else {
+        $('.innerContent').height($('.centralRow').height() - 150);
+      }
+    },
+
     render: function () {
       var self = this;
 
@@ -89,11 +97,13 @@
           $('#service-settings').attr('disabled', true);
         }
       }.bind(this));
+      this.resize(false);
       return $(this.el);
     },
 
     renderReadme: function (readme) {
-      $('#readme').html('<pre>' + readme + '</pre>');
+      var html = marked(readme);
+      $('#readme').html(html);
     },
 
     breadcrumb: function () {

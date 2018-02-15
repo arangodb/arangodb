@@ -108,7 +108,7 @@
       </div>
       <div id="readme" class="readme" style="display: none;">
         <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
+        <%= marker(app.get('readme')) %>
         <% } else { %>
         <p>No README data found.</p>
         <% } %>

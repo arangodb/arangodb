@@ -29,8 +29,6 @@ const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
 const crypto = require('@arangodb/crypto');
-const marked = require('marked');
-const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
@@ -242,9 +240,7 @@ router.get('/', function (req, res) {
     config: service.getConfiguration(),
     deps: service.getDependencies(),
     scripts: service.getScripts(),
-    readme: service.readme && marked(service.readme, {
-      highlight: (code) => highlightAuto(code).value
-    })
+    readme: service.readme
   })));
 })
 .summary('List all Foxxes')

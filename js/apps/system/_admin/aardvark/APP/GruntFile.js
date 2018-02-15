@@ -19,7 +19,7 @@
             "frontend/js/lib/bootstrap-min.js",
             "frontend/js/lib/d3.min.js",
             "frontend/js/lib/nv.d3.min.js",
-            "frontend/js/lib/dygraph-combined.min.js",
+            "frontend/js/lib/dygraph-combined.min.js"
           ],
           css: [
             "frontend/css/swagger/hightlight.default.css",
@@ -90,10 +90,11 @@
             "frontend/js/lib/d3.fisheye.min.js",
             "frontend/js/lib/bootstrap-pagination.min.js",
             "frontend/js/lib/jqconsole.min.js",
-            "frontend/js/lib/highlight.7.3.pack.min.js",
+            "frontend/js/lib/highlight.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.min.js",
             "frontend/js/lib/pretty-bytes.js",
+            "frontend/js/lib/marked.min.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",

@@ -17,6 +17,7 @@
   }
 
   .foxx-left {
+    font-size: 14px;
     font-weight: 100;
 
     > p {
@@ -39,8 +40,51 @@
   }
 
   .foxx-right {
-    div {
-      padding-left: 15px;
+    font-size: 12px;
+  }
+
+  .readme {
+    background: $c-white;
+    padding: 1em 1em;
+    padding-top: 0;
+
+    .buttons {
+
+      background: $c-white;
+      height: 30px;
+      position: relative;
+      right: -15px;
+      width: 100%;
+
+      button {
+        float: right;
+      }
+    }
+
+    .modal-body {
+      border: {
+        bottom: 1px solid $c-content-border;
+        left: 0;
+        right: 0;
+        top: 0;
+      }
+      padding-bottom: 15px;
+    }
+
+    .modal-footer {
+      border: {
+        bottom: 0;
+        left: 0;
+        right: 0;
+        top: 1px solid $c-content-border;
+      }
+      padding-right: 0;
+    }
+
+    h1 {
+      float: left;
+      text-align: left;
+      width: 100%;
     }
   }
 
@@ -64,7 +108,16 @@
       font-weight: 100;
       margin-bottom: 20px;
       margin-left: 10px;
+      margin-top: -10px;
       width: 100%;
+
+      .production {
+        color: $c-positive;
+      }
+
+      .development {
+        color: $c-warning;
+      }
 
       p {
         width: 100%;
@@ -72,57 +125,25 @@
 
         span {
           display: block;
+          max-width: 100px;
           float: left;
+          height: 17px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
 
           &:first-child {
-            min-width: 90px;
+            min-width: 75px;
           }
         }
       }
     }
 
-    .readme {
-      background: $c-white;
-      margin-top: -10px;
-      padding: 1em 1em;
-      padding-top: 0;
+    .header_right {
+      margin-right: 20px;
 
-      .buttons {
-
-        background: $c-white;
-        height: 30px;
-        position: relative;
-        right: -15px;
-        width: 100%;
-
-        button {
-          float: right;
-        }
-      }
-
-      .modal-body {
-        border: {
-          bottom: 1px solid $c-content-border;
-          left: 0;
-          right: 0;
-          top: 0;
-        }
-        padding-bottom: 15px;
-      }
-
-      .modal-footer {
-        border: {
-          bottom: 0;
-          left: 0;
-          right: 0;
-          top: 1px solid $c-content-border;
-        }
-        padding-right: 0;
-      }
-
-      h1 {
-        float: left;
-        text-align: left;
+      .button-success {
+        height: 40px;
         width: 100%;
       }
     }
@@ -237,14 +258,6 @@
             padding: 2px 8px;
             position: relative;
             top: -3px;
-          }
-
-          .production {
-            color: $c-positive;
-          }
-
-          .development {
-            color: $c-warning;
           }
 
           &:after {

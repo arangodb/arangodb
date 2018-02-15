@@ -80,7 +80,7 @@
            </div>
           <div id="readme" class="readme">
             <% if (app.get('readme')) { %>
-              <%= app.get('readme') %>
+              <%= marked(app.get('readme')) %>
             <% } else { %>
               <p>No README data found.</p>
             <% } %>
@@ -90,10 +90,10 @@
         <div class="pure-u-3-4 pure-u-sm-1-4 foxx-right">
           <div class="foxx-label-container">
             <p>
-              <span>Mount: </span><span><%= app.attributes.mount %></span>
+              <span>Author: </span><span><%= app.attributes.author %></span>
             </p>
             <p>
-              <span>Author: </span><span><%= app.attributes.author %></span>
+              <span>Mount: </span><span><%= app.attributes.mount %></span>
             </p>
             <p>
               <span>Mode: </span><span class="mode <%=app.get('development')?'development':'production'%>"><%=app.get('development')?'Development':'Production'%></span>
@@ -107,7 +107,11 @@
               <% } %>
             </p>
             <p>
-              <span>Categories: </span><span><%= app.attributes.categories %></span>
+              <% if (app.get('development') === true) { %>
+                <span>Path: </span><span><%= app.attributes.path %></span>
+              <% } else { %>
+                <span></span>
+              <% } %>
             </p>
           </div>
           <div class="header_right">
