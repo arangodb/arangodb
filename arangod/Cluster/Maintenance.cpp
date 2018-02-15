@@ -37,7 +37,6 @@
 #include <algorithm>
 
 using namespace arangodb::basics;
-using namespace arangodb::consensus;
 using namespace arangodb::maintenance;
 
 static std::vector<std::string> cmp {
@@ -122,7 +121,8 @@ VPackBuilder compareIndexes(
 void handlePlanShard(
   VPackSlice const& db, VPackSlice const& cprops, VPackSlice const& ldb,
   std::string const& dbname, std::string const& shname, std::string const& serverId,
-  std::unordered_set<std::string>& colis, std::unordered_set<std::string>& indis,
+  std::string const& leaderId, std::unordered_set<std::string>& colis,
+  std::unordered_set<std::string>& indis,
   std::vector<ActionDescription>& actions) {
   
   // We only care for shards, where we find our own ID
@@ -138,7 +138,8 @@ void handlePlanShard(
       if (properties.slice() != VPackSlice::emptyObjectSlice()) {
         actions.push_back(
           ActionDescription(
-            {{NAME, "AlterCollection"}, {COLLECTION, shname}}, properties));
+            {{NAME, "UpdateCollection"}, {DATABASE, dbname}, {COLLECTION, shname}},
+            properties));
       }
       
       // Indexes
@@ -150,19 +151,21 @@ void handlePlanShard(
         if (difference.slice().length() != 0) {
           for (auto const& index : VPackArrayIterator(difference.slice())) {
             actions.push_back(
-              ActionDescription(
-                {{NAME, "EnsureIndex"}, {COLLECTION, shname}, {DATABASE, dbname},
-                 {TYPE, index.get(TYPE).copyString()},
-                 {FIELDS, index.get(FIELDS).toJson()}},
-                VPackBuilder(index)));
+              ActionDescription({{NAME, "EnsureIndex"}, {COLLECTION, shname},
+                  {DATABASE, dbname}, {TYPE, index.get(TYPE).copyString()},
+                  {FIELDS, index.get(FIELDS).toJson()},
+                  {LEADER, (leaderId == serverId) ? std::string() : leaderId}
+                }, VPackBuilder(index))
+              );
           }
         }
       }
     } else {                   // Create the sucker!
       actions.push_back(
-        ActionDescription(
-          {{NAME, "CreateCollection"}, {COLLECTION, shname},
-                                       {DATABASE, dbname}}, props));
+        ActionDescription({
+            {NAME, "CreateCollection"},
+            {COLLECTION, shname},
+            {DATABASE, dbname}}, props));
     }
   }
 }            
@@ -234,12 +237,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal (
       for (auto const& pcol : VPackObjectIterator(pdb.value)) {
         auto const& cprops = pcol.value;
         for (auto const& shard : VPackObjectIterator(cprops.get(SHARDS))) {
-          bool leader(true); // Want to understand leadership
           for (auto const& db : VPackArrayIterator(shard.value)) {
             handlePlanShard(
-              db, cprops, ldb, dbname, shard.key.copyString(), serverId, colis,
-              indis, actions);
-            leader = false;
+              db, cprops, ldb, dbname, shard.key.copyString(), serverId,
+              shard.value[0].copyString(), colis, indis, actions);
           }
         }
       }

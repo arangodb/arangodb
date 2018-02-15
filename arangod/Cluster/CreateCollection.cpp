@@ -30,6 +30,12 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <velocypack/Compare.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
@@ -41,21 +47,28 @@ CreateCollection::CreateCollection(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
   TRI_ASSERT(d.has(COLLECTION));
   TRI_ASSERT(d.has(DATABASE));
+  TRI_ASSERT(d.has(ID));
+  TRI_ASSERT(d.has(LEADER));
   TRI_ASSERT(d.properties().hasKey(TYPE));
-  TRI_ASSERT(d.properties().get(TYPE).isInteger());
-  
+  TRI_ASSERT(d.properties().get(TYPE).isInteger());  
 }
 
 CreateCollection::~CreateCollection() {};
 
 arangodb::Result CreateCollection::run(
   std::chrono::duration<double> const&, bool& finished) {
+
   arangodb::Result res;
 
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
+  auto const& planId = _description.get(ID);
   auto const& properties = _description.properties();
 
+  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    << "creating local shard '" << database << "/" << collection
+    << "' for central '" << database << "/" << planId << "'";
+  
   auto vocbase = Databases::lookup(database);
   if (vocbase == nullptr) {
     std::string errorMsg("CreateCollection: Failed to lookup database ");
@@ -79,13 +92,36 @@ arangodb::Result CreateCollection::run(
 
   TRI_col_type_e type(properties.get(TYPE).getNumericValue<TRI_col_type_e>());
   
+  VPackBuilder docket;
+  for (auto const& i : VPackObjectIterator(properties)) {
+    auto const& key = i.key.copyString();
+    if (key == ID || key == NAME || key == GLOB_UID || key == OBJECT_ID) {
+      if (key == GLOB_UID || key == OBJECT_ID) {
+        LOG_TOPIC(WARN, Logger::MAINTENANCE)
+          << "unexpected " << key << " in " << properties.toJson();
+      } else if (key == ID) {
+        docket.add("planId", i.value);
+      }
+      continue;
+    }
+    docket.add(key, i.value);
+  }
+  
   res = Collections::create(
-    vocbase, collection, type, _description.properties(), waitForRepl,
-    enforceReplFact, [=](LogicalCollection*) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
-        << "Local collection " << collection << " successfully created";
+    vocbase, collection, type, docket.slice(), waitForRepl, enforceReplFact,
+    [=](LogicalCollection* col) {
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
+        << "/" << collection << " successfully created";
+      col->followers()->setTheLeader();
     });
 
+  if (res.fail()) {
+    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+      << "creating local shard '" << database << "/" << collection
+      << "' for central '" << database << "/" << planId << "' failed: "
+      << res;
+  }
+  
   return res;
 }
 

@@ -29,6 +29,21 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
+std::string const KEY = "_key";
+std::string const FIELDS = "fields";
+std::string const TYPE = "type";
+std::string const INDEXES = "indexes";
+std::string const SHARDS = "shards";
+std::string const DATABASE = "database";
+std::string const COLLECTION = "collection";
+std::string const EDGE = "edge";
+std::string const NAME = "name";
+std::string const ID = "id";
+std::string const LEADER = "leader";
+std::string const GLOB_UID = "globallyUniqueId";
+std::string const OBJECT_ID = "objectId";
+
+
 /// @brief ctor
 ActionDescription::ActionDescription(
   std::map<std::string, std::string> const& d, VPackBuilder const& p) :
@@ -78,7 +93,7 @@ bool ActionDescription::operator==(
 
 /// @brief Get action name. Cannot throw. See constructor
 std::string const& ActionDescription::name() const noexcept {
-  return _description.at("name");
+  return _description.at(NAME);
 }
 
 /// @brief summary to velocypack
@@ -114,3 +129,8 @@ std::size_t hash<ActionDescription>::operator()(
 }
 }
 
+std::ostream& operator<< (
+  std::ostream& out, arangodb::maintenance::ActionDescription const& d) {
+  out << d.toJson();
+  return out;
+}

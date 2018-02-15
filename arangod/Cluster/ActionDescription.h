@@ -35,16 +35,19 @@ namespace maintenance {
 
 enum Signal { GRACEFUL, IMMEDIATE };
 
-static std::string const KEY("_key");
-static std::string const FIELDS("fields");
-static std::string const TYPE("type");
-static std::string const INDEXES("indexes");
-static std::string const SHARDS("shards");
-static std::string const DATABASE("database");
-static std::string const COLLECTION("collection");
-static std::string const EDGE("edge");
-static std::string const NAME("name");
-static std::string const ID("id");
+static std::string const KEY;
+static std::string const FIELDS;
+static std::string const TYPE;
+static std::string const INDEXES;
+static std::string const SHARDS;
+static std::string const DATABASE;
+static std::string const COLLECTION;
+static std::string const EDGE;
+static std::string const NAME;
+static std::string const ID;
+static std::string const LEADER;
+static std::string const GLOB_UID;
+static std::string const OBJECT_ID;
 
 /**
  * @brief Action description for mainenance actions
@@ -82,7 +85,7 @@ public:
   std::size_t hash() const noexcept;
 
   /// @brief Name of action
-  std::string name() const noexcept;
+  std::string const& name() const noexcept;
 
   /**
    * @brief Check if key exists in discrimantory container
@@ -133,7 +136,7 @@ public:
    *            This function does not throw as builder is always when here.
    * @return    Non discriminatory properties
    */
-  VPackSlice properties() constm noexcept;
+  VPackSlice properties() const noexcept;
   
 private:
 
@@ -147,12 +150,10 @@ private:
   
 };
 
-inline std::ostream& operator<< (std::ostream& o, ActionDescription const& d) {
-  o << d.toJson();
-  return o;
-}
-
 }}
+
+std::ostream& operator<< (
+  std::ostream& o, arangodb::maintenance::ActionDescription const& d);
 
 namespace std {
 /// @brief Hash function used by std::unordered_map<ActionDescription,...>

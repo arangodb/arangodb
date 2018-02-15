@@ -120,6 +120,8 @@ class Result {
   int _errorNumber;
   std::string _errorMessage;
 };
+
 }
 
+std::ostream& operator<<(std::ostream& out, arangodb::Result const& result);
 #endif
