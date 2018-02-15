@@ -27,6 +27,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/FollowerInfo.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -63,6 +65,7 @@ arangodb::Result CreateCollection::run(
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& planId = _description.get(ID);
+  auto const& leader = _description.get(LEADER);
   auto const& properties = _description.properties();
 
   LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
@@ -112,7 +115,10 @@ arangodb::Result CreateCollection::run(
     [=](LogicalCollection* col) {
       LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "local collection " << database
         << "/" << collection << " successfully created";
-      col->followers()->setTheLeader();
+      col->followers()->setTheLeader(leader);
+      if (leader.empty()) {
+        col->followers()->clear();
+      }
     });
 
   if (res.fail()) {
