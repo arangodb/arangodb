@@ -404,7 +404,6 @@ function AuthSuite () {
     },
     
     testViaJS: function() {
-      print ("LDAP is", helper.isLdapEnabledExternal() ? "enabled" : "disabled");
       if (helper.isLdapEnabledExternal()) {
         return;
       }
