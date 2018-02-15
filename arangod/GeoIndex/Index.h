@@ -23,16 +23,16 @@
 #ifndef ARANGOD_GEO_INDEX_H
 #define ARANGOD_GEO_INDEX_H 1
 
+#include <s2/s2cell_id.h>
+
 #include "Basics/Result.h"
 #include "Geo/GeoParams.h"
-
-#include <s2/s2cell_id.h>
 
 namespace arangodb {
 namespace aql {
 struct AstNode;
 struct Variable;
-}
+}  // namespace aql
 namespace basics {
 struct AttributeName;
 }
@@ -42,8 +42,11 @@ class Slice;
 
 namespace geo {
 struct Coordinate;
-class ShapeContainer;
 struct QueryParams;
+class ShapeContainer;
+}  // namespace geo
+
+namespace geo_index {
 
 /// Mixin for geo indexes
 struct Index {
@@ -77,8 +80,8 @@ struct Index {
   static void parseCondition(aql::AstNode const* node,
                              aql::Variable const* reference,
                              geo::QueryParams& params);
-  
-  geo::Index::Variant variant() const { return _variant; }
+
+  Variant variant() const { return _variant; }
 
  private:
   static geo::Coordinate parseGeoDistance(aql::AstNode const* node,
@@ -93,7 +96,7 @@ struct Index {
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
   /// @brief the type of geo we support
-  geo::Index::Variant _variant;
+  Variant _variant;
 
   /// @brief attribute paths
   std::vector<std::string> _location;
@@ -101,7 +104,7 @@ struct Index {
   std::vector<std::string> _longitude;
 };
 
-}  // namespace geo
+}  // namespace geo_index
 }  // namespace arangodb
 
 #endif

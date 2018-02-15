@@ -23,25 +23,26 @@
 #ifndef ARANGOD_GEO_NEAR_QUERY_H
 #define ARANGOD_GEO_NEAR_QUERY_H 1
 
-#include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
-#include "VocBase/LocalDocumentId.h"
+#include <queue>
+#include <type_traits>
+#include <vector>
 
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
 #include <s2/s2cell_union.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
-#include <queue>
-#include <type_traits>
-#include <vector>
+
+#include "Geo/GeoParams.h"
+#include "Geo/GeoUtils.h"
+#include "VocBase/LocalDocumentId.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
 }
-namespace geo {
+namespace geo_index {
 
 /// result of a geospatial index query. distance may or may not be set
 struct Document {
@@ -73,7 +74,7 @@ class NearUtils {
   static_assert(std::is_same<CMP, DocumentsAscending>::value ||
                     std::is_same<CMP, DocumentsDescending>::value,
                 "Invalid template type");
-  static constexpr bool isAcending() {
+  static constexpr bool isAscending() {
     return std::is_same<CMP, DocumentsAscending>::value;
   }
   static constexpr bool isDescending() {
@@ -112,14 +113,14 @@ class NearUtils {
     // between _innerBound and _maxBound. Otherwise results may appear
     // too early in the result list
     return !_buffer.empty() &&
-           ((isAcending() && _buffer.top().distRad <= _innerBound) ||
+           ((isAscending() && _buffer.top().distRad <= _innerBound) ||
             (isDescending() && _buffer.top().distRad >= _outerBound));
   }
 
   /// @brief closest buffered result
-  geo::Document const& nearest() const {
-    TRI_ASSERT(isAcending() && (isFilterIntersects() ||
-                                _buffer.top().distRad <= _innerBound) ||
+  geo_index::Document const& nearest() const {
+    TRI_ASSERT((isAscending() && (isFilterIntersects() ||
+                                _buffer.top().distRad <= _innerBound)) ||
                (isDescending() && _buffer.top().distRad >= _outerBound));
     return _buffer.top();
   }
@@ -154,21 +155,21 @@ class NearUtils {
 
   /// @brief returns true if all possible scan intervals are covered
   inline bool allIntervalsCovered() const noexcept {
-    return (isAcending() && _innerBound == _maxBound &&
+    return (isAscending() && _innerBound == _maxBound &&
             _outerBound == _maxBound) ||
            (isDescending() && _innerBound == 0 && _outerBound == 0);
   }
 
   inline bool isFilterNone() const noexcept {
-    return _params.filterType == FilterType::NONE;
+    return _params.filterType == geo::FilterType::NONE;
   }
 
   inline bool isFilterContains() const noexcept {
-    return _params.filterType == FilterType::CONTAINS;
+    return _params.filterType == geo::FilterType::CONTAINS;
   }
 
   inline bool isFilterIntersects() const noexcept {
-    return _params.filterType == FilterType::INTERSECTS;
+    return _params.filterType == geo::FilterType::INTERSECTS;
   }
 
  private:
@@ -181,7 +182,7 @@ class NearUtils {
   double const _minBound = 0;
   /// max distance on the unit spherer or M_PI
   double const _maxBound = M_PI;
-  
+
   /// Enable additional deduplication
   bool const _deduplicate;
   /// for deduplication of results

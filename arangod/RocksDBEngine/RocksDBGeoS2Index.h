@@ -24,7 +24,7 @@
 #define ARANGOD_ROCKSDB_GEO_S2_INDEX_H 1
 
 #include "Basics/Result.h"
-#include "Geo/Index.h"
+#include "GeoIndex/Index.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 
@@ -34,7 +34,7 @@
 class S2Region;
 
 namespace arangodb {
-class RocksDBGeoS2Index final : public arangodb::RocksDBIndex, public geo::Index {
+class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
   friend class RocksDBSphericalIndexIterator;
 
  public:
@@ -46,9 +46,9 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex, public geo::Index
   ~RocksDBGeoS2Index() override {}
 
  public:
-  IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
+  constexpr IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
-  char const* typeName() const override { return "s2index"; }
+  constexpr char const* typeName() const override { return "s2index"; }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -56,13 +56,13 @@ class RocksDBGeoS2Index final : public arangodb::RocksDBIndex, public geo::Index
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  bool allowExpansion() const override { return false; }
+  constexpr bool allowExpansion() const override { return false; }
 
-  bool canBeDropped() const override { return true; }
+  constexpr bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return false; }
+  constexpr bool isSorted() const override { return false; }
 
-  bool hasSelectivityEstimate() const override { return false; }
+  constexpr bool hasSelectivityEstimate() const override { return false; }
 
   void toVelocyPack(velocypack::Builder&, bool, bool) const override;
   // Uses default toVelocyPackFigures

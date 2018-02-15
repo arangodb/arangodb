@@ -22,15 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeoUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Geo/GeoJsonParser.h"
-#include "Geo/ShapeContainer.h"
-#include "Logger/Logger.h"
+
+#include <string>
+#include <vector>
 
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
-#include <string>
-#include <vector>
+
+#include "Basics/VelocyPackHelper.h"
+#include "Geo/ShapeContainer.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::geo;

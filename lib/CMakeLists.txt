@@ -183,6 +183,11 @@ add_library(${LIB_ARANGO} STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
+  Geo/GeoJson.cpp
+  Geo/GeoParams.cpp
+  Geo/GeoUtils.cpp
+  Geo/ShapeContainer.cpp
+  Geo/Shapes.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -229,6 +234,8 @@ add_library(${LIB_ARANGO} STATIC
 )
 
 target_link_libraries(${LIB_ARANGO}
+    s2
+    gflags
     boost_system
     boost_boost
 )

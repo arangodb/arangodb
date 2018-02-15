@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Index.h"
+#include "GeoIndex/Index.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -115,7 +115,7 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_params.origin.latitude, _params.origin.longitude);
-    
+
     if (!_cursor) {
       // actually validate that we got a valid cursor
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -193,15 +193,15 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   geo::QueryParams params;
   params.sorted = true;
   params.ascending = true;
-  geo::Index::parseCondition(node, reference, params);
+  geo_index::Index::parseCondition(node, reference, params);
   TRI_ASSERT(params.origin.isValid());
   TRI_ASSERT(params.minDistance == 0);
   TRI_ASSERT(params.filterType == geo::FilterType::NONE);
-  
+
   return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, std::move(params));
 }
 
@@ -279,7 +279,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
       iter->Next();
     }
   }
- 
+
   LOG_TOPIC(TRACE, Logger::FIXME) << "using numpots: " << numPots << ", numslots: " << numSlots << " for geo index with objectId " << _objectId;
 
   _geoIndex = GeoIndex_new(nullptr, _objectId, numPots, numSlots);

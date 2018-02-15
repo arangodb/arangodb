@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Index.h"
+#include "GeoIndex/Index.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
@@ -194,15 +194,15 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  
+
   geo::QueryParams params;
   params.sorted = true;
   params.ascending = true;
-  geo::Index::parseCondition(node, reference, params);
+  geo_index::Index::parseCondition(node, reference, params);
   TRI_ASSERT(params.origin.isValid());
   TRI_ASSERT(params.minDistance == 0);
   TRI_ASSERT(params.filterType == geo::FilterType::NONE);
-  
+
   return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, std::move(params));
 }
 

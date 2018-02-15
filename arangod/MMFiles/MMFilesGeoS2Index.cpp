@@ -29,7 +29,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoUtils.h"
-#include "Geo/Near.h"
+#include "GeoIndex/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
@@ -48,9 +48,9 @@ using namespace arangodb;
   : IndexIterator(collection, trx, mmdr, index),
   _index(index),
   _params(std::move(params)) {
-    
+
   }
-  
+
   /// internal retrieval loop
   inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
                         size_t limit) {
@@ -58,7 +58,7 @@ using namespace arangodb;
       // we already know that no further results will be returned by the index
       return false;
     }
-    
+
     while (limit > 0 && _iter != _intervals.end()) {
       TRI_ASSERT(<#expr#>)
       /while (limit > 0 && _near.hasNearest()) {
@@ -79,7 +79,7 @@ using namespace arangodb;
 
 
   void reset() override {  }
-  
+
 private:
   MMFilesGeoS2Index const* _index;
   geo::QueryParams const _params;
@@ -88,7 +88,7 @@ private:
   std::unordered_set<LocalDocumentId> _seen;
 };*/
 
-template <typename CMP = geo::DocumentsAscending>
+template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
@@ -97,7 +97,7 @@ struct NearIterator final : public IndexIterator {
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
         _near(std::move(params),
-              index->variant() == geo::Index::Variant::GEOJSON) {
+              index->variant() == geo_index::Index::Variant::GEOJSON) {
     estimateDensity();
   }
 
@@ -217,7 +217,7 @@ struct NearIterator final : public IndexIterator {
       if (seek) { // try to avoid seeking at all cost
         it = tree.lower_bound(interval.min); //seeks++;
       }
-      
+
       while (it != tree.end() && it->first <= interval.max) {
         _near.reportFound(it->second.documentId, it->second.centroid);
         it++;
@@ -244,7 +244,7 @@ struct NearIterator final : public IndexIterator {
 
  private:
   MMFilesGeoS2Index const* _index;
-  geo::NearUtils<CMP> _near;
+  geo_index::NearUtils<CMP> _near;
 };
 
 
@@ -252,11 +252,11 @@ MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info)
 : MMFilesIndex(iid, collection, info),
-  geo::Index(info, _fields) {
+  geo_index::Index(info, _fields) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
 }
 
 size_t MMFilesGeoS2Index::memory() const { return _tree.bytes_used(); }
@@ -264,13 +264,13 @@ size_t MMFilesGeoS2Index::memory() const { return _tree.bytes_used(); }
 /// @brief return a JSON representation of the index
 void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                      bool forPersistence) const {
-  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   builder.openObject();
   // Basic index
   // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson", VPackValue(_variant == geo::Index::Variant::GEOJSON));
+  builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -280,7 +280,7 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 /// @brief Test if this index matches the definition
 bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
-  TRI_ASSERT(_variant != geo::Index::Variant::NONE);
+  TRI_ASSERT(_variant != geo_index::Index::Variant::NONE);
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -322,7 +322,7 @@ bool MMFilesGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   if (n == 1) {
     bool geoJson1 =
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
-    bool geoJson2 = _variant == geo::Index::Variant::GEOJSON;
+    bool geoJson2 = _variant == geo_index::Index::Variant::GEOJSON;
     if (geoJson1 != geoJson2) {
       return false;
     }
@@ -352,7 +352,7 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1.0, -1.0);
-  Result res = geo::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -376,7 +376,7 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
 
-  Result res = geo::Index::indexCells(doc, cells, centroid);
+  Result res = geo_index::Index::indexCells(doc, cells, centroid);
   if (res.fail()) { // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -410,8 +410,8 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
-  geo::Index::parseCondition(node, reference, params);
-  
+  geo_index::Index::parseCondition(node, reference, params);
+
   // FIXME: <Optimize away>
   params.sorted = true;
   if (params.filterType != geo::FilterType::NONE) {
@@ -419,7 +419,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
     params.filterShape.updateBounds(params);
   }
   //        </Optimize away>
-  
+
   TRI_ASSERT(!opts.sorted || params.origin.isValid());
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.
@@ -429,10 +429,10 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
   if (params.ascending) {
-    return new NearIterator<geo::DocumentsAscending>(
+    return new NearIterator<geo_index::DocumentsAscending>(
         _collection, trx, mmdr, this, std::move(params));
   } else {
-    return new NearIterator<geo::DocumentsDescending>(
+    return new NearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
   }
 }

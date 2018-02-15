@@ -23,13 +23,15 @@
 #ifndef ARANGOD_GEO_GEO_COVER_H
 #define ARANGOD_GEO_GEO_COVER_H 1
 
-#include "Basics/Result.h"
-#include "Geo/Shapes.h"
-
-#include <s2/s2cell_id.h>
-#include <velocypack/Slice.h>
 #include <cstdint>
 #include <vector>
+
+#include <s2/s2cell_id.h>
+
+#include <velocypack/Slice.h>
+
+#include "Basics/Result.h"
+#include "Geo/Shapes.h"
 
 class S2Region;
 class S2RegionCoverer;

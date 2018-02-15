@@ -21,15 +21,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShapeContainer.h"
-#include "Basics/voc-errors.h"
-#include "Geo/GeoJsonParser.h"
-#include "Geo/GeoParams.h"
-#include "Logger/Logger.h"
 
-#include <s2/s2metrics.h>
 #include <s2/s2cap.h>
 #include <s2/s2cell.h>
 #include <s2/s2latlng_rect.h>
+#include <s2/s2metrics.h>
 #include <s2/s2multipoint_region.h>
 #include <s2/s2multipolyline.h>
 #include <s2/s2point_region.h>
@@ -40,6 +36,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/voc-errors.h"
+#include "Geo/GeoParams.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::geo;
@@ -56,8 +56,7 @@ Result ShapeContainer::parseCoordinates(VPackSlice const& json, bool geoJson) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid coordinate pair");
   }
 
-  resetCoordinates(lat.getNumber<double>(),
-                   lng.getNumber<double>());
+  resetCoordinates(lat.getNumber<double>(), lng.getNumber<double>());
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -217,8 +216,7 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
                    kEarthRadiusInMeters;
 }
 
-static bool PolylineContains(S2Polyline const* ll,
-                             S2Point const& pp) {
+static bool PolylineContains(S2Polyline const* ll, S2Point const& pp) {
   // containment is only numerically defined on the endpoints
   for (int k = 0; k < ll->num_vertices(); k++) {
     if (ll->vertex(k) == pp) {
@@ -279,7 +277,7 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
       // The line may be in the polygon
       return cuts[0]->NearlyCovers(*other, S1Angle::Degrees(1e-10));
     }
-      
+
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* mpl = static_cast<S2MultiPolyline const*>(_data);
       for (size_t k = 0; k < mpl->num_lines(); k++) {
@@ -445,6 +443,7 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;;
+      return false;
+      ;
   }
 }

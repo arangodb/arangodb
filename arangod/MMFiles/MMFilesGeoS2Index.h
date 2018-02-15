@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_GEO_S2_INDEX_H 1
 
 #include "Geo/GeoParams.h"
-#include "Geo/Index.h"
+#include "GeoIndex/Index.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "VocBase/LocalDocumentId.h"
 
@@ -35,7 +35,7 @@
 
 namespace arangodb {
 
-class MMFilesGeoS2Index final : public MMFilesIndex, public geo::Index {
+class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
  public:
   MMFilesGeoS2Index() = delete;
 
@@ -55,17 +55,17 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo::Index {
   typedef btree::btree_multimap<S2CellId, IndexValue> IndexTree;
 
  public:
-  IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
+  constexpr IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
-  char const* typeName() const override { return "s2index"; }
+  constexpr char const* typeName() const override { return "s2index"; }
 
-  bool allowExpansion() const override { return false; }
+  constexpr bool allowExpansion() const override { return false; }
 
-  bool canBeDropped() const override { return true; }
+  constexpr bool canBeDropped() const override { return true; }
 
-  bool isSorted() const override { return false; }
+  constexpr bool isSorted() const override { return false; }
 
-  bool hasSelectivityEstimate() const override { return false; }
+  constexpr bool hasSelectivityEstimate() const override { return false; }
 
   size_t memory() const override;
 

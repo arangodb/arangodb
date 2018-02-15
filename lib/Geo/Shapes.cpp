@@ -30,5 +30,3 @@ using namespace arangodb::geo;
 Coordinate Coordinate::fromLatLng(S2LatLng const& ll) noexcept {
   return Coordinate(ll.lat().degrees(), ll.lng().degrees());
 }
-
-

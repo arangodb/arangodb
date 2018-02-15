@@ -23,12 +23,14 @@
 #ifndef ARANGOD_GEO_SHAPE_CONTAINER_H
 #define ARANGOD_GEO_SHAPE_CONTAINER_H 1
 
-#include "Basics/Result.h"
-#include "Geo/Shapes.h"
+#include <string>
 
 #include <s2/s2cell_id.h>
+
 #include <velocypack/Slice.h>
-#include <string>
+
+#include "Basics/Result.h"
+#include "Geo/Shapes.h"
 
 class S2Region;
 class S2RegionCoverer;
@@ -40,7 +42,7 @@ class S2Polygon;
 
 namespace arangodb {
 namespace geo {
-  
+
 /// Thin wrapper around S2Region objects combined with
 /// a type and helper methods to do intersect and contains
 /// checks between all supported region types
@@ -75,9 +77,7 @@ class ShapeContainer final {
   Type type() const { return _type; }
   inline bool empty() const { return _type == Type::EMPTY; }
 
-  bool isAreaType() const noexcept {
-    return _type == Type::S2_POLYGON;
-  }
+  bool isAreaType() const noexcept { return _type == Type::S2_POLYGON; }
 
   /// @brief centroid of this shape
   geo::Coordinate centroid() const noexcept;

@@ -23,23 +23,22 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
-#include "Geo/ShapeContainer.h"
-#include "VocBase/voc-types.h"
-
 #include <s2/s2region_coverer.h>
+
+#include "Geo/ShapeContainer.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace geo {
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
 // const double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
-const double kEarthRadiusInMeters = (6371.008 * 1000);
+constexpr double kEarthRadiusInMeters = (6371.008 * 1000);
 
 enum class FilterType {
   // no filter, only useful on a near query
@@ -70,7 +69,6 @@ struct RegionCoverParams {
   /// @brief add the options to an opened vpack builder
   void toVelocyPack(velocypack::Builder&) const;
 
-  
   S2RegionCoverer::Options regionCovererOpts() const;
 
  public:

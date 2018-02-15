@@ -20,27 +20,30 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Geo/Index.h"
+#include "Index.h"
+
+#include <string>
+#include <vector>
+
+#include <s2/s2region_coverer.h>
+
+#include <velocypack/Slice.h>
+
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
-#include "Geo/GeoJsonParser.h"
+#include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "Geo/GeoUtils.h"
 #include "Geo/ShapeContainer.h"
 
-#include <s2/s2region_coverer.h>
-#include <velocypack/Slice.h>
-#include <string>
-#include <vector>
+namespace arangodb {
+namespace geo_index {
 
-using namespace arangodb;
-using namespace arangodb::geo;
-
-geo::Index::Index(VPackSlice const& info,
-                  std::vector<std::vector<basics::AttributeName>> const& fields)
-    : _variant(geo::Index::Variant::NONE) {
+Index::Index(VPackSlice const& info,
+             std::vector<std::vector<basics::AttributeName>> const& fields)
+    : _variant(Variant::NONE) {
   _coverParams.fromVelocyPack(info);
 
   if (fields.size() == 1) {
@@ -48,8 +51,7 @@ geo::Index::Index(VPackSlice const& info,
         basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
-    _variant = geoJson ? geo::Index::Variant::GEOJSON
-                       : geo::Index::Variant::COMBINED_LAT_LON;
+    _variant = geoJson ? Variant::GEOJSON : Variant::COMBINED_LAT_LON;
 
     auto& loc = fields[0];
     _location.reserve(loc.size());
@@ -57,7 +59,7 @@ geo::Index::Index(VPackSlice const& info,
       _location.emplace_back(it.name);
     }
   } else if (fields.size() == 2) {
-    _variant = geo::Index::Variant::INDIVIDUAL_LAT_LON;
+    _variant = Variant::INDIVIDUAL_LAT_LON;
     auto& lat = fields[0];
     _latitude.reserve(lat.size());
     for (auto const& it : lat) {
@@ -74,26 +76,27 @@ geo::Index::Index(VPackSlice const& info,
         "s2index can only be created with one or two fields.");
   }
 }
-Result geo::Index::indexCells(VPackSlice const& doc,
-                              std::vector<S2CellId>& cells,
-                              geo::Coordinate& centroid) const {
-  if (_variant == geo::Index::Variant::GEOJSON) {
+Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
+                         geo::Coordinate& centroid) const {
+  using geo::GeoUtils;
+
+  if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
       return GeoUtils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
     }
     geo::ShapeContainer shape;
-    Result r = geo::GeoJsonParser::parseGeoJson(loc, shape);
+    Result r = geo::geojson::parseRegion(loc, shape);
     if (r.ok()) {
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       centroid = shape.centroid();
     }
     return r;
-  } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
+  } else if (_variant == Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
     return GeoUtils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
-  } else if (_variant == geo::Index::Variant::INDIVIDUAL_LAT_LON) {
+  } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
     if (!lat.isNumber() || !lon.isNumber()) {
@@ -101,25 +104,25 @@ Result geo::Index::indexCells(VPackSlice const& doc,
     }
     centroid.latitude = lat.getNumericValue<double>();
     centroid.longitude = lon.getNumericValue<double>();
-    return geo::GeoUtils::indexCells(centroid, cells);
+    return GeoUtils::indexCells(centroid, cells);
   }
   return TRI_ERROR_INTERNAL;
 }
 
-Result geo::Index::shape(velocypack::Slice const& doc,
-                         geo::ShapeContainer& shape) const {
-  if (_variant == geo::Index::Variant::GEOJSON) {
+Result Index::shape(velocypack::Slice const& doc,
+                    geo::ShapeContainer& shape) const {
+  if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray() && loc.length() >= 2) {
       return shape.parseCoordinates(loc, /*geoJson*/ true);
     } else if (loc.isObject()) {
-      return geo::GeoJsonParser::parseGeoJson(loc, shape);
+      return geo::geojson::parseRegion(loc, shape);
     }
     return TRI_ERROR_BAD_PARAMETER;
-  } else if (_variant == geo::Index::Variant::COMBINED_LAT_LON) {
+  } else if (_variant == Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
     return shape.parseCoordinates(loc, /*geoJson*/ false);
-  } else if (_variant == geo::Index::Variant::INDIVIDUAL_LAT_LON) {
+  } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
     if (!lon.isNumber() || !lat.isNumber()) {
@@ -133,8 +136,8 @@ Result geo::Index::shape(velocypack::Slice const& doc,
 }
 
 // Handle GEO_DISTANCE(<something>, doc.field)
-geo::Coordinate geo::Index::parseGeoDistance(aql::AstNode const* args,
-                                             aql::Variable const* ref) {
+geo::Coordinate Index::parseGeoDistance(aql::AstNode const* args,
+                                        aql::Variable const* ref) {
   // aql::AstNode* dist = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
   if (args->numMembers() != 2) {
@@ -166,7 +169,7 @@ geo::Coordinate geo::Index::parseGeoDistance(aql::AstNode const* args,
     if (json.isArray() && json.length() >= 2) {
       res = shape.parseCoordinates(json, /*GeoJson*/ true);
     } else {
-      res = geo::GeoJsonParser::parseGeoJson(json, shape);
+      res = geo::geojson::parseRegion(json, shape);
     }
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -176,21 +179,21 @@ geo::Coordinate geo::Index::parseGeoDistance(aql::AstNode const* args,
 }
 
 // either GEO_DISTANCE or DISTANCE
-geo::Coordinate geo::Index::parseDistFCall(aql::AstNode const* node,
-                                           aql::Variable const* ref) {
+geo::Coordinate Index::parseDistFCall(aql::AstNode const* node,
+                                      aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
   aql::Function* func = static_cast<aql::Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
-    return geo::Index::parseGeoDistance(args, ref);
+    return Index::parseGeoDistance(args, ref);
   }
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
 }
 
-void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
-                            geo::QueryParams& qp) {
+void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
+                       geo::QueryParams& qp) {
   switch (node->type) {
     // Handle GEO_CONTAINS(<geoJson-object>, doc.field)
     // or GEO_INTERSECTS(<geoJson-object>, doc.field)
@@ -214,7 +217,7 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);
-      Result res = geo::GeoJsonParser::parseGeoJson(bb.slice(), qp.filterShape);
+      Result res = geo::geojson::parseRegion(bb.slice(), qp.filterShape);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -236,7 +239,7 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
       geo::Coordinate c =
-          geo::Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+          Index::parseDistFCall(node->getMemberUnchecked(0), ref);
       if (qp.origin.isValid() && qp.origin != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -255,7 +258,7 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
       geo::Coordinate c =
-          geo::Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+          Index::parseDistFCall(node->getMemberUnchecked(0), ref);
       if (qp.origin.isValid() && qp.origin != c) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
       }
@@ -272,9 +275,9 @@ void geo::Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
   }
 }
 
-void geo::Index::parseCondition(aql::AstNode const* node,
-                                aql::Variable const* reference,
-                                geo::QueryParams& params) {
+void Index::parseCondition(aql::AstNode const* node,
+                           aql::Variable const* reference,
+                           geo::QueryParams& params) {
   if (aql::Ast::IsAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       handleNode(node->getMemberUnchecked(i), reference, params);
@@ -283,3 +286,6 @@ void geo::Index::parseCondition(aql::AstNode const* node,
     handleNode(node, reference, params);
   }
 }
+
+}  // namespace geo_index
+}  // namespace arangodb
