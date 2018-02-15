@@ -56,7 +56,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
     if (req->user().empty()) {
       if (req->authenticationMethod() != AuthenticationMethod::JWT) {
         std::string msg = "only jwt can be used to authenticate as superuser";
-        LOG_TOPIC(WARN, Logger::AUTHORIZATION) << msg;
+        LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
       }
       return new VocbaseContext(req, vocbase, /*isInternal*/ true,

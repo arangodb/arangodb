@@ -58,6 +58,7 @@ const tests = {
     conf: {
       'server.authentication': true,
       'server.authentication-system-only': true,
+      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
       'ldap.enabled': true,
       'ldap.server': '127.0.0.1',
       'ldap.port': '389',

@@ -198,7 +198,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
       try {
         entry.grantDatabase(dbName, databaseAuth);
       } catch (arangodb::basics::Exception const& e) {
-        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+        LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << e.message();
       }
 
       VPackSlice collectionsSlice = obj.value.get("collections");
@@ -213,7 +213,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
               entry.grantCollection(dbName, cName,
                                     AuthLevelFromSlice(permissionsSlice));
             } catch (arangodb::basics::Exception const& e) {
-              LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+              LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << e.message();
             }
           }
         }
