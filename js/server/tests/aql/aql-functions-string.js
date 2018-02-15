@@ -1123,7 +1123,7 @@ function ahuacatlStringFunctionsTestSuite () {
  [ '\ta\rb\nc ', 0 ],
  [ '\ta\rb\nc ', 1 ],
  [ '\ta\rb\nc ', 2 ]
-] RETURN ${WRAP} TRIM(t[0], t[1])) ))`));
+] RETURN ${WRAP} TRIM(t[0], t[1]) ))`));
       }
     },
 
@@ -1154,7 +1154,7 @@ function ahuacatlStringFunctionsTestSuite () {
  [ '\ta\rb\nc', '\tc' ],
  [ '\ta\rb\nc', '\tac' ],
  [ '\ta\rb\nc', '\nc' ]
-] RETURN ${WRAP} TRIM(t[0], t[1])) ))`));
+] RETURN ${WRAP} TRIM(t[0], t[1]) ))`));
       }
     },
 
