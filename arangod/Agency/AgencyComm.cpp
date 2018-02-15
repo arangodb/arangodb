@@ -1795,7 +1795,11 @@ bool AgencyComm::tryInitializeStructure() {
     AgencyWriteTransaction initTransaction;
     initTransaction.operations.push_back(initOperation);
 
-    auto result = sendTransactionWithFailover(initTransaction);
+    AgencyCommResult result = sendTransactionWithFailover(initTransaction);
+    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Cannot authenticate with agency,"
+      << " check value of --server.jwt-secret";
+    }
 
     return result.successful();
   } catch (std::exception const& e) {

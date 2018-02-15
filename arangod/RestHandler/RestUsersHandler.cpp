@@ -78,7 +78,7 @@ bool RestUsersHandler::isAdminUser() const {
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
-  if (_request->authorized() && user == _request->user()) {
+  if (_request->authenticated() && user == _request->user()) {
     return true;
   }
   return isAdminUser();

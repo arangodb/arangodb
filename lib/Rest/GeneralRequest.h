@@ -80,7 +80,7 @@ class GeneralRequest {
         _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
-        _authorized(false),
+        _authenticated(false),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
@@ -108,8 +108,8 @@ class GeneralRequest {
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
   ///  to any specific resource
-  bool authorized() const { return _authorized; }
-  void setAuthorized(bool a) { _authorized = a; }
+  bool authenticated() const { return _authenticated; }
+  void setAuthenticated(bool a) { _authenticated = a; }
   
   // @brief User sending this request
   std::string const& user() const { return _user; }
@@ -211,7 +211,7 @@ class GeneralRequest {
   ConnectionInfo _connectionInfo;
   uint64_t _clientTaskId;
   std::string _databaseName;
-  bool _authorized;
+  bool _authenticated;
   std::string _user;
 
   // request context

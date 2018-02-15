@@ -31,8 +31,6 @@
 'use strict';
 
 const internal = require('internal');
-let ldapEnabled;
-
 const request = require('@arangodb/request');
 const download = require('internal').download;
 const arango = require('internal').arango;
@@ -57,6 +55,38 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
+const executeJS = (code) => {
+  const dbName = '_system';
+  let httpOptions = pu.makeAuthorizationHeaders({
+    username: 'arangoadmin',
+    password: 'abc'
+  });
+  httpOptions.method = 'POST';
+  httpOptions.timeout = 1800;
+  httpOptions.returnBodyOnError = true;
+  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
+    code,
+    httpOptions);
+};
+
+let __ldapResolved__ = false;
+let __ldapEnabled__ = false;
+function isLdapEnabled() {
+  if (__ldapResolved__) {
+    return __ldapEnabled__;
+  } else {
+    let res = executeJS('return require("internal").ldapEnabled()');
+    try {
+      res = JSON.parse(res.body);
+    } catch (ignore) {
+      res = false;
+    }
+    __ldapResolved__ = true;
+    __ldapEnabled__ = res;
+    return res;
+  }
+};
+
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level
 //
@@ -68,9 +98,7 @@ for (let l of rightLevels) {
 // d == DEFAULT
 
 exports.removeAllUsers = () => {
-  ldapEnabled = isLdapEnabled();
-
-  if (ldapEnabled) {
+  if (isLdapEnabled()) {
     // create special arangoadmin role and add root alike permissions
     try {
       users.remove(':role:adminrole');
@@ -85,7 +113,7 @@ exports.removeAllUsers = () => {
         let name = `${namePrefix}_${sys}_${db}_${col}`;
         let role = `:role:${namePrefix}_${sys}_${db}_${col}`;
         try {
-          if (ldapEnabled) {
+          if (isLdapEnabled()) {
             users.remove(role);
           } else {
             users.remove(name);
@@ -103,34 +131,6 @@ exports.removeAllUsers = () => {
   }
 };
 
-const executeJS = (code) => {
-  const dbName = '_system';
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'arangoadmin',
-    password: 'abc'
-  });
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
-};
-
-const isLdapEnabled = () => {
-  if (ldapEnabled) {
-    return ldapEnabled;
-  } else {
-    let res = executeJS('return require("internal").ldapEnabled()');
-    try {
-      res = JSON.parse(res.body);
-    } catch (ignore) {
-      res = false;
-    }
-    return res;
-  }
-};
-
 exports.isLdapEnabledExternal = () => {
   return isLdapEnabled();
 };
@@ -140,10 +140,8 @@ exports.loginUser = (user) => {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
-  const ldapEnabled = isLdapEnabled();
   let password = '';
-
-  if (ldapEnabled) {
+  if (isLdapEnabled()) {
     if (user === 'root') {
       user = 'arangoadmin';
     }
@@ -170,14 +168,13 @@ exports.loginUser = (user) => {
 };
 
 exports.switchUser = (user, dbName) => {
-  const ldapEnabled = isLdapEnabled();
   let password = '';
   let database = '_system';
 
   if (dbName) {
     database = dbName;
   }
-  if (ldapEnabled) {
+  if (isLdapEnabled()) {
     if (user === 'root') {
       user = 'arangoadmin';
     }
@@ -186,11 +183,13 @@ exports.switchUser = (user, dbName) => {
   if (user === 'bob') {
     password = '';
   }
+  /*arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+  print("Login as: ", database, user, password);
+  print("Auth Level", users.permission(user, database));*/
   arango.reconnect(arango.getEndpoint(), database, user, password);
 };
 
 exports.generateAllUsers = () => {
-  const ldapEnabled = isLdapEnabled();
 
   // in ldap case, roles will be generated
   let dbs = db._databases();
@@ -211,7 +210,7 @@ exports.generateAllUsers = () => {
     db._useDatabase('_system');
   }
 
-  if (ldapEnabled) {
+  if (isLdapEnabled()) {
     // create special arangoadmin role and add root alike permissions
     users.save(':role:adminrole', null, true);
   }
@@ -222,7 +221,7 @@ exports.generateAllUsers = () => {
         let name = `${namePrefix}_${sys}_${db}_${col}`;
         let password = '';
 
-        if (ldapEnabled) {
+        if (isLdapEnabled()) {
           users.save(":role:" + name, password, true);
           users.grantDatabase(":role:" + name, '_system', sys);
           users.grantDatabase(":role:" + name, dbName, db);
@@ -240,15 +239,6 @@ exports.generateAllUsers = () => {
         }
         userSet.add(name);
 
-        /*if (ldapEnabled) {
-          //users.grantDatabase(':role:adminrole', '_system', sys);
-          print('LOGIN TO USER: ' + name);
-          // login to ldap user to update permission roles
-          exports.loginUser(name);
-          // login back to administrator
-          exports.loginUser('root');
-        }*/
-
         let sysPerm = users.permission(name, '_system');
         if (sys !== sysPerm) {
           internal.print('Wrong sys permissions for user ' + name);
@@ -256,14 +246,6 @@ exports.generateAllUsers = () => {
         }
         systemLevel[sys].add(name);
 
-        /*if (ldapEnabled) {
-          users.grantDatabase(':role:adminrole', dbName, db);
-          // login to ldap user to update permission roles
-          exports.loginUser(name);
-          // login back to administrator
-          exports.loginUser('root');
-        } else {
-        }*/
         let dbPerm = users.permission(name, dbName);
         if (db !== dbPerm) {
           internal.print('Wrong db permissions for user ' + name);
@@ -271,14 +253,6 @@ exports.generateAllUsers = () => {
         }
         dbLevel[db].add(name);
 
-        /*if (ldapEnabled) {
-          users.grantCollection(':role:adminrole', dbName, colName, col);
-          // login to ldap user to update permission roles
-          exports.loginUser(name);
-          // login back to administrator
-          exports.loginUser('root');
-        } else {
-        }*/
         let colPerm = users.permission(name, dbName, colName);
         if (col !== colPerm) {
           internal.print('Wrong collection permissions for user ' + name);
