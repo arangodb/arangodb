@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H
-#define ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H
+#define ARANGOD_REPLICATION_DATABASE_TAILING_SYNCER_H 1
 
 #include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
@@ -55,7 +55,6 @@ class DatabaseTailingSyncer : public TailingSyncer {
     
   /// @brief save the current applier state
   Result saveApplierState() override;
-  std::unique_ptr<InitialSyncer> initialSyncer() override;
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);

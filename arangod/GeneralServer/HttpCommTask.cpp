@@ -26,6 +26,7 @@
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -33,6 +34,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
@@ -587,12 +589,10 @@ bool HttpCommTask::processRead(double startTime) {
     } else {
       processRequest(std::move(_incompleteRequest));
     }
-  }
-  // not found
-  else if (authResult == rest::ResponseCode::NOT_FOUND) {
+  } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
-  } else {  // not authenticated, might be because _users is out of sync    
+  } else {  // not authenticated, might be because _users is out of sync
     ServerState::Mode mode = ServerState::serverMode();
     if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
       HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
@@ -809,8 +809,7 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
       if (!res) {
         return rest::ResponseCode::NOT_FOUND;
-      }
-      if (request->requestContext() == nullptr) {
+      } else if (request->requestContext() == nullptr) {
         return rest::ResponseCode::SERVER_ERROR;
       }
     }

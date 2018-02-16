@@ -290,6 +290,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
+  Replication/common-defines.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -415,7 +416,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}

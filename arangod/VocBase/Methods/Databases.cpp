@@ -287,7 +287,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     isolate->GetCurrentContext()->Global()->Set(
         TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
-    // initalize database
+    // initialize database
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
     // execute script
@@ -350,7 +350,7 @@ arangodb::Result Databases::create(std::string const& dbName,
 
       v8g->_vocbase = vocbase;
 
-      // initalize database
+      // initialize database
       try {
         V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
             isolate, isolate->GetCurrentContext(),

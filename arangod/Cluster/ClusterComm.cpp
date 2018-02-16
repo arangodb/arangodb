@@ -991,7 +991,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         if (res.status == CL_COMM_RECEIVED &&
             res.answer_code == rest::ResponseCode::NOT_FOUND) {
           VPackSlice payload = res.answer->payload();
-          VPackSlice errorNum = payload.get("errorNum");
+          VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
               errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;

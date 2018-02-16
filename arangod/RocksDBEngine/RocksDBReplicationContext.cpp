@@ -27,6 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
+#include "Replication/common-defines.h"
 #include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -39,7 +40,6 @@
 #include "Transaction/UserTransaction.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 

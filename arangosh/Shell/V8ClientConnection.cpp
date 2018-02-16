@@ -1479,11 +1479,11 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
         break;
     }
 
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                       v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Integer::New(isolate, errorNumber));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                      TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
@@ -1500,14 +1500,14 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   if (_lastHttpReturnCode >= 400) {
     std::string returnMessage(_httpResult->getHttpReturnMessage());
 
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                       v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                       v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                       TRI_V8_STD_STRING(isolate, returnMessage));
   } else {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                       v8::Boolean::New(isolate, false));
   }
 
@@ -1552,7 +1552,7 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(
         TRI_V8_ASCII_STRING(isolate, "code"),
@@ -1579,9 +1579,9 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
         break;
     }
 
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Integer::New(isolate, errorNumber));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                      TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
@@ -1615,14 +1615,14 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
   if (_lastHttpReturnCode >= 400) {
     std::string returnMessage(_httpResult->getHttpReturnMessage());
 
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                      v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                      TRI_V8_STD_STRING(isolate, returnMessage));
   } else {
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
+    result->ForceSet(TRI_V8_STD_STRING(isolate, StaticStrings::Error),
                      v8::Boolean::New(isolate, false));
   }
 
