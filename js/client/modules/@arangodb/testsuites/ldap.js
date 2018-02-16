@@ -182,10 +182,8 @@ function authenticationLdapRoleClient (options) {
   }
   const opts = parseOptions(options);
   if (options.cluster) {
-    // options['server.jwt-secret'] = 'ldap';
     options.dbServers = 2;
     options.coordinators = 2;
-    opts.ldapModeRoles.conf['server.jwt-secret'] = 'ldap';
   }
 
   print(CYAN + 'Client LDAP Permissoin tests...' + RESET);
