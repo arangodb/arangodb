@@ -58,8 +58,8 @@ for (let l of rightLevels) {
 const executeJS = (code) => {
   const dbName = '_system';
   let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'arangoadmin',
-    password: 'abc'
+    username: 'root',
+    password: ''
   });
   httpOptions.method = 'POST';
   httpOptions.timeout = 1800;
