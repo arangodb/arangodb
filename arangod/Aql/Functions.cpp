@@ -60,6 +60,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <date/date.h>
+#include <algorithm>
 #include <regex>
 
 using namespace arangodb;
@@ -1999,7 +2000,8 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
     int64_t units = durationUnit.toInt64(trx);
-    std::string const duration = durationType.slice().copyString();
+    std::string duration = durationType.slice().copyString();
+    std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
 
     year_month_day ymd{floor<days>(tp)};
     auto day_time = make_time(tp - sys_days(ymd));
