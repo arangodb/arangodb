@@ -60,6 +60,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <date/date.h>
+#include <regex>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -1954,10 +1955,140 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
   ));
 }
 
+/// @brief function DATE_ADD
+AqlValue Functions::DateAdd(arangodb::aql::Query* query,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  // DATE_ADD(date, amount, unit) → isoDate
+  // DATE_ADD(date, isoDuration) → isoDate
+  // date (number|string): numeric timestamp or ISO 8601 date time string
 
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
+  if (!value.isString() && !value.isNumber() ) {
+    std::cout << "!string && !number\n";
+    RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
 
+  system_clock::time_point tp;
+  // time_point<system_clock, milliseconds> tp;
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // size == 3 unit / unit type
+  // size == 2 iso duration
+
+  if (parameters.size() == 3) {
+    AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
+    AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
+
+    if (!durationUnit.isNumber() || // unit must be number
+        !durationType.isString()) { // unit type must be string
+      RegisterInvalidArgumentWarning(query, "DATE_ADD");
+      return AqlValue(AqlValueHintNull());
+    }
+    int64_t units = durationUnit.toInt64(trx);
+    std::string const duration = durationType.slice().copyString();
+
+    year_month_day ymd{floor<days>(tp)};
+    auto day_time = make_time(tp - sys_days(ymd));
+    milliseconds ms{0};
+
+    if (duration == "y" || duration == "year" || duration == "years") {
+      ymd += years{units};
+    } else if (duration == "m" || duration == "month" || duration == "months") {
+      ymd += months{units};
+
+    } else if (duration == "w" || duration == "week" || duration == "weeks") {
+      ms += weeks{units};
+    } else if (duration == "d" || duration == "day" || duration == "days") {
+      ms += days{units};
+    } else if (duration == "h" || duration == "hour" || duration == "hours") {
+      ms += hours{units};
+    } else if (duration == "i" || duration == "minute" || duration == "minutes") {
+      ms += minutes{units};
+    } else if (duration == "s" || duration == "second" || duration == "seconds") {
+      ms += seconds{units};
+    } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
+      ms += milliseconds{units};
+    } else {
+      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration() + ms};
+
+  } else { // iso duration
+    AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
+    if (!isoDuration.isString()) {
+      RegisterInvalidArgumentWarning(query, "DATE_ADD");
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string const duration = isoDuration.slice().copyString();
+
+    if (duration == "P") {
+      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::regex duration_regex("P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\.(\\d{1,3}))?S)?)?");
+    std::smatch duration_parts;
+    /* REGEX GROUPS
+    P1Y2M3W4DT5H6M7.891S
+      submatch 0: P1Y2M3W4DT5H6M7.891S
+      submatch 1: 1Y
+      submatch 2: 1
+      submatch 3: 2M
+      submatch 4: 2
+      submatch 5: 3W
+      submatch 6: 3
+      submatch 7: 4D
+      submatch 8: 4
+      submatch 9: T5H6M7.891S
+      submatch 10: 5H
+      submatch 11: 5
+      submatch 12: 6M
+      submatch 13: 6
+      submatch 14: 7.891S
+      submatch 15: 7
+      submatch 16: .891
+      submatch 17: 891
+    */
+
+    if (!std::regex_match(duration, duration_parts, duration_regex)) {
+      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    year_month_day ymd{floor<days>(tp)};
+    auto day_time = make_time(tp - sys_days(ymd));
+
+    ymd += years{atoi(duration_parts[2].str().c_str())};
+    ymd += months{atoi(duration_parts[4].str().c_str())};
+
+    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration()};
+
+    tp += weeks{atoi(duration_parts[6].str().c_str())} + days{atoi(duration_parts[8].str().c_str())};
+
+    tp += hours{atoi(duration_parts[11].str().c_str())};
+    tp += minutes{atoi(duration_parts[13].str().c_str())};
+    tp += seconds{atoi(duration_parts[15].str().c_str())};
+    tp += milliseconds{atoi((duration_parts[17].str()+"00").substr(0,3).c_str())};
+  }
+
+  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+}
 
 
 

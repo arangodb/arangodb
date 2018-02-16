@@ -1285,24 +1285,60 @@ testDateDaysInMonth() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDateAddInvalid : function () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 'P1Y', 1)");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(null, 1, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(false, 1, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD([], 1, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD({}, 1, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'sugar')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ADD())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ADD(1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(1, 'P1Y', 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(1, 'P1Y', 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(null, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(null, 1, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(false, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(false, 1, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD([], 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD([], 1, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD({}, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD({}, 1, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), 1, 'sugar'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), 1, 'sugar')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), 1, ''))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), 1, '')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), '', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), '', 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), '1', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), '1', 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), 'one', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), 'one', 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), null, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), null, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), false, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), false, 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), [], 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), [], 'year')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), {}, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(DATE_NOW(), {}, 'year')))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1328,9 +1364,9 @@ testDateDaysInMonth() {
         [ ["2012-02-12 13:24:12Z", "PT10M"], "2012-02-12T13:34:12.000Z" ],
         [ ["2012-02-12 23:59:59.991", 9, "milliseconds"], "2012-02-13T00:00:00.000Z" ],
         [ ["2012-02-12 23:59:59.991", 9, "f"], "2012-02-13T00:00:00.000Z" ],
-        [ ["2012-02-12 23:59:59.991Z", 9, "ms"], "2012-02-13T00:00:00.000Z" ],
+        [ ["2012-02-12 23:59:59.991Z", 9, "f"], "2012-02-13T00:00:00.000Z" ],
         [ ["2012-02-12 23:59:59.991Z", "PT0.009S"], "2012-02-13T00:00:00.000Z" ],
-        [ ["2012-02-12", "p1y"], "2013-02-12T00:00:00.000Z" ], /* lower-case ISO durations currently allowed */
+        [ ["2012-02-12", "P1Y"], "2013-02-12T00:00:00.000Z" ],
         [ ["2012-02-12", 8, "years"], "2020-02-12T00:00:00.000Z" ],
         [ ["2012-02-12Z", 8, "year"], "2020-02-12T00:00:00.000Z" ],
         [ ["2012-02-12T13:24:12Z", 8, "y"], "2020-02-12T13:24:12.000Z" ],
@@ -1351,7 +1387,7 @@ testDateDaysInMonth() {
         [ ["2016-02-22Z", "P1W"], "2016-02-29T00:00:00.000Z" ],
         [ ["1221-02-28T23:59:59Z", 800*12, "months"], "2021-02-28T23:59:59.000Z" ],
         [ ["1221-02-28 23:59:59Z", 800, "years"], "2021-02-28T23:59:59.000Z" ],
-        [ ["1221-02-28Z", 1000*(60*60*24-1), "ms"], "1221-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28Z", 1000*(60*60*24-1), "f"], "1221-02-28T23:59:59.000Z" ],
         [ ["1221-2-28Z", 1, "day"], "1221-03-01T00:00:00.000Z" ],
         [ ["1221-2-28Z", "P1D"], "1221-03-01T00:00:00.000Z" ],
         [ ["2000-01-01", "P1Y2M3W4DT5H6M7.890S"], "2001-03-26T05:06:07.890Z" ],
@@ -1362,7 +1398,7 @@ testDateDaysInMonth() {
         [ ["2000-01-01", "PT0.01S"], "2000-01-01T00:00:00.010Z" ],
         [ ["2000-01-01", "PT0.010S"], "2000-01-01T00:00:00.010Z" ],
         [ ["2000-01-01", "PT0.001S"], "2000-01-01T00:00:00.001Z" ],
-        [ ["2000-01-01", "PT0.0009999999999999999999999999S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01", "PT0.000S"], "2000-01-01T00:00:00.000Z" ],
         [ ["2016Z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
         [ ["2016z", -1, "day"], "2015-12-31T00:00:00.000Z" ],
         [ ["2016", -1, "day"], "2015-12-31T00:00:00.000Z" ],
@@ -1375,26 +1411,18 @@ testDateDaysInMonth() {
         [ [1399395674000, 365, "days"], "2015-05-06T17:01:14.000Z" ],
         [ [1430931674000, 365, "days"], "2016-05-05T17:01:14.000Z" ], /* leap year */
         [ [60123, 7, "days"], "1970-01-08T00:01:00.123Z" ],
-        [ [1, -1, "ms"], "1970-01-01T00:00:00.000Z" ],
-        [ [0, 0, "ms"], "1970-01-01T00:00:00.000Z" ]
+        [ [1, -1, "f"], "1970-01-01T00:00:00.000Z" ],
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
-        var actual;
-        if (value[0][2] === undefined) {
-          actual = getQueryResults("RETURN DATE_ADD(@value, @amount)", {
-            value: value[0][0],
-            amount: value[0][1]
-          });
-        }
-        else {
-          actual = getQueryResults("RETURN DATE_ADD(@value, @amount, @unit)", {
-            value: value[0][0],
-            amount: value[0][1],
-            unit: value[0][2],
-          });
-        }
-        assertEqual([ value[1] ], actual);
+        let actual = getQueryResults(`RETURN NOOPT(DATE_ADD(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
+
+        actual = getQueryResults(`RETURN NOOPT(V8(DATE_ADD(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
       }); 
     },
 
