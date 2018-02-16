@@ -295,8 +295,9 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
         VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
         resp.setContentType(fakeRequest.contentTypeResponse());
         ReplicationFeature::prepareFollowerResponse(&resp, mode);
+        addResponse(&resp, nullptr);
       } catch (...) {
-        closeStream();
+        closeStream(); // same as in handleSimpleError
       }
     } else {
       handleSimpleError(rest::ResponseCode::UNAUTHORIZED, fakeRequest,

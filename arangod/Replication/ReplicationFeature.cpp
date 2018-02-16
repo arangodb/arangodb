@@ -175,20 +175,16 @@ static std::string FixEndpointProto(std::string const& endpoint) {
 static void writeError(int code, GeneralResponse* response) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::ErrorNum, VPackValue(code));
-    builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
-    builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
-    builder.close();
-    
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
-  } catch (...) {
-    // Building the error response failed
-  }
+  builder.add(VPackValue(VPackValueType::Object));
+  builder.add(StaticStrings::Error, VPackValue(true));
+  builder.add(StaticStrings::ErrorNum, VPackValue(code));
+  builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(code)));
+  builder.add(StaticStrings::Code, VPackValue((int)response->responseCode()));
+  builder.close();
+  
+  VPackOptions options(VPackOptions::Defaults);
+  options.escapeUnicode = true;
+  response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
 }
 
 
