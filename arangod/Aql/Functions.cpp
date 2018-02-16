@@ -2513,6 +2513,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   }
 
   double latitude, longitude;
+  bool geoJson = false;
   if (p2.isArray()) {
     if (p2.length() < 2) {
       RegisterInvalidArgumentWarning(query, "IS_IN_POLYGON");
@@ -2520,7 +2521,8 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
     }
     AqlValueMaterializer materializer(trx);
     VPackSlice arr = materializer.slice(p2, false);
-    bool geoJson = p3.isBoolean() && p3.toBoolean();
+    geoJson = p3.isBoolean() && p3.toBoolean();
+    // if geoJson, map [lon, lat] -> lat, lon
     VPackSlice lat = geoJson ? arr[1] : arr[0];
     VPackSlice lon = geoJson ? arr[0] : arr[1];
     if (!lat.isNumber() || !lon.isNumber()) {
@@ -2528,7 +2530,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
     latitude = lat.getNumber<double>();
-    longitude = lat.getNumber<double>();
+    longitude = lon.getNumber<double>();
   } else if (p2.isNumber() && p3.isNumber()) {
     bool failed1 = false, failed2 = false;
     latitude = p2.toDouble(trx, failed1);
@@ -2543,7 +2545,7 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   }
 
   S2Loop loop;
-  Result res = geo::geojson::parseLoop(coords.slice(), loop);
+  Result res = geo::geojson::parseLoop(coords.slice(), geoJson, loop);
   if (res.fail() || !loop.IsValid()) {
     RegisterWarning(query, "IS_IN_POLYGON", res);
     return AqlValue(AqlValueHintNull());

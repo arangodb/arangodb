@@ -41,18 +41,14 @@
 #include "Logger/Logger.h"
 
 namespace {
-// This field must be present, and...
-const std::string FieldType = "type";
 // Have one of these values:
-const std::string TypeStringPoint = "Point";
-const std::string TypeStringLinestring = "LineString";
-const std::string TypeStringPolygon = "Polygon";
-const std::string TypeStringMultiPoint = "MultiPoint";
-const std::string TypeStringMultiLinestring = "MultiLineString";
-const std::string TypeStringMultiPolygon = "MultiPolygon";
-const std::string TypeStringGeometryCollection = "GeometryCollection";
-// This field must also be present.  The value depends on the type.
-const std::string FieldCoordinates = "coordinates";
+const std::string kTypeStringPoint = "Point";
+const std::string kTypeStringLineString = "LineString";
+const std::string kTypeStringPolygon = "Polygon";
+const std::string kTypeStringMultiPoint = "MultiPoint";
+const std::string kTypeStringMultiLineString = "MultiLineString";
+const std::string kTypeStringMultiPolygon = "MultiPolygon";
+const std::string kTypeStringGeometryCollection = "GeometryCollection";
 }  // namespace
 
 namespace {
@@ -102,25 +98,25 @@ Type type(VPackSlice const& geoJSON) {
     return Type::UNKNOWN;
   }
 
-  VPackSlice type = geoJSON.get("type");
+  VPackSlice type = geoJSON.get(Fields::kType);
   if (!type.isString()) {
     return Type::UNKNOWN;
   }
 
   std::string typeStr = type.copyString();
-  if (::sameIgnoringCase(typeStr, ::TypeStringPoint)) {
+  if (::sameIgnoringCase(typeStr, ::kTypeStringPoint)) {
     return Type::POINT;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringLinestring)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringLineString)) {
     return Type::LINESTRING;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringPolygon)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringPolygon)) {
     return Type::POLYGON;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringMultiPoint)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiPoint)) {
     return Type::MULTI_POINT;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringMultiLinestring)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiLineString)) {
     return Type::MULTI_LINESTRING;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringMultiPolygon)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringMultiPolygon)) {
     return Type::MULTI_POLYGON;
-  } else if (::sameIgnoringCase(typeStr, ::TypeStringGeometryCollection)) {
+  } else if (::sameIgnoringCase(typeStr, ::kTypeStringGeometryCollection)) {
     return Type::GEOMETRY_COLLECTION;
   }
   return Type::UNKNOWN;
@@ -190,7 +186,7 @@ Result parseRegion(VPackSlice const& geoJSON, ShapeContainer& region) {
 
 /// @brief create s2 latlng
 Result parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) {
-  VPackSlice coordinates = geoJSON.get(::FieldCoordinates);
+  VPackSlice coordinates = geoJSON.get(Fields::kCoordinates);
 
   if (coordinates.isArray() && coordinates.length() == 2) {
     latLng = S2LatLng::FromDegrees(coordinates.at(1).getNumber<double>(),
@@ -212,7 +208,7 @@ Result parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) {
 Result parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
   VPackSlice coordinates = geoJSON;
   if (geoJSON.isObject()) {
-    coordinates = geoJSON.get(::FieldCoordinates);
+    coordinates = geoJSON.get(Fields::kCoordinates);
     TRI_ASSERT(type(geoJSON) == Type::POLYGON);
   }
   if (!coordinates.isArray()) {
@@ -272,7 +268,7 @@ Result parseLinestring(VPackSlice const& geoJson, S2Polyline& linestring) {
   VPackSlice coordinates = geoJson;
   if (geoJson.isObject()) {
     TRI_ASSERT(type(geoJson) == Type::LINESTRING);
-    coordinates = geoJson.get(::FieldCoordinates);
+    coordinates = geoJson.get(Fields::kCoordinates);
   }
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
@@ -303,7 +299,7 @@ Result parseMultiLinestring(VPackSlice const& geoJson,
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLineString");
   }
   TRI_ASSERT(type(geoJson) == Type::MULTI_LINESTRING);
-  VPackSlice coordinates = geoJson.get(::FieldCoordinates);
+  VPackSlice coordinates = geoJson.get(Fields::kCoordinates);
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
   }
@@ -350,26 +346,27 @@ Result parsePoints(VPackSlice const& geoJSON, bool geoJson,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief Parse a polygon for IS_IN_POLYGON
-/// @param loop an array of arrays with 2 elements each,
-/// representing the points of the polygon in the format [lat, lon]
-Result parseLoop(VPackSlice const& coords, S2Loop& loop) {
+Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop) {
   if (!coords.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
   }
 
   std::vector<S2Point> vertices;
-  Result res = parsePoints(coords, /*geoJson*/ false, vertices);
-  if (res.fail()) {
-    return res;
-  }
-  res = ::verifyClosedLoop(vertices);  // check last vertices are same
+  Result res = parsePoints(coords, geoJson, vertices);
   if (res.fail()) {
     return res;
   }
 
+  /* TODO enable this check after removing deprecated IS_IN_POLYGON fn
+      res = ::verifyClosedLoop(vertices);  // check last vertices are same
+      if (res.fail()) {
+        return res;
+      }*/
+
   ::removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
-  vertices.resize(vertices.size() - 1);  // remove redundant last vertex
+  if (vertices.front() == vertices.back()) {
+    vertices.resize(vertices.size() - 1);  // remove redundant last vertex
+  }
   loop.Init(vertices);
   if (!loop.IsValid()) {  // will check first and last for us
     return Result(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON loop");

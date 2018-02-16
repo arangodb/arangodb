@@ -60,21 +60,39 @@ function isInPolygonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIsInPolygonSuiteAsResult : function () {
-      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 9, 9)").json[0]);
+      var result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 9, 9)");
+      assertTrue(result.json[0]);
     },
 
     testIsNotInPolygonSuiteAsResult : function () {
-      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 11, 11)").json[0]);
+      var result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 10, 0 ] ], 11, 11)");
+      assertFalse(result.json[0]);
     },
 
     testIsInPolygonSuiteWithListParameter : function () {
-      assertTrue(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 9, 1 ])").json[0]);
+      var result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 9, 1 ])");
+      assertTrue(result.json[0]);
+
+      result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 11, 1 ])");
+      require('internal').print(result);
+      assertFalse(result.json[0]);
+
+      result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 1, 11 ])");
+      require('internal').print(result);
+      assertFalse(result.json[0]);
     },
 
     testIsInPolygonSuiteWithListParameterWithReverseParameterOrder : function () {
-      assertFalse(AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 0, 10 ], [ 10, 10 ], [ 11, 0 ] ], [ 1, 11 ], false)").json[0]);
+      var result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 11 ] ], [ 1, 9 ], true)");
+      assertTrue(result.json[0]);
+
+      result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 11 ] ], [ 1, 11 ], true)")
+      assertFalse(result.json[0]);
+
+      result = AQL_EXECUTE("RETURN IS_IN_POLYGON ([[ 0, 0 ], [ 10, 0 ], [ 10, 10 ], [ 0, 11 ] ], [ 11, 1 ], true)")
+      assertFalse(result.json[0]);
     }
-    
+
   };
 }
 
@@ -85,4 +103,3 @@ function isInPolygonSuite () {
 jsunity.run(isInPolygonSuite);
 
 return jsunity.done();
-

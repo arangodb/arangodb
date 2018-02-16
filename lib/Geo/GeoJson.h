@@ -58,6 +58,12 @@ enum class Type : uint8_t {
   GEOMETRY_COLLECTION
 };
 
+struct Fields {
+  static constexpr auto kCoordinates =
+      "coordinates";                     // mandatory, value depends on type
+  static constexpr auto kType = "type";  // mandatory
+};
+
 Type type(velocypack::Slice const& geoJSON);
 
 /// @brief Convenience function to build a region from a GeoJson type.
@@ -81,10 +87,17 @@ Result parseMultiLinestring(velocypack::Slice const& geoJSON,
 Result parsePoints(velocypack::Slice const& geoJSON, bool geoJson,
                    std::vector<S2Point>& vertices);
 
-/// @brief Parse a polygon for IS_IN_POLYGON
-/// @param loop an array of arrays with 2 elements each,
-/// representing the points of the polygon in the format [lat, lon]
-Result parseLoop(velocypack::Slice const& loop, S2Loop& poly);
+/// @brief Parse a loop (LinearRing)
+///
+/// Note that at the moment we do not enforce that the final coordinate must
+/// match the first, as is required of a proper LinearRing in GeoJSON format.
+///
+/// @param coords  an array of arrays with 2 elements each, representing the
+///                points of the polygon
+/// @param geoJson If true, the points are assumed to be [lon, lat], otherwise
+///                [lat, lon]
+/// @param loop    output parameter to hold the parsed loop
+Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop);
 
 }  // namespace geojson
 }  // namespace geo

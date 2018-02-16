@@ -5221,7 +5221,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   if (info.filterMode != geo::FilterType::NONE) {
     // create GEO_CONTAINS / GEO_INTERSECTS
     TRI_ASSERT(info.filterMask);
-    TRI_ASSERT(info.locationVar || info.longitudeVar && info.latitudeVar);
+    TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeVar));
 
     AstNode* args = ast->createNodeArray(2);
     args->addMember(info.filterMask);
@@ -5354,11 +5354,14 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         case EN::COLLECT:
           info.invalidate(); // TODO reset info to original state instead
           break;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
         case EN::ENUMERATE_LIST:{
           EnumerateListNode* el = static_cast<EnumerateListNode*>(current);
           checkEnumerateListNode(plan.get(), el, info);
           // intentional fallthrough
         }
+#pragma GCC diagnostic pop
         case EN::ENUMERATE_COLLECTION: {
           if (info && info.collectionNodeToReplace == current) {
             mod = mod || applyGeoOptimization(plan.get(), limit, info);
