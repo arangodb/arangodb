@@ -97,35 +97,35 @@ set_target_properties(${LIB_NAME} PROPERTIES IMPORT_PREFIX "")
 if(WIN32)
   if(NOT CURL_STATICLIB)
     # Add "_imp" as a suffix before the extension to avoid conflicting with the statically linked "libcurl.lib"
-    set_target_properties(${LIB_NAME} PROPERTIES IMPORT_SUFFIX "_imp.lib")
+    #set_target_properties(${LIB_NAME} PROPERTIES IMPORT_SUFFIX "_imp.lib")
 
-    set_target_properties (${LIB_NAME} PROPERTIES
-       DEBUG_POSTFIX "-d"
+    #set_target_properties (${LIB_NAME} PROPERTIES
+    #   DEBUG_POSTFIX "-d"
        # Note: no postfix for release variants, let user choose what style of release he wants
        # MINSIZEREL_POSTFIX "-z"
        # RELWITHDEBINFO_POSTFIX "-g"
-       )
+    #   )
   endif()
 endif()
 
-target_include_directories(${LIB_NAME} INTERFACE
-	$<INSTALL_INTERFACE:include>)
+#target_include_directories(${LIB_NAME} INTERFACE
+#	$<INSTALL_INTERFACE:include>)
 
-install(TARGETS ${LIB_NAME}
-  EXPORT libcurl-target
-  ARCHIVE DESTINATION lib
-  LIBRARY DESTINATION lib
-  RUNTIME DESTINATION bin
-)
+#install(TARGETS ${LIB_NAME}
+#  EXPORT libcurl-target
+#  ARCHIVE DESTINATION lib
+#  LIBRARY DESTINATION lib
+#  RUNTIME DESTINATION bin
+#)
 
-export(TARGETS ${LIB_NAME}
-       APPEND FILE ${PROJECT_BINARY_DIR}/libcurl-target.cmake
-       NAMESPACE CURL::
-)
+#export(TARGETS ${LIB_NAME}
+#       APPEND FILE ${PROJECT_BINARY_DIR}/libcurl-target.cmake
+#       NAMESPACE CURL::
+#)
 
-install(EXPORT libcurl-target
-        FILE libcurl-target.cmake
-        NAMESPACE CURL::
-        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
-)
+#install(EXPORT libcurl-target
+#        FILE libcurl-target.cmake
+#        NAMESPACE CURL::
+#        DESTINATION ${CURL_INSTALL_CMAKE_DIR}
+#)
 
