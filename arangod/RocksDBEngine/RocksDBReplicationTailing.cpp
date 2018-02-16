@@ -98,12 +98,20 @@ public:
     // skip ignored databases and collections
     if (RocksDBLogValue::containsDatabaseId(type)) {
       TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+      _currentDbId = dbId;
       if (!shouldHandleDB(dbId)) {
+        resetTransientState();
         return;
       }
       if (RocksDBLogValue::containsCollectionId(type)) {
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        _currentCid = cid;
         if (!shouldHandleCollection(dbId, cid)) {
+          if (type == RocksDBLogType::SingleRemove || type == RocksDBLogType::SinglePut) {
+            resetTransientState();
+          } else {
+            _currentCid = 0;
+          }
           return;
         }
       }
@@ -227,7 +235,9 @@ public:
         if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
           // collection may be ignored
           TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-          _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+          if (shouldHandleCollection(_currentDbId, _currentCid)) {
+            _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+          }
         }
         break;
       }
@@ -259,7 +269,7 @@ public:
       return rocksdb::Status();
     }
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString()
-    << "  value: " << value.ToString();
+      << "  value: " << value.ToString();
     
     if (column_family_id == _definitionsCF) {
       
@@ -421,8 +431,8 @@ public:
   
   void writeCommitMarker() {
     TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-    LOG_TOPIC(_LOG, Logger::PREGEL) << "tick: " << _currentSequence
-    << " commit transaction";
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "tick: " << _currentSequence
+      << " commit transaction";
     
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -457,7 +467,7 @@ public:
     return _currentSequence;
   }
   
-private:
+ private:
   // tick function that is called before each new WAL entry
   void tick() {
     if (_startOfBatch) {
@@ -497,6 +507,8 @@ private:
       } else {
         return false;
       }
+      // intentional fall-through
+      // LOG_TOPIC(DEBUG, Logger::FIXME) << "falling through for definitionsCF. type: " << rocksDBEntryTypeName(RocksDBKey::type(key));
     } else if (column_family_id == _documentsCF) {
       dbId = _currentDbId;
       cid = _currentCid;
@@ -509,7 +521,7 @@ private:
     } else {
       return false;
     }
-    
+      
     // only return results for one collection
     if (!shouldHandleCollection(dbId, cid)) {
       return false;
@@ -526,7 +538,7 @@ private:
     if (TRI_ExcludeCollectionReplication(collectionName.c_str(), _includeSystem)) {
       return false;
     }
-    
+      
     return true;
   }
   
@@ -557,7 +569,7 @@ private:
     return emptyString;
   }
   
-private:
+ private:
   uint32_t const _documentsCF;
   uint32_t const _definitionsCF;
   
@@ -601,9 +613,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
       new WALParser(vocbase, includeSystem, collectionId, builder));
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
 
+  rocksdb::TransactionLogIterator::ReadOptions ro(false);
   uint64_t since = std::max(tickStart - 1, (uint64_t)0);
   rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
-                          ->GetUpdatesSince(since, &iterator);
+                          ->GetUpdatesSince(since, &iterator, ro);
   if (!s.ok()) {  // TODO do something?
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
     return {converted.errorNumber(), lastTick};
@@ -644,7 +657,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
         lastWrittenTick = handler->endBatch();
         LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
                                          << lastWrittenTick;
-        handler->endBatch();
+        TRI_ASSERT(lastTick <= lastWrittenTick);
         if (!fromTickIncluded && lastTick <= tickStart && lastTick <= tickEnd) {
           fromTickIncluded = true;
         }
