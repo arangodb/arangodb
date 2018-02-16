@@ -131,7 +131,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       extractStringParameter(StaticStrings::Prefix, functionNamespace);
       if (functionNamespace.empty()) {
         // compatibility mode
-        extractStringParameter("namespace", functionNamespace);
+        extractStringParameter(StaticStrings::Namespace, functionNamespace);
       }
     }
 
