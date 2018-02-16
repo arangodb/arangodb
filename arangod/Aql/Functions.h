@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_FUNCTIONS_H
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
+
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Aql/AqlValue.h"
@@ -155,6 +156,12 @@ struct Functions {
    static AqlValue Trim(arangodb::aql::Query*,
                         transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue LTrim(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue RTrim(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
