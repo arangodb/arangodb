@@ -493,6 +493,9 @@ else ()
   set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
 
+set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
+
+
 ################################################################################
 ## BACKTRACE
 ################################################################################
