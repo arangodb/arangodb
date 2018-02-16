@@ -760,7 +760,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                      "createQueue() needs db RW permissions");
     }
     runAsUser = exec->user();
-    TRI_ASSERT(exec->isSuperuser() || !runAsUser.empty());
+    TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
   }
   
   std::string key = TRI_ObjectToString(args[0]);
