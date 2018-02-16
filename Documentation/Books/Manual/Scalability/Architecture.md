@@ -132,7 +132,7 @@ hash is being created from the document __key_.
 
 For further information, please refer to the
 [_Cluster Administration_ ](../Administration/Cluster/README.md#sharding) section.
-
+                                                               
 Synchronous replication 
 ------------------------
 

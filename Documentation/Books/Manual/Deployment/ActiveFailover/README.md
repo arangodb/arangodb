@@ -1,7 +1,7 @@
 # Active Failover deployment
 
 This _Section_ describes how to deploy an _Active Failover_ environement.
-For a general introduction to _Active Failover_, please refer to the [Active Failover](../../Scalability/ActiveFailiver/README.md) chapter.
+For a general introduction to _Active Failover_, please refer to the [Active Failover](../../Scalability/ActiveFailover/README.md) chapter.
 
 As usual there are two main ways to start an Active-Failover setup:
 Either [manually](Starting Manually) or using the [ArangoDB starter](Using the ArangoDB Starter) 

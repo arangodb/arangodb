@@ -11,7 +11,7 @@ Enabling synchronous replication
 
 For an introduction about _Synchronous Replication_ in Cluster, please refer
 to the [_Cluster Architecture_](../../Scalability/Architecture.md#synchronous-replication) section. 
-
+                                                               
 Synchronous replication can be enabled per _collection_. When creating a
 _collection_ you may specify the number of _replicas_ using the
 *replicationFactor* parameter. The default value is set to `1` which

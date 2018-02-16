@@ -18,7 +18,7 @@ Version 3.3
 
 **All Editions**
 
-- [**Server-level Replication**](Administration/Replication/Asynchronous/ServerLevelSetup.md):
+- [**Server-level Replication**](Administration/MasterSlave/ServerLevelSetup.md):
   In addition to per-database replication, there is now an additional
   `globalApplier`. Start the global replication on the slave once and all
   current and future databases will be replicated from the master to the
@@ -53,7 +53,7 @@ Version 3.2
   further security and scalability features to ArangoDB Enterprise like
   [LDAP integration](Administration/Configuration/Ldap.md),
   [Encryption at Rest](Administration/Encryption/README.md), and the brand new
-  [Satellite Collections](Administration/Replication/Synchronous/Satellites.md).
+  [Satellite Collections](Administration/Satellites.md).
 
 Also see [What's New in 3.2](ReleaseNotes/NewFeatures32.md).
 

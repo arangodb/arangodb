@@ -229,7 +229,6 @@
   * [Cluster](Administration/Cluster/README.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/ 
   * [Datacenter to datacenter replication](Administration/DC2DC/README.md)
-  * [Sharding](Administration/Sharding/README.md)
   * [Upgrading](Administration/Upgrading/README.md)
     * [Upgrading to 3.3](Administration/Upgrading/Upgrading33.md)
     * [Upgrading to 3.2](Administration/Upgrading/Upgrading32.md)
