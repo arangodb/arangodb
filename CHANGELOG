@@ -120,6 +120,8 @@ devel
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
 
+* fixed compiler optimization flag usage, adding the used flags to the
+  console version print
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

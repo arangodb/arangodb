@@ -106,7 +106,6 @@ void Version::initialize() {
   Values["debug"] = "false";
 #endif
 #if defined(ARCHITECTURE_OPTIMIZATIONS)
-#warning ARCHITECTURE_OPTIMIZATIONS
   Values["optimisation flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
