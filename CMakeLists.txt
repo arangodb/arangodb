@@ -490,7 +490,7 @@ else ()
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
   endif ()
 
-  set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
+  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
 
 ################################################################################
