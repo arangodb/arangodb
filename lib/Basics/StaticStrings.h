@@ -63,6 +63,7 @@ class StaticStrings {
   static std::string const WaitForSyncString;
   static std::string const IsSynchronousReplicationString;
   static std::string const Group;
+  static std::string const Namespace;
   static std::string const ReplaceExisting;
   static std::string const Prefix;;
 
