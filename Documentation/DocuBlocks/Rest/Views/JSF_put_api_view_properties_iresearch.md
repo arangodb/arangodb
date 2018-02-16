@@ -82,7 +82,7 @@ Commit options for regular operations.
 
 @RESTSTRUCT{consolidate,JSF_post_api_view_props_commit,object,optional,JSF_post_api_view_props_consolidation}
 
-@RESTSTRUCT{commitIntervalBatchSize,JSF_post_api_view_props_commit,integer,optional,uint64}
+@RESTSTRUCT{commitIntervalMsec,JSF_post_api_view_props_commit,integer,optional,uint64}
 Wait at least this many milliseconds between committing index data changes and
 making them visible to queries (default: 60000, to disable use: 0).
 For the case where there are a lot of inserts/updates, a lower value, until commit, will cause the index not to account for them and
