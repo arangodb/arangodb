@@ -173,6 +173,8 @@ static std::string FixEndpointProto(std::string const& endpoint) {
 }
 
 static void writeError(int code, GeneralResponse* response) {
+  response->setResponseCode(GeneralResponse::responseCode(code));
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   try {
@@ -190,7 +192,6 @@ static void writeError(int code, GeneralResponse* response) {
     // Building the error response failed
   }
 }
-
 
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
@@ -226,6 +227,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       break;
     case ServerState::Mode::MAINTENANCE:
     default: {
+      response->setResponseCode(rest::ResponseCode::SERVICE_UNAVAILABLE);
       break;
     }
   }
