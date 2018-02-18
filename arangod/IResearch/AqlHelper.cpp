@@ -211,7 +211,7 @@ bool attributeAccessEqual(
 
           aqlValue.reset(*offset);
 
-          if (!ctx && !aqlValue.isConstant()) {
+          if (!ctx) {
             // can't evaluate expression at compile time
             return true;
           }
