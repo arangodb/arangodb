@@ -248,13 +248,13 @@ The access levels for databases and collections are resolved in the following wa
 
 For a database "*foo*":
 1. Check if there is a specific database grant for *foo*, if yes use the granted access level
-2. Choose a the higher access level of:
+2. Choose the higher access level of::
     * A wildcard database grant ( for example `grantDatabase('user', '*', 'rw'`)
     * A database grant on the `_system` database
   
 For a collection named "*bar*":
 1. Check if there is a specific database grant for *bar*, if yes use the granted access level
-2. Choose a the higher access level of:
+2. Choose the higher access level of::
     * Any wildcard access grant in the same database, or on "*/*" (in this example `grantCollection('user', 'foo', '*', 'rw')`) 
     * The access level for the current database (in this example `grantDatabase('user', 'foo', 'rw'`)
     * The access level for the `_system` database
