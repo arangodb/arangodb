@@ -72,9 +72,9 @@ std::string Job::agencyPrefix = "/arango";
 bool Job::finish(
   std::string const& server, std::string const& shard,
   bool success, std::string const& reason, query_t const payload) {
-  
+
   Builder pending, finished;
-  
+
   // Get todo entry
   bool started = false;
   { VPackArrayBuilder guard(&pending);
@@ -97,7 +97,7 @@ bool Job::finish(
     LOG_TOPIC(WARN, Logger::AGENCY)
       << "Failed to obtain type of job " << _jobId;
   }
-  
+
   // Prepare pending entry, block toserver
   { VPackArrayBuilder guard(&finished);
     VPackObjectBuilder guard2(&finished);
@@ -126,7 +126,7 @@ bool Job::finish(
     if (started && !shard.empty()) {
       addReleaseShard(finished, shard);
     }
-    
+
   }  // close object and array
 
   write_ret_t res = singleWriteTransaction(_agent, finished);
@@ -157,14 +157,14 @@ std::string Job::randomIdleGoodAvailableServer(
       }
     }
   } catch (...) {}
-  
+
   // blocked;
   try {
     for (auto const& srv : snap(blockedServersPrefix).children()) {
       ex.push_back(srv.first);
     }
   } catch (...) {}
- 
+
 
   // Remove excluded servers
   std::sort(std::begin(ex), std::end(ex));
@@ -174,7 +174,7 @@ std::string Job::randomIdleGoodAvailableServer(
       [&](std::string const& s){
         return std::binary_search(
           std::begin(ex), std::end(ex), s);}), std::end(as));
-  
+
   // Choose random server from rest
   if (!as.empty()) {
     if (as.size() == 1) {
@@ -187,7 +187,7 @@ std::string Job::randomIdleGoodAvailableServer(
   }
 
   return ret;
-  
+
 }
 
 
@@ -216,7 +216,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
-  
+
   // Remove cleaned servers from ist
   try {
     for (auto const& srv :
@@ -234,21 +234,21 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
         std::remove(ret.begin(), ret.end(), srv.first), ret.end());
     }
   } catch (...) {}
-  
+
   return ret;
-  
+
 }
 
 template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {
 
   std::vector<size_t> idx(v.size());
-  
+
   std::iota(idx.begin(), idx.end(), 0);
   std::sort(idx.begin(), idx.end(),
        [&v](size_t i, size_t j) {return v[i] < v[j];});
-  
+
   return idx;
-  
+
 }
 
 std::vector<std::string> sortedShardList(Node const& shards) {
@@ -281,24 +281,24 @@ std::vector<Job::shard_t> Job::clones(
 
   std::string databasePath = planColPrefix + database,
     planPath = databasePath + "/" + collection + "/shards";
-  
+
   auto myshards = sortedShardList(snapshot(planPath));
   auto steps = std::distance(
     myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
-  
+
   for (const auto& colptr : snapshot(databasePath).children()) { // collections
-    
+
     auto const col = *colptr.second;
     auto const otherCollection = colptr.first;
-    
+
     if (otherCollection != collection &&
         col.has("distributeShardsLike") &&
         col("distributeShardsLike").slice().copyString() == collection) {
       ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
     }
-    
+
   }
-  
+
   return ret;
 }
 
@@ -324,6 +324,13 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       planColPrefix + db + "/" + clone.collection + "/shards/"
       + clone.shard;
     size_t i = 0;
+
+    // start up race condition  ... current might not have everything in plan
+    if (!snap.has(currentShardPath) || !snap.has(plannedShardPath)) {
+      --nclones;
+      continue;
+    } // if
+
     for (const auto& server : VPackArrayIterator(snap(currentShardPath).getArray())) {
       auto id = server.copyString();
       if (i++ == 0) {
@@ -363,9 +370,9 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       }
     }
   }
-  
+
   return std::string();
-  
+
 }
 
 std::string Job::uuidLookup (std::string const& shortID) {
@@ -406,7 +413,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
 
   // We should never get here
   TRI_ASSERT(false);
-  return false;  
+  return false;
 }
 
 void Job::doForAllShards(Node const& snapshot,
@@ -538,4 +545,3 @@ std::string Job::checkServerGood(Node const& snapshot,
   }
   return "GOOD";
 }
-

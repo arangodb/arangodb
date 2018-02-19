@@ -25,6 +25,7 @@
 #include "Functions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
@@ -56,6 +57,7 @@
 
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
+#include <unicode/stsearch.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -759,6 +761,138 @@ AqlValue Functions::Length(arangodb::aql::Query* query,
   }
     
   return AqlValue(AqlValueHintUInt(length));
+}
+
+
+/// @brief function FIND_FIRST
+/// FIND_FIRST(text, search, start, end) → position
+AqlValue Functions::FindFirst(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "FIND_FIRST", 2, 4);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue searchValue = ExtractFunctionParameterValue(parameters, 1);
+
+  transaction::StringBufferLeaser buf1(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+
+  transaction::StringBufferLeaser buf2(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  AppendAsString(trx, adapter2, searchValue);
+  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  auto searchLen = uSearchBuf.length();
+
+  int64_t startOffset = 0;
+  int64_t maxEnd = -1;
+
+  if (parameters.size() >= 3) {
+    AqlValue optionalStartOffset  = ExtractFunctionParameterValue(parameters, 2);
+    startOffset = optionalStartOffset.toInt64(trx);
+    if (startOffset < 0) {
+      return AqlValue(AqlValueHintInt(-1));
+    }
+  }
+  
+  maxEnd = uBuf.length();
+  if (parameters.size() == 4) {
+    AqlValue optionalEndMax  = ExtractFunctionParameterValue(parameters, 3);
+    if (!optionalEndMax.isNull(true)) {
+      maxEnd = optionalEndMax.toInt64(trx);
+      if ((maxEnd < startOffset) || (maxEnd < 0)) {
+        return AqlValue(AqlValueHintInt(-1));
+      }
+    }
+  }
+
+  if (searchLen == 0) {
+    return AqlValue(AqlValueHintInt(startOffset));
+  }
+  if (uBuf.length() == 0) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  auto locale = LanguageFeature::instance()->getLocale();
+  UErrorCode status = U_ZERO_ERROR;
+  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+
+  for(int pos = search.first(status);
+      U_SUCCESS(status) && pos != USEARCH_DONE;
+      pos = search.next(status)) {
+    if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
+      return AqlValue(AqlValueHintInt(pos));
+    }
+  }
+  return AqlValue(AqlValueHintInt(-1));
+}
+
+/// @brief function FIND_LAST
+/// FIND_FIRST(text, search, start, end) → position
+AqlValue Functions::FindLast(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "FIND_LAST", 2, 4);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue searchValue = ExtractFunctionParameterValue(parameters, 1);
+
+  transaction::StringBufferLeaser buf1(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+
+  transaction::StringBufferLeaser buf2(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  AppendAsString(trx, adapter2, searchValue);
+  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  auto searchLen = uSearchBuf.length();
+
+  int64_t startOffset = 0;
+  int64_t maxEnd = -1;
+
+  if (parameters.size() >= 3) {
+    AqlValue optionalStartOffset  = ExtractFunctionParameterValue(parameters, 2);
+    startOffset = optionalStartOffset.toInt64(trx);
+    if (startOffset < 0) {
+      return AqlValue(AqlValueHintInt(-1));
+    }
+  }
+  
+  maxEnd = uBuf.length();
+  int emptySearchCludge = 0;
+  if (parameters.size() == 4) {
+    AqlValue optionalEndMax  = ExtractFunctionParameterValue(parameters, 3);
+    if (!optionalEndMax.isNull(true)) {
+      maxEnd = optionalEndMax.toInt64(trx);
+      if ((maxEnd < startOffset) || (maxEnd < 0)) {
+        return AqlValue(AqlValueHintInt(-1));
+      }
+      emptySearchCludge = 1;
+    }
+  }
+
+  if (searchLen == 0) {
+    return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
+  }
+  if (uBuf.length() == 0) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  auto locale = LanguageFeature::instance()->getLocale();
+  UErrorCode status = U_ZERO_ERROR;
+  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+
+  int foundPos = -1;
+  for(int pos = search.first(status);
+      U_SUCCESS(status) && pos != USEARCH_DONE;
+      pos = search.next(status)) {
+    if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
+      foundPos = pos;
+    }
+  }
+  return AqlValue(AqlValueHintInt(foundPos));
 }
 
 /// @brief function FIRST
