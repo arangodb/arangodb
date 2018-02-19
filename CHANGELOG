@@ -1,7 +1,7 @@
 devel
 -----
 
-* fixed FOXX API:
+* fixed Foxx API:
 
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
