@@ -1410,7 +1410,10 @@ function ahuacatlStringFunctionsTestSuite () {
           [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
           [ 14, 'some linebreak\r\ngoes here', '\r\n' ],
           [ 12, 'foo BAR foo bar', 'bar' ],
-          [ 4, 'foo bar foo bar', 'bar' ]
+          [ 4, 'foo bar foo bar', 'bar' ],
+          [ 17, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
+          [ 3, '或或或MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
+          [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
         ].forEach(function (v) {
           var actual = getQueryResults(`RETURN ${WRAP} FIND_FIRST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ')) )');
           assertEqual([ v[0] ], actual);
@@ -1538,7 +1541,10 @@ function ahuacatlStringFunctionsTestSuite () {
           [ -1, 'the quick brown foxx', 'the quick brown foxx j' ],
           [ 4, 'the quick brown foxx', 'quick brown' ],
           [ 35, 'the quick brown foxx jumped over a\nnewline', 'newline' ],
-          [ 14, 'some linebreak\r\ngoes here', '\r\n' ]
+          [ 14, 'some linebreak\r\ngoes here', '\r\n' ],
+          [ 31, 'Heavy metal from MÖtleyCrÜe or MÖtleyCrÜe doing heavy metal?', 'MÖtleyCrÜe'],
+          [ 11, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  'MÖtleyCrÜe'],
+          [ 10, 'MÖtleyCrÜe或MÖtleyCrÜe从重金属中提取重金属？',  '或']
         ].forEach(function (v) {
           var actual = getQueryResults(`RETURN ${WRAP} FIND_LAST(` + JSON.stringify(v[1]) + ', ' + JSON.stringify(v[2]) + ') ))');
           assertEqual([ v[0] ], actual);
