@@ -40,7 +40,6 @@ const colName = helper.colName;
 const rightLevels = helper.rightLevels;
 
 const userSet = helper.userSet;
-const roleSet = helper.roleSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
@@ -60,24 +59,13 @@ describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  //if (!helper.isLdapEnabledExternal()) {
-    it('should check if all users are created', () => {
-      helper.switchUser('root', '_system');
-      expect(userSet.size).to.equal(helper.userCount);
-      for (let name of userSet) {
-        expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
-      }
-    });
-  //}
-  /*if (helper.isLdapEnabledExternal()) {
-    it('should check if all roles are created', () => {
-      helper.switchUser('root', '_system');
-      expect(roleSet.size).to.equal(helper.roleCount);
-      for (let role of roleSet) {
-        expect(users.document(role.role), `Could not find role: ${role.role}`).to.not.be.undefined;
-      }
-    });
-  }*/
+  it('should check if all users are created', () => {
+    helper.switchUser('root', '_system');
+    expect(userSet.size).to.equal(helper.userCount);
+    for (let name of userSet) {
+      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+    }
+  });
 
   it('should test rights for', () => {
     for (let name of userSet) {

@@ -4,6 +4,16 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* Behaviour of permissions for databases and collections changed:
+  The new fallback rule for databases for which an access level is not explicitly specified:
+  Choose a the higher access level of:
+    * A wildcard database grant
+    * A database grant on the `_system` database
+  The new fallback rule for collections for which an access level is not explicitly specified:
+  Choose a the higher access level of:
+    * Any wildcard access grant in the same database, or on "*/*"
+    * The access level for the current database
+    * The access level for the `_system` database
 
 v3.3.3 (2018-01-26)
 -------------------
