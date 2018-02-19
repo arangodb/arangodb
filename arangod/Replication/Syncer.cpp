@@ -655,6 +655,13 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection for index");
   }
+  
+  VPackBuilder s;
+  s.openObject();
+  s.add("objectId", VPackSlice::nullSlice());
+  s.close();
+  VPackBuilder merged = VPackCollection::merge(indexSlice, s.slice(),
+                                               /*mergeValues*/true, /*nullMeansRemove*/true);
 
   try {
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
@@ -669,7 +676,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     auto physical = trx.documentCollection()->getPhysical();
     TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = physical->restoreIndex(&trx, indexSlice, idx);
+    res = physical->restoreIndex(&trx, merged.slice(), idx);
     res = trx.finish(res);
 
     return res;
