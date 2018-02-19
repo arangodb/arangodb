@@ -173,6 +173,8 @@ static std::string FixEndpointProto(std::string const& endpoint) {
 }
 
 static void writeError(int code, GeneralResponse* response) {
+  response->setResponseCode(GeneralResponse::responseCode(code));
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.add(VPackValue(VPackValueType::Object));
@@ -186,7 +188,6 @@ static void writeError(int code, GeneralResponse* response) {
   options.escapeUnicode = true;
   response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
 }
-
 
 /// @brief fill a response object with correct response for a follower
 void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
@@ -222,6 +223,7 @@ void ReplicationFeature::prepareFollowerResponse(GeneralResponse* response,
       break;
     case ServerState::Mode::MAINTENANCE:
     default: {
+      response->setResponseCode(rest::ResponseCode::SERVICE_UNAVAILABLE);
       break;
     }
   }
