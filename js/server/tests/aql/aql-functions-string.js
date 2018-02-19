@@ -1368,7 +1368,7 @@ function ahuacatlStringFunctionsTestSuite () {
         var actual = getQueryResults(`RETURN ${WRAP} FIND_FIRST('', '')) )`);
         assertEqual([ 0 ], actual);
 
-        var actual = getQueryResults(`RETURN ${WRAP} FIND_FIRST('       ', '', 4)) )`);
+        actual = getQueryResults(`RETURN ${WRAP} FIND_FIRST('       ', '', 4)) )`);
         assertEqual([ 4 ], actual);
       }
     },
@@ -1500,9 +1500,9 @@ function ahuacatlStringFunctionsTestSuite () {
 
         var actual = getQueryResults(`RETURN ${WRAP} FIND_LAST('', '') ))`);
         assertEqual([ 0 ], actual);
-        var actual = getQueryResults(`RETURN ${WRAP} FIND_LAST('012345', '', 1) ))`);
+        actual = getQueryResults(`RETURN ${WRAP} FIND_LAST('012345', '', 1) ))`);
         assertEqual([ 6 ], actual);
-        var actual = getQueryResults(`RETURN ${WRAP} FIND_LAST('0123456', '', 1, 4) ))`);
+        actual = getQueryResults(`RETURN ${WRAP} FIND_LAST('0123456', '', 1, 4) ))`);
         assertEqual([ 5 ], actual);
       }
     },
