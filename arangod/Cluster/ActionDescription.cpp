@@ -29,20 +29,6 @@
 using namespace arangodb;
 using namespace arangodb::maintenance;
 
-std::string const KEY = "_key";
-std::string const FIELDS = "fields";
-std::string const TYPE = "type";
-std::string const INDEXES = "indexes";
-std::string const SHARDS = "shards";
-std::string const DATABASE = "database";
-std::string const COLLECTION = "collection";
-std::string const EDGE = "edge";
-std::string const NAME = "name";
-std::string const ID = "id";
-std::string const LEADER = "theLeader";
-std::string const GLOB_UID = "globallyUniqueId";
-std::string const OBJECT_ID = "objectId";
-
 
 /// @brief ctor
 ActionDescription::ActionDescription(

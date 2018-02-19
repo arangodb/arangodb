@@ -35,19 +35,20 @@ namespace maintenance {
 
 enum Signal { GRACEFUL, IMMEDIATE };
 
-static std::string const KEY;
-static std::string const FIELDS;
-static std::string const TYPE;
-static std::string const INDEXES;
-static std::string const SHARDS;
-static std::string const DATABASE;
-static std::string const COLLECTION;
-static std::string const EDGE;
-static std::string const NAME;
-static std::string const ID;
-static std::string const LEADER;
-static std::string const GLOB_UID;
-static std::string const OBJECT_ID;
+static std::string const KEY("key");
+static std::string const FIELDS("fields");
+static std::string const TYPE("type");
+static std::string const INDEXES("indexes");
+static std::string const SHARDS("shards");
+static std::string const DATABASE("database");
+static std::string const COLLECTION("collection");
+static std::string const EDGE("edge");
+static std::string const NAME("name");
+static std::string const ID("id");
+static std::string const LEADER("leader");
+static std::string const LOCAL_LEADER("localLeader");
+static std::string const GLOB_UID("globallyUniqueId");
+static std::string const OBJECT_ID("objectId");
 
 /**
  * @brief Action description for mainenance actions

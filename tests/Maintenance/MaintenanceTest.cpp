@@ -284,7 +284,7 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
 
       REQUIRE(actions.size() == 1);
       for (auto const& action : actions) {
-        REQUIRE(action.name() == "AlterCollection");
+        REQUIRE(action.name() == "UpdateCollection");
       }
         
     }
