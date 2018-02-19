@@ -1,7 +1,12 @@
 devel
 -----
 
-* renamed startup option `--replication.automatic-failover` to 
+* fixed FOXX API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
+* renamed startup option `--replication.automatic-failover` to
   `--replication.active-failover`
   using the old option name will still work in ArangoDB 3.4, but the old option
   will be removed afterwards
@@ -12,7 +17,7 @@ devel
   inaccurate estimates. The issue is solved now, but there can be up to a second
   or so delay before updates are reflected in the estimates.
 
-* support `returnOld` and `returnNew` attributes for in the following HTTP REST 
+* support `returnOld` and `returnNew` attributes for in the following HTTP REST
   APIs:
 
   * /_api/gharial/<graph>/vertex/<collection>
@@ -21,7 +26,7 @@ devel
   The exception from this is that the HTTP DELETE verb for these APIs does not
   support `returnOld` because that would make the existing API incompatible
 
-* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash 
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash
   silently without error log
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
