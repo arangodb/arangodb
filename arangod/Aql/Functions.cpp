@@ -829,7 +829,7 @@ AqlValue Functions::FindFirst(arangodb::aql::Query* query,
 AqlValue Functions::FindLast(arangodb::aql::Query* query,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
-  ValidateParameters(parameters, "FIND_FIRST", 2, 4);
+  ValidateParameters(parameters, "FIND_LAST", 2, 4);
 
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
   AqlValue searchValue = ExtractFunctionParameterValue(parameters, 1);
