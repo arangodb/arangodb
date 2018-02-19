@@ -256,8 +256,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"TRIM", ".|.", true, false, true, true, &Functions::Trim});
   add({"LTRIM", ".|.", true, false, true, true, &Functions::LTrim});
   add({"RTRIM", ".|.", true, false, true, true, &Functions::RTrim});
-  add({"FIND_FIRST", ".,.|.,.", true, false, true, true});
-  add({"FIND_LAST", ".,.|.,.", true, false, true, true});
+  add({"FIND_FIRST", ".,.|.,.", true, false, true, true, &Functions::FindFirst});
+  add({"FIND_LAST", ".,.|.,.", true, false, true, true, &Functions::FindLast});
   add({"SPLIT", ".|.,.", true, false, true, true});
   add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
