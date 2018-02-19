@@ -1,0 +1,96 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>fatal error C1204:Compiler limit:internal structure overflow</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../faq.html" title="Chapter&#160;4.&#160;Frequently Asked Questions (FAQs)">
+<link rel="prev" href="how_can_i_wrap_functions_which_t.html" title="How can I wrap functions which take C++ containers as arguments?">
+<link rel="next" href="how_do_i_debug_my_python_extensi.html" title="How do I debug my Python extensions?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_can_i_wrap_functions_which_t.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="how_do_i_debug_my_python_extensi.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="faq.fatal_error_c1204_compiler_limit"></a><a class="link" href="fatal_error_c1204_compiler_limit.html" title="fatal error C1204:Compiler limit:internal structure overflow">fatal error C1204:Compiler
+      limit:internal structure overflow</a>
+</h3></div></div></div>
+<p>
+        <span class="bold"><strong>Q:</strong></span> <span class="emphasis"><em>I get this error message when
+        compiling a large source file. What can I do?</em></span>
+      </p>
+<p>
+        <span class="bold"><strong>A:</strong></span> You have two choices:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            Upgrade your compiler (preferred)
+          </li>
+<li class="listitem">
+<p class="simpara">
+            Break your source file up into multiple translation units.
+          </p>
+<p class="simpara">
+            <code class="computeroutput"><span class="identifier">my_module</span><span class="special">.</span><span class="identifier">cpp</span></code>:
+          </p>
+<pre class="programlisting"><span class="special">...</span>
+<span class="keyword">void</span> <span class="identifier">more_of_my_module</span><span class="special">();</span>
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">my_module</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">foo</span><span class="special">);</span>
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"bar"</span><span class="special">,</span> <span class="identifier">bar</span><span class="special">);</span>
+  <span class="special">...</span>
+  <span class="identifier">more_of_my_module</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p class="simpara">
+            <code class="computeroutput"><span class="identifier">more_of_my_module</span><span class="special">.</span><span class="identifier">cpp</span></code>:
+          </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">more_of_my_module</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"baz"</span><span class="special">,</span> <span class="identifier">baz</span><span class="special">);</span>
+  <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+<p class="simpara">
+            If you find that a <code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;...&gt;</span></code> declaration can't fit in a
+            single source file without triggering the error, you can always pass
+            a reference to the <code class="computeroutput"><span class="identifier">class_</span></code>
+            object to a function in another source file, and call some of its member
+            functions (e.g. <code class="computeroutput"><span class="special">.</span><span class="identifier">def</span><span class="special">(...)</span></code>) in the auxilliary source file:
+          </p>
+<p class="simpara">
+            <code class="computeroutput"><span class="identifier">more_of_my_class</span><span class="special">.</span><span class="identifier">cpp</span></code>:
+          </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">more_of_my_class</span><span class="special">(</span><span class="keyword">class</span><span class="special">&amp;</span><span class="identifier">lt</span><span class="special">;</span><span class="identifier">my_class</span><span class="special">&amp;</span><span class="identifier">gt</span><span class="special">;&amp;</span><span class="identifier">amp</span><span class="special">;</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">x</span>
+   <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"baz"</span><span class="special">,</span> <span class="identifier">baz</span><span class="special">)</span>
+   <span class="special">.</span><span class="identifier">add_property</span><span class="special">(</span><span class="string">"xx"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">my_class</span><span class="special">::</span><span class="identifier">get_xx</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">my_class</span><span class="special">::</span><span class="identifier">set_xx</span><span class="special">)</span>
+   <span class="special">;</span>
+  <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+</li>
+</ol></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="how_can_i_wrap_functions_which_t.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="how_do_i_debug_my_python_extensi.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

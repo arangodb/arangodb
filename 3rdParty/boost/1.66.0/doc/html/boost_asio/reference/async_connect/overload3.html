@@ -1,0 +1,130 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>async_connect (3 of 6 overloads)</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../async_connect.html" title="async_connect">
+<link rel="prev" href="overload2.html" title="async_connect (2 of 6 overloads)">
+<link rel="next" href="overload4.html" title="async_connect (4 of 6 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload2.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_connect.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload4.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.async_connect.overload3"></a><a class="link" href="overload3.html" title="async_connect (3 of 6 overloads)">async_connect
+        (3 of 6 overloads)</a>
+</h4></div></div></div>
+<p>
+          Asynchronously establishes a socket connection by trying each endpoint
+          in a sequence.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../Protocol.html" title="Protocol requirements">Protocol</a>,
+    typename Iterator,
+    typename <a class="link" href="../IteratorConnectHandler.html" title="Iterator connect handler requirements">IteratorConnectHandler</a>&gt;
+<a class="link" href="../asynchronous_operations/automatic_deduction_of_initiating_function_return_type.html" title="Automatic deduction of initiating function return type"><span class="emphasis"><em>DEDUCED</em></span></a> async_connect(
+    basic_socket&lt; Protocol &gt; &amp; s,
+    Iterator begin,
+    Iterator end,
+    IteratorConnectHandler &amp;&amp; handler);
+</pre>
+<p>
+          This function attempts to connect a socket to one of a sequence of endpoints.
+          It does this by repeated calls to the socket's <code class="computeroutput">async_connect</code>
+          member function, once for each endpoint in the sequence, until a connection
+          is successfully established.
+        </p>
+<h6>
+<a name="boost_asio.reference.async_connect.overload3.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_connect.overload3.parameters"></a></span><a class="link" href="overload3.html#boost_asio.reference.async_connect.overload3.parameters">Parameters</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">s</span></dt>
+<dd><p>
+                The socket to be connected. If the socket is already open, it will
+                be closed.
+              </p></dd>
+<dt><span class="term">begin</span></dt>
+<dd><p>
+                An iterator pointing to the start of a sequence of endpoints.
+              </p></dd>
+<dt><span class="term">end</span></dt>
+<dd><p>
+                An iterator pointing to the end of a sequence of endpoints.
+              </p></dd>
+<dt><span class="term">handler</span></dt>
+<dd>
+<p>
+                The handler to be called when the connect operation completes. Copies
+                will be made of the handler as required. The function signature of
+                the handler must be:
+</p>
+<pre class="programlisting">void handler(
+  // Result of operation. if the sequence is empty, set to
+  // boost::asio::error::not_found. Otherwise, contains the
+  // error from the last connection attempt.
+  const boost::system::error_code&amp; error,
+
+  // On success, an iterator denoting the successfully
+  // connected endpoint. Otherwise, the end iterator.
+  Iterator iterator
+);
+</pre>
+<p>
+                Regardless of whether the asynchronous operation completes immediately
+                or not, the handler will not be invoked from within this function.
+                Invocation of the handler will be performed in a manner equivalent
+                to using <code class="computeroutput">boost::asio::io_context::post()</code>.
+              </p>
+</dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.async_connect.overload3.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_connect.overload3.example"></a></span><a class="link" href="overload3.html#boost_asio.reference.async_connect.overload3.example">Example</a>
+        </h6>
+<pre class="programlisting">std::vector&lt;tcp::endpoint&gt; endpoints = ...;
+tcp::socket s(io_context);
+boost::asio::async_connect(s,
+    endpoints.begin(), endpoints.end(),
+    connect_handler);
+
+// ...
+
+void connect_handler(
+    const boost::system::error_code&amp; ec,
+    std::vector&lt;tcp::endpoint&gt;::iterator i)
+{
+  // ...
+}
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload2.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_connect.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload4.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

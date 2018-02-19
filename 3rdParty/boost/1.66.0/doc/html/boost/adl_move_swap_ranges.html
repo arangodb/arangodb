@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function template adl_move_swap_ranges</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../move/reference.html#header.boost.move.adl_move_swap_hpp" title="Header &lt;boost/move/adl_move_swap.hpp&gt;">
+<link rel="prev" href="adl_move_swap.html" title="Function template adl_move_swap">
+<link rel="next" href="movelib/adaptive_merge.html" title="Function template adaptive_merge">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="adl_move_swap.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../move/reference.html#header.boost.move.adl_move_swap_hpp"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="movelib/adaptive_merge.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.adl_move_swap_ranges"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template adl_move_swap_ranges</span></h2>
+<p>boost::adl_move_swap_ranges</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../move/reference.html#header.boost.move.adl_move_swap_hpp" title="Header &lt;boost/move/adl_move_swap.hpp&gt;">boost/move/adl_move_swap.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ForwardIt1<span class="special">,</span> <span class="keyword">typename</span> ForwardIt2<span class="special">&gt;</span> 
+  <span class="identifier">ForwardIt2</span> <span class="identifier">adl_move_swap_ranges</span><span class="special">(</span><span class="identifier">ForwardIt1</span> first1<span class="special">,</span> <span class="identifier">ForwardIt1</span> last1<span class="special">,</span> 
+                                  <span class="identifier">ForwardIt2</span> first2<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.25.20.2.4.4"></a><h2>Description</h2>
+<p>Exchanges elements between range [first1, last1) and another range starting at first2 using boost::adl_move_swap.</p>
+<p>Parameters: first1, last1 - the first range of elements to swap first2 - beginning of the second range of elements to swap</p>
+<p>Type requirements:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>ForwardIt1, ForwardIt2 must meet the requirements of ForwardIterator.</p></li>
+<li class="listitem"><p>The types of dereferenced ForwardIt1 and ForwardIt2 must meet the requirements of Swappable</p></li>
+</ul></div>
+<p>
+</p>
+<p>Return value: Iterator to the element past the last element exchanged in the range beginning with first2. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2014 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="adl_move_swap.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../move/reference.html#header.boost.move.adl_move_swap_hpp"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="movelib/adaptive_merge.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

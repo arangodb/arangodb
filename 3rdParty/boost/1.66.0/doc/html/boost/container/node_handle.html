@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template node_handle</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../boost_container_header_reference.html#header.boost.container.node_handle_hpp" title="Header &lt;boost/container/node_handle.hpp&gt;">
+<link rel="prev" href="node_allocator/rebind.html" title="Struct template rebind">
+<link rel="next" href="insert_return_type_base.html" title="Struct template insert_return_type_base">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="node_allocator/rebind.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.node_handle_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="insert_return_type_base.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.node_handle"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template node_handle</span></h2>
+<p>boost::container::node_handle</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_container_header_reference.html#header.boost.container.node_handle_hpp" title="Header &lt;boost/container/node_handle.hpp&gt;">boost/container/node_handle.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> NodeAllocator<span class="special">,</span> <span class="keyword">typename</span> KeyMapped <span class="special">=</span> <span class="keyword">void</span><span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">priv_value_t</span>                                                     <a name="boost.container.node_handle.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">keymapped_t</span><span class="special">::</span><span class="identifier">key_type</span>                                            <a name="boost.container.node_handle.key_type"></a><span class="identifier">key_type</span><span class="special">;</span>           
+  <span class="keyword">typedef</span> <span class="identifier">keymapped_t</span><span class="special">::</span><span class="identifier">mapped_type</span>                                         <a name="boost.container.node_handle.mapped_type"></a><span class="identifier">mapped_type</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">nator_traits</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">portable_rebind_alloc</span><span class="special">&lt;</span> <span class="identifier">value_type</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <a name="boost.container.node_handle.allocator_type"></a><span class="identifier">allocator_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="identifier">priv_node_t</span>                                                      <a name="boost.container.node_handle.container_node_type"></a><span class="identifier">container_node_type</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="node_handle.html#boost.container.node_handleconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="node_handle.html#idp63151504-bb"><span class="identifier">node_handle</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="node_handle.html#idp63153904-bb"><span class="identifier">node_handle</span></a><span class="special">(</span><span class="identifier">node_pointer</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">nallocator_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> KeyMapped2<span class="special">&gt;</span> 
+    <a class="link" href="node_handle.html#idp63157648-bb"><span class="identifier">node_handle</span></a><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a><span class="special">&lt;</span> <span class="identifier">NodeAllocator</span><span class="special">,</span> <span class="identifier">KeyMapped2</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="node_handle.html#idp63165600-bb"><span class="identifier">node_handle</span></a><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63171424-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="node_handle.html#idp63169920-bb"><span class="special">~</span><span class="identifier">node_handle</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="node_handle.html#idp63108016-bb">friend functions</a></span>
+  <span class="keyword">friend</span> <span class="keyword">void</span> <a class="link" href="node_handle.html#idp63108576-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span><span class="special">,</span> <a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">BOOST_NOEXCEPT</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">swap</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="node_handle.html#idp63112800-bb">public member functions</a></span>
+  <span class="identifier">value_type</span> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63113360-bb"><span class="identifier">value</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">key_type</span> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63117232-bb"><span class="identifier">key</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">mapped_type</span> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63122032-bb"><span class="identifier">mapped</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">allocator_type</span> <a class="link" href="node_handle.html#idp63125936-bb"><span class="identifier">get_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="node_handle.html#idp63129760-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="node_handle.html#idp63132128-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="node_handle.html#idp63134224-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">nator_traits</span><span class="special">::</span><span class="identifier">propagate_on_container_swap</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">nator_traits</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">node_pointer</span> <a class="link" href="node_handle.html#idp63138480-bb"><span class="identifier">release</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">node_pointer</span> <a class="link" href="node_handle.html#idp63142400-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">nallocator_type</span> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63145360-bb"><span class="identifier">node_alloc</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">nallocator_type</span> <span class="special">&amp;</span> <a class="link" href="node_handle.html#idp63148352-bb"><span class="identifier">node_alloc</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.10.12.18.3.4"></a><h2>Description</h2>
+<p>A <a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> is an object that accepts ownership of a single element from an associative container. It may be used to transfer that ownership to another container with compatible nodes. Containers with compatible nodes have the same node handle type. Elements may be transferred in either direction between container types in the same row:.</p>
+<p>Container types with compatible nodes</p>
+<p>map&lt;K, T, C1, A&gt; &lt;-&gt; map&lt;K, T, C2, A&gt;</p>
+<p>map&lt;K, T, C1, A&gt; &lt;-&gt; multimap&lt;K, T, C2, A&gt;</p>
+<p>set&lt;K, C1, A&gt; &lt;-&gt; set&lt;K, C2, A&gt;</p>
+<p>set&lt;K, C1, A&gt; &lt;-&gt; multiset&lt;K, C2, A&gt;</p>
+<p>If a node handle is not empty, then it contains an allocator that is equal to the allocator of the container when the element was extracted. If a node handle is empty, it contains no allocator. </p>
+<div class="refsect2">
+<a name="id-1.3.10.12.18.3.4.9"></a><h3>
+<a name="boost.container.node_handleconstruct-copy-destruct"></a><code class="computeroutput">node_handle</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp63151504-bb"></a><span class="identifier">node_handle</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Initializes m_ptr to nullptr.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: this-&gt;empty() </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63153904-bb"></a><span class="identifier">node_handle</span><span class="special">(</span><span class="identifier">node_pointer</span> p<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">nallocator_type</span> <span class="special">&amp;</span> al<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a <code class="computeroutput"><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a></code> object initializing internal pointer with p. If p != nullptr copy constructs internal allocator from al. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> KeyMapped2<span class="special">&gt;</span> 
+  <a name="idp63157648-bb"></a><span class="identifier">node_handle</span><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a><span class="special">&lt;</span> <span class="identifier">NodeAllocator</span><span class="special">,</span> <span class="identifier">KeyMapped2</span> <span class="special">&gt;</span> <span class="special">&amp;&amp;</span> nh<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a <code class="computeroutput"><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a></code> object initializing internal pointer with a related nh's internal pointer and assigns nullptr to the later. If nh's internal pointer was not nullptr, move constructs internal allocator with nh's internal allocator and destroy nh's internal allocator.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: nh.empty()</p>
+<p><span class="bold"><strong>Note</strong></span>: Two <code class="computeroutput"><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a></code>'s are related if only one of KeyMapped template parameter of a node handle is void. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63165600-bb"></a><span class="identifier">node_handle</span><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;&amp;</span> nh<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Constructs a <code class="computeroutput"><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a></code> object initializing internal pointer with nh's internal pointer and assigns nullptr to the later. If nh's internal pointer was not nullptr, move constructs internal allocator with nh's internal allocator and destroy nh's internal allocator.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: nh.empty() </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span> <a name="idp63171424-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;&amp;</span> nh<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: Either this-&gt;empty(), or nator_traits::propagate_on_container_move_assignment is true, or node_alloc() == nh.node_alloc().</p>
+<p><span class="bold"><strong>Effects</strong></span>: If m_ptr != nullptr, destroys the value_type subobject in the container_node_type object pointed to by m_ptr by calling nator_traits::destroy, then deallocates m_ptr by calling nator_traits::deallocate. Assigns nh.m_ptr to m_ptr. If this-&gt;empty() or nator_traits::propagate_on_container_move_assignment is true, move assigns nh.node_alloc() to node_alloc(). Assigns nullptr to nh.m_ptr and assigns nullopt to nh.node_alloc().</p>
+<p><span class="bold"><strong>Returns</strong></span>: *this.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63169920-bb"></a><span class="special">~</span><span class="identifier">node_handle</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: If !this-&gt;empty(), destroys the value_type subobject in the container_node_type object pointed to by c by calling allocator_traits&lt;impl_defined&gt;::destroy, then deallocates m_ptr by calling nator_traits::rebind_traits&lt;container_node_type&gt;::deallocate. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.18.3.4.10"></a><h3>
+<a name="idp63108016-bb"></a><code class="computeroutput">node_handle</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">void</span> <a name="idp63108576-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span> x<span class="special">,</span> <a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span> y<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">BOOST_NOEXCEPT</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">swap</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: x.swap(y). </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.18.3.4.11"></a><h3>
+<a name="idp63112800-bb"></a><code class="computeroutput">node_handle</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="idp63113360-bb"></a><span class="identifier">value</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: empty() == false.</p>
+<p><span class="bold"><strong>Returns</strong></span>: A reference to the value_type subobject in the container_node_type object pointed to by m_ptr</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">key_type</span> <span class="special">&amp;</span> <a name="idp63117232-bb"></a><span class="identifier">key</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: empty() == false.</p>
+<p><span class="bold"><strong>Returns</strong></span>: A non-const reference to the key_type member of the value_type subobject in the container_node_type object pointed to by m_ptr.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing.</p>
+<p><span class="bold"><strong>Requires</strong></span>: Modifying the key through the returned reference is permitted. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">mapped_type</span> <span class="special">&amp;</span> <a name="idp63122032-bb"></a><span class="identifier">mapped</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: empty() == false.</p>
+<p><span class="bold"><strong>Returns</strong></span>: A reference to the mapped_type member of the value_type subobject in the container_node_type object pointed to by m_ptr</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">allocator_type</span> <a name="idp63125936-bb"></a><span class="identifier">get_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: empty() == false.</p>
+<p><span class="bold"><strong>Returns</strong></span>: A copy of the internally hold allocator.</p>
+<p><span class="bold"><strong>Throws</strong></span>: Nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp63129760-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: m_ptr != nullptr. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp63132128-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: m_ptr == nullptr. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp63134224-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="node_handle.html" title="Class template node_handle">node_handle</a> <span class="special">&amp;</span> nh<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">(</span><span class="identifier">nator_traits</span><span class="special">::</span><span class="identifier">propagate_on_container_swap</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">nator_traits</span><span class="special">::</span><span class="identifier">is_always_equal</span><span class="special">::</span><span class="identifier">value</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: this-&gt;empty(), or nh.empty(), or nator_traits::propagate_on_container_swap is true, or node_alloc() == nh.node_alloc().</p>
+<p><span class="bold"><strong>Effects</strong></span>: Calls swap(m_ptr, nh.m_ptr). If this-&gt;empty(), or nh.empty(), or nator_traits::propagate_on_- container_swap is true calls swap(node_alloc(), nh.node_alloc()). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">node_pointer</span> <a name="idp63138480-bb"></a><span class="identifier">release</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: If this-&gt;empty() returns nullptr, otherwise returns m_ptr resets m_ptr to nullptr and destroys the internal allocator.</p>
+<p><span class="bold"><strong>Postcondition</strong></span>: this-&gt;empty()</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extensions </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">node_pointer</span> <a name="idp63142400-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns m_ptr.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extensions </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">nallocator_type</span> <span class="special">&amp;</span> <a name="idp63145360-bb"></a><span class="identifier">node_alloc</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reference to the internal node allocator.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extensions </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">nallocator_type</span> <span class="special">&amp;</span> <a name="idp63148352-bb"></a><span class="identifier">node_alloc</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Returns a reference to the internal node allocator.</p>
+<p><span class="bold"><strong>Note</strong></span>: Non-standard extensions </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="node_allocator/rebind.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_container_header_reference.html#header.boost.container.node_handle_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="insert_return_type_base.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

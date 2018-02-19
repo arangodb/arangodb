@@ -1,0 +1,166 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[#ref_usage_recommendations][section Practical usage recommendations]
+
+Following pages present tips and recommendations on how to use and apply the __UTF__ in your real life practice.
+You don't necessarily need to follow them, but we found them handy.
+
+Here you will also find some tutorials from Boost.Test authors and world wide.
+
+[section General]
+
+[h4 Prefer offline compiled libraries to the inline included components]
+If you are just want to write quick simple test in environment where you never used Boost.Test before - yes,
+use included components. But if you plan to use Boost.Test on permanent basis, small investment of time needed
+to build (if not build yet), install and change you makefiles/project settings will soon return to you in a
+form of shorter compilation time. Why do you need to make your compiler do the same work over and over again?
+
+[h4 If you use only free function based test cases advance to the automatic registration facility]
+It's really easy to switch to automatic registration. And you don't need to worry about forgotten test cases.
+
+[h4 To find location of first error reported by test tool within reused template function, use special hook within framework headers]
+In some cases you are reusing the same template based code from within one test case (actually we recommend
+better solution in such case - see below). Now if an error gets reported by the test tool within that reused
+code you may have difficulty locating were exactly error occurred. To address this issue you could either a add
+__BOOST_TEST_MESSAGE__ statements in templated code that log current type id of template parameters or you can use special hook located in
+`unit_test_result.hpp` called `first_failed_assertion()`. If you set a breakpoint right on the line where this
+function is defined you will be able to unroll the stack and see where error actually occurred.
+
+
+[h4 To test reusable template base component with different template parameter use test case template facility]
+If you writing unit test for generic reusable component you may have a need to test it against set of different
+template parameter types . Most probably you will end up with a code like this:
+
+``
+template<typename TestType>
+void specific_type_test( TestType* = 0 )
+{
+  MyComponent<TestType> c;
+  // ... here we perform actual testing
+}
+
+void my_component_test()
+{
+  specific_type_test( (int*)0 );
+  specific_type_test( (float*)0 );
+  specific_type_test( (UDT*)0 );
+  // ...
+}
+``
+
+This is namely the situation where you would use test case template facility. It not only simplifies this kind
+of unit testing by automating some of the work, in addition every argument type gets tested separately under
+unit test monitor. As a result if one of types produce exception or non-fatal error you may still continue and
+get results from testing with other types.
+
+[endsect][/ General]
+
+[section IDE usage recommendations]
+
+This recommendation is shown using Microsoft Visual Studio as an example, but you can apply similar steps in
+different IDEs.
+
+[h4 Use custom build step to automatically start test program after compilation]
+I found it most convenient to put test program execution as a post-build step in compilation. To do so use
+project property page:
+
+[$images/post_build_event.jpg]
+
+Full command you need in "Command Line" field is:
+
+[pre
+"$(TargetDir)\$(TargetName).exe" --[link boost_test.utf_reference.rt_param_reference.result_code `result_code`]=no --[link boost_test.utf_reference.rt_param_reference.report_level `report_level`]=no
+]
+
+Note that both report level and result code are suppressed. This way the only output you may see from this
+command are possible runtime errors. But the best part is that you could jump through these errors using usual
+keyboard shortcuts/mouse clicks you use for compilation error analysis:
+
+[$images/post_build_out.jpg]
+
+[h4 If you got fatal exception somewhere within test case, make debugger break at the point the failure by adding
+    extra command line argument]
+
+If you got "memory access violation" message (or any other message indication fatal or system error) when you
+run you test, to get more information of error location add
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.catch_system catch_system_error]=no
+]
+to the test run command line:
+
+[$images/run_args.jpg]
+
+Now run the test again under debugger and it will break at the point of failure.
+
+[endsect] [/ IDE]
+
+[section Command line usage recommendations]
+
+[h4 If you got fatal exception somewhere within test case, make program generate coredump by adding extra command
+      line argument]
+If you got "memory access violation" message (or any other message indication fatal or system error) when you
+run you test, to get more information about the error location add
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.catch_system catch_system_error]=no
+]
+
+to the test run command line. Now run the test again and it will create a coredump you could analyze using you preferable
+debugger. Or run it under debugger in a first place and it will break at the point of failure.
+
+[h4 How to use test module build with Boost.Test framework under management of automated regression test facilities?]
+
+My first recommendation is to make sure that the test framework catches all fatal errors by adding argument
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.catch_system catch_system_error]=yes
+]
+
+to all test modules invocations. Otherwise test program may produce unwanted dialogs (depends on compiler and OS) that will halt you
+regression tests run. The second recommendation is to suppress result report output by adding
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.report_level report_level]=no
+]
+
+argument and test log output by adding
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.log_level log_level]=nothing
+]
+
+argument, so that test module won't produce undesirable output no one is going to look at
+anyway. We recommend relying only on result code that will be consistent for all test programs. An
+alternative to my second recommendation is direct both log and report to separate file you could analyze
+later on. Moreover you can  make Boost.Test to produce them in XML or JUNIT format using
+
+[pre
+--[link boost_test.utf_reference.rt_param_reference.output_format output_format]=XML
+]
+or
+[pre
+--[link boost_test.utf_reference.rt_param_reference.log_format log_format]=JUNIT
+]
+
+and use some automated tool that will format this information as you like.
+
+[endsect][/command line]
+
+[section Tutorials]
+
+[include tutorials/new_year_resolution.qbk]
+[include tutorials/hello_world.qbk]
+
+[endsect] [/ tutorials]
+
+[include tutorials/web_wisdom.qbk]
+
+[endsect] [/ recommendations]
+
+[/EOF]

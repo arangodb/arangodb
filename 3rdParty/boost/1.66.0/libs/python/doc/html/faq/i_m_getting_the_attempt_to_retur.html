@@ -1,0 +1,67 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>I'm getting the "attempt to return dangling reference" error. What am I doing wrong?</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../faq.html" title="Chapter&#160;4.&#160;Frequently Asked Questions (FAQs)">
+<link rel="prev" href="../faq.html" title="Chapter&#160;4.&#160;Frequently Asked Questions (FAQs)">
+<link rel="next" href="is_return_internal_reference_eff.html" title="Is return_internal_reference efficient?">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../faq.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="is_return_internal_reference_eff.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="faq.i_m_getting_the_attempt_to_retur"></a><a class="link" href="i_m_getting_the_attempt_to_retur.html" title="I'm getting the &quot;attempt to return dangling reference&quot; error. What am I doing wrong?">I'm getting the
+      "attempt to return dangling reference" error. What am I doing wrong?</a>
+</h3></div></div></div>
+<p>
+        That exception is protecting you from causing a nasty crash. It usually happens
+        in response to some code like this:
+      </p>
+<pre class="programlisting"><span class="identifier">period</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="identifier">get_floating_frequency</span><span class="special">()</span> <span class="keyword">const</span>
+<span class="special">{</span>
+  <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">call_method</span><span class="special">&lt;</span><span class="identifier">period</span> <span class="keyword">const</span> <span class="special">&amp;&gt;(</span>
+    <span class="identifier">m_self</span><span class="special">,</span><span class="string">"get_floating_frequency"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        And you get:
+      </p>
+<pre class="programlisting"><span class="identifier">ReferenceError</span><span class="special">:</span> <span class="identifier">Attempt</span> <span class="identifier">to</span> <span class="keyword">return</span> <span class="identifier">dangling</span> <span class="identifier">reference</span> <span class="identifier">to</span> <span class="identifier">object</span> <span class="identifier">of</span> <span class="identifier">type</span><span class="special">:</span>
+<span class="keyword">class</span> <span class="identifier">period</span>
+</pre>
+<p>
+        In this case, the Python method invoked by <code class="computeroutput"><span class="identifier">call_method</span></code>
+        constructs a new Python object. You're trying to return a reference to a
+        C++ object (an instance of <code class="computeroutput"><span class="keyword">class</span> <span class="identifier">period</span></code>) contained within and owned by that
+        Python object. Because the called method handed back a brand new object,
+        the only reference to it is held for the duration of <code class="computeroutput"><span class="identifier">get_floating_frequency</span><span class="special">()</span></code> above. When the function returns, the Python
+        object will be destroyed, destroying the instance of <code class="computeroutput"><span class="keyword">class</span>
+        <span class="identifier">period</span></code>, and leaving the returned
+        reference dangling. That's already undefined behavior, and if you try to
+        do anything with that reference you're likely to cause a crash. Boost.Python
+        detects this situation at runtime and helpfully throws an exception instead
+        of letting you do that.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../faq.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../faq.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="is_return_internal_reference_eff.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

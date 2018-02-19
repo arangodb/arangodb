@@ -1,0 +1,452 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Reference</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../hash.html" title="Chapter&#160;15.&#160;Boost.Functional/Hash">
+<link rel="prev" href="rationale.html" title="Rationale">
+<link rel="next" href="../boost/hash.html" title="Struct template hash">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rationale.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../hash.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/hash.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="hash.reference"></a>Reference</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#hash.reference.specification"></a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.functional.hash_hpp">Header &lt;boost/functional/hash.hpp&gt;</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"></div>
+<p>For the full specification, see section 6.3 of the
+        <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1836.pdf" target="_top">C++ Standard Library Technical Report</a>
+        and issue 6.18 of the
+        <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2005/n1837.pdf" target="_top">Library Extension Technical Report Issues List</a> (page 63).
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.functional.hash_hpp"></a>Header &lt;<a href="../../../boost/functional/hash.hpp" target="_top">boost/functional/hash.hpp</a>&gt;</h3></div></div></div>
+<p>
+      Defines <code class="computeroutput"><a class="link" href="../boost/hash.html" title="Struct template hash">boost::hash</a></code>,
+      and helper functions.
+    </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash.html" title="Struct template hash">hash</a><span class="special">;</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_bool_1_3_16_11_2_2_2.html" title="Struct hash&lt;bool&gt;">hash</a><span class="special">&lt;</span><span class="keyword">bool</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_char_1_3_16_11_2_2_3.html" title="Struct hash&lt;char&gt;">hash</a><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_signe_1_3_16_11_2_2_4.html" title="Struct hash&lt;signed char&gt;">hash</a><span class="special">&lt;</span><span class="keyword">signed</span> <span class="keyword">char</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_unsig_1_3_16_11_2_2_5.html" title="Struct hash&lt;unsigned char&gt;">hash</a><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_wchar_1_3_16_11_2_2_6.html" title="Struct hash&lt;wchar_t&gt;">hash</a><span class="special">&lt;</span><span class="keyword">wchar_t</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_char1_1_3_16_11_2_2_7.html" title="Struct hash&lt;char16_t&gt;">hash</a><span class="special">&lt;</span><span class="keyword">char16_t</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_char3_1_3_16_11_2_2_8.html" title="Struct hash&lt;char32_t&gt;">hash</a><span class="special">&lt;</span><span class="keyword">char32_t</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_short_1_3_16_11_2_2_9.html" title="Struct hash&lt;short&gt;">hash</a><span class="special">&lt;</span><span class="keyword">short</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_unsi_1_3_16_11_2_2_10.html" title="Struct hash&lt;unsigned short&gt;">hash</a><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_int_1_3_16_11_2_2_11.html" title="Struct hash&lt;int&gt;">hash</a><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_unsi_1_3_16_11_2_2_12.html" title="Struct hash&lt;unsigned int&gt;">hash</a><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">int</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_long_1_3_16_11_2_2_13.html" title="Struct hash&lt;long&gt;">hash</a><span class="special">&lt;</span><span class="keyword">long</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_unsi_1_3_16_11_2_2_14.html" title="Struct hash&lt;unsigned long&gt;">hash</a><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_long_1_3_16_11_2_2_15.html" title="Struct hash&lt;long long&gt;">hash</a><span class="special">&lt;</span><span class="keyword">long</span> <span class="keyword">long</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_unsi_1_3_16_11_2_2_16.html" title="Struct hash&lt;unsigned long long&gt;">hash</a><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_floa_1_3_16_11_2_2_17.html" title="Struct hash&lt;float&gt;">hash</a><span class="special">&lt;</span><span class="keyword">float</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_doub_1_3_16_11_2_2_18.html" title="Struct hash&lt;double&gt;">hash</a><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_long_1_3_16_11_2_2_19.html" title="Struct hash&lt;long double&gt;">hash</a><span class="special">&lt;</span><span class="keyword">long</span> <span class="keyword">double</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_std__1_3_16_11_2_2_20.html" title="Struct hash&lt;std::string&gt;">hash</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_std__1_3_16_11_2_2_21.html" title="Struct hash&lt;std::wstring&gt;">hash</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">wstring</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_std__1_3_16_11_2_2_22.html" title="Struct hash&lt;std::u16string&gt;">hash</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">u16string</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_std__1_3_16_11_2_2_23.html" title="Struct hash&lt;std::u32string&gt;">hash</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">u32string</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_T_1_3_16_11_2_2_24.html" title="Struct template hash&lt;T*&gt;">hash</a><span class="special">&lt;</span><span class="identifier">T</span><span class="special">*</span><span class="special">&gt;</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/hash_std__1_3_16_11_2_2_25.html" title="Struct hash&lt;std::type_index&gt;">hash</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span><span class="special">&gt;</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="reference.html#id-1_3_16_11_2_2_26-bb">Support functions (Boost extension).</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="reference.html#boost.hash_combine"><span class="identifier">hash_combine</span></a><span class="special">(</span><span class="identifier">size_t</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_26_2_1-bb"><span class="identifier">hash_range</span></a><span class="special">(</span><span class="identifier">It</span><span class="special">,</span> <span class="identifier">It</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_26_2_2-bb"><span class="identifier">hash_range</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&amp;</span><span class="special">,</span> <span class="identifier">It</span><span class="special">,</span> <span class="identifier">It</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="reference.html#id-1_3_16_11_2_2_27-bb">Overloadable hash implementation (Boost extension).</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_2-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">bool</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_3-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">char</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_4-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">signed</span> <span class="keyword">char</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_5-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">char</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_6-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">wchar_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_7-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">char16_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_8-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">char32_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_9-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">short</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_10-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">short</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_11-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_12-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_13-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_14-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_15-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">long</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_16-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_17-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">float</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_18-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">double</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_19-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_20-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">T</span><span class="special">*</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">unsigned</span> N<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_21-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">(</span><span class="special">&amp;</span><span class="identifier">val</span><span class="special">)</span><span class="special">[</span><span class="identifier">N</span><span class="special">]</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">unsigned</span> N<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_22-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">(</span><span class="special">&amp;</span><span class="identifier">val</span><span class="special">)</span><span class="special">[</span><span class="identifier">N</span><span class="special">]</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_23-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span><span class="identifier">Ch</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">Ch</span><span class="special">&gt;</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> A<span class="special">,</span> <span class="keyword">typename</span> B<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_24-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">B</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_25-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_26-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_27-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">deque</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_28-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_29-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_30-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_31-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">multimap</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_32-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_33-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> N<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_34-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="reference.html#id-1_3_16_11_2_2_27_1_35-bb"><span class="identifier">hash_value</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">...</span><span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span></pre>
+<div class="refsect2">
+<a name="id-1.3.16.11.3.4"></a><h3>
+<a name="id-1_3_16_11_2_2_26-bb"></a><code class="computeroutput"></code> Support functions (Boost extension).</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">void</span> <a name="boost.hash_combine"></a><span class="identifier">hash_combine</span><span class="special">(</span><span class="identifier">size_t</span> <span class="special">&amp;</span> seed<span class="special">,</span> <span class="identifier">T</span> <span class="keyword">const</span><span class="special">&amp;</span> v<span class="special">)</span><span class="special">;</span></pre>
+<p class="simpara">
+            Called repeatedly to incrementally create a hash value from
+            several variables.
+        </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Effects:</span></p></td>
+<td>
+            Updates <code class="computeroutput">seed</code> with a new hash value generated by
+            combining it with the result of
+            <code class="computeroutput"><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(v)</code>. Will
+            always produce the same result for the same combination of
+            <code class="computeroutput">seed</code> and
+            <code class="computeroutput"><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(v)</code> during
+            the single run of a program.
+        </td>
+</tr>
+<tr>
+<td><p><span class="term">Notes:</span></p></td>
+<td>
+<p><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a> is called without
+          qualification, so that overloads can be found via ADL.</p>
+<p>This is an extension to TR1</p>
+<p>
+            Forward declared in
+            <code class="computeroutput">&lt;boost/functional/hash_fwd.hpp&gt;</code>
+          </p>
+<p>
+            This hash function is not intended for general use, and isn't
+            guaranteed to be equal during separate runs of a program - so
+            please don't use it for any persistent storage or communication.
+          </p>
+</td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+          Only throws if <a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(T) throws.
+          Strong exception safety, as long as <a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(T)
+          also has strong exception safety.
+        </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<p><a name="boost.hash_ra_1_3_16_11_2_2_26_2"></a></p>
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_26_2_1-bb"></a><span class="identifier">hash_range</span><span class="special">(</span><span class="identifier">It</span> first<span class="special">,</span> <span class="identifier">It</span> last<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_16_11_2_2_26_2_2-bb"></a><span class="identifier">hash_range</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&amp;</span> seed<span class="special">,</span> <span class="identifier">It</span> first<span class="special">,</span> <span class="identifier">It</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p class="simpara">
+            Calculate the combined hash value of the elements of an iterator
+            range.
+        </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Effects:</span></p></td>
+<td>
+<p>For the two argument overload:
+</p>
+<pre class="programlisting">
+<span class="identifier">size_t</span> <span class="identifier">seed</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+<span class="keyword">for</span><span class="special">(</span><span class="special">;</span> <span class="identifier">first</span> <span class="special">!=</span> <span class="identifier">last</span><span class="special">;</span> <span class="special">++</span><span class="identifier">first</span><span class="special">)</span>
+<span class="special">{</span>
+    <a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="special">*</span><span class="identifier">first</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">return</span> <span class="identifier">seed</span><span class="special">;</span>
+</pre>
+<p>
+          </p>
+<p>For the three arguments overload:</p>
+<pre class="programlisting">
+<span class="keyword">for</span><span class="special">(</span><span class="special">;</span> <span class="identifier">first</span> <span class="special">!=</span> <span class="identifier">last</span><span class="special">;</span> <span class="special">++</span><span class="identifier">first</span><span class="special">)</span>
+<span class="special">{</span>
+    <a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="special">*</span><span class="identifier">first</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</td>
+</tr>
+<tr>
+<td><p><span class="term">Notes:</span></p></td>
+<td>
+<p>
+            <code class="computeroutput">hash_range</code> is sensitive to the order of the elements
+            so it wouldn't be appropriate to use this with an unordered
+            container.
+          </p>
+<p>This is an extension to TR1</p>
+<p>
+            Forward declared in
+            <code class="computeroutput">&lt;boost/functional/hash_fwd.hpp&gt;</code>
+          </p>
+<p>
+            This hash function is not intended for general use, and isn't
+            guaranteed to be equal during separate runs of a program - so
+            please don't use it for any persistent storage or communication.
+          </p>
+</td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td><p>
+          Only throws if <code class="computeroutput"><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(std::iterator_traits&lt;It&gt;::value_type)</code>
+          throws. <code class="computeroutput">hash_range(std::size_t&amp;, It, It)</code> has basic exception safety as long as
+          <code class="computeroutput"><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a>(std::iterator_traits&lt;It&gt;::value_type)</code>
+          has basic exception safety.
+        </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.16.11.3.5"></a><h3>
+<a name="id-1_3_16_11_2_2_27-bb"></a><code class="computeroutput"></code> Overloadable hash implementation (Boost extension).</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<p><a name="boost.hash_va_1_3_16_11_2_2_27_1"></a></p>
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_2-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">bool</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_3-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">char</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_4-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">signed</span> <span class="keyword">char</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_5-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">char</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_6-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">wchar_t</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_7-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">char16_t</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_8-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">char32_t</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_9-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">short</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_10-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">short</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_11-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">int</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_12-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">int</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_13-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">long</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_14-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">long</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_15-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">long</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_16-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">unsigned</span> <span class="keyword">long</span> <span class="keyword">long</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_17-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">float</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_18-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">double</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_19-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">long</span> <span class="keyword">double</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_20-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">T</span><span class="special">*</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">unsigned</span> N<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_21-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">T</span> <span class="special">(</span><span class="special">&amp;</span><span class="identifier">val</span><span class="special">)</span><span class="special">[</span><span class="identifier">N</span><span class="special">]</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">unsigned</span> N<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_22-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">(</span><span class="special">&amp;</span><span class="identifier">val</span><span class="special">)</span><span class="special">[</span><span class="identifier">N</span><span class="special">]</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_23-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span><span class="special">&lt;</span><span class="identifier">Ch</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">Ch</span><span class="special">&gt;</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> A<span class="special">,</span> <span class="keyword">typename</span> B<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_24-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">B</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_25-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_26-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">list</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_27-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">deque</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_28-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">set</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_29-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">multiset</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_30-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> K<span class="special">,</span> <span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> C<span class="special">,</span> <span class="keyword">typename</span> A<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_31-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">multimap</span><span class="special">&lt;</span><span class="identifier">K</span><span class="special">,</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_32-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">complex</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_33-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> N<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_34-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">N</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span> val<span class="special">)</span><span class="special">;</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> T<span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_16_11_2_2_27_1_35-bb"></a><span class="identifier">hash_value</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">...</span><span class="special">&gt;</span> val<span class="special">)</span><span class="special">;</span></pre>
+<p class="simpara">
+            Implementation of the hash function.
+        </p>
+<p>
+          Generally shouldn't be called directly by users, instead they should use
+          <code class="computeroutput"><a class="link" href="../boost/hash.html" title="Struct template hash">boost::hash</a></code>, <code class="computeroutput"><a class="link" href="reference.html#boost.hash_ra_1_3_16_11_2_2_26_2">boost::hash_range</a></code>
+          or <code class="computeroutput"><a class="link" href="reference.html#boost.hash_combine">boost::hash_combine</a></code> which
+          call <code class="computeroutput">hash_value</code> without namespace qualification so that overloads
+          for custom types are found via ADL.
+        </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Notes:</span></p></td>
+<td>
+<p>This is an extension to TR1</p>
+<p>
+            This hash function is not intended for general use, and isn't
+            guaranteed to be equal during separate runs of a program - so
+            please don't use it for any persistent storage or communication.
+          </p>
+</td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+            Only throws if a user supplied version of
+            <code class="computeroutput"><a class="link" href="reference.html#boost.hash_va_1_3_16_11_2_2_27_1">hash_value</a></code>
+            throws for an element of a container, or
+            one of the types stored in a pair.
+        </td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Types</th>
+<th>Returns</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code class="computeroutput">bool</code>,
+                    <code class="computeroutput">char</code>, <code class="computeroutput">signed char</code>, <code class="computeroutput">unsigned char</code>,
+                    <code class="computeroutput">wchar_t</code>, <code class="computeroutput">char16_t</code>, <code class="computeroutput">char32_t</code>,
+                    <code class="computeroutput">short</code>, <code class="computeroutput">unsigned short</code>,
+                    <code class="computeroutput">int</code>, <code class="computeroutput">unsigned int</code>, <code class="computeroutput">long</code>, <code class="computeroutput">unsigned long</code>
+                  </td>
+<td><code class="computeroutput">val</code></td>
+</tr>
+<tr>
+<td>
+<code class="computeroutput">long long</code>, <code class="computeroutput">unsigned long long</code>
+</td>
+<td>
+<code class="computeroutput">val</code> when <code class="computeroutput">abs(val) &lt;= std::numeric_limits&lt;std::size_t&gt;::max()</code>.</td>
+</tr>
+<tr>
+<td>
+<code class="computeroutput">float</code>, <code class="computeroutput">double</code>, <code class="computeroutput">long double</code>
+</td>
+<td>An unspecified value, except that equal arguments shall yield the same result.</td>
+</tr>
+<tr>
+<td><code class="computeroutput">T*</code></td>
+<td>An unspecified value, except that equal arguments shall yield the same result.</td>
+</tr>
+<tr>
+<td>
+                    <code class="computeroutput">T&#160;val[N]</code>,
+                    <code class="computeroutput">const&#160;T&#160;val[N]</code>
+                  </td>
+<td><code class="computeroutput">hash_range(val, val+N)</code></td>
+</tr>
+<tr>
+<td>
+                    <code class="computeroutput">std:basic_string&lt;Ch,&#160;std::char_traits&lt;Ch&gt;,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::vector&lt;T,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::list&lt;T,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::deque&lt;T,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::set&lt;K,&#160;C,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::multiset&lt;K,&#160;C,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::map&lt;K,&#160;T,&#160;C,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::multimap&lt;K,&#160;T,&#160;C,&#160;A&gt;</code>,
+                    <code class="computeroutput">std::array&lt;T,&#160;N&gt;</code>
+                  </td>
+<td><code class="computeroutput">hash_range(val.begin(), val.end())</code></td>
+</tr>
+<tr>
+<td><code class="computeroutput">std::pair&lt;A, B&gt;</code></td>
+<td><pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">size_t</span> <span class="identifier">seed</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="identifier">val</span><span class="special">.</span><span class="identifier">first</span><span class="special">)</span><span class="special">;</span>
+<a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="identifier">val</span><span class="special">.</span><span class="identifier">second</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">return</span> <span class="identifier">seed</span><span class="special">;</span></pre></td>
+</tr>
+<tr>
+<td><code class="computeroutput">std::tuple&lt;T...&gt;</code></td>
+<td><pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">size_t</span> <span class="identifier">seed</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;</span><span class="special">(</span><span class="identifier">val</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+<a class="link" href="reference.html#boost.hash_combine">hash_combine</a><span class="special">(</span><span class="identifier">seed</span><span class="special">,</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;</span><span class="special">(</span><span class="identifier">val</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+<span class="comment">// ....</span>
+<span class="keyword">return</span> <span class="identifier">seed</span><span class="special">;</span></pre></td>
+</tr>
+<tr>
+<td>
+                    <code class="computeroutput">std::complex&lt;T&gt;</code>
+                  </td>
+<td>When <code class="computeroutput">T</code> is a built in type and <code class="computeroutput">val.imag() == 0</code>, the result is equal to <code class="computeroutput">hash_value(val.real())</code>. Otherwise an unspecified value, except that equal arguments shall yield the same result.</td>
+</tr>
+<tr>
+<td>
+                    <code class="computeroutput">std::type_index</code>
+                  </td>
+<td><code class="computeroutput">val.hash_code()</code></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005-2008 Daniel
+      James<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rationale.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../hash.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/hash.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template resource_adaptor_imp</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../boost_container_header_reference.html#header.boost.container.pmr.resource_adaptor_hpp" title="Header &lt;boost/container/pmr/resource_adaptor.hpp&gt;">
+<link rel="prev" href="pool_options.html" title="Struct pool_options">
+<link rel="next" href="resource_adaptor.html" title="Type definition resource_adaptor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pool_options.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.resource_adaptor_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="resource_adaptor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.container.pmr.resource_adaptor_imp"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template resource_adaptor_imp</span></h2>
+<p>boost::container::pmr::resource_adaptor_imp</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_container_header_reference.html#header.boost.container.pmr.resource_adaptor_hpp" title="Header &lt;boost/container/pmr/resource_adaptor.hpp&gt;">boost/container/pmr/resource_adaptor.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">container</span><span class="special">::</span><span class="identifier">pmr</span><span class="special">::</span><span class="identifier">memory_resource</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">Allocator</span> <a name="boost.container.pmr.resource_adaptor_imp.allocator_type"></a><span class="identifier">allocator_type</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="resource_adaptor_imp.html#boost.container.pmr.resource_adaptor_impconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="resource_adaptor_imp.html#idp63455664-bb"><span class="identifier">resource_adaptor_imp</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="resource_adaptor_imp.html#idp63456944-bb"><span class="identifier">resource_adaptor_imp</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="resource_adaptor_imp.html#idp63459360-bb"><span class="identifier">resource_adaptor_imp</span></a><span class="special">(</span><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="resource_adaptor_imp.html#idp63461616-bb"><span class="identifier">resource_adaptor_imp</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Allocator</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="resource_adaptor_imp.html#idp63463856-bb"><span class="identifier">resource_adaptor_imp</span></a><span class="special">(</span><span class="identifier">Allocator</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> <a class="link" href="resource_adaptor_imp.html#idp63466096-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> <a class="link" href="resource_adaptor_imp.html#idp63469088-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="resource_adaptor_imp.html#idp63451280-bb">public member functions</a></span>
+  <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <a class="link" href="resource_adaptor_imp.html#idp63451840-bb"><span class="identifier">get_allocator</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <a class="link" href="resource_adaptor_imp.html#idp63453536-bb"><span class="identifier">get_allocator</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="resource_adaptor_imp.html#idp63471920-bb">protected member functions</a></span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a class="link" href="resource_adaptor_imp.html#idp63472496-bb"><span class="identifier">do_allocate</span></a><span class="special">(</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">void</span> <a class="link" href="resource_adaptor_imp.html#idp63476848-bb"><span class="identifier">do_deallocate</span></a><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">size_t</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">bool</span> <a class="link" href="resource_adaptor_imp.html#idp63481984-bb"><span class="identifier">do_is_equal</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.10.12.25.3.4"></a><h2>Description</h2>
+<p>An instance of resource_adaptor&lt;Allocator&gt; is an adaptor that wraps a <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> interface around Allocator. In order that resource_adaptor&lt;X&lt;T&gt;&gt; and resource_adaptor&lt;X&lt;U&gt;&gt; are the same type for any allocator template X and types T and U, resource_adaptor&lt;Allocator&gt; is rendered as an alias to this class template such that Allocator is rebound to a char value type in every specialization of the class template. The requirements on this class template are defined below. In addition to the Allocator requirements, the parameter to resource_adaptor shall meet the following additional requirements:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: pointer</code> shall be identical to <code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: value_type*</code>.</p></li>
+<li class="listitem"><p><code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: const_pointer</code> shall be identical to <code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: value_type const*</code>.</p></li>
+<li class="listitem"><p><code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: void_pointer</code> shall be identical to <code class="computeroutput">void*</code>.</p></li>
+<li class="listitem"><p><code class="computeroutput">typename <a class="link" href="../allocator_traits.html" title="Struct template allocator_traits">allocator_traits</a>&lt;Allocator&gt;:: const_void_pointer</code> shall be identical to <code class="computeroutput">void const*</code>. </p></li>
+</ul></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.10.12.25.3.4.4"></a><h3>
+<a name="boost.container.pmr.resource_adaptor_impconstruct-copy-destruct"></a><code class="computeroutput">resource_adaptor_imp</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp63455664-bb"></a><span class="identifier">resource_adaptor_imp</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Default constructs m_alloc. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63456944-bb"></a><span class="identifier">resource_adaptor_imp</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Copy constructs m_alloc. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp63459360-bb"></a><span class="identifier">resource_adaptor_imp</span><span class="special">(</span><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Move constructs m_alloc. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp63461616-bb"></a><span class="identifier">resource_adaptor_imp</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Allocator</span> <span class="special">&amp;</span> a2<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Initializes m_alloc with a2. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp63463856-bb"></a><span class="identifier">resource_adaptor_imp</span><span class="special">(</span><span class="identifier">Allocator</span> <span class="special">&amp;&amp;</span> a2<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Initializes m_alloc with a2. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> <a name="idp63466096-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Copy assigns m_alloc. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;</span> <a name="idp63469088-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="resource_adaptor_imp.html" title="Class template resource_adaptor_imp">resource_adaptor_imp</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Effects</strong></span>: Move assigns m_alloc. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.25.3.4.5"></a><h3>
+<a name="idp63451280-bb"></a><code class="computeroutput">resource_adaptor_imp</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">allocator_type</span> <span class="special">&amp;</span> <a name="idp63451840-bb"></a><span class="identifier">get_allocator</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<span class="bold"><strong>Effects</strong></span>: Returns m_alloc. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <a name="idp63453536-bb"></a><span class="identifier">get_allocator</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<span class="bold"><strong>Effects</strong></span>: Returns m_alloc. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.10.12.25.3.4.6"></a><h3>
+<a name="idp63471920-bb"></a><code class="computeroutput">resource_adaptor_imp</code> protected member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="special">*</span> <a name="idp63472496-bb"></a><span class="identifier">do_allocate</span><span class="special">(</span><span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">size_t</span> alignment<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Returns</strong></span>: Allocated memory obtained by calling m_alloc.allocate. The size and alignment of the allocated memory shall meet the requirements for a class derived from <code class="computeroutput"><a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a></code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">void</span> <a name="idp63476848-bb"></a><span class="identifier">do_deallocate</span><span class="special">(</span><span class="keyword">void</span> <span class="special">*</span> p<span class="special">,</span> <span class="identifier">size_t</span> bytes<span class="special">,</span> <span class="identifier">size_t</span> alignment<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Requires</strong></span>: p was previously allocated using A.allocate, where A == m_alloc, and not subsequently deallocated.</p>
+<p><span class="bold"><strong>Effects</strong></span>: Returns memory to the allocator using m_alloc.deallocate(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">virtual</span> <span class="keyword">bool</span> <a name="idp63481984-bb"></a><span class="identifier">do_is_equal</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="memory_resource.html" title="Class memory_resource">memory_resource</a> <span class="special">&amp;</span> other<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Let p be dynamic_cast&lt;const resource_adaptor_imp*&gt;(&amp;other).</p>
+<p><span class="bold"><strong>Returns</strong></span>: false if p is null, otherwise the value of m_alloc == p-&gt;m_alloc. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="pool_options.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_container_header_reference.html#header.boost.container.pmr.resource_adaptor_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="resource_adaptor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

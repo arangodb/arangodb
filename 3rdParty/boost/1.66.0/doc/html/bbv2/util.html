@@ -1,0 +1,157 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Utilities</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../bbv2.html" title="Chapter&#160;49.&#160;Boost.Build User Manual">
+<link rel="prev" href="tasks.html" title="Common tasks">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tasks.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../bbv2.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="bbv2.util"></a>Utilities</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="util.html#bbv2.util.debugger">Debugger</a></span></dt></dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="bbv2.util.debugger"></a>Debugger</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="util.html#bbv2.util.debugger.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="util.html#bbv2.util.debugger.running">Running the Program</a></span></dt>
+<dt><span class="section"><a href="util.html#bbv2.util.debugger.break">Breakpoints</a></span></dt>
+<dt><span class="section"><a href="util.html#bbv2.util.debugger.stack">Examining the Stack</a></span></dt>
+<dt><span class="section"><a href="util.html#bbv2.util.debugger.misc">Miscellaneous Commands</a></span></dt>
+</dl></div>
+<a class="indexterm" name="id-1.4.4.7.2.2"></a><div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="bbv2.util.debugger.overview"></a>Overview</h4></div></div></div>
+<p>
+        Boost.Build comes with a debugger for Jamfiles.  To run the
+        debugger, start Boost.Build with <span class="command"><strong>b2 -dconsole</strong></span>.
+      </p>
+<pre class="programlisting">
+$ b2 -dconsole
+(b2db) break gcc.init
+Breakpoint 1 set at gcc.init
+(b2db) run
+Starting program: /usr/bin/b2
+Breakpoint 1, gcc.init ( ) at /usr/share/boost-build/tools/gcc.jam:74
+74	    local tool-command = ;
+(b2db) quit
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="bbv2.util.debugger.running"></a>Running the Program</h4></div></div></div>
+<p>
+        The <code class="computeroutput">run</code> command is used to start a new <code class="computeroutput">b2</code>
+        subprocess for debugging.  The arguments to <code class="computeroutput">run</code> are
+        passed on the command line.  If a child process is already running,
+        it will be terminated before the new child is launched.
+      </p>
+<p>
+        When the program is paused <code class="computeroutput">continue</code> will resume execution.
+        The <code class="computeroutput">step</code> command will advance the program by a single
+        statement, stopping on entry to another function or return
+        from the current function.  <code class="computeroutput">next</code> is like <code class="computeroutput">step</code>
+        except that it skips over function calls.  <code class="computeroutput">finish</code> executes
+        until the current function returns.
+      </p>
+<p>
+        The <code class="computeroutput">kill</code> command terminates the current child
+        immediately.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="bbv2.util.debugger.break"></a>Breakpoints</h4></div></div></div>
+<p>
+        Breakpoints are set using the <code class="computeroutput">break</code> command.
+        The location of the breakpoint can be specified as either
+        the name of a function (including the module name) or
+        or a file name and line number of the form <code class="computeroutput">file:line</code>.
+        When a breakpoint is created it is given a unique id which is
+        used to identify it for other commands.
+      </p>
+<pre class="programlisting">
+(b2db) break Jamfile:10
+Breakpoint 1 set at Jamfile:10
+(b2db) break msvc.init
+Breakpoint 2 set at msvc.init
+</pre>
+<p>
+        A breakpoint can be temporarily disabled using the <code class="computeroutput">disable</code>
+        command.  While a breakpoint is disabled, the child will not
+        stop when it is hit.  A disabled breakpoint can be activated
+        again with <code class="computeroutput">enable</code>.
+      </p>
+<pre class="programlisting">
+(b2db) disable 1
+(b2db) enable 1
+</pre>
+<p>
+        Breakpoints can be removed permanently with <code class="computeroutput">delete</code>
+        or <code class="computeroutput">clear</code>.  The difference between them is that
+        <code class="computeroutput">delete</code> takes the breakpoint id while
+        <code class="computeroutput">clear</code> takes the location of the breakpoint as
+        originally specified to break.
+      </p>
+<pre class="programlisting">
+(b2db) clear Jamfile:10
+Deleted breakpoint 1
+(b2db) delete 2
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="bbv2.util.debugger.stack"></a>Examining the Stack</h4></div></div></div>
+<p>
+        The <code class="computeroutput">backtrace</code> command will print a summary of
+        every frame on the stack.
+      </p>
+<p>
+        The <code class="computeroutput">print</code> command can be used to show the value
+        of an expression.
+      </p>
+<pre class="programlisting">
+(b2db) print [ modules.peek : ARGV ]
+/usr/bin/b2 toolset=msvc install
+(b2db) print $(__file__)
+Jamfile.jam
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="bbv2.util.debugger.misc"></a>Miscellaneous Commands</h4></div></div></div>
+<p>
+        <code class="computeroutput">quit</code> exits the debugger.
+        <code class="computeroutput">help</code> describes the available commands.
+      </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tasks.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../bbv2.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

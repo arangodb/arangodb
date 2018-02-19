@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Concepts</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../process.html" title="Chapter&#160;29.&#160;Boost.Process">
+<link rel="prev" href="../process.html" title="Chapter&#160;29.&#160;Boost.Process">
+<link rel="next" href="tutorial.html" title="Tutorial">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../process.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_process.concepts"></a><a class="link" href="concepts.html" title="Concepts">Concepts</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.pipes">Pipes</a></span></dt>
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.process">Processes</a></span></dt>
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.env">Environment</a></span></dt>
+</dl></div>
+<p>
+      In this section, some of the underlying concepts of the operating system used
+      in this library, will be explained. In the following chapters we will presume
+      knowledge of that. Though please note, that this is a short summary and not
+      conclusive of everything that can be done.
+    </p>
+<p>
+      The goal of this library is to implement a portable wrapper, so that we will
+      explain mostly what windows and posix have in common.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.concepts.pipes"></a><a class="link" href="concepts.html#boost_process.concepts.pipes" title="Pipes">Pipes</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.pipes.anonymous">Anonymous Pipes</a></span></dt>
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.pipes.named">Named Pipes</a></span></dt>
+</dl></div>
+<p>
+        Pipes are a facility for communication between different threads, processes
+        and in some cases machines, the operating system provides.
+      </p>
+<p>
+        The typical feature of a pipe is, that it is one channel, to which two handles
+        are given, one for reading (source), one for writing (sink). In that it is
+        different than other facilities (like sockets) and provides another way to
+        manage the connectivity: if one side of the pipe is closed (i.e. the pipe
+        is broken), the other is notified.
+      </p>
+<p>
+        Pipes are typically used for interprocess communication. The main reason
+        is, that pipes can be directly assigned to the process stdio, i.e. stderr,
+        stdin and stdout. Additionally, half of the pipe can be inherited to the
+        child process and closed in the father process. This will cause the pipe
+        to be broken when the child process exits.
+      </p>
+<p>
+        Though please not, that if the the same thread reads and write to a pipe,
+        it will only talk to itself.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_process.concepts.pipes.anonymous"></a><a class="link" href="concepts.html#boost_process.concepts.pipes.anonymous" title="Anonymous Pipes">Anonymous Pipes</a>
+</h4></div></div></div>
+<p>
+          The usual type of pipes, are the anonymous ones. Since the have no name,
+          a handle to them can only be obtained from duplicating either handle.
+        </p>
+<p>
+          In this library the following functions are used for the creation of unnamed
+          pipes:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <a href="http://pubs.opengroup.org/onlinepubs/7908799/xsh/pipe.html" target="_top">posix</a>
+            </li>
+<li class="listitem">
+              <a href="https://msdn.microsoft.com/de-de/library/windows/desktop/aa365152.aspx" target="_top">windows</a>
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_process.concepts.pipes.named"></a><a class="link" href="concepts.html#boost_process.concepts.pipes.named" title="Named Pipes">Named Pipes</a>
+</h4></div></div></div>
+<p>
+          As the name suggests, named pipes have a string identifier. This means
+          that a handle to them can be obtained with the identifier, too.
+        </p>
+<p>
+          The implementation on posix uses <a href="(http://pubs.opengroup.org/onlinepubs/009695399/functions/mkfifo.html" target="_top">fifos</a>,
+          which means, that the named pipe behaves like a file.
+        </p>
+<p>
+          Windows does provide a facility called <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/aa365150(v=vs.85).aspx" target="_top">named
+          pipes</a>, which also have file-like names, but are in a different
+          scope than the actual file system.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            The main reason named pipes are part of this library, is because they
+            need to be internally used for asynchrounous communication on windows.
+          </p></td></tr>
+</table></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.concepts.process"></a><a class="link" href="concepts.html#boost_process.concepts.process" title="Processes">Processes</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.process.exit_code">Exit code</a></span></dt>
+<dt><span class="section"><a href="concepts.html#boost_process.concepts.process.termination">Termination</a></span></dt>
+</dl></div>
+<p>
+        A process is an independently executable entity, which is different from
+        a thread, in that it has its own resources. Those include memory and hardware
+        resources.
+      </p>
+<p>
+        Every process is identified by a unique number<a href="#ftn.boost_process.concepts.process.f0" class="footnote" name="boost_process.concepts.process.f0"><sup class="footnote">[22]</sup></a>, called the process identification digit, <code class="computeroutput"><span class="identifier">pid</span></code>.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_process.concepts.process.exit_code"></a><a class="link" href="concepts.html#boost_process.concepts.process.exit_code" title="Exit code">Exit code</a>
+</h4></div></div></div>
+<p>
+          A process will return an integer value indicating whether it was successful.
+          On posix there are more codes associated with that, but not so on windows.
+          Therefore there is not such encoding currently in the library. However
+          an exit code of zero means the process was successful, while one different
+          than zero indicates an error.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_process.concepts.process.termination"></a><a class="link" href="concepts.html#boost_process.concepts.process.termination" title="Termination">Termination</a>
+</h4></div></div></div>
+<p>
+          Processes can also be forced to exit. There are two ways to do this, signal
+          the process to so and wait, and just terminate the process without conditions.
+        </p>
+<p>
+          Usually the first approach is to signal an exit request, but windows -
+          unlike posix - does not provide a consistent way to do this. Hence this
+          is not part of the library and only the hard terminate is.
+        </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.concepts.env"></a><a class="link" href="concepts.html#boost_process.concepts.env" title="Environment">Environment</a>
+</h3></div></div></div>
+<p>
+        The environment is a map of variables local to every process. The most significant
+        one for this library is the <code class="computeroutput"><span class="identifier">PATH</span></code>
+        variable, which contains a list of paths, that ought to be searched for executables.
+        A shell will do this automatically, while this library provides a function
+        for that.
+      </p>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.boost_process.concepts.process.f0" class="footnote"><p><a href="#boost_process.concepts.process.f0" class="para"><sup class="para">[22] </sup></a>
+          it is unique as long as the process is active
+        </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../process.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

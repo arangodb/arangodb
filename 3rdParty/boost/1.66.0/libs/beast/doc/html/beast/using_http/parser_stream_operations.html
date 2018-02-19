@@ -1,0 +1,280 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Parser Stream Operations</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_http.html" title="Using HTTP">
+<link rel="prev" href="serializer_stream_operations.html" title="Serializer Stream Operations">
+<link rel="next" href="parser_stream_operations/incremental_read.html" title="Incremental Read">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="serializer_stream_operations.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parser_stream_operations/incremental_read.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.parser_stream_operations"></a><a class="link" href="parser_stream_operations.html" title="Parser Stream Operations">Parser Stream
+      Operations</a>
+</h3></div></div></div>
+<p>
+        Non-trivial algorithms need to do more than receive entire messages at once,
+        such as:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Receive the header first and body later.
+          </li>
+<li class="listitem">
+            Receive a large body using a fixed-size buffer.
+          </li>
+<li class="listitem">
+            Receive a message incrementally: bounded work in each I/O cycle.
+          </li>
+<li class="listitem">
+            Defer the commitment to a <a class="link" href="../concepts/Body.html" title="Body"><span class="bold"><strong>Body</strong></span></a> type until after reading the header.
+          </li>
+</ul></div>
+<p>
+        These types of operations require callers to manage the lifetime of associated
+        state, by constructing a class derived from <a class="link" href="../ref/boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a>. Beast comes with the
+        derived instance <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a> which creates complete <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a>
+        objects using the <a class="link" href="../ref/boost__beast__http__basic_fields.html" title="http::basic_fields"><code class="computeroutput"><span class="identifier">basic_fields</span></code></a> Fields container.
+      </p>
+<div class="table">
+<a name="beast.using_http.parser_stream_operations.parser"></a><p class="title"><b>Table&#160;1.17.&#160;Parser</b></p>
+<div class="table-contents"><table class="table" summary="Parser">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__parser.html" title="http::parser"><code class="computeroutput"><span class="identifier">parser</span></code></a>
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="comment">/// An HTTP/1 parser for producing a message.</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span>                         <span class="comment">// `true` to parse an HTTP request</span>
+    <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span>                             <span class="comment">// The Body type for the resulting message</span>
+    <span class="keyword">class</span> <span class="identifier">Allocator</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;&gt;</span> <span class="comment">// The type of allocator for the header</span>
+<span class="keyword">class</span> <span class="identifier">parser</span>
+    <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">basic_parser</span><span class="special">&lt;...&gt;;</span>
+</pre>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__request_parser.html" title="http::request_parser"><code class="computeroutput"><span class="identifier">request_parser</span></code></a>
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="comment">/// An HTTP/1 parser for producing a request message.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Allocator</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;&gt;</span>
+<span class="keyword">using</span> <span class="identifier">request_parser</span> <span class="special">=</span> <span class="identifier">parser</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Allocator</span><span class="special">&gt;;</span>
+</pre>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__response_parser.html" title="http::response_parser"><code class="computeroutput"><span class="identifier">response_parser</span></code></a>
+                </p>
+              </td>
+<td>
+<pre class="programlisting"><span class="comment">/// An HTTP/1 parser for producing a response message.</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Allocator</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;&gt;</span>
+<span class="keyword">using</span> <span class="identifier">response_parser</span> <span class="special">=</span> <span class="identifier">parser</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Allocator</span><span class="special">&gt;;</span>
+</pre>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The <a class="link" href="../ref/boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a> and classes derived
+          from it handle octet streams serialized in the HTTP/1 format described
+          in <a href="https://tools.ietf.org/html/rfc7230" target="_top">rfc7230</a>.
+        </p></td></tr>
+</table></div>
+<p>
+        The stream operations which work on parsers are:
+      </p>
+<div class="table">
+<a name="beast.using_http.parser_stream_operations.parser_stream_operations"></a><p class="title"><b>Table&#160;1.18.&#160;Parser Stream Operations</b></p>
+<div class="table-contents"><table class="table" summary="Parser Stream Operations">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__read/overload1.html" title="http::read (1 of 4 overloads)"><span class="bold"><strong>read</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read everything into a parser from a <a href="../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="bold"><strong>SyncWriteStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__async_read/overload1.html" title="http::async_read (1 of 2 overloads)"><span class="bold"><strong>async_read</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read everything into a parser asynchronously from an <a href="../../../../../../doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top"><span class="bold"><strong>AsyncWriteStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__read_header/overload1.html" title="http::read_header (1 of 2 overloads)"><span class="bold"><strong>read_header</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read only the header octets into a parser from a <a href="../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="bold"><strong>SyncWriteStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__async_read_header.html" title="http::async_read_header"><span class="bold"><strong>async_read_header</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read only the header octets into a parser asynchronously from an
+                  <a href="../../../../../../doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top"><span class="bold"><strong>AsyncWriteStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__read_some/overload1.html" title="http::read_some (1 of 2 overloads)"><span class="bold"><strong>read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some octets into a parser from a <a href="../../../../../../doc/html/boost_asio/reference/SyncReadStream.html" target="_top"><span class="bold"><strong>SyncReadStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__async_read_some.html" title="http::async_read_some"><span class="bold"><strong>async_read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some octets into a parser asynchronously from an <a href="../../../../../../doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top"><span class="bold"><strong>AsyncWriteStream</strong></span></a>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        As with message stream operations, parser stream operations require a persisted
+        <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="bold"><strong>DynamicBuffer</strong></span></a>
+        for holding unused octets from the stream. The basic parser implementation
+        is optimized for the case where this dynamic buffer stores its input sequence
+        in a single contiguous memory buffer. It is advised to use an instance of
+        <a class="link" href="../ref/boost__beast__flat_buffer.html" title="flat_buffer"><code class="computeroutput"><span class="identifier">flat_buffer</span></code></a>,
+        <a class="link" href="../ref/boost__beast__flat_static_buffer.html" title="flat_static_buffer"><code class="computeroutput"><span class="identifier">flat_static_buffer</span></code></a>, or <a class="link" href="../ref/boost__beast__flat_static_buffer_base.html" title="flat_static_buffer_base"><code class="computeroutput"><span class="identifier">flat_static_buffer_base</span></code></a> for this
+        purpose, although a user defined instance of <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="bold"><strong>DynamicBuffer</strong></span></a> which produces input sequences
+        of length one is also suitable.
+      </p>
+<p>
+        The parser contains a message constructed internally. Arguments passed to
+        the parser's constructor are forwarded into the message container. The caller
+        can access the message inside the parser by calling <a class="link" href="../ref/boost__beast__http__parser/get.html" title="http::parser::get"><code class="computeroutput"><span class="identifier">parser</span><span class="special">::</span><span class="identifier">get</span></code></a>. If the <code class="computeroutput"><span class="identifier">Fields</span></code>
+        and <code class="computeroutput"><span class="identifier">Body</span></code> types are <span class="bold"><strong>MoveConstructible</strong></span>, the caller can take ownership of
+        the message by calling <a class="link" href="../ref/boost__beast__http__parser/release.html" title="http::parser::release"><code class="computeroutput"><span class="identifier">parser</span><span class="special">::</span><span class="identifier">release</span></code></a>. In this example we read
+        an HTTP response with a string body using a parser, then print the response:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">SyncReadStream</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">print_response</span><span class="special">(</span><span class="identifier">SyncReadStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">is_sync_read_stream</span><span class="special">&lt;</span><span class="identifier">SyncReadStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"SyncReadStream requirements not met"</span><span class="special">);</span>
+
+    <span class="comment">// Declare a parser for an HTTP response</span>
+    <span class="identifier">response_parser</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">parser</span><span class="special">;</span>
+
+    <span class="comment">// Read the entire message</span>
+    <span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">parser</span><span class="special">);</span>
+
+    <span class="comment">// Now print the message</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">parser</span><span class="special">.</span><span class="identifier">get</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="serializer_stream_operations.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="parser_stream_operations/incremental_read.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

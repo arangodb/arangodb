@@ -1,0 +1,274 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Protocol Primer</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_http.html" title="Using HTTP">
+<link rel="prev" href="../using_http.html" title="Using HTTP">
+<link rel="next" href="message_containers.html" title="Message Containers">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../using_http.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="message_containers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.protocol_primer"></a><a class="link" href="protocol_primer.html" title="Protocol Primer">Protocol Primer</a>
+</h3></div></div></div>
+<p>
+        The HTTP protocol defines the <a href="https://tools.ietf.org/html/rfc7230#section-2.1" target="_top">client
+        and server roles</a>: clients send requests and servers send back responses.
+        When a client and server have established a connection, the client sends
+        a series of requests while the server sends back at least one response for
+        each received request in the order those requests were received.
+      </p>
+<p>
+        A request or response is an <a href="https://tools.ietf.org/html/rfc7230#section-3" target="_top">HTTP
+        message</a> (referred to hereafter as "message") having two
+        parts: a header with structured metadata and an optional variable-length
+        body holding arbitrary data. A serialized header is one or more text lines
+        where each line ends in a carriage return followed by linefeed (<code class="computeroutput"><span class="string">"\r\n"</span></code>). An empty line marks the
+        end of the header. The first line in the header is called the <span class="emphasis"><em>start-line</em></span>.
+        The contents of the start line contents are different for requests and responses.
+      </p>
+<p>
+        Every message contains a set of zero or more field name/value pairs, collectively
+        called "fields". The names and values are represented using text
+        strings with various requirements. A serialized field contains the field
+        name, then a colon followed by a space (<code class="computeroutput"><span class="string">":
+        "</span></code>), and finally the field value with a trailing CRLF.
+      </p>
+<h5>
+<a name="beast.using_http.protocol_primer.h0"></a>
+        <span class="phrase"><a name="beast.using_http.protocol_primer.requests"></a></span><a class="link" href="protocol_primer.html#beast.using_http.protocol_primer.requests">Requests</a>
+      </h5>
+<p>
+        Clients send requests, which contain a <a href="https://tools.ietf.org/html/rfc7230#section-3.1.1" target="_top">method</a>
+        and <a href="https://tools.ietf.org/html/rfc7230#section-5.3" target="_top">request-target</a>,
+        and <a href="https://tools.ietf.org/html/rfc7230#section-2.6" target="_top">HTTP-version</a>.
+        The method identifies the operation to be performed while the target identifies
+        the object on the server to which the operation applies. The version is almost
+        always 1.1, but older programs sometimes use 1.0.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Serialized Request
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">GET</span> <span class="special">/</span> <span class="identifier">HTTP</span><span class="special">/</span><span class="number">1.1</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">User</span><span class="special">-</span><span class="identifier">Agent</span><span class="special">:</span> <span class="identifier">Beast</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+</pre>
+              </td>
+<td>
+                <p>
+                  This request has a method of "GET", a target of "/",
+                  and indicates HTTP version 1.1. It contains a single field called
+                  "User-Agent" whose value is "Beast". There
+                  is no message body.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.using_http.protocol_primer.h1"></a>
+        <span class="phrase"><a name="beast.using_http.protocol_primer.responses"></a></span><a class="link" href="protocol_primer.html#beast.using_http.protocol_primer.responses">Responses</a>
+      </h5>
+<p>
+        Servers send responses, which contain a <a href="https://tools.ietf.org/html/rfc7231#section-6" target="_top">status-code</a>,
+        <a href="https://tools.ietf.org/html/rfc7230#section-3.1.2" target="_top">reason-phrase</a>,
+        and <a href="https://tools.ietf.org/html/rfc7230#section-2.6" target="_top">HTTP-version</a>.
+        The reason phrase is <a href="https://tools.ietf.org/html/rfc7230#section-3.1.2" target="_top">obsolete</a>:
+        clients SHOULD ignore the reason-phrase content. Here is a response which
+        includes a body. The special <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2" target="_top">Content-Length</a>
+        field informs the remote host of the size of the body which follows.
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Serialized Response
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="identifier">HTTP</span><span class="special">/</span><span class="number">1.1</span> <span class="number">200</span> <span class="identifier">OK</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Server</span><span class="special">:</span> <span class="identifier">Beast</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Content</span><span class="special">-</span><span class="identifier">Length</span><span class="special">:</span> <span class="number">13</span><span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="special">\</span><span class="identifier">r</span><span class="special">\</span><span class="identifier">n</span>
+<span class="identifier">Hello</span><span class="special">,</span> <span class="identifier">world</span><span class="special">!</span>
+</pre>
+              </td>
+<td>
+                <p>
+                  This response has a <a href="https://tools.ietf.org/html/rfc7231#section-6" target="_top">200
+                  status code</a> meaning the operation requested completed successfully.
+                  The obsolete reason phrase is "OK". It specifies HTTP
+                  version 1.1, and contains a body 13 octets in size with the text
+                  "Hello, world!".
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.using_http.protocol_primer.h2"></a>
+        <span class="phrase"><a name="beast.using_http.protocol_primer.body"></a></span><a class="link" href="protocol_primer.html#beast.using_http.protocol_primer.body">Body</a>
+      </h5>
+<p>
+        Messages may optionally carry a body. The size of the message body is determined
+        by the semantics of the message and the special fields Content-Length and
+        Transfer-Encoding. <a href="https://tools.ietf.org/html/rfc7230#section-3.3" target="_top">rfc7230
+        section 3.3</a> provides a comprehensive description for how the body
+        length is determined.
+      </p>
+<h5>
+<a name="beast.using_http.protocol_primer.h3"></a>
+        <span class="phrase"><a name="beast.using_http.protocol_primer.special_fields"></a></span><a class="link" href="protocol_primer.html#beast.using_http.protocol_primer.special_fields">Special
+        Fields</a>
+      </h5>
+<p>
+        Certain fields appearing in messages are special. The library understands
+        these fields when performing serialization and parsing, taking automatic
+        action as needed when the fields are parsed in a message and also setting
+        the fields if the caller requests it.
+      </p>
+<div class="table">
+<a name="beast.using_http.protocol_primer.special_fields0"></a><p class="title"><b>Table&#160;1.9.&#160;Special Fields</b></p>
+<div class="table-contents"><table class="table" summary="Special Fields">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Field
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a href="https://tools.ietf.org/html/rfc7230#section-6.1" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">Connection</span></code></strong></span></a>
+                </p>
+                <p>
+                  <a href="https://tools.ietf.org/html/rfc7230#appendix-A.1.2" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">Proxy</span><span class="special">-</span><span class="identifier">Connection</span></code></strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This field allows the sender to indicate desired control options
+                  for the current connection. Common values include "close",
+                  "keep-alive", and "upgrade".
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="https://tools.ietf.org/html/rfc7230#section-3.3.2" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">Content</span><span class="special">-</span><span class="identifier">Length</span></code></strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  When present, this field informs the recipient about the exact
+                  size in bytes of the body which follows the message header.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="https://tools.ietf.org/html/rfc7230#section-3.3.1" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">Transfer</span><span class="special">-</span><span class="identifier">Encoding</span></code></strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This optional field lists the names of the sequence of transfer
+                  codings that have been (or will be) applied to the content payload
+                  to form the message body.
+                </p>
+                <p>
+                  Beast understands the "chunked" coding scheme when it
+                  is the last (outermost) applied coding. The library will automatically
+                  apply chunked encoding when the content length is not known ahead
+                  of time during serialization, and the library will automatically
+                  remove chunked encoding from parsed messages when present.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="https://tools.ietf.org/html/rfc7230#section-6.7" target="_top"><span class="bold"><strong><code class="computeroutput"><span class="identifier">Upgrade</span></code></strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The Upgrade header field provides a mechanism to transition from
+                  HTTP/1.1 to another protocol on the same connection. For example,
+                  it is the mechanism used by WebSocket's initial HTTP handshake
+                  to establish a WebSocket connection.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../using_http.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="message_containers.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

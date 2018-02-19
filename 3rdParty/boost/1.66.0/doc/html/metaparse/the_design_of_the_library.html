@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>The design of the library</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../metaparse.html" title="Chapter&#160;23.&#160;Boost.Metaparse">
+<link rel="prev" href="performance.html" title="Performance">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="performance.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../metaparse.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="metaparse.the_design_of_the_library"></a><a class="link" href="the_design_of_the_library.html" title="The design of the library">The design of the
+    library</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="the_design_of_the_library.html#metaparse.the_design_of_the_library.design_rationale">Design
+      rationale</a></span></dt></dl></div>
+<p>
+      The purpose of the library is to provide tools to build template metaprograms
+      being able to interpret the content of a string literal and generate code,
+      display error messages, etc based on the content of the string literal. Such
+      metaprograms are called <a class="link" href="reference.html#parser">parser</a>s. Metaparse is
+      based on <a href="https://en.wikipedia.org/wiki/Parser_combinator" target="_top">parser
+      combinators</a>.
+    </p>
+<p>
+      The key components of the library:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a class="link" href="reference.html#ref-string">Compile-time string representation</a>. These
+          are tools for representing the content of a string literal in a way that
+          makes it possible for template metaprograms to work on them. For this the
+          library provides the <a class="link" href="reference.html#string"><code class="computeroutput"><span class="identifier">string</span></code></a>
+          template class, which is a drop-in replacement of Boost.MPL's <code class="computeroutput"><span class="identifier">string</span></code> implementation, and the <a class="link" href="reference.html#BOOST_METAPARSE_STRING"><code class="computeroutput"><span class="identifier">BOOST_METAPARSE_STRING</span></code></a>
+          macro.
+        </li>
+<li class="listitem">
+          <a class="link" href="reference.html#parsers">Parsers</a>. These are template metafunction
+          classes parsing a prefix of a string literal. These are simple <a class="link" href="reference.html#parser">parser</a>s
+          providing the basic building blocks for more complicated ones doing some
+          useful work.
+        </li>
+<li class="listitem">
+          <a class="link" href="reference.html#combinators">Parser combinators</a>. These are <a class="link" href="reference.html#metafunction">template metafunction</a>s taking <a class="link" href="reference.html#parser">parser</a>s
+          as argument and/or returning <a class="link" href="reference.html#parser">parser</a>s as their
+          result. They can be used to build more and more complex <a class="link" href="reference.html#parser">parser</a>s
+          out of the simple ones.
+        </li>
+</ul></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="metaparse.the_design_of_the_library.design_rationale"></a><a class="link" href="the_design_of_the_library.html#metaparse.the_design_of_the_library.design_rationale" title="Design rationale">Design
+      rationale</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <span class="bold"><strong>Why template metaprogramming?</strong></span>
+          </li></ul></div>
+<p>
+        An alternative is using <code class="computeroutput"><span class="keyword">constexpr</span></code>
+        functions instead of template metaprograms. There are certain things that
+        are difficult (if possible) using <code class="computeroutput"><span class="keyword">constexpr</span></code>
+        functions: building containers (at compile-time) the length of which depend
+        on the parsed text (eg. parsing a JSON list), generating and validating types
+        (eg. <code class="computeroutput"><span class="identifier">printf</span></code>).
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <span class="bold"><strong>Why are there so many folding parsers?</strong></span>
+          </li></ul></div>
+<p>
+        Compilation speed and memory consumption is a critical part of template metaprogramming-based
+        libraries. Users of the library interfaces built with Metaparse will have
+        to pay for that every time they compile their code. Therefore it is important
+        to provide the parser authors the ability to use the parser combinators with
+        minimal overhead, while it is also important to provide convenient combinators
+        for beginners and for the cases where that is the best option anyway.
+      </p>
+<p>
+        <a class="link" href="reference.html#repeated"><code class="computeroutput"><span class="identifier">repeated</span></code></a>
+        combined with <a class="link" href="reference.html#sequence"><code class="computeroutput"><span class="identifier">sequence</span></code></a>,
+        <a class="link" href="reference.html#accept_when"><code class="computeroutput"><span class="identifier">accept_when</span></code></a>
+        and <a class="link" href="reference.html#transform"><code class="computeroutput"><span class="identifier">transform</span></code></a>
+        can replace any of the folding parsers, however, for the cost of constructing
+        intermediate containers, that are (usually) processed sequentially after
+        that.
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <span class="bold"><strong>Why external code generator for <code class="computeroutput"><span class="identifier">BOOST_METAPARSE_STRING</span></code>?</strong></span>
+          </li></ul></div>
+<p>
+        To be able to support longer strings. It generates code using macros to reduce
+        the size of the header files (the reducion is multiples of MBs).
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <span class="bold"><strong>Why defining a custom version of Boost.Preprocessor
+            macros?</strong></span>
+          </li></ul></div>
+<p>
+        There are two reasons for the library defining its own set of preprocessor
+        metaprogramming macros: to have control over the upper limit of iteration
+        steps and to be able to clean the macros up once they have done their job
+        (and avoid polluting the macros of the users).
+      </p>
+<p>
+        Note that these macros live in the <code class="computeroutput"><span class="identifier">impl</span></code>
+        directory, which means that they are an implementation detail of the library
+        and should be used internally only.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2015 Abel Sinkovics<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="performance.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../metaparse.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

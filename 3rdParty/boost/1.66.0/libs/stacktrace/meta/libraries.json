@@ -1,0 +1,14 @@
+{
+  "key": "stacktrace",
+  "name": "Stacktrace",
+  "authors": [
+    "Antony Polukhin"
+  ],
+  "maintainers": [
+    "Antony Polukhin <antoshkka -at- gmail.com>"
+  ],
+  "description": "Gather, store, copy and print backtraces.",
+  "category": [
+    "System", "Correctness"
+  ]
+}

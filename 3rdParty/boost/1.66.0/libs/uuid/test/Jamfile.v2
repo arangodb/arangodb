@@ -1,0 +1,104 @@
+# Copyright 2007 Andy Tompkins.
+# Copyright 2017 James E. King, III
+# Distributed under the Boost Software License, Version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project libs/uuid/test
+    : requirements
+
+      # boost::random requires this setting for a warning free build:
+      <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+
+    ;
+
+import path ;
+import regex ;
+import testing ;
+
+# this rule enumerates through all the headers and ensures
+# that inclusion of the header by itself is sufficient to
+# compile successfully, proving the header does not depend
+# on any other headers to be included first - adapted from
+# logic in the winapi test bjam script
+rule test_all
+{
+    local all_rules = ;
+    local file ;
+    local headers_path = [ path.make $(BOOST_ROOT)/libs/uuid/include/boost/uuid ] ;
+    for file in [ path.glob-tree $(headers_path) : *.hpp : uuid ]
+    {
+        local rel_file = [ path.relative-to $(headers_path) $(file) ] ;
+        # Note: The test name starts with '~' in order to group these tests in the test report table, preferably at the end.
+        #       All '/' are replaced with '-' because apparently test scripts have a problem with test names containing slashes.
+        local test_name = [ regex.replace $(rel_file) "/" "-" ] ;
+        local decl_test_name = ~hdr-decl-$(test_name) ;
+        # ECHO $(rel_file) ;
+        all_rules += [ compile compile/decl_header.cpp : <define>"BOOST_UUID_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(decl_test_name) ] ;
+    }
+
+    # make sure compile time options work in isolation
+    all_rules += [ compile compile/decl_header.cpp :
+        <define>"BOOST_UUID_TEST_HEADER=uuid.hpp"
+        <define>"BOOST_UUID_NO_TYPE_TRAITS"
+        <dependency>../include/boost/uuid/uuid.hpp :
+            compile_uuid_no_type_traits ] ;
+    all_rules += [ compile compile/decl_header.cpp :
+        <define>"BOOST_UUID_TEST_HEADER=uuid.hpp"
+        <define>"BOOST_UUID_NO_SIMD"
+        <dependency>../include/boost/uuid/uuid.hpp :
+            compile_uuid_no_simd ] ;
+
+    # ECHO All rules: $(all_rules) ;
+    return $(all_rules) ;
+}
+
+test-suite uuid :
+    [ test_all ]
+
+    # test inclucing all .hpp files in 2 translations units
+    # to look for issues when using multiple translation units
+    # eg. missing inline on a global functionstate is not missing
+    [ run test_include1.cpp test_include2.cpp ]
+
+    # main test
+    [ run test_uuid.cpp ]
+    [ run test_uuid_no_simd.cpp ]
+
+    # test uuid_io.hpp
+    [ run test_io.cpp ]
+
+    # test generators
+    [ run test_nil_generator.cpp ]
+    [ run test_name_generator.cpp ]
+    [ run test_string_generator.cpp ]
+    [ run test_random_generator.cpp ../../random/build//boost_random ]
+    # link to boost::random required for the test that uses random_device
+
+    # test tagging an object
+    [ run test_tagging.cpp ]
+
+    # test use cases
+    [ run test_uuid_class.cpp ]
+    [ run test_uuid_in_map.cpp ]
+
+    # test serializing uuids
+    [ run test_serialization.cpp ../../serialization/build//boost_serialization ]
+    # TODO - This test fails to like with boost_wserialization
+    # [ run test_wserialization.cpp
+    #     ../../serialization/build//boost_serialization
+    #     ../../serialization/build//boost_wserialization
+    #     : : : <dependency>../../config/test/all//BOOST_NO_STD_WSTREAMBUF
+    # ]
+
+    # test hash functions
+    [ run test_md5.cpp ]
+    [ run test_sha1.cpp ]
+
+    # test MSVC 12 (VS2013) optimizer bug with SIMD operations.
+    # See https://svn.boost.org/trac/boost/ticket/8509#comment:3
+    # Only happens in Release x64 builds.
+    [ run test_msvc_simd_bug981648_main.cpp
+          test_msvc_simd_bug981648_foo.cpp
+          : : : <variant>release <debug-symbols>on : test_msvc_simd_bug981648 ]
+    ;

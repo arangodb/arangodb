@@ -1,0 +1,287 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;5.&#160;To/From Python Type Conversion</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="index.html" title="Boost.Python Reference Manual">
+<link rel="prev" href="function_invocation_and_creation/models_of_resultconvertergenerat.html" title="Models of ResultConverterGenerator">
+<link rel="next" href="to_from_python_type_conversion/boost_python_implicit_hpp.html" title="boost/python/implicit.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="function_invocation_and_creation/models_of_resultconvertergenerat.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="to_from_python_type_conversion/boost_python_implicit_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="to_from_python_type_conversion"></a>Chapter&#160;5.&#160;To/From Python Type Conversion</h1></div></div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp">boost/python/extract.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_construct">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> constructors
+        and destructor</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_observer_">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> observer
+        functions</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_implicit_hpp.html">boost/python/implicit.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_implicit_hpp.html#to_from_python_type_conversion.boost_python_implicit_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_implicit_hpp.html#to_from_python_type_conversion.boost_python_implicit_hpp.function_template_implicit_conve">Function
+        template <code class="computeroutput"><span class="identifier">implicit_convertible</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_implicit_hpp.html#to_from_python_type_conversion.boost_python_implicit_hpp.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html">boost/python/lvalue_from_pytype.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html#to_from_python_type_conversion.boost_python_lvalue_from_pytype_.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html#to_from_python_type_conversion.boost_python_lvalue_from_pytype_.class_template_lvalue_from_pytyp">Class
+        template <code class="computeroutput"><span class="identifier">lvalue_from_pytype</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html#to_from_python_type_conversion.boost_python_lvalue_from_pytype_.class_template_extract_identity">Class
+        template <code class="computeroutput"><span class="identifier">extract_identity</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html#to_from_python_type_conversion.boost_python_lvalue_from_pytype_.class_template_extract_member">Class
+        template <code class="computeroutput"><span class="identifier">extract_member</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_lvalue_from_pytype_.html#to_from_python_type_conversion.boost_python_lvalue_from_pytype_.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_opaque_pointer_conv.html">boost/python/opaque_pointer_converter.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_opaque_pointer_conv.html#to_from_python_type_conversion.boost_python_opaque_pointer_conv.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_opaque_pointer_conv.html#to_from_python_type_conversion.boost_python_opaque_pointer_conv.class_template_opaque_constructo">Class
+        template <code class="computeroutput"><span class="identifier">opaque</span></code> constructor</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_opaque_pointer_conv.html#to_from_python_type_conversion.boost_python_opaque_pointer_conv.macro_boost_python_opaque_specia">Macro
+        <code class="computeroutput"><span class="identifier">BOOST_PYTHON_OPAQUE_SPECIALIZED_TYPE_ID</span><span class="special">(</span><span class="identifier">Pointee</span><span class="special">)</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_to_python_converter.html">boost/python/to_python_converter.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_to_python_converter.html#to_from_python_type_conversion.boost_python_to_python_converter.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_to_python_converter.html#to_from_python_type_conversion.boost_python_to_python_converter.class_template_to_python_convert">Class
+        template <code class="computeroutput"><span class="identifier">to_python_converter</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_to_python_converter.html#to_from_python_type_conversion.boost_python_to_python_converter.example">Example</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_register_ptr_to_pyt.html">boost/python/register_ptr_to_python.hpp</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.function_register_ptr_to_python">Function
+        <code class="computeroutput"><span class="identifier">register_ptr_to_python</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion/boost_python_register_ptr_to_pyt.html#to_from_python_type_conversion.boost_python_register_ptr_to_pyt.example">Example</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp" title="boost/python/extract.hpp">boost/python/extract.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code></a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_construct">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> constructors
+        and destructor</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_observer_">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> observer
+        functions</a></span></dt>
+<dt><span class="section"><a href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp.introduction"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Exposes a mechanism for extracting C++ object values from generalized Python
+          objects. Note that <code class="computeroutput"><span class="identifier">extract</span><span class="special">&lt;...&gt;</span></code> can also be used to "downcast"
+          an <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a> to some specific <a class="link" href="concepts/objectwrapper.html" title="ObjectWrapper">ObjectWrapper</a>. Because invoking
+          a mutable python type with an argument of the same type (e.g. <code class="computeroutput"><span class="identifier">list</span><span class="special">([</span><span class="number">1</span><span class="special">,</span><span class="number">2</span><span class="special">]</span></code>) typically makes a copy of the argument
+          object, this may be the only way to access the <a class="link" href="concepts/objectwrapper.html" title="ObjectWrapper">ObjectWrapper</a>'s
+          interface on the original object.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract" title="Class template extract">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code></a>
+</h3></div></div></div>
+<p>
+          <code class="computeroutput"><span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+          can be used to extract a value of an arbitrary C++ type from an instance
+          of <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object">object</a>.
+          Two usages are supported:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;(</span><span class="identifier">o</span><span class="special">)</span></code>
+              is a temporary object which is implicitly convertible to <code class="computeroutput"><span class="identifier">T</span></code> (explicit conversion is also available
+              through the object's function-call operator). However, if no conversion
+              is available which can convert o to an object of type <code class="computeroutput"><span class="identifier">T</span></code>, a Python TypeError exception will
+              be raised.
+            </li>
+<li class="listitem">
+              <code class="computeroutput"><span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">(</span><span class="identifier">o</span><span class="special">);</span></code>
+              constructs an extractor whose <code class="computeroutput"><span class="identifier">check</span><span class="special">()</span></code> member function can be used to ask
+              whether a conversion is available without causing an exception to be
+              thrown.
+            </li>
+</ol></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="keyword">struct</span> <span class="identifier">extract</span>
+  <span class="special">{</span>
+      <span class="keyword">typedef</span> <span class="identifier">unspecified</span> <span class="identifier">result_type</span><span class="special">;</span>
+
+      <span class="identifier">extract</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*);</span>
+      <span class="identifier">extract</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+
+      <span class="identifier">result_type</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="keyword">const</span><span class="special">;</span>
+      <span class="keyword">operator</span> <span class="identifier">result_type</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+      <span class="keyword">bool</span> <span class="identifier">check</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_construct"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_construct" title="Class template extract constructors and destructor">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> constructors
+        and destructor</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">extract</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">p</span><span class="special">);</span>
+<span class="identifier">extract</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd><p>
+                The first form requires that p is non-null.
+              </p></dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Stores a pointer to the Python object managed by its constructor
+                argument. In particular, the reference count of the object is not
+                incremented. The onus is on the user to be sure it is not destroyed
+                before the extractor's conversion function is called.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_observer_"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.class_template_extract_observer_" title="Class template extract observer functions">Class
+        template <code class="computeroutput"><span class="identifier">extract</span></code> observer
+        functions</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="identifier">result_type</span> <span class="keyword">operator</span><span class="special">()()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="keyword">operator</span> <span class="identifier">result_type</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Converts the stored pointer to result_type, which is either T or
+                T const&amp;.
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                An object of result_type corresponding to the one referenced by the
+                stored pointer.
+              </p></dd>
+<dt><span class="term">Throws</span></dt>
+<dd><p>
+                <a class="link" href="high_level_components/boost_python_errors_hpp.html#high_level_components.boost_python_errors_hpp.class_error_already_set" title="Class error_already_set"><code class="computeroutput"><span class="identifier">error_already_set</span></code></a> and sets
+                a <code class="computeroutput"><span class="identifier">TypeError</span></code> if no
+                such conversion is available. May also emit other unspecified exceptions
+                thrown by the converter which is actually used.
+              </p></dd>
+</dl>
+</div>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">check</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Postconditions</span></dt>
+<dd><p>
+                None. In particular, note that a return value of true does not preclude
+                an exception being thrown from operator result_type() or operator()().
+              </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                false only if no conversion from the stored pointer to T is available.
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="to_from_python_type_conversion.boost_python_extract_hpp.example"></a><a class="link" href="to_from_python_type_conversion.html#to_from_python_type_conversion.boost_python_extract_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstdio</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+<span class="keyword">int</span> <span class="identifier">Print</span><span class="special">(</span><span class="identifier">str</span> <span class="identifier">s</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">// extract a C string from the Python string object</span>
+   <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">c_str</span> <span class="special">=</span> <span class="identifier">extract</span><span class="special">&lt;</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*&gt;(</span><span class="identifier">s</span><span class="special">);</span>
+
+   <span class="comment">// Print it using printf</span>
+   <span class="identifier">std</span><span class="special">::</span><span class="identifier">printf</span><span class="special">(</span><span class="string">"%s\n"</span><span class="special">,</span> <span class="identifier">c_str</span><span class="special">);</span>
+
+   <span class="comment">// Get the Python string's length and convert it to an int</span>
+   <span class="keyword">return</span> <span class="identifier">extract</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"__len__"</span><span class="special">)())</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The following example shows how extract can be used along with <a class="link" href="high_level_components.html#high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel" title="Class template class_&lt;T, Bases, HeldType, NonCopyable&gt;"><code class="computeroutput"><span class="identifier">class_</span><span class="special">&lt;...&gt;</span></code></a>
+          to create and access an instance of a wrapped C++ class.
+        </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+   <span class="identifier">X</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">:</span> <span class="identifier">v</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="special">{}</span>
+   <span class="keyword">int</span> <span class="identifier">value</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">v</span><span class="special">;</span> <span class="special">}</span>
+ <span class="keyword">private</span><span class="special">:</span>
+   <span class="keyword">int</span> <span class="identifier">v</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">extract_ext</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">object</span> <span class="identifier">x_class</span><span class="special">(</span>
+       <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="string">"X"</span><span class="special">,</span> <span class="identifier">init</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;())</span>
+          <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"value"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">value</span><span class="special">))</span>
+          <span class="special">;</span>
+
+    <span class="comment">// Instantiate an X object through the Python interface. </span>
+    <span class="comment">// Its lifetime is now managed by x_obj.</span>
+    <span class="identifier">object</span> <span class="identifier">x_obj</span> <span class="special">=</span> <span class="identifier">x_class</span><span class="special">(</span><span class="number">3</span><span class="special">);</span>
+
+    <span class="comment">// Get a reference to the C++ object out of the Python object</span>
+    <span class="identifier">X</span><span class="special">&amp;</span> <span class="identifier">x</span> <span class="special">=</span> <span class="identifier">extract</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&amp;&gt;(</span><span class="identifier">x_obj</span><span class="special">);</span>
+    <span class="identifier">assert</span><span class="special">(</span><span class="identifier">x</span><span class="special">.</span><span class="identifier">value</span><span class="special">()</span> <span class="special">==</span> <span class="number">3</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="function_invocation_and_creation/models_of_resultconvertergenerat.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="to_from_python_type_conversion/boost_python_implicit_hpp.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>Views</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Views</h3>
+</div>
+<p>Boost QVM defines various function templates that provide static mapping between (possibly user-defined) quaternion, vector and matrix types. The example below multiplies column 1 (Boost QVM indexes are always zero-based) of the matrix <i>m</i> by a scalar:</p>
+<pre>void multiply_column1( float33 &amp; m, float scalar )
+{
+    <span class="RenoLink"><a href="col.html">col</a></span>&lt;1&gt;(m) <span class="RenoLink"><a href="operator_mul_eq_vec_scalar_.html">*=</a></span> scalar;
+}</pre>
+<p>The expression <i><span class="RenoLink"><a href="col.html">col</a></span>&lt;1&gt;(m)</i> is a lvalue of an unspecified 3D vector type that refers to column 1 of <i>m</i>. Note however that this does not create any temporary objects; instead <i><span class="RenoLink"><a href="operator_mul_eq_vec_scalar_.html">operator*=</a></span></i> above works directly with a reference to <i>m</i>.</p>
+<p>Here is another example, multiplying a transposed view of a matrix by a vector of some user-defined type <i>float3</i>:</p>
+<pre>float3 v = {0,0,7};
+float3 vrot = <span class="RenoLink"><a href="transposed.html">transposed</a></span>(<span class="RenoLink"><a href="rotx_mat_scalar_.html">rotx_mat</a></span>&lt;3&gt;(3.14159f)) <span class="RenoLink"><a href="operator_times_mat_vec_.html">*</a></span> v;</pre>
+<p>In general, the various view functions return references of unspecified, non-copyable types that refer to the original object. They can be assigned from or converted to any compatible vector or matrix type.</p>
+<p>For more details, see <span class="RenoLink"><a href="view_proxy.html">View Proxies</a></span>.</p>
+</div><div class="RenoIncludeDIV"><div class="RenoHR"><hr/></div>
+<p><b>Tutorial navigation:</b> <span class="RenoLink"><a href="quaternions_vectors_matrices.html">Quaternions, Vectors, Matrices</a></span> | <span class="RenoLink"><a href="c_arrays.html">C Arrays</a></span> | <span class="RenoLink">Views</span> | <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span> | <span class="RenoLink"><a href="Interoperability.html">Interoperability</a></span><span class="RenoBR">&nbsp;</span><br/><span class="RenoBR">&nbsp;</span><br/>See also: <span class="RenoLink"><a href="index.html">Boost QVM</a></span></p>
+</div><!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

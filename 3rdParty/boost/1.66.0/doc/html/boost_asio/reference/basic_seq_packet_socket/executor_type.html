@@ -1,0 +1,220 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>basic_seq_packet_socket::executor_type</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../basic_seq_packet_socket.html" title="basic_seq_packet_socket">
+<link rel="prev" href="endpoint_type.html" title="basic_seq_packet_socket::endpoint_type">
+<link rel="next" href="get_executor.html" title="basic_seq_packet_socket::get_executor">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="endpoint_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../basic_seq_packet_socket.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="get_executor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.basic_seq_packet_socket.executor_type"></a><a class="link" href="executor_type.html" title="basic_seq_packet_socket::executor_type">basic_seq_packet_socket::executor_type</a>
+</h4></div></div></div>
+<p>
+          <span class="emphasis"><em>Inherited from basic_socket.</em></span>
+        </p>
+<p>
+          <a class="indexterm" name="boost_asio.indexterm.basic_seq_packet_socket.executor_type"></a> 
+The
+          type of the executor associated with the object.
+        </p>
+<pre class="programlisting">typedef io_context::executor_type executor_type;
+</pre>
+<h6>
+<a name="boost_asio.reference.basic_seq_packet_socket.executor_type.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.basic_seq_packet_socket.executor_type.member_functions"></a></span><a class="link" href="executor_type.html#boost_asio.reference.basic_seq_packet_socket.executor_type.member_functions">Member
+          Functions</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/context.html" title="io_context::executor_type::context"><span class="bold"><strong>context</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Obtain the underlying execution context.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/defer.html" title="io_context::executor_type::defer"><span class="bold"><strong>defer</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Request the io_context to invoke the given function object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/dispatch.html" title="io_context::executor_type::dispatch"><span class="bold"><strong>dispatch</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Request the io_context to invoke the given function object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/on_work_finished.html" title="io_context::executor_type::on_work_finished"><span class="bold"><strong>on_work_finished</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Inform the io_context that some work is no longer outstanding.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/on_work_started.html" title="io_context::executor_type::on_work_started"><span class="bold"><strong>on_work_started</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Inform the io_context that it has some outstanding work to do.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/post.html" title="io_context::executor_type::post"><span class="bold"><strong>post</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Request the io_context to invoke the given function object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/running_in_this_thread.html" title="io_context::executor_type::running_in_this_thread"><span class="bold"><strong>running_in_this_thread</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Determine whether the io_context is running in the current thread.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="boost_asio.reference.basic_seq_packet_socket.executor_type.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.basic_seq_packet_socket.executor_type.friends"></a></span><a class="link" href="executor_type.html#boost_asio.reference.basic_seq_packet_socket.executor_type.friends">Friends</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Name
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Description
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/operator_not__eq_.html" title="io_context::executor_type::operator!="><span class="bold"><strong>operator!=</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Compare two executors for inequality.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <a class="link" href="../io_context__executor_type/operator_eq__eq_.html" title="io_context::executor_type::operator=="><span class="bold"><strong>operator==</strong></span></a>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    Compare two executors for equality.
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+<h6>
+<a name="boost_asio.reference.basic_seq_packet_socket.executor_type.h2"></a>
+          <span class="phrase"><a name="boost_asio.reference.basic_seq_packet_socket.executor_type.requirements"></a></span><a class="link" href="executor_type.html#boost_asio.reference.basic_seq_packet_socket.executor_type.requirements">Requirements</a>
+        </h6>
+<p>
+          <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/basic_seq_packet_socket.hpp</code>
+        </p>
+<p>
+          <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="endpoint_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../basic_seq_packet_socket.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="get_executor.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

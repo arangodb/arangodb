@@ -1,0 +1,389 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>execution_context</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="error__system_category.html" title="error::system_category">
+<link rel="next" href="execution_context/add_service.html" title="execution_context::add_service">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="error__system_category.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="execution_context/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.execution_context"></a><a class="link" href="execution_context.html" title="execution_context">execution_context</a>
+</h3></div></div></div>
+<p>
+        A context for function object execution.
+      </p>
+<pre class="programlisting">class execution_context :
+  noncopyable
+</pre>
+<h5>
+<a name="boost_asio.reference.execution_context.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.types"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context__id.html" title="execution_context::id"><span class="bold"><strong>id</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Class used to uniquely identify a service.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context__service.html" title="execution_context::service"><span class="bold"><strong>service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Base class for all io_context services.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/fork_event.html" title="execution_context::fork_event"><span class="bold"><strong>fork_event</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Fork-related event notifications.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.execution_context.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.member_functions"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/notify_fork.html" title="execution_context::notify_fork"><span class="bold"><strong>notify_fork</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Notify the execution_context of a fork-related event.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.execution_context.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.protected_member_functions"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/destroy.html" title="execution_context::destroy"><span class="bold"><strong>destroy</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destroys all services in the context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/execution_context.html" title="execution_context::execution_context"><span class="bold"><strong>execution_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/shutdown.html" title="execution_context::shutdown"><span class="bold"><strong>shutdown</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Shuts down all services in the context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/_execution_context.html" title="execution_context::~execution_context"><span class="bold"><strong>~execution_context</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.execution_context.h3"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.friends"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/add_service.html" title="execution_context::add_service"><span class="bold"><strong>add_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use make_service().) Add a service object to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/has_service.html" title="execution_context::has_service"><span class="bold"><strong>has_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determine if an execution_context contains a specified service
+                  type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/make_service.html" title="execution_context::make_service"><span class="bold"><strong>make_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Creates a service object and adds it to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="execution_context/use_service.html" title="execution_context::use_service"><span class="bold"><strong>use_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Obtain the service object corresponding to the given type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        An execution context represents a place where function objects will be executed.
+        An <code class="computeroutput">io_context</code> is an example of an execution context.
+      </p>
+<h5>
+<a name="boost_asio.reference.execution_context.h4"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.the_execution_context_class_and_services"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.the_execution_context_class_and_services">The
+        execution_context class and services</a>
+      </h5>
+<p>
+        Class <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        implements an extensible, type-safe, polymorphic set of services, indexed
+        by service type.
+      </p>
+<p>
+        Services exist to manage the resources that are shared across an execution
+        context. For example, timers may be implemented in terms of a single timer
+        queue, and this queue would be stored in a service.
+      </p>
+<p>
+        Access to the services of an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        is via three function templates, <code class="computeroutput">use_service()</code>, <code class="computeroutput">add_service()</code>
+        and <code class="computeroutput">has_service()</code>.
+      </p>
+<p>
+        In a call to <code class="computeroutput">use_service&lt;Service&gt;()</code>, the type argument
+        chooses a service, making available all members of the named type. If <code class="computeroutput">Service</code>
+        is not present in an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>,
+        an object of type <code class="computeroutput">Service</code> is created and added to the <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>.
+        A C++ program can check if an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        implements a particular service with the function template <code class="computeroutput">has_service&lt;Service&gt;()</code>.
+      </p>
+<p>
+        Service objects may be explicitly added to an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        using the function template <code class="computeroutput">add_service&lt;Service&gt;()</code>. If
+        the <code class="computeroutput">Service</code> is already present, the <a class="link" href="service_already_exists.html" title="service_already_exists"><code class="computeroutput">service_already_exists</code></a>
+        exception is thrown. If the owner of the service is not the same object as
+        the <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        parameter, the <a class="link" href="invalid_service_owner.html" title="invalid_service_owner"><code class="computeroutput">invalid_service_owner</code></a>
+        exception is thrown.
+      </p>
+<p>
+        Once a service reference is obtained from an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        object by calling <code class="computeroutput">use_service()</code>, that reference remains usable
+        as long as the owning <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        object exists.
+      </p>
+<p>
+        All service implementations have <a class="link" href="execution_context__service.html" title="execution_context::service"><code class="computeroutput">execution_context::service</code></a>
+        as a public base class. Custom services may be implemented by deriving from
+        this class and then added to an <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        using the facilities described above.
+      </p>
+<h5>
+<a name="boost_asio.reference.execution_context.h5"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.the_execution_context_as_a_base_class"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.the_execution_context_as_a_base_class">The
+        execution_context as a base class</a>
+      </h5>
+<p>
+        Class <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        may be used only as a base class for concrete execution context types. The
+        <code class="computeroutput">io_context</code> is an example of such a derived type.
+      </p>
+<p>
+        On destruction, a class that is derived from <a class="link" href="execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+        must perform <code class="computeroutput">execution_context::shutdown()</code> followed by <code class="computeroutput">execution_context::destroy()</code>.
+      </p>
+<p>
+        This destruction sequence permits programs to simplify their resource management
+        by using <code class="computeroutput">shared_ptr&lt;&gt;</code>. Where an object's lifetime is tied
+        to the lifetime of a connection (or some other sequence of asynchronous operations),
+        a <code class="computeroutput">shared_ptr</code> to the object would be bound into the handlers
+        for all asynchronous operations associated with it. This works as follows:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            When a single connection ends, all associated asynchronous operations
+            complete. The corresponding handler objects are destroyed, and all <code class="computeroutput">shared_ptr</code>
+            references to the objects are destroyed.
+          </li>
+<li class="listitem">
+            To shut down the whole program, the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+            function stop() is called to terminate any run() calls as soon as possible.
+            The <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>
+            destructor calls <code class="computeroutput">shutdown()</code> and <code class="computeroutput">destroy()</code> to
+            destroy all pending handlers, causing all <code class="computeroutput">shared_ptr</code> references
+            to all connection objects to be destroyed.
+          </li>
+</ul></div>
+<h5>
+<a name="boost_asio.reference.execution_context.h6"></a>
+        <span class="phrase"><a name="boost_asio.reference.execution_context.requirements"></a></span><a class="link" href="execution_context.html#boost_asio.reference.execution_context.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/execution_context.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="error__system_category.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="execution_context/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

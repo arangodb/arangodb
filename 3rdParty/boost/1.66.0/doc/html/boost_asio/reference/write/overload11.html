@@ -1,0 +1,132 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>write (11 of 12 overloads)</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../write.html" title="write">
+<link rel="prev" href="overload10.html" title="write (10 of 12 overloads)">
+<link rel="next" href="overload12.html" title="write (12 of 12 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload10.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../write.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload12.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.write.overload11"></a><a class="link" href="overload11.html" title="write (11 of 12 overloads)">write (11 of
+        12 overloads)</a>
+</h4></div></div></div>
+<p>
+          Write a certain amount of data to a stream before returning.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../SyncWriteStream.html" title="Buffer-oriented synchronous write stream requirements">SyncWriteStream</a>,
+    typename Allocator,
+    typename <a class="link" href="../CompletionCondition.html" title="Completion condition requirements">CompletionCondition</a>&gt;
+std::size_t write(
+    SyncWriteStream &amp; s,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    CompletionCondition completion_condition);
+</pre>
+<p>
+          This function is used to write a certain number of bytes of data to a stream.
+          The call will block until one of the following conditions is true:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              All of the data in the supplied <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
+              has been written.
+            </li>
+<li class="listitem">
+              The completion_condition function object returns 0.
+            </li>
+</ul></div>
+<p>
+          This operation is implemented in terms of zero or more calls to the stream's
+          write_some function.
+        </p>
+<h6>
+<a name="boost_asio.reference.write.overload11.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.write.overload11.parameters"></a></span><a class="link" href="overload11.html#boost_asio.reference.write.overload11.parameters">Parameters</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">s</span></dt>
+<dd><p>
+                The stream to which the data is to be written. The type must support
+                the SyncWriteStream concept.
+              </p></dd>
+<dt><span class="term">b</span></dt>
+<dd><p>
+                The <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
+                object from which data will be written.
+              </p></dd>
+<dt><span class="term">completion_condition</span></dt>
+<dd>
+<p>
+                The function object to be called to determine whether the write operation
+                is complete. The signature of the function object must be:
+</p>
+<pre class="programlisting">std::size_t completion_condition(
+  // Result of latest write_some operation.
+  const boost::system::error_code&amp; error,
+
+  // Number of bytes transferred so far.
+  std::size_t bytes_transferred
+);
+</pre>
+<p>
+                A return value of 0 indicates that the write operation is complete.
+                A non-zero return value indicates the maximum number of bytes to
+                be written on the next call to the stream's write_some function.
+              </p>
+</dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.write.overload11.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.write.overload11.return_value"></a></span><a class="link" href="overload11.html#boost_asio.reference.write.overload11.return_value">Return Value</a>
+        </h6>
+<p>
+          The number of bytes transferred.
+        </p>
+<h6>
+<a name="boost_asio.reference.write.overload11.h2"></a>
+          <span class="phrase"><a name="boost_asio.reference.write.overload11.exceptions"></a></span><a class="link" href="overload11.html#boost_asio.reference.write.overload11.exceptions">Exceptions</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">boost::system::system_error</span></dt>
+<dd><p>
+                Thrown on failure.
+              </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload10.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../write.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload12.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

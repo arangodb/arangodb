@@ -1,0 +1,111 @@
+[/
+          Copyright Oliver Kowalke 2017.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[#hip]
+[section:hip ROCm/HIP]
+
+[@http://github.com/ROCm-Developer-Tools/HIP/tree/roc-1.6.0/ HIP] is part of the
+[@http://rocm.github.io/ ROC (Radeon Open Compute)] platform for parallel computing
+on AMD and NVIDIA GPUs. The application programming interface of HIP gives access to
+GPU's instruction set and computation resources (Execution of compute kernels).
+
+
+[heading Synchronization with ROCm/HIP streams]
+
+HIP operation such as compute kernels or memory transfer (between host and
+device) can be grouped/queued by HIP streams. are executed on the GPUs.
+Boost.Fiber enables a fiber to sleep (suspend) till a HIP stream has completed
+its operations. This enables applications to run other fibers on the CPU without
+the need to spawn an additional OS-threads. And resume the fiber when the HIP
+streams has finished.
+
+        __global__
+        void kernel( int size, int * a, int * b, int * c) {
+            int idx = threadIdx.x + blockIdx.x * blockDim.x;
+            if ( idx < size) {
+                int idx1 = (idx + 1) % 256;
+                int idx2 = (idx + 2) % 256;
+                float as = (a[idx] + a[idx1] + a[idx2]) / 3.0f;
+                float bs = (b[idx] + b[idx1] + b[idx2]) / 3.0f;
+                c[idx] = (as + bs) / 2;
+            }
+        }
+
+        boost::fibers::fiber f([&done]{
+            hipStream_t stream;
+            hipStreamCreate( & stream);
+            int size = 1024 * 1024;
+            int full_size = 20 * size;
+            int * host_a, * host_b, * host_c;
+            hipHostMalloc( & host_a, full_size * sizeof( int), hipHostMallocDefault);
+            hipHostMalloc( & host_b, full_size * sizeof( int), hipHostMallocDefault);
+            hipHostMalloc( & host_c, full_size * sizeof( int), hipHostMallocDefault);
+            int * dev_a, * dev_b, * dev_c;
+            hipMalloc( & dev_a, size * sizeof( int) );
+            hipMalloc( & dev_b, size * sizeof( int) );
+            hipMalloc( & dev_c, size * sizeof( int) );
+            std::minstd_rand generator;
+            std::uniform_int_distribution<> distribution(1, 6);
+            for ( int i = 0; i < full_size; ++i) {
+                host_a[i] = distribution( generator);
+                host_b[i] = distribution( generator);
+            }
+            for ( int i = 0; i < full_size; i += size) {
+                hipMemcpyAsync( dev_a, host_a + i, size * sizeof( int), hipMemcpyHostToDevice, stream);
+                hipMemcpyAsync( dev_b, host_b + i, size * sizeof( int), hipMemcpyHostToDevice, stream);
+                hipLaunchKernel(kernel, dim3(size / 256), dim3(256), 0, stream, size, dev_a, dev_b, dev_c);
+                hipMemcpyAsync( host_c + i, dev_c, size * sizeof( int), hipMemcpyDeviceToHost, stream);
+            }
+            auto result = boost::fibers::hip::waitfor_all( stream); // suspend fiber till HIP stream has finished
+            BOOST_ASSERT( stream == std::get< 0 >( result) );
+            BOOST_ASSERT( hipSuccess == std::get< 1 >( result) );
+            std::cout << "f1: GPU computation finished" << std::endl;
+            hipHostFree( host_a);
+            hipHostFree( host_b);
+            hipHostFree( host_c);
+            hipFree( dev_a);
+            hipFree( dev_b);
+            hipFree( dev_c);
+            hipStreamDestroy( stream);
+        });
+        f.join();
+
+
+[heading Synopsis]
+
+        #include <boost/fiber/hip/waitfor.hpp>
+
+        namespace boost {
+        namespace fibers {
+        namespace hip {
+
+        std::tuple< hipStream_t, hipError_t > waitfor_all( hipStream_t st);
+        std::vector< std::tuple< hipStream_t, hipError_t > > waitfor_all( hipStream_t ... st);
+
+        }}}
+
+
+[ns_function_heading hip..waitfor]
+
+    #include <boost/fiber/hip/waitfor.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace hip {
+
+    std::tuple< hipStream_t, hipError_t > waitfor_all( hipStream_t st);
+    std::vector< std::tuple< hipStream_t, hipError_t > > waitfor_all( hipStream_t ... st);
+
+    }}}
+
+[variablelist
+[[Effects:] [Suspends active fiber till HIP stream has finished its operations.]]
+[[Returns:] [tuple of stream reference and the HIP stream status]]
+]
+
+
+[endsect]

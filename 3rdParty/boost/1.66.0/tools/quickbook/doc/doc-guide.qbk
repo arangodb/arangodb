@@ -1,0 +1,5 @@
+[quickbook 1.7]
+[book Boost Documentation Tools]
+
+[include boost-doc-tools/boost-doc-tools.qbk]
+[include quickbook.qbk]

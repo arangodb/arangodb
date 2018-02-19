@@ -21,50 +21,50 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <boost/asio.hpp>
-
-// these classes are only here in order to shutup compiler warning
-// DO NOT USE THEM!
-
-#ifndef ARANGODB_BASICS_ASIO_HELPER_H_1
-#define ARANGODB_BASICS_ASIO_HELPER_H_1 1
-namespace {
-class Unused1 {
- protected:
-  const boost::system::error_category& unused1
-    = boost::asio::error::system_category;
-  
-  const boost::system::error_category& unused2
-    = boost::asio::error::netdb_category;
-  
-  const boost::system::error_category& unused3
-    = boost::asio::error::addrinfo_category;
-  
-  const boost::system::error_category& unused4
-    = boost::asio::error::misc_category;
-
-  const boost::system::error_category& unused5
-    = boost::system::posix_category;
-
-  const boost::system::error_category& unused6
-    = boost::system::errno_ecat;
-
-  const boost::system::error_category& unused7
-    = boost::system::native_ecat;
-};
-}
-#endif
-
-#ifdef BOOST_ASIO_SSL_HPP
-#ifndef ARANGODB_BASICS_ASIO_HELPER_H_2
-#define ARANGODB_BASICS_ASIO_HELPER_H_2 1
-namespace {
-class Unused2 {
- protected:
-  const boost::system::error_category& unused1
-    = boost::asio::error::ssl_category;
-  const boost::system::error_category& unused2
-    = boost::asio::ssl::error::stream_category;
-};
-}
-#endif
-#endif
+ 
+// // these classes are only here in order to shutup compiler warning
+// // DO NOT USE THEM!
+// 
+// #ifndef ARANGODB_BASICS_ASIO_HELPER_H_1
+// #define ARANGODB_BASICS_ASIO_HELPER_H_1 1
+// namespace {
+// class Unused1 {
+//  protected:
+//   const boost::system::error_category& unused1
+//     = boost::asio::error::system_category;
+//   
+//   const boost::system::error_category& unused2
+//     = boost::asio::error::netdb_category;
+//   
+//   const boost::system::error_category& unused3
+//     = boost::asio::error::addrinfo_category;
+//   
+//   const boost::system::error_category& unused4
+//     = boost::asio::error::misc_category;
+// 
+//   const boost::system::error_category& unused5
+//     = boost::system::posix_category;
+// 
+//   const boost::system::error_category& unused6
+//     = boost::system::errno_ecat;
+// 
+//   const boost::system::error_category& unused7
+//     = boost::system::native_ecat;
+// };
+// }
+// #endif
+// 
+// #ifdef BOOST_ASIO_SSL_HPP
+// #ifndef ARANGODB_BASICS_ASIO_HELPER_H_2
+// #define ARANGODB_BASICS_ASIO_HELPER_H_2 1
+// namespace {
+// class Unused2 {
+//  protected:
+//   const boost::system::error_category& unused1
+//     = boost::asio::error::ssl_category;
+//   const boost::system::error_category& unused2
+//     = boost::asio::ssl::error::stream_category;
+// };
+// }
+// #endif
+// #endif

@@ -1,0 +1,176 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Design Rationale</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_dll.html" title="Chapter&#160;12.&#160;Boost.DLL">
+<link rel="prev" href="f_a_q_.html" title="F.A.Q.">
+<link rel="next" href="dependencies.html" title="Dependencies">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="f_a_q_.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dependencies.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.design_rationale"></a><a class="link" href="design_rationale.html" title="Design Rationale">Design Rationale</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="design_rationale.html#boost_dll.design_rationale.abi_portability_across_compilers">ABI
+      portability across compilers</a></span></dt>
+<dt><span class="section"><a href="design_rationale.html#boost_dll.design_rationale.user_s_plugin_api">User's
+      plugin API</a></span></dt>
+<dt><span class="section"><a href="design_rationale.html#boost_dll.design_rationale.performance_and_memory_allocations">Performance
+      and memory allocations</a></span></dt>
+<dt><span class="section"><a href="design_rationale.html#boost_dll.design_rationale.self_loading">Self loading</a></span></dt>
+<dt><span class="section"><a href="design_rationale.html#boost_dll.design_rationale.aliases_vs_mangling">Aliases
+      vs Mangling</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.design_rationale.abi_portability_across_compilers"></a><a class="link" href="design_rationale.html#boost_dll.design_rationale.abi_portability_across_compilers" title="ABI portability across compilers">ABI
+      portability across compilers</a>
+</h3></div></div></div>
+<p>
+        During discussion of the library a lot of questions were about ABI stability
+        and should the library take care about it. It was decided that making ABI
+        stable could be a useful feature, but it will add a lot of overhead and make
+        the library usage less simple. For those who do not require ABI stability
+        across compilers such feature will be an overkill.
+      </p>
+<p>
+        It was decided to make this library more simple and low level, so that it
+        could be used to make ABI stable plugins system for users that require it
+        still not adding overhead for other users.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.design_rationale.user_s_plugin_api"></a><a class="link" href="design_rationale.html#boost_dll.design_rationale.user_s_plugin_api" title="User's plugin API">User's
+      plugin API</a>
+</h3></div></div></div>
+<p>
+        There are some open C++ plugin systems. Most of them force user to have some
+        predefined API. The problem is that all of those API differ.
+      </p>
+<p>
+        To be more usable Boost.DLL does not force API. It's up to user to design
+        suitable API.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.design_rationale.performance_and_memory_allocations"></a><a class="link" href="design_rationale.html#boost_dll.design_rationale.performance_and_memory_allocations" title="Performance and memory allocations">Performance
+      and memory allocations</a>
+</h3></div></div></div>
+<p>
+        Some methods of the library use <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span></code>
+        or return <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span></code>. This may look non optimal at first,
+        but there is a reason to do so.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span></code> allows to transparently use Unicode
+        strings with non-Unicode ones. Using it provides a more user-friendly interface
+        for the library while the performance overhead is not noticeable because
+        of a slow file system operations that occur in <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span></code>
+        accepting methods.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span></code> variables are returned by the <code class="computeroutput"><span class="identifier">library_info</span></code> methods. Querying a library
+        is a slow procedure anyway: it randomly reads parts of file from disc and
+        executes algorithms that sometimes have linear complexity from sections or
+        exported symbols count. Returning <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span></code> simplifies implementation and does not
+        require from user to keep an instance of <code class="computeroutput"><span class="identifier">library_info</span></code>
+        after query. Having not a very noticeable performance overhead in rarely
+        called methods seems reasonable.
+      </p>
+<p>
+        Other methods are assumed to be hot paths and optimized as much as possible.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.design_rationale.self_loading"></a><a class="link" href="design_rationale.html#boost_dll.design_rationale.self_loading" title="Self loading">Self loading</a>
+</h3></div></div></div>
+<p>
+        There is a good big reason to make self loading via <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">(</span><span class="identifier">program_location</span><span class="special">())</span></code> instead of having some <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">load_self</span><span class="special">()</span></code> member method. That reason is the requirement
+        to have an ability to call <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">(</span><span class="identifier">this_line_location</span><span class="special">())</span></code> from any place, even from the main binary.
+        We need that to link plugins into the binary and to create a transparent
+        reference counting mechanism.
+      </p>
+<p>
+        Making multiple interfaces that do exactly the same things looks unreasonable
+        to me, that's why <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">(</span><span class="identifier">program_location</span><span class="special">())</span></code> and <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">(</span><span class="identifier">this_line_location</span><span class="special">())</span></code> are used without <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">load_self</span><span class="special">()</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_dll.design_rationale.aliases_vs_mangling"></a><a class="link" href="design_rationale.html#boost_dll.design_rationale.aliases_vs_mangling" title="Aliases vs Mangling">Aliases
+      vs Mangling</a>
+</h3></div></div></div>
+<p>
+        Mangling depends on source code, for example <code class="computeroutput"><span class="string">"boost::foo"</span></code>
+        could be <code class="computeroutput"><span class="identifier">foo</span></code> function or
+        <code class="computeroutput"><span class="identifier">foo</span></code> variable. Depending on
+        that knowledge it must be mangled in different ways. More problems arise
+        if <code class="computeroutput"><span class="identifier">foo</span></code> is an overloaded function
+        that accepts parameters: <code class="computeroutput"><span class="string">"boost::foo(variant&lt;int,
+        short&gt;)"</span></code>. In that case full name of parameter must
+        be specified, which could be <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">variant</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span>
+        <span class="keyword">short</span><span class="special">&gt;</span></code>
+        or <code class="computeroutput"><span class="identifier">variant</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">short</span><span class="special">,</span> <span class="identifier">void_</span><span class="special">,</span> <span class="identifier">void_</span><span class="special">&gt;</span></code> ...
+      </p>
+<p>
+        There was an idea to allow user to forward declare function and generate
+        mangled name from it:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="identifier">variant</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">short</span><span class="special">&gt;);</span> <span class="special">}</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">mangled_name</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">dll</span><span class="special">::</span><span class="identifier">magic_mangle</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">foo</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        But that idea has epic failed because of linker problems and no reliable
+        way to get mangled symbol name from compiler internals at compile time.
+      </p>
+<p>
+        That's why aliases were considered a lesser evil:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">BOOST_DLL_ALIAS</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">foo</span><span class="special">,</span> <span class="identifier">foo_variant</span><span class="special">)</span> <span class="comment">// in plugin</span>
+<span class="string">"foo_variant"</span> <span class="comment">// in plugin importer</span>
+</pre>
+<p>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015 Antony Polukhin<br>Copyright &#169; 2016 Antony Polukhin, Klemens Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="f_a_q_.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="dependencies.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

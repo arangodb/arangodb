@@ -1,0 +1,371 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>thread_pool</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="system_timer.html" title="system_timer">
+<link rel="next" href="thread_pool/add_service.html" title="thread_pool::add_service">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="system_timer.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="thread_pool/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.thread_pool"></a><a class="link" href="thread_pool.html" title="thread_pool">thread_pool</a>
+</h3></div></div></div>
+<p>
+        A simple fixed-size thread pool.
+      </p>
+<pre class="programlisting">class thread_pool :
+  public execution_context
+</pre>
+<h5>
+<a name="boost_asio.reference.thread_pool.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.types"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool__executor_type.html" title="thread_pool::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Executor used to submit functions to a thread pool.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/fork_event.html" title="thread_pool::fork_event"><span class="bold"><strong>fork_event</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Fork-related event notifications.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.thread_pool.h1"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.member_functions"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/get_executor.html" title="thread_pool::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Obtains the executor associated with the pool.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/join.html" title="thread_pool::join"><span class="bold"><strong>join</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Joins the threads.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/notify_fork.html" title="thread_pool::notify_fork"><span class="bold"><strong>notify_fork</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Notify the execution_context of a fork-related event.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/stop.html" title="thread_pool::stop"><span class="bold"><strong>stop</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Stops the threads.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/thread_pool.html" title="thread_pool::thread_pool"><span class="bold"><strong>thread_pool</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructs a pool with an automatically determined number of threads.
+                </p>
+                <p>
+                  Constructs a pool with a specified number of threads.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/_thread_pool.html" title="thread_pool::~thread_pool"><span class="bold"><strong>~thread_pool</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.thread_pool.h2"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.protected_member_functions"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/destroy.html" title="thread_pool::destroy"><span class="bold"><strong>destroy</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destroys all services in the context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/shutdown.html" title="thread_pool::shutdown"><span class="bold"><strong>shutdown</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Shuts down all services in the context.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="boost_asio.reference.thread_pool.h3"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.friends"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/add_service.html" title="thread_pool::add_service"><span class="bold"><strong>add_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  (Deprecated: Use make_service().) Add a service object to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/has_service.html" title="thread_pool::has_service"><span class="bold"><strong>has_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Determine if an execution_context contains a specified service
+                  type.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/make_service.html" title="thread_pool::make_service"><span class="bold"><strong>make_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Creates a service object and adds it to the execution_context.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="thread_pool/use_service.html" title="thread_pool::use_service"><span class="bold"><strong>use_service</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Obtain the service object corresponding to the given type.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        The thread pool class is an execution context where functions are permitted
+        to run on one of a fixed number of threads.
+      </p>
+<h5>
+<a name="boost_asio.reference.thread_pool.h4"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.submitting_tasks_to_the_pool"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.submitting_tasks_to_the_pool">Submitting
+        tasks to the pool</a>
+      </h5>
+<p>
+        To submit functions to the <a class="link" href="io_context.html" title="io_context"><code class="computeroutput">io_context</code></a>,
+        use the <a class="link" href="dispatch.html" title="dispatch"><code class="computeroutput">dispatch</code></a>
+        , <a class="link" href="post.html" title="post"><code class="computeroutput">post</code></a> or
+        <a class="link" href="defer.html" title="defer"><code class="computeroutput">defer</code></a> free
+        functions.
+      </p>
+<p>
+        For example:
+      </p>
+<pre class="programlisting">void my_task()
+{
+  ...
+}
+
+...
+
+// Launch the pool with four threads.
+boost::asio::thread_pool pool(4);
+
+// Submit a function to the pool.
+boost::asio::post(pool, my_task);
+
+// Submit a lambda object to the pool.
+boost::asio::post(pool,
+    []()
+    {
+      ...
+    });
+
+// Wait for all tasks in the pool to complete.
+pool.join();
+</pre>
+<h5>
+<a name="boost_asio.reference.thread_pool.h5"></a>
+        <span class="phrase"><a name="boost_asio.reference.thread_pool.requirements"></a></span><a class="link" href="thread_pool.html#boost_asio.reference.thread_pool.requirements">Requirements</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Header: </em></span><code class="literal">boost/asio/thread_pool.hpp</code>
+      </p>
+<p>
+        <span class="emphasis"><em>Convenience header: </em></span><code class="literal">boost/asio.hpp</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="system_timer.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="thread_pool/add_service.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

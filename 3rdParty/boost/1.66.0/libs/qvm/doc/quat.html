@@ -1,0 +1,73 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>quat</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>quat</h3>
+</div>
+<div class="RenoIncludeDIV"><div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_quat_hpp.html">boost/qvm/quat.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        <span class="RenoIncludeSPAN">template &lt;class T&gt;
+        struct <span class="RenoLink">quat</span>
+        {
+            T a[4];
+        
+            template &lt;class R&gt;
+            operator R() const
+            {
+                R r;
+                <span class="RenoLink"><a href="assign_quat_quat_.html">assign</a></span>(r,*this);
+                return r;
+            }
+        };
+        
+        template &lt;class Quaternion&gt;
+        struct <span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>;
+        
+        template &lt;class T&gt;
+        struct <span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span>&lt; <span class="RenoLink">quat</span>&lt;T&gt; &gt;
+        {
+            typedef T scalar_type;
+        
+            template &lt;int I&gt; static scalar_type <span class="RenoLink"><a href="quat_traits_Q_read_element.html">read_element</a></span>( <span class="RenoLink">quat</span>&lt;T&gt; const &amp; x ) { return x.a[I]; }
+            template &lt;int I&gt; static scalar_type &amp; <span class="RenoLink"><a href="quat_traits_Q_write_element.html">write_element</a></span>( <span class="RenoLink">quat</span>&lt;T&gt; &amp; x ) { return x.a[I]; }
+        };</span></span>
+    }
+}</pre>
+</div></div><p>This is a simple quaternion type. It converts to any other quaternion type.</p>
+<p>The partial specialization of the <i><span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span></i> template makes the <i><span class="RenoLink">quat</span></i> template compatible with the generic operations defined by Boost QVM.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_quat_hpp.html">boost/qvm/quat.hpp</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

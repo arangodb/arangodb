@@ -1,0 +1,188 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Daytime.6 - An asynchronous UDP daytime server</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../tutorial.html" title="Tutorial">
+<link rel="prev" href="tutdaytime5/src.html" title="Source listing for Daytime.5">
+<link rel="next" href="tutdaytime6/src.html" title="Source listing for Daytime.6">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutdaytime5/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutdaytime6/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.tutorial.tutdaytime6"></a><a class="link" href="tutdaytime6.html" title="Daytime.6 - An asynchronous UDP daytime server">Daytime.6 - An asynchronous
+      UDP daytime server</a>
+</h3></div></div></div>
+<h5>
+<a name="boost_asio.tutorial.tutdaytime6.h0"></a>
+        <span class="phrase"><a name="boost_asio.tutorial.tutdaytime6.the_main___function"></a></span><a class="link" href="tutdaytime6.html#boost_asio.tutorial.tutdaytime6.the_main___function">The
+        main() function</a>
+      </h5>
+<pre class="programlisting">int main()
+{
+  try
+  {
+</pre>
+<p>
+        Create a server object to accept incoming client requests, and run the boost::asio::io_service
+        object.
+      </p>
+<pre class="programlisting">    boost::asio::io_context io_context;
+    udp_server server(io_context);
+    io_context.run();
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
+
+  return 0;
+}
+</pre>
+<h5>
+<a name="boost_asio.tutorial.tutdaytime6.h1"></a>
+        <span class="phrase"><a name="boost_asio.tutorial.tutdaytime6.the_udp_server_class"></a></span><a class="link" href="tutdaytime6.html#boost_asio.tutorial.tutdaytime6.the_udp_server_class">The udp_server
+        class</a>
+      </h5>
+<pre class="programlisting">class udp_server
+{
+public:
+</pre>
+<p>
+        The constructor initialises a socket to listen on UDP port 13.
+      </p>
+<pre class="programlisting">  udp_server(boost::asio::io_context&amp; io_context)
+    : socket_(io_context, udp::endpoint(udp::v4(), 13))
+  {
+    start_receive();
+  }
+
+private:
+  void start_receive()
+  {
+</pre>
+<p>
+        The function <a class="link" href="../reference/basic_datagram_socket/async_receive_from.html" title="basic_datagram_socket::async_receive_from">ip::udp::socket::async_receive_from()</a>
+        will cause the application to listen in the background for a new request.
+        When such a request is received, the boost::asio::io_service object will
+        invoke the <code class="computeroutput">handle_receive()</code> function with two arguments: a value
+        of type boost::system::error_code indicating whether the operation succeeded
+        or failed, and a <code class="computeroutput">size_t</code> value <code class="computeroutput">bytes_transferred</code>
+        specifying the number of bytes received.
+      </p>
+<pre class="programlisting">    socket_.async_receive_from(
+        boost::asio::buffer(recv_buffer_), remote_endpoint_,
+        boost::bind(&amp;udp_server::handle_receive, this,
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred));
+  }
+</pre>
+<p>
+        The function <code class="computeroutput">handle_receive()</code> will service the client request.
+      </p>
+<pre class="programlisting">  void handle_receive(const boost::system::error_code&amp; error,
+      std::size_t /*bytes_transferred*/)
+  {
+</pre>
+<p>
+        The <code class="computeroutput">error</code> parameter contains the result of the asynchronous
+        operation. Since we only provide the 1-byte <code class="computeroutput">recv_buffer_</code> to
+        contain the client's request, the boost::asio::io_service object would return
+        an error if the client sent anything larger. We can ignore such an error
+        if it comes up.
+      </p>
+<pre class="programlisting">    if (!error || error == boost::asio::error::message_size)
+    {
+</pre>
+<p>
+        Determine what we are going to send.
+      </p>
+<pre class="programlisting">      boost::shared_ptr&lt;std::string&gt; message(
+          new std::string(make_daytime_string()));
+</pre>
+<p>
+        We now call <a class="link" href="../reference/basic_datagram_socket/async_send_to.html" title="basic_datagram_socket::async_send_to">ip::udp::socket::async_send_to()</a>
+        to serve the data to the client.
+      </p>
+<pre class="programlisting">      socket_.async_send_to(boost::asio::buffer(*message), remote_endpoint_,
+          boost::bind(&amp;udp_server::handle_send, this, message,
+            boost::asio::placeholders::error,
+            boost::asio::placeholders::bytes_transferred));
+</pre>
+<p>
+        When initiating the asynchronous operation, and if using boost::bind(), you
+        must specify only the arguments that match the handler's parameter list.
+        In this program, both of the argument placeholders (boost::asio::placeholders::error
+        and boost::asio::placeholders::bytes_transferred) could potentially have
+        been removed.
+      </p>
+<p>
+        Start listening for the next client request.
+      </p>
+<pre class="programlisting">      start_receive();
+</pre>
+<p>
+        Any further actions for this client request are now the responsibility of
+        <code class="computeroutput">handle_send()</code>.
+      </p>
+<pre class="programlisting">    }
+  }
+</pre>
+<p>
+        The function <code class="computeroutput">handle_send()</code> is invoked after the service request
+        has been completed.
+      </p>
+<pre class="programlisting">  void handle_send(boost::shared_ptr&lt;std::string&gt; /*message*/,
+      const boost::system::error_code&amp; /*error*/,
+      std::size_t /*bytes_transferred*/)
+  {
+  }
+
+  udp::socket socket_;
+  udp::endpoint remote_endpoint_;
+  boost::array&lt;char, 1&gt; recv_buffer_;
+};
+</pre>
+<p>
+        See the <a class="link" href="tutdaytime6/src.html" title="Source listing for Daytime.6">full source listing</a>
+      </p>
+<p>
+        Return to the <a class="link" href="../tutorial.html" title="Tutorial">tutorial index</a>
+      </p>
+<p>
+        Previous: <a class="link" href="tutdaytime5.html" title="Daytime.5 - A synchronous UDP daytime server">Daytime.5 - A synchronous
+        UDP daytime server</a>
+      </p>
+<p>
+        Next: <a class="link" href="tutdaytime7.html" title="Daytime.7 - A combined TCP/UDP asynchronous server">Daytime.7 - A combined
+        TCP/UDP asynchronous server</a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutdaytime5/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutdaytime6/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

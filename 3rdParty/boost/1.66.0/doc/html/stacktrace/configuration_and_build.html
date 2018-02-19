@@ -1,0 +1,452 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Configuration and Build</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../stacktrace.html" title="Chapter&#160;37.&#160;Boost.Stacktrace 1.0">
+<link rel="prev" href="getting_started.html" title="Getting Started">
+<link rel="next" href="acknowledgements.html" title="Acknowledgements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="getting_started.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stacktrace.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="stacktrace.configuration_and_build"></a><a class="link" href="configuration_and_build.html" title="Configuration and Build">Configuration and Build</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="configuration_and_build.html#stacktrace.configuration_and_build.mingw_and_mingw_w64_specific_not">MinGW
+      and MinGW-w64 specific notes</a></span></dt></dl></div>
+<p>
+      By default Boost.Stacktrace is a header-only library, but you may change that
+      and use the following macros to improve build times or to be able to tune library
+      without recompiling your project:
+    </p>
+<div class="table">
+<a name="stacktrace.configuration_and_build.linkmacro"></a><p class="title"><b>Table&#160;37.1.&#160;Link macros</b></p>
+<div class="table-contents"><table class="table" summary="Link macros">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Macro name
+              </p>
+            </th>
+<th>
+              <p>
+                Effect
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_LINK</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Disable header-only build and require linking with shared or static
+                library that contains the tracing implementation. If <span class="bold"><strong>BOOST_ALL_DYN_LINK</strong></span>
+                is defined, then link with shared library.
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_DYN_LINK</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Disable header-only build and require linking with shared library
+                that contains tracing implementation.
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      In header only mode library could be tuned by macro. If one of the link macro
+      from above is defined, you have to manually link with one of the libraries:
+    </p>
+<div class="table">
+<a name="stacktrace.configuration_and_build.libconfig"></a><p class="title"><b>Table&#160;37.2.&#160;Config</b></p>
+<div class="table-contents"><table class="table" summary="Config">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Macro name or default
+              </p>
+            </th>
+<th>
+              <p>
+                Library
+              </p>
+            </th>
+<th>
+              <p>
+                Effect
+              </p>
+            </th>
+<th>
+              <p>
+                Platforms
+              </p>
+            </th>
+<th>
+              <p>
+                Uses debug information <a href="#ftn.stacktrace.configuration_and_build.f0" class="footnote" name="stacktrace.configuration_and_build.f0"><sup class="footnote">[a]</sup></a>
+              </p>
+            </th>
+<th>
+              <p>
+                Uses dynamic exports information <a href="#ftn.stacktrace.configuration_and_build.f1" class="footnote" name="stacktrace.configuration_and_build.f1"><sup class="footnote">[b]</sup></a>
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                <span class="emphasis"><em>default for MSVC, Intel on Windows, MinGW-w64</em></span>
+                / <span class="bold"><strong>BOOST_STACKTRACE_USE_WINDBG</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_windbg</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Uses COM to show debug info. May require linking with <span class="bold"><strong>ole32</strong></span>
+                and <span class="bold"><strong>dbgeng</strong></span>.
+              </p>
+            </td>
+<td>
+              <p>
+                MSVC, MinGW-w64, Intel on Windows
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+<td>
+              <p>
+                no
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="emphasis"><em>default for other platforms</em></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_basic</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Uses compiler intrinsics to collect stacktrace and if possible <code class="computeroutput"><span class="special">::</span><span class="identifier">dladdr</span></code>
+                to show information about the symbol. Requires linking with <span class="bold"><strong>libdl</strong></span> library on POSIX platforms.
+              </p>
+            </td>
+<td>
+              <p>
+                Any compiler on POSIX or MinGW
+              </p>
+            </td>
+<td>
+              <p>
+                no
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_USE_WINDBG_CACHED</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_windbg_cached</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Uses COM to show debug info and caches COM instances in TLS for better
+                performance. Useful only for cases when traces are gathered very
+                often. <a href="#ftn.stacktrace.configuration_and_build.f2" class="footnote" name="stacktrace.configuration_and_build.f2"><sup class="footnote">[c]</sup></a> May require linking with <span class="bold"><strong>ole32</strong></span>
+                and <span class="bold"><strong>dbgeng</strong></span>.
+              </p>
+            </td>
+<td>
+              <p>
+                MSVC, Intel on Windows
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+<td>
+              <p>
+                no
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_USE_BACKTRACE</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_backtrace</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Requires linking with <span class="bold"><strong>libdl</strong></span> on POSIX
+                and <span class="bold"><strong>libbacktrace</strong></span> libraries. <span class="bold"><strong>libbacktrace</strong></span> is probably already installed
+                in your system, or built into your compiler.
+              </p>
+              <p>
+                Otherwise (if you are a <span class="bold"><strong>MinGW</strong></span>/<span class="bold"><strong>MinGW-w64</strong></span> user for example) it can be downloaded
+                <a href="https://github.com/ianlancetaylor/libbacktrace" target="_top">from
+                here</a> or <a href="https://github.com/gcc-mirror/gcc/tree/master/libbacktrace" target="_top">from
+                here</a>.
+              </p>
+            </td>
+<td>
+              <p>
+                Any compiler on POSIX, or MinGW, or MinGW-w64
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_USE_ADDR2LINE</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_addr2line</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Use <span class="bold"><strong>addr2line</strong></span> program to retrieve
+                stacktrace. Requires linking with <span class="bold"><strong>libdl</strong></span>
+                library and <code class="computeroutput"><span class="special">::</span><span class="identifier">fork</span></code>
+                system call. Macro <span class="bold"><strong>BOOST_STACKTRACE_ADDR2LINE_LOCATION</strong></span>
+                must be defined to the absolute path to the addr2line executable
+                if it is not located in /usr/bin/addr2line.
+              </p>
+            </td>
+<td>
+              <p>
+                Any compiler on POSIX
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+<td>
+              <p>
+                yes
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                <span class="bold"><strong>BOOST_STACKTRACE_USE_NOOP</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                <span class="bold"><strong>boost_stacktrace_noop</strong></span>
+              </p>
+            </td>
+<td>
+              <p>
+                Use this if you wish to disable backtracing. <code class="computeroutput"><span class="identifier">stacktrace</span><span class="special">::</span><span class="identifier">size</span><span class="special">()</span></code> with that macro always returns
+                0.
+              </p>
+            </td>
+<td>
+              <p>
+                All
+              </p>
+            </td>
+<td>
+              <p>
+                no
+              </p>
+            </td>
+<td>
+              <p>
+                no
+              </p>
+            </td>
+</tr>
+</tbody>
+<tbody class="footnotes"><tr><td colspan="6">
+<div id="ftn.stacktrace.configuration_and_build.f0" class="footnote"><p><a href="#stacktrace.configuration_and_build.f0" class="para"><sup class="para">[a] </sup></a>
+                  This will provide more readable backtraces with <span class="bold"><strong>source
+                  code locations</strong></span> if the binary is built with debug information.
+                </p></div>
+<div id="ftn.stacktrace.configuration_and_build.f1" class="footnote"><p><a href="#stacktrace.configuration_and_build.f1" class="para"><sup class="para">[b] </sup></a>
+                  This will provide readable function names in backtrace for functions
+                  that are exported by the binary. Compiling with <code class="computeroutput"><span class="special">-</span><span class="identifier">rdynamic</span></code> flag, without <code class="computeroutput"><span class="special">-</span><span class="identifier">fisibility</span><span class="special">=</span><span class="identifier">hidden</span></code>
+                  or marking functions as exported produce a better stacktraces.
+                </p></div>
+<div id="ftn.stacktrace.configuration_and_build.f2" class="footnote"><p><a href="#stacktrace.configuration_and_build.f2" class="para"><sup class="para">[c] </sup></a>
+                  This may affect other components of your program that use COM,
+                  because this mode calls the <code class="computeroutput"><span class="identifier">CoInitializeEx</span><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="identifier">COINIT_MULTITHREADED</span><span class="special">)</span></code> on first use and does not call
+                  <code class="computeroutput"><span class="special">::</span><span class="identifier">CoUninitialize</span><span class="special">();</span></code> until the current thread is
+                  destroyed.
+                </p></div>
+</td></tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      <span class="bold"><strong>Examples:</strong></span>
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          if you wish to switch to more powerful implementation on Clang/MinGW and
+          <span class="bold"><strong>BOOST_STACKTRACE_LINK</strong></span> is defined, you
+          just need link with "<span class="bold"><strong>-lboost_stacktrace_backtrace
+          -ldl -lbacktrace</strong></span>" or "<span class="bold"><strong>-lboost_stacktrace_addr2line
+          -ldl</strong></span>"
+        </li>
+<li class="listitem">
+          if you wish to disable backtracing and you use the library in header only
+          mode, you just need to define <span class="bold"><strong>BOOST_STACKTRACE_USE_NOOP</strong></span>
+          for the whole project
+        </li>
+<li class="listitem">
+          if you wish to disable backtracing and <span class="bold"><strong>BOOST_STACKTRACE_LINK</strong></span>
+          is defined, you just need link with <span class="bold"><strong>-lboost_stacktrace_noop</strong></span>
+        </li>
+</ul></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="stacktrace.configuration_and_build.mingw_and_mingw_w64_specific_not"></a><a class="link" href="configuration_and_build.html#stacktrace.configuration_and_build.mingw_and_mingw_w64_specific_not" title="MinGW and MinGW-w64 specific notes">MinGW
+      and MinGW-w64 specific notes</a>
+</h3></div></div></div>
+<p>
+        MinGW-w64 and MinGW (without -w64) users have to install libbacktrace for
+        getting better stacktraces. Follow the instruction:
+      </p>
+<p>
+        Let's assume that you've installed MinGW into C:\MinGW and downloaded <a href="https://github.com/ianlancetaylor/libbacktrace" target="_top">libbacktrace sources</a>
+        into C:\libbacktrace-master
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Configure &amp; build libbacktrace from console:
+            <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                  C:\MinGW\msys\1.0\bin\sh.exe
+                </li>
+<li class="listitem">
+                  cd /c/libbacktrace-master
+                </li>
+<li class="listitem">
+                  ./configure CC=/c/MinGW/bin/gcc.exe CXX=/c/MinGW/bin/g++.exe
+                </li>
+<li class="listitem">
+                  make
+                </li>
+<li class="listitem">
+                  ./libtool --mode=install /usr/bin/install -c libbacktrace.la '/c/libbacktrace-master'
+                </li>
+</ul></div>
+          </li>
+<li class="listitem">
+            Add info to the project-config.jam in the Boost folder:
+            <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; "><li class="listitem">
+                  using gcc : 6 : "C:\MinGW\bin\g++.exe" : &lt;compileflags&gt;-I"C:\libbacktrace-master\"
+                  &lt;linkflags&gt;-L"C:\libbacktrace-master\" ;
+                </li></ul></div>
+          </li>
+<li class="listitem">
+            Now you can use a header only version by defining <span class="bold"><strong>BOOST_STACKTRACE_USE_BACKTRACE</strong></span>
+            for your project or build the stacktrace library from Boost folder:
+            <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; "><li class="listitem">
+                  b2.exe toolset=gcc-6 --with-stacktrace
+                </li></ul></div>
+          </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="getting_started.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../stacktrace.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

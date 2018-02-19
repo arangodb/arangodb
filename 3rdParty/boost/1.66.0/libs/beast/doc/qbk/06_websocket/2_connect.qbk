@@ -1,0 +1,35 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Establishing Connections]
+
+Connections are established by invoking functions directly on the next layer
+object. For example, to make an outgoing connection using a standard TCP/IP
+socket:
+
+[ws_snippet_6]
+
+Similarly, to accept an incoming connection using a standard TCP/IP
+socket, pass the next layer object to the acceptor:
+
+[ws_snippet_7]
+
+When using SSL, which itself wraps a next layer object that is usually a
+TCP/IP socket, multiple calls to retrieve the next layer may be required.
+In this example, the websocket stream wraps the SSL stream which wraps
+the TCP/IP socket:
+
+[wss_snippet_3]
+
+[note
+    Examples use synchronous interfaces for clarity of exposition;
+    signatures for asynchronous operations are also provided.
+]
+
+[endsect]

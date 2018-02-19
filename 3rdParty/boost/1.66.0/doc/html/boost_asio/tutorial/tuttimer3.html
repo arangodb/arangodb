@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Timer.3 - Binding arguments to a handler</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../tutorial.html" title="Tutorial">
+<link rel="prev" href="tuttimer2/src.html" title="Source listing for Timer.2">
+<link rel="next" href="tuttimer3/src.html" title="Source listing for Timer.3">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuttimer2/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuttimer3/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.tutorial.tuttimer3"></a><a class="link" href="tuttimer3.html" title="Timer.3 - Binding arguments to a handler">Timer.3 - Binding arguments
+      to a handler</a>
+</h3></div></div></div>
+<p>
+        In this tutorial we will modify the program from tutorial Timer.2 so that
+        the timer fires once a second. This will show how to pass additional parameters
+        to your handler function.
+      </p>
+<pre class="programlisting">#include &lt;iostream&gt;
+#include &lt;boost/asio.hpp&gt;
+#include &lt;boost/bind.hpp&gt;
+#include &lt;boost/date_time/posix_time/posix_time.hpp&gt;
+</pre>
+<p>
+        To implement a repeating timer using asio you need to change the timer's
+        expiry time in your callback function, and to then start a new asynchronous
+        wait. Obviously this means that the callback function will need to be able
+        to access the timer object. To this end we add two new parameters to the
+        <code class="computeroutput">print</code> function:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            A pointer to a timer object.
+          </li>
+<li class="listitem">
+            A counter so that we can stop the program when the timer fires for the
+            sixth time.
+          </li>
+</ul></div>
+<pre class="programlisting">void print(const boost::system::error_code&amp; /*e*/,
+    boost::asio::deadline_timer* t, int* count)
+{
+</pre>
+<p>
+        As mentioned above, this tutorial program uses a counter to stop running
+        when the timer fires for the sixth time. However you will observe that there
+        is no explicit call to ask the io_service to stop. Recall that in tutorial
+        Timer.2 we learnt that the <a class="link" href="../reference/io_context/run.html" title="io_context::run">io_service::run()</a>
+        function completes when there is no more "work" to do. By not starting
+        a new asynchronous wait on the timer when <code class="computeroutput">count</code> reaches 5, the
+        io_service will run out of work and stop running.
+      </p>
+<pre class="programlisting">  if (*count &lt; 5)
+  {
+    std::cout &lt;&lt; *count &lt;&lt; std::endl;
+    ++(*count);
+</pre>
+<p>
+        Next we move the expiry time for the timer along by one second from the previous
+        expiry time. By calculating the new expiry time relative to the old, we can
+        ensure that the timer does not drift away from the whole-second mark due
+        to any delays in processing the handler.
+      </p>
+<pre class="programlisting">    t-&gt;expires_at(t-&gt;expires_at() + boost::posix_time::seconds(1));
+</pre>
+<p>
+        Then we start a new asynchronous wait on the timer. As you can see, the boost::bind()
+        function is used to associate the extra parameters with your callback handler.
+        The <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>
+        function expects a handler function (or function object) with the signature
+        <code class="computeroutput">void(const boost::system::error_code&amp;)</code>. Binding the additional
+        parameters converts your <code class="computeroutput">print</code> function into a function object
+        that matches the signature correctly.
+      </p>
+<p>
+        See the <a href="http://www.boost.org/libs/bind/bind.html" target="_top">Boost.Bind
+        documentation</a> for more information on how to use boost::bind().
+      </p>
+<p>
+        In this example, the boost::asio::placeholders::error argument to boost::bind()
+        is a named placeholder for the error object passed to the handler. When initiating
+        the asynchronous operation, and if using boost::bind(), you must specify
+        only the arguments that match the handler's parameter list. In tutorial Timer.4
+        you will see that this placeholder may be elided if the parameter is not
+        needed by the callback handler.
+      </p>
+<p>
+        A new <code class="computeroutput">count</code> variable is added so that we can stop the program
+        when the timer fires for the sixth time.
+      </p>
+<p>
+        As in Step 4, when making the call to <a class="link" href="../reference/basic_deadline_timer/async_wait.html" title="basic_deadline_timer::async_wait">deadline_timer::async_wait()</a>
+        from <code class="computeroutput">main</code> we bind the additional parameters needed for the
+        <code class="computeroutput">print</code> function.
+      </p>
+<p>
+        Finally, just to prove that the <code class="computeroutput">count</code> variable was being used
+        in the <code class="computeroutput">print</code> handler function, we will print out its new value.
+      </p>
+<p>
+        See the <a class="link" href="tuttimer3/src.html" title="Source listing for Timer.3">full source listing</a>
+      </p>
+<p>
+        Return to the <a class="link" href="../tutorial.html" title="Tutorial">tutorial index</a>
+      </p>
+<p>
+        Previous: <a class="link" href="tuttimer2.html" title="Timer.2 - Using a timer asynchronously">Timer.2 - Using a
+        timer asynchronously</a>
+      </p>
+<p>
+        Next: <a class="link" href="tuttimer4.html" title="Timer.4 - Using a member function as a handler">Timer.4 - Using a member
+        function as a handler</a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuttimer2/src.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuttimer3/src.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

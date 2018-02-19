@@ -1,0 +1,76 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#bind]
+# Bind, <boost/mp11/bind.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## mp_arg<I>
+
+    template<std::size_t I> struct mp_arg;
+
+`mp_arg<I>` is a quoted metafunction whose nested template `fn<T...>` returns the `I`-th zero-based element of `T...`.
+
+## _1, ..., _9
+
+    using _1 = mp_arg<0>;
+    using _2 = mp_arg<1>;
+    using _3 = mp_arg<2>;
+    using _4 = mp_arg<3>;
+    using _5 = mp_arg<4>;
+    using _6 = mp_arg<5>;
+    using _7 = mp_arg<6>;
+    using _8 = mp_arg<7>;
+    using _9 = mp_arg<8>;
+
+`_1` to `_9` are placeholder types, the equivalent to the placeholders of `boost::bind`.
+
+## mp_bind<F, T...>
+
+    template<template<class...> class F, class... T> struct mp_bind;
+
+`mp_bind<F, T...>` is a quoted metafunction that implements the type-based equivalent of `boost::bind`. Its nested
+template `fn<U...>` returns `F<V...>`, where `V...` is `T...` with the placeholders replaced by the corresponding element
+of `U...` and the `mp_bind` expressions replaced with their corresponding evaluations against `U...`.
+
+For example, `mp_bind<F, int, _2, mp_bind<G, _1>>::fn<float, void>` is `F<int, void, G<float>>`.
+
+## mp_bind_q<Q, T...>
+
+    template<class Q, class... T> using mp_bind_q = mp_bind<Q::template fn, T...>;
+
+As `mp_bind`, but takes a quoted metafunction.
+
+## mp_bind_front<F, T...>
+
+    template<template<class...> class F, class... T> struct mp_bind_front;
+
+`mp_bind_front<F, T...>` binds the leftmost arguments of `F` to `T...`. Its nested template `fn<U...>` returns `F<T..., U...>`.
+
+## mp_bind_front_q<Q, T...>
+
+    template<class Q, class... T> using mp_bind_front_q =
+        mp_bind_front<Q::template fn, T...>;
+
+As `mp_bind_front`, but takes a quoted metafunction.
+
+## mp_bind_back<F, T...>
+
+    template<template<class...> class F, class... T> struct mp_bind_back;
+
+`mp_bind_back<F, T...>` binds the rightmost arguments of `F` to `T...`. Its nested template `fn<U...>` returns `F<U..., T...>`.
+
+## mp_bind_back_q<Q, T...>
+
+    template<class Q, class... T> using mp_bind_back_q =
+        mp_bind_back<Q::template fn, T...>;
+
+As `mp_bind_back`, but takes a quoted metafunction.

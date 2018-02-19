@@ -1,0 +1,258 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template imported_class</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../../boost_dll/reference.html#header.boost.dll.import_class_hpp" title="Header &lt;boost/dll/import_class.hpp&gt;">
+<link rel="prev" href="../import_alias.html" title="Function import_alias">
+<link rel="next" href="import_class_idp28282208.html" title="Function import_class">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../import_alias.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.import_class_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="import_class_idp28282208.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.dll.experimental.imported_class"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template imported_class</span></h2>
+<p>boost::dll::experimental::imported_class</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_dll/reference.html#header.boost.dll.import_class_hpp" title="Header &lt;boost/dll/import_class.hpp&gt;">boost/dll/import_class.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a name="boost.dll.experimental.imported_class.base_t"></a><span class="identifier">base_t</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="imported_class.html#boost.dll.experimental.imported_classconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <a class="link" href="imported_class.html#idp28202400-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <a class="link" href="imported_class.html#idp28206016-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <a class="link" href="imported_class.html#idp28210320-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <a class="link" href="imported_class.html#idp28213936-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="imported_class.html#idp28273616-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="imported_class.html#idp28274176-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="imported_class.html#idp28275712-bb"><span class="identifier">imported_class</span></a><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span> <a class="link" href="imported_class.html#idp28277536-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+  <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span> <a class="link" href="imported_class.html#idp28279648-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="imported_class.html#idp28194000-bb">private member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28194576-bb"><span class="identifier">make_data</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28198064-bb"><span class="identifier">make_data</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="imported_class.html#idp28218240-bb">public static functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a class="link" href="imported_class.html#idp28218800-bb"><span class="identifier">make</span></a><span class="special">(</span><span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a class="link" href="imported_class.html#idp28222720-bb"><span class="identifier">make</span></a><span class="special">(</span><span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a class="link" href="imported_class.html#idp28227328-bb"><span class="identifier">make</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> 
+    <a class="link" href="imported_class.html#idp28231248-bb"><span class="identifier">make</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="imported_class.html#idp28236016-bb">public member functions</a></span>
+  <span class="identifier">T</span> <span class="special">*</span> <a class="link" href="imported_class.html#idp28236576-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="imported_class.html#idp28237680-bb"><span class="identifier">is_move_constructible</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="imported_class.html#idp28238784-bb"><span class="identifier">is_move_assignable</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="imported_class.html#idp28239888-bb"><span class="identifier">is_copy_constructible</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="imported_class.html#idp28240992-bb"><span class="identifier">is_copy_assignable</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a class="link" href="imported_class.html#idp28242096-bb"><span class="identifier">copy</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a class="link" href="imported_class.html#idp28244608-bb"><span class="identifier">move</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="imported_class.html#idp28246848-bb"><span class="identifier">copy_assign</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="imported_class.html#idp28250288-bb"><span class="identifier">move_assign</span></a><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="imported_class.html#idp28253296-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span> <span class="special">&amp;</span> <a class="link" href="imported_class.html#idp28254992-bb"><span class="identifier">get_type_info</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Signature<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28256096-bb"><span class="identifier">call</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Tin<span class="special">,</span> <span class="keyword">typename</span> Signature<span class="special">,</span> 
+           <span class="keyword">typename</span>  <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">unqalified_is_same</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">Tin</span><span class="special">&gt;&gt;</span> <span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28260880-bb"><span class="identifier">call</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Tin<span class="special">,</span> <span class="keyword">typename</span> T2<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28266896-bb"><span class="keyword">operator</span><span class="special">-&gt;*</span></a><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="imported_class.html#idp28270352-bb"><span class="identifier">import</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.13.8.3.3.3.4"></a><h2>Description</h2>
+<p>This class represents an imported class.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>It must be constructed via boost::dll::import_class(const smart_library&amp; lib, std::size_t, Args...)</p></td></tr>
+</table></div>
+<p>
+
+</p>
+<div class="refsect2">
+<a name="id-1.3.13.8.3.3.3.4.4"></a><h3>
+<a name="boost.dll.experimental.imported_classconstruct-copy-destruct"></a><code class="computeroutput">imported_class</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <a name="idp28202400-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <a name="idp28206016-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> size<span class="special">,</span> 
+                 <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <a name="idp28210320-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span> lib<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <a name="idp28213936-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> <span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span> lib<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> size<span class="special">,</span> 
+                 <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idp28273616-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idp28274176-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp28275712-bb"></a><span class="identifier">imported_class</span><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Move constructor. </li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span> <a name="idp28277536-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;</span> <a name="idp28279648-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Move assignmend. </li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.13.8.3.3.3.4.5"></a><h3>
+<a name="idp28194000-bb"></a><code class="computeroutput">imported_class</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28194576-bb"></a><span class="identifier">make_data</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28198064-bb"></a><span class="identifier">make_data</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> size<span class="special">,</span> 
+                        <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.13.8.3.3.3.4.6"></a><h3>
+<a name="idp28218240-bb"></a><code class="computeroutput">imported_class</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a name="idp28218800-bb"></a><span class="identifier">make</span><span class="special">(</span><span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span> lib<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> 
+  <a name="idp28222720-bb"></a><span class="identifier">make</span><span class="special">(</span><span class="identifier">smart_library</span> <span class="special">&amp;&amp;</span> lib<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> size<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a name="idp28227328-bb"></a><span class="identifier">make</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> 
+  <a name="idp28231248-bb"></a><span class="identifier">make</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">smart_library</span> <span class="special">&amp;</span> lib<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> size<span class="special">,</span> <span class="identifier">Args</span><span class="special">...</span> args<span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.13.8.3.3.3.4.7"></a><h3>
+<a name="idp28236016-bb"></a><code class="computeroutput">imported_class</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">T</span> <span class="special">*</span> <a name="idp28236576-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Returns a pointer to the underlying class. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp28237680-bb"></a><span class="identifier">is_move_constructible</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Check if the imported class is move-constructible. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp28238784-bb"></a><span class="identifier">is_move_assignable</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Check if the imported class is move-assignable. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp28239888-bb"></a><span class="identifier">is_copy_constructible</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Check if the imported class is copy-constructible. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp28240992-bb"></a><span class="identifier">is_copy_assignable</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Check if the imported class is copy-assignable. </li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a name="idp28242096-bb"></a><span class="identifier">copy</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Invoke the copy constructor. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Undefined behaviour if the imported object is not copy constructible. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <a name="idp28244608-bb"></a><span class="identifier">move</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Invoke the move constructor. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Undefined behaviour if the imported object is not move constructible. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp28246848-bb"></a><span class="identifier">copy_assign</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Invoke the copy assignment. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Undefined behaviour if the imported object is not copy assignable. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp28250288-bb"></a><span class="identifier">move_assign</span><span class="special">(</span><a class="link" href="imported_class.html" title="Class template imported_class">imported_class</a><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="special">&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>Invoke the move assignment. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Undefined behaviour if the imported object is not move assignable. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp28253296-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Check if the class is loaded. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span> <span class="special">&amp;</span> <a name="idp28254992-bb"></a><span class="identifier">get_type_info</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Get a const reference to the std::type_info. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Signature<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28256096-bb"></a><span class="identifier">call</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Call a member function. This returns a proxy to the function. The proxy mechanic mechanic is necessary, so the signaute can be passed.</p>
+<p><span class="bold"><strong>Example</strong></span> </p>
+<pre class="programlisting"><span class="identifier">im_class</span><span class="special">.</span><span class="identifier">call</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span><span class="special">)</span><span class="special">&gt;</span><span class="special">(</span><span class="string">"function_name"</span><span class="special">)</span><span class="special">(</span><span class="string">"MyString"</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Tin<span class="special">,</span> <span class="keyword">typename</span> Signature<span class="special">,</span> 
+         <span class="keyword">typename</span>  <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if</span><span class="special">&lt;</span><span class="identifier">detail</span><span class="special">::</span><span class="identifier">unqalified_is_same</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">,</span> <span class="identifier">Tin</span><span class="special">&gt;&gt;</span> <span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28260880-bb"></a><span class="identifier">call</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Call a qualified member function, i.e. const and or volatile.</p>
+<p><span class="bold"><strong>Example</strong></span> </p>
+<pre class="programlisting"><span class="identifier">im_class</span><span class="special">.</span><span class="identifier">call</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">type_alias</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span><span class="special">)</span><span class="special">&gt;</span><span class="special">(</span><span class="string">"function_name"</span><span class="special">)</span><span class="special">(</span><span class="string">"MyString"</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Tin<span class="special">,</span> <span class="keyword">typename</span> T2<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28266896-bb"></a><span class="keyword">operator</span><span class="special">-&gt;*</span><span class="special">(</span><span class="emphasis"><em><span class="identifier">unspecified</span></em></span> mn<span class="special">)</span><span class="special">;</span></pre>Overload of -&gt;* for an imported method. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp28270352-bb"></a><span class="identifier">import</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>Import a method of the class. </li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015 Antony Polukhin<br>Copyright &#169; 2016 Antony Polukhin, Klemens Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../import_alias.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../boost_dll/reference.html#header.boost.dll.import_class_hpp"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="import_class_idp28282208.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

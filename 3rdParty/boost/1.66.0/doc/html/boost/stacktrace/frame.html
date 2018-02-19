@@ -1,0 +1,276 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class frame</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../stacktrace/reference.html#header.boost.stacktrace.detail.frame_decl_hpp" title="Header &lt;boost/stacktrace/detail/frame_decl.hpp&gt;">
+<link rel="prev" href="operator__1_3_38_7_3_1_1_4.html" title="Function template operator==">
+<link rel="next" href="safe_dump_1_3_38_7_6_2_1_1.html" title="Function safe_dump_to">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="operator__1_3_38_7_3_1_1_4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../stacktrace/reference.html#header.boost.stacktrace.detail.frame_decl_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="safe_dump_1_3_38_7_6_2_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.stacktrace.frame"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class frame</span></h2>
+<p>boost::stacktrace::frame &#8212; Class that stores frame/function address and can get information about it at runtime. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../stacktrace/reference.html#header.boost.stacktrace.detail.frame_decl_hpp" title="Header &lt;boost/stacktrace/detail/frame_decl.hpp&gt;">boost/stacktrace/detail/frame_decl.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.stacktrace.frame.native_frame_ptr_t"></a><span class="identifier">native_frame_ptr_t</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="frame.html#boost.stacktrace.frameconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_4-bb"><span class="identifier">frame</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_5-bb"><span class="identifier">frame</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_7-bb"><span class="identifier">frame</span></a><span class="special">(</span><span class="identifier">native_frame_ptr_t</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">explicit</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_8-bb"><span class="identifier">frame</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_6-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3-bb">public member functions</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3_1-bb"><span class="identifier">name</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="identifier">native_frame_ptr_t</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3_2-bb"><span class="identifier">address</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3_3-bb"><span class="identifier">source_file</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3_4-bb"><span class="identifier">source_line</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a class="link" href="frame.html#id-1_3_38_7_4_2_1_1_3_5-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.38.7.3.4.4"></a><h2>Description</h2>
+<div class="refsect2">
+<a name="id-1.3.38.7.3.4.4.2"></a><h3>
+<a name="boost.stacktrace.frameconstruct-copy-destruct"></a><code class="computeroutput">frame</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_4_2_1_1_4-bb"></a><span class="identifier">frame</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Constructs frame that references NULL address. Calls to source_file() and source_line() will return empty string. Calls to source_line() will return 0. <p><span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_4_2_1_1_5-bb"></a><span class="identifier">frame</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Copy constructs frame. <p><span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_38_7_4_2_1_1_7-bb"></a><span class="identifier">frame</span><span class="special">(</span><span class="identifier">native_frame_ptr_t</span> addr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Constructs frame that references addr and could later generate information about that address using platform specific features. <p><span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">explicit</span> <a name="id-1_3_38_7_4_2_1_1_8-bb"></a><span class="identifier">frame</span><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span> function_addr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Constructs frame that references function_addr and could later generate information about that function using platform specific features. <p><span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">constexpr</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span> <a name="id-1_3_38_7_4_2_1_1_6-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="frame.html" title="Class frame">frame</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre>Copy assigns frame. <p><span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.38.7.3.4.4.3"></a><h3>
+<a name="id-1_3_38_7_4_2_1_1_3-bb"></a><code class="computeroutput">frame</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="id-1_3_38_7_4_2_1_1_3_1-bb"></a><span class="identifier">name</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+<span class="bold"><strong>Complexity:</strong></span> unknown (lots of platform specific work).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Unsafe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Name of the frame (function name in a human readable form).</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>std::bad_alloc if not enough memory to construct resulting string. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">constexpr</span> <span class="identifier">native_frame_ptr_t</span> <a name="id-1_3_38_7_4_2_1_1_3_2-bb"></a><span class="identifier">address</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>
+<span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Address of the frame function.</p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="id-1_3_38_7_4_2_1_1_3_3-bb"></a><span class="identifier">source_file</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+
+<span class="bold"><strong>Complexity:</strong></span> unknown (lots of platform specific work).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Unsafe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Path to the source file, were the function of the frame is defined. Returns empty string if this-&gt;source_line() == 0. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>std::bad_alloc if not enough memory to construct resulting string.</td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_38_7_4_2_1_1_3_4-bb"></a><span class="identifier">source_line</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+
+<span class="bold"><strong>Complexity:</strong></span> unknown (lots of platform specific work).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Unsafe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Code line in the source file, were the function of the frame is defined. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>std::bad_alloc if not enough memory to construct string for internal needs.</td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="id-1_3_38_7_4_2_1_1_3_5-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Checks that frame is not references NULL address. <p>
+<span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. Checks that frame references NULL address. 
+<span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p><code class="computeroutput">true</code> if <code class="computeroutput">this-&gt;address() != 0</code></p></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p><code class="computeroutput">true</code> if <code class="computeroutput">this-&gt;address() == 0</code></p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="operator__1_3_38_7_3_1_1_4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../stacktrace/reference.html#header.boost.stacktrace.detail.frame_decl_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="safe_dump_1_3_38_7_6_2_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

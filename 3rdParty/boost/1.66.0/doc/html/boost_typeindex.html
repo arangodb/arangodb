@@ -1,0 +1,168 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;41.&#160;Boost.TypeIndex 4.1</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="libraries.html" title="Part&#160;I.&#160;The Boost C++ Libraries (BoostBook Subset)">
+<link rel="prev" href="boost_typeerasure/related.html" title="Related Work">
+<link rel="next" href="boost_typeindex/getting_started.html" title="Getting started">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_typeerasure/related.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_typeindex/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="boost_typeindex"></a>Chapter&#160;41.&#160;Boost.TypeIndex 4.1</h2></div>
+<div><p class="copyright">Copyright &#169; 2012-2016 Antony Polukhin</p></div>
+<div><div class="legalnotice">
+<a name="boost_typeindex.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="boost_typeindex.html#boost_typeindex.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/getting_started.html">Getting started</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_typeindex/getting_started.html#boost_typeindex.getting_started.how_to_use">How to use</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/getting_started.html#boost_typeindex.getting_started.example_with_boost_any">Example
+      with Boost.Any</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/getting_started.html#boost_typeindex.getting_started.example_with_boost_variant">Example
+      with Boost.Variant</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_typeindex/config.html">Configuring and building the library</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/how_it_works.html">How it works</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html">Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.getting_human_readable_and_mangl">Getting
+      human readable and mangled type names</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.storing_information_about_a_type">Storing
+      information about a type in container </a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.getting_through_the_inheritance_">Getting
+      through the inheritance to receive a real type name </a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.using_runtime_cast_where_rtti_is">Using
+      runtime_cast where RTTI is unavailable or undesirable </a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.exact_type_matching_storing_type">Exact
+      type matching: storing type with const, volatile and reference qualifiers</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.table_of_raw_name_and_pretty_nam">Table
+      of raw_name() and pretty_name() outputs with and without RTTI </a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.c_14_checking_namespace_at_compi">C++14:
+      Checking namespace at compile time </a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/examples.html#boost_typeindex.examples.c_14_checking_lexigraphical_orde">C++14:
+      Checking lexigraphical order of provided types </a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html">Boost.TypeIndex Header Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index_hpp">Header &lt;boost/type_index.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.ctti_type_index_hpp">Header &lt;boost/type_index/ctti_type_index.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast_hpp">Header &lt;boost/type_index/runtime_cast.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.boost_shared_ptr_cast_hpp">Header &lt;boost/type_index/runtime_cast/boost_shared_ptr_cast.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.pointer_cast_hpp">Header &lt;boost/type_index/runtime_cast/pointer_cast.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.reference_cast_hpp">Header &lt;boost/type_index/runtime_cast/reference_cast.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.register_runtime_class_hpp">Header &lt;boost/type_index/runtime_cast/register_runtime_class.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.std_shared_ptr_cast_hpp">Header &lt;boost/type_index/runtime_cast/std_shared_ptr_cast.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.stl_type_index_hpp">Header &lt;boost/type_index/stl_type_index.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex_header_reference.html#header.boost.type_index.type_index_facade_hpp">Header &lt;boost/type_index/type_index_facade.hpp&gt;</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_typeindex/making_a_custom_type_index.html">Making a custom
+    type_index</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_typeindex/making_a_custom_type_index.html#boost_typeindex.making_a_custom_type_index.basics">Basics</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/making_a_custom_type_index.html#boost_typeindex.making_a_custom_type_index.getting_type_infos_at_runtime">Getting
+      type infos at runtime</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/making_a_custom_type_index.html#boost_typeindex.making_a_custom_type_index.using_new_type_infos_all_around_">Using
+      new type infos all around the code</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_typeindex/space_and_performance.html">Space and Performance</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/code_bloat.html">Code bloat</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/rtti_emulation_limitations.html">RTTI emulation
+    limitations</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_typeindex/rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.define_the_boost_type_index_func">Define
+      the BOOST_TYPE_INDEX_FUNCTION_SIGNATURE macro</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/rtti_emulation_limitations.html#boost_typeindex.rtti_emulation_limitations.fixing_pretty_name_output">Fixing
+      pretty_name() output</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_typeindex/mixing_sources_with_rtti_on_and_.html">Mixing
+    sources with RTTI on and RTTI off</a></span></dt>
+<dt><span class="section"><a href="boost_typeindex/acknowledgements.html">Acknowledgements</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_typeindex.motivation"></a><a class="link" href="boost_typeindex.html#boost_typeindex.motivation" title="Motivation">Motivation</a>
+</h2></div></div></div>
+<p>
+      Sometimes getting and storing information about a type at runtime is required.
+      For such cases a construction like <code class="computeroutput"><span class="special">&amp;</span><span class="keyword">typeid</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span></code> or C++11 class <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span></code>
+      is usually used, which is where problems start:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="keyword">typeid</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span></code> and
+          <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span></code> require Run Time Type Info
+          (RTTI)
+        </li>
+<li class="listitem">
+          some implementations of <code class="computeroutput"><span class="keyword">typeid</span><span class="special">(</span><span class="identifier">T</span><span class="special">)</span></code>
+          erroneously do not strip const, volatile and references from type
+        </li>
+<li class="listitem">
+          some compilers have bugs and do not correctly compare <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span></code>
+          objects across shared libraries
+        </li>
+<li class="listitem">
+          only a few implementations of Standard Library currently provide <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_index</span></code>
+        </li>
+<li class="listitem">
+          no easy way to store type info without stripping const, volatile and references
+        </li>
+<li class="listitem">
+          no nice and portable way to get human readable type names
+        </li>
+<li class="listitem">
+          no way to easily make your own type info class
+        </li>
+</ul></div>
+<p>
+      Boost.TypeIndex library was designed to work around all those issues.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        <code class="computeroutput"><span class="identifier">T</span></code> means type here. Think
+        of it as of <code class="computeroutput"><span class="identifier">T</span></code> in <code class="computeroutput"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span></code>
+      </p></td></tr>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:05:59 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_typeerasure/related.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_typeindex/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

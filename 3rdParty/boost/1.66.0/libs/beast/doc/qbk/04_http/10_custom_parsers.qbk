@@ -1,0 +1,42 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Custom Parsers]
+
+While the parsers included in the library will handle a broad number of
+use-cases, the __basic_parser__ interface can be subclassed to implement
+custom strategies for storing parsed results: the basic parser processes
+the incoming octets into elements according to the HTTP/1 protocol
+specification, while the derived class decides what to do with those
+elements. In particular, users who create exotic containers for [*Fields]
+may need to also create their own parser. Custom parsers will work with
+all of the stream read operations that work on parsers, as those algorithms
+use only the basic parser interface. Some use cases for implementing custom
+parsers are:
+
+* Inspect incoming header fields and keep or discard them.
+
+* Use a container provided by an external interface.
+
+* Store header data in a user-defined __Fields__ type.
+
+The basic parser uses the
+[@https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern Curiously Recurring Template Pattern].
+To declare your user defined parser, derive it from __basic_parser__.
+The interface to the parser is event-driven. Member functions of the derived
+class (termed "callbacks" in this context) are invoked with parsed elements
+as they become available, requiring either the `friend` declaration as shown
+above or that the member functions are declared public (not recommended).
+Buffers provided by the parser are non-owning references; it is the
+responsibility of the derived class to copy any information it needs before
+returning from the callback.
+
+[example_http_custom_parser]
+
+[endsect]

@@ -1,0 +1,99 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Source listing for Daytime.2</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../tutdaytime2.html" title="Daytime.2 - A synchronous TCP daytime server">
+<link rel="prev" href="../tutdaytime2.html" title="Daytime.2 - A synchronous TCP daytime server">
+<link rel="next" href="../tutdaytime3.html" title="Daytime.3 - An asynchronous TCP daytime server">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tutdaytime3.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.tutorial.tutdaytime2.src"></a><a class="link" href="src.html" title="Source listing for Daytime.2">Source listing
+        for Daytime.2</a>
+</h4></div></div></div>
+<pre class="programlisting">//
+// server.cpp
+// ~~~~~~~~~~
+//
+// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#include &lt;ctime&gt;
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;boost/asio.hpp&gt;
+
+using boost::asio::ip::tcp;
+
+std::string make_daytime_string()
+{
+  using namespace std; // For time_t, time and ctime;
+  time_t now = time(0);
+  return ctime(&amp;now);
+}
+
+int main()
+{
+  try
+  {
+    boost::asio::io_context io_context;
+
+    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), 13));
+
+    for (;;)
+    {
+      tcp::socket socket(io_context);
+      acceptor.accept(socket);
+
+      std::string message = make_daytime_string();
+
+      boost::system::error_code ignored_error;
+      boost::asio::write(socket, boost::asio::buffer(message), ignored_error);
+    }
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
+
+  return 0;
+}
+</pre>
+<p>
+          Return to <a class="link" href="../tutdaytime2.html" title="Daytime.2 - A synchronous TCP daytime server">Daytime.2 - A
+          synchronous TCP daytime server</a>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tutdaytime3.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

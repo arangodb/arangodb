@@ -1,0 +1,270 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Quick Start]
+[block'''<?dbhtml stop-chunking?>''']
+
+These complete programs are intended to quickly impress upon readers
+the flavor of the library. Source code and build scripts for them are
+located in the [source_file example] directory.
+
+[section HTTP Client]
+
+Use HTTP to make a GET request to a website and print the response:
+
+File: [source_file example/http/client/sync/http_client_sync.cpp]
+
+[example_http_client]
+
+[endsect]
+
+[section WebSocket Client]
+
+Establish a WebSocket connection, send a message and receive the reply:
+
+File: [source_file example/websocket/client/sync/websocket_client_sync.cpp]
+
+[example_websocket_client]
+
+[endsect]
+
+[endsect]
+
+
+
+[section Examples]
+[block'''<?dbhtml stop-chunking?>''']
+
+Source code and build scripts for these programs are located
+in the [source_file example] directory.
+
+
+
+[template example_src[path name] '''<ulink url="../../'''[path]'''">'''[name]'''</ulink>''']
+
+[section Clients]
+
+These HTTP clients submit a GET request to a server specified on the command
+line, and prints the resulting response. The crawl client asynchronously
+fetches the document root of the 10,000 top ranked domains, this may be
+used to evaluate robustness.
+
+[table
+[[Description] [Source File] [Source File (using SSL)]]
+[
+        [HTTP, synchronous]
+        [[example_src example/http/client/sync/http_client_sync.cpp http_client_sync.cpp]]
+        [[example_src example/http/client/sync-ssl/http_client_sync_ssl.cpp http_client_sync_ssl.cpp]]
+][
+        [HTTP, asynchronous]
+        [[example_src example/http/client/async/http_client_async.cpp http_client_async.cpp]]
+        [[example_src example/http/client/async-ssl/http_client_async_ssl.cpp http_client_async_ssl.cpp]]
+][
+        [HTTP, coroutine]
+        [[example_src example/http/client/coro/http_client_coro.cpp http_client_coro.cpp]]
+        [[example_src example/http/client/coro-ssl/http_client_coro_ssl.cpp http_client_coro_ssl.cpp]]
+][
+        [HTTP crawl (asynchronous)]
+        [[example_src example/http/client/crawl/http_crawl.cpp http_crawl.cpp]]
+        []
+]]
+
+These WebSocket clients connect to a
+server and send a message, then receive a message and print the response
+before disconnecting.
+
+[table
+[[Description] [Source File] [Source File (using SSL)]]
+[
+        [WebSocket, synchronous]
+        [[example_src example/websocket/client/sync/websocket_client_sync.cpp websocket_client_sync.cpp]]
+        [[example_src example/websocket/client/sync-ssl/websocket_client_sync_ssl.cpp websocket_client_sync_ssl.cpp]]
+][
+        [WebSocket, asynchronous]
+        [[example_src example/websocket/client/async/websocket_client_async.cpp websocket_client_async.cpp]]
+        [[example_src example/websocket/client/async-ssl/websocket_client_async_ssl.cpp websocket_client_async_ssl.cpp]]
+][
+        [WebSocket, coroutine]
+        [[example_src example/websocket/client/coro/websocket_client_coro.cpp websocket_client_coro.cpp]]
+        [[example_src example/websocket/client/coro-ssl/websocket_client_coro_ssl.cpp websocket_client_coro_ssl.cpp]]
+]]
+
+[endsect]
+
+
+
+[section Servers]
+
+These HTTP servers deliver files from a root directory specified on the
+command line.
+
+[table
+[[Description] [Source File] [Source File (using SSL)]]
+[
+        [HTTP, synchronous]
+        [[example_src example/http/server/sync/http_server_sync.cpp http_server_sync.cpp]]
+        [[example_src example/http/server/sync-ssl/http_server_sync_ssl.cpp http_server_sync_ssl.cpp]]
+][
+        [HTTP, asynchronous]
+        [[example_src example/http/server/async/http_server_async.cpp http_server_async.cpp]]
+        [[example_src example/http/server/async-ssl/http_server_async_ssl.cpp http_server_async_ssl.cpp]]
+][
+        [HTTP, coroutine]
+        [[example_src example/http/server/coro/http_server_coro.cpp http_server_coro.cpp]]
+        [[example_src example/http/server/coro-ssl/http_server_coro_ssl.cpp http_server_coro_ssl.cpp]]
+][
+        [HTTP, stackless coroutine]
+        [[example_src example/http/server/stackless/http_server_stackless.cpp http_server_stackless.cpp]]
+        [[example_src example/http/server/stackless-ssl/http_server_stackless_ssl.cpp http_server_stackless_ssl.cpp]]
+][
+        [HTTP, fast (optimized for speed)]
+        [[example_src example/http/server/fast/http_server_fast.cpp http_server_fast.cpp]]
+        []
+][
+        [HTTP, small (optimized for space)]
+        [[example_src example/http/server/small/http_server_small.cpp http_server_small.cpp]]
+        []
+][
+        [HTTP, flex (plain + SSL)]
+        []
+        [[example_src example/http/server/flex/http_server_flex.cpp http_server_flex.cpp]]
+]]
+
+These WebSocket servers echo back any message received, keeping the
+session open until the client disconnects.
+
+[table
+[[Description] [Source File] [Source File (using SSL)]]
+[
+        [WebSocket, synchronous]
+        [[example_src example/websocket/server/sync/websocket_server_sync.cpp websocket_server_sync.cpp]]
+        [[example_src example/websocket/server/sync-ssl/websocket_server_sync_ssl.cpp websocket_server_sync_ssl.cpp]]
+][
+        [WebSocket, asynchronous]
+        [[example_src example/websocket/server/async/websocket_server_async.cpp websocket_server_async.cpp]]
+        [[example_src example/websocket/server/async-ssl/websocket_server_async_ssl.cpp websocket_server_async_ssl.cpp]]
+][
+        [WebSocket, coroutine]
+        [[example_src example/websocket/server/coro/websocket_server_coro.cpp websocket_server_coro.cpp]]
+        [[example_src example/websocket/server/coro-ssl/websocket_server_coro_ssl.cpp websocket_server_coro_ssl.cpp]]
+][
+        [WebSocket, stackless coroutine]
+        [[example_src example/websocket/server/stackless/websocket_server_stackless.cpp websocket_server_stackless.cpp]]
+        [[example_src example/websocket/server/stackless-ssl/websocket_server_stackless_ssl.cpp websocket_server_stackless_ssl.cpp]]
+][
+        [WebSocket, fast (suited for benchmarks)]
+        [[example_src example/websocket/server/fast/websocket_server_fast.cpp websocket_server_fast.cpp]]
+        []
+]]
+
+[endsect]
+
+
+
+[section Servers (Advanced)]
+
+These servers offer both HTTP and WebSocket services on the same port,
+and illustrate the implementation of advanced features.
+
+[table
+[[Description] [Features] [Source File]]
+[
+        [Advanced]
+        [[itemized_list
+            [HTTP pipelining]
+            [Asynchronous timeouts]
+            [Dual protocols: HTTP and WebSocket]]]
+        [[example_src example/advanced/server/advanced_server.cpp advanced_server.cpp]]
+][
+        [Advanced, flex (plain + SSL)]
+        [[itemized_list
+            [HTTP pipelining]
+            [Asynchronous timeouts]
+            [Dual protocols: HTTP and WebSocket]
+            [Flexible ports; plain and SSL on the same port]]]
+        [[example_src example/advanced/server-flex/advanced_server_flex.cpp advanced_server_flex.cpp]]
+]]
+
+[endsect]
+
+
+
+[section Common Files]
+
+Some of the examples use one or more shared header files, they are
+listed here along with a description of their use:
+
+[table
+[[Source File] [Description]]
+[
+    [[source_file example/common/detect_ssl.hpp]]
+    [
+        This contains the detect SSL algorithm including the
+        synchronous and asynchronous initiating functions, described
+        in the documentation. It is used by the "flex" servers which
+        support both plain and SSL sessions on the same port.
+    ]
+][
+    [[source_file example/common/root_certificates.hpp]]
+    [
+        This contains the root SSL certificates used in the SSL client
+        examples. These certificates are used to verify the signatures
+        of SSL certificates presented by remote servers. They represent
+        a subset of the public keys usually installed as part of the
+        operating system or browser, so they may not identify every
+        possible server.
+    ]
+][
+    [[source_file example/common/server_certificate.hpp]]
+    [
+        This file contains a self-signed SSL certificate used by the
+        SSL server examples. It has not been validated by a Certificate
+        Authority ("CA") so connecting to an example HTTP server using
+        a browser may generate security warnings.
+    ]
+][
+    [[source_file example/common/ssl_stream.hpp]]
+    [
+        The `ssl_stream` is a replacement for __ssl_stream__ which
+        supports construction from a moved-froms ocket and is also
+        itself move constructible.
+    ]
+]]
+
+[endsect]
+
+
+
+[section Documentation Samples]
+
+Here are all of the example functions and classes presented
+throughout the documentation, they can be included and used
+in your program without modification
+
+* [source_file example/doc/http_examples.hpp]
+
+[endsect]
+
+
+
+[section Composed Operations]
+
+This program shows how to use Beast's network foundations to build a
+composable asynchronous initiation function with associated composed
+operation implementation. This is a complete, runnable version of
+the example described in
+[link beast.using_io.writing_composed_operations.echo Writing Composed Operations: Echo].
+
+* [source_file example/echo-op/echo_op.cpp]
+
+[endsect]
+
+
+
+[endsect]

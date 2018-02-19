@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE boostbook PUBLIC "-//Boost//DTD BoostBook XML V1.0//EN"
+  "http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<boostbook id="boost" xmlns:xi="http://www.w3.org/2001/XInclude"
+           last-revision="$Date$">
+  <title>The Boost C++ Libraries BoostBook Documentation Subset</title>
+
+  <preface id="about">
+    <title>What's Included in This Document</title>
+
+    <para>This document represents only a subset of the full Boost
+    documentation: that part which is generated from BoostBook or
+    QuickBook sources.  Eventually all Boost libraries may use these
+    formats, but in the meantime, much of Boost's documentation is not
+    available here.  Please
+    see <ulink
+    url="http://www.boost.org/libs">http://www.boost.org/libs</ulink>
+    for complete documentation.
+    </para>
+
+    <para>
+      Documentation for some of the libraries described in this document is
+      available in alternative formats:
+       <itemizedlist>
+         <listitem>
+           <simpara><link linkend="boost">HTML</link></simpara>
+         </listitem>
+       </itemizedlist>
+       <itemizedlist>
+         <listitem>
+           <simpara><ulink url="http://sourceforge.net/projects/boost/files/boost-docs/">PDF</ulink></simpara>
+         </listitem>
+       </itemizedlist>
+    </para>
+
+  </preface>
+
+  <part id="libraries">
+    <title>The Boost C++ Libraries (BoostBook Subset)</title>
+    <xi:include href="libraries.xinclude" xpointer="xpointer(/*/node())"/>
+
+    <library name="Concept Check" dirname="concept_check" id="concept_check">
+      <libraryinfo>
+        <author>
+          <firstname>Jeremy</firstname>
+          <surname>Siek</surname>
+        </author>
+        <librarypurpose>Tools for generic programming</librarypurpose>
+        <librarycategory name="category:generic"/>
+        <librarycategory name="category:testing"/>
+      </libraryinfo>
+      <title>Boost.Concept_Check</title>
+      <xi:include href="../../libs/concept_check/doc/reference/concepts.xml"/>
+    </library>
+  </part>
+
+  <part id="tools">
+    <title>Boost Tools</title>
+    <partintro>
+      <para>
+        Boost developers, testers, and maintainers have developed various programs to 
+        help with the administration of the Boost Libraries. Like everything else about 
+        Boost, these tools are available in source form, and are part of the regular 
+        Boost distribution.
+      </para>
+      <para>
+        Users may find these tools useful when porting Boost libraries to a new platform, 
+        or for use with their own applications.
+      </para>
+    </partintro>
+    <xi:include href="tools.xinclude" xpointer="xpointer(/*/node())"/>
+  </part>
+</boostbook>

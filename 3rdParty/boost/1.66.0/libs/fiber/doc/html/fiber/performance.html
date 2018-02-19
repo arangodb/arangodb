@@ -1,0 +1,216 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Performance</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="prev" href="worker.html" title="Running with worker threads">
+<link rel="next" href="tuning.html" title="Tuning">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="worker.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuning.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.performance"></a><a class="link" href="performance.html" title="Performance">Performance</a>
+</h2></div></div></div>
+<p>
+      Performance measurements were taken using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">highresolution_clock</span></code>,
+      with overhead corrections. The code was compiled with gcc-6.3.1, using build
+      options: variant = release, optimization = speed. Tests were executed on dual
+      Intel XEON E5 2620v4 2.2GHz, 16C/32T, 64GB RAM, running Linux (x86_64).
+    </p>
+<p>
+      Measurements headed 1C/1T were run in a single-threaded process.
+    </p>
+<p>
+      The <a href="https://github.com/atemerev/skynet" target="_top">microbenchmark <span class="emphasis"><em>syknet</em></span></a>
+      from Alexander Temerev was ported and used for performance measurements. At
+      the root the test spawns 10 threads-of-execution (ToE), e.g. actor/goroutine/fiber
+      etc.. Each spawned ToE spawns additional 10 ToEs ... until <span class="bold"><strong>1,000,000</strong></span>
+      ToEs are created. ToEs return back their ordinal numbers (0 ... 999,999), which
+      are summed on the previous level and sent back upstream, until reaching the
+      root. The test was run 10-20 times, producing a range of values for each measurement.
+    </p>
+<div class="table">
+<a name="fiber.performance.time_per_actor_erlang_process_goroutine__other_languages___average_over_1_000_000_"></a><p class="title"><b>Table&#160;1.2.&#160;time per actor/erlang process/goroutine (other languages) (average over
+      1,000,000)</b></p>
+<div class="table-contents"><table class="table" summary="time per actor/erlang process/goroutine (other languages) (average over
+      1,000,000)">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Haskell | stack-1.4.0/ghc-8.0.1
+              </p>
+            </th>
+<th>
+              <p>
+                Go | go1.8.1
+              </p>
+            </th>
+<th>
+              <p>
+                Erlang | erts-8.3
+              </p>
+            </th>
+</tr></thead>
+<tbody><tr>
+<td>
+              <p>
+                0.05 &#181;s - 0.06 &#181;s
+              </p>
+            </td>
+<td>
+              <p>
+                0.42 &#181;s - 0.49 &#181;s
+              </p>
+            </td>
+<td>
+              <p>
+                0.63 &#181;s - 0.73 &#181;s
+              </p>
+            </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      Pthreads are created with a stack size of 8kB while <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span></code>'s
+      use the system default (1MB - 2MB). The microbenchmark could <span class="bold"><strong>not</strong></span>
+      be <span class="bold"><strong>run</strong></span> with 1,000,000 threads because of
+      <span class="bold"><strong>resource exhaustion</strong></span> (pthread and std::thread).
+      Instead the test runs only at <span class="bold"><strong>10,000</strong></span> threads.
+    </p>
+<div class="table">
+<a name="fiber.performance.time_per_thread__average_over_10_000___unable_to_spawn_1_000_000_threads_"></a><p class="title"><b>Table&#160;1.3.&#160;time per thread (average over 10,000 - unable to spawn 1,000,000 threads)</b></p>
+<div class="table-contents"><table class="table" summary="time per thread (average over 10,000 - unable to spawn 1,000,000 threads)">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                pthread
+              </p>
+            </th>
+<th>
+              <p>
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span></code>
+              </p>
+            </th>
+<th>
+              <p>
+                <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">async</span></code>
+              </p>
+            </th>
+</tr></thead>
+<tbody><tr>
+<td>
+              <p>
+                54 &#181;s - 73 &#181;s
+              </p>
+            </td>
+<td>
+              <p>
+                52 &#181;s - 73 &#181;s
+              </p>
+            </td>
+<td>
+              <p>
+                106 &#181;s - 122 &#181;s
+              </p>
+            </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+      The test utilizes 16 cores with Symmetric MultiThreading enabled (32 logical
+      CPUs). The fiber stacks are allocated by <a class="link" href="stack.html#class_fixedsize_stack"><code class="computeroutput">fixedsize_stack</code></a>.
+    </p>
+<p>
+      As the benchmark shows, the memory allocation algorithm is significant for
+      performance in a multithreaded environment. The tests use glibc&#8217;s memory allocation
+      algorithm (based on ptmalloc2) as well as Google&#8217;s <a href="http://goog-perftools.sourceforge.net/doc/tcmalloc.html" target="_top">TCmalloc</a>
+      (via linkflags="-ltcmalloc").<a href="#ftn.fiber.performance.f0" class="footnote" name="fiber.performance.f0"><sup class="footnote">[9]</sup></a>
+    </p>
+<p>
+      In the <a class="link" href="scheduling.html#class_work_stealing"><code class="computeroutput">work_stealing</code></a> scheduling algorithm, each thread has
+      its own local queue. Fibers that are ready to run are pushed to and popped
+      from the local queue. If the queue runs out of ready fibers, fibers are stolen
+      from the local queues of other participating threads.
+    </p>
+<div class="table">
+<a name="fiber.performance.time_per_fiber__average_over_1_000_000_"></a><p class="title"><b>Table&#160;1.4.&#160;time per fiber (average over 1.000.000)</b></p>
+<div class="table-contents"><table class="table" summary="time per fiber (average over 1.000.000)">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                fiber (16C/32T, work stealing, tcmalloc)
+              </p>
+            </th>
+<th>
+              <p>
+                fiber (1C/1T, round robin, tcmalloc)
+              </p>
+            </th>
+</tr></thead>
+<tbody><tr>
+<td>
+              <p>
+                0.05 &#181;s - 0.09 &#181;s
+              </p>
+            </td>
+<td>
+              <p>
+                1.69 &#181;s - 1.79 &#181;s
+              </p>
+            </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.fiber.performance.f0" class="footnote"><p><a href="#fiber.performance.f0" class="para"><sup class="para">[9] </sup></a>
+        Tais B. Ferreira, Rivalino Matias, Autran Macedo, Lucio B. Araujo <span class="quote">&#8220;<span class="quote">An
+        Experimental Study on Memory Allocators in Multicore and Multithreaded Applications</span>&#8221;</span>,
+        PDCAT &#8217;11 Proceedings of the 2011 12th International Conference on Parallel
+        and Distributed Computing, Applications and Technologies, pages 92-98
+      </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="worker.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tuning.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

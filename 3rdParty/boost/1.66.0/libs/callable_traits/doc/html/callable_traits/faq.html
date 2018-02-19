@@ -1,0 +1,133 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>FAQ</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="CallableTraits">
+<link rel="up" href="../index.html" title="CallableTraits">
+<link rel="prev" href="reference.html" title="Reference Documentation">
+<link rel="next" href="building.html" title="Building the test suite">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="building.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="callable_traits.faq"></a><a class="link" href="faq.html" title="FAQ">FAQ</a>
+</h2></div></div></div>
+<h4>
+<a name="callable_traits.faq.h0"></a>
+      <span class="phrase"><a name="callable_traits.faq.reasons"></a></span><a class="link" href="faq.html#callable_traits.faq.reasons">Why
+      should I use <code class="literal">Boost.CallableTraits</code>?</a>
+    </h4>
+<p>
+      If you are not writing generic code, you should not use <code class="literal">Boost.CallableTraits</code>.
+    </p>
+<p>
+      If you <span class="emphasis"><em>are</em></span> writing generic code, take a moment to skim
+      your header files, and see if you can find code that looks like this:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">First</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Second</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">First</span><span class="special">,</span> <span class="identifier">Second</span><span class="special">)&gt;</span> <span class="special">{</span>
+    <span class="comment">//    ^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="special">};</span>
+</pre>
+<p>
+      Or maybe something like this:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span><span class="identifier">Args</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(*)(</span><span class="identifier">Args</span><span class="special">...)&gt;</span> <span class="special">{</span>
+    <span class="comment">//    ^^^^^^^^^^^^^^^^^^</span>
+<span class="special">};</span>
+</pre>
+<p>
+      Or, if you are <span class="bold"><strong>really</strong></span> unlucky, something like
+      this:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="special">...</span><span class="identifier">Args</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">T</span><span class="special">::*)(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{</span>
+    <span class="comment">//    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^</span>
+<span class="special">};</span>
+</pre>
+<p>
+      With <code class="literal">Boost.CallableTraits</code>, you can get rid of all of these
+      template specializations (unless you deal with platform-specific calling conventions,
+      for now). Even if you are only specializing a simple function type like <code class="computeroutput"><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span></code>, <code class="literal">Boost.CallableTraits</code>
+      might be useful to you. You may find that <code class="literal">Boost.CallableTraits</code>
+      can help make your code more readable, more maintainable, more generic, and
+      less error-prone.
+    </p>
+<p>
+      <code class="literal">Boost.CallableTraits</code> is well-tested on many platforms.
+      <code class="literal">Boost.CallableTraits</code> correctly handles many corner cases
+      that are often overlooked. The need for a proper library solution grows as
+      more features are added to C++.
+    </p>
+<h4>
+<a name="callable_traits.faq.h1"></a>
+      <span class="phrase"><a name="callable_traits.faq.boost_is_a_massive_dependency_do"></a></span><a class="link" href="faq.html#callable_traits.faq.boost_is_a_massive_dependency_do">Boost
+      is a massive dependency. Do I really need it?</a>
+    </h4>
+<p>
+      Nope! <code class="literal">Boost.CallableTraits</code> doesn't have any dependencies,
+      so all you need are the <code class="literal">Boost.CallableTraits</code> headers.
+    </p>
+<h4>
+<a name="callable_traits.faq.h2"></a>
+      <span class="phrase"><a name="callable_traits.faq.why_use_reference_collapsing_rul"></a></span><a class="link" href="faq.html#callable_traits.faq.why_use_reference_collapsing_rul">Why
+      use reference collapsing rules when adding member function ref-qualifiers?</a>
+    </h4>
+<p>
+      Although arbitrary, the reference collapsing rules are well-defined and already
+      known to many template metaprogrammers. Anything else would be a burden to
+      memorize. This also parallels the metafunctions provided in <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span></code>.
+    </p>
+<h4>
+<a name="callable_traits.faq.h3"></a>
+      <span class="phrase"><a name="callable_traits.faq.many_features_in_this_library_ca"></a></span><a class="link" href="faq.html#callable_traits.faq.many_features_in_this_library_ca">Many
+      features in this library cause a "substitution failure" when the
+      template constraints are violated. Does this mean that I can violate the constraints
+      in a SFINAE context, as long as there is another legal substitute?</a>
+    </h4>
+<p>
+      Yes. The SFINAE-ability of violated constraints has been tested extensively
+      on supported compilers. Achieving this required some messy code in the public
+      header files.
+    </p>
+<h4>
+<a name="callable_traits.faq.h4"></a>
+      <span class="phrase"><a name="callable_traits.faq.what_about_calling_conventions"></a></span><a class="link" href="faq.html#callable_traits.faq.what_about_calling_conventions">What
+      about calling conventions?</a>
+    </h4>
+<p>
+      I originally implemented features for these. However, these features necessitated
+      many, many more platform-specific test cases. The code is still designed to
+      accommodate such features, so I would consider adding them in the future if
+      there is sufficient interest.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Barrett Adair<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE.md or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="reference.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="building.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template move_iterator</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../move/reference.html#header.boost.move.iterator_hpp" title="Header &lt;boost/move/iterator.hpp&gt;">
+<link rel="prev" href="movelib/default_delete.html" title="Struct template default_delete">
+<link rel="next" href="back_move_insert_iterator.html" title="Class template back_move_insert_iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="movelib/default_delete.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../move/reference.html#header.boost.move.iterator_hpp"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="back_move_insert_iterator.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.move_iterator"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template move_iterator</span></h2>
+<p>boost::move_iterator</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../move/reference.html#header.boost.move.iterator_hpp" title="Header &lt;boost/move/iterator.hpp&gt;">boost/move/iterator.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">It</span>                                                                  <a name="boost.move_iterator.iterator_type"></a><span class="identifier">iterator_type</span><span class="special">;</span>    
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">movelib</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value_type</span>        <a name="boost.move_iterator.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">value_type</span> <span class="special">&amp;&amp;</span>                                                       <a name="boost.move_iterator.reference"></a><span class="identifier">reference</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">It</span>                                                                  <a name="boost.move_iterator.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>          
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">movelib</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">difference_type</span>   <a name="boost.move_iterator.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>  
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">movelib</span><span class="special">::</span><span class="identifier">iterator_traits</span><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">iterator_category</span> <a name="boost.move_iterator.iterator_category"></a><span class="identifier">iterator_category</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="move_iterator.html#boost.move_iteratorconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_10-bb"><span class="identifier">move_iterator</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_11-bb"><span class="identifier">move_iterator</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">It</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_12-bb"><span class="identifier">move_iterator</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9-bb">public member functions</a></span>
+  <span class="identifier">reference</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_1-bb"><span class="keyword">operator</span><span class="special">*</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">pointer</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_2-bb"><span class="keyword">operator</span><span class="special">-&gt;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_3-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_4-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_5-bb"><span class="keyword">operator</span><span class="special">--</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_6-bb"><span class="keyword">operator</span><span class="special">--</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_7-bb"><span class="keyword">operator</span><span class="special">+</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_8-bb"><span class="keyword">operator</span><span class="special">+=</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_9-bb"><span class="keyword">operator</span><span class="special">-</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_10-bb"><span class="keyword">operator</span><span class="special">-=</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">reference</span> <a class="link" href="move_iterator.html#id-1_3_25_20_9_1_1_9_11-bb"><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.25.20.10.3.4"></a><h2>Description</h2>
+<p>Class template <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> is an iterator adaptor with the same behavior as the underlying iterator except that its dereference operator implicitly converts the value returned by the underlying iterator's dereference operator to an rvalue reference. Some generic algorithms can be called with move iterators to replace copying with moving. </p>
+<div class="refsect2">
+<a name="id-1.3.25.20.10.3.4.3"></a><h3>
+<a name="boost.move_iteratorconstruct-copy-destruct"></a><code class="computeroutput">move_iterator</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><a name="id-1_3_25_20_9_1_1_10-bb"></a><span class="identifier">move_iterator</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_25_20_9_1_1_11-bb"></a><span class="identifier">move_iterator</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">It</span> <span class="special">&amp;</span> i<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> U<span class="special">&gt;</span> <a name="id-1_3_25_20_9_1_1_12-bb"></a><span class="identifier">move_iterator</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="special">&amp;</span> u<span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.25.20.10.3.4.4"></a><h3>
+<a name="id-1_3_25_20_9_1_1_9-bb"></a><code class="computeroutput">move_iterator</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="identifier">reference</span> <a name="id-1_3_25_20_9_1_1_9_1-bb"></a><span class="keyword">operator</span><span class="special">*</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">pointer</span> <a name="id-1_3_25_20_9_1_1_9_2-bb"></a><span class="keyword">operator</span><span class="special">-&gt;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_9_1_1_9_3-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a name="id-1_3_25_20_9_1_1_9_4-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_9_1_1_9_5-bb"></a><span class="keyword">operator</span><span class="special">--</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a name="id-1_3_25_20_9_1_1_9_6-bb"></a><span class="keyword">operator</span><span class="special">--</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a name="id-1_3_25_20_9_1_1_9_7-bb"></a><span class="keyword">operator</span><span class="special">+</span><span class="special">(</span><span class="identifier">difference_type</span> n<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_9_1_1_9_8-bb"></a><span class="keyword">operator</span><span class="special">+=</span><span class="special">(</span><span class="identifier">difference_type</span> n<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a><span class="special">&lt;</span> <span class="identifier">iterator_type</span> <span class="special">&gt;</span> <a name="id-1_3_25_20_9_1_1_9_9-bb"></a><span class="keyword">operator</span><span class="special">-</span><span class="special">(</span><span class="identifier">difference_type</span> n<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="move_iterator.html" title="Class template move_iterator">move_iterator</a> <span class="special">&amp;</span> <a name="id-1_3_25_20_9_1_1_9_10-bb"></a><span class="keyword">operator</span><span class="special">-=</span><span class="special">(</span><span class="identifier">difference_type</span> n<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">reference</span> <a name="id-1_3_25_20_9_1_1_9_11-bb"></a><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span><span class="special">(</span><span class="identifier">difference_type</span> n<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2014 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="movelib/default_delete.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../move/reference.html#header.boost.move.iterator_hpp"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="back_move_insert_iterator.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

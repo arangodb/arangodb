@@ -1,0 +1,89 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function template runtime_pointer_cast</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.std_shared_ptr_cast_hpp" title="Header &lt;boost/type_index/runtime_cast/std_shared_ptr_cast.hpp&gt;">
+<link rel="prev" href="../../BOOST_TYPE_IN_1_3_42_8_8_5.html" title="Macro BOOST_TYPE_INDEX_NO_BASE_CLASS">
+<link rel="next" href="stl_type_index.html" title="Class stl_type_index">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_TYPE_IN_1_3_42_8_8_5.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.std_shared_ptr_cast_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stl_type_index.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.typeindex.runtime_p_1_3_42_8_9_2_1_1"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template runtime_pointer_cast</span></h2>
+<p>boost::typeindex::runtime_pointer_cast &#8212; Creates a new instance of std::shared_ptr whose stored pointer is obtained from u's stored pointer using a runtime_cast. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.std_shared_ptr_cast_hpp" title="Header &lt;boost/type_index/runtime_cast/std_shared_ptr_cast.hpp&gt;">boost/type_index/runtime_cast/std_shared_ptr_cast.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> U<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span> <span class="identifier">runtime_pointer_cast</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span> <span class="identifier">U</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> u<span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.42.8.9.4.4"></a><h2>Description</h2>
+<p>The new shared_ptr will share ownership with u, except that it is empty if the runtime_cast performed by runtime_pointer_cast returns a null pointer. 
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">T</code></span></p></td>
+<td><p>The desired target type to return a pointer of. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">U</code></span></p></td>
+<td><p>A complete class type of the source instance pointed to from u. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>If there exists a valid conversion from U* to T*, returns a std::shared_ptr&lt;T&gt; that points to an address suitably offset from u. If no such conversion exists, returns std::shared_ptr&lt;T&gt;(); </p></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_TYPE_IN_1_3_42_8_8_5.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_typeindex_header_reference.html#header.boost.type_index.runtime_cast.std_shared_ptr_cast_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stl_type_index.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

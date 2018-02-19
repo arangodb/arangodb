@@ -1,0 +1,279 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template velocity_verlet</title>
+<link rel="stylesheet" href="../../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Numeric.Odeint">
+<link rel="up" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html" title="Header &lt;boost/numeric/odeint/stepper/velocity_verlet.hpp&gt;">
+<link rel="prev" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html" title="Header &lt;boost/numeric/odeint/stepper/velocity_verlet.hpp&gt;">
+<link rel="next" href="../../../odeint/indexes.html" title="Indexes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../logo.jpg"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../odeint/indexes.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.numeric.odeint.velocity_verlet"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template velocity_verlet</span></h2>
+<p>boost::numeric::odeint::velocity_verlet &#8212; The Velocity-Verlet algorithm. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html" title="Header &lt;boost/numeric/odeint/stepper/velocity_verlet.hpp&gt;">boost/numeric/odeint/stepper/velocity_verlet.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Coor<span class="special">,</span> <span class="keyword">typename</span> Velocity <span class="special">=</span> <span class="identifier">Coor</span><span class="special">,</span> <span class="keyword">typename</span> Value <span class="special">=</span> <span class="keyword">double</span><span class="special">,</span> 
+         <span class="keyword">typename</span> Acceleration <span class="special">=</span> <span class="identifier">Coor</span><span class="special">,</span> <span class="keyword">typename</span> Time <span class="special">=</span> <span class="identifier">Value</span><span class="special">,</span> 
+         <span class="keyword">typename</span> TimeSq <span class="special">=</span> <span class="identifier">Time</span><span class="special">,</span> 
+         <span class="keyword">typename</span> Algebra <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">algebra_dispatcher</span><span class="special">&lt;</span> <span class="identifier">Coor</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">algebra_type</span><span class="special">,</span> 
+         <span class="keyword">typename</span> Operations <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">operations_dispatcher</span><span class="special">&lt;</span> <span class="identifier">Coor</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">operations_type</span><span class="special">,</span> 
+         <span class="keyword">typename</span> Resizer <span class="special">=</span> <span class="identifier">initially_resizer</span><span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="velocity_verlet.html" title="Class template velocity_verlet">velocity_verlet</a> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">algebra_stepper_base</span><span class="special">&lt;</span> <span class="identifier">Algebra</span><span class="special">,</span> <span class="identifier">Operations</span> <span class="special">&gt;</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">algebra_stepper_base</span><span class="special">&lt;</span> <span class="identifier">Algebra</span><span class="special">,</span> <span class="identifier">Operations</span> <span class="special">&gt;</span>   <a name="boost.numeric.odeint.velocity_verlet.algebra_stepper_base_type"></a><span class="identifier">algebra_stepper_base_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">algebra_stepper_base_type</span><span class="special">::</span><span class="identifier">algebra_type</span>       <a name="boost.numeric.odeint.velocity_verlet.algebra_type"></a><span class="identifier">algebra_type</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">algebra_stepper_base_type</span><span class="special">::</span><span class="identifier">operations_type</span>    <a name="boost.numeric.odeint.velocity_verlet.operations_type"></a><span class="identifier">operations_type</span><span class="special">;</span>          
+  <span class="keyword">typedef</span> <span class="identifier">Coor</span>                                          <a name="boost.numeric.odeint.velocity_verlet.coor_type"></a><span class="identifier">coor_type</span><span class="special">;</span>                
+  <span class="keyword">typedef</span> <span class="identifier">Velocity</span>                                      <a name="boost.numeric.odeint.velocity_verlet.velocity_type"></a><span class="identifier">velocity_type</span><span class="special">;</span>            
+  <span class="keyword">typedef</span> <span class="identifier">Acceleration</span>                                  <a name="boost.numeric.odeint.velocity_verlet.acceleration_type"></a><span class="identifier">acceleration_type</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">coor_type</span><span class="special">,</span> <span class="identifier">velocity_type</span> <span class="special">&gt;</span>         <a name="boost.numeric.odeint.velocity_verlet.state_type"></a><span class="identifier">state_type</span><span class="special">;</span>               
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">velocity_type</span><span class="special">,</span> <span class="identifier">acceleration_type</span> <span class="special">&gt;</span> <a name="boost.numeric.odeint.velocity_verlet.deriv_type"></a><span class="identifier">deriv_type</span><span class="special">;</span>               
+  <span class="keyword">typedef</span> <span class="identifier">state_wrapper</span><span class="special">&lt;</span> <span class="identifier">acceleration_type</span> <span class="special">&gt;</span>            <a name="boost.numeric.odeint.velocity_verlet.wrapped_acceleration_type"></a><span class="identifier">wrapped_acceleration_type</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">Value</span>                                         <a name="boost.numeric.odeint.velocity_verlet.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>               
+  <span class="keyword">typedef</span> <span class="identifier">Time</span>                                          <a name="boost.numeric.odeint.velocity_verlet.time_type"></a><span class="identifier">time_type</span><span class="special">;</span>                
+  <span class="keyword">typedef</span> <span class="identifier">TimeSq</span>                                        <a name="boost.numeric.odeint.velocity_verlet.time_square_type"></a><span class="identifier">time_square_type</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">Resizer</span>                                       <a name="boost.numeric.odeint.velocity_verlet.resizer_type"></a><span class="identifier">resizer_type</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">stepper_tag</span>                                   <a name="boost.numeric.odeint.velocity_verlet.stepper_category"></a><span class="identifier">stepper_category</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="keyword">unsigned</span> <span class="keyword">short</span>                                <a name="boost.numeric.odeint.velocity_verlet.order_type"></a><span class="identifier">order_type</span><span class="special">;</span>               
+
+  <span class="comment">// <a class="link" href="velocity_verlet.html#boost.numeric.odeint.velocity_verletconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="velocity_verlet.html#idp61705808-bb"><span class="identifier">velocity_verlet</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">algebra_type</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">algebra_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="velocity_verlet.html#idp61664560-bb">public member functions</a></span>
+  <span class="identifier">order_type</span> <a class="link" href="velocity_verlet.html#idp61665120-bb"><span class="identifier">order</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61667776-bb"><span class="identifier">do_step</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61672784-bb"><span class="identifier">do_step</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">,</span> 
+           <span class="keyword">typename</span> AccelerationIn<span class="special">,</span> <span class="keyword">typename</span> CoorOut<span class="special">,</span> <span class="keyword">typename</span> VelocityOut<span class="special">,</span> 
+           <span class="keyword">typename</span> AccelerationOut<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61677792-bb"><span class="identifier">do_step</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="identifier">CoorIn</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">VelocityIn</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                 <span class="identifier">AccelerationIn</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">CoorOut</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">VelocityOut</span> <span class="special">&amp;</span><span class="special">,</span> 
+                 <span class="identifier">AccelerationOut</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> StateIn<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61689040-bb"><span class="identifier">adjust_size</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">StateIn</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61692656-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> AccelerationIn<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61695040-bb"><span class="identifier">initialize</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">AccelerationIn</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61697424-bb"><span class="identifier">initialize</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">CoorIn</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">VelocityIn</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="velocity_verlet.html#idp61702992-bb"><span class="identifier">is_initialized</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="velocity_verlet.html#idp61709040-bb">private member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61709616-bb"><span class="identifier">initialize_acc</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">CoorIn</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">VelocityIn</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61715184-bb"><span class="identifier">do_step_v1</span></a><span class="special">(</span><span class="identifier">System</span><span class="special">,</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">,</span> <span class="identifier">time_type</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> StateIn<span class="special">&gt;</span> <span class="keyword">bool</span> <a class="link" href="velocity_verlet.html#idp61720192-bb"><span class="identifier">resize_impl</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">StateIn</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a class="link" href="velocity_verlet.html#idp61722576-bb"><span class="identifier">get_current_acc</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a class="link" href="velocity_verlet.html#idp61724112-bb"><span class="identifier">get_current_acc</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a class="link" href="velocity_verlet.html#idp61725936-bb"><span class="identifier">get_old_acc</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a class="link" href="velocity_verlet.html#idp61727472-bb"><span class="identifier">get_old_acc</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="velocity_verlet.html#idp61729296-bb"><span class="identifier">toggle_current_acc</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// public data members</span>
+  <span class="keyword">static</span> <span class="keyword">const</span> <span class="identifier">order_type</span> <span class="identifier">order_value</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idp128101536"></a><h2>Description</h2>
+<p><a href="http://en.wikipedia.org/wiki/Verlet_integration" target="_top">The Velocity-Verlet algorithm</a> is a method for simulation of molecular dynamics systems. It solves the ODE a=f(r,v',t) where r are the coordinates, v are the velocities and a are the accelerations, hence v = dr/dt, a=dv/dt.</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idp128103280"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Coor</pre>
+<p>The type representing the coordinates. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Velocity <span class="special">=</span> <span class="identifier">Coor</span></pre>
+<p>The type representing the velocities. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Value <span class="special">=</span> <span class="keyword">double</span></pre>
+<p>The type value type. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Acceleration <span class="special">=</span> <span class="identifier">Coor</span></pre>
+<p>The type representing the acceleration. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Time <span class="special">=</span> <span class="identifier">Value</span></pre>
+<p>The time representing the independent variable - the time. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> TimeSq <span class="special">=</span> <span class="identifier">Time</span></pre>
+<p>The time representing the square of the time. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Algebra <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">algebra_dispatcher</span><span class="special">&lt;</span> <span class="identifier">Coor</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">algebra_type</span></pre>
+<p>The algebra. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Operations <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">operations_dispatcher</span><span class="special">&lt;</span> <span class="identifier">Coor</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">operations_type</span></pre>
+<p>The operations type. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Resizer <span class="special">=</span> <span class="identifier">initially_resizer</span></pre>
+<p>The resizer policy type. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp128140256"></a><h3>
+<a name="boost.numeric.odeint.velocity_verletconstruct-copy-destruct"></a><code class="computeroutput">velocity_verlet</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><a name="idp61705808-bb"></a><span class="identifier">velocity_verlet</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">algebra_type</span> <span class="special">&amp;</span> algebra <span class="special">=</span> <span class="identifier">algebra_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>Constructs the <code class="computeroutput"><a class="link" href="velocity_verlet.html" title="Class template velocity_verlet">velocity_verlet</a></code> class. This constructor can be used as a default constructor if the algebra has a default constructor. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">algebra</code></span></p></td>
+<td><p>A copy of algebra is made and stored. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="idp128155408"></a><h3>
+<a name="idp61664560-bb"></a><code class="computeroutput">velocity_verlet</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">order_type</span> <a name="idp61665120-bb"></a><span class="identifier">order</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Returns the order of the stepper. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61667776-bb"></a><span class="identifier">do_step</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span> x<span class="special">,</span> <span class="identifier">time_type</span> t<span class="special">,</span> <span class="identifier">time_type</span> dt<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61672784-bb"></a><span class="identifier">do_step</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span> x<span class="special">,</span> <span class="identifier">time_type</span> t<span class="special">,</span> <span class="identifier">time_type</span> dt<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">,</span> 
+         <span class="keyword">typename</span> AccelerationIn<span class="special">,</span> <span class="keyword">typename</span> CoorOut<span class="special">,</span> <span class="keyword">typename</span> VelocityOut<span class="special">,</span> 
+         <span class="keyword">typename</span> AccelerationOut<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61677792-bb"></a><span class="identifier">do_step</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="identifier">CoorIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> qin<span class="special">,</span> <span class="identifier">VelocityIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> pin<span class="special">,</span> 
+               <span class="identifier">AccelerationIn</span> <span class="keyword">const</span> <span class="special">&amp;</span> ain<span class="special">,</span> <span class="identifier">CoorOut</span> <span class="special">&amp;</span> qout<span class="special">,</span> 
+               <span class="identifier">VelocityOut</span> <span class="special">&amp;</span> pout<span class="special">,</span> <span class="identifier">AccelerationOut</span> <span class="special">&amp;</span> aout<span class="special">,</span> <span class="identifier">time_type</span> t<span class="special">,</span> 
+               <span class="identifier">time_type</span> dt<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> StateIn<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idp61689040-bb"></a><span class="identifier">adjust_size</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">StateIn</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre>Adjust the size of all temporaries in the stepper manually. <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">x</code></span></p></td>
+<td><p>A state from which the size of the temporaries to be resized is deduced. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp61692656-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span></pre>Resets the internal state of this stepper. After calling this method it is safe to use all <code class="computeroutput">do_step</code> method without explicitly initializing the stepper. </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> AccelerationIn<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idp61695040-bb"></a><span class="identifier">initialize</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">AccelerationIn</span> <span class="special">&amp;</span> ain<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61697424-bb"></a><span class="identifier">initialize</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">CoorIn</span> <span class="special">&amp;</span> qin<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">VelocityIn</span> <span class="special">&amp;</span> pin<span class="special">,</span> 
+                  <span class="identifier">time_type</span> t<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp61702992-bb"></a><span class="identifier">is_initialized</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Returns if the stepper is initialized. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idp128277488"></a><h3>
+<a name="idp61709040-bb"></a><code class="computeroutput">velocity_verlet</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> CoorIn<span class="special">,</span> <span class="keyword">typename</span> VelocityIn<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61709616-bb"></a><span class="identifier">initialize_acc</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">CoorIn</span> <span class="special">&amp;</span> qin<span class="special">,</span> 
+                      <span class="keyword">const</span> <span class="identifier">VelocityIn</span> <span class="special">&amp;</span> pin<span class="special">,</span> <span class="identifier">time_type</span> t<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> System<span class="special">,</span> <span class="keyword">typename</span> StateInOut<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp61715184-bb"></a><span class="identifier">do_step_v1</span><span class="special">(</span><span class="identifier">System</span> system<span class="special">,</span> <span class="identifier">StateInOut</span> <span class="special">&amp;</span> x<span class="special">,</span> <span class="identifier">time_type</span> t<span class="special">,</span> <span class="identifier">time_type</span> dt<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> StateIn<span class="special">&gt;</span> <span class="keyword">bool</span> <a name="idp61720192-bb"></a><span class="identifier">resize_impl</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">StateIn</span> <span class="special">&amp;</span> x<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a name="idp61722576-bb"></a><span class="identifier">get_current_acc</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a name="idp61724112-bb"></a><span class="identifier">get_current_acc</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a name="idp61725936-bb"></a><span class="identifier">get_old_acc</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">acceleration_type</span> <span class="special">&amp;</span> <a name="idp61727472-bb"></a><span class="identifier">get_old_acc</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">void</span> <a name="idp61729296-bb"></a><span class="identifier">toggle_current_acc</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2015 Karsten Ahnert and Mario Mulansky<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../header/boost/numeric/odeint/stepper/velocity_verlet_hpp.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../../odeint/indexes.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

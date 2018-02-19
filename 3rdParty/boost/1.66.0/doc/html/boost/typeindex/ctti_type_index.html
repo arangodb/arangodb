@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class ctti_type_index</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../boost_typeindex_header_reference.html#header.boost.type_index.ctti_type_index_hpp" title="Header &lt;boost/type_index/ctti_type_index.hpp&gt;">
+<link rel="prev" href="../../BOOST_TYPE_IN_1_3_42_8_2_8.html" title="Macro BOOST_TYPE_INDEX_FORCE_NO_RTTI_COMPATIBILITY">
+<link rel="next" href="runtime_p_1_3_42_8_5_2_1_1.html" title="Function template runtime_pointer_cast">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_TYPE_IN_1_3_42_8_2_8.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_typeindex_header_reference.html#header.boost.type_index.ctti_type_index_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="runtime_p_1_3_42_8_5_2_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.typeindex.ctti_type_index"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class ctti_type_index</span></h2>
+<p>boost::typeindex::ctti_type_index</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../boost_typeindex_header_reference.html#header.boost.type_index.ctti_type_index_hpp" title="Header &lt;boost/type_index/ctti_type_index.hpp&gt;">boost/type_index/ctti_type_index.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.typeindex.ctti_type_index.type_info_t"></a><span class="identifier">type_info_t</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="ctti_type_index.html#boost.typeindex.ctti_type_indexconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <span class="keyword">explicit</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_4-bb"><span class="identifier">ctti_type_index</span></a><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_6-bb"><span class="identifier">ctti_type_index</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_7-bb"><span class="identifier">ctti_type_index</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html#boost.typeindex.ctti_type_index.type_info_t">type_info_t</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_3-bb">private member functions</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_3_1-bb"><span class="identifier">get_raw_name_length</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5-bb">public member functions</a></span>
+  <span class="keyword">const</span> <a class="link" href="ctti_type_index.html#boost.typeindex.ctti_type_index.type_info_t">type_info_t</a> <span class="special">&amp;</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_1-bb"><span class="identifier">type_info</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_2-bb"><span class="identifier">raw_name</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_3-bb"><span class="identifier">name</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_4-bb"><span class="identifier">pretty_name</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_5-bb"><span class="identifier">hash_code</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_6-bb"><span class="identifier">equal</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">constexpr</span> <span class="keyword">bool</span> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_5_7-bb"><span class="identifier">before</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_8-bb">public static functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">static</span> <span class="keyword">constexpr</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_8_1-bb"><span class="identifier">type_id</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <span class="keyword">constexpr</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_8_2-bb"><span class="identifier">type_id_with_cvr</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a class="link" href="ctti_type_index.html#id-1_3_42_8_3_4_1_1_8_3-bb"><span class="identifier">type_id_runtime</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.42.8.3.6.4"></a><h2>Description</h2>
+<p>This class is a wrapper that pretends to work exactly like <a class="link" href="stl_type_index.html" title="Class stl_type_index">stl_type_index</a>, but does not require RTTI support. <span class="bold"><strong>For</strong></span> <span class="bold"><strong>description</strong></span> <span class="bold"><strong>of</strong></span> <span class="bold"><strong>functions</strong></span> <span class="bold"><strong>see</strong></span> <a class="link" href="type_index_facade.html" title="Class template type_index_facade">type_index_facade</a>.</p>
+<p>This class on C++14 compatible compilers has following functions marked as constexpr:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>default constructor</p></li>
+<li class="listitem"><p>copy constructors and assignemnt operations</p></li>
+<li class="listitem"><p>class methods: name(), before(const ctti_type_index&amp; rhs), equal(const ctti_type_index&amp; rhs)</p></li>
+<li class="listitem"><p>static methods type_id&lt;T&gt;(), type_id_with_cvr&lt;T&gt;()</p></li>
+<li class="listitem"><p>comparison operators</p></li>
+</ul></div>
+<p>
+</p>
+<p>This class produces slightly longer type names, so consider using <a class="link" href="stl_type_index.html" title="Class stl_type_index">stl_type_index</a> in situations when typeid() is working. </p>
+<div class="refsect2">
+<a name="id-1.3.42.8.3.6.4.5"></a><h3>
+<a name="boost.typeindex.ctti_type_indexconstruct-copy-destruct"></a><code class="computeroutput">ctti_type_index</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_42_8_3_4_1_1_4-bb"></a><span class="identifier">ctti_type_index</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> data<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="id-1_3_42_8_3_4_1_1_6-bb"></a><span class="identifier">ctti_type_index</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="id-1_3_42_8_3_4_1_1_7-bb"></a><span class="identifier">ctti_type_index</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html#boost.typeindex.ctti_type_index.type_info_t">type_info_t</a> <span class="special">&amp;</span> data<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.42.8.3.6.4.6"></a><h3>
+<a name="id-1_3_42_8_3_4_1_1_3-bb"></a><code class="computeroutput">ctti_type_index</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem"><pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_42_8_3_4_1_1_3_1-bb"></a><span class="identifier">get_raw_name_length</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.42.8.3.6.4.7"></a><h3>
+<a name="id-1_3_42_8_3_4_1_1_5-bb"></a><code class="computeroutput">ctti_type_index</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <a class="link" href="ctti_type_index.html#boost.typeindex.ctti_type_index.type_info_t">type_info_t</a> <span class="special">&amp;</span> <a name="id-1_3_42_8_3_4_1_1_5_1-bb"></a><span class="identifier">type_info</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <a name="id-1_3_42_8_3_4_1_1_5_2-bb"></a><span class="identifier">raw_name</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <a name="id-1_3_42_8_3_4_1_1_5_3-bb"></a><span class="identifier">name</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <a name="id-1_3_42_8_3_4_1_1_5_4-bb"></a><span class="identifier">pretty_name</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="id-1_3_42_8_3_4_1_1_5_5-bb"></a><span class="identifier">hash_code</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="id-1_3_42_8_3_4_1_1_5_6-bb"></a><span class="identifier">equal</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">constexpr</span> <span class="keyword">bool</span> <a name="id-1_3_42_8_3_4_1_1_5_7-bb"></a><span class="identifier">before</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.42.8.3.6.4.8"></a><h3>
+<a name="id-1_3_42_8_3_4_1_1_8-bb"></a><code class="computeroutput">ctti_type_index</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <span class="keyword">static</span> <span class="keyword">constexpr</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a name="id-1_3_42_8_3_4_1_1_8_1-bb"></a><span class="identifier">type_id</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <span class="keyword">constexpr</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a name="id-1_3_42_8_3_4_1_1_8_2-bb"></a><span class="identifier">type_id_with_cvr</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="ctti_type_index.html" title="Class ctti_type_index">ctti_type_index</a> <a name="id-1_3_42_8_3_4_1_1_8_3-bb"></a><span class="identifier">type_id_runtime</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> variable<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2016 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../BOOST_TYPE_IN_1_3_42_8_2_8.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../boost_typeindex_header_reference.html#header.boost.type_index.ctti_type_index_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="runtime_p_1_3_42_8_5_2_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

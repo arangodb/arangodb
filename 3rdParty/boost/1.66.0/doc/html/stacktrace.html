@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;37.&#160;Boost.Stacktrace 1.0</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="libraries.html" title="Part&#160;I.&#160;The Boost C++ Libraries (BoostBook Subset)">
+<link rel="prev" href="signals2/tests.html" title="Testsuite">
+<link rel="next" href="stacktrace/getting_started.html" title="Getting Started">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="signals2/tests.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stacktrace/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="stacktrace"></a>Chapter&#160;37.&#160;Boost.Stacktrace 1.0</h2></div>
+<div><p class="copyright">Copyright &#169; 2016, 2017 Antony Polukhin</p></div>
+<div><div class="legalnotice">
+<a name="stacktrace.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="stacktrace.html#stacktrace.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html">Getting Started</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.how_to_print_current_call_stack">How
+      to print current call stack</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.handle_terminates_aborts_and_seg">Handle
+      terminates, aborts and Segmentation Faults</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.better_asserts">Better asserts</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.exceptions_with_stacktrace">Exceptions
+      with stacktrace</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.enabling_and_disabling_stacktrac">Enabling
+      and disabling stacktraces</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.saving_stacktraces_by_specified_">Saving
+      stacktraces by specified format</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.getting_function_information_fro">Getting
+      function information from pointer</a></span></dt>
+<dt><span class="section"><a href="stacktrace/getting_started.html#stacktrace.getting_started.global_control_over_stacktrace_o">Global
+      control over stacktrace output format</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="stacktrace/configuration_and_build.html">Configuration and Build</a></span></dt>
+<dd><dl><dt><span class="section"><a href="stacktrace/configuration_and_build.html#stacktrace.configuration_and_build.mingw_and_mingw_w64_specific_not">MinGW
+      and MinGW-w64 specific notes</a></span></dt></dl></dd>
+<dt><span class="section"><a href="stacktrace/acknowledgements.html">Acknowledgements</a></span></dt>
+<dt><span class="section"><a href="stacktrace/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="stacktrace/reference.html#header.boost.stacktrace.stacktrace_hpp">Header &lt;boost/stacktrace/stacktrace.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="stacktrace/reference.html#header.boost.stacktrace.detail.frame_decl_hpp">Header &lt;boost/stacktrace/detail/frame_decl.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="stacktrace/reference.html#header.boost.stacktrace.frame_hpp">Header &lt;boost/stacktrace/frame.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="stacktrace/reference.html#header.boost.stacktrace.safe_dump_to_hpp">Header &lt;boost/stacktrace/safe_dump_to.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="stacktrace/reference.html#header.boost.stacktrace.stacktrace_fwd_hpp">Header &lt;boost/stacktrace/stacktrace_fwd.hpp&gt;</a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="stacktrace.motivation"></a><a class="link" href="stacktrace.html#stacktrace.motivation" title="Motivation">Motivation</a>
+</h2></div></div></div>
+<p>
+      How can one display the call sequence in C++? What function called the current
+      function? What call sequence led to an exception?
+    </p>
+<p>
+      Boost.Stacktrace library is a simple C++03 library that provides information
+      about call sequence in a human-readable form.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:06:01 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="signals2/tests.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stacktrace/getting_started.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

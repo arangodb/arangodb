@@ -1,0 +1,162 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Fiber</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="next" href="fiber/overview.html" title="Overview">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="fiber/overview.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="fiber"></a>Chapter&#160;1.&#160;Fiber</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Oliver</span> <span class="surname">Kowalke</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2013 Oliver Kowalke</p></div>
+<div><div class="legalnotice">
+<a name="fiber.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="fiber/overview.html">Overview</a></span></dt>
+<dd><dl><dt><span class="section"><a href="fiber/overview/implementations__fcontext_t__ucontext_t_and_winfiber.html">Implementations:
+      fcontext_t, ucontext_t and WinFiber</a></span></dt></dl></dd>
+<dt><span class="section"><a href="fiber/fiber_mgmt.html">Fiber management</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/fiber_mgmt/fiber.html">Class
+      <code class="computeroutput"><span class="identifier">fiber</span></code></a></span></dt>
+<dt><span class="section"><a href="fiber/fiber_mgmt/id.html">Class fiber::id</a></span></dt>
+<dt><span class="section"><a href="fiber/fiber_mgmt/this_fiber.html">Namespace this_fiber</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/scheduling.html">Scheduling</a></span></dt>
+<dt><span class="section"><a href="fiber/stack.html">Stack allocation</a></span></dt>
+<dd><dl><dt><span class="section"><a href="fiber/stack/valgrind.html">Support for valgrind</a></span></dt></dl></dd>
+<dt><span class="section"><a href="fiber/synchronization.html">Synchronization</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/synchronization/mutex_types.html">Mutex Types</a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/conditions.html">Condition Variables</a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/barriers.html">Barriers</a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/channels.html">Channels</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/synchronization/channels/buffered_channel.html">Buffered
+        Channel</a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/channels/unbuffered_channel.html">Unbuffered
+        Channel</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/synchronization/futures.html">Futures</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/synchronization/futures/future.html">Future</a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/futures/promise.html">Template
+        <code class="computeroutput"><span class="identifier">promise</span><span class="special">&lt;&gt;</span></code></a></span></dt>
+<dt><span class="section"><a href="fiber/synchronization/futures/packaged_task.html">Template
+        <code class="computeroutput"><span class="identifier">packaged_task</span><span class="special">&lt;&gt;</span></code></a></span></dt>
+</dl></dd>
+</dl></dd>
+<dt><span class="section"><a href="fiber/fls.html">Fiber local storage</a></span></dt>
+<dt><span class="section"><a href="fiber/migration.html">Migrating fibers
+    between threads</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks.html">Integrating Fibers
+    with Asynchronous Callbacks</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/callbacks/overview.html">Overview</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/return_errorcode.html">Return Errorcode</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/success_or_exception.html">Success or Exception</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/return_errorcode_or_data.html">Return Errorcode
+      or Data</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/data_or_exception.html">Data
+      or Exception</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/success_error_virtual_methods.html">Success/Error
+      Virtual Methods</a></span></dt>
+<dt><span class="section"><a href="fiber/callbacks/then_there_s____boost_asio__.html">Then
+      There&#8217;s <a href="http://www.boost.org/doc/libs/release/libs/asio/index.html" target="_top">Boost.Asio</a></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/nonblocking.html">Integrating
+    Fibers with Nonblocking I/O</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any.html">when_any / when_all
+    functionality</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/when_any/when_any.html">when_any</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__simple_completion.html">when_any,
+        simple completion</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__return_value.html">when_any,
+        return value</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__produce_first_outcome__whether_result_or_exception.html">when_any,
+        produce first outcome, whether result or exception</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__produce_first_success.html">when_any,
+        produce first success</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__heterogeneous_types.html">when_any,
+        heterogeneous types</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_any/when_any__a_dubious_alternative.html">when_any,
+        a dubious alternative</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality.html">when_all functionality</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality/when_all__simple_completion.html">when_all,
+        simple completion</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality/when_all__return_values.html">when_all,
+        return values</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality/when_all_until_first_exception.html">when_all
+        until first exception</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality/wait_all__collecting_all_exceptions.html">wait_all,
+        collecting all exceptions</a></span></dt>
+<dt><span class="section"><a href="fiber/when_any/when_all_functionality/when_all__heterogeneous_types.html">when_all,
+        heterogeneous types</a></span></dt>
+</dl></dd>
+</dl></dd>
+<dt><span class="section"><a href="fiber/integration.html">Sharing a
+    Thread with Another Main Loop</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/integration/overview.html">Overview</a></span></dt>
+<dt><span class="section"><a href="fiber/integration/event_driven_program.html">Event-Driven
+      Program</a></span></dt>
+<dt><span class="section"><a href="fiber/integration/embedded_main_loop.html">Embedded
+      Main Loop</a></span></dt>
+<dt><span class="section"><a href="fiber/integration/deeper_dive_into___boost_asio__.html">Deeper
+      Dive into <a href="http://www.boost.org/doc/libs/release/libs/asio/index.html" target="_top">Boost.Asio</a></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/speculation.html">Specualtive
+    execution</a></span></dt>
+<dt><span class="section"><a href="fiber/numa.html">NUMA</a></span></dt>
+<dt><span class="section"><a href="fiber/gpu_computing.html">GPU computing</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="fiber/gpu_computing/cuda.html">CUDA</a></span></dt>
+<dt><span class="section"><a href="fiber/gpu_computing/hip.html">ROCm/HIP</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="fiber/worker.html">Running with worker
+    threads</a></span></dt>
+<dt><span class="section"><a href="fiber/performance.html">Performance</a></span></dt>
+<dt><span class="section"><a href="fiber/tuning.html">Tuning</a></span></dt>
+<dt><span class="section"><a href="fiber/custom.html">Customization</a></span></dt>
+<dt><span class="section"><a href="fiber/rationale.html">Rationale</a></span></dt>
+<dt><span class="section"><a href="fiber/acknowledgements.html">Acknowledgments</a></span></dt>
+<dt><span class="section"><a href="fiber/installing.html">Appendix: Installing and Running Tests</a></span></dt>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:00:15 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="fiber/overview.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

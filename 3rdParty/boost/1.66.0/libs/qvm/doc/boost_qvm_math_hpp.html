@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>boost/qvm/math.hpp</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>boost/qvm/math.hpp</h3>
+</div>
+<p>This header introduces in the <i>boost::qvm</i> namespace function template declarations corresponding to the functions defined in the standard C header file <i>&lt;math.h&gt;</i>, and defines <i>float</i> and <i>double</i> specializations which simply call the appropriate C function.</p>
+<h3>Synopsis:</h3>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink">boost/qvm/math.hpp</span>&gt;</p>
+<pre>#include &lt;math.h&gt;
+#include &lt;<span class="RenoLink"><a href="boost_qvm_inline_hpp.html">boost/qvm/inline.hpp</a></span>&gt;
+
+namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class T&gt; T acos( T );
+        template &lt;class T&gt; T asin( T );
+        template &lt;class T&gt; T atan( T );
+        template &lt;class T&gt; T atan2( T, T );
+        template &lt;class T&gt; T cos( T );
+        template &lt;class T&gt; T sin( T );
+        template &lt;class T&gt; T tan( T );
+        template &lt;class T&gt; T cosh( T );
+        template &lt;class T&gt; T sinh( T );
+        template &lt;class T&gt; T tanh( T );
+        template &lt;class T&gt; T exp( T );
+        template &lt;class T&gt; T log( T );
+        template &lt;class T&gt; T log10( T );
+        template &lt;class T&gt; T mod( T , T );
+        template &lt;class T&gt; T pow( T, T );
+        template &lt;class T&gt; T sqrt( T );
+        template &lt;class T&gt; T ceil( T );
+        template &lt;class T&gt; T abs( T );
+        template &lt;class T&gt; T floor( T );
+        template &lt;class T&gt; T mod( T, T );
+        template &lt;class T&gt; T ldexp( T, int );
+        template &lt;class T&gt; T sign( T );
+        
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float acos&lt;float&gt;( float x ) { return ::acosf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float asin&lt;float&gt;( float x ) { return ::asinf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float atan&lt;float&gt;( float x ) { return ::atanf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float atan2&lt;float&gt;( float x, float y ) { return ::atan2f(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float cos&lt;float&gt;( float x ) { return ::cosf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float sin&lt;float&gt;( float x ) { return ::sinf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float tan&lt;float&gt;( float x ) { return ::tanf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float cosh&lt;float&gt;( float x ) { return ::coshf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float sinh&lt;float&gt;( float x ) { return ::sinhf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float tanh&lt;float&gt;( float x ) { return ::tanhf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float exp&lt;float&gt;( float x ) { return ::expf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float log&lt;float&gt;( float x ) { return ::logf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float log10&lt;float&gt;( float x ) { return ::log10f(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float mod&lt;float&gt;( float x, float y ) { return ::fmodf(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float pow&lt;float&gt;( float x, float y ) { return ::powf(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float sqrt&lt;float&gt;( float x ) { return ::sqrtf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float ceil&lt;float&gt;( float x ) { return ::ceilf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float abs&lt;float&gt;( float x ) { return ::fabsf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float floor&lt;float&gt;( float x ) { return ::floorf(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float ldexp&lt;float&gt;( float x, int y ) { return ::ldexpf(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> float sign&lt;float&gt;( float x ) { return x&lt;0 ? -1.f : +1.f; }
+                            
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double acos&lt;double&gt;( double x ) { return ::acos(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double asin&lt;double&gt;( double x ) { return ::asin(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double atan&lt;double&gt;( double x ) { return ::atan(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double atan2&lt;double&gt;( double x, double y ) { return ::atan2(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double cos&lt;double&gt;( double x ) { return ::cos(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double sin&lt;double&gt;( double x ) { return ::sin(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double tan&lt;double&gt;( double x ) { return ::tan(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double cosh&lt;double&gt;( double x ) { return ::cosh(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double sinh&lt;double&gt;( double x ) { return ::sinh(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double tanh&lt;double&gt;( double x ) { return ::tanh(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double exp&lt;double&gt;( double x ) { return ::exp(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double log&lt;double&gt;( double x ) { return ::log(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double log10&lt;double&gt;( double x ) { return ::log10(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double mod&lt;double&gt;( double x, double y ) { return ::fmod(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double pow&lt;double&gt;( double x, double y ) { return ::pow(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double sqrt&lt;double&gt;( double x ) { return ::sqrt(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double ceil&lt;double&gt;( double x ) { return ::ceil(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double abs&lt;double&gt;( double x ) { return ::fabs(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double floor&lt;double&gt;( double x ) { return ::floor(x); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double ldexp&lt;double&gt;( double x, int y ) { return ::ldexp(x,y); }
+        template &lt;&gt; <span class="RenoLink"><a href="BOOST_QVM_INLINE_TRIVIAL.html">BOOST_QVM_INLINE_TRIVIAL</a></span> double sign&lt;double&gt;( double x ) { return x&lt;0 ? -1.0 : +1.0; }</span>
+    }
+}</pre>
+</div></div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="known_quirks_and_issues.html">Known Quirks and Issues</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

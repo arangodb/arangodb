@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/scope.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="boost_python_operators_hpp.html" title="boost/python/operators.hpp">
+<link rel="next" href="boost_python_stl_iterator_hpp.html" title="boost/python/stl_iterator.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_operators_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_stl_iterator_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_scope_hpp"></a><a class="link" href="boost_python_scope_hpp.html" title="boost/python/scope.hpp">boost/python/scope.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.class_scope">Class
+        <code class="computeroutput"><span class="identifier">scope</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.class_scope_constructors_and_des">Class
+        scope constructors and destructor</a></span></dt>
+<dt><span class="section"><a href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_scope_hpp.introduction"></a><a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          Defines facilities for querying and controlling the Python scope (namespace)
+          which will contain new wrapped classes and functions.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_scope_hpp.class_scope"></a><a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.class_scope" title="Class scope">Class
+        <code class="computeroutput"><span class="identifier">scope</span></code></a>
+</h3></div></div></div>
+<p>
+          The scope class has an associated global Python object which controls the
+          Python namespace in which new extension classes and wrapped functions will
+          be defined as attributes. Default-constructing a new scope object binds
+          it to the associated global Python object. Constructing a scope object
+          with an argument changes the associated global Python object to the one
+          held by the argument, until the lifetime of the scope object ends, at which
+          time the associated global Python object reverts to what it was before
+          the scope object was constructed.
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">python</span>
+<span class="special">{</span>
+  <span class="keyword">class</span> <span class="identifier">scope</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">object</span>
+  <span class="special">{</span>
+   <span class="keyword">public</span><span class="special">:</span>
+      <span class="identifier">scope</span><span class="special">(</span><span class="identifier">scope</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+      <span class="identifier">scope</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+      <span class="identifier">scope</span><span class="special">();</span>
+      <span class="special">~</span><span class="identifier">scope</span><span class="special">()</span>
+   <span class="keyword">private</span><span class="special">:</span>
+      <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">=(</span><span class="identifier">scope</span> <span class="keyword">const</span><span class="special">&amp;);</span>
+  <span class="special">};</span>
+<span class="special">}}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_scope_hpp.class_scope_constructors_and_des"></a><a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.class_scope_constructors_and_des" title="Class scope constructors and destructor">Class
+        scope constructors and destructor</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">explicit</span> <span class="identifier">scope</span><span class="special">(</span><span class="identifier">scope</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">explicit</span> <span class="identifier">scope</span><span class="special">(</span><span class="identifier">object</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+          Stores a reference to the current associated scope object, and sets the
+          associated scope object to the one referred to by x.ptr(). The object base
+          class is initialized with x.
+        </p>
+<pre class="programlisting"><span class="identifier">scope</span><span class="special">();</span></pre>
+<p>
+          Stores a reference to the current associated scope object. The object base
+          class is initialized with the current associated scope object. Outside
+          any module initialization function, the current associated Python object
+          is None.
+        </p>
+<pre class="programlisting"><span class="special">~</span><span class="identifier">scope</span><span class="special">()</span></pre>
+<p>
+          Sets the current associated Python object to the stored object.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_scope_hpp.example"></a><a class="link" href="boost_python_scope_hpp.html#high_level_components.boost_python_scope_hpp.example" title="Example">Example</a>
+</h3></div></div></div>
+<p>
+          The following example shows how scope setting can be used to define nested
+          classes.
+        </p>
+<p>
+          C++ Module definition:
+        </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="keyword">class</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">scope</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+
+<span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+  <span class="keyword">void</span> <span class="identifier">f</span><span class="special">()</span> <span class="special">{}</span>
+
+  <span class="keyword">struct</span> <span class="identifier">Y</span> <span class="special">{</span> <span class="keyword">int</span> <span class="identifier">g</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="number">42</span><span class="special">;</span> <span class="special">}</span> <span class="special">};</span>
+<span class="special">};</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">nested</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">// add some constants to the current (module) scope</span>
+   <span class="identifier">scope</span><span class="special">().</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"yes"</span><span class="special">)</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+   <span class="identifier">scope</span><span class="special">().</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"no"</span><span class="special">)</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+   <span class="comment">// Change the current scope </span>
+   <span class="identifier">scope</span> <span class="identifier">outer</span>
+       <span class="special">=</span> <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="string">"X"</span><span class="special">)</span>
+            <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"f"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span><span class="special">)</span>
+            <span class="special">;</span>
+
+   <span class="comment">// Define a class Y in the current scope, X</span>
+   <span class="identifier">class_</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">Y</span><span class="special">&gt;(</span><span class="string">"Y"</span><span class="special">)</span>
+      <span class="special">.</span><span class="identifier">def</span><span class="special">(</span><span class="string">"g"</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">Y</span><span class="special">::</span><span class="identifier">g</span><span class="special">)</span>
+      <span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Interactive Python:
+        </p>
+<pre class="programlisting"><span class="special">&gt;&gt;&gt;</span> <span class="identifier">import</span> <span class="identifier">nested</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">nested</span><span class="special">.</span><span class="identifier">yes</span>
+<span class="number">1</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y</span> <span class="special">=</span> <span class="identifier">nested</span><span class="special">.</span><span class="identifier">X</span><span class="special">.</span><span class="identifier">Y</span><span class="special">()</span>
+<span class="special">&gt;&gt;&gt;</span> <span class="identifier">y</span><span class="special">.</span><span class="identifier">g</span><span class="special">()</span>
+<span class="number">42</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_operators_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_stl_iterator_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

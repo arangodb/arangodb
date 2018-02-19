@@ -1,0 +1,480 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class param_type</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../hypere_1_3_34_5_6_17_1_1_1.html#id-1.3.34.5.6.16.3.4" title="Description">
+<link rel="prev" href="../hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">
+<link rel="next" href="../independent_bits_engine.html" title="Class template independent_bits_engine">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../hypere_1_3_34_5_6_17_1_1_1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../hypere_1_3_34_5_6_17_1_1_1.html#id-1.3.34.5.6.16.3.4"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../independent_bits_engine.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.random.hypere_1_3_34_5_6_17_1_1_1.param_type"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class param_type</span></h2>
+<p>boost::random::hyperexponential_distribution::param_type</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../boost_random/reference.html#header.boost.random.hyperexponential_distribution_hpp" title="Header &lt;boost/random/hyperexponential_distribution.hpp&gt;">boost/random/hyperexponential_distribution.hpp</a>&gt;
+
+</span>
+
+<span class="keyword">class</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <a class="link" href="../hypere_1_3_34_5_6_17_1_1_1.html" title="Class template hyperexponential_distribution">hyperexponential_distribution</a> <a name="boost.random.hypere_1_3_34_5_6_17_1_1_1.param_type.distribution_type"></a><span class="identifier">distribution_type</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="param_type.html#boost.random.hypere_1_3_34_5_6_17_1_1_1.param_typeconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_4-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbIterT<span class="special">,</span> <span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+    <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_5-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">ProbIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbRangeT<span class="special">,</span> <span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+    <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_6-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">ProbRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+               <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">ProbRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+    <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_7-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">RateIterT</span><span class="special">,</span> <span class="identifier">RateIterT</span><span class="special">,</span> 
+               <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateIterT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_8-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_9-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_10-bb"><span class="identifier">param_type</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_3-bb">public member functions</a></span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_3_1-bb"><span class="identifier">probabilities</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_3_2-bb"><span class="identifier">rates</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_11-bb">friend functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+    <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+    <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_1-bb"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+    <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+    <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_2-bb"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_3-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="keyword">bool</span> <a class="link" href="param_type.html#id-1_3_34_5_6_17_1_1_1_3_11_4-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.34.5.6.16.3.4.13.4"></a><h2>Description</h2>
+<p>The parameters of a hyperexponential distribution.</p>
+<p>Stores the <span class="emphasis"><em>phase probability vector</em></span> and the <span class="emphasis"><em>rate vector</em></span> of the hyperexponential distribution.</p>
+<p>Marco Guazzone (<a href="mailto:marco.guazzone@gmail.com" target="_top">marco.guazzone@gmail.com</a>) </p>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.13.4.5"></a><h3>
+<a name="boost.random.hypere_1_3_34_5_6_17_1_1_1.param_typeconstruct-copy-destruct"></a><code class="computeroutput">param_type</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_3_4-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> with the default parameters of the distribution. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbIterT<span class="special">,</span> <span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_3_5-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">ProbIterT</span> prob_first<span class="special">,</span> <span class="identifier">ProbIterT</span> prob_last<span class="special">,</span> <span class="identifier">RateIterT</span> rate_first<span class="special">,</span> 
+             <span class="identifier">RateIterT</span> rate_last<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>prob_first</em></span>, <span class="emphasis"><em>prob_last</em></span>) iterator pair, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>rate_first</em></span>, <span class="emphasis"><em>rate_last</em></span>) iterator pair.</p>
+<p>
+
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the rates. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ProbIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]). </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">RateIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]).</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ProbRangeT<span class="special">,</span> <span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_3_6-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">ProbRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> prob_range<span class="special">,</span> <span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> rate_range<span class="special">,</span> 
+             <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">disable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">ProbRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span><span class="special">||</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateRangeT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>prob_range</em></span>, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>rate_range</em></span>.</p>
+<p>
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The final <code class="computeroutput">disable_if</code> parameter is an implementation detail that differentiates between this two argument constructor and the iterator-based two argument constructor described below. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">prob_range</code></span></p></td>
+<td><p>The range of non-negative real elements representing the phase probabilities; if elements don't sum to 1, they are normalized. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_range</code></span></p></td>
+<td><p>The range of positive real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">ProbRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">RateRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateIterT<span class="special">&gt;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_3_7-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">RateIterT</span> rate_first<span class="special">,</span> <span class="identifier">RateIterT</span> rate_last<span class="special">,</span> 
+             <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">enable_if_c</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">has_pre_increment</span><span class="special">&lt;</span> <span class="identifier">RateIterT</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <span class="special">*</span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the <span class="emphasis"><em>rate vector</em></span> parameter of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by [<span class="emphasis"><em>rate_first</em></span>, <span class="emphasis"><em>rate_last</em></span>) iterator pair, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../../images/random//form_27.png"></span>).</p>
+<p>
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The final <code class="computeroutput">disable_if</code> parameter is an implementation detail that differentiates between this two argument constructor and the range-based two argument constructor described above.</p></td></tr>
+</table></div>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_first</code></span></p></td>
+<td><p>The iterator to the beginning of the range of non-negative real elements representing the rates. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rate_last</code></span></p></td>
+<td><p>The iterator to the ending of the range of non-negative real elements representing the rates.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">RateIterT</code></span></p></td>
+<td><p>Must meet the requirements of <code class="computeroutput">InputIterator</code> concept (ISO,2014,sec. 24.2.3 [input.iterators]). </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RateRangeT<span class="special">&gt;</span> <a name="id-1_3_34_5_6_17_1_1_1_3_8-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">RateRangeT</span> <span class="keyword">const</span> <span class="special">&amp;</span> rate_range<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the "rates" parameters of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the range defined by <span class="emphasis"><em>rate_range</em></span>, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../../images/random//form_27.png"></span>).</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">rate_range</code></span></p></td>
+<td><p>The range of positive real elements representing the rates. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Template Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">RateRangeT</code></span></p></td>
+<td><p>Must meet the requirements of <a href="../../../../../libs/range/doc/html/range/concepts.html" target="_top">Range</a> concept.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_3_9-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> l1<span class="special">,</span> 
+           <span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> l2<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the <span class="emphasis"><em>phase probability vector</em></span> and <span class="emphasis"><em>rate vector</em></span> parameters of the distribution.</p>
+<p>The <span class="emphasis"><em>phase probability vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l1</em></span>, and the <span class="emphasis"><em>rate vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l2</em></span>.</p>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l1</code></span></p></td>
+<td><p>The initializer list for inizializing the phase probability vector. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">l2</code></span></p></td>
+<td><p>The initializer list for inizializing the rate vector.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_34_5_6_17_1_1_1_3_10-bb"></a><span class="identifier">param_type</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">initializer_list</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> l1<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from the <span class="emphasis"><em>rate vector</em></span> parameter of the distribution and with equal phase probabilities.</p>
+<p>The <span class="emphasis"><em>rate vector</em></span> parameter is given by the <span class="emphasis"><em>brace-init-list</em></span> (ISO,2014,sec. 8.5.4 [dcl.init.list]) defined by <span class="emphasis"><em>l1</em></span>, and the <span class="emphasis"><em>phase probability vector</em></span> parameter is set to the equal phase probabilities (i.e., to a vector of the same length <span class="inlinemediaobject"><img src="../../../images/random//form_15.png"></span> of the <span class="emphasis"><em>rate vector</em></span> and with each element set to <span class="inlinemediaobject"><img src="../../../images/random//form_27.png"></span>).</p>
+<p>
+References:</p>
+<div class="orderedlist"><ol class="orderedlist" type="a"><li class="listitem"><p>ISO, <span class="emphasis"><em>ISO/IEC 14882-2014: Information technology - Programming languages - C++</em></span>, 2014</p></li></ol></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">l1</code></span></p></td>
+<td><p>The initializer list for inizializing the rate vector.</p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.13.4.6"></a><h3>
+<a name="id-1_3_34_5_6_17_1_1_1_3_3-bb"></a><code class="computeroutput">param_type</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a name="id-1_3_34_5_6_17_1_1_1_3_3_1-bb"></a><span class="identifier">probabilities</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Gets the <span class="emphasis"><em>phase probability vector</em></span> parameter of the distribtuion.</p>
+<p>
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The returned probabilities are the normalized version of the ones passed at construction time. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The <span class="emphasis"><em>phase probability vector</em></span> parameter of the distribution.</p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">RealT</span> <span class="special">&gt;</span> <a name="id-1_3_34_5_6_17_1_1_1_3_3_2-bb"></a><span class="identifier">rates</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Gets the <span class="emphasis"><em>rate vector</em></span> parameter of the distribtuion.</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The <span class="emphasis"><em>rate vector</em></span> parameter of the distribution. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.34.5.6.16.3.4.13.4.7"></a><h3>
+<a name="id-1_3_34_5_6_17_1_1_1_3_11-bb"></a><code class="computeroutput">param_type</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+  <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_3_11_1-bb"></a><span class="keyword">operator</span><span class="special">&lt;&lt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> os<span class="special">,</span> 
+             <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> param<span class="special">)</span><span class="special">;</span></pre>
+<p>Writes a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> to a <code class="computeroutput">std::ostream</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits<span class="special">&gt;</span> 
+  <span class="keyword">friend</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a name="id-1_3_34_5_6_17_1_1_1_3_11_2-bb"></a><span class="keyword">operator</span><span class="special">&gt;&gt;</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> is<span class="special">,</span> 
+             <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> param<span class="special">)</span><span class="special">;</span></pre>
+<p>Reads a <code class="computeroutput"><code class="computeroutput"><a class="link" href="param_type.html" title="Class param_type">param_type</a></code></code> from a <code class="computeroutput">std::istream</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="id-1_3_34_5_6_17_1_1_1_3_11_3-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Returns true if the two sets of parameters are the same. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="keyword">bool</span> <a name="id-1_3_34_5_6_17_1_1_1_3_11_4-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> lhs<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="param_type.html" title="Class param_type">param_type</a> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Returns true if the two sets of parameters are the different. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2000-2005 Jens Maurer<br>Copyright &#169; 2009, 2010 Steven Watanabe<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../hypere_1_3_34_5_6_17_1_1_1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../hypere_1_3_34_5_6_17_1_1_1.html#id-1.3.34.5.6.16.3.4"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../independent_bits_engine.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

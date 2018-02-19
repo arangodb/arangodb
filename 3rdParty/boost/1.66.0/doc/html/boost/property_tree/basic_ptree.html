@@ -1,0 +1,768 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template basic_ptree</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../property_tree/reference.html#header.boost.property_tree.ptree_fwd_hpp" title="Header &lt;boost/property_tree/ptree_fwd.hpp&gt;">
+<link rel="prev" href="json_parser/write__1_3_32_10_5_1_1_1_4.html" title="Function template write_json">
+<link rel="next" href="id_translator.html" title="Struct template id_translator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="json_parser/write__1_3_32_10_5_1_1_1_4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../property_tree/reference.html#header.boost.property_tree.ptree_fwd_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="id_translator.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.property_tree.basic_ptree"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template basic_ptree</span></h2>
+<p>boost::property_tree::basic_ptree</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../property_tree/reference.html#header.boost.property_tree.ptree_fwd_hpp" title="Header &lt;boost/property_tree/ptree_fwd.hpp&gt;">boost/property_tree/ptree_fwd.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Key<span class="special">,</span> <span class="keyword">typename</span> Data<span class="special">,</span> <span class="keyword">typename</span> KeyCompare <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">less</span><span class="special">&lt;</span><span class="identifier">Key</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="basic_ptree.html" title="Class template basic_ptree">basic_ptree</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="basic_ptree.html#boost.property_tree.basic_ptreeconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_4-bb"><span class="identifier">basic_ptree</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_5-bb"><span class="identifier">basic_ptree</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">data_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_6-bb"><span class="identifier">basic_ptree</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_8-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_7-bb"><span class="special">~</span><span class="identifier">basic_ptree</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3-bb">public member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_1-bb"><span class="identifier">swap</span></a><span class="special">(</span><span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_2-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_3-bb"><span class="identifier">max_size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_4-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_5-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_6-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_7-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_8-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">reverse_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_9-bb"><span class="identifier">rbegin</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_10-bb"><span class="identifier">rbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">reverse_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_11-bb"><span class="identifier">rend</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_12-bb"><span class="identifier">rend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_13-bb"><span class="identifier">front</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_14-bb"><span class="identifier">front</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_15-bb"><span class="identifier">back</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_16-bb"><span class="identifier">back</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_17-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">iterator</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_18-bb"><span class="identifier">insert</span></a><span class="special">(</span><span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">It</span><span class="special">,</span> <span class="identifier">It</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_19-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="identifier">iterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_20-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="identifier">iterator</span><span class="special">,</span> <span class="identifier">iterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_21-bb"><span class="identifier">push_front</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_22-bb"><span class="identifier">push_back</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_23-bb"><span class="identifier">pop_front</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_24-bb"><span class="identifier">pop_back</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_25-bb"><span class="identifier">reverse</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Compare<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_26-bb"><span class="identifier">sort</span></a><span class="special">(</span><span class="identifier">Compare</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_27-bb"><span class="identifier">sort</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_28-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_29-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_30-bb"><span class="identifier">ordered_begin</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_31-bb"><span class="identifier">ordered_begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_32-bb"><span class="identifier">not_found</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_33-bb"><span class="identifier">not_found</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_34-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_assoc_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_35-bb"><span class="identifier">find</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">assoc_iterator</span><span class="special">,</span> <span class="identifier">assoc_iterator</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_36-bb"><span class="identifier">equal_range</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">const_assoc_iterator</span><span class="special">,</span> <span class="identifier">const_assoc_iterator</span> <span class="special">&gt;</span> 
+  <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_37-bb"><span class="identifier">equal_range</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_38-bb"><span class="identifier">count</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">size_type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_39-bb"><span class="identifier">erase</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_40-bb"><span class="identifier">to_iterator</span></a><span class="special">(</span><span class="identifier">assoc_iterator</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_41-bb"><span class="identifier">to_iterator</span></a><span class="special">(</span><span class="identifier">const_assoc_iterator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">data_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_42-bb"><span class="identifier">data</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">data_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_43-bb"><span class="identifier">data</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_44-bb"><span class="identifier">clear</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_45-bb"><span class="identifier">get_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_46-bb"><span class="identifier">get_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_47-bb"><span class="identifier">get_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_48-bb"><span class="identifier">get_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_49-bb"><span class="identifier">get_child_optional</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">optional</span><span class="special">&lt;</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_50-bb"><span class="identifier">get_child_optional</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_51-bb"><span class="identifier">put_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_52-bb"><span class="identifier">add_child</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_53-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">Type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_54-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">Type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_55-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_56-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_57-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_58-bb"><span class="identifier">get_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_59-bb"><span class="identifier">get_value_optional</span></a><span class="special">(</span><span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_60-bb"><span class="identifier">get_value_optional</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_61-bb"><span class="identifier">put_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_62-bb"><span class="identifier">put_value</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_63-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">Type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_64-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">Type</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_65-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_66-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_67-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_68-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_69-bb"><span class="identifier">get_optional</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+    <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_70-bb"><span class="identifier">get_optional</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_71-bb"><span class="identifier">put</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_72-bb"><span class="identifier">put</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+    <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_73-bb"><span class="identifier">add</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">Translator</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_3_74-bb"><span class="identifier">add</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_9-bb">private member functions</a></span>
+  <span class="identifier">self_type</span> <span class="special">*</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_9_1-bb"><span class="identifier">walk_path</span></a><span class="special">(</span><span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a class="link" href="basic_ptree.html#id-1_3_32_10_7_1_1_1_9_2-bb"><span class="identifier">force_path</span></a><span class="special">(</span><span class="identifier">path_type</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.32.10.8.3.4"></a><h2>Description</h2>
+<p>Property tree main structure. A property tree is a hierarchical data structure which has one element of type <code class="computeroutput">Data</code> in each node, as well as an ordered sequence of sub-nodes, which are additionally identified by a non-unique key of type <code class="computeroutput">Key</code>.</p>
+<p>Key equivalency is defined by <code class="computeroutput">KeyCompare</code>, a predicate defining a strict weak ordering.</p>
+<p>Property tree defines a Container-like interface to the (key-node) pairs of its direct sub-nodes. The iterators are bidirectional. The sequence of nodes is held in insertion order, not key order. </p>
+<div class="refsect2">
+<a name="id-1.3.32.10.8.3.4.5"></a><h3>
+<a name="boost.property_tree.basic_ptreeconstruct-copy-destruct"></a><code class="computeroutput">basic_ptree</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_32_10_7_1_1_1_4-bb"></a><span class="identifier">basic_ptree</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Creates a node with no children and default-constructed data. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_32_10_7_1_1_1_5-bb"></a><span class="identifier">basic_ptree</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">data_type</span> <span class="special">&amp;</span> data<span class="special">)</span><span class="special">;</span></pre>
+<p>Creates a node with no children and a copy of the given data. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a name="id-1_3_32_10_7_1_1_1_6-bb"></a><span class="identifier">basic_ptree</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_8-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Basic guarantee only. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a name="id-1_3_32_10_7_1_1_1_7-bb"></a><span class="special">~</span><span class="identifier">basic_ptree</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.32.10.8.3.4.6"></a><h3>
+<a name="id-1_3_32_10_7_1_1_1_3-bb"></a><code class="computeroutput">basic_ptree</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_1-bb"></a><span class="identifier">swap</span><span class="special">(</span><span class="identifier">self_type</span> <span class="special">&amp;</span> rhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Swap with other tree. Only constant-time and nothrow if the data type's swap is. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="id-1_3_32_10_7_1_1_1_3_2-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>The number of direct children of this node. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">size_type</span> <a name="id-1_3_32_10_7_1_1_1_3_3-bb"></a><span class="identifier">max_size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="id-1_3_32_10_7_1_1_1_3_4-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Whether there are any direct children. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_5-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_6-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_7-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_8-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">reverse_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_9-bb"></a><span class="identifier">rbegin</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_10-bb"></a><span class="identifier">rbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">reverse_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_11-bb"></a><span class="identifier">rend</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_12-bb"></a><span class="identifier">rend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_13-bb"></a><span class="identifier">front</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_14-bb"></a><span class="identifier">front</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_15-bb"></a><span class="identifier">back</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_16-bb"></a><span class="identifier">back</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_17-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">iterator</span> where<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Insert a copy of the given tree with its key just before the given position in this node. This operation invalidates no iterators. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>An iterator to the newly created child. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> It<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_18-bb"></a><span class="identifier">insert</span><span class="special">(</span><span class="identifier">iterator</span> where<span class="special">,</span> <span class="identifier">It</span> first<span class="special">,</span> <span class="identifier">It</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p>Range insert. Equivalent to: </p>
+<pre class="programlisting"><span class="keyword">for</span><span class="special">(</span><span class="special">;</span> <span class="identifier">first</span> <span class="special">!=</span> <span class="identifier">last</span><span class="special">;</span> <span class="special">++</span><span class="identifier">first</span><span class="special">)</span> <span class="identifier">insert</span><span class="special">(</span><span class="identifier">where</span><span class="special">,</span> <span class="special">*</span><span class="identifier">first</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_19-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="identifier">iterator</span> where<span class="special">)</span><span class="special">;</span></pre>
+<p>Erase the child pointed at by the iterator. This operation invalidates the given iterator, as well as its equivalent assoc_iterator. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A valid iterator pointing to the element after the erased. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_20-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="identifier">iterator</span> first<span class="special">,</span> <span class="identifier">iterator</span> last<span class="special">)</span><span class="special">;</span></pre>
+<p>Range erase. Equivalent to: </p>
+<pre class="programlisting"><span class="keyword">while</span><span class="special">(</span><span class="identifier">first</span> <span class="special">!=</span> <span class="identifier">last</span><span class="special">;</span><span class="special">)</span> <span class="identifier">first</span> <span class="special">=</span> <span class="identifier">erase</span><span class="special">(</span><span class="identifier">first</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_21-bb"></a><span class="identifier">push_front</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to insert(begin(), value). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_22-bb"></a><span class="identifier">push_back</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">value_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to insert(end(), value). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_23-bb"></a><span class="identifier">pop_front</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to erase(begin()). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_24-bb"></a><span class="identifier">pop_back</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to erase(boost::prior(end())). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_25-bb"></a><span class="identifier">reverse</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Reverses the order of direct children in the property tree. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Compare<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_26-bb"></a><span class="identifier">sort</span><span class="special">(</span><span class="identifier">Compare</span> comp<span class="special">)</span><span class="special">;</span></pre>
+<p>Sorts the direct children of this node according to the predicate. The predicate is passed the whole pair of key and child. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_27-bb"></a><span class="identifier">sort</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Sorts the direct children of this node according to key order. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="id-1_3_32_10_7_1_1_1_3_28-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Two property trees are the same if they have the same data, the keys and order of their children are the same, and the children compare equal, recursively. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">bool</span> <a name="id-1_3_32_10_7_1_1_1_3_29-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> rhs<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_30-bb"></a><span class="identifier">ordered_begin</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Returns an iterator to the first child, in key order. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_31-bb"></a><span class="identifier">ordered_begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns an iterator to the first child, in key order. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_32-bb"></a><span class="identifier">not_found</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Returns the not-found iterator. Equivalent to end() in a real associative container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_33-bb"></a><span class="identifier">not_found</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the not-found iterator. Equivalent to end() in a real associative container. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_34-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>
+<p>Find a child with the given key, or not_found() if there is none. There is no guarantee about which child is returned if multiple have the same key. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_assoc_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_35-bb"></a><span class="identifier">find</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Find a child with the given key, or not_found() if there is none. There is no guarantee about which child is returned if multiple have the same key. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">assoc_iterator</span><span class="special">,</span> <span class="identifier">assoc_iterator</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_36-bb"></a><span class="identifier">equal_range</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>
+<p>Find the range of children that have the given key. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span> <span class="identifier">const_assoc_iterator</span><span class="special">,</span> <span class="identifier">const_assoc_iterator</span> <span class="special">&gt;</span> 
+<a name="id-1_3_32_10_7_1_1_1_3_37-bb"></a><span class="identifier">equal_range</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Find the range of children that have the given key. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="id-1_3_32_10_7_1_1_1_3_38-bb"></a><span class="identifier">count</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Count the number of direct children with the given key. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="id-1_3_32_10_7_1_1_1_3_39-bb"></a><span class="identifier">erase</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">key_type</span> <span class="special">&amp;</span> key<span class="special">)</span><span class="special">;</span></pre>
+<p>Erase all direct children with the given key and return the count. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_40-bb"></a><span class="identifier">to_iterator</span><span class="special">(</span><span class="identifier">assoc_iterator</span> it<span class="special">)</span><span class="special">;</span></pre>
+<p>Get the iterator that points to the same element as the argument. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>A valid assoc_iterator range (a, b) does not imply that (to_iterator(a), to_iterator(b)) is a valid range. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_32_10_7_1_1_1_3_41-bb"></a><span class="identifier">to_iterator</span><span class="special">(</span><span class="identifier">const_assoc_iterator</span> it<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the iterator that points to the same element as the argument. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>A valid const_assoc_iterator range (a, b) does not imply that (to_iterator(a), to_iterator(b)) is a valid range. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">data_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_42-bb"></a><span class="identifier">data</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Reference to the actual data in this node. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">data_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_43-bb"></a><span class="identifier">data</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Reference to the actual data in this node. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_44-bb"></a><span class="identifier">clear</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Clear this tree completely, of both data and children. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_45-bb"></a><span class="identifier">get_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or throw <code class="computeroutput"><code class="computeroutput"><a class="link" href="ptree_bad_path.html" title="Class ptree_bad_path">ptree_bad_path</a></code></code>. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>Depending on the path, the result at each level may not be completely deterministic, i.e. if the same key appears multiple times, which child is chosen is not specified. This can lead to the path not being resolved even though there is a descendant with this path. Example: </p>
+<pre class="programlisting"><span class="identifier">a</span> <span class="special">-&gt;</span> <span class="identifier">b</span> <span class="special">-&gt;</span> <span class="identifier">c</span>
+  <span class="special">-&gt;</span> <span class="identifier">b</span>
+</pre>
+<p> The path "a.b.c" will succeed if the resolution of "b" chooses the first such node, but fail if it chooses the second. </p>
+</td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_46-bb"></a><span class="identifier">get_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or throw <code class="computeroutput"><code class="computeroutput"><a class="link" href="ptree_bad_path.html" title="Class ptree_bad_path">ptree_bad_path</a></code></code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_47-bb"></a><span class="identifier">get_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> default_value<span class="special">)</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or return <code class="computeroutput">default_value</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> 
+<a name="id-1_3_32_10_7_1_1_1_3_48-bb"></a><span class="identifier">get_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> default_value<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or return <code class="computeroutput">default_value</code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_49-bb"></a><span class="identifier">get_child_optional</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or return boost::null. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">optional</span><span class="special">&lt;</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_50-bb"></a><span class="identifier">get_child_optional</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the child at the given path, or return boost::null. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_51-bb"></a><span class="identifier">put_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Set the node at the given path to the given value. Create any missing parents. If the node at the path already exists, replace it. 
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>Because of the way paths work, it is not generally guaranteed that a node newly created can be accessed using the same path. </p>
+<p>If the path could refer to multiple nodes, it is unspecified which one gets replaced. </p>
+</td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A reference to the inserted subtree. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_52-bb"></a><span class="identifier">add_child</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">self_type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Add the node at the given path. Create any missing parents. If there already is a node at the path, add another one with the same key. 
+
+</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Because of the way paths work, it is not generally guaranteed that a node newly created can be accessed using the same path. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">path</code></span></p></td>
+<td><p>Path to the child. The last fragment must not have an index. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>A reference to the inserted subtree. </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_53-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the supplied translator. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">Type</span> <a name="id-1_3_32_10_7_1_1_1_3_54-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the default translator. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">Type</span> <a name="id-1_3_32_10_7_1_1_1_3_55-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> default_value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the supplied translator. Return <code class="computeroutput">default_value</code> if this fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_56-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span> default_value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Make get_value do the right thing for string literals. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_57-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> default_value<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the default translator. Return <code class="computeroutput">default_value</code> if this fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">&gt;</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_58-bb"></a><span class="identifier">get_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span> default_value<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Make get_value do the right thing for string literals. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_59-bb"></a><span class="identifier">get_value_optional</span><span class="special">(</span><span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the supplied translator. Return boost::null if this fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_60-bb"></a><span class="identifier">get_value_optional</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Take the value of this node and attempt to translate it to a <code class="computeroutput">Type</code> object using the default translator. Return boost::null if this fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_61-bb"></a><span class="identifier">put_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span><span class="special">;</span></pre>
+<p>Replace the value at this node with the given value, translated to the tree's data type using the supplied translator. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="keyword">void</span> <a name="id-1_3_32_10_7_1_1_1_3_62-bb"></a><span class="identifier">put_value</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Replace the value at this node with the given value, translated to the tree's data type using the default translator. 
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_63-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for get_child(path).get_value(tr). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> <span class="identifier">Type</span> <a name="id-1_3_32_10_7_1_1_1_3_64-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for get_child(path).get_value&lt;Type&gt;(). </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">Type</span> <a name="id-1_3_32_10_7_1_1_1_3_65-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> default_value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for get_child(path, empty_ptree()) .get_value(default_value, tr). That is, return the translated value if possible, and the default value if the node doesn't exist or conversion fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_66-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span> default_value<span class="special">,</span> 
+                  <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Make get do the right thing for string literals. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_67-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> default_value<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for get_child(path, empty_ptree()) .get_value(default_value). That is, return the translated value if possible, and the default value if the node doesn't exist or conversion fails. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Ch<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="id-1_3_32_10_7_1_1_1_3_68-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Ch</span> <span class="special">*</span> default_value<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Make get do the right thing for string literals. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_69-bb"></a><span class="identifier">get_optional</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for: </p>
+<pre class="programlisting"><span class="keyword">if</span><span class="special">(</span><span class="identifier">optional</span>\<span class="special">&lt;</span><span class="identifier">self_type</span><span class="special">&amp;</span>\<span class="special">&gt;</span> <span class="identifier">node</span> <span class="special">=</span> <span class="identifier">get_child_optional</span><span class="special">(</span><span class="identifier">path</span><span class="special">)</span><span class="special">)</span>
+  <span class="keyword">return</span> <span class="identifier">node</span><span class="special">-&gt;</span><span class="identifier">get_value_optional</span><span class="special">(</span><span class="identifier">tr</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">null</span><span class="special">;</span>
+</pre>
+<p> That is, return the value if it exists and can be converted, or nil. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+  <span class="identifier">optional</span><span class="special">&lt;</span> <span class="identifier">Type</span> <span class="special">&gt;</span> <a name="id-1_3_32_10_7_1_1_1_3_70-bb"></a><span class="identifier">get_optional</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Shorthand for: </p>
+<pre class="programlisting"><span class="keyword">if</span><span class="special">(</span><span class="identifier">optional</span>\<span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">self_type</span><span class="special">&amp;</span>\<span class="special">&gt;</span> <span class="identifier">node</span> <span class="special">=</span> <span class="identifier">get_child_optional</span><span class="special">(</span><span class="identifier">path</span><span class="special">)</span><span class="special">)</span>
+  <span class="keyword">return</span> <span class="identifier">node</span><span class="special">-&gt;</span><span class="identifier">get_value_optional</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+<span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">null</span><span class="special">;</span>
+</pre>
+<p> That is, return the value if it exists and can be converted, or nil. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_71-bb"></a><span class="identifier">put</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span><span class="special">;</span></pre>
+<p>Set the value of the node at the given path to the supplied value, translated to the tree's data type. If the node doesn't exist, it is created, including all its missing parents. 
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The node that had its value changed. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_72-bb"></a><span class="identifier">put</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>Set the value of the node at the given path to the supplied value, translated to the tree's data type. If the node doesn't exist, it is created, including all its missing parents. 
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The node that had its value changed. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">,</span> <span class="keyword">typename</span> Translator<span class="special">&gt;</span> 
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_73-bb"></a><span class="identifier">add</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">,</span> <span class="identifier">Translator</span> tr<span class="special">)</span><span class="special">;</span></pre>
+<p>If the node identified by the path does not exist, create it, including all its missing parents. If the node already exists, add a sibling with the same key. Set the newly created node's value to the given paremeter, translated with the supplied translator. 
+
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">path</code></span></p></td>
+<td><p>Path to the child. The last fragment must not have an index. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">tr</code></span></p></td>
+<td><p>The translator to use. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">value</code></span></p></td>
+<td><p>The value to add. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The node that was added. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Type<span class="special">&gt;</span> 
+  <span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_3_74-bb"></a><span class="identifier">add</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">path_type</span> <span class="special">&amp;</span> path<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Type</span> <span class="special">&amp;</span> value<span class="special">)</span><span class="special">;</span></pre>
+<p>If the node identified by the path does not exist, create it, including all its missing parents. If the node already exists, add a sibling with the same key. Set the newly created node's value to the given paremeter, translated with the supplied translator. 
+
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">path</code></span></p></td>
+<td><p>Path to the child. The last fragment must not have an index. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">value</code></span></p></td>
+<td><p>The value to add. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>The node that was added. </p></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>
+<a class="link" href="ptree_bad_data.html" title="Class ptree_bad_data">ptree_bad_data</a> if the conversion fails. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.32.10.8.3.4.7"></a><h3>
+<a name="id-1_3_32_10_7_1_1_1_9-bb"></a><code class="computeroutput">basic_ptree</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="identifier">self_type</span> <span class="special">*</span> <a name="id-1_3_32_10_7_1_1_1_9_1-bb"></a><span class="identifier">walk_path</span><span class="special">(</span><span class="identifier">path_type</span> <span class="special">&amp;</span> p<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">self_type</span> <span class="special">&amp;</span> <a name="id-1_3_32_10_7_1_1_1_9_2-bb"></a><span class="identifier">force_path</span><span class="special">(</span><span class="identifier">path_type</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2010 Marcin Kalicinski<br>Copyright &#169; 2010-2013 Sebastian
+      Redl<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="json_parser/write__1_3_32_10_5_1_1_1_4.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../property_tree/reference.html#header.boost.property_tree.ptree_fwd_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="id_translator.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

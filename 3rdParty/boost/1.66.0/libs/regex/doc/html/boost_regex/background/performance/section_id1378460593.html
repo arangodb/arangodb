@@ -1,0 +1,404 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Testing simple leftmost-longest matches (platform = linux, compiler = GNU C++ version 6.3.0)</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Regex 5.1.3">
+<link rel="up" href="../performance.html" title="Performance">
+<link rel="prev" href="../performance.html" title="Performance">
+<link rel="next" href="section_id1675827111.html" title="Testing Perl searches (platform = linux, compiler = GNU C++ version 6.3.0)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../performance.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="section_id1675827111.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_regex.background.performance.section_id1378460593"></a><a class="link" href="section_id1378460593.html" title="Testing simple leftmost-longest matches (platform = linux, compiler = GNU C++ version 6.3.0)">Testing
+        simple leftmost-longest matches (platform = linux, compiler = GNU C++ version
+        6.3.0)</a>
+</h4></div></div></div>
+<div class="table">
+<a name="boost_regex.background.performance.section_id1378460593.table_Testing_simple_leftmost_longest_matches_platform_linux_compiler_GNU_C_version_6_3_0_"></a><p class="title"><b>Table&#160;8.&#160;Testing simple leftmost-longest matches (platform = linux, compiler
+          = GNU C++ version 6.3.0)</b></p>
+<div class="table-contents"><table class="table" summary="Testing simple leftmost-longest matches (platform = linux, compiler
+          = GNU C++ version 6.3.0)">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression<br> Text
+                  </p>
+                </th>
+<th>
+                  <p>
+                    boost 1.65
+                  </p>
+                </th>
+<th>
+                  <p>
+                    std::regex
+                  </p>
+                </th>
+<th>
+                  <p>
+                    POSIX
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">([[:digit:]]{4}[- ]){3}[[:digit:]]{3,4}</code><br>
+                    <code class="literal">1234-5678-1234-456</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.11<br> (669ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (603ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">3.70<br> (2234ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^([0-9]+)(\-| |$)(.*)$</code><br> <code class="literal">100-
+                    this is a line of ftp response which contains a message string</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (781ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">4.52<br> (3530ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="red">12.72<br> (9933ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\
+                    ...</code><br> <code class="literal">bob.smith@foo.tv</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (937ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.26<br> (1184ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">3.06<br> (2864ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\
+                    ...</code><br> <code class="literal">foo12@foo.edu</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (892ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.29<br> (1150ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.95<br> (2628ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^([a-zA-Z0-9_\-\.]+)@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.)|(([a-zA-Z0-9\-]+\.)+))([a-zA-Z]{2,4}|[0-9]{1,3})(\
+                    ...</code><br> <code class="literal">john@johnmaddock.co.uk</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (1160ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.31<br> (1517ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">3.29<br> (3818ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code><br>
+                    <code class="literal">+3.14159</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.58<br> (485ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.48<br> (455ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (307ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code><br>
+                    <code class="literal">-3.14159</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.50<br> (466ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.50<br> (464ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (310ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[-+]?[[:digit:]]*\.?[[:digit:]]*$</code><br>
+                    <code class="literal">123</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">3.10<br> (666ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.57<br> (338ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (215ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[[:digit:]]{1,2}/[[:digit:]]{1,2}/[[:digit:]]{4}$</code><br>
+                    <code class="literal">12/12/2001</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.18<br> (373ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.10<br> (359ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (171ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[[:digit:]]{1,2}/[[:digit:]]{1,2}/[[:digit:]]{4}$</code><br>
+                    <code class="literal">4/1/2001</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.27<br> (363ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.93<br> (309ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (160ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code><br>
+                    <code class="literal">EH10 2QQ</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.90<br> (473ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.19<br> (357ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (163ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code><br>
+                    <code class="literal">G1 1AA</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.56<br> (386ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">1.83<br> (277ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (151ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">^[a-zA-Z]{1,2}[0-9][0-9A-Za-z]{0,1} {0,1}[0-9][A-Za-z]{2}$</code><br>
+                    <code class="literal">SW1 1ZZ</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.46<br> (381ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.14<br> (331ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (155ns)</span>
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    <code class="literal">abc</code><br> <code class="literal">abc</code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="blue">2.35<br> (324ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.11<br> (153ns)</span>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    <span class="green">1.00<br> (138ns)</span>
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 1998-2013 John Maddock<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../performance.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../performance.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="section_id1675827111.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

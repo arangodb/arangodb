@@ -1,0 +1,176 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;29.&#160;Boost.Process</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="libraries.html" title="Part&#160;I.&#160;The Boost C++ Libraries (BoostBook Subset)">
+<link rel="prev" href="predef/acknoledgements.html" title="Acknoledgements">
+<link rel="next" href="boost_process/concepts.html" title="Concepts">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="predef/acknoledgements.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_process/concepts.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="process"></a>Chapter&#160;29.&#160;Boost.Process</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Klemens David</span> <span class="surname">Morgenstern</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling</p></div>
+<div><p class="copyright">Copyright &#169; 2016 Klemens D. Morgenstern</p></div>
+<div><div class="legalnotice">
+<a name="process.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="process.html#boost_process.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_process/concepts.html">Concepts</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_process/concepts.html#boost_process.concepts.pipes">Pipes</a></span></dt>
+<dt><span class="section"><a href="boost_process/concepts.html#boost_process.concepts.process">Processes</a></span></dt>
+<dt><span class="section"><a href="boost_process/concepts.html#boost_process.concepts.env">Environment</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_process/tutorial.html">Tutorial</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.starting_a_process">Starting a
+      process</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.launch_mode">Launch functions</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.error_handling">Error</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.io">Synchronous I/O</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.async_io">Asynchronous I/O</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.group">Groups</a></span></dt>
+<dt><span class="section"><a href="boost_process/tutorial.html#boost_process.tutorial.env">Environment</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_process/design.html">Design Rationale</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_process/design.html#boost_process.design.scope">Scope</a></span></dt>
+<dt><span class="section"><a href="boost_process/design.html#boost_process.design.interface_style">Interface Style</a></span></dt>
+<dt><span class="section"><a href="boost_process/design.html#boost_process.design.arg_cmd_style">Arguments/Command
+      Style</a></span></dt>
+<dt><span class="section"><a href="boost_process/design.html#boost_process.design.plat_ext">Extensions</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_process/extend.html">Extensions</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.structure">Structure</a></span></dt>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.simple">Simple extensions</a></span></dt>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.handler">Handler Types</a></span></dt>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.async">Asynchronous Functionality</a></span></dt>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.error">Error handling</a></span></dt>
+<dt><span class="section"><a href="boost_process/extend.html#boost_process.extend.exec_over">Executor Overloading</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_process/faq.html">Frequently Asked Questions</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_process/faq.html#boost_process.faq.dead_lock">Why does this produce a
+      deadlock?</a></span></dt>
+<dt><span class="section"><a href="boost_process/faq.html#boost_process.faq.closep">Why does the pipe not close?</a></span></dt>
+<dt><span class="section"><a href="boost_process/faq.html#boost_process.faq.wchar_t">When will the codecvt be used?</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="process/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.args_hpp">Header &lt;boost/process/args.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.async_hpp">Header &lt;boost/process/async.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.async_pipe_hpp">Header &lt;boost/process/async_pipe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.async_system_hpp">Header &lt;boost/process/async_system.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.child_hpp">Header &lt;boost/process/child.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.cmd_hpp">Header &lt;boost/process/cmd.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.env_hpp">Header &lt;boost/process/env.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.environment_hpp">Header &lt;boost/process/environment.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.error_hpp">Header &lt;boost/process/error.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.exception_hpp">Header &lt;boost/process/exception.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.exe_hpp">Header &lt;boost/process/exe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.extend_hpp">Header &lt;boost/process/extend.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.group_hpp">Header &lt;boost/process/group.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.io_hpp">Header &lt;boost/process/io.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.locale_hpp">Header &lt;boost/process/locale.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.pipe_hpp">Header &lt;boost/process/pipe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.posix_hpp">Header &lt;boost/process/posix.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.search_path_hpp">Header &lt;boost/process/search_path.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.shell_hpp">Header &lt;boost/process/shell.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.spawn_hpp">Header &lt;boost/process/spawn.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.start_dir_hpp">Header &lt;boost/process/start_dir.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.system_hpp">Header &lt;boost/process/system.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="process/reference.html#header.boost.process.windows_hpp">Header &lt;boost/process/windows.hpp&gt;</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_process/acknowledgements.html">Acknowledgements</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_process.introduction"></a><a class="link" href="process.html#boost_process.introduction" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      Boost.Process is a library to manage system processes. It can be used to:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          create child processes
+        </li>
+<li class="listitem">
+          setup streams for child processes
+        </li>
+<li class="listitem">
+          communicate with child processes through streams (synchronously or asynchronously)
+        </li>
+<li class="listitem">
+          wait for processes to exit (synchronously or asynchronously)
+        </li>
+<li class="listitem">
+          terminate processes
+        </li>
+</ul></div>
+<p>
+      Here's a simple example of how to start a program with Boost.Process:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><code class="computeroutput">boost/process.hpp</code><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">process</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+    <code class="computeroutput"><a class="link" href="process/reference.html#boost.process.ipstream">ipstream</a></code> <span class="identifier">pipe_stream</span><span class="special">;</span>
+    <code class="computeroutput">child</code> <span class="identifier">c</span><span class="special">(</span><span class="string">"gcc --version"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="boost/process/std_out.html" title="Global std_out">std_out</a></code> <span class="special">&gt;</span> <span class="identifier">pipe_stream</span><span class="special">);</span>
+
+    <a href="http://en.cppreference.com/w/cpp/string/basic_string" target="_top">std::string</a> <span class="identifier">line</span><span class="special">;</span>
+
+    <span class="keyword">while</span> <span class="special">(</span><span class="identifier">pipe_stream</span> <span class="special">&amp;&amp;</span> <a href="http://en.cppreference.com/w/cpp/string/basic_string/getline" target="_top">std::getline</a><span class="special">(</span><span class="identifier">pipe_stream</span><span class="special">,</span> <span class="identifier">line</span><span class="special">)</span> <span class="special">&amp;&amp;</span> <span class="special">!</span><span class="identifier">line</span><span class="special">.</span><span class="identifier">empty</span><span class="special">())</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">line</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="identifier">c</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:06:03 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="predef/acknoledgements.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="libraries.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost_process/concepts.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

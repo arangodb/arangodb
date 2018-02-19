@@ -1,0 +1,546 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Reference</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../process.html" title="Chapter&#160;29.&#160;Boost.Process">
+<link rel="prev" href="../boost_process/faq.html" title="Frequently Asked Questions">
+<link rel="next" href="../boost/process/args.html" title="Global args">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_process/faq.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/process/args.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="process.reference"></a>Reference</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="reference.html#header.boost.process.args_hpp">Header &lt;boost/process/args.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.async_hpp">Header &lt;boost/process/async.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.async_pipe_hpp">Header &lt;boost/process/async_pipe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.async_system_hpp">Header &lt;boost/process/async_system.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.child_hpp">Header &lt;boost/process/child.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.cmd_hpp">Header &lt;boost/process/cmd.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.env_hpp">Header &lt;boost/process/env.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.environment_hpp">Header &lt;boost/process/environment.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.error_hpp">Header &lt;boost/process/error.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.exception_hpp">Header &lt;boost/process/exception.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.exe_hpp">Header &lt;boost/process/exe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.extend_hpp">Header &lt;boost/process/extend.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.group_hpp">Header &lt;boost/process/group.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.io_hpp">Header &lt;boost/process/io.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.locale_hpp">Header &lt;boost/process/locale.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.pipe_hpp">Header &lt;boost/process/pipe.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.posix_hpp">Header &lt;boost/process/posix.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.search_path_hpp">Header &lt;boost/process/search_path.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.shell_hpp">Header &lt;boost/process/shell.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.spawn_hpp">Header &lt;boost/process/spawn.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.start_dir_hpp">Header &lt;boost/process/start_dir.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.system_hpp">Header &lt;boost/process/system.hpp&gt;</a></span></dt>
+<dt><span class="section"><a href="reference.html#header.boost.process.windows_hpp">Header &lt;boost/process/windows.hpp&gt;</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.args_hpp"></a>Header &lt;<a href="../../../../../boost/process/args.hpp" target="_top">boost/process/args.hpp</a>&gt;</h3></div></div></div>
+<p>This header provides the <a class="link" href="../boost/process/args.html" title="Global args">args</a> property. It also provides the alternative name <a class="link" href="../boost/process/argv.html" title="Global argv">argv</a> .</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/args.html" title="Global args">args</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/argv.html" title="Global argv">argv</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.async_hpp"></a>Header &lt;<a href="../../../../../boost/process/async.hpp" target="_top">boost/process/async.hpp</a>&gt;</h3></div></div></div>
+<p>The header which provides the basic asynchrounous features. It provides the on_exit property, which allows callbacks when the process exits. It also implements the necessary traits for passing an boost::asio::io_context, which is needed for asynchronous communication.</p>
+<p>It also pulls the <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/buffer.html" target="_top">boost::asio::buffer</a> into the boost::process namespace for convenience.</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a href="http://www.boost.org/doc/libs/1_61_0/doc/html/boost_asio/reference/buffer.html" target="_top"><span class="identifier">buffer</span></a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/on_exit.html" title="Global on_exit">on_exit</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.async_pipe_hpp"></a>Header &lt;<a href="../../../../../boost/process/async_pipe.hpp" target="_top">boost/process/async_pipe.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="../boost/process/async_pipe.html" title="Class async_pipe">async_pipe</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.async_system_hpp"></a>Header &lt;<a href="../../../../../boost/process/async_system.hpp" target="_top">boost/process/async_system.hpp</a>&gt;</h3></div></div></div>
+<p>Defines the asynchrounous version of the system function. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ExitHandler<span class="special">,</span> <span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> 
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/async_system.html" title="Function template async_system"><span class="identifier">async_system</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">ExitHandler</span> <span class="special">&amp;&amp;</span><span class="special">,</span> 
+                               <span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.child_hpp"></a>Header &lt;<a href="../../../../../boost/process/child.hpp" target="_top">boost/process/child.hpp</a>&gt;</h3></div></div></div>
+<p>Defines a child process class. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="../boost/process/child.html" title="Class child">child</a><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.process.pid_t"></a><span class="identifier">pid_t</span><span class="special">;</span>  <span class="comment">// Typedef for the type of an pid_t. </span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.cmd_hpp"></a>Header &lt;<a href="../../../../../boost/process/cmd.hpp" target="_top">boost/process/cmd.hpp</a>&gt;</h3></div></div></div>
+<p>This header provides the <a class="link" href="../boost/process/cmd.html" title="Global cmd">cmd</a> property.</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/cmd.html" title="Global cmd">cmd</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.env_hpp"></a>Header &lt;<a href="../../../../../boost/process/env.hpp" target="_top">boost/process/env.hpp</a>&gt;</h3></div></div></div>
+<p>This header which provides the <code class="computeroutput">env</code> property. It allows the modification of the environment the child process will run in, in a functional style.</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/env.html" title="Global env">env</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<p>For additional information see the platform documentations:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><a href="https://msdn.microsoft.com/en-US/library/windows/desktop/ms682653.aspx" target="_top">windows</a></p></li>
+<li class="listitem"><p><a href="http://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html" target="_top">posix</a> </p></li>
+</ul></div>
+<p>
+</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.environment_hpp"></a>Header &lt;<a href="../../../../../boost/process/environment.hpp" target="_top">boost/process/environment.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="../boost/process/basic_environment.html" title="Class template basic_environment">basic_environment</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">&gt;</span> <span class="keyword">class</span> <a class="link" href="../boost/process/basic_native_environment.html" title="Class template basic_native_environment">basic_native_environment</a><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_native_environment.html" title="Class template basic_native_environment">basic_native_environment</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.native_environment"></a><span class="identifier">native_environment</span><span class="special">;</span>  <span class="comment">// Definition of the environment for the current process. </span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_native_environment.html" title="Class template basic_native_environment">basic_native_environment</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wnative_environment"></a><span class="identifier">wnative_environment</span><span class="special">;</span>  <span class="comment">// Definition of the environment for the current process. </span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_environment.html" title="Class template basic_environment">basic_environment</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.environment"></a><span class="identifier">environment</span><span class="special">;</span>  <span class="comment">// Type definition to hold a seperate environment. </span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_environment.html" title="Class template basic_environment">basic_environment</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wenvironment"></a><span class="identifier">wenvironment</span><span class="special">;</span>  <span class="comment">// Type definition to hold a seperate environment. </span>
+  <span class="special">}</span>
+  <span class="keyword">namespace</span> <span class="identifier">this_process</span> <span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="boost.this_process.native_handle_type"></a><span class="identifier">native_handle_type</span><span class="special">;</span>  <span class="comment">// Definition of the native handle type. </span>
+
+    <span class="comment">// Get the process id of the current process. </span>
+    <span class="keyword">int</span> <a name="boost.this_process.get_id"></a><span class="identifier">get_id</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Get the native handle of the current process. </span>
+    <span class="identifier">native_handle_type</span> <a name="boost.this_process.native_handle"></a><span class="identifier">native_handle</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Get the enviroment of the current process. </span>
+    <span class="identifier">native_environment</span> <a name="boost.this_process.environment"></a><span class="identifier">environment</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Get the enviroment of the current process. </span>
+    <span class="identifier">wnative_environment</span> <a name="boost.this_process.wenvironment"></a><span class="identifier">wenvironment</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Get the path environment variable of the current process runs. </span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&gt;</span> <a name="boost.this_process.path"></a><span class="identifier">path</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.error_hpp"></a>Header &lt;<a href="../../../../../boost/process/error.hpp" target="_top">boost/process/error.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the error properties. It allows to explicitly set the error handling, the properties are:</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/ignore_error.html" title="Global ignore_error">ignore_error</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/throw_on_error.html" title="Global throw_on_error">throw_on_error</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/error.html" title="Global error">error</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/error_ref.html" title="Global error_ref">error_ref</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/error_code.html" title="Global error_code">error_code</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ For error there are two aliases: error_ref and error_code </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.exception_hpp"></a>Header &lt;<a href="../../../../../boost/process/exception.hpp" target="_top">boost/process/exception.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">struct</span> <a class="link" href="../boost/process/process_error.html" title="Struct process_error">process_error</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.exe_hpp"></a>Header &lt;<a href="../../../../../boost/process/exe.hpp" target="_top">boost/process/exe.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the exe property.  
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/exe.html" title="Global exe">exe</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.extend_hpp"></a>Header &lt;<a href="../../../../../boost/process/extend.hpp" target="_top">boost/process/extend.hpp</a>&gt;</h3></div></div></div>
+<p>This header which provides the types and functions provided for custom extensions.</p>
+<p> 
+Please refer to the <a class="link" href="../boost_process/extend.html" title="Extensions">tutorial</a> for more details.
+ </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">extend</span> <span class="special">{</span>
+      <span class="keyword">struct</span> <a class="link" href="../boost/process/extend/handler.html" title="Struct handler">handler</a><span class="special">;</span>
+      <span class="keyword">struct</span> <a class="link" href="../boost/process/extend/require_io_context.html" title="Struct require_io_context">require_io_context</a><span class="special">;</span>
+      <span class="keyword">struct</span> <a class="link" href="../boost/process/extend/async_handler.html" title="Struct async_handler">async_handler</a><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Sequence<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/process/extend/posix_executor.html" title="Struct template posix_executor">posix_executor</a><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Sequence<span class="special">&gt;</span> <span class="keyword">struct</span> <a class="link" href="../boost/process/extend/windows_executor.html" title="Struct template windows_executor">windows_executor</a><span class="special">;</span>
+
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_setup.html" title="Global on_setup">on_setup</a><span class="special">;</span>      <span class="comment">// This handler is invoked before the process in launched, to setup parameters. The required signature is <code class="computeroutput">void(Exec &amp;)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_error.html" title="Global on_error">on_error</a><span class="special">;</span>      <span class="comment">// This handler is invoked if an error occured. The required signature is <code class="computeroutput">void(auto &amp; exec, const std::error_code&amp;)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_success.html" title="Global on_success">on_success</a><span class="special">;</span>      <span class="comment">// This handler is invoked if launching the process has succeeded. The required signature is <code class="computeroutput">void(auto &amp; exec)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_fork_error.html" title="Global on_fork_error">on_fork_error</a><span class="special">;</span>      <span class="comment">// This handler is invoked if the fork failed. The required signature is <code class="computeroutput">void(auto &amp; exec)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_exec_setup.html" title="Global on_exec_setup">on_exec_setup</a><span class="special">;</span>      <span class="comment">// This handler is invoked if the fork succeeded. The required signature is <code class="computeroutput">void(Exec &amp;)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/extend/on_exec_error.html" title="Global on_exec_error">on_exec_error</a><span class="special">;</span>      <span class="comment">// This handler is invoked if the exec call errored. The required signature is <code class="computeroutput">void(auto &amp; exec)</code>, where <code class="computeroutput">Exec</code> is a template parameter. </span>
+
+      <span class="comment">// Helper function to get the last error code system-independent. </span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <a name="boost.process.extend.get_last_error"></a><span class="identifier">get_last_error</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">void</span> <a class="link" href="../boost/process/extend/throw_last_error.html" title="Function throw_last_error"><span class="identifier">throw_last_error</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">void</span> <a class="link" href="../boost/process/extend/throw_last_error.html" title="Function throw_last_error"><span class="identifier">throw_last_error</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+      <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Sequence<span class="special">&gt;</span> 
+        <span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> <a class="link" href="../boost/process/extend/get_io_context.html" title="Function template get_io_context"><span class="identifier">get_io_context</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Sequence</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.group_hpp"></a>Header &lt;<a href="../../../../../boost/process/group.hpp" target="_top">boost/process/group.hpp</a>&gt;</h3></div></div></div>
+<p>Defines a group process class. For additional information see the platform specific implementations:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms684161.aspx" target="_top">windows - job object</a></p></li>
+<li class="listitem"><p><a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/setpgid.html" target="_top">posix - process group</a> </p></li>
+</ul></div>
+<p>
+</p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">class</span> <a class="link" href="../boost/process/group.html" title="Class group">group</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.io_hpp"></a>Header &lt;<a href="../../../../../boost/process/io.hpp" target="_top">boost/process/io.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the io properties. It provides the following properties:</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/close.html" title="Global close">close</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/null.html" title="Global null">null</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/std_in.html" title="Global std_in">std_in</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/std_out.html" title="Global std_out">std_out</a><span class="special">;</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/std_err.html" title="Global std_err">std_err</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+</p>
+<p><b>File I/O.&#160;</b></p>
+<p>
+The library allows full redirection of streams to files as shown below.</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">log</span>    <span class="special">=</span> <span class="string">"my_log_file.txt"</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">input</span>  <span class="special">=</span> <span class="string">"input.txt"</span><span class="special">;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">output</span> <span class="special">=</span> <span class="string">"output.txt"</span><span class="special">;</span>
+<span class="identifier">system</span><span class="special">(</span><span class="string">"my_prog"</span><span class="special">,</span> <span class="identifier">std_out</span><span class="special">&gt;</span><span class="identifier">output</span><span class="special">,</span> <span class="identifier">std_in</span><span class="special">&lt;</span><span class="identifier">input</span><span class="special">,</span> <span class="identifier">std_err</span><span class="special">&gt;</span><span class="identifier">log</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p><b>Synchronous Pipe I/O.&#160;</b></p>
+<p>
+Another way is to communicate through pipes.</p>
+<pre class="programlisting"><span class="identifier">pstream</span> <span class="identifier">str</span><span class="special">;</span>
+<span class="identifier">child</span> <span class="identifier">c</span><span class="special">(</span><span class="string">"my_prog"</span><span class="special">,</span> <span class="identifier">std_out</span> <span class="special">&gt;</span> <span class="identifier">str</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="identifier">str</span> <span class="special">&gt;&gt;</span> <span class="identifier">i</span><span class="special">;</span>
+</pre>
+<p>Note that the pipe may also be used between several processes, like this:</p>
+<pre class="programlisting"><span class="identifier">pipe</span> <span class="identifier">p</span><span class="special">;</span>
+<span class="identifier">child</span> <span class="identifier">c1</span><span class="special">(</span><span class="string">"nm"</span><span class="special">,</span> <span class="string">"a.out"</span><span class="special">,</span> <span class="identifier">std_out</span><span class="special">&gt;</span><span class="identifier">p</span><span class="special">)</span><span class="special">;</span>
+<span class="identifier">child</span> <span class="identifier">c2</span><span class="special">(</span><span class="string">"c++filt"</span><span class="special">,</span> <span class="identifier">std_in</span><span class="special">&lt;</span><span class="identifier">p</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p><b>Asynchronous I/O.&#160;</b></p>
+<p>
+Utilizing <code class="computeroutput">boost.asio</code> asynchronous I/O is provided.</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ios</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">output</span><span class="special">;</span>
+<span class="identifier">system</span><span class="special">(</span><span class="string">"ls"</span><span class="special">,</span> <span class="identifier">std_out</span> <span class="special">&gt;</span> <span class="identifier">output</span><span class="special">,</span> <span class="identifier">ios</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">auto</span> <span class="identifier">res</span> <span class="special">=</span> <span class="identifier">fut</span><span class="special">.</span><span class="identifier">get</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p><code class="computeroutput">boost/process/async.hpp</code> must also be included for this to work.</p></td></tr>
+</table></div>
+<p>
+</p>
+<p><b>Closing.&#160;</b></p>
+<p>
+Stream can be closed, so nothing can be read or written.</p>
+<pre class="programlisting"><span class="identifier">system</span><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">std_in</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p><b>Null.&#160;</b></p>
+<p>
+Streams can be redirected to null, which means, that written date will be discarded and read data will only contain <code class="computeroutput">EOF</code>.</p>
+<pre class="programlisting"><span class="identifier">system</span><span class="special">(</span><span class="string">"b2"</span><span class="special">,</span> <span class="identifier">std_out</span> <span class="special">&gt;</span> <span class="identifier">null</span><span class="special">)</span><span class="special">;</span>
+</pre>
+<p> </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.locale_hpp"></a>Header &lt;<a href="../../../../../boost/process/locale.hpp" target="_top">boost/process/locale.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">codecvt</span><span class="special">&lt;</span> <span class="keyword">wchar_t</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">mbstate_t</span> <span class="special">&gt;</span> <a name="boost.process.codecvt_type"></a><span class="identifier">codecvt_type</span><span class="special">;</span>  <span class="comment">// The internally used type for code conversion. </span>
+
+    <span class="comment">// Internally used error cateory for code conversion. </span>
+    <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">error_category</span> <span class="special">&amp;</span> <a name="boost.process.codecvt_category"></a><span class="identifier">codecvt_category</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Get a reference to the currently used code converter. </span>
+    <span class="keyword">const</span> <span class="identifier">codecvt_type</span> <span class="special">&amp;</span> <a name="boost.process.codecvt"></a><span class="identifier">codecvt</span><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+    <span class="comment">// Set the locale of the library. </span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span> <a name="boost.process.imbue"></a><span class="identifier">imbue</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">locale</span> <span class="special">&amp;</span> loc<span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.pipe_hpp"></a>Header &lt;<a href="../../../../../boost/process/pipe.hpp" target="_top">boost/process/pipe.hpp</a>&gt;</h3></div></div></div>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="../boost/process/basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+      <span class="keyword">struct</span> <a class="link" href="../boost/process/basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="../boost/process/basic_ipstream.html" title="Class template basic_ipstream">basic_ipstream</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="../boost/process/basic_opstream.html" title="Class template basic_opstream">basic_opstream</a><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+      <span class="keyword">class</span> <a class="link" href="../boost/process/basic_pstream.html" title="Class template basic_pstream">basic_pstream</a><span class="special">;</span>
+
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.pipe"></a><span class="identifier">pipe</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wpipe"></a><span class="identifier">wpipe</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.pipebuf"></a><span class="identifier">pipebuf</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pipebuf.html" title="Struct template basic_pipebuf">basic_pipebuf</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wpipebuf"></a><span class="identifier">wpipebuf</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_ipstream.html" title="Class template basic_ipstream">basic_ipstream</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.ipstream"></a><span class="identifier">ipstream</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_ipstream.html" title="Class template basic_ipstream">basic_ipstream</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wipstream"></a><span class="identifier">wipstream</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_opstream.html" title="Class template basic_opstream">basic_opstream</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.opstream"></a><span class="identifier">opstream</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_opstream.html" title="Class template basic_opstream">basic_opstream</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wopstream"></a><span class="identifier">wopstream</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pstream.html" title="Class template basic_pstream">basic_pstream</a><span class="special">&lt;</span> <span class="keyword">char</span> <span class="special">&gt;</span> <a name="boost.process.pstream"></a><span class="identifier">pstream</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <a class="link" href="../boost/process/basic_pstream.html" title="Class template basic_pstream">basic_pstream</a><span class="special">&lt;</span> <span class="keyword">wchar_t</span> <span class="special">&gt;</span> <a name="boost.process.wpstream"></a><span class="identifier">wpstream</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.posix_hpp"></a>Header &lt;<a href="../../../../../boost/process/posix.hpp" target="_top">boost/process/posix.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the posix extensions.  
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">posix</span> <span class="special">{</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/posix/fd.html" title="Global fd">fd</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/posix/sig.html" title="Global sig">sig</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/posix/use_vfork.html" title="Global use_vfork">use_vfork</a><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+     </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>Only available on posix. See the documentation of <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/fork.html" target="_top">fork</a>, <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/execve.html" target="_top">execve</a> and <a href="http://pubs.opengroup.org/onlinepubs/009695399/functions/vfork.html" target="_top">vfork</a>. </p></td></tr>
+</table></div>
+<p>
+</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.search_path_hpp"></a>Header &lt;<a href="../../../../../boost/process/search_path.hpp" target="_top">boost/process/search_path.hpp</a>&gt;</h3></div></div></div>
+<p>Defines a function to search for an executable in path. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> 
+    <a class="link" href="../boost/process/search_path.html" title="Function search_path"><span class="identifier">search_path</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="special">&gt;</span> <span class="special">=</span> <span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_process</span><span class="special">::</span><span class="identifier">path</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.shell_hpp"></a>Header &lt;<a href="../../../../../boost/process/shell.hpp" target="_top">boost/process/shell.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the shell property. This provides the property to launch a process through the system shell. It also allows the user to obtain the shell-path via shell().  
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/shell.html" title="Global shell">shell</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.spawn_hpp"></a>Header &lt;<a href="../../../../../boost/process/spawn.hpp" target="_top">boost/process/spawn.hpp</a>&gt;</h3></div></div></div>
+<p>Defines the spawn function. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="../boost/process/spawn.html" title="Function template spawn"><span class="identifier">spawn</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.start_dir_hpp"></a>Header &lt;<a href="../../../../../boost/process/start_dir.hpp" target="_top">boost/process/start_dir.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the start_dir property, which allows to set the directory the process shall be started in.  
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/start_dir.html" title="Global start_dir">start_dir</a><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+ </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.system_hpp"></a>Header &lt;<a href="../../../../../boost/process/system.hpp" target="_top">boost/process/system.hpp</a>&gt;</h3></div></div></div>
+<p>Defines a system function. </p>
+<pre class="synopsis"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span><span class="special">...</span> Args<span class="special">&gt;</span> <span class="keyword">int</span> <a class="link" href="../boost/process/system.html" title="Function template system"><span class="identifier">system</span></a><span class="special">(</span><span class="identifier">Args</span> <span class="special">&amp;&amp;</span><span class="special">...</span><span class="special">)</span><span class="special">;</span>
+  <span class="special">}</span>
+<span class="special">}</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="header.boost.process.windows_hpp"></a>Header &lt;<a href="../../../../../boost/process/windows.hpp" target="_top">boost/process/windows.hpp</a>&gt;</h3></div></div></div>
+<p>Header which provides the windows extensions.</p>
+<p> 
+</p>
+<pre class="programlisting">
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">process</span> <span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">windows</span> <span class="special">{</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/hide.html" title="Global hide">hide</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/maximized.html" title="Global maximized">maximized</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/minimized.html" title="Global minimized">minimized</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/minimized_not_active.html" title="Global minimized_not_active">minimized_not_active</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/not_active.html" title="Global not_active">not_active</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/show.html" title="Global show">show</a><span class="special">;</span>
+      <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="../boost/process/windows/show_normal.html" title="Global show_normal">show_normal</a><span class="special">;</span>
+    <span class="special">}</span>
+  <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+     </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>Only available on windows. See the parameter documentation of <a href="https://msdn.microsoft.com/en-us/library/windows/desktop/ms633548.aspx" target="_top">ShowWindow</a> for more details. </p></td></tr>
+</table></div>
+<p>
+</p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost_process/faq.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../boost/process/args.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

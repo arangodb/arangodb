@@ -1,0 +1,416 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class async_pipe</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../process/reference.html#header.boost.process.async_pipe_hpp" title="Header &lt;boost/process/async_pipe.hpp&gt;">
+<link rel="prev" href="on_exit.html" title="Global on_exit">
+<link rel="next" href="async_system.html" title="Function template async_system">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="on_exit.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.async_pipe_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="async_system.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.process.async_pipe"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class async_pipe</span></h2>
+<p>boost::process::async_pipe</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../process/reference.html#header.boost.process.async_pipe_hpp" title="Header &lt;boost/process/async_pipe.hpp&gt;">boost/process/async_pipe.hpp</a>&gt;
+
+</span>
+<span class="keyword">class</span> <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="async_pipe.html#boost.process.async_pipetypes">types</a></span>
+  <span class="keyword">typedef</span> <span class="identifier">platform_specific</span> <a class="link" href="async_pipe.html#boost.process.async_pipe.native_handle_type"><span class="identifier">native_handle_type</span></a><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">platform_specific</span> <a class="link" href="async_pipe.html#boost.process.async_pipe.handle_type"><span class="identifier">handle_type</span></a><span class="special">;</span>       
+
+  <span class="comment">// <a class="link" href="async_pipe.html#boost.process.async_pipeconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="async_pipe.html#idp51265328-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51267936-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51271056-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51274304-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> 
+             <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51278080-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51280352-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+    <span class="keyword">explicit</span> <a class="link" href="async_pipe.html#idp51281872-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> 
+                        <span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+    <span class="keyword">explicit</span> <a class="link" href="async_pipe.html#idp51286512-bb"><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">,</span> 
+                        <span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+    <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a class="link" href="async_pipe.html#idp51291872-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a class="link" href="async_pipe.html#idp51296784-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a class="link" href="async_pipe.html#idp51299456-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="async_pipe.html#idp51301488-bb"><span class="special">~</span><span class="identifier">async_pipe</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="async_pipe.html#idp51220816-bb">public member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+    <span class="keyword">explicit</span> <a class="link" href="async_pipe.html#idp51221312-bb"><span class="keyword">operator</span> <span class="identifier">basic_pipe</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="async_pipe.html#idp51225056-bb"><span class="identifier">cancel</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="async_pipe.html#idp51226192-bb"><span class="identifier">close</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="async_pipe.html#idp51227328-bb"><span class="identifier">close</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="async_pipe.html#idp51229088-bb"><span class="identifier">is_open</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="async_pipe.html#idp51230464-bb"><span class="identifier">async_close</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="async_pipe.html#idp51232320-bb"><span class="identifier">read_some</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">&gt;</span> 
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a class="link" href="async_pipe.html#idp51235088-bb"><span class="identifier">write_some</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">native_handle</span> <a class="link" href="async_pipe.html#idp51237856-bb"><span class="identifier">native_source</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">native_handle</span> <a class="link" href="async_pipe.html#idp51239232-bb"><span class="identifier">native_sink</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">,</span> <span class="keyword">typename</span> ReadHandler<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="async_pipe.html#idp51240608-bb"><span class="identifier">async_read_some</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">ReadHandler</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ConstBufferSequence<span class="special">,</span> <span class="keyword">typename</span> WriteHandler<span class="special">&gt;</span> 
+    <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a class="link" href="async_pipe.html#idp51245344-bb"><span class="identifier">async_write_some</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">WriteHandler</span> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">handle_type</span> <span class="special">&amp;</span> <a class="link" href="async_pipe.html#idp51250096-bb"><span class="identifier">sink</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">handle_type</span> <span class="special">&amp;</span> <a class="link" href="async_pipe.html#idp51251344-bb"><span class="identifier">source</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <span class="special">&amp;&amp;</span> <a class="link" href="async_pipe.html#idp51252592-bb"><span class="identifier">sink</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <span class="special">&amp;&amp;</span> <a class="link" href="async_pipe.html#idp51253680-bb"><span class="identifier">source</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <a class="link" href="async_pipe.html#idp51254768-bb"><span class="identifier">source</span></a><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <a class="link" href="async_pipe.html#idp51257264-bb"><span class="identifier">sink</span></a><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <a class="link" href="async_pipe.html#idp51259760-bb"><span class="identifier">source</span></a><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">handle_type</span> <a class="link" href="async_pipe.html#idp51262480-bb"><span class="identifier">sink</span></a><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.30.9.4.3.4"></a><h2>Description</h2>
+<p>Class implementing and asnychronous I/O-Object for use with boost.asio. It is based on the corresponding I/O Object, that is either boost::asio::windows::stream_handle or boost::asio::posix::stream_descriptor.</p>
+<p>It can be used directly with boost::asio::async_read or async_write.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>The object is copyable, but that does invoke a handle duplicate. </p></td></tr>
+</table></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.30.9.4.3.4.5"></a><h3>
+<a name="boost.process.async_pipetypes"></a><code class="computeroutput">async_pipe</code> 
+        public
+       types</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<p>
+<span class="keyword">typedef</span> <span class="identifier">platform_specific</span> <a name="boost.process.async_pipe.native_handle_type"></a><span class="identifier">native_handle_type</span><span class="special">;</span></p>
+<p>Typedef for the native handle representation. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>This is the handle on the system, not the boost.asio class. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<p>
+<span class="keyword">typedef</span> <span class="identifier">platform_specific</span> <a name="boost.process.async_pipe.handle_type"></a><span class="identifier">handle_type</span><span class="special">;</span></p>
+<p>Typedef for the handle representation of boost.asio. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.4.3.4.6"></a><h3>
+<a name="boost.process.async_pipeconstruct-copy-destruct"></a><code class="computeroutput">async_pipe</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp51265328-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct a new <code class="computeroutput"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a></code>, does automatically open the pipe. Initializes source and sink with the same io_context. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows creates a named pipe here, where the name is automatically generated. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51267936-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_source<span class="special">,</span> 
+           <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_sink<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct a new <code class="computeroutput"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a></code>, does automatically open the pipe. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows creates a named pipe here, where the name is automatically generated. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51271056-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct a new <code class="computeroutput"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a></code>, does automatically open. Initializes source and sink with the same io_context.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows restricts possible names. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51274304-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_source<span class="special">,</span> 
+           <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_sink<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> name<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct a new <code class="computeroutput"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a></code>, does automatically open.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows restricts possible names. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51278080-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Copy-Constructor of the async pipe. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows requires a named pipe for this, if a the wrong type is used an exception is thrown. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51280352-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Move-Constructor of the async pipe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+  <span class="keyword">explicit</span> <a name="idp51281872-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct the async-pipe from a pipe. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows requires a named pipe for this, if a the wrong type is used an exception is thrown. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+  <span class="keyword">explicit</span> <a name="idp51286512-bb"></a><span class="identifier">async_pipe</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_source<span class="special">,</span> 
+                      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios_sink<span class="special">,</span> 
+                      <span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>
+<p>Construct the async-pipe from a pipe, with two different io_context objects. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows requires a named pipe for this, if a the wrong type is used an exception is thrown. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+  <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a name="idp51291872-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>
+<p>Assign a <code class="computeroutput"><a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a></code>. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Windows requires a named pipe for this, if a the wrong type is used an exception is thrown. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a name="idp51296784-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Copy Assign a pipe. </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Duplicates the handles. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;</span> <a name="idp51299456-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="async_pipe.html" title="Class async_pipe">async_pipe</a> <span class="special">&amp;&amp;</span> lhs<span class="special">)</span><span class="special">;</span></pre>
+<p>Move assign a pipe </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp51301488-bb"></a><span class="special">~</span><span class="identifier">async_pipe</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Destructor. Closes the pipe handles. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.30.9.4.3.4.7"></a><h3>
+<a name="idp51220816-bb"></a><code class="computeroutput">async_pipe</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> CharT<span class="special">,</span> <span class="keyword">typename</span> Traits <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">char_traits</span><span class="special">&lt;</span><span class="identifier">CharT</span><span class="special">&gt;</span> <span class="special">&gt;</span> 
+  <span class="keyword">explicit</span> <a name="idp51221312-bb"></a><span class="keyword">operator</span> <span class="identifier">basic_pipe</span><span class="special">&lt;</span> <span class="identifier">CharT</span><span class="special">,</span> <span class="identifier">Traits</span> <span class="special">&gt;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Explicit cast to <code class="computeroutput"><a class="link" href="basic_pipe.html" title="Class template basic_pipe">basic_pipe</a></code>. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51225056-bb"></a><span class="identifier">cancel</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Cancel the current asynchronous operations. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51226192-bb"></a><span class="identifier">close</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Close the pipe handles. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51227328-bb"></a><span class="identifier">close</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span> ec<span class="special">)</span><span class="special">;</span></pre>
+<p>Close the pipe handles. While passing an error_code </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp51229088-bb"></a><span class="identifier">is_open</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Check if the pipes are open. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp51230464-bb"></a><span class="identifier">async_close</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Async close, i.e. close after current operation is completed.</p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>There is no guarantee that this will indeed read the entire pipe-buffer </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp51232320-bb"></a><span class="identifier">read_some</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> buffers<span class="special">)</span><span class="special">;</span></pre>
+<p>Read some data from the handle.</p>
+<p>See the boost.asio documentation for more details. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">&gt;</span> 
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <a name="idp51235088-bb"></a><span class="identifier">write_some</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> buffers<span class="special">)</span><span class="special">;</span></pre>
+<p>Write some data to the handle.</p>
+<p>See the boost.asio documentation for more details. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">native_handle</span> <a name="idp51237856-bb"></a><span class="identifier">native_source</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the native handle of the source. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">native_handle</span> <a name="idp51239232-bb"></a><span class="identifier">native_sink</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Get the native handle of the sink. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> MutableBufferSequence<span class="special">,</span> <span class="keyword">typename</span> ReadHandler<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp51240608-bb"></a><span class="identifier">async_read_some</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">MutableBufferSequence</span> <span class="special">&amp;</span> buffers<span class="special">,</span> 
+                              <span class="identifier">ReadHandler</span> <span class="special">&amp;&amp;</span> handler<span class="special">)</span><span class="special">;</span></pre>
+<p>Start an asynchronous read.</p>
+<p>See the <a href="http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio/reference/AsyncReadStream.html" target="_top">boost.asio documentation</a> for more details. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> ConstBufferSequence<span class="special">,</span> <span class="keyword">typename</span> WriteHandler<span class="special">&gt;</span> 
+  <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <a name="idp51245344-bb"></a><span class="identifier">async_write_some</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">ConstBufferSequence</span> <span class="special">&amp;</span> buffers<span class="special">,</span> 
+                               <span class="identifier">WriteHandler</span> <span class="special">&amp;&amp;</span> handler<span class="special">)</span><span class="special">;</span></pre>
+<p>Start an asynchronous write.</p>
+<p>See the <a href="http://www.boost.org/doc/libs/1_60_0/doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top">boost.asio documentation</a> for more details. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">handle_type</span> <span class="special">&amp;</span> <a name="idp51250096-bb"></a><span class="identifier">sink</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Get the asio handle of the pipe sink. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">handle_type</span> <span class="special">&amp;</span> <a name="idp51251344-bb"></a><span class="identifier">source</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Get the asio handle of the pipe source. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <span class="special">&amp;&amp;</span> <a name="idp51252592-bb"></a><span class="identifier">sink</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Get the asio handle of the pipe sink. Qualified as rvalue. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <span class="special">&amp;&amp;</span> <a name="idp51253680-bb"></a><span class="identifier">source</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>Get the asio handle of the pipe source. Qualified as rvalue. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <a name="idp51254768-bb"></a><span class="identifier">source</span><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">)</span><span class="special">;</span></pre>Move the source out of this class and change the io_context. Qualified as rvalue. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Will always move. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <a name="idp51257264-bb"></a><span class="identifier">sink</span><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">)</span><span class="special">;</span></pre>Move the sink out of this class and change the io_context. Qualified as rvalue. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Will always move </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <a name="idp51259760-bb"></a><span class="identifier">source</span><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Copy the source out of this class and change the io_context. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Will always copy. </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">handle_type</span> <a name="idp51262480-bb"></a><span class="identifier">sink</span><span class="special">(</span><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span> <span class="special">&amp;</span> ios<span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>Copy the sink out of this class and change the io_context. <div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>Will always copy </p></td></tr>
+</table></div>
+<p>
+</p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="on_exit.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../process/reference.html#header.boost.process.async_pipe_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="async_system.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

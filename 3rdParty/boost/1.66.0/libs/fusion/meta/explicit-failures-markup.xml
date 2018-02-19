@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup>
+    <!-- fusion -->
+    <library name="fusion">
+        <mark-expected-failures>
+            <test name="define_struct_inline_move"/>
+            <test name="define_tpl_struct_inline_move"/>
+            <toolset name="msvc-10.0"/>
+            <toolset name="msvc-11.0"/>
+            <toolset name="msvc-12.0"/>
+            <toolset name="qcc-4.4.2_x86"/>
+            <toolset name="gcc-gnu-4.4~c++0x*"/>
+            <toolset name="gcc-gnu-4.4~gnu0x*"/>
+            <note author="Kohei Takahashi">
+                The compiler doesn't generate defaulted move ctor/assgin thus
+                perform copy construction/assginment. Even though such case,
+                the `inline` versions don't force generating move ctor/assign
+                to preserve trivial requirements. Since that is not documented
+                behaviour, it might be changed in future release.
+            </note>
+        </mark-expected-failures>
+    </library>
+</explicit-failures-markup>

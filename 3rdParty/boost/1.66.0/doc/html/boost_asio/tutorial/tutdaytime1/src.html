@@ -1,0 +1,106 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Source listing for Daytime.1</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../tutdaytime1.html" title="Daytime.1 - A synchronous TCP daytime client">
+<link rel="prev" href="../tutdaytime1.html" title="Daytime.1 - A synchronous TCP daytime client">
+<link rel="next" href="../tutdaytime2.html" title="Daytime.2 - A synchronous TCP daytime server">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutdaytime1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutdaytime1.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.tutorial.tutdaytime1.src"></a><a class="link" href="src.html" title="Source listing for Daytime.1">Source listing
+        for Daytime.1</a>
+</h4></div></div></div>
+<pre class="programlisting">//
+// client.cpp
+// ~~~~~~~~~~
+//
+// Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+//
+// Distributed under the Boost Software License, Version 1.0. (See accompanying
+// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+//
+
+#include &lt;iostream&gt;
+#include &lt;boost/array.hpp&gt;
+#include &lt;boost/asio.hpp&gt;
+
+using boost::asio::ip::tcp;
+
+int main(int argc, char* argv[])
+{
+  try
+  {
+    if (argc != 2)
+    {
+      std::cerr &lt;&lt; "Usage: client &lt;host&gt;" &lt;&lt; std::endl;
+      return 1;
+    }
+
+    boost::asio::io_context io_context;
+
+    tcp::resolver resolver(io_context);
+    tcp::resolver::results_type endpoints =
+      resolver.resolve(argv[1], "daytime");
+
+    tcp::socket socket(io_context);
+    boost::asio::connect(socket, endpoints);
+
+    for (;;)
+    {
+      boost::array&lt;char, 128&gt; buf;
+      boost::system::error_code error;
+
+      size_t len = socket.read_some(boost::asio::buffer(buf), error);
+
+      if (error == boost::asio::error::eof)
+        break; // Connection closed cleanly by peer.
+      else if (error)
+        throw boost::system::system_error(error); // Some other error.
+
+      std::cout.write(buf.data(), len);
+    }
+  }
+  catch (std::exception&amp; e)
+  {
+    std::cerr &lt;&lt; e.what() &lt;&lt; std::endl;
+  }
+
+  return 0;
+}
+</pre>
+<p>
+          Return to <a class="link" href="../tutdaytime1.html" title="Daytime.1 - A synchronous TCP daytime client">Daytime.1 - A
+          synchronous TCP daytime client</a>
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../tutdaytime1.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutdaytime1.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../tutdaytime2.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

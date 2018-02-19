@@ -1,0 +1,207 @@
+# Copyright (c) 2002 Douglas Gregor <doug.gregor -at- gmail.com>
+# Copyright (c) 2016 Rene Rivera
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project boost/doc
+    : requirements
+    <xsl:param>boost.libraries=../../libs/libraries.htm
+    <format>html:<xsl:param>chunker.output.doctype-public="-//W3C//DTD HTML 4.01 Transitional//EN"
+    <format>html:<xsl:param>chunker.output.doctype-system="http://www.w3.org/TR/html4/loose.dtd"
+    ;
+
+import boostbook : boostbook ;
+import project ;
+import targets ;
+import print ;
+import type ;
+import generators ;
+import sequence ;
+import path ;
+import "class" : is-a ;
+
+path-constant BOOST_DOC : . ;
+
+local lib-docs = [ path.glob [ path.glob $(BOOST_DOC)/../libs : */doc ]
+    : [ modules.peek project : JAMFILE ] ] ;
+
+local rule find-target-of-class-or-type ( root-target : klass ? : type ? )
+{
+    local result ;
+    if ! $(result) && $(klass) && [ is-a $(root-target) : $(klass) ]
+    {
+        result ?= $(root-target) $(klass) ;
+    }
+    if ! $(result) && $(type) && $(type:U) = [ modules.peek $(root-target) : self.type ]
+    {
+        result ?= $(root-target) $(type:U) ;
+    }
+    local alternatives = [ modules.peek $(root-target) : self.alternatives ] ;
+    if ! $(result)
+    {
+        for local alternative in $(alternatives)
+        {
+            if $(result) { break ; }
+            result ?= [ find-target-of-class-or-type $(alternative) : $(klass) : $(type) ] ;
+        }
+    }
+    if ! $(result)
+    {
+        for local alternative in $(alternatives)
+        {
+            if $(result) { break ; }
+            local sources = [ modules.peek $(alternative) : self.sources ] ;
+            for local source in [ $(alternative).sources ]
+            {
+                if $(result) { break ; }
+                result ?= [ find-target-of-class-or-type $(source) : $(klass) : $(type) ] ;
+            }
+        }
+    }
+    return $(result) ;
+}
+
+local rule docbook-target-spec ( main-target )
+{
+    local spec ;
+    local doc-sub-target
+        = [ find-target-of-class-or-type $(main-target) : boostbook-target-class : XML ] ;
+    if $(doc-sub-target)
+    {
+        #ECHO *** $(main-target) ;
+        #ECHO " ::" [ $(main-target).full-name ] ;
+        #ECHO " ::" $(doc-sub-target) :: [ $(doc-sub-target[0]).full-name ] ;
+        local full-name = [ $(doc-sub-target[0]).full-name ] ;
+        local target-path = $(full-name:D) ;
+        local target-name = $(full-name:B) ;
+        local this-path = [ path.root [ project.attribute $(__name__) location ] [ path.pwd ] ] ;
+        target-path = [ path.relative-to $(this-path) $(target-path) ] ;
+        #ECHO " ::" $(target-path) :: $(target-name) ;
+        spec = $(target-path)//$(target-name) ;
+    }
+    return $(spec) ;
+}
+
+local lib-doc-boostdoc-refs ;
+local lib-doc-boostrelease-refs ;
+
+local this-path = [ path.root [ project.attribute $(__name__) location ] [ path.pwd ] ] ;
+for local lib-doc in $(lib-docs)
+{
+    #ECHO === $(lib-doc) ... ;
+    local doc-project = $(lib-doc:D) ;
+    local doc-module = [ project.find $(doc-project)
+        : [ project.attribute $(__name__) location ] ] ;
+    local doc-target = [ project.target $(doc-module) ] ;
+    $(doc-target).build-main-targets ;
+    local boostrelease-target = [ $(doc-target).main-target boostrelease ] ;
+    if $(boostrelease-target)
+    {
+        local full-name = [ $(boostrelease-target).full-name ] ;
+        local target-path = [ path.relative-to $(this-path) $(full-name:D) ] ;
+        lib-doc-boostrelease-refs += $(target-path)//boostrelease ;
+        #ECHO "  ::" $(target-path)//boostrelease ;
+    }
+    local boostdoc-target = [ $(doc-target).main-target boostdoc ] ;
+    if $(boostdoc-target)
+    {
+        local full-name = [ $(boostdoc-target).full-name ] ;
+        local target-path = [ path.relative-to $(this-path) $(full-name:D) ] ;
+        lib-doc-boostdoc-refs += $(target-path)//boostdoc ;
+        #ECHO "  ::" $(target-path)//boostdoc ;
+    }
+}
+
+# Build non-integrated library docs for release.
+if "--release-build" in [ modules.peek : ARGV ]
+{
+    alias release-build : $(lib-doc-boostrelease-refs) ;
+}
+
+local rule component-order ( x y )
+{
+    local a = [ MATCH "(/libs/[^/]+)" "(/tools/[^/]+)" : $(x:G) $(x:G=) ] ;
+    local b = [ MATCH "(/libs/[^/]+)" "(/tools/[^/]+)" : $(y:G) $(y:G=) ] ;
+    if $(a[1]) < $(b[1])
+    {
+        return true ;
+    }
+    else if $(a[1]) = $(b[1]) && $(x) < $(y)
+    {
+        return true ;
+    }
+}
+
+rule xinclude-generator ( target : sources * : properties * )
+{
+    print.output $(target) ;
+    local includes ;
+    sources = [ sequence.insertion-sort $(sources) : component-order ] ;
+    locate = [ path.root [ on $(target) return $(LOCATE) ] [ path.pwd ] ] ;
+    for local xml in $(sources)
+    {
+        local dir ;
+        dir ?= [ on $(xml) return $(LOCATE) ] ;
+        dir ?= [ on $(xml) return $(SEARCH) ] ;
+        dir ?= "" ;
+        dir = [ path.root $(dir[1]) [ path.pwd ] ] ;
+        dir = [ path.relative-to $(locate) $(dir) ] ;
+        includes += "<xi:include href=\"$(dir[1])/$(xml:G=)\"/>" ;
+    }
+    print.text
+        "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+        "<xml xmlns:xi=\"http://www.w3.org/2003/XInclude\">"
+        $(includes)
+        "</xml>"
+        : overwrite ;
+}
+type.register XINCLUDE_XML : xinclude : XML ;
+generators.register-composing $(__name__).xinclude-generator : XML : XINCLUDE_XML ;
+
+rule xinclude ( name : sources * : requirements * : default-build * : usage-requirements *  )
+{
+    targets.create-typed-target XINCLUDE_XML
+        : [ project.current ]
+        : $(name)
+        : $(sources)
+        : $(requirements)
+        : $(default-build)
+        : $(usage-requirements)
+        ;
+}
+
+xinclude libraries :
+    $(lib-doc-boostdoc-refs)
+    ;
+explicit libraries ;
+
+xinclude tools :
+    ../tools/build/doc//jam_docs
+    ../tools/quickbook/doc//quickbook
+    ../tools/boostbook/doc/boostbook.xml
+    ../tools/build/doc//boostdoc
+    ;
+explicit tools ;
+
+boostbook doc
+    :
+    src/boost.xml
+    :
+    <xsl:param>generate.consistent.ids=1
+    <use>$(lib-doc-boostdoc-refs)
+    <dependency>libraries
+    <implicit-dependency>libraries
+    <dependency>tools
+    <implicit-dependency>tools
+
+    <dependency>images
+    <dependency>callouts
+    <xsl:path>$(BOOST_DOC)
+    ;
+
+install images : [ glob src/images/*.png ] : <location>html/images ;
+explicit images ;
+install callouts : [ glob src/images/callouts/*.png ] : <location>html/images/callouts ;
+explicit callouts ;

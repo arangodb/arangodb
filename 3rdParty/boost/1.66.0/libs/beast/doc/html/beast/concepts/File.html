@@ -1,0 +1,433 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>File</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../concepts.html" title="Concepts">
+<link rel="prev" href="FieldsWriter.html" title="FieldsWriter">
+<link rel="next" href="streams.html" title="Streams">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="FieldsWriter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.concepts.File"></a><a class="link" href="File.html" title="File">File</a>
+</h3></div></div></div>
+<p>
+        The <span class="bold"><strong>File</strong></span> concept abstracts access to files
+        in the underlying file system. To support other platform interfaces, users
+        may author their own <span class="bold"><strong>File</strong></span> types which meet
+        these requirements.
+      </p>
+<h5>
+<a name="beast.concepts.File.h0"></a>
+        <span class="phrase"><a name="beast.concepts.File.associated_types"></a></span><a class="link" href="File.html#beast.concepts.File.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__file_mode.html" title="file_mode"><code class="computeroutput"><span class="identifier">file_mode</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__is_file.html" title="is_file"><code class="computeroutput"><span class="identifier">is_file</span></code></a>
+          </li>
+</ul></div>
+<h5>
+<a name="beast.concepts.File.h1"></a>
+        <span class="phrase"><a name="beast.concepts.File.requirements"></a></span><a class="link" href="File.html#beast.concepts.File.requirements">Requirements</a>
+      </h5>
+<p>
+        In this table:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">F</span></code> is a <span class="bold"><strong>File</strong></span>
+            type
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">f</span></code> is an instance of
+            <code class="computeroutput"><span class="identifier">F</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">p</span></code> is a value of type
+            <code class="computeroutput"><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span></code> which points to a null terminated utf-8
+            encoded string.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">m</span></code> is an instance of
+            <a class="link" href="../ref/boost__beast__file_mode.html" title="file_mode"><code class="computeroutput"><span class="identifier">file_mode</span></code></a>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">n</span></code> is a number of bytes,
+            convertible to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">o</span></code> is a byte offset in
+            the file, convertible to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">b</span></code> is any non-const pointer
+            to memory
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">c</span></code> is any possibly-const
+            pointer to memory
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ec</span></code> is a reference of
+            type <a class="link" href="../ref/boost__beast__error_code.html" title="error_code"><code class="computeroutput"><span class="identifier">error_code</span></code></a>
+          </li>
+</ul></div>
+<div class="table">
+<a name="beast.concepts.File.valid_expressions"></a><p class="title"><b>Table&#160;1.34.&#160;Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  Operation
+                </p>
+              </td>
+<td>
+                <p>
+                  Return Type
+                </p>
+              </td>
+<td>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">F</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Default constructable
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.~</span><span class="identifier">F</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Destructible. If <code class="computeroutput"><span class="identifier">f</span></code>
+                  refers to an open file, it is first closed as if by a call to
+                  <code class="computeroutput"><span class="identifier">close</span></code> with the
+                  error ignored.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">bool</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">f</span></code> refers to an open file, <code class="computeroutput"><span class="keyword">false</span></code> otherwise.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">f</span></code> refers to
+                  an open file, thie function attempts to close the file. Regardless
+                  of whether an error occurs or not, a subsequent call to <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">()</span></code>
+                  will return <code class="computeroutput"><span class="keyword">false</span></code>.
+                  The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">open</span><span class="special">(</span><span class="identifier">p</span><span class="special">,</span><span class="identifier">m</span><span class="special">,</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Attempts to open the file at the path specified by <code class="computeroutput"><span class="identifier">p</span></code> with the mode specified by
+                  <code class="computeroutput"><span class="identifier">m</span></code>. Upon success,
+                  a subsequent call to <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">is_open</span><span class="special">()</span></code> will return <code class="computeroutput"><span class="keyword">true</span></code>.
+                  If <code class="computeroutput"><span class="identifier">f</span></code> refers to
+                  an open file, it is first closed as if by a call to <code class="computeroutput"><span class="identifier">close</span></code> with the error ignored.
+                  The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">f</span></code> refers to
+                  an open file, this function attempts to determine the file size
+                  and return its value. If <code class="computeroutput"><span class="identifier">f</span></code>
+                  does not refer to an open file, the function will set <code class="computeroutput"><span class="identifier">ec</span></code> to <code class="computeroutput"><span class="identifier">errc</span><span class="special">::</span><span class="identifier">invalid_argument</span></code>
+                  and return 0. The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">pos</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  If <code class="computeroutput"><span class="identifier">f</span></code> refers to
+                  an open file, this function attempts to determine the current file
+                  offset and return it. If <code class="computeroutput"><span class="identifier">f</span></code>
+                  does not refer to an open file, the function will set <code class="computeroutput"><span class="identifier">ec</span></code> to <code class="computeroutput"><span class="identifier">errc</span><span class="special">::</span><span class="identifier">invalid_argument</span></code>
+                  and return 0. The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">seek</span><span class="special">(</span><span class="identifier">o</span><span class="special">,</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Attempts to reposition the current file offset to the value <code class="computeroutput"><span class="identifier">o</span></code>, which represents a byte offset
+                  relative to the beginning of the file. If <code class="computeroutput"><span class="identifier">f</span></code>
+                  does not refer to an open file, the function will set <code class="computeroutput"><span class="identifier">ec</span></code> to <code class="computeroutput"><span class="identifier">errc</span><span class="special">::</span><span class="identifier">invalid_argument</span></code>
+                  and return immediately. The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code>
+                  is <code class="computeroutput"><span class="keyword">true</span></code> if there was
+                  no error or set to the appropriate error code if an error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span><span class="identifier">n</span><span class="special">,</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Attempts to read <code class="computeroutput"><span class="identifier">n</span></code>
+                  bytes starting at the current file offset from the open file referred
+                  to by <code class="computeroutput"><span class="identifier">f</span></code>. Bytes
+                  read are stored in the memory buffer at address <code class="computeroutput"><span class="identifier">b</span></code>
+                  which must be at least <code class="computeroutput"><span class="identifier">n</span></code>
+                  bytes in size. The function advances the file offset by the amount
+                  read, and returns the number of bytes actually read, which may
+                  be less than <code class="computeroutput"><span class="identifier">n</span></code>.
+                  If <code class="computeroutput"><span class="identifier">f</span></code> does not refer
+                  to an open file, the function will set <code class="computeroutput"><span class="identifier">ec</span></code>
+                  to <code class="computeroutput"><span class="identifier">errc</span><span class="special">::</span><span class="identifier">invalid_argument</span></code> and return immediately.
+                  The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">f</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">c</span><span class="special">,</span><span class="identifier">n</span><span class="special">,</span><span class="identifier">ec</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Attempts to write <code class="computeroutput"><span class="identifier">n</span></code>
+                  bytes from the buffer pointed to by <code class="computeroutput"><span class="identifier">c</span></code>
+                  to the current file offset of the open file referred to by <code class="computeroutput"><span class="identifier">f</span></code>. The memory buffer at <code class="computeroutput"><span class="identifier">c</span></code> must point to storage of at
+                  least <code class="computeroutput"><span class="identifier">n</span></code> bytes meant
+                  to be copied to the file. The function advances the file offset
+                  by the amount written, and returns the number of bytes actually
+                  written, which may be less than <code class="computeroutput"><span class="identifier">n</span></code>.
+                  If <code class="computeroutput"><span class="identifier">f</span></code> does not refer
+                  to an open file, the function will set <code class="computeroutput"><span class="identifier">ec</span></code>
+                  to <code class="computeroutput"><span class="identifier">errc</span><span class="special">::</span><span class="identifier">invalid_argument</span></code> and return immediately.
+                  The function will ensure that <code class="computeroutput"><span class="special">!</span><span class="identifier">ec</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+                  if there was no error or set to the appropriate error code if an
+                  error occurred.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="beast.concepts.File.h2"></a>
+        <span class="phrase"><a name="beast.concepts.File.exemplar"></a></span><a class="link" href="File.html#beast.concepts.File.exemplar">Exemplar</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">File</span>
+<span class="special">{</span>
+    <span class="comment">/** Default constructor
+
+        There is no open file initially.
+    */</span>
+    <span class="identifier">File</span><span class="special">();</span>
+
+    <span class="comment">/** Destructor
+
+        If the file is open it is first closed.
+    */</span>
+    <span class="special">~</span><span class="identifier">File</span><span class="special">();</span>
+
+    <span class="comment">/// Returns `true` if the file is open</span>
+    <span class="keyword">bool</span>
+    <span class="identifier">is_open</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="comment">/// Close the file if open</span>
+    <span class="keyword">void</span>
+    <span class="identifier">close</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">/// Open a file at the given path with the specified mode</span>
+    <span class="keyword">void</span>
+    <span class="identifier">open</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">path</span><span class="special">,</span> <span class="identifier">file_mode</span> <span class="identifier">mode</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">/// Return the size of the open file</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">size</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="comment">/// Return the current position in the open file</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span>
+    <span class="identifier">pos</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="comment">/// Adjust the current position in the open file</span>
+    <span class="keyword">void</span>
+    <span class="identifier">seek</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">offset</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+    <span class="comment">/// Read from the open file</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">read</span><span class="special">(</span><span class="keyword">void</span><span class="special">*</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="comment">/// Write to the open file</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">write</span><span class="special">(</span><span class="keyword">void</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">n</span><span class="special">,</span> <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="beast.concepts.File.h3"></a>
+        <span class="phrase"><a name="beast.concepts.File.models"></a></span><a class="link" href="File.html#beast.concepts.File.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__file_posix.html" title="file_posix"><code class="computeroutput"><span class="identifier">file_posix</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__file_stdio.html" title="file_stdio"><code class="computeroutput"><span class="identifier">file_stdio</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__file_win32.html" title="file_win32"><code class="computeroutput"><span class="identifier">file_win32</span></code></a>
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="FieldsWriter.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

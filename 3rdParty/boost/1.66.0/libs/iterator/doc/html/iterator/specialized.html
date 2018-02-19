@@ -1,0 +1,287 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Specialized Adaptors</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Iterator">
+<link rel="prev" href="generic/adaptor.html" title="Iterator Adaptor">
+<link rel="next" href="specialized/filter.html" title="Filter Iterator">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="generic/adaptor.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="specialized/filter.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="iterator.specialized"></a><a class="link" href="specialized.html" title="Specialized Adaptors">Specialized Adaptors</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="specialized.html#iterator.specialized.counting">Counting Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/filter.html">Filter Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/function_output.html">Function Output
+      Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/indirect.html">Indirect Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/permutation.html">Permutation Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/reverse.html">Reverse Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/shared_container.html">Shared Container
+      Iterator</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="specialized/shared_container.html#iterator.specialized.shared_container.shared_container_type">The
+        Shared Container Iterator Type</a></span></dt>
+<dt><span class="section"><a href="specialized/shared_container.html#iterator.specialized.shared_container.shared_container_object_generator">The
+        Shared Container Iterator Object Generator</a></span></dt>
+<dt><span class="section"><a href="specialized/shared_container.html#iterator.specialized.shared_container.shared_container_generator">The
+        Shared Container Iterator Range Generator</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="specialized/transform.html">Transform Iterator</a></span></dt>
+<dt><span class="section"><a href="specialized/zip.html">Zip Iterator</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="specialized/zip.html#iterator.specialized.zip.zip_example">Example</a></span></dt>
+<dt><span class="section"><a href="specialized/zip.html#iterator.specialized.zip.zip_reference">Reference</a></span></dt>
+</dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="iterator.specialized.counting"></a><a class="link" href="specialized.html#iterator.specialized.counting" title="Counting Iterator">Counting Iterator</a>
+</h3></div></div></div>
+<p>
+        A <code class="computeroutput"><span class="identifier">counting_iterator</span></code> adapts
+        an object by adding an <code class="computeroutput"><span class="keyword">operator</span><span class="special">*</span></code> that returns the current value of the object.
+        All other iterator operations are forwarded to the adapted object.
+      </p>
+<h3>
+<a name="iterator.specialized.counting.h0"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.example"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.example">Example</a>
+      </h3>
+<p>
+        This example fills an array with numbers and a second array with pointers
+        into the first array, using <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+        for both tasks. Finally <code class="computeroutput"><span class="identifier">indirect_iterator</span></code>
+        is used to print out the numbers into the first array via indirection through
+        the second array.
+      </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">N</span> <span class="special">=</span> <span class="number">7</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">numbers</span><span class="special">;</span>
+<span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">iterator</span> <span class="identifier">n_iter</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">counting_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="number">0</span><span class="special">),</span>
+         <span class="identifier">boost</span><span class="special">::</span><span class="identifier">counting_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">N</span><span class="special">),</span>
+         <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">numbers</span><span class="special">));</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;::</span><span class="identifier">iterator</span><span class="special">&gt;</span> <span class="identifier">pointers</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_counting_iterator</span><span class="special">(</span><span class="identifier">numbers</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()),</span>
+      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_counting_iterator</span><span class="special">(</span><span class="identifier">numbers</span><span class="special">.</span><span class="identifier">end</span><span class="special">()),</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">back_inserter</span><span class="special">(</span><span class="identifier">pointers</span><span class="special">));</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"indirectly printing out the numbers from 0 to "</span>
+      <span class="special">&lt;&lt;</span> <span class="identifier">N</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">copy</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_indirect_iterator</span><span class="special">(</span><span class="identifier">pointers</span><span class="special">.</span><span class="identifier">begin</span><span class="special">()),</span>
+      <span class="identifier">boost</span><span class="special">::</span><span class="identifier">make_indirect_iterator</span><span class="special">(</span><span class="identifier">pointers</span><span class="special">.</span><span class="identifier">end</span><span class="special">()),</span>
+      <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream_iterator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span><span class="special">,</span> <span class="string">" "</span><span class="special">));</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<p>
+        The output is:
+      </p>
+<pre class="programlisting"><span class="identifier">indirectly</span> <span class="identifier">printing</span> <span class="identifier">out</span> <span class="identifier">the</span> <span class="identifier">numbers</span> <span class="identifier">from</span> <span class="number">0</span> <span class="identifier">to</span> <span class="number">7</span>
+<span class="number">0</span> <span class="number">1</span> <span class="number">2</span> <span class="number">3</span> <span class="number">4</span> <span class="number">5</span> <span class="number">6</span>
+</pre>
+<p>
+        The source code for this example can be found <a href="../../example/counting_iterator_example.cpp" target="_top">here</a>.
+      </p>
+<h3>
+<a name="iterator.specialized.counting.h1"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.reference"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.reference">Reference</a>
+      </h3>
+<h4>
+<a name="iterator.specialized.counting.h2"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.synopsis"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.synopsis">Synopsis</a>
+      </h4>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">Incrementable</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">CategoryOrTraversal</span> <span class="special">=</span> <span class="identifier">use_default</span>
+  <span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Difference</span> <span class="special">=</span> <span class="identifier">use_default</span>
+<span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">counting_iterator</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">Incrementable</span> <span class="identifier">value_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">Incrementable</span><span class="special">&amp;</span> <span class="identifier">reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">const</span> <span class="identifier">Incrementable</span><span class="special">*</span> <span class="identifier">pointer</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">difference_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="comment">/* see below */</span> <span class="identifier">iterator_category</span><span class="special">;</span>
+
+    <span class="identifier">counting_iterator</span><span class="special">();</span>
+    <span class="identifier">counting_iterator</span><span class="special">(</span><span class="identifier">counting_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+    <span class="keyword">explicit</span> <span class="identifier">counting_iterator</span><span class="special">(</span><span class="identifier">Incrementable</span> <span class="identifier">x</span><span class="special">);</span>
+    <span class="identifier">Incrementable</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">counting_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+    <span class="identifier">counting_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">Incrementable</span> <span class="identifier">m_inc</span><span class="special">;</span> <span class="comment">// exposition</span>
+<span class="special">};</span>
+</pre>
+<p>
+        If the <code class="computeroutput"><span class="identifier">Difference</span></code> argument
+        is <code class="computeroutput"><span class="identifier">use_default</span></code> then <code class="computeroutput"><span class="identifier">difference_type</span></code> is an unspecified signed
+        integral type. Otherwise <code class="computeroutput"><span class="identifier">difference_type</span></code>
+        is <code class="computeroutput"><span class="identifier">Difference</span></code>.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">iterator_category</span></code> is determined
+        according to the following algorithm:
+      </p>
+<pre class="programlisting"><span class="keyword">if</span> <span class="special">(</span><span class="identifier">CategoryOrTraversal</span> <span class="identifier">is</span> <span class="keyword">not</span> <span class="identifier">use_default</span><span class="special">)</span>
+    <span class="keyword">return</span> <span class="identifier">CategoryOrTraversal</span>
+<span class="keyword">else</span> <span class="keyword">if</span> <span class="special">(</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">Incrementable</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span><span class="special">)</span>
+    <span class="keyword">return</span> <span class="special">|</span><span class="identifier">iterator</span><span class="special">-</span><span class="identifier">category</span><span class="special">|</span><span class="identifier">_</span><span class="special">\</span> <span class="special">(</span>
+        <span class="identifier">random_access_traversal_tag</span><span class="special">,</span> <span class="identifier">Incrementable</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Incrementable</span><span class="special">&amp;)</span>
+<span class="keyword">else</span>
+    <span class="keyword">return</span> <span class="special">|</span><span class="identifier">iterator</span><span class="special">-</span><span class="identifier">category</span><span class="special">|</span><span class="identifier">_</span><span class="special">\</span> <span class="special">(</span>
+         <span class="identifier">iterator_traversal</span><span class="special">&lt;</span><span class="identifier">Incrementable</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">,</span>
+         <span class="identifier">Incrementable</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">Incrementable</span><span class="special">&amp;)</span>
+</pre>
+<div class="blurb">
+<div class="titlepage"><div><div><p class="title"><b></b></p></div></div></div>
+<p>
+        <span class="bold"><strong>Note:</strong></span> implementers are encouraged to provide
+        an implementation of <code class="computeroutput"><span class="keyword">operator</span><span class="special">-</span></code> and a <code class="computeroutput"><span class="identifier">difference_type</span></code>
+        that avoids overflows in the cases where <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">Incrementable</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span></code>
+        is true.
+      </p>
+</div>
+<h4>
+<a name="iterator.specialized.counting.h3"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.requirements"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.requirements">Requirements</a>
+      </h4>
+<p>
+        The <code class="computeroutput"><span class="identifier">Incrementable</span></code> argument
+        shall be Copy Constructible and Assignable.
+      </p>
+<p>
+        If <code class="computeroutput"><span class="identifier">iterator_category</span></code> is convertible
+        to <code class="computeroutput"><span class="identifier">forward_iterator_tag</span></code> or
+        <code class="computeroutput"><span class="identifier">forward_traversal_tag</span></code>, the
+        following must be well-formed:
+      </p>
+<pre class="programlisting"><span class="identifier">Incrementable</span> <span class="identifier">i</span><span class="special">,</span> <span class="identifier">j</span><span class="special">;</span>
+<span class="special">++</span><span class="identifier">i</span><span class="special">;</span>         <span class="comment">// pre-increment</span>
+<span class="identifier">i</span> <span class="special">==</span> <span class="identifier">j</span><span class="special">;</span>      <span class="comment">// operator equal</span>
+</pre>
+<p>
+        If <code class="computeroutput"><span class="identifier">iterator_category</span></code> is convertible
+        to <code class="computeroutput"><span class="identifier">bidirectional_iterator_tag</span></code>
+        or <code class="computeroutput"><span class="identifier">bidirectional_traversal_tag</span></code>,
+        the following expression must also be well-formed:
+      </p>
+<pre class="programlisting"><span class="special">--</span><span class="identifier">i</span>
+</pre>
+<p>
+        If <code class="computeroutput"><span class="identifier">iterator_category</span></code> is convertible
+        to <code class="computeroutput"><span class="identifier">random_access_iterator_tag</span></code>
+        or <code class="computeroutput"><span class="identifier">random_access_traversal_tag</span></code>,
+        the following must must also be valid:
+      </p>
+<pre class="programlisting"><span class="identifier">counting_iterator</span><span class="special">::</span><span class="identifier">difference_type</span> <span class="identifier">n</span><span class="special">;</span>
+<span class="identifier">i</span> <span class="special">+=</span> <span class="identifier">n</span><span class="special">;</span>
+<span class="identifier">n</span> <span class="special">=</span> <span class="identifier">i</span> <span class="special">-</span> <span class="identifier">j</span><span class="special">;</span>
+<span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">j</span><span class="special">;</span>
+</pre>
+<h4>
+<a name="iterator.specialized.counting.h4"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.concepts"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.concepts">Concepts</a>
+      </h4>
+<p>
+        Specializations of <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+        model Readable Lvalue Iterator. In addition, they model the concepts corresponding
+        to the iterator tags to which their <code class="computeroutput"><span class="identifier">iterator_category</span></code>
+        is convertible. Also, if <code class="computeroutput"><span class="identifier">CategoryOrTraversal</span></code>
+        is not <code class="computeroutput"><span class="identifier">use_default</span></code> then
+        <code class="computeroutput"><span class="identifier">counting_iterator</span></code> models
+        the concept corresponding to the iterator tag <code class="computeroutput"><span class="identifier">CategoryOrTraversal</span></code>.
+        Otherwise, if <code class="computeroutput"><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">Incrementable</span><span class="special">&gt;::</span><span class="identifier">is_specialized</span></code>,
+        then <code class="computeroutput"><span class="identifier">counting_iterator</span></code> models
+        Random Access Traversal Iterator. Otherwise, <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+        models the same iterator traversal concepts modeled by <code class="computeroutput"><span class="identifier">Incrementable</span></code>.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">counting_iterator</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">C1</span><span class="special">,</span><span class="identifier">D1</span><span class="special">&gt;</span></code>
+        is interoperable with <code class="computeroutput"><span class="identifier">counting_iterator</span><span class="special">&lt;</span><span class="identifier">Y</span><span class="special">,</span><span class="identifier">C2</span><span class="special">,</span><span class="identifier">D2</span><span class="special">&gt;</span></code> if and only if <code class="computeroutput"><span class="identifier">X</span></code>
+        is interoperable with <code class="computeroutput"><span class="identifier">Y</span></code>.
+      </p>
+<h4>
+<a name="iterator.specialized.counting.h5"></a>
+        <span class="phrase"><a name="iterator.specialized.counting.operations"></a></span><a class="link" href="specialized.html#iterator.specialized.counting.operations">Operations</a>
+      </h4>
+<p>
+        In addition to the operations required by the concepts modeled by <code class="computeroutput"><span class="identifier">counting_iterator</span></code>, <code class="computeroutput"><span class="identifier">counting_iterator</span></code>
+        provides the following operations.
+      </p>
+<pre class="programlisting"><span class="identifier">counting_iterator</span><span class="special">();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Requires: </strong></span> <code class="computeroutput"><span class="identifier">Incrementable</span></code>
+        is Default Constructible.<br> <span class="bold"><strong>Effects: </strong></span>
+        Default construct the member <code class="computeroutput"><span class="identifier">m_inc</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">counting_iterator</span><span class="special">(</span><span class="identifier">counting_iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Construct member <code class="computeroutput"><span class="identifier">m_inc</span></code> from <code class="computeroutput"><span class="identifier">rhs</span><span class="special">.</span><span class="identifier">m_inc</span></code>.
+      </p>
+<pre class="programlisting"><span class="keyword">explicit</span> <span class="identifier">counting_iterator</span><span class="special">(</span><span class="identifier">Incrementable</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> Construct member <code class="computeroutput"><span class="identifier">m_inc</span></code> from <code class="computeroutput"><span class="identifier">x</span></code>.
+      </p>
+<pre class="programlisting"><span class="identifier">reference</span> <span class="keyword">operator</span><span class="special">*()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_inc</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">counting_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">++();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> <code class="computeroutput"><span class="special">++</span><span class="identifier">m_inc</span></code><br> <span class="bold"><strong>Returns:
+        </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">counting_iterator</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">--();</span>
+</pre>
+<p>
+        <span class="bold"><strong>Effects: </strong></span> <code class="computeroutput"><span class="special">--</span><span class="identifier">m_inc</span></code><br> <span class="bold"><strong>Returns:
+        </strong></span> <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+      </p>
+<pre class="programlisting"><span class="identifier">Incrementable</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">base</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+        <span class="bold"><strong>Returns: </strong></span> <code class="computeroutput"><span class="identifier">m_inc</span></code>
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003, 2005 David Abrahams Jeremy Siek Thomas
+      Witt<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at &lt;ulink url="http://www.boost.org/LICENSE_1_0.txt"&gt;
+        http://www.boost.org/LICENSE_1_0.txt &lt;/ulink&gt;)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="generic/adaptor.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="specialized/filter.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

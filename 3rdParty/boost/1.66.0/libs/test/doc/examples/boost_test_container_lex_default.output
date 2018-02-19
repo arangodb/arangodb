@@ -1,0 +1,19 @@
+//[example_output
+> ./boost_test_container_lex_default --log_level=all
+Running 1 test case...
+Entering test module "boost_test_container_lex_default"
+test.cpp:17: Entering test case "test_collections_vectors_lex"
+test.cpp:22: error: in "test_collections_vectors_lex": check a < a has failed.
+Collections appear to be equal.
+test.cpp:23: error: in "test_collections_vectors_lex": check a < b has failed.
+Failure at position 2: 3 >= 2.
+test.cpp:24: error: in "test_collections_vectors_lex": check a == b has failed.
+Mismatch at position 2: 3 != 2.
+test.cpp:25: info: check a != b has passed
+test.cpp:26: error: in "test_collections_vectors_lex": check c < d has failed
+test.cpp:27: error: in "test_collections_vectors_lex": check c == d has failed
+test.cpp:17: Leaving test case "test_collections_vectors_lex"; testing time: 155us
+Leaving test module "boost_test_container_lex_default"; testing time: 177us
+
+*** 5 failures are detected in the test module "boost_test_container_lex_default"
+//]

@@ -1,0 +1,606 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns="http://www.w3.org/TR/REC-html40">
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+<title>Endian Library</title>
+<link href="styles.css" rel="stylesheet">
+</head>
+
+<body>
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="100%">
+  <tr>
+    <td width="339">
+<a href="../../../index.html">
+<img src="../../../boost.png" alt="Boost logo" align="middle" border="0" width="277" height="86"></a></td>
+    <td align="middle" width="1253">
+    <b>
+    <font size="6">Endian Library</font></b></td>
+  </tr>
+</table>
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse"
+  bordercolor="#111111" bgcolor="#D7EEFF" width="100%">
+  <tr>
+    <td><b>
+    <a href="index.html">Endian Home</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="conversion.html">Conversion Functions</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="arithmetic.html">Arithmetic Types</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="buffers.html">Buffer Types</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    <a href="choosing_approach.html">Choosing Approach</a></b></td>
+  </tr>
+</table>
+<p></p>
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" align="right">
+  <tr>
+    <td width="100%" bgcolor="#D7EEFF" align="center">
+      <i><b>Contents</b></i></td>
+  </tr>
+  <tr>
+    <td width="100%" bgcolor="#E8F5FF">
+<a href="#Abstract">Abstract</a><br>
+<a href="#Introduction-to-endianness">Introduction to endianness</a><br>
+<a href="#Introduction">Introduction to the Boost.Endian library</a><br>
+<a href="#Choosing">Choosing between conversion functions,</a><br>
+  &nbsp;  <a href="#Choosing">buffer types, and  arithmetic types</a><br>
+<a href="#Intrinsic">Built-in support for Intrinsics</a><br>
+<a href="#Performance">Performance</a><br>
+&nbsp;&nbsp;&nbsp;<a href="#Timings">Timings</a><br>
+<a href="#FAQ">Overall FAQ</a><br>
+<a href="#Release-history">Release history</a><br>
+&nbsp;&nbsp;&nbsp;<a href="#Changes-requested-by-formal-review">Changes 
+requested by formal review</a><br>
+&nbsp;&nbsp; <a href="#Other-changes-since-formal-review">Other changes since 
+formal review</a><br>
+<a href="#Compatibility">Compatibility with interim releases</a><br>
+<a href="#C++03-support">C++03 support for C++11 features</a><br>
+<a href="#Future-directions">Future directions</a><br>
+<a href="#Acknowledgements">Acknowledgements</a><br>
+    </td>
+  </tr>
+  </table>
+
+<h2><a name="Abstract">Abstract</a></h2>
+
+<p>Boost.Endian provides facilities to manipulate the 
+<a href="#Introduction-to-endianness">endianness</a> of integers and user-defined types.</p>
+<ul>
+  <li>Three approaches to endianness are supported. Each has a 
+  long history of successful use, and each approach has use cases where it is 
+  preferred over the other approaches.<br>
+&nbsp;</li>
+  <li>Primary uses:<br>
+&nbsp;<ul>
+  <li>Data portability. The Endian library supports binary data exchange, via either external media or network transmission, 
+  regardless of platform endianness.<br>
+&nbsp;</li>
+  <li>Program portability. POSIX-based and 
+  Windows-based operating systems traditionally supply libraries with 
+  non-portable functions to perform endian conversion. There are at least four 
+  incompatible sets of functions in common use. The Endian library is 
+  portable across all C++ platforms.<br>
+&nbsp;</li>
+</ul>
+
+  </li>
+  <li>Secondary use: Minimizing data size via sizes and/or alignments not supported by the 
+  standard C++ integer types.</li>
+</ul>
+
+<h2><a name="Introduction-to-endianness">Introduction to endianness</a></h2>
+
+<p>Consider the following code:</p>
+
+<blockquote>
+  <pre>int16_t i = 0x0102;
+FILE * file = fopen(&quot;test.bin&quot;, &quot;wb&quot;);   // binary file!
+fwrite(&amp;i, sizeof(int16_t), 1, file);
+fclose(file);</pre>
+</blockquote>
+<p>On OS X, Linux, or Windows systems with an Intel CPU, a hex dump 
+of the &quot;test.bin&quot; output file produces:</p>
+<blockquote>
+  <p><code>0201</code></p>
+</blockquote>
+<p>On OS X systems with a PowerPC CPU, or Solaris systems with a SPARC CPU, a hex dump of the &quot;test.bin&quot; 
+output file produces:</p>
+<blockquote>
+  <p><code>0102</code></p>
+</blockquote>
+<p>What's happening here is that Intel CPUs order the bytes of an integer with 
+the least-significant byte first, while SPARC CPUs place the most-significant 
+byte first. Some CPUs, such as the PowerPC, allow the operating system to 
+choose which ordering applies.</p>
+<p><a name="definition"></a>Most-significant-byte-first ordering is traditionally called &quot;big endian&quot; 
+ordering and  least-significant-byte-first is traditionally called 
+&quot;little-endian&quot; ordering. The names are derived from
+<a href="http://en.wikipedia.org/wiki/Jonathan_Swift" title="Jonathan Swift">
+Jonathan Swift</a>'s satirical novel <i>
+<a href="http://en.wikipedia.org/wiki/Gulliver's_Travels" title="Gulliver's Travels">
+Gulliver’s Travels</a></i>, where rival kingdoms opened their soft-boiled eggs 
+at different ends.</p>
+<p>See Wikipedia's
+<a href="http://en.wikipedia.org/wiki/Endianness">Endianness</a> article for an 
+extensive discussion of endianness.</p>
+<p>Programmers can usually ignore endianness, except when reading a core 
+dump on little-endian systems. But programmers  have to deal with endianness  when exchanging binary integers and binary floating point 
+values between computer systems with differing endianness, whether by physical file transfer or over a network. 
+And programmers may also want to use the library when minimizing either internal or 
+external data sizes is advantageous.</p>
+<h2><a name="Introduction">Introduction</a> to the Boost.Endian library</h2>
+
+<p>Boost.Endian provides three different approaches to dealing with 
+ 
+endianness. All three approaches support integers and user-define types (UDTs).</p>
+
+<p>Each approach has a long history of successful use, and each approach has use 
+cases where it is preferred to the other approaches.</p>
+
+<blockquote>
+
+<p><b><a href="conversion.html">Endian conversion functions</a> -</b> The 
+application uses the built-in integer types to hold values, and calls the 
+provided conversion functions to convert byte ordering as needed. Both mutating 
+and non-mutating conversions are supplied, and each comes in unconditional and 
+conditional variants.</p>
+
+<p><b><a href="buffers.html">Endian buffer types</a> -</b> The application uses the provided endian 
+buffer types 
+to hold values, and explicitly converts to and from the built-in integer types.  Buffer sizes of 8, 16, 24, 32, 40, 48, 56, and 64 bits (i.e. 
+1, 2, 3, 4, 5, 6, 7, and 8 bytes) are provided. Unaligned integer buffer types 
+are provided for all sizes, and aligned buffer types are provided for 16, 32, and 
+64-bit sizes. The provided specific types are typedefs for a generic class 
+template that may be used directly for less common use cases.</p>
+
+<p><b><a href="arithmetic.html">Endian arithmetic types</a> -</b> The 
+application uses the provided endian arithmetic types, which supply the same 
+operations as the built-in C++ arithmetic types. All conversions are implicit. 
+Arithmetic sizes of 8, 16, 24, 32, 40, 48, 56, and 64 bits (i.e. 1, 2, 3, 4, 5, 
+6, 7, and 8 bytes) are provided. Unaligned integer types are provided for all 
+sizes and aligned 
+arithmetic types are provided for 16, 32, and 64-bit sizes. The provided 
+specific types are typedefs for a generic class template that may be used 
+directly in generic code of for less common use cases.</p>
+
+</blockquote>
+
+<p>Boost Endian is a header-only library. C++11 features 
+affecting interfaces, such as <code>noexcept</code>, are  used only if available. 
+See <a href="#C++03-support">C++03 support for C++11 features</a> for details.</p>
+
+<h2><a name="Choosing">Choosing</a> between  conversion functions,  buffer types, 
+and  arithmetic types</h2>
+
+<p>This section has been moved to its own <a href="choosing_approach.html">
+Choosing the Approach</a> page. </p>
+
+<h2>Built-in support for <a name="Intrinsic">Intrinsic</a>s</h2>
+<p>Most compilers, including GCC, Clang, and Visual C++, supply  built-in support for byte swapping intrinsics. 
+The Endian library uses these intrinsics when available since they may result in smaller and faster generated code, particularly for 
+optimized 
+builds.</p>
+<p>Defining the macro <code>BOOST_ENDIAN_NO_INTRINSICS</code> will suppress use 
+of the intrinsics. This is useful when a compiler has no intrinsic support or 
+fails to locate the appropriate header, perhaps because it 
+is an older release or has very limited supporting libraries.</p>
+<p>The macro <code>BOOST_ENDIAN_INTRINSIC_MSG</code> is defined as 
+either <code>&quot;no byte swap intrinsics&quot;</code> or a string describing the 
+particular set of intrinsics being used. This is useful for eliminating missing 
+intrinsics as a source of performance issues.</p>
+
+<h2><a name="Performance">Performance</a></h2>
+
+<p>Consider this problem:</p>
+
+<div align="center">
+  <center>
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111">
+  <tr>
+    <td colspan="2">
+    <p align="center"><i><b><a name="Example-1">Example 1</a></b></i></td>
+  </tr>
+  <tr>
+    <td colspan="2"><b><i>Add 100 to a big endian value in a file, then write the 
+    result to a file</i> </b> </td>
+  </tr>
+  <tr>
+    <td><i><b>Endian arithmetic type approach</b></i></td>
+    <td><i><b>Endian conversion function approach</b></i></td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <pre>big_int32_at x;
+
+... read into x from a file ...
+
+x += 100;
+
+... write x to a file ...
+</pre>
+    </td>
+    <td>
+    <pre>  
+int32_t x;
+
+... read into x from a file ...
+
+big_to_native_inplace(x);
+x += 100;
+native_to_big_inplace(x);
+
+... write x to a file ...
+</pre>
+    </td>
+  </tr>
+</table>
+
+  </center>
+</div>
+
+<p><b>There will be no performance difference between the two approaches in 
+optimized builds, 
+regardless of the native endianness of the machine.</b> That&#39;s because optimizing compilers will  generate exactly the same code for each. That conclusion was confirmed by 
+studying the generated assembly code for GCC and Visual C++. Furthermore, time 
+spent doing I/O will determine the speed of this application.</p>
+
+<p>Now consider a slightly different problem:&nbsp; </p>
+
+<div align="center">
+  <center>
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111">
+  <tr>
+    <td colspan="2">
+    <p align="center"><b><i><a name="Example-2">Example 2</a></i></b></td>
+  </tr>
+  <tr>
+    <td colspan="2"><i><b>Add a million values to a big endian value in a file, then write the 
+    result to a file </b></i> </td>
+  </tr>
+  <tr>
+    <td><i><b>Endian arithmetic type approach</b></i></td>
+    <td><i><b>Endian conversion function approach</b></i></td>
+  </tr>
+  <tr>
+    <td valign="top">
+    <pre>big_int32_at x;
+
+... read into x from a file ...
+
+for (int32_t i = 0; i &lt; 1000000; ++i)
+  x += i;
+
+... write x to a file ...
+</pre>
+    </td>
+    <td>
+    <pre>int32_t x;
+
+... read into x from a file ...
+
+big_to_native_inplace(x);
+
+for (int32_t i = 0; i &lt; 1000000; ++i)
+  x += i;
+
+native_to_big_inplace(x);
+
+... write x to a file ...
+</pre>
+    </td>
+  </tr>
+</table>
+
+  </center>
+</div>
+
+<p>With the Endian arithmetic approach, on little endian platforms an implicit conversion from and then back to 
+big endian is done inside the loop. With the Endian conversion function 
+approach, the user has ensured the conversions are done outside the loop, so the 
+code may run more quickly on little endian platforms.</p>
+
+<h3><a name="Timings">Timings</a></h3>
+<p>These tests were run against release builds on a circa 2012 4-core little endian X64 Intel Core i5-3570K 
+CPU @ 3.40GHz under Windows 7.</p>
+
+<p><b>Caveat emptor: The Windows CPU timer has very high granularity. Repeated 
+runs of the same tests often yield considerably different results.</b></p>
+
+<p>See <b>test/loop_time_test.cpp</b> for the actual code and <b>benchmark/Jamfile.v2</b> for the build 
+setup.</p>
+
+
+<div align="center">
+  <center>
+<table border="1" cellpadding="5" cellspacing="0"style="border-collapse: collapse" bordercolor="#111111">
+<tr><td colspan="6" align="center"><b>GNU C++ version 4.8.2 on Linux virtual 
+  machine</b></td></tr>
+<tr><td colspan="6" align="center"><b> Iterations: 10'000'000'000, Intrinsics: __builtin_bswap16, etc.</b></td></tr>
+<tr><td><b>Test Case</b></td>
+<td align="center"><b>Endian<br>arithmetic<br>type</b></td>
+<td align="center"><b>Endian<br>conversion<br>function</b></td>
+</tr>
+<tr><td>16-bit aligned big endian</td><td align="right">8.46 s</td><td align="right">5.28 s</td></tr>
+<tr><td>16-bit aligned little endian</td><td align="right">5.28 s</td><td align="right">5.22 s</td></tr>
+<tr><td>32-bit aligned big endian</td><td align="right">8.40 s</td><td align="right">2.11 s</td></tr>
+<tr><td>32-bit aligned little endian</td><td align="right">2.11 s</td><td align="right">2.10 s</td></tr>
+<tr><td>64-bit aligned big endian</td><td align="right">14.02 s</td><td align="right">3.10 s</td></tr>
+<tr><td>64-bit aligned little endian</td><td align="right">3.00 s</td><td align="right">3.03 s</td></tr>
+
+</table>
+  </center>
+</div>
+<p></p>
+
+<div align="center"> <center>
+<table border="1" cellpadding="5" cellspacing="0"style="border-collapse: collapse" bordercolor="#111111">
+<tr><td colspan="6" align="center"><b>Microsoft Visual C++ version 14.0</b></td></tr>
+<tr><td colspan="6" align="center"><b> Iterations: 10'000'000'000, Intrinsics: cstdlib _byteswap_ushort, etc.</b></td></tr>
+<tr><td><b>Test Case</b></td>
+<td align="center"><b>Endian<br>arithmetic<br>type</b></td>
+<td align="center"><b>Endian<br>conversion<br>function</b></td>
+</tr>
+<tr><td>16-bit aligned big endian</td><td align="right">8.27 s</td><td align="right">5.26 s</td></tr>
+<tr><td>16-bit aligned little endian</td><td align="right">5.29 s</td><td align="right">5.32 s</td></tr>
+<tr><td>32-bit aligned big endian</td><td align="right">8.36 s</td><td align="right">5.24 s</td></tr>
+<tr><td>32-bit aligned little endian</td><td align="right">5.24 s</td><td align="right">5.24 s</td></tr>
+<tr><td>64-bit aligned big endian</td><td align="right">13.65 s</td><td align="right">3.34 s</td></tr>
+<tr><td>64-bit aligned little endian</td><td align="right">3.35 s</td><td align="right">2.73 s</td></tr>
+</table>
+ </center></div>
+
+
+<h2>Overall <a name="FAQ">FAQ</a></h2>
+
+<p><b>Is the implementation header only?</b></p>
+
+<blockquote>
+
+<p>Yes.</p>
+
+</blockquote>
+
+<p><b>Are C++03 compilers supported?</b></p>
+
+<blockquote>
+
+<p>Yes.</p>
+
+</blockquote>
+
+<p><b>Does the implementation use compiler intrinsic built-in byte swapping?</b></p>
+
+<blockquote>
+
+<p>Yes, if available. See <a href="#Intrinsic">Intrinsic built-in support</a>.</p>
+
+</blockquote>
+
+<p><b>Why bother with endianness?</b></p>
+<blockquote>
+<p>Binary data portability is the primary use case.</p>
+</blockquote>
+<p><b>Does endianness have any uses outside of portable binary file or network 
+I/O formats?</b> </p>
+<blockquote>
+<p>Using the unaligned integer types with a size tailored to the application&#39;s 
+needs is a minor secondary use that saves internal or external memory space. For 
+example, using <code>big_int40_buf_t</code> or <code>big_int40_t</code> in a 
+large array saves a lot of space compared to one of the 64-bit types.</p>
+</blockquote>
+<p><b>Why bother with binary I/O? Why not just use C++ Standard Library stream 
+inserters and extractors?</b></p>
+<blockquote>
+<p>Data interchange formats often specify binary integer data.</p>
+<p>Binary integer data is smaller and therefore I/O is faster and file sizes 
+are smaller. Transfer between systems is less expensive.</p>
+<p >Furthermore, binary integer data is of fixed size, and so fixed-size disk 
+records are possible without padding, easing sorting and allowing random access.</p>
+<p >Disadvantages, such as the inability to use text utilities on the 
+resulting files, limit usefulness to applications where the binary I/O 
+advantages are paramount.</p>
+</blockquote>
+
+<p><b>Which is better, big-endian or little-endian?</b></p>
+<blockquote>
+<p>Big-endian tends to be preferred in a networking environment and is a bit 
+more of an industry standard, but little-endian may be preferred for 
+applications that run primarily on x86, x86-64, and other little-endian 
+CPU's. The <a href="http://en.wikipedia.org/wiki/Endian">Wikipedia</a> article 
+gives more pros and cons.</p>
+</blockquote>
+
+<p><b>Why are only big and little native endianness supported?</b></p>
+<blockquote>
+<p>These are the only endian schemes that have any practical value today. PDP-11 
+and the other middle endian approaches are interesting  curiosities 
+but have no relevance for today&#39;s C++ developers. The same is true for 
+architectures that allow runtime endianness switching. The
+<a href="conversion.html#native-order-specification">specification for native 
+ordering</a> has been carefully crafted to allow support for such orderings in 
+the future, should the need arise. Thanks to Howard Hinnant for suggesting this. </p>
+</blockquote>
+
+<p><b>Why do both the buffer and arithmetic types exist?</b></p>
+<blockquote>
+<p>Conversions in the buffer types are explicit. Conversions in the arithmetic 
+types are implicit. This fundamental difference is a deliberate design feature 
+that would be lost if the inheritance hierarchy were collapsed.</p>
+<p>The original design provided only arithmetic types. Buffer types were 
+requested during formal review by those wishing total control over when 
+conversion occurs. They also felt that buffer types would be less likely to be 
+misused by maintenance programmers not familiar with the implications of 
+performing a lot of integer operations on the endian arithmetic integer types.</p>
+</blockquote>
+<p><b>What is gained by using the buffer types rather than always just using the 
+arithmetic types?</b></p>
+<blockquote>
+<p>Assurance that hidden conversions are not performed. This is of overriding 
+importance to users concerned about achieving the ultimate in terms of speed. </p>
+<p>&quot;Always just using the arithmetic types&quot; is fine for other users. When the 
+ultimate in speed needs to be ensured, the arithmetic types can be used in the 
+same design patterns or idioms that would be used for buffer types, resulting in 
+the same code being generated for either types.</p>
+</blockquote>
+
+<p><b>What are the limitations of integer support?</b></p>
+
+<blockquote>
+
+<p>Tests have only been 
+performed on machines that  use two's complement arithmetic. The Endian 
+conversion functions only support 16, 32, and 64-bit aligned integers. The 
+endian types only support 8, 16, 24, 32, 40, 48, 56, and 64-bit unaligned integers, 
+and 8, 16, 32, and 64-bit aligned integers.</p>
+
+</blockquote>
+
+<p><b>Why is there no floating point support?</b></p>
+
+<blockquote>
+
+<p>An attempt was made to support four-byte <code>float</code>s and eight-byte
+<code>double</code>s, limited to
+<a href="http://en.wikipedia.org/wiki/IEEE_floating_point">IEEE 754</a> (also 
+know as ISO/IEC/IEEE 60559) floating point and further limited to systems where 
+floating point endianness does not differ from integer 
+endianness.</p>
+
+<p>Even with those limitations, support for floating point types was not 
+reliable and was removed. For example, simply reversing the endianness of a 
+floating point number can result in a signaling-NAN. For all practical purposes, 
+binary serialization and endianness for integers are one and the same problem. 
+That is not true for floating point numbers, so binary serialization interfaces 
+and formats for floating point does not fit well in an endian-based library.</p>
+
+</blockquote>
+
+<h2><a name="Release-history">Release history</a></h2>
+<h3><a name="Changes-requested-by-formal-review">Changes requested by formal review</a></h3>
+<p>The library was reworked from top to bottom to accommodate changes requested 
+during the formal review. See <a href="mini_review_topics.html">Mini-Review</a> 
+page for details.</p>
+<h3><a name="Other-changes-since-formal-review">Other changes since formal 
+review</a></h3>
+<ul>
+  <li>Header <code>boost/endian/endian.hpp</code> has been renamed to <code>
+  boost/endian/arithmetic.hpp</code>. Headers 
+  <code>boost/endian/conversion.hpp</code> and <code>boost/endian/buffers.hpp</code> have been 
+  added. 
+  Infrastructure file names were changed accordingly.</li>
+  <li>The endian arithmetic type aliases have been renamed, 
+  using a naming pattern that is consistent for both integer and floating point, 
+  and a consistent set of aliases supplied for the endian buffer types.</li>
+  <li>The unaligned-type alias names still have the <code>_t</code> suffix, but 
+  the aligned-type alias names now have an <code>_at</code> suffix..</li>
+  <li><code>endian_reverse()</code> overloads for <code>int8_t</code> and <code>
+  uint8_t</code> have been added for improved generality. (Pierre Talbot)</li>
+  <li>Overloads of <code>endian_reverse_inplace()</code> have been replaced with a single <code>
+  endian_reverse_inplace()</code> template. (Pierre Talbot)</li>
+  <li>For X86 and X64 architectures, which permit unaligned loads and stores, 
+  unaligned little endian buffer and arithmetic types use regular loads and 
+  stores when the size is exact. This makes unaligned little endian buffer and 
+  arithmetic types significantly more efficient on these architectures. (Jeremy 
+  Maitin-Shepard)</li>
+  <li>C++11 features affecting interfaces, such as <code>noexcept</code>, are now used. 
+  C++03 compilers are still 
+  supported.</li>
+  <li>Acknowledgements have been updated.</li>
+</ul>
+
+<h2><a name="Compatibility">Compatibility</a> with interim releases</h2>
+
+<p>Prior to the official Boost release, class template <code>
+endian_arithmetic</code> has been used for a decade or more with the same 
+functionality but under the name <code>endian</code>. Other names also changed 
+in the official release. If the macro <code>BOOST_ENDIAN_DEPRECATED_NAMES</code> 
+is defined, those old now deprecated names are still supported. However, the 
+class template <code>endian</code> name is only provided for compilers 
+supporting C++11 template aliases. For C++03 compilers, the name will have to be 
+changed to <code>endian_arithmetic</code>.</p>
+
+<p>To support backward header compatibility, deprecated header <code>boost/endian/endian.hpp</code> 
+forwards to <code>boost/endian/arithmetic.hpp</code>. It requires <code>
+BOOST_ENDIAN_DEPRECATED_NAMES</code> be defined. It should only be used while 
+transitioning to the official Boost release of the library as it will be removed 
+in some future release.</p>
+
+<h2><a name="C++03-support">C++03 support</a> for C++11 features</h2>
+
+<table border="1" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111">
+  <tr>
+    <td><b>C++11 Feature</b></td>
+    <td><b>Action with C++03 Compilers </b></td>
+  </tr>
+  <tr>
+    <td>Scoped enums </td>
+    <td>Uses header <code class="computeroutput">
+    <a href="http://www.boost.org/libs/core/doc/html/core/scoped_enum.html">
+    <span class="identifier">boost</span><span class="special">/</span><span class="identifier">core</span><span class="special">/</span><span class="identifier">scoped_enum</span><span class="special">.</span><span class="identifier">hpp</span></a></code><span class="identifier"> 
+    to emulate C++11 scoped enums.</span></td>
+  </tr>
+  <tr>
+    <td><code>noexcept</code></td>
+    <td><span class="identifier">Uses BOOST_NOEXCEPT macro, which is defined as 
+    null for compilers not supporting this C++11 feature.</span></td>
+  </tr>
+  <tr>
+    <td>C++11 PODs (<a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2007/n2342.htm">N2342</a>)</td>
+    <td><span class="identifier">Takes advantage of C++03 compilers that 
+    relax C++03 POD rules, but see Limitations
+    <a href="buffers.html#Limitations">here</a> and
+    <a href="arithmetic.html#Limitations">here</a>. Also see macros for explicit 
+    POD control <a href="buffers.html#Compilation">here</a> and
+    <a href="arithmetic.html#Compilation">here</a>.</span></td>
+  </tr>
+</table>
+
+<h2><a name="Future-directions">Future directions</a></h2>
+
+<p><b>Standardization.</b> The plan is to submit Boost.Endian to the C++ 
+standards committee for possible inclusion in a Technical Specification or the 
+C++ standard itself.</p>
+
+<p><b>Specializations for <code>numeric_limits</code>.</b> Roger Leigh 
+requested that all <code>boost::endian</code> types provide <code>numeric_limits</code> 
+specializations. See <a href="https://github.com/boostorg/endian/issues/4">
+GitHub issue 4</a>.</p>
+
+<p><b>Character buffer support.</b> Peter Dimov pointed out during the 
+mini-review that getting and setting basic arithmetic types (or <code>&lt;cstdint&gt;</code> 
+equivalents) from/to an offset into an array of unsigned char is a common need. 
+See <a href="http://lists.boost.org/Archives/boost/2015/01/219574.php">
+Boost.Endian mini-review posting</a>.</p>
+
+<p><b>Out-of-range detection.</b> Peter Dimov pointed suggested during the 
+mini-review that throwing an exception on buffer values being out-of-range might 
+be desirable. See the end of
+<a href="http://lists.boost.org/Archives/boost/2015/01/219659.php">this posting</a> 
+and subsequent replies.</p>
+
+<h2><a name="Acknowledgements">Acknowledgements</a></h2>
+<p>Comments and suggestions were received from Adder, Benaka Moorthi, 
+Christopher Kohlhoff, Cliff Green, Daniel James, Dave Handley, Gennaro Proto, Giovanni Piero 
+Deretta, Gordon Woodhull, dizzy, Hartmut Kaiser, Howard Hinnant, Jason Newton, Jeff Flinn, Jeremy Maitin-Shepard, John Filo, John 
+Maddock, Kim Barrett, Marsh Ray, Martin Bonner, Mathias Gaunard, Matias 
+Capeletto, Neil Mayhew, Nevin Liber, 
+Olaf van der Spek, Paul Bristow, Peter Dimov, Pierre Talbot, Phil Endecott, 
+Philip Bennefall, Pyry Jahkola, 
+Rene Rivera, Robert Stewart, Roger Leigh, Roland Schwarz, Scott McMurray, Sebastian Redl, Tim 
+Blechmann, Tim Moore, tymofey, Tomas Puverle, Vincente Botet, Yuval Ronen and 
+Vitaly Budovsk. Apologies if anyone has been missed.</p>
+<hr>
+<p>Last revised:
+<!--webbot bot="Timestamp" s-type="EDITED" s-format="%d %B, %Y" startspan -->05 April, 2016<!--webbot bot="Timestamp" endspan i-checksum="29990" --></p>
+<p>© Copyright Beman Dawes, 2011, 2013</p>
+<p>Distributed under the Boost Software License, Version 1.0. See
+<a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/ LICENSE_1_0.txt</a></p>
+
+</body>
+
+</html>

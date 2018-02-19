@@ -1,0 +1,119 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Read handler requirements</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="RangeConnectHandler.html" title="Range connect handler requirements">
+<link rel="next" href="ResolveHandler.html" title="Resolve handler requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="RangeConnectHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ResolveHandler.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.ReadHandler"></a><a class="link" href="ReadHandler.html" title="Read handler requirements">Read handler requirements</a>
+</h3></div></div></div>
+<p>
+        A read handler must meet the requirements for a <a class="link" href="Handler.html" title="Handlers">handler</a>.
+        A value <code class="computeroutput">h</code> of a read handler class should work correctly in the
+        expression <code class="computeroutput">h(ec, s)</code>, where <code class="computeroutput">ec</code> is an lvalue of type
+        <code class="computeroutput">const error_code</code> and <code class="computeroutput">s</code> is an lvalue of type <code class="computeroutput">const
+        size_t</code>.
+      </p>
+<h5>
+<a name="boost_asio.reference.ReadHandler.h0"></a>
+        <span class="phrase"><a name="boost_asio.reference.ReadHandler.examples"></a></span><a class="link" href="ReadHandler.html#boost_asio.reference.ReadHandler.examples">Examples</a>
+      </h5>
+<p>
+        A free function as a read handler:
+      </p>
+<pre class="programlisting">void read_handler(
+    const boost::system::error_code&amp; ec,
+    std::size_t bytes_transferred)
+{
+  ...
+}
+</pre>
+<p>
+        A read handler function object:
+      </p>
+<pre class="programlisting">struct read_handler
+{
+  ...
+  void operator()(
+      const boost::system::error_code&amp; ec,
+      std::size_t bytes_transferred)
+  {
+    ...
+  }
+  ...
+};
+</pre>
+<p>
+        A lambda as a read handler:
+      </p>
+<pre class="programlisting">socket.async_read(...
+    [](const boost::system::error_code&amp; ec,
+      std::size_t bytes_transferred)
+    {
+      ...
+    });
+</pre>
+<p>
+        A non-static class member function adapted to a read handler using <code class="computeroutput">std::bind()</code>:
+      </p>
+<pre class="programlisting">void my_class::read_handler(
+    const boost::system::error_code&amp; ec,
+    std::size_t bytes_transferred)
+{
+  ...
+}
+...
+socket.async_read(...,
+    std::bind(&amp;my_class::read_handler,
+      this, std::placeholders::_1,
+      std::placeholders::_2));
+</pre>
+<p>
+        A non-static class member function adapted to a read handler using <code class="computeroutput">boost::bind()</code>:
+      </p>
+<pre class="programlisting">void my_class::read_handler(
+    const boost::system::error_code&amp; ec,
+    std::size_t bytes_transferred)
+{
+  ...
+}
+...
+socket.async_read(...,
+    boost::bind(&amp;my_class::read_handler,
+      this, boost::asio::placeholders::error,
+      boost::asio::placeholders::bytes_transferred));
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="RangeConnectHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ResolveHandler.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

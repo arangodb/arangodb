@@ -1,0 +1,155 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Compressed_Pair</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="compressed_pair.html" title="Compressed_Pair">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+<div class="article">
+<div class="titlepage">
+<div>
+<div><h2 class="title">
+<a name="compressed_pair"></a>Compressed_Pair</h2></div>
+<div><div class="authorgroup">
+<div class="author"><h3 class="author">
+<span class="firstname">Steve</span> <span class="surname">Cleary</span>
+</h3></div>
+<div class="author"><h3 class="author">
+<span class="firstname">Beman</span> <span class="surname">Dawes</span>
+</h3></div>
+<div class="author"><h3 class="author">
+<span class="firstname">Howard</span> <span class="surname">Hinnant</span>
+</h3></div>
+<div class="author"><h3 class="author">
+<span class="firstname">John</span> <span class="surname">Maddock</span>
+</h3></div>
+</div></div>
+<div><p class="copyright">Copyright &#169; 2000 Steve Cleary, Beman Dawes, Howard Hinnant &amp; John
+      Maddock</p></div>
+<div><div class="legalnotice">
+<a name="compressed_pair.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div>
+<hr>
+</div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="compressed_pair.html#compressed_pair.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="compressed_pair.html#compressed_pair.synopsis">Synopsis</a></span></dt>
+<dt><span class="section"><a href="compressed_pair.html#compressed_pair.acknowledgments">Acknowledgments</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="compressed_pair.overview"></a><a class="link" href="compressed_pair.html#compressed_pair.overview" title="Overview">Overview</a>
+</h2></div></div></div>
+<p>
+      All of the contents of <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">compressed_pair</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>
+      are defined inside <code class="computeroutput"><span class="keyword">namespace</span> <span class="identifier">boost</span></code>.
+    </p>
+<p>
+      The class <code class="computeroutput"><span class="identifier">compressed_pair</span></code> is
+      very similar to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code>, but if either of the template arguments
+      are empty classes, then the <span class="emphasis"><em>empty base-class optimisation</em></span>
+      is applied to compress the size of the pair.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="compressed_pair.synopsis"></a><a class="link" href="compressed_pair.html#compressed_pair.synopsis" title="Synopsis">Synopsis</a>
+</h2></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T2</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">compressed_pair</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">typedef</span> <span class="identifier">T1</span>                                                 <span class="identifier">first_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="identifier">T2</span>                                                 <span class="identifier">second_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">first_type</span><span class="special">&gt;::</span><span class="identifier">param_type</span>       <span class="identifier">first_param_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">second_type</span><span class="special">&gt;::</span><span class="identifier">param_type</span>      <span class="identifier">second_param_type</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">first_type</span><span class="special">&gt;::</span><span class="identifier">reference</span>        <span class="identifier">first_reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">second_type</span><span class="special">&gt;::</span><span class="identifier">reference</span>       <span class="identifier">second_reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">first_type</span><span class="special">&gt;::</span><span class="identifier">const_reference</span>  <span class="identifier">first_const_reference</span><span class="special">;</span>
+    <span class="keyword">typedef</span> <span class="keyword">typename</span> <span class="identifier">call_traits</span><span class="special">&lt;</span><span class="identifier">second_type</span><span class="special">&gt;::</span><span class="identifier">const_reference</span> <span class="identifier">second_const_reference</span><span class="special">;</span>
+
+             <span class="identifier">compressed_pair</span><span class="special">()</span> <span class="special">:</span> <span class="identifier">base</span><span class="special">()</span> <span class="special">{}</span>
+             <span class="identifier">compressed_pair</span><span class="special">(</span><span class="identifier">first_param_type</span> <span class="identifier">x</span><span class="special">,</span> <span class="identifier">second_param_type</span> <span class="identifier">y</span><span class="special">);</span>
+    <span class="keyword">explicit</span> <span class="identifier">compressed_pair</span><span class="special">(</span><span class="identifier">first_param_type</span> <span class="identifier">x</span><span class="special">);</span>
+    <span class="keyword">explicit</span> <span class="identifier">compressed_pair</span><span class="special">(</span><span class="identifier">second_param_type</span> <span class="identifier">y</span><span class="special">);</span>
+
+    <span class="identifier">compressed_pair</span><span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span><span class="keyword">const</span> <span class="identifier">compressed_pair</span><span class="special">&amp;);</span>
+
+    <span class="identifier">first_reference</span>       <span class="identifier">first</span><span class="special">();</span>
+    <span class="identifier">first_const_reference</span> <span class="identifier">first</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="identifier">second_reference</span>       <span class="identifier">second</span><span class="special">();</span>
+    <span class="identifier">second_const_reference</span> <span class="identifier">second</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">swap</span><span class="special">(</span><span class="identifier">compressed_pair</span><span class="special">&amp;</span> <span class="identifier">y</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+      The two members of the pair can be accessed using the member functions <code class="computeroutput"><span class="identifier">first</span><span class="special">()</span></code> and
+      <code class="computeroutput"><span class="identifier">second</span><span class="special">()</span></code>.
+      Note that not all member functions can be instantiated for all template parameter
+      types. In particular <code class="computeroutput"><span class="identifier">compressed_pair</span></code>
+      can be instantiated for reference and array types, however in these cases the
+      range of constructors that can be used are limited. If types <code class="computeroutput"><span class="identifier">T1</span></code> and <code class="computeroutput"><span class="identifier">T2</span></code>
+      are the same type, then there is only one version of the single-argument constructor,
+      and this constructor initialises both values in the pair to the passed value.
+    </p>
+<p>
+      Note that if either member is a POD type, then that member is not zero-initialized
+      by the <code class="computeroutput"><span class="identifier">compressed_pair</span></code> default
+      constructor: it's up to you to supply an initial value for these types if you
+      want them to have a default value.
+    </p>
+<p>
+      Note that <code class="computeroutput"><span class="identifier">compressed_pair</span></code> can
+      not be instantiated if either of the template arguments is a union type, unless
+      there is compiler support for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_union</span></code>,
+      or if <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">is_union</span></code> is specialised for the union type.
+    </p>
+<p>
+      Finally, a word of caution for Visual C++ 6 users: if either argument is an
+      empty type, then assigning to that member will produce memory corruption, unless
+      the empty type has a "do nothing" assignment operator defined. This
+      is due to a bug in the way VC6 generates implicit assignment operators.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="compressed_pair.acknowledgments"></a><a class="link" href="compressed_pair.html#compressed_pair.acknowledgments" title="Acknowledgments">Acknowledgments</a>
+</h2></div></div></div>
+<p>
+      Based on contributions by Steve Cleary, Beman Dawes, Howard Hinnant and John
+      Maddock.
+    </p>
+<p>
+      Maintained by <a href="mailto:john%40johnmaddock.co.uk" target="_top">John Maddock</a>.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:08:53 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+</body>
+</html>

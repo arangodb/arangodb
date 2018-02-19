@@ -1,0 +1,65 @@
+[book Boost.Python
+    [quickbook 1.6]
+    [authors [Abrahams, David], [Seefeld, Stefan]]
+    [copyright 2002 - 2015 David Abrahams, Stefan Seefeld]
+    [category inter-language support]
+    [id python]
+    [purpose
+        Reflects C++ classes and functions into Python
+    ]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[def _boost_      [@http://www.boost.org Boost]]
+[def _bb_         [@http://www.boost.org/build Boost.Build]]
+[def _bb_list_    [@http://www.boost.org/more/mailing_lists.htm#jamboost Boost.Build mailing list]]
+[def _bp_list_    [@http://www.boost.org/more/mailing_lists.htm#cplussig Boost.Python mailing list]]
+[def _tutorial_   [@tutorial/index.html Tutorial]]
+[def _reference_  [@reference/index.html Reference Manual]]
+[def _gsg_        Boost [@http://www.boost.org/more/getting_started/ Getting Started Guide]]
+[def _extending_  [@https://docs.python.org/2/extending/extending.html extending]]
+[def _embedding_  [@https://docs.python.org/2/extending/embedding.html embedding]]
+
+[h2 Synopsis]
+
+Welcome to Boost.Python, a C++ library which enables seamless interoperability between C++ and the Python programming language. The library includes support for:
+
+* References and Pointers
+* Globally Registered Type Coercions
+* Automatic Cross-Module Type Conversions
+* Efficient Function Overloading
+* C++ to Python Exception Translation
+* Default Arguments
+* Keyword Arguments
+* Manipulating Python objects in C++
+* Exporting C++ Iterators as Python Iterators
+* Documentation Strings
+
+The development of these features was funded in part by grants to `Boost Consulting` from the [@http://www.llnl.gov Lawrence Livermore National Laboratories] and by the [@http://cci.lbl.gov Computational Crystallography Initiative] at Lawrence Berkeley National Laboratories. 
+
+[section Contents]
+
+* _tutorial_
+* [link building Building and Testing]
+* _reference_
+* [link configuration Configuration Information]
+* [link glossary Glossary]
+* [link support Support Resources]
+* [link faq Frequently Asked Questions (FAQs)]
+* [@numpy/index.html NumPy Extension Documentation]
+
+[endsect]
+
+[h2 Articles]
+
+[@article.html Building Hybrid Systems With Boost Python], by Dave Abrahams and Ralf W. Grosse-Kunstleve
+
+[include building.qbk]
+[include configuration.qbk]
+[include support.qbk]
+[include faq.qbk]
+[include glossary.qbk]

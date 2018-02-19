@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>accessing quaternion elements</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Accessing Quaternion Elements</h3>
+</div>
+<div class="RenoIncludeDIV"><div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_quat_access_hpp.html">boost/qvm/quat_access.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        <span class="RenoIncludeSPAN">//Only <span class="RenoLink"><a href="SFINAE_enable_if.html">enabled if</a></span>:
+        //  <span class="RenoLink"><a href="is_quat.html">is_quat</a></span>&lt;Q&gt;::value
+        
+        template &lt;class Q&gt; -unspecified-return-type- <span class="RenoLink">S</span>( Q &amp; q );
+        template &lt;class Q&gt; -unspecified-return-type- <span class="RenoLink">V</span>( Q &amp; q );
+        template &lt;class Q&gt; -unspecified-return-type- <span class="RenoLink">X</span>( Q &amp; q );
+        template &lt;class Q&gt; -unspecified-return-type- <span class="RenoLink">Y</span>( Q &amp; q );
+        template &lt;class Q&gt; -unspecified-return-type- <span class="RenoLink">Z</span>( Q &amp; q );</span></span>
+    }
+}</pre>
+</div></div><p>An expression of the form <i>S(q)</i> can be used to access the scalar component of the quaternion <i>q</i>. For example,</p>
+<pre>S(q) <span class="RenoLink"><a href="operator_mul_eq_quat_scalar_.html">*=</a></span> 42;</pre>
+<p>multiplies the scalar component of <i>q</i> by the scalar 42.</p>
+<p>An expression of the form <i>V(q)</i> can be used to access the vector component of the quaternion <i>q</i>. For example,</p>
+<pre>V(q) <span class="RenoLink"><a href="operator_mul_eq_quat_scalar_.html">*=</a></span> 42</pre>
+<p>multiplies the vector component of <i>q</i> by the scalar 42.</p>
+<p>The X, Y and Z elements of the vector component can also be accessed directly using <i>X(q)</i>, <i>Y(q)</i> and <i>Z(q)</i>.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="index.html">Boost QVM</a>&nbsp;| <a href="boost_qvm_quat_access_hpp.html">boost/qvm/quat_access.hpp</a>&nbsp;| <a href="Synopsis.html">Synopsis</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

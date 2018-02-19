@@ -1,0 +1,93 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:DynamicBuffer Dynamic buffer requirements]
+
+A dynamic buffer encapsulates memory storage that may be automatically resized
+as required, where the memory is divided into an input sequence followed by an
+output sequence. These memory regions are internal to the dynamic buffer
+sequence, but direct access to the elements is provided to permit them to be
+efficiently used with I/O operations, such as the `send` or `receive`
+operations of a socket. Data written to the output sequence of a dynamic buffer
+sequence object is appended to the input sequence of the same object.
+
+A dynamic buffer type `X` shall satisfy the requirements of `MoveConstructible`
+(C++ Std, [moveconstructible]) types in addition to those listed below.
+
+In the table below, `X` denotes a dynamic buffer class, `x` denotes a
+value of type `X&`, `x1` denotes values of type `const X&`, and `n` denotes a
+value of type `size_t`, and `u` denotes an identifier.
+
+[table DynamicBuffer requirements
+  [[expression] [type] [assertion/note\npre/post-conditions]]
+  [
+    [`X::const_buffers_type`]
+    [type meeting [link boost_asio.reference.ConstBufferSequence ConstBufferSequence]
+     requirements.]
+    [This type represents the memory associated with the input sequence.]
+  ]
+  [
+    [`X::mutable_buffers_type`]
+    [type meeting [link boost_asio.reference.MutableBufferSequence MutableBufferSequence]
+     requirements.]
+    [This type represents the memory associated with the output sequence.]
+  ]
+  [
+    [`x1.size()`]
+    [`size_t`]
+    [Returns the size, in bytes, of the input sequence.]
+  ]
+  [
+    [`x1.max_size()`]
+    [`size_t`]
+    [Returns the permitted maximum of the sum of the sizes of the input
+     sequence and output sequence.]
+  ]
+  [
+    [`x1.capacity()`]
+    [`size_t`]
+    [Returns the maximum sum of the sizes of the input sequence and output
+     sequence that the dynamic buffer can hold without requiring reallocation.]
+  ]
+  [
+    [`x1.data()`]
+    [`X::const_buffers_type`]
+    [Returns a constant buffer sequence `u` that represents the memory
+     associated with the input sequence, and where `buffer_size(u) == size()`.]
+  ]
+  [
+    [`x.prepare(n)`]
+    [`X::mutable_buffers_type`]
+    [Requires: `size() + n <= max_size()`.\n
+     \n
+     Returns a mutable buffer sequence `u` representing the output sequence, and
+     where `buffer_size(u) == n`. The dynamic buffer reallocates memory as
+     required. All constant or mutable buffer sequences previously obtained
+     using `data()` or `prepare()` are invalidated.\n
+     \n
+     Throws: `length_error` if `size() + n > max_size()`.]
+  ]
+  [
+    [`x.commit(n)`]
+    []
+    [Appends `n` bytes from the start of the output sequence to the end of the
+     input sequence. The remainder of the output sequence is discarded. If `n`
+     is greater than the size of the output sequence, the entire output sequence
+     is appended to the input sequence. All constant or mutable buffer sequences
+     previously obtained using `data()` or `prepare()` are invalidated.]
+  ]
+  [
+    [`x.consume(n)`]
+    []
+    [Removes `n` bytes from beginning of the input sequence. If `n` is greater
+     than the size of the input sequence, the entire input sequence is removed.
+     All constant or mutable buffer sequences previously obtained using `data()`
+     or `prepare()` are invalidated.]
+  ]
+]
+
+[endsect]

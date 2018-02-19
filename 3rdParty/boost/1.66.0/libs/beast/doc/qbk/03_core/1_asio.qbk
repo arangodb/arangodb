@@ -1,0 +1,61 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Asio Refresher]
+
+[warning
+    Beast does not manage sockets, make outgoing connections,
+    accept incoming connections, handle timeouts, close endpoints,
+    do name lookups, deal with TLS certificates, perform authentication,
+    or otherwise handle any aspect of connection management. This is
+    left to the interfaces already existing on the underlying streams.
+]
+
+Library stream algorithms require a __socket__, __ssl_stream__, or other
+__Stream__ object that has already established communication with an
+endpoint. This example is provided as a reminder of how to work with
+sockets:
+
+[snippet_core_2]
+
+Throughout this documentation identifiers with the following names have
+special meaning:
+
+[table Global Variables
+[[Name][Description]]
+[[
+    [@boost:/doc/html/boost_asio/reference/io_context.html [*`ioc`]]
+][
+    A variable of type __io_context__ which is running on one separate thread,
+    and upon which an __executor_work_guard__ object has been constructed.
+]]
+[[
+    [@boost:/doc/html/boost_asio/reference/ip__tcp/socket.html [*`sock`]]
+][
+    A variable of type
+    [@boost:/doc/html/boost_asio/reference/ip__tcp/socket.html `boost::asio::ip::tcp::socket`]
+    which has already been connected to a remote host.
+]]
+[[
+    [@boost:/doc/html/boost_asio/reference/ssl__stream.html [*`ssl_sock`]]
+][
+    A variable of type
+    [@boost:/doc/html/boost_asio/reference/ssl__stream.html `boost::asio::ssl::stream<boost::asio::ip::tcp::socket>`]
+    which is already connected and has handshaked with a remote host.
+]]
+[[
+    [link beast.ref.boost__beast__websocket__stream [*`ws`]]
+][
+    A variable of type
+    [link beast.ref.boost__beast__websocket__stream `websocket::stream<boost::asio::ip::tcp::socket>`]
+    which is already connected with a remote host.
+]]
+]
+
+[endsect]

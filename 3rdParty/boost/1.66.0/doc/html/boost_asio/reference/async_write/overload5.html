@@ -1,0 +1,123 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>async_write (5 of 6 overloads)</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../async_write.html" title="async_write">
+<link rel="prev" href="overload4.html" title="async_write (4 of 6 overloads)">
+<link rel="next" href="overload6.html" title="async_write (6 of 6 overloads)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload4.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_write.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload6.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.async_write.overload5"></a><a class="link" href="overload5.html" title="async_write (5 of 6 overloads)">async_write
+        (5 of 6 overloads)</a>
+</h4></div></div></div>
+<p>
+          Start an asynchronous operation to write all of the supplied data to a
+          stream.
+        </p>
+<pre class="programlisting">template&lt;
+    typename <a class="link" href="../AsyncWriteStream.html" title="Buffer-oriented asynchronous write stream requirements">AsyncWriteStream</a>,
+    typename Allocator,
+    typename <a class="link" href="../WriteHandler.html" title="Write handler requirements">WriteHandler</a>&gt;
+<a class="link" href="../asynchronous_operations/automatic_deduction_of_initiating_function_return_type.html" title="Automatic deduction of initiating function return type"><span class="emphasis"><em>DEDUCED</em></span></a> async_write(
+    AsyncWriteStream &amp; s,
+    basic_streambuf&lt; Allocator &gt; &amp; b,
+    WriteHandler &amp;&amp; handler);
+</pre>
+<p>
+          This function is used to asynchronously write a certain number of bytes
+          of data to a stream. The function call always returns immediately. The
+          asynchronous operation will continue until one of the following conditions
+          is true:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              All of the data in the supplied <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
+              has been written.
+            </li>
+<li class="listitem">
+              An error occurred.
+            </li>
+</ul></div>
+<p>
+          This operation is implemented in terms of zero or more calls to the stream's
+          async_write_some function, and is known as a <span class="emphasis"><em>composed operation</em></span>.
+          The program must ensure that the stream performs no other write operations
+          (such as async_write, the stream's async_write_some function, or any other
+          composed operations that perform writes) until this operation completes.
+        </p>
+<h6>
+<a name="boost_asio.reference.async_write.overload5.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.async_write.overload5.parameters"></a></span><a class="link" href="overload5.html#boost_asio.reference.async_write.overload5.parameters">Parameters</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">s</span></dt>
+<dd><p>
+                The stream to which the data is to be written. The type must support
+                the AsyncWriteStream concept.
+              </p></dd>
+<dt><span class="term">b</span></dt>
+<dd><p>
+                A <a class="link" href="../basic_streambuf.html" title="basic_streambuf"><code class="computeroutput">basic_streambuf</code></a>
+                object from which data will be written. Ownership of the streambuf
+                is retained by the caller, which must guarantee that it remains valid
+                until the handler is called.
+              </p></dd>
+<dt><span class="term">handler</span></dt>
+<dd>
+<p>
+                The handler to be called when the write operation completes. Copies
+                will be made of the handler as required. The function signature of
+                the handler must be:
+</p>
+<pre class="programlisting">void handler(
+  const boost::system::error_code&amp; error, // Result of operation.
+
+  std::size_t bytes_transferred           // Number of bytes written from the
+                                          // buffers. If an error occurred,
+                                          // this will be less than the sum
+                                          // of the buffer sizes.
+);
+</pre>
+<p>
+                Regardless of whether the asynchronous operation completes immediately
+                or not, the handler will not be invoked from within this function.
+                Invocation of the handler will be performed in a manner equivalent
+                to using <code class="computeroutput">boost::asio::io_context::post()</code>.
+              </p>
+</dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="overload4.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../async_write.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overload6.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

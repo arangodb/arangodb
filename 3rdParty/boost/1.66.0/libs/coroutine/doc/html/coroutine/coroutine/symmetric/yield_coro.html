@@ -1,0 +1,174 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class symmetric_coroutine&lt;&gt;::yield_type</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Coroutine">
+<link rel="up" href="../symmetric.html" title="Symmetric coroutine">
+<link rel="prev" href="symmetric_coro.html" title="Class symmetric_coroutine&lt;&gt;::call_type">
+<link rel="next" href="../../attributes.html" title="Attributes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="symmetric_coro.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../symmetric.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../attributes.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="coroutine.coroutine.symmetric.yield_coro"></a><a class="link" href="yield_coro.html" title="Class symmetric_coroutine&lt;&gt;::yield_type">Class <code class="computeroutput"><span class="identifier">symmetric_coroutine</span><span class="special">&lt;&gt;::</span><span class="identifier">yield_type</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">coroutine</span><span class="special">/</span><span class="identifier">symmetric_coroutine</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">R</span> <span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;&gt;::</span><span class="identifier">yield_type</span>
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">yield_type</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">yield_type</span><span class="special">(</span> <span class="identifier">yield_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)=</span><span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">yield_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)=</span><span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">yield_type</span><span class="special">(</span> <span class="identifier">yield_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">yield_type</span> <span class="special">&amp;&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">swap</span><span class="special">(</span> <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">operator</span> <span class="identifier">unspecified</span><span class="special">-</span><span class="keyword">bool</span><span class="special">-</span><span class="identifier">type</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()();</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">X</span> <span class="special">&gt;</span>
+    <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span> <span class="identifier">X</span> <span class="special">&gt;::</span><span class="identifier">call_type</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">,</span> <span class="identifier">X</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">X</span> <span class="special">&gt;</span>
+    <span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span> <span class="identifier">X</span> <span class="special">&gt;::</span><span class="identifier">call_type</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+
+    <span class="identifier">R</span> <span class="identifier">get</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<h6>
+<a name="coroutine.coroutine.symmetric.yield_coro.h0"></a>
+          <span class="phrase"><a name="coroutine.coroutine.symmetric.yield_coro._code__phrase_role__keyword__operator__phrase___phrase_role__identifier__unspecified__phrase__phrase_role__special_____phrase__phrase_role__keyword__bool__phrase__phrase_role__special_____phrase__phrase_role__identifier__type__phrase__phrase_role__special______phrase___phrase_role__keyword__const__phrase___code_"></a></span><a class="link" href="yield_coro.html#coroutine.coroutine.symmetric.yield_coro._code__phrase_role__keyword__operator__phrase___phrase_role__identifier__unspecified__phrase__phrase_role__special_____phrase__phrase_role__keyword__bool__phrase__phrase_role__special_____phrase__phrase_role__identifier__type__phrase__phrase_role__special______phrase___phrase_role__keyword__const__phrase___code_"><code class="computeroutput"><span class="keyword">operator</span> <span class="identifier">unspecified</span><span class="special">-</span><span class="keyword">bool</span><span class="special">-</span><span class="identifier">type</span><span class="special">()</span> <span class="keyword">const</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                refers to <span class="emphasis"><em>not-a-coroutine</em></span>, the function returns
+                <code class="computeroutput"><span class="keyword">false</span></code>. Otherwise <code class="computeroutput"><span class="keyword">true</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="coroutine.coroutine.symmetric.yield_coro.h1"></a>
+          <span class="phrase"><a name="coroutine.coroutine.symmetric.yield_coro._code__phrase_role__keyword__bool__phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__const__phrase___code_"></a></span><a class="link" href="yield_coro.html#coroutine.coroutine.symmetric.yield_coro._code__phrase_role__keyword__bool__phrase___phrase_role__keyword__operator__phrase__phrase_role__special_______phrase___phrase_role__keyword__const__phrase___code_"><code class="computeroutput"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">!()</span> <span class="keyword">const</span></code></a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                If <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                refers to <span class="emphasis"><em>not-a-coroutine</em></span>, the function returns
+                <code class="computeroutput"><span class="keyword">true</span></code>. Otherwise <code class="computeroutput"><span class="keyword">false</span></code>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                Nothing.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="coroutine.coroutine.symmetric.yield_coro.h2"></a>
+          <span class="phrase"><a name="coroutine.coroutine.symmetric.yield_coro._code__phrase_role__identifier__yield_type__phrase___phrase_role__special___amp___phrase___phrase_role__keyword__operator__phrase__phrase_role__special________phrase___code_"></a></span><a class="link" href="yield_coro.html#coroutine.coroutine.symmetric.yield_coro._code__phrase_role__identifier__yield_type__phrase___phrase_role__special___amp___phrase___phrase_role__keyword__operator__phrase__phrase_role__special________phrase___code_"><code class="computeroutput"><span class="identifier">yield_type</span> <span class="special">&amp;</span>
+          <span class="keyword">operator</span><span class="special">()()</span></code></a>
+        </h6>
+<pre class="programlisting"><span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()();</span>
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">X</span> <span class="special">&gt;</span>
+<span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span> <span class="identifier">X</span> <span class="special">&gt;::</span><span class="identifier">call_type</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">,</span> <span class="identifier">X</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;&gt;</span>
+<span class="identifier">yield_type</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">()(</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span> <span class="keyword">void</span> <span class="special">&gt;::</span><span class="identifier">call_type</span> <span class="special">&amp;</span> <span class="identifier">other</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                is not a <span class="emphasis"><em>not-a-coroutine</em></span>.
+              </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+                The first function transfers execution control back to the starting
+                point, e.g. invocation of <span class="emphasis"><em>symmetric_coroutine&lt;&gt;::call_type::operator()</em></span>.
+                The last two functions transfer the execution control to another
+                symmetric coroutine. Parameter <code class="computeroutput"><span class="identifier">x</span></code>
+                is passed as value into <code class="computeroutput"><span class="identifier">other</span></code>'s
+                context.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <span class="emphasis"><em>detail::forced_unwind</em></span>
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="coroutine.coroutine.symmetric.yield_coro.h3"></a>
+          <span class="phrase"><a name="coroutine.coroutine.symmetric.yield_coro._code__phrase_role__identifier__r__phrase___phrase_role__identifier__get__phrase__phrase_role__special______phrase___code_"></a></span><a class="link" href="yield_coro.html#coroutine.coroutine.symmetric.yield_coro._code__phrase_role__identifier__r__phrase___phrase_role__identifier__get__phrase__phrase_role__special______phrase___code_"><code class="computeroutput"><span class="identifier">R</span> <span class="identifier">get</span><span class="special">()</span></code></a>
+        </h6>
+<pre class="programlisting"><span class="identifier">R</span>    <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&gt;::</span><span class="identifier">yield_type</span><span class="special">::</span><span class="identifier">get</span><span class="special">();</span>
+<span class="identifier">R</span><span class="special">&amp;</span>   <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span><span class="identifier">R</span><span class="special">&amp;&gt;::</span><span class="identifier">yield_type</span><span class="special">::</span><span class="identifier">get</span><span class="special">();</span>
+<span class="keyword">void</span> <span class="identifier">symmetric_coroutine</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;</span><span class="identifier">yield_type</span><span class="special">::</span><span class="identifier">get</span><span class="special">()=</span><span class="keyword">delete</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Preconditions:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+                is not a <span class="emphasis"><em>not-a-coroutine</em></span>.
+              </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+                Returns data transferred from coroutine-function via <span class="emphasis"><em>symmetric_coroutine&lt;&gt;::call_type::operator()</em></span>.
+              </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+                <code class="computeroutput"><span class="identifier">invalid_result</span></code>
+              </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="symmetric_coro.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../symmetric.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../attributes.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

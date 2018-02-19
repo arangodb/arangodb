@@ -1,0 +1,169 @@
+# -*- python -*-
+#
+# Copyright (c) 2016 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import platform
+import sys
+
+Import('env')
+
+if sys.platform == 'win32':
+    # HACK: This works around a bug in SCons.
+    #       subprocess.check_output will complain unless all environment
+    #       variables are strings.
+    system_root = env['ENV']['SystemRoot']
+    env['ENV']['SystemRoot'] = str(system_root)
+
+
+# libs needed for embedding
+ELIBS=env['LIBS'] + env['PYTHONLIBS']
+
+def BPLTest(env, name, sources = None, deps = None):
+    run = env.BoostRunPythonScript(name + '.py')
+    if sources:
+        for source in sources:
+            Depends(run,
+                    env.PythonExtension(source != name and source or (source + '_ext'), source + '.cpp')
+            )
+    else:
+        Depends(run, env.PythonExtension(name + '_ext', name + '.cpp'))
+    if deps:
+        Depends(run, deps)
+    return run
+        
+env.AddMethod(BPLTest)
+
+env.AppendENVPath('PYTHONPATH', Dir('.').path)
+
+tests=[]
+tests+=env.BPLTest('crossmod_exception', ['crossmod_exception_a', 'crossmod_exception_b'])
+
+for test in [('injected',),
+             ('properties',),
+             ('return_arg',),
+             ('staticmethod',),
+             ('boost_shared_ptr',),
+             ('enable_shared_from_this',),
+             ('andreas_beyer',),
+             ('polymorphism',),
+             ('polymorphism2',),
+             ('wrapper_held_type',),
+             ('minimal',),
+             ('args',),
+             ('raw_ctor',),
+             ('exception_translator',),
+             ('test_enum', ['enum_ext']),
+             ('test_cltree', ['cltree']),
+             ('newtest', ['m1', 'm2']),
+             ('const_argument',),
+             ('keywords_test', ['keywords']),
+             ('test_pointer_adoption',),
+             ('operators',),
+             ('operators_wrapper',),
+             ('callbacks',),
+             ('defaults',),
+             ('object',),
+             ('list',),
+             ('long',),
+             ('dict',),
+             ('tuple',),
+             ('str',),
+             ('slice',),
+             ('virtual_functions',),
+             ('back_reference',),
+             ('implicit',),
+             ('data_members',),
+             ('ben_scott1',),
+             ('bienstman1',),
+             ('bienstman2',),
+             ('bienstman3',),
+             ('multi_arg_constructor',),
+             ('iterator', ['iterator', 'input_iterator']),
+             ('stl_iterator',),
+             ('extract',),
+             ('crossmod_opaque', ['crossmod_opaque_a', 'crossmod_opaque_b']),
+             ('opaque',),
+#             ('voidptr',),
+             ('pickle1',),
+             ('pickle2',),
+             ('pickle3',),
+             ('pickle4',),
+             ('nested',),
+             ('docstring',),
+             ('pytype_function',),
+             ('vector_indexing_suite',),
+             ('pointer_vector',)]:
+    tests+=env.BPLTest(*test)
+
+if env['CXX11']:
+    for test in [
+        ('shared_ptr',),
+    ]:
+        tests+=env.BPLTest(*test)
+else:
+    for test in [
+        ('polymorphism2_auto_ptr',),
+        ('auto_ptr',),
+    ]:
+        tests+=env.BPLTest(*test)
+
+
+test = env.BoostRunPythonScript('test_builtin_converters.py')
+Depends(
+    test,
+    env.PythonExtension('builtin_converters_ext', ['builtin_converters.cpp'])
+    )
+tests+=test
+test = env.BoostRunPythonScript('map_indexing_suite.py')
+Depends(
+    test,
+    env.PythonExtension('map_indexing_suite_ext', [
+        'map_indexing_suite.cpp',
+        'int_map_indexing_suite.cpp',
+        'a_map_indexing_suite.cpp'])
+    )
+tests+=test
+
+tests+=env.BoostRunTest('import_', 'import_.cpp', '${SOURCES[0]} ${SOURCES[1]}', 'import_.py', LIBS=ELIBS)
+
+tests+=env.BoostCompileTest('indirect_traits_test')
+tests+=env.BoostRunTests(['destroy_test',
+                          'pointer_type_id_test',
+                          'bases',
+                          'if_else',
+                          'pointee',
+                          'result'], LIBS=ELIBS)
+
+tests+=env.BoostCompileTests(['string_literal',
+                              'borrowed',
+                              'object_manager',
+                              'copy_ctor_mutates_rhs'])
+
+tests+=env.BoostRunTest('upcast', LIBS=ELIBS)
+tests+=env.BoostCompileTest('select_holder')
+tests+=env.BoostRunTest('select_from_python_test', LIBS=ELIBS)
+tests+=env.BoostCompileTest('select_arg_to_python_test')
+
+if platform.system() == 'Windows':
+    tests+=env.BPLTest('calling_conventions')
+    tests+=env.BPLTest('calling_conventions_mf')
+
+if env['NUMPY']:
+    numpy_env = env.Clone()
+    numpy_env.BoostUseLib('numpy')
+    for test in [('numpy/dtype',),
+                 ('numpy/ufunc',),
+                 ('numpy/templates',),
+                 ('numpy/ndarray',),
+                 ('numpy/indexing',),
+                 ('numpy/shapes',),]:
+        tests+=numpy_env.BPLTest(*test)
+
+
+env.BoostTestSummary(tests)
+AlwaysBuild(tests)

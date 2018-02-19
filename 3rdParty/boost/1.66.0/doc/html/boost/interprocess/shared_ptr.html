@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template shared_ptr</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../interprocess/indexes_reference.html#header.boost.interprocess.smart_ptr.shared_ptr_hpp" title="Header &lt;boost/interprocess/smart_ptr/shared_ptr.hpp&gt;">
+<link rel="prev" href="enable_shared_from_this.html" title="Class template enable_shared_from_this">
+<link rel="next" href="managed_shared_ptr.html" title="Struct template managed_shared_ptr">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="enable_shared_from_this.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../interprocess/indexes_reference.html#header.boost.interprocess.smart_ptr.shared_ptr_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="managed_shared_ptr.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.interprocess.shared_ptr"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template shared_ptr</span></h2>
+<p>boost::interprocess::shared_ptr</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../interprocess/indexes_reference.html#header.boost.interprocess.smart_ptr.shared_ptr_hpp" title="Header &lt;boost/interprocess/smart_ptr/shared_ptr.hpp&gt;">boost/interprocess/smart_ptr/shared_ptr.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">,</span> <span class="keyword">typename</span> VoidAllocator<span class="special">,</span> <span class="keyword">typename</span> Deleter<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">T</span>                                                                                                                         <a name="boost.interprocess.shared_ptr.element_type"></a><span class="identifier">element_type</span><span class="special">;</span>           
+  <span class="keyword">typedef</span> <span class="identifier">T</span>                                                                                                                         <a name="boost.interprocess.shared_ptr.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">::</span><span class="identifier">pointer_traits</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">VoidAllocator</span><span class="special">::</span><span class="identifier">pointer</span> <span class="special">&gt;</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">rebind_pointer</span><span class="special">&lt;</span> <span class="identifier">T</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span>                   <a name="boost.interprocess.shared_ptr.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>                
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                                                                                               <a name="boost.interprocess.shared_ptr.reference"></a><span class="identifier">reference</span><span class="special">;</span>              
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                                                                                               <a name="boost.interprocess.shared_ptr.const_reference"></a><span class="identifier">const_reference</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">::</span><span class="identifier">pointer_traits</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">VoidAllocator</span><span class="special">::</span><span class="identifier">pointer</span> <span class="special">&gt;</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">rebind_pointer</span><span class="special">&lt;</span> <span class="keyword">const</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span>       <a name="boost.interprocess.shared_ptr.const_deleter_pointer"></a><span class="identifier">const_deleter_pointer</span><span class="special">;</span>  
+  <span class="keyword">typedef</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">::</span><span class="identifier">pointer_traits</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">VoidAllocator</span><span class="special">::</span><span class="identifier">pointer</span> <span class="special">&gt;</span><span class="special">::</span><span class="keyword">template</span> <span class="identifier">rebind_pointer</span><span class="special">&lt;</span> <span class="keyword">const</span> <span class="identifier">VoidAllocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">type</span> <a name="boost.interprocess.shared_ptr.const_allocator_pointer"></a><span class="identifier">const_allocator_pointer</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="shared_ptr.html#boost.interprocess.shared_ptrconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="shared_ptr.html#idp56318192-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="shared_ptr.html#idp56319648-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span><span class="special">,</span> 
+                      <span class="keyword">const</span> <span class="identifier">VoidAllocator</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">VoidAllocator</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> 
+                      <span class="keyword">const</span> <span class="identifier">Deleter</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">Deleter</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="shared_ptr.html#idp56324176-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="shared_ptr.html#idp56328288-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+    <a class="link" href="shared_ptr.html#idp56331664-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+    <span class="keyword">explicit</span> <a class="link" href="shared_ptr.html#idp56335744-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><a class="link" href="weak_ptr.html" title="Class template weak_ptr">weak_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="shared_ptr.html#idp56339360-bb"><span class="identifier">shared_ptr</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+    <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a class="link" href="shared_ptr.html#idp56342144-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a class="link" href="shared_ptr.html#idp56345296-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="identifier">BOOST_COPY_ASSIGN_REF</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a class="link" href="shared_ptr.html#idp56347744-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="shared_ptr.html#idp56295376-bb">public member functions</a></span>
+  <span class="keyword">void</span> <a class="link" href="shared_ptr.html#idp56295936-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Pointer<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="shared_ptr.html#idp56297232-bb"><span class="identifier">reset</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Pointer</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">VoidAllocator</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">VoidAllocator</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> 
+               <span class="keyword">const</span> <span class="identifier">Deleter</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">Deleter</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="shared_ptr.html#idp56302016-bb"><span class="identifier">reset</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+               <span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="identifier">reference</span> <a class="link" href="shared_ptr.html#idp56305392-bb"><span class="keyword">operator</span><span class="special">*</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">pointer</span> <a class="link" href="shared_ptr.html#idp56306960-bb"><span class="keyword">operator</span><span class="special">-&gt;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">pointer</span> <a class="link" href="shared_ptr.html#idp56308528-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="shared_ptr.html#idp56310096-bb"><span class="keyword">operator</span><span class="special">!</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="shared_ptr.html#idp56311680-bb"><span class="identifier">unique</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">long</span> <a class="link" href="shared_ptr.html#idp56313264-bb"><span class="identifier">use_count</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="keyword">void</span> <a class="link" href="shared_ptr.html#idp56315744-bb"><span class="identifier">swap</span></a><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.18.17.3.52.5.4"></a><h2>Description</h2>
+<p><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> stores a pointer to a dynamically allocated object. The object pointed to is guaranteed to be deleted when the last <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> pointing to it is destroyed or reset.</p>
+<p><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> is parameterized on T (the type of the object pointed to), VoidAllocator (the void allocator to be used to allocate the auxiliary data) and Deleter (the deleter whose operator() will be used to delete the object.</p>
+<p>The internal pointer will be of the same pointer type as typename VoidAllocator::pointer type (that is, if typename VoidAllocator::pointer is offset_ptr&lt;void&gt;, the internal pointer will be offset_ptr&lt;T&gt;).</p>
+<p>Because the implementation uses reference counting, cycles of <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> instances will not be reclaimed. For example, if main() holds a <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> to A, which directly or indirectly holds a <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> back to A, A's use count will be 2. Destruction of the original <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> will leave A dangling with a use count of 1. Use <a class="link" href="weak_ptr.html" title="Class template weak_ptr">weak_ptr</a> to "break cycles." </p>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.52.5.4.6"></a><h3>
+<a name="boost.interprocess.shared_ptrconstruct-copy-destruct"></a><code class="computeroutput">shared_ptr</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp56318192-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs an empty <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code>. Use_count() == 0 &amp;&amp; get()== 0. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp56319648-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span> p<span class="special">,</span> 
+                    <span class="keyword">const</span> <span class="identifier">VoidAllocator</span> <span class="special">&amp;</span> a <span class="special">=</span> <span class="identifier">VoidAllocator</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> 
+                    <span class="keyword">const</span> <span class="identifier">Deleter</span> <span class="special">&amp;</span> d <span class="special">=</span> <span class="identifier">Deleter</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that owns the pointer p. Auxiliary data will be allocated with a copy of a and the object will be deleted with a copy of d. Requirements: Deleter and A's copy constructor must not throw. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp56324176-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> r<span class="special">)</span><span class="special">;</span></pre>
+<p>Copy constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code>. If r is empty, constructs an empty <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code>. Otherwise, constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that shares ownership with r. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp56328288-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> other<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that shares ownership with other and stores p. Postconditions: get() == p &amp;&amp; use_count() == r.use_count(). Throws: nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+  <a name="idp56331664-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> r<span class="special">)</span><span class="special">;</span></pre>
+<p>If r is empty, constructs an empty <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code>. Otherwise, constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that shares ownership with r. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+  <span class="keyword">explicit</span> <a name="idp56335744-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><a class="link" href="weak_ptr.html" title="Class template weak_ptr">weak_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> r<span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that shares ownership with r and stores a copy of the pointer stored in r. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp56339360-bb"></a><span class="identifier">shared_ptr</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p>Move-Constructs a <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> that takes ownership of other resource and other is put in default-constructed state. Throws: nothing. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+  <a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a name="idp56342144-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> r<span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to shared_ptr(r).swap(*this). Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a name="idp56345296-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="identifier">BOOST_COPY_ASSIGN_REF</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">)</span> r<span class="special">)</span><span class="special">;</span></pre>
+<p>Equivalent to shared_ptr(r).swap(*this). Never throws </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;</span> <a name="idp56347744-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a> <span class="special">&amp;&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p>Move-assignment. Equivalent to shared_ptr(other).swap(*this). Never throws </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.52.5.4.7"></a><h3>
+<a name="idp56295376-bb"></a><code class="computeroutput">shared_ptr</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp56295936-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>This is equivalent to: this_type().swap(*this); </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Pointer<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp56297232-bb"></a><span class="identifier">reset</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Pointer</span> <span class="special">&amp;</span> p<span class="special">,</span> <span class="keyword">const</span> <span class="identifier">VoidAllocator</span> <span class="special">&amp;</span> a <span class="special">=</span> <span class="identifier">VoidAllocator</span><span class="special">(</span><span class="special">)</span><span class="special">,</span> 
+             <span class="keyword">const</span> <span class="identifier">Deleter</span> <span class="special">&amp;</span> d <span class="special">=</span> <span class="identifier">Deleter</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p>This is equivalent to: this_type(p, a, d).swap(*this); </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Y<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp56302016-bb"></a><span class="identifier">reset</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">Y</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> r<span class="special">,</span> 
+             <span class="keyword">const</span> <span class="identifier">pointer</span> <span class="special">&amp;</span> p<span class="special">)</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">reference</span> <a name="idp56305392-bb"></a><span class="keyword">operator</span><span class="special">*</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns a reference to the pointed type </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pointer</span> <a name="idp56306960-bb"></a><span class="keyword">operator</span><span class="special">-&gt;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the pointer pointing to the owned object </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pointer</span> <a name="idp56308528-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the pointer pointing to the owned object </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp56310096-bb"></a><span class="keyword">operator</span><span class="special">!</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Not operator. Returns true if this-&gt;get() != 0, false otherwise </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp56311680-bb"></a><span class="identifier">unique</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns use_count() == 1. unique() might be faster than use_count() </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">long</span> <a name="idp56313264-bb"></a><span class="identifier">use_count</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre>
+<p>Returns the number of <code class="computeroutput"><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a></code> objects, *this included, that share ownership with *this, or an unspecified nonnegative value when *this is empty. use_count() is not necessarily efficient. Use only for debugging and testing purposes, not for production code. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">void</span> <a name="idp56315744-bb"></a><span class="identifier">swap</span><span class="special">(</span><a class="link" href="shared_ptr.html" title="Class template shared_ptr">shared_ptr</a><span class="special">&lt;</span> <span class="identifier">T</span><span class="special">,</span> <span class="identifier">VoidAllocator</span><span class="special">,</span> <span class="identifier">Deleter</span> <span class="special">&gt;</span> <span class="special">&amp;</span> other<span class="special">)</span><span class="special">;</span></pre>
+<p>Exchanges the contents of the two smart pointers. </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="enable_shared_from_this.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../interprocess/indexes_reference.html#header.boost.interprocess.smart_ptr.shared_ptr_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="managed_shared_ptr.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

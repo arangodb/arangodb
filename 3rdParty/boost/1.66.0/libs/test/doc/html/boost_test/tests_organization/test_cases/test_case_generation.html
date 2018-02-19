@@ -1,0 +1,277 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Data-driven test cases</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../test_cases.html" title="Test cases">
+<link rel="prev" href="test_organization_nullary.html" title="Test cases without parameters">
+<link rel="next" href="test_case_generation/datasets.html" title="Datasets">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_organization_nullary.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_cases.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_case_generation/datasets.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.tests_organization.test_cases.test_case_generation"></a><a class="link" href="test_case_generation.html" title="Data-driven test cases">Data-driven
+        test cases</a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="test_case_generation/datasets.html">Datasets</a></span></dt>
+<dt><span class="section"><a href="test_case_generation/datasets_auto_registration.html">Declaring
+          and registering test cases with datasets</a></span></dt>
+<dt><span class="section"><a href="test_case_generation/operations.html">Operations
+          on dataset</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.joins">Joins</a></span></dt>
+<dt><span class="section"><a href="test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.zips">Zips</a></span></dt>
+<dt><span class="section"><a href="test_case_generation/operations.html#boost_test.tests_organization.test_cases.test_case_generation.operations.grid_cartesian_products">Grid
+            (Cartesian products)</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="test_case_generation/generators.html">Datasets
+          generators</a></span></dt>
+</dl></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.h0"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.why_data_driven_test_cases"></a></span><a class="link" href="test_case_generation.html#boost_test.tests_organization.test_cases.test_case_generation.why_data_driven_test_cases">Why
+          data-driven test cases?</a>
+        </h5>
+<p>
+          Some tests are required to be repeated for a series of different input
+          parameters. One way to achieve this is manually register a test case for
+          each parameter. You can also invoke a test function with all parameters
+          manually from within your test case, like this:
+        </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">single_test</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span>
+<span class="special">{</span>
+  <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a><span class="special">(</span> <span class="comment">/* test assertion */</span> <span class="special">);</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">combined_test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="keyword">int</span> <span class="identifier">params</span><span class="special">[]</span> <span class="special">=</span> <span class="special">{</span> <span class="number">1</span><span class="special">,</span> <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">5</span> <span class="special">};</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span> <span class="identifier">params</span><span class="special">,</span> <span class="identifier">params</span><span class="special">+</span><span class="number">5</span><span class="special">,</span> <span class="special">&amp;</span><span class="identifier">single_test</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The approach above has several drawbacks:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              the logic for running the tests is inside a test itself: <code class="computeroutput"><span class="identifier">single_test</span></code> in the above example
+              is run from the test case <code class="computeroutput"><span class="identifier">combined_test</span></code>
+              while its execution would be better handled by the <span class="emphasis"><em>Unit Test
+              Framework</em></span>
+            </li>
+<li class="listitem">
+              in case of fatal failure for one of the values in <code class="computeroutput"><span class="identifier">param</span></code>
+              array above (say a failure in <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST_REQUIRE</span></code></a>), the test
+              <code class="computeroutput"><span class="identifier">combined_test</span></code> is aborted
+              and the next test-case in the test tree is executed.
+            </li>
+<li class="listitem">
+              in case of failure, the reporting is not accurate enough: the test
+              should certainly be reran during debugging sessions by a human or additional
+              logic for reporting should be implemented in the test itself.
+            </li>
+</ul></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.h1"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.parameter_generation_scalability"></a></span><a class="link" href="test_case_generation.html#boost_test.tests_organization.test_cases.test_case_generation.parameter_generation_scalability">Parameter
+          generation, scalability and composition</a>
+        </h5>
+<p>
+          In some circumstance, one would like to run a parametrized test over an
+          <span class="emphasis"><em>arbitrary large</em></span> set of values. Enumerating the parameters
+          by hand is not a solution that scales well, especially when these parameters
+          can be described in another function that generates these values. However,
+          this solution has also limitations
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <span class="bold"><strong>Generating functions</strong></span>: suppose we have
+              a function <code class="computeroutput"><span class="identifier">func</span><span class="special">(</span><span class="keyword">float</span> <span class="identifier">f</span><span class="special">)</span></code>, where <code class="computeroutput"><span class="identifier">f</span></code>
+              is any number in [0, 1]. We are not interested that much in the exact
+              value, but we would like to test <code class="computeroutput"><span class="identifier">func</span></code>.
+              What about, instead of writing the <code class="computeroutput"><span class="identifier">f</span></code>
+              for which <code class="computeroutput"><span class="identifier">func</span></code> will
+              be tested against, we choose randomly <code class="computeroutput"><span class="identifier">f</span></code>
+              in [0, 1]? And also what about instead of having only one value for
+              <code class="computeroutput"><span class="identifier">f</span></code>, we run the test
+              on arbitrarily many numbers? We easily understand from this small example
+              that tests requiring parameters are more powerful when, instead of
+              writing down constant values in the test, a generating function is
+              provided.
+            </li>
+<li class="listitem">
+              <span class="bold"><strong>Scalability</strong></span>: suppose we have a test
+              case on <code class="computeroutput"><span class="identifier">func1</span></code>, on which
+              we test <code class="computeroutput"><span class="identifier">N</span></code> values written
+              as constant in the test file. What does the test ensure? We have the
+              guaranty that <code class="computeroutput"><span class="identifier">func1</span></code>
+              is working on these <code class="computeroutput"><span class="identifier">N</span></code>
+              values. Yet in this setting <code class="computeroutput"><span class="identifier">N</span></code>
+              is necessarily finite and usually small. How would we extend or scale
+              <code class="computeroutput"><span class="identifier">N</span></code> easily? One solution
+              is to be able to generate new values, and to be able to define a test
+              on the <span class="bold"><strong>class</strong></span> of possible inputs for
+              <code class="computeroutput"><span class="identifier">func1</span></code> on which the
+              function should have a defined behavior. To some extent, <code class="computeroutput"><span class="identifier">N</span></code> constant written down in the test
+              are just an excerpt of the possible inputs of <code class="computeroutput"><span class="identifier">func1</span></code>,
+              and working on the class of inputs gives more flexibility and power
+              to the test.
+            </li>
+<li class="listitem">
+<p class="simpara">
+              <span class="bold"><strong>Composition</strong></span>: suppose we already have
+              test cases for two functions <code class="computeroutput"><span class="identifier">func1</span></code>
+              and <code class="computeroutput"><span class="identifier">func2</span></code>, taking as
+              argument the types <code class="computeroutput"><span class="identifier">T1</span></code>
+              and <code class="computeroutput"><span class="identifier">T2</span></code> respectively.
+              Now we would like to test a new functions <code class="computeroutput"><span class="identifier">func3</span></code>
+              that takes as argument a type <code class="computeroutput"><span class="identifier">T3</span></code>
+              containing <code class="computeroutput"><span class="identifier">T1</span></code> and
+              <code class="computeroutput"><span class="identifier">T2</span></code>, and calling <code class="computeroutput"><span class="identifier">func1</span></code> and <code class="computeroutput"><span class="identifier">func2</span></code>
+              through a known algorithm. An example of such a setting would be
+            </p>
+<pre class="programlisting"><span class="comment">// Returns the log of x</span>
+<span class="comment">// Precondition: x strictly positive.</span>
+<span class="keyword">double</span> <span class="identifier">fast_log</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="comment">// Returns 1/(x-1)</span>
+<span class="comment">// Precondition: x != 1</span>
+<span class="keyword">double</span> <span class="identifier">fast_inv</span><span class="special">(</span><span class="keyword">double</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">struct</span> <span class="identifier">dummy</span> <span class="special">{</span>
+  <span class="keyword">unsigned</span> <span class="keyword">int</span> <span class="identifier">field1</span><span class="special">;</span>
+  <span class="keyword">unsigned</span> <span class="keyword">int</span> <span class="identifier">field2</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">double</span> <span class="identifier">func3</span><span class="special">(</span><span class="identifier">dummy</span> <span class="identifier">value</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">return</span> <span class="number">0.5</span> <span class="special">*</span> <span class="special">(</span><span class="identifier">exp</span><span class="special">(</span><span class="identifier">fast_log</span><span class="special">(</span><span class="identifier">value</span><span class="special">.</span><span class="identifier">field1</span><span class="special">))/</span><span class="identifier">value</span><span class="special">.</span><span class="identifier">field1</span> <span class="special">+</span> <span class="identifier">value</span><span class="special">.</span><span class="identifier">field2</span><span class="special">/</span><span class="identifier">fast_inv</span><span class="special">(</span><span class="identifier">value</span><span class="special">.</span><span class="identifier">field2</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<p class="simpara">
+              In this example,
+            </p>
+<p class="simpara">
+              <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                    <code class="computeroutput"><span class="identifier">func3</span></code> inherits
+                    from the preconditions of <code class="computeroutput"><span class="identifier">fast_log</span></code>
+                    and <code class="computeroutput"><span class="identifier">fast_inv</span></code>:
+                    it is defined in <code class="computeroutput"><span class="special">(</span><span class="number">0</span><span class="special">,</span> <span class="special">+</span><span class="identifier">infinity</span><span class="special">)</span></code> and in <code class="computeroutput"><span class="special">[-</span><span class="identifier">C</span><span class="special">,</span>
+                    <span class="special">+</span><span class="identifier">C</span><span class="special">]</span> <span class="special">-</span>
+                    <span class="special">{</span><span class="number">1</span><span class="special">}</span></code> for <code class="computeroutput"><span class="identifier">field1</span></code>
+                    and <code class="computeroutput"><span class="identifier">field2</span></code> respectively
+                    (<code class="computeroutput"><span class="identifier">C</span></code> being a constant
+                    arbitrarily big).
+                  </li>
+<li class="listitem">
+                    as defined above, <code class="computeroutput"><span class="identifier">func3</span></code>
+                    should be close to 1 everywhere on its definition domain.
+                  </li>
+<li class="listitem">
+                    we would like to reuse the properties of <code class="computeroutput"><span class="identifier">fast_log</span></code>
+                    and <code class="computeroutput"><span class="identifier">fast_inv</span></code>
+                    in the compound function <code class="computeroutput"><span class="identifier">func3</span></code>
+                    and assert that <code class="computeroutput"><span class="identifier">func3</span></code>
+                    is well defined over an arbitrary large definition domain.
+                  </li>
+</ul></div>
+            </p>
+<p class="simpara">
+              Having parametrized tests on <code class="computeroutput"><span class="identifier">func3</span></code>
+              hardly tells us about the possible numerical properties or instabilities
+              close to the point <code class="computeroutput"><span class="special">{</span><span class="identifier">field1</span>
+              <span class="special">=</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">field2</span>
+              <span class="special">=</span> <span class="number">1</span><span class="special">}</span></code>. Indeed, the parametrized test may
+              test for some points around (0,1), but will fail to provide an <span class="bold"><strong>asymptotic behavior</strong></span> of the function close to
+              this point.
+            </p>
+</li>
+</ul></div>
+<h5>
+<a name="boost_test.tests_organization.test_cases.test_case_generation.h2"></a>
+          <span class="phrase"><a name="boost_test.tests_organization.test_cases.test_case_generation.data_driven_tests_in_the_boost_t"></a></span><a class="link" href="test_case_generation.html#boost_test.tests_organization.test_cases.test_case_generation.data_driven_tests_in_the_boost_t">Data
+          driven tests in the Boost.Test framework</a>
+        </h5>
+<p>
+          The facilities provided by the <span class="emphasis"><em>Unit Test Framework</em></span>
+          addressed the issues described above:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              the notion of <span class="bold"><strong>datasets</strong></span> eases the description
+              of the class of inputs for test cases. The datasets also implement
+              several operations that enable their combinations to create new, more
+              complex datasets,
+            </li>
+<li class="listitem">
+              two macros, <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_dataset.html" title="BOOST_DATA_TEST_CASE"><code class="computeroutput"><span class="identifier">BOOST_DATA_TEST_CASE</span></code></a> and
+              <a class="link" href="../../utf_reference/test_org_reference/test_org_boost_test_dataset_fixture.html" title="BOOST_DATA_TEST_CASE_F"><code class="computeroutput"><span class="identifier">BOOST_DATA_TEST_CASE_F</span></code></a>, respectively
+              without and with fixture support, are used for the declaration and
+              registration of a test case over a collection of values (samples),
+            </li>
+<li class="listitem">
+              each test case, associated to a unique value, is executed independently
+              from others. These tests are guarded in the same way regular test cases
+              are, which makes the execution of the tests over each sample of a dataset
+              isolated, robust, repeatable and ease the debugging,
+            </li>
+<li class="listitem">
+              several datasets generating functions are provided by the <span class="emphasis"><em>Unit
+              Test Framework</em></span>
+            </li>
+</ul></div>
+<p>
+          The remainder of this section covers the notions and feature provided by
+          the <span class="emphasis"><em>Unit Test Framework</em></span> about the data-driven test
+          cases, in particular:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              the notion of <a class="link" href="test_case_generation/datasets.html" title="Datasets"><span class="bold"><strong>dataset</strong></span> and <span class="bold"><strong>sample</strong></span></a>
+              is introduced
+            </li>
+<li class="listitem">
+              <a class="link" href="test_case_generation/datasets_auto_registration.html" title="Declaring and registering test cases with datasets">the
+              declaration and registration</a> of the data-driven test cases are
+              explained,
+            </li>
+<li class="listitem">
+              the <a class="link" href="test_case_generation/operations.html" title="Operations on dataset"><span class="emphasis"><em>operations</em></span></a>
+              on datasets are detailed
+            </li>
+<li class="listitem">
+              and finally the built-in <a class="link" href="test_case_generation/generators.html" title="Datasets generators">dataset
+              generators</a> are introduced.
+            </li>
+</ol></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_organization_nullary.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_cases.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="test_case_generation/datasets.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

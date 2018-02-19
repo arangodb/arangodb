@@ -1,0 +1,61 @@
+# -*- python -*-
+#
+# Copyright (c) 2016 Stefan Seefeld
+# All rights reserved.
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+Import('env')
+
+env.AppendUnique(CPPDEFINES = ["${LINK_DYNAMIC and 'BOOST_PYTHON_DYN_LINK=1' or ''}"])
+
+env1 = env.Clone()
+env1.AppendUnique(CPPDEFINES = ['BOOST_PYTHON_SOURCE'])
+
+env1.BoostLibrary(
+    'python',
+    ['list.cpp',
+     'long.cpp',
+     'dict.cpp',
+     'tuple.cpp',
+     'str.cpp',
+     'slice.cpp',
+     'converter/from_python.cpp',
+     'converter/registry.cpp',
+     'converter/type_id.cpp',
+     'object/enum.cpp',
+     'object/class.cpp',
+     'object/function.cpp',
+     'object/inheritance.cpp',
+     'object/life_support.cpp',
+     'object/pickle_support.cpp',
+     'errors.cpp',
+     'module.cpp',
+     'converter/builtin_converters.cpp',
+     'converter/arg_to_python_base.cpp',
+     'object/iterator.cpp',
+     'object/stl_iterator.cpp',
+     'object_protocol.cpp',
+     'object_operators.cpp',
+     'wrapper.cpp',
+     'import.cpp',
+     'exec.cpp',
+     'object/function_doc_signature.cpp'])
+
+if env['NUMPY']:
+    env2 = env.Clone()
+    env2.Append(CPPPATH=env['NUMPY_CPPPATH'])
+    build_dir = env.Dir('$BOOST_CURRENT_VARIANT_DIR/src')
+    env2.AppendUnique(CPPDEFINES = ['BOOST_NUMPY_SOURCE'],
+                      LIBPATH = [build_dir],
+                      LIBS='boost_python' + env["BOOST_SUFFIX"])
+    env2.BoostLibrary(
+        'numpy',
+        ['numpy/dtype.cpp',
+         'numpy/matrix.cpp',
+         'numpy/ndarray.cpp',
+         'numpy/numpy.cpp',
+         'numpy/scalars.cpp',
+         'numpy/ufunc.cpp'])

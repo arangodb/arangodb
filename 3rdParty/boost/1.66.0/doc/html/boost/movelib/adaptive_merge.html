@@ -1,0 +1,78 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Function template adaptive_merge</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../move/reference.html#header.boost.move.algo.adaptive_merge_hpp" title="Header &lt;boost/move/algo/adaptive_merge.hpp&gt;">
+<link rel="prev" href="../adl_move_swap_ranges.html" title="Function template adl_move_swap_ranges">
+<link rel="next" href="adaptive_1_3_25_20_3_1_1_1.html" title="Function template adaptive_sort">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adl_move_swap_ranges.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../move/reference.html#header.boost.move.algo.adaptive_merge_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="adaptive_1_3_25_20_3_1_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.movelib.adaptive_merge"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Function template adaptive_merge</span></h2>
+<p>boost::movelib::adaptive_merge</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../move/reference.html#header.boost.move.algo.adaptive_merge_hpp" title="Header &lt;boost/move/algo/adaptive_merge.hpp&gt;">boost/move/algo/adaptive_merge.hpp</a>&gt;
+
+</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> RandIt<span class="special">,</span> <span class="keyword">typename</span> Compare<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <span class="identifier">adaptive_merge</span><span class="special">(</span><span class="identifier">RandIt</span> first<span class="special">,</span> <span class="identifier">RandIt</span> middle<span class="special">,</span> <span class="identifier">RandIt</span> last<span class="special">,</span> <span class="identifier">Compare</span> comp<span class="special">,</span> 
+                      <span class="keyword">typename</span> <span class="identifier">iterator_traits</span><span class="special">&lt;</span> <span class="identifier">RandIt</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value_type</span> <span class="special">*</span> uninitialized <span class="special">=</span> <span class="number">0</span><span class="special">,</span> 
+                      <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> uninitialized_len <span class="special">=</span> <span class="number">0</span><span class="special">)</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.25.20.3.3.4"></a><h2>Description</h2>
+<p><span class="bold"><strong>Effects</strong></span>: Merges two consecutive sorted ranges [first, middle) and [middle, last) into one sorted range [first, last) according to the given comparison function comp. The algorithm is stable (if there are equivalent elements in the original two ranges, the elements from the first range (preserving their original order) precede the elements from the second range (preserving their original order).</p>
+<p><span class="bold"><strong>Requires</strong></span>:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>RandIt must meet the requirements of ValueSwappable and RandomAccessIterator.</p></li>
+<li class="listitem"><p>The type of dereferenced RandIt must meet the requirements of MoveAssignable and MoveConstructible.</p></li>
+</ul></div>
+<p>
+</p>
+<p><span class="bold"><strong>Parameters</strong></span>:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>first: the beginning of the first sorted range.</p></li>
+<li class="listitem"><p>middle: the end of the first sorted range and the beginning of the second</p></li>
+<li class="listitem"><p>last: the end of the second sorted range</p></li>
+<li class="listitem"><p>comp: comparison function object which returns true if the first argument is is ordered before the second.</p></li>
+<li class="listitem"><p>uninitialized, uninitialized_len: raw storage starting on "uninitialized", able to hold "uninitialized_len" elements of type iterator_traits&lt;RandIt&gt;::value_type. Maximum performance is achieved when uninitialized_len is min(std::distance(first, middle), std::distance(middle, last)).</p></li>
+</ul></div>
+<p>
+</p>
+<p><span class="bold"><strong>Throws</strong></span>: If comp throws or the move constructor, move assignment or swap of the type of dereferenced RandIt throws.</p>
+<p><span class="bold"><strong>Complexity</strong></span>: Always K x O(N) comparisons and move assignments/constructors/swaps. Constant factor for comparisons and data movement is minimized when uninitialized_len is min(std::distance(first, middle), std::distance(middle, last)). Pretty good enough performance is achieved when uninitialized_len is ceil(sqrt(std::distance(first, last)))*2.</p>
+<p><span class="bold"><strong>Caution</strong></span>: Experimental implementation, not production-ready. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2008-2014 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../adl_move_swap_ranges.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../move/reference.html#header.boost.move.algo.adaptive_merge_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="adaptive_1_3_25_20_3_1_1_1.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

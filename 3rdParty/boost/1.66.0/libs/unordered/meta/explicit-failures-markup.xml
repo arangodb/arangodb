@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup>
+    <!-- unordered -->
+    <library name="unordered">
+      <mark-expected-failures>
+        <test name="unnecessary_copy_tests"/>
+        <toolset name="borland-*"/>
+        <toolset name="sun-*"/>
+        <note author="Daniel James">
+            This tests whether inserting elements creates as few copies as I think
+            is possible. If this fails it just means that the container might be
+            a little inefficient.
+        </note>
+      </mark-expected-failures>
+
+      <mark-expected-failures>
+        <test name="compile_map_unordered_allocator"/>
+        <toolset name="msvc-7.1"/>
+        <note author="Daniel James">
+            This tests whether inserting elements creates as few copies as I think
+            is possible. If this fails it just means that the container might be
+            a little inefficient.
+        </note>
+      </mark-expected-failures>
+    </library>
+</explicit-failures-markup>
+

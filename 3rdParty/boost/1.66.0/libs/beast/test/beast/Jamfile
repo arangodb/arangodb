@@ -1,0 +1,29 @@
+#
+# Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Official repository: https://github.com/boostorg/beast
+#
+
+alias run-tests :
+    [ compile core.cpp ]
+    [ compile http.cpp ]
+    [ compile version.cpp ]
+    [ compile websocket.cpp ]
+    [ compile zlib.cpp ]
+    core//run-tests
+    http//run-tests
+    websocket//run-tests
+    zlib//run-tests
+    ;
+
+alias fat-tests :
+    core//fat-tests
+    http//fat-tests
+    websocket//fat-tests
+    zlib//fat-tests
+    ;
+
+explicit fat-tests ;

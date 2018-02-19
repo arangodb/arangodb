@@ -1,0 +1,127 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Writing unit tests</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Test">
+<link rel="up" href="../index.html" title="Boost.Test">
+<link rel="prev" href="tests_organization/summary_of_the_api_for_declaring.html" title="Summary of the API for declaring and organizing tests">
+<link rel="next" href="testing_tools/tools_assertion_severity_level.html" title="Assertion severity level">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tests_organization/summary_of_the_api_for_declaring.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="testing_tools/tools_assertion_severity_level.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_test.testing_tools"></a><a class="link" href="testing_tools.html" title="Writing unit tests">Writing unit tests</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="testing_tools/tools_assertion_severity_level.html">Assertion
+      severity level</a></span></dt>
+<dt><span class="section"><a href="testing_tools/boost_test_universal_macro.html">BOOST_TEST:
+      universal and general purpose assertions</a></span></dt>
+<dt><span class="section"><a href="testing_tools/reports.html">Reported information</a></span></dt>
+<dt><span class="section"><a href="testing_tools/extended_comparison.html">Extended
+      comparisons support</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="testing_tools/extended_comparison/floating_point.html">Floating
+        point comparison</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="testing_tools/extended_comparison/floating_point/customizing_for_tolerance.html">Enabling
+          tolerance for user-defined types</a></span></dt>
+<dt><span class="section"><a href="testing_tools/extended_comparison/floating_point/floating_points_comparison_impl.html">Tolerance-based
+          comparisons</a></span></dt>
+<dt><span class="section"><a href="testing_tools/extended_comparison/floating_point/floating_points_comparison_theory.html">Theory
+          behind floating point comparisons</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="testing_tools/extended_comparison/strings.html">Strings
+        and C-strings comparison</a></span></dt>
+<dt><span class="section"><a href="testing_tools/extended_comparison/collections.html">Collections
+        comparison</a></span></dt>
+<dt><span class="section"><a href="testing_tools/extended_comparison/bitwise.html">Bitwise
+        comparison</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="testing_tools/exception_correctness.html">Exception
+      correctness</a></span></dt>
+<dt><span class="section"><a href="testing_tools/timeout.html">Time-out for test cases</a></span></dt>
+<dt><span class="section"><a href="testing_tools/expected_failures.html">Expected
+      failures specification</a></span></dt>
+<dt><span class="section"><a href="testing_tools/custom_predicates.html">Custom predicate
+      support</a></span></dt>
+<dt><span class="section"><a href="testing_tools/output_stream_testing.html">Output
+      streams testing tool</a></span></dt>
+<dt><span class="section"><a href="testing_tools/internal_details.html"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code>: details on expressions</a></span></dt>
+<dt><span class="section"><a href="testing_tools/debugging.html">Debugging the assertions</a></span></dt>
+<dt><span class="section"><a href="testing_tools/summary.html">Summary of the API
+      for writing tests</a></span></dt>
+</dl></div>
+<p>
+      Once a test case has been declared, the body of this test should be written.
+      A test case is a sequence of operations in which <span class="bold"><strong>assertions</strong></span>
+      are inserted. Those assertions evaluate <span class="emphasis"><em>statements</em></span> that
+      implement the expectation being validated, and report failures and/or informations
+      in a uniform manner, depending on the <a class="link" href="utf_reference/rt_param_reference/log_level.html" title="log_level">log
+      level</a>.
+    </p>
+<p>
+      The <span class="emphasis"><em>Unit Test Framework</em></span>'s supplies a toolbox of assertions
+      to ease the creation and maintenance of test cases and provide a uniform error
+      reporting mechanism. The toolbox supplied is in most part in a form of macro
+      declarations. An (almost) unique interface to all of them implemented by the
+      macro <a class="link" href="utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        All macros arguments are calculated once, so it's safe to pass complex expressions
+        in their place.
+      </p></td></tr>
+</table></div>
+<p>
+      All tools automatically supply an error location: a file name and a line number,
+      which can also be overridden.
+    </p>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        The testing tools are intended for unit test code rather than library or
+        production code, where throwing exceptions, using <code class="computeroutput"><span class="identifier">assert</span><span class="special">()</span></code>, <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">concept_check</span></code>
+        or <code class="computeroutput"><span class="identifier">BOOST_STATIC_ASSERT</span><span class="special">()</span></code>
+        may be more suitable ways to detect and report errors.
+      </p></td></tr>
+</table></div>
+<p>
+      For a list of all supplied testing tools and usage examples, see the <a class="link" href="testing_tools/summary.html" title="Summary of the API for writing tests">summary</a> or the <a class="link" href="utf_reference/testing_tool_ref.html" title="Reference API for writing tests">reference</a>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tests_organization/summary_of_the_api_for_declaring.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="testing_tools/tools_assertion_severity_level.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

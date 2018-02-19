@@ -1,0 +1,109 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Adding semantic to a test</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../tests_organization.html" title="Declaring and organizing tests">
+<link rel="prev" href="enabling.html" title="Enabling or disabling test unit execution">
+<link rel="next" href="summary_of_the_api_for_declaring.html" title="Summary of the API for declaring and organizing tests">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="enabling.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary_of_the_api_for_declaring.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.tests_organization.semantic"></a><a class="link" href="semantic.html" title="Adding semantic to a test">Adding semantic
+      to a test</a>
+</h3></div></div></div>
+<p>
+        It is sometimes useful to add a <span class="emphasis"><em>semantic description</em></span>
+        to a test unit, which may be consulted by the user during a dry run. The
+        user may then choose the test he/she wants to run based on this information,
+        instead of basing his/her choice on the test unit <span class="emphasis"><em>name</em></span>,
+        or instead of looking at the code.
+      </p>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> provides the decorator <a class="link" href="../utf_reference/test_org_reference/decorator_description.html" title="description (decorator)"><code class="computeroutput"><span class="identifier">description</span></code></a> for that purpose.
+      </p>
+<p>
+        Decorator <code class="computeroutput"><span class="identifier">description</span></code> attaches
+        an arbitrary string to the test unit. All strings attached to test units
+        can be displayed when running a test program with parameter <a class="link" href="../utf_reference/rt_param_reference/list_content.html" title="list_content"><code class="computeroutput"><span class="identifier">list_content</span></code></a>. This can be used for
+        conveying information from the person who composes the test tree to the person
+        who will be running the test program. Applying more than one decorator <code class="computeroutput"><span class="identifier">description</span></code> to the same test unit means
+        that the two (or more) strings will be concatenated.
+      </p>
+<h6>
+<a name="boost_test.tests_organization.semantic.h0"></a>
+        <span class="phrase"><a name="boost_test.tests_organization.semantic.example_descr"></a></span><a class="link" href="semantic.html#boost_test.tests_organization.semantic.example_descr">Example: decorator
+        description</a>
+      </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Code
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">decorator_09</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">utf</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">unit_test</span><span class="special">;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_1</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">disabled</span><span class="special">()</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">description</span><span class="special">(</span><span class="string">"enable only when ODBC is available"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">1</span> <span class="special">==</span> <span class="number">1</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span><span class="identifier">test_2</span><span class="special">,</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">description</span><span class="special">(</span><span class="string">"descriptions "</span><span class="special">)</span>
+  <span class="special">*</span> <span class="identifier">utf</span><span class="special">::</span><span class="identifier">description</span><span class="special">(</span><span class="string">"add up"</span><span class="special">))</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="number">2</span> <span class="special">==</span> <span class="number">2</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                <p>
+                  Output
+                </p>
+              </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">decorator_09</span> <span class="special">--</span><span class="identifier">list_content</span>
+<span class="identifier">test_1</span> <span class="special">:</span> <span class="identifier">enable</span> <span class="identifier">only</span> <span class="identifier">when</span> <span class="identifier">ODBC</span> <span class="identifier">is</span> <span class="identifier">available</span>
+<span class="identifier">test_2</span><span class="special">*:</span> <span class="identifier">descriptions</span> <span class="identifier">add</span> <span class="identifier">up</span>
+</pre>
+              </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="enabling.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tests_organization.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="summary_of_the_api_for_declaring.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,6 +1,8 @@
 devel
 -----
 
+* issue #1689 p: upgrade boost to version 1.66.0
+
 * renamed startup option `--replication.automatic-failover` to 
   `--replication.active-failover`
   using the old option name will still work in ArangoDB 3.4, but the old option

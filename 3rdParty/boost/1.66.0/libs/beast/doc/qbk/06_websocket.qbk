@@ -1,0 +1,41 @@
+[/
+    Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Using WebSocket]
+
+The WebSocket Protocol enables two-way communication between a client
+running untrusted code in a controlled environment to a remote host that has
+opted-in to communications from that code. The protocol consists of an opening
+handshake followed by basic message framing, layered over TCP.  The goal of
+this technology is to provide a mechanism for browser-based applications
+needing two-way communication with servers without relying on opening multiple
+HTTP connections.
+
+Beast provides developers with a robust WebSocket implementation built on
+Boost.Asio with a consistent asynchronous model using a modern C++ approach.
+
+[note
+    This documentation assumes familiarity with __Asio__ and
+    the protocol specification described in __rfc6455__.
+    Sample code and identifiers appearing in this section is written
+    as if these declarations are in effect:
+
+    [ws_snippet_1]
+]
+
+[include 06_websocket/1_streams.qbk]
+[include 06_websocket/2_connect.qbk]
+[include 06_websocket/3_client.qbk]
+[include 06_websocket/4_server.qbk]
+[include 06_websocket/5_messages.qbk]
+[include 06_websocket/6_control.qbk]
+[include 06_websocket/7_teardown.qbk]
+[include 06_websocket/8_notes.qbk]
+
+[endsect]

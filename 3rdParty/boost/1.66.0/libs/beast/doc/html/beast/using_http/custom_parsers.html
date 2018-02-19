@@ -1,0 +1,172 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Custom Parsers</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_http.html" title="Using HTTP">
+<link rel="prev" href="custom_body_types.html" title="Custom Body Types">
+<link rel="next" href="../more_examples.html" title="More Examples">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="custom_body_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../more_examples.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.custom_parsers"></a><a class="link" href="custom_parsers.html" title="Custom Parsers">Custom Parsers</a>
+</h3></div></div></div>
+<p>
+        While the parsers included in the library will handle a broad number of use-cases,
+        the <a class="link" href="../ref/boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a> interface can be subclassed
+        to implement custom strategies for storing parsed results: the basic parser
+        processes the incoming octets into elements according to the HTTP/1 protocol
+        specification, while the derived class decides what to do with those elements.
+        In particular, users who create exotic containers for <span class="bold"><strong>Fields</strong></span>
+        may need to also create their own parser. Custom parsers will work with all
+        of the stream read operations that work on parsers, as those algorithms use
+        only the basic parser interface. Some use cases for implementing custom parsers
+        are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Inspect incoming header fields and keep or discard them.
+          </li>
+<li class="listitem">
+            Use a container provided by an external interface.
+          </li>
+<li class="listitem">
+            Store header data in a user-defined <a class="link" href="../concepts/Fields.html" title="Fields"><span class="bold"><strong>Fields</strong></span></a> type.
+          </li>
+</ul></div>
+<p>
+        The basic parser uses the <a href="https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern" target="_top">Curiously
+        Recurring Template Pattern</a>. To declare your user defined parser,
+        derive it from <a class="link" href="../ref/boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a>. The interface to the
+        parser is event-driven. Member functions of the derived class (termed "callbacks"
+        in this context) are invoked with parsed elements as they become available,
+        requiring either the <code class="computeroutput"><span class="keyword">friend</span></code>
+        declaration as shown above or that the member functions are declared public
+        (not recommended). Buffers provided by the parser are non-owning references;
+        it is the responsibility of the derived class to copy any information it
+        needs before returning from the callback.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">custom_parser</span>
+    <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">basic_parser</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">custom_parser</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">&gt;&gt;</span>
+<span class="special">{</span>
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="comment">// The friend declaration is needed,</span>
+    <span class="comment">// otherwise the callbacks must be made public.</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">basic_parser</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">custom_parser</span><span class="special">&gt;;</span>
+
+    <span class="comment">/// Called after receiving the request-line (isRequest == true).</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_request_impl</span><span class="special">(</span>
+        <span class="identifier">verb</span> <span class="identifier">method</span><span class="special">,</span>                <span class="comment">// The method verb, verb::unknown if no match</span>
+        <span class="identifier">string_view</span> <span class="identifier">method_str</span><span class="special">,</span>     <span class="comment">// The method as a string</span>
+        <span class="identifier">string_view</span> <span class="identifier">target</span><span class="special">,</span>         <span class="comment">// The request-target</span>
+        <span class="keyword">int</span> <span class="identifier">version</span><span class="special">,</span>                <span class="comment">// The HTTP-version</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called after receiving the start-line (isRequest == false).</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_response_impl</span><span class="special">(</span>
+        <span class="keyword">int</span> <span class="identifier">code</span><span class="special">,</span>                   <span class="comment">// The status-code</span>
+        <span class="identifier">string_view</span> <span class="identifier">reason</span><span class="special">,</span>         <span class="comment">// The obsolete reason-phrase</span>
+        <span class="keyword">int</span> <span class="identifier">version</span><span class="special">,</span>                <span class="comment">// The HTTP-version</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called after receiving a header field.</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_field_impl</span><span class="special">(</span>
+        <span class="identifier">field</span> <span class="identifier">f</span><span class="special">,</span>                    <span class="comment">// The known-field enumeration constant</span>
+        <span class="identifier">string_view</span> <span class="identifier">name</span><span class="special">,</span>           <span class="comment">// The field name string.</span>
+        <span class="identifier">string_view</span> <span class="identifier">value</span><span class="special">,</span>          <span class="comment">// The field value</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called after the complete header is received.</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_header_impl</span><span class="special">(</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called just before processing the body, if a body exists.</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_body_init_impl</span><span class="special">(</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span><span class="special">&gt;</span> <span class="keyword">const</span><span class="special">&amp;</span>
+                <span class="identifier">content_length</span><span class="special">,</span>     <span class="comment">// Content length if known, else `boost::none`</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called for each piece of the body, if a body exists.</span>
+    <span class="comment">//!</span>
+    <span class="comment">//! This is used when there is no chunked transfer coding.</span>
+    <span class="comment">//!</span>
+    <span class="comment">//! The function returns the number of bytes consumed from the</span>
+    <span class="comment">//! input buffer. Any input octets not consumed will be will be</span>
+    <span class="comment">//! presented on subsequent calls.</span>
+    <span class="comment">//!</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">on_body_impl</span><span class="special">(</span>
+        <span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">,</span>              <span class="comment">// A portion of the body</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called for each chunk header.</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_chunk_header_impl</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">size</span><span class="special">,</span>         <span class="comment">// The size of the upcoming chunk,</span>
+                                    <span class="comment">// or zero for the last chunk</span>
+        <span class="identifier">string_view</span> <span class="identifier">extension</span><span class="special">,</span>      <span class="comment">// The chunk extensions (may be empty)</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called to deliver the chunk body.</span>
+    <span class="comment">//!</span>
+    <span class="comment">//! This is used when there is a chunked transfer coding. The</span>
+    <span class="comment">//! implementation will automatically remove the encoding before</span>
+    <span class="comment">//! calling this function.</span>
+    <span class="comment">//!</span>
+    <span class="comment">//! The function returns the number of bytes consumed from the</span>
+    <span class="comment">//! input buffer. Any input octets not consumed will be will be</span>
+    <span class="comment">//! presented on subsequent calls.</span>
+    <span class="comment">//!</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">on_chunk_body_impl</span><span class="special">(</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint64_t</span> <span class="identifier">remain</span><span class="special">,</span>       <span class="comment">// The number of bytes remaining in the chunk,</span>
+                                    <span class="comment">// including what is being passed here.</span>
+                                    <span class="comment">// or zero for the last chunk</span>
+        <span class="identifier">string_view</span> <span class="identifier">body</span><span class="special">,</span>           <span class="comment">// The next piece of the chunk body</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>            <span class="comment">// The error returned to the caller, if any</span>
+
+    <span class="comment">/// Called when the complete message is parsed.</span>
+    <span class="keyword">void</span>
+    <span class="identifier">on_finish_impl</span><span class="special">(</span><span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">custom_parser</span><span class="special">()</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="custom_body_types.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../more_examples.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

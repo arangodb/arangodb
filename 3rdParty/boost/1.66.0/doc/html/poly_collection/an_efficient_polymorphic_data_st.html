@@ -1,0 +1,162 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>An efficient polymorphic data structure</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../poly_collection.html" title="Chapter&#160;27.&#160;Boost.PolyCollection">
+<link rel="prev" href="../poly_collection.html" title="Chapter&#160;27.&#160;Boost.PolyCollection">
+<link rel="next" href="tutorial.html" title="Tutorial">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../poly_collection.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="poly_collection.an_efficient_polymorphic_data_st"></a><a class="link" href="an_efficient_polymorphic_data_st.html" title="An efficient polymorphic data structure">An efficient
+    polymorphic data structure</a>
+</h2></div></div></div>
+<p>
+      Suppose we have a <code class="computeroutput"><span class="identifier">base</span></code> abstract
+      class with implementations <code class="computeroutput"><span class="identifier">derived1</span></code>,
+      <code class="computeroutput"><span class="identifier">derived2</span></code> and <code class="computeroutput"><span class="identifier">derived3</span></code>. The memory layout of a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">*&gt;</span></code> (or similar constructs such as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">unique_ptr</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">&gt;&gt;</span></code>
+      or <a href="../../../libs/ptr_container/" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">ptr_vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">&gt;</span></code></a>) looks like the following:
+    </p>
+<p>
+      <span class="inlinemediaobject"><img src="img/ptr_vector.png"></span>
+    </p>
+<p>
+      Elements that are adjacent in the vector are not necessarily allocated contiguously,
+      much less so if the vector has undergone mid insertions and deletions. A typical
+      processing operation
+    </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">*&gt;</span> <span class="identifier">v</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="keyword">for</span><span class="special">(</span><span class="identifier">base</span><span class="special">*</span> <span class="identifier">b</span><span class="special">:</span> <span class="identifier">v</span><span class="special">){</span>
+  <span class="special">...</span> <span class="comment">// access base's virtual interface</span>
+<span class="special">}</span>
+</pre>
+<p>
+      is impacted negatively by two factors:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Scattering of elements throughout memory reduces CPU caching efficiency,
+          which in general favor regular access loops to contiguous memory areas.
+        </li>
+<li class="listitem">
+          <a href="https://en.wikipedia.org/wiki/Branch_predictor" target="_top">Branch prediction</a>
+          tries to minimize the effect of running conditional code (such as an <code class="computeroutput"><span class="keyword">if</span></code>-<code class="computeroutput"><span class="keyword">else</span></code>
+          statement or the invocation of a <code class="computeroutput"><span class="identifier">base</span></code>
+          virtual function) by speculatively executing a given branch based on past
+          history. This mechanism is rendered mostly useless when <code class="computeroutput"><span class="identifier">derived1</span></code>,
+          <code class="computeroutput"><span class="identifier">derived2</span></code> and <code class="computeroutput"><span class="identifier">derived3</span></code> elements are interspersed along
+          the sequence without a definite pattern.
+        </li>
+</ul></div>
+<p>
+      These limitations are imposed by the very nature of dynamic polymorphism: as
+      the exact types of the elements accessed through <code class="computeroutput"><span class="identifier">base</span></code>'s
+      interface are not known, an indirection through <code class="computeroutput"><span class="identifier">base</span><span class="special">*</span></code> (a particular form of <span class="emphasis"><em>type erasure</em></span>)
+      is required. There is however a critical observation: even though derived types
+      are not known when traversing a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">*&gt;</span></code>, the information is typically available
+      <span class="emphasis"><em>at compile time</em></span> at the point of insertion in the vector:
+    </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">*&gt;</span> <span class="identifier">v</span><span class="special">;</span>
+<span class="special">...</span>
+<span class="identifier">v</span><span class="special">.</span><span class="identifier">insert</span><span class="special">(</span><span class="keyword">new</span> <span class="identifier">derived2</span><span class="special">{...});</span> <span class="comment">// the type derived2 is "forgotten" by v</span>
+</pre>
+<p>
+      A suitably designed container can take advantage of this information to arrange
+      elements contiguously according to their exact type, which results in an internal
+      data structure (a map of pointers to <a href="http://en.cppreference.com/w/cpp/types/type_info" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">type_info</span></code></a>
+      objects, actually) pointing to as many vectors or <span class="emphasis"><em>segments</em></span>
+      as there are derived classes:
+    </p>
+<p>
+      <span class="inlinemediaobject"><img src="img/segment_map.png"></span>
+    </p>
+<p>
+      Traversing such a structure reduces to looping over all the segments one after
+      another: this is extremely efficient both in terms of caching and branch prediction.
+      In the process we have however lost the free-order capability of a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">*&gt;</span></code> (free order can only be retained at the
+      segment level), but if this is not relevant to the user application the potential
+      performance gains of switching to this structure are large.
+    </p>
+<p>
+      The discussion has focused on base/derived programming, also known as OOP,
+      but it also applies to other forms of dynamic polymorphism:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <a href="http://en.cppreference.com/w/cpp/utility/functional/function" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span></code></a> abstracts callable entities
+          with the same given signature under a common interface. Internally, pointer
+          indirections and virtual-like function calls are used. Memory fragmentation
+          is expected to be lower than with OOP, though, as implementations usually
+          feature the so-called <a href="http://talesofcpp.fusionfenix.com/post-16/episode-nine-erasing-the-concrete#a-note-on-small-buffer-optimization" target="_top"><span class="emphasis"><em>small
+          buffer optimization</em></span></a> to avoid heap allocation in some
+          situations.
+        </li>
+<li class="listitem">
+          The case of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span></code> can be seen as a particular
+          example of a more general form of polymorphism called <a href="https://en.wikipedia.org/wiki/Duck_typing" target="_top"><span class="emphasis"><em>duck
+          typing</em></span></a>, where unrelated types are treated uniformly
+          if they conform to the same given <span class="emphasis"><em>interface</em></span> (a specified
+          set of member functions and/or operations). Duck typing provides the power
+          of OOP while allowing for greater flexibility as polymorphic types need
+          not derive from a preexisting base class or in general be designed with
+          any particular interface in mind --in fact, the same object can be duck-typed
+          to different interfaces. Among other libraries, <a href="../../../libs/type_erasure" target="_top">Boost.TypeErasure</a>
+          provides duck typing for C++. Under the hood, duck typing requires pointer
+          indirection and virtual call implementation techniques analogous to those
+          of OOP, and so there are the same opportunities for efficient container
+          data structures as we have described.
+        </li>
+</ul></div>
+<p>
+      Boost.PolyCollection provides three different container class templates dealing
+      with OOP, <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span></code>-like polymorphism and duck typing
+      as implemented by Boost.TypeErasure:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code>
+        </li>
+</ul></div>
+<p>
+      The interfaces of these containers are mostly the same and follow the usual
+      conventions of standard library containers.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Joaqu&#237;n M L&#243;pez Mu&#241;oz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../poly_collection.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="tutorial.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,303 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>buffers_adapter</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__buffers.html" title="buffers">
+<link rel="next" href="boost__beast__buffers_adapter/buffers_adapter.html" title="buffers_adapter::buffers_adapter">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffers_adapter/buffers_adapter.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__buffers_adapter"></a><a class="link" href="boost__beast__buffers_adapter.html" title="buffers_adapter">buffers_adapter</a>
+</h4></div></div></div>
+<p>
+        Adapts a <span class="bold"><strong>MutableBufferSequence</strong></span> into a <span class="bold"><strong>DynamicBuffer</strong></span>.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffers_adapter.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_adapter.synopsis"></a></span><a class="link" href="boost__beast__buffers_adapter.html#beast.ref.boost__beast__buffers_adapter.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/buffers_adapter.hpp" target="_top">boost/beast/core/buffers_adapter.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="../../../../../../doc/html/boost_asio/reference/MutableBufferSequence.html" target="_top"><span class="bold"><strong>MutableBufferSequence</strong></span></a><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">buffers_adapter</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__buffers_adapter.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_adapter.types"></a></span><a class="link" href="boost__beast__buffers_adapter.html#beast.ref.boost__beast__buffers_adapter.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/const_buffers_type.html" title="buffers_adapter::const_buffers_type"><span class="bold"><strong>const_buffers_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent the input sequence as a list of buffers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/mutable_buffers_type.html" title="buffers_adapter::mutable_buffers_type"><span class="bold"><strong>mutable_buffers_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type used to represent the output sequence as a list of buffers.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__buffers_adapter.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_adapter.member_functions"></a></span><a class="link" href="boost__beast__buffers_adapter.html#beast.ref.boost__beast__buffers_adapter.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/buffers_adapter.html" title="buffers_adapter::buffers_adapter"><span class="bold"><strong>buffers_adapter</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move constructor.
+                </p>
+                <p>
+                  Copy constructor.
+                </p>
+                <p>
+                  Construct a buffers adapter.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/capacity.html" title="buffers_adapter::capacity"><span class="bold"><strong>capacity</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the maximum sum of the sizes of the input sequence and
+                  output sequence the buffer can hold without requiring reallocation.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/commit.html" title="buffers_adapter::commit"><span class="bold"><strong>commit</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move bytes from the output sequence to the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/consume.html" title="buffers_adapter::consume"><span class="bold"><strong>consume</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove bytes from the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/data.html" title="buffers_adapter::data"><span class="bold"><strong>data</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a list of buffers that represents the input sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/max_size.html" title="buffers_adapter::max_size"><span class="bold"><strong>max_size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the largest size output sequence possible.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/operator_eq_.html" title="buffers_adapter::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+                <p>
+                  Copy assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/prepare.html" title="buffers_adapter::prepare"><span class="bold"><strong>prepare</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a list of buffers that represents the output sequence, with
+                  the given size.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffers_adapter/size.html" title="buffers_adapter::size"><span class="bold"><strong>size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the size of the input sequence.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__buffers_adapter.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_adapter.description"></a></span><a class="link" href="boost__beast__buffers_adapter.html#beast.ref.boost__beast__buffers_adapter.description">Description</a>
+      </h5>
+<p>
+        This class wraps a <span class="bold"><strong>MutableBufferSequence</strong></span>
+        to meet the requirements of <span class="bold"><strong>DynamicBuffer</strong></span>.
+        Upon construction the input and output sequences are empty. A copy of the
+        mutable buffer sequence object is stored; however, ownership of the underlying
+        memory is not transferred. The caller is responsible for making sure that
+        referenced memory remains valid for the duration of any operations.
+      </p>
+<p>
+        The size of the mutable buffer sequence determines the maximum number of
+        bytes which may be prepared and committed.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffers_adapter.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffers_adapter.template_parameters"></a></span><a class="link" href="boost__beast__buffers_adapter.html#beast.ref.boost__beast__buffers_adapter.template_parameters">Template
+        Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">MutableBufferSequence</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of mutable buffer sequence to wrap.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<p>
+        Convenience header <code class="literal">&lt;<a href="../../../../../../boost/beast/core.hpp" target="_top">boost/beast/core.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffers_adapter/buffers_adapter.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

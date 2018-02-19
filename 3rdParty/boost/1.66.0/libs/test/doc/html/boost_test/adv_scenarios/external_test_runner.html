@@ -1,0 +1,64 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>The external test runner usage variant</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../adv_scenarios.html" title="Advanced Usage Scenarios">
+<link rel="prev" href="shared_lib_customizations/init_func.html" title="Customizing the module's initialization function">
+<link rel="next" href="obsolete_init_func.html" title="The obsolete initialization function">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="shared_lib_customizations/init_func.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="obsolete_init_func.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.adv_scenarios.external_test_runner"></a><a class="link" href="external_test_runner.html" title="The external test runner usage variant">The external
+      test runner usage variant</a>
+</h3></div></div></div>
+<p>
+        This usage variant does not provide any <a class="link" href="test_module_runner_overview.html" title="Test module runner">test
+        runner</a>. You employ it when you only want to define a <a class="link" href="../section_glossary.html#ref_test_tree">test
+        tree</a> and possibly an <a class="link" href="test_module_init_overview.html" title="Test module's initialization">initialization
+        function</a>, and expect another (external) program to evaluate these
+        tests. This external program will come with its own test runner.
+      </p>
+<p>
+        If you plan to use an external test runner with your test module, you need
+        to build it as a dynamic library. You need to define macro flag <a class="link" href="../utf_reference/link_references/link_boost_test_dyn_link.html" title="BOOST_TEST_DYN_LINK"><code class="computeroutput"><span class="identifier">BOOST_TEST_DYN_LINK</span></code></a> either in a
+        makefile or before the header <code class="computeroutput"><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span></code> inclusion. An external test runner
+        utility is required to link with dynamic library.
+      </p>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> comes with an example external
+        test runner <code class="computeroutput"><span class="identifier">console_test_runner</span></code>:
+        Given a name of the test module (implemented as a shared library), and a
+        name of the initialization function defined therein, the program can run
+        all the tests from the module's test tree.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2017 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="shared_lib_customizations/init_func.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../adv_scenarios.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="obsolete_init_func.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,735 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Performance</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../poly_collection.html" title="Chapter&#160;27.&#160;Boost.PolyCollection">
+<link rel="prev" href="tutorial.html" title="Tutorial">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="poly_collection.performance"></a><a class="link" href="performance.html" title="Performance">Performance</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.container_definitions">Container
+      definitions</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests">Insertion
+      tests</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests">Processing
+      tests</a></span></dt>
+</dl></div>
+<p>
+      (Testing program at <a href="../../../libs/poly_collection/example/perf.cpp" target="_top"><code class="computeroutput"><span class="identifier">perf</span><span class="special">.</span><span class="identifier">cpp</span></code></a>.)
+    </p>
+<p>
+      We ran tests to measure the performance of the containers of Boost.PolyCollection
+      in two scenarios:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Insertion of elements.
+        </li>
+<li class="listitem">
+          Linear traversal and processing with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span></code>
+          and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">poly_collection</span><span class="special">::</span><span class="identifier">for_each</span></code> (with and without <a class="link" href="tutorial.html#poly_collection.tutorial.algorithms.type_restitution" title="Type restitution">type
+          restitution</a>).
+        </li>
+</ul></div>
+<p>
+      As a comparison baseline we used containers and facilities from the standard
+      library and Boost (details below). Tests were run in the following environments:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <span class="bold"><strong>Visual Studio 2015 x86</strong></span>: Visual C++ 2015
+          in 32-bit (x86) release mode, Windows 7 64-bit, Intel Core i5-2520M @2.5GHz
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Visual Studio 2015 x64</strong></span>: Visual C++ 2015
+          in 64-bit (x64) release mode, same machine
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>GCC 6.3 x64</strong></span>: GCC 6.3 release mode, Xubuntu
+          17.04 x64, Intel Core i7-5820 @3.3GHz
+        </li>
+<li class="listitem">
+          <span class="bold"><strong>Clang 4.0 x64</strong></span>: Clang 4.0 release mode,
+          same machine
+        </li>
+</ul></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.performance.container_definitions"></a><a class="link" href="performance.html#poly_collection.performance.container_definitions" title="Container definitions">Container
+      definitions</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.container_definitions.boost_base_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.container_definitions.boost_function_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.container_definitions.boost_any_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.container_definitions.boost_base_collection"></a><a class="link" href="performance.html#poly_collection.performance.container_definitions.boost_base_collection" title="boost::base_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a>
+</h4></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Baseline container: <code class="computeroutput"><span class="identifier">ptr_vector</span></code>
+              = <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">ptr_vector</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">&gt;</span></code>
+            </li>
+<li class="listitem">
+              Polymorphic collection: <code class="computeroutput"><span class="identifier">base_collection</span></code>
+              = <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span><span class="special">&lt;</span><span class="identifier">base</span><span class="special">&gt;</span></code>
+            </li>
+<li class="listitem">
+              Element types: <code class="computeroutput"><span class="identifier">T1</span></code> =
+              <code class="computeroutput"><span class="identifier">derived1</span></code>, <code class="computeroutput"><span class="identifier">T2</span></code> = <code class="computeroutput"><span class="identifier">derived2</span></code>,
+              <code class="computeroutput"><span class="identifier">T3</span></code> = <code class="computeroutput"><span class="identifier">derived3</span></code>
+            </li>
+</ul></div>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">base</span>
+<span class="special">{</span>
+  <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">base</span><span class="special">()=</span><span class="keyword">default</span><span class="special">;</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span><span class="special">)</span><span class="keyword">const</span><span class="special">=</span><span class="number">0</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">derived1</span> <span class="identifier">final</span><span class="special">:</span><span class="identifier">base</span>
+<span class="special">{</span>
+  <span class="identifier">derived1</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">derived2</span> <span class="identifier">final</span><span class="special">:</span><span class="identifier">base</span>
+<span class="special">{</span>
+  <span class="identifier">derived2</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">x</span><span class="special">*</span><span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">unused</span><span class="special">,</span><span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">derived3</span> <span class="identifier">final</span><span class="special">:</span><span class="identifier">base</span>
+<span class="special">{</span>
+  <span class="identifier">derived3</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">virtual</span> <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">x</span><span class="special">*</span><span class="identifier">x</span><span class="special">*</span><span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">unused</span><span class="special">,</span><span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.container_definitions.boost_function_collection"></a><a class="link" href="performance.html#poly_collection.performance.container_definitions.boost_function_collection" title="boost::function_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a>
+</h4></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Baseline container: <code class="computeroutput"><span class="identifier">func_vector</span></code>
+              = <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">function</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">(</span><span class="keyword">int</span><span class="special">)&gt;&gt;</span></code>
+            </li>
+<li class="listitem">
+              Polymorphic collection: <code class="computeroutput"><span class="identifier">function_collection</span></code>
+              = <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">(</span><span class="keyword">int</span><span class="special">)&gt;</span></code>
+            </li>
+<li class="listitem">
+              Element types: <code class="computeroutput"><span class="identifier">T1</span></code> =
+              <code class="computeroutput"><span class="identifier">concrete1</span></code>, <code class="computeroutput"><span class="identifier">T2</span></code> = <code class="computeroutput"><span class="identifier">concrete2</span></code>,
+              <code class="computeroutput"><span class="identifier">T3</span></code> = <code class="computeroutput"><span class="identifier">concrete3</span></code>
+            </li>
+</ul></div>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">concrete1</span>
+<span class="special">{</span>
+  <span class="identifier">concrete1</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">concrete2</span>
+<span class="special">{</span>
+  <span class="identifier">concrete2</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">x</span><span class="special">*</span><span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">unused</span><span class="special">,</span><span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">struct</span> <span class="identifier">concrete3</span>
+<span class="special">{</span>
+  <span class="identifier">concrete3</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">n</span><span class="special">):</span><span class="identifier">n</span><span class="special">{</span><span class="identifier">n</span><span class="special">}{}</span>
+  <span class="keyword">int</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span> <span class="identifier">x</span><span class="special">)</span><span class="keyword">const</span><span class="special">{</span><span class="keyword">return</span> <span class="identifier">x</span><span class="special">*</span><span class="identifier">x</span><span class="special">*</span><span class="identifier">n</span><span class="special">;}</span>
+
+  <span class="keyword">int</span> <span class="identifier">unused</span><span class="special">,</span><span class="identifier">n</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.container_definitions.boost_any_collection"></a><a class="link" href="performance.html#poly_collection.performance.container_definitions.boost_any_collection" title="boost::any_collection"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a>
+</h4></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Baseline container: <code class="computeroutput"><span class="identifier">any_vector</span></code>
+              = <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">type_erasure</span><span class="special">::</span><span class="identifier">any</span><span class="special">&lt;</span><span class="identifier">concept_</span><span class="special">&gt;&gt;</span></code>
+            </li>
+<li class="listitem">
+              Polymorphic collection: <code class="computeroutput"><span class="identifier">any_collection</span></code>
+              = <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span><span class="special">&lt;</span><span class="identifier">concept_</span><span class="special">&gt;</span></code>
+            </li>
+<li class="listitem">
+              Element types: <code class="computeroutput"><span class="identifier">T1</span></code> =
+              <code class="computeroutput"><span class="keyword">int</span></code>, <code class="computeroutput"><span class="identifier">T2</span></code>
+              = <code class="computeroutput"><span class="keyword">double</span></code>, <code class="computeroutput"><span class="identifier">T3</span></code> = <code class="computeroutput"><span class="keyword">char</span></code>
+            </li>
+</ul></div>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">concept_</span><span class="special">=</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mpl</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">type_erasure</span><span class="special">::</span><span class="identifier">copy_constructible</span><span class="special">&lt;&gt;,</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">type_erasure</span><span class="special">::</span><span class="identifier">relaxed</span><span class="special">,</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">type_erasure</span><span class="special">::</span><span class="identifier">typeid_</span><span class="special">&lt;&gt;,</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">type_erasure</span><span class="special">::</span><span class="identifier">incrementable</span><span class="special">&lt;&gt;</span>
+<span class="special">&gt;;</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.performance.insertion_tests"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests" title="Insertion tests">Insertion
+      tests</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a></span></dt>
+</dl></div>
+<p>
+        Tests measure the time taken to insert <span class="emphasis"><em>n</em></span> elements (<span class="emphasis"><em>n</em></span>
+        between 10<sup>2</sup> and 10<sup>7</sup>) from a source of values with types following the cyclic
+        sequence
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">T1</span></code> <code class="computeroutput"><span class="identifier">T1</span></code>
+        <code class="computeroutput"><span class="identifier">T2</span></code> <code class="computeroutput"><span class="identifier">T2</span></code>
+        <code class="computeroutput"><span class="identifier">T3</span></code> <code class="computeroutput"><span class="identifier">T1</span></code>
+        <code class="computeroutput"><span class="identifier">T1</span></code> <code class="computeroutput"><span class="identifier">T2</span></code>
+        <code class="computeroutput"><span class="identifier">T2</span></code> <code class="computeroutput"><span class="identifier">T3</span></code>
+        &#183;&#183;&#183;
+      </p>
+<p>
+        No <code class="computeroutput"><span class="identifier">reserve</span></code> operation is done
+        before insertion. The figures show resulting times in nanoseconds/element.
+        The horizontal axis is logarithmic.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_base_collectio"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio" title="Results for boost::base_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_base_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment0"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_base_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment1"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_base_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, GCC 6.3 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment2"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_base_collectio.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_base_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_function_colle"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle" title="Results for boost::function_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_function_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment0"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_function_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment1"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_function_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, GCC 6.3 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment2"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_function_colle.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_function_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_any_collection"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection" title="Results for boost::any_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_any_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment0"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_any_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment1"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_any_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, GCC 6.3 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment2"></a><a class="link" href="performance.html#poly_collection.performance.insertion_tests.results_for_boost_any_collection.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/insert_any_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Insertion, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="poly_collection.performance.processing_tests"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests" title="Processing tests">Processing
+      tests</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a></span></dt>
+</dl></div>
+<p>
+        Tests measure the time taken to traverse a container of size <span class="emphasis"><em>n</em></span>
+        (<span class="emphasis"><em>n</em></span> between 10<sup>2</sup> and 10<sup>7</sup>) and execute an operation on each
+        of its elements. The operation for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code>
+        and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code> (and the associated
+        baseline containers) is defined as
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">for_each_callable</span>
+<span class="special">{</span>
+  <span class="identifier">for_each_callable</span><span class="special">():</span><span class="identifier">res</span><span class="special">{</span><span class="number">0</span><span class="special">}{}</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">){</span>
+    <span class="identifier">res</span><span class="special">+=</span><span class="identifier">x</span><span class="special">(</span><span class="number">2</span><span class="special">);</span>
+  <span class="special">}</span>
+
+  <span class="keyword">int</span> <span class="identifier">res</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        whereas for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code> we use
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">for_each_incrementable</span>
+<span class="special">{</span>
+  <span class="identifier">for_each_incrementable</span><span class="special">():</span><span class="identifier">res</span><span class="special">{</span><span class="number">0</span><span class="special">}{}</span>
+
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+  <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">T</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">){</span>
+    <span class="special">++</span><span class="identifier">x</span><span class="special">;</span>
+    <span class="special">++</span><span class="identifier">res</span><span class="special">;</span>
+  <span class="special">}</span>
+
+  <span class="keyword">int</span> <span class="identifier">res</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        The baseline container is tested with three different setups:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Directly as initialized by the process described for the <a class="link" href="performance.html#poly_collection.performance.insertion_tests" title="Insertion tests">insertion
+            tests</a>. The sequence of types is complex enough that CPU's branch
+            prediction mechanisms are not able to fully anticipate it <a href="#ftn.poly_collection.performance.processing_tests.f0" class="footnote" name="poly_collection.performance.processing_tests.f0"><sup class="footnote">[15]</sup></a>. As elements are ordered according to their construction
+            time, certain degree of memory contiguity is expected.
+          </li>
+<li class="listitem">
+            With an extra post-insertion stage by which elements are sorted according
+            to their <code class="computeroutput"><span class="keyword">typeid</span><span class="special">()</span></code>.
+            This increases branch prediction efficiency at the expense of having
+            worse cache friendliness.
+          </li>
+<li class="listitem">
+            With an extra post-insertion stage that randomly shuffles all the elements
+            in the container. This is the worst possible scenario both in terms of
+            caching and branch prediction.
+          </li>
+</ul></div>
+<p>
+        As for the polymorphic collection, three variations are measured:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            With <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span></code> (the same as the baseline
+            container).
+          </li>
+<li class="listitem">
+            Using <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">poly_collection</span><span class="special">::</span><span class="identifier">for_each</span></code>.
+          </li>
+<li class="listitem">
+            Using <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">poly_collection</span><span class="special">::</span><span class="identifier">for_each</span></code> with <a class="link" href="tutorial.html#poly_collection.tutorial.algorithms.type_restitution" title="Type restitution"><span class="emphasis"><em>type
+            restitution</em></span></a> of <code class="computeroutput"><span class="identifier">T1</span></code>,
+            <code class="computeroutput"><span class="identifier">T2</span></code> and <code class="computeroutput"><span class="identifier">T3</span></code>.
+          </li>
+</ul></div>
+<p>
+        The figures show resulting times in nanoseconds/element. The horizontal axis
+        is logarithmic.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_base_collectio"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio" title="Results for boost::base_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">base_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_base_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment0"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_base_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment1"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_base_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, GCC 6.3
+            x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment2"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_base_collectio.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_base_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_function_colle"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle" title="Results for boost::function_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_function_colle.environment"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_function_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_function_colle.environment0"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_function_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_function_colle.environment1"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_function_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, GCC 6.3
+            x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_function_colle.environment2"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_function_colle.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_function_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_any_collection"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection" title="Results for boost::any_collection">Results
+        for <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">any_collection</span></code></a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment">Visual
+          Studio 2015 x86</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment0">Visual
+          Studio 2015 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment1">GCC
+          6.3 x64</a></span></dt>
+<dt><span class="section"><a href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment2">Clang
+          4.0 x64</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_any_collection.environment"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment" title="Visual Studio 2015 x86">Visual
+          Studio 2015 x86</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_any_vs2015_x86.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x86</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_any_collection.environment0"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment0" title="Visual Studio 2015 x64">Visual
+          Studio 2015 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_any_vs2015_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Visual Studio
+            2015 x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_any_collection.environment1"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment1" title="GCC 6.3 x64">GCC
+          6.3 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_any_gcc63_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, GCC 6.3
+            x64</strong></span></span>
+          </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="poly_collection.performance.processing_tests.results_for_boost_any_collection.environment2"></a><a class="link" href="performance.html#poly_collection.performance.processing_tests.results_for_boost_any_collection.environment2" title="Clang 4.0 x64">Clang
+          4.0 x64</a>
+</h5></div></div></div>
+<p>
+            <span class="aligncenter"><span class="inlinemediaobject"><img src="img/for_each_any_clang40_x64.png"></span>
+</span>
+            <span class="aligncenter"><span class="bold"><strong>Processing, Clang 4.0
+            x64</strong></span></span>
+          </p>
+</div>
+</div>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.poly_collection.performance.processing_tests.f0" class="footnote"><p><a href="#poly_collection.performance.processing_tests.f0" class="para"><sup class="para">[15] </sup></a>
+              This has been verified empirically: simpler cycles did indeed yield
+              better execution times.
+            </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Joaqu&#237;n M L&#243;pez Mu&#241;oz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tutorial.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../poly_collection.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

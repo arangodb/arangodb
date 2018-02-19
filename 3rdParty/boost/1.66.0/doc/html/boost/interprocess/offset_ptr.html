@@ -1,0 +1,334 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template offset_ptr</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../interprocess/indexes_reference.html#header.boost.interprocess.offset_ptr_hpp" title="Header &lt;boost/interprocess/offset_ptr.hpp&gt;">
+<link rel="prev" href="simple_seq_fit.html" title="Class template simple_seq_fit">
+<link rel="next" href="operator_idp55877088.html" title="Function template operator&lt;&lt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="simple_seq_fit.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../interprocess/indexes_reference.html#header.boost.interprocess.offset_ptr_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operator_idp55877088.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.interprocess.offset_ptr"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template offset_ptr</span></h2>
+<p>boost::interprocess::offset_ptr</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../interprocess/indexes_reference.html#header.boost.interprocess.offset_ptr_hpp" title="Header &lt;boost/interprocess/offset_ptr.hpp&gt;">boost/interprocess/offset_ptr.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> PointedType<span class="special">,</span> <span class="keyword">typename</span> DifferenceType<span class="special">,</span> <span class="keyword">typename</span> OffsetType<span class="special">,</span> 
+         <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> OffsetAlignment<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="offset_ptr.html#boost.interprocess.offset_ptrtypes">types</a></span>
+  <span class="keyword">typedef</span> <span class="identifier">PointedType</span>                                                  <a name="boost.interprocess.offset_ptr.element_type"></a><span class="identifier">element_type</span><span class="special">;</span>     
+  <span class="keyword">typedef</span> <span class="identifier">PointedType</span> <span class="special">*</span>                                                <a name="boost.interprocess.offset_ptr.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>          
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                                  <a name="boost.interprocess.offset_ptr.reference"></a><span class="identifier">reference</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span>                                                  <a name="boost.interprocess.offset_ptr.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">DifferenceType</span>                                               <a name="boost.interprocess.offset_ptr.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>  
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">random_access_iterator_tag</span>                              <a name="boost.interprocess.offset_ptr.iterator_category"></a><span class="identifier">iterator_category</span><span class="special">;</span>
+  <span class="keyword">typedef</span> <span class="identifier">OffsetType</span>                                                   <a name="boost.interprocess.offset_ptr.offset_type"></a><span class="identifier">offset_type</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <a class="link" href="offset_ptr.html#boost.interprocess.offset_ptr.rebind"><span class="identifier">rebind</span></a><span class="special">;</span>           
+
+  <span class="comment">// <a class="link" href="offset_ptr.html#boost.interprocess.offset_ptrconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="offset_ptr.html#idp55793056-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html#idp55794064-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="identifier">pointer</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <a class="link" href="offset_ptr.html#idp55795792-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html#idp55799440-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html#idp55802288-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+    <span class="keyword">explicit</span> <a class="link" href="offset_ptr.html#idp55806096-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html#idp55810240-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html#idp55816016-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html#idp55821792-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html#idp55827568-bb"><span class="identifier">offset_ptr</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55833344-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="identifier">pointer</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55835632-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+    <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> 
+    <a class="link" href="offset_ptr.html#idp55839056-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="offset_ptr.html#idp55762784-bb">public member functions</a></span>
+  <span class="identifier">pointer</span> <a class="link" href="offset_ptr.html#idp55763344-bb"><span class="identifier">get</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">offset_type</span> <a class="link" href="offset_ptr.html#idp55764912-bb"><span class="identifier">get_offset</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">pointer</span> <a class="link" href="offset_ptr.html#idp55766032-bb"><span class="keyword">operator</span><span class="special">-&gt;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">reference</span> <a class="link" href="offset_ptr.html#idp55767616-bb"><span class="keyword">operator</span><span class="special">*</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">reference</span> <a class="link" href="offset_ptr.html#idp55769936-bb"><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55772176-bb"><span class="keyword">operator</span><span class="special">+=</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55775280-bb"><span class="keyword">operator</span><span class="special">-=</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55778384-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55780912-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a class="link" href="offset_ptr.html#idp55783280-bb"><span class="keyword">operator</span><span class="special">--</span></a><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55786528-bb"><span class="keyword">operator</span><span class="special">--</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="offset_ptr.html#idp55789456-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="offset_ptr.html#idp55791296-bb"><span class="keyword">operator</span><span class="special">!</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="offset_ptr.html#idp55843456-bb">public static functions</a></span>
+  <span class="keyword">static</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55844016-bb"><span class="identifier">pointer_to</span></a><span class="special">(</span><span class="identifier">reference</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="offset_ptr.html#idp55846816-bb">friend functions</a></span>
+  <span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55847376-bb"><span class="keyword">operator</span><span class="special">+</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">,</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55851440-bb"><span class="keyword">operator</span><span class="special">+</span></a><span class="special">(</span><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">,</span> <span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55855360-bb"><span class="keyword">operator</span><span class="special">-</span></a><span class="special">(</span><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">,</span> <span class="identifier">difference_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a class="link" href="offset_ptr.html#idp55859264-bb"><span class="keyword">operator</span><span class="special">-</span></a><span class="special">(</span><span class="identifier">difference_type</span><span class="special">,</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">friend</span> <span class="identifier">difference_type</span> 
+  <a class="link" href="offset_ptr.html#idp55863168-bb"><span class="keyword">operator</span><span class="special">-</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="offset_ptr.html#idp55868448-bb">private member functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="offset_ptr.html#idp55869024-bb"><span class="identifier">assign</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+    <span class="keyword">void</span> <a class="link" href="offset_ptr.html#idp55872976-bb"><span class="identifier">assign</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+                <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.18.17.3.44.4.4"></a><h2>Description</h2>
+<p>A smart pointer that stores the offset between between the pointer and the the object it points. This allows offset allows special properties, since the pointer is independent from the address of the pointee, if the pointer and the pointee are still separated by the same offset. This feature converts <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> in a smart pointer that can be placed in shared memory and memory mapped files mapped in different addresses in every process.</p>
+<p>
+b&gt;Note: <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> uses implementation defined properties, present in most platforms, for performance reasons:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>Assumes that OffsetType representation of nullptr is (OffsetType)zero.</p></li>
+<li class="listitem"><p>Assumes that incrementing a OffsetType obtained from a pointer is equivalent to incrementing the pointer and then converting it back to OffsetType. </p></li>
+</ul></div>
+<p>
+</p>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.4"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> PointedType</pre>
+<p>The type of the pointee. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> DifferenceType</pre>
+<p>A signed integer type that can represent the arithmetic operations on the pointer </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> OffsetType</pre>
+<p>An unsigned integer type that can represent the distance between two pointers reinterpret_cast-ed as unsigned integers. This type should be at least of the same size of std::uintptr_t. In some systems it's possible to communicate between 32 and 64 bit processes using 64 bit offsets. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> OffsetAlignment</pre>
+<p>Alignment of the OffsetType stored inside. In some systems might be necessary to align it to 64 bits in order to communicate 32 and 64 bit processes using 64 bit offsets.</p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.5"></a><h3>
+<a name="boost.interprocess.offset_ptrtypes"></a><code class="computeroutput">offset_ptr</code> 
+        public
+       types</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<p>
+<span class="keyword">typedef</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">U</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <a name="boost.interprocess.offset_ptr.rebind"></a><span class="identifier">rebind</span><span class="special">;</span></p>
+<p>Compatibility with pointer_traits </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.6"></a><h3>
+<a name="boost.interprocess.offset_ptrconstruct-copy-destruct"></a><code class="computeroutput">offset_ptr</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="idp55793056-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Default constructor (null pointer). Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp55794064-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="identifier">pointer</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from raw pointer (allows "0" pointer conversion). Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T<span class="special">&gt;</span> <a name="idp55795792-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span> ptr<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> <span class="special">=</span> <span class="number">0</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from other pointer. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idp55799440-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from other <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <a name="idp55802288-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from other <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>. Only takes part in overload resolution if T2* is convertible to PointedType*. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <span class="keyword">explicit</span> <a name="idp55806096-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Constructor from other <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>. Only takes part in overload resolution if PointedType* is constructible from T2* other than via a conversion (e.g. cast to a derived class). Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+  <a name="idp55810240-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> r<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Emulates static_cast operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+  <a name="idp55816016-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> r<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Emulates const_cast operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+  <a name="idp55821792-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> r<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Emulates dynamic_cast operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">,</span> <span class="keyword">typename</span> P2<span class="special">,</span> <span class="keyword">typename</span> O2<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> A2<span class="special">&gt;</span> 
+  <a name="idp55827568-bb"></a><span class="identifier">offset_ptr</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">P2</span><span class="special">,</span> <span class="identifier">O2</span><span class="special">,</span> <span class="identifier">A2</span> <span class="special">&gt;</span> <span class="special">&amp;</span> r<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Emulates reinterpret_cast operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55833344-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="identifier">pointer</span> from<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Assignment from pointer (saves extra conversion). Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55835632-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Assignment from other <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> 
+  <a name="idp55839056-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span> ptr<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Assignment from related <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>. If pointers of pointee types are assignable, offset_ptrs will be assignable. Never throws. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.7"></a><h3>
+<a name="idp55762784-bb"></a><code class="computeroutput">offset_ptr</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pointer</span> <a name="idp55763344-bb"></a><span class="identifier">get</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Obtains raw pointer from offset. Never throws. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">offset_type</span> <a name="idp55764912-bb"></a><span class="identifier">get_offset</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">pointer</span> <a name="idp55766032-bb"></a><span class="keyword">operator</span><span class="special">-&gt;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Pointer-like -&gt; operator. It can return 0 pointer. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">reference</span> <a name="idp55767616-bb"></a><span class="keyword">operator</span><span class="special">*</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Dereferencing operator, if it is a null <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> behavior is undefined. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">reference</span> <a name="idp55769936-bb"></a><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span><span class="special">(</span><span class="identifier">difference_type</span> idx<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Indexing operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55772176-bb"></a><span class="keyword">operator</span><span class="special">+=</span><span class="special">(</span><span class="identifier">difference_type</span> offset<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> += difference_type. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55775280-bb"></a><span class="keyword">operator</span><span class="special">-=</span><span class="special">(</span><span class="identifier">difference_type</span> offset<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> -= difference_type. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55778384-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>++offset_ptr. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55780912-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>offset_ptr++. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> <a name="idp55783280-bb"></a><span class="keyword">operator</span><span class="special">--</span><span class="special">(</span><span class="keyword">void</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>&#8211;<code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55786528-bb"></a><span class="keyword">operator</span><span class="special">--</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code>&#8211;. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="idp55789456-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>safe bool conversion operator. Never throws. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="idp55791296-bb"></a><span class="keyword">operator</span><span class="special">!</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Not operator. Not needed in theory, but improves portability. Never throws </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.8"></a><h3>
+<a name="idp55843456-bb"></a><code class="computeroutput">offset_ptr</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55844016-bb"></a><span class="identifier">pointer_to</span><span class="special">(</span><span class="identifier">reference</span> r<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>Compatibility with pointer_traits </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.9"></a><h3>
+<a name="idp55846816-bb"></a><code class="computeroutput">offset_ptr</code> friend functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55847376-bb"></a><span class="keyword">operator</span><span class="special">+</span><span class="special">(</span><span class="identifier">difference_type</span> diff<span class="special">,</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> right<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>difference_type + <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> operation </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55851440-bb"></a><span class="keyword">operator</span><span class="special">+</span><span class="special">(</span><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> left<span class="special">,</span> <span class="identifier">difference_type</span> diff<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> + difference_type operation </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55855360-bb"></a><span class="keyword">operator</span><span class="special">-</span><span class="special">(</span><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> left<span class="special">,</span> <span class="identifier">difference_type</span> diff<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> - diff operation </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <a name="idp55859264-bb"></a><span class="keyword">operator</span><span class="special">-</span><span class="special">(</span><span class="identifier">difference_type</span> diff<span class="special">,</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> right<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> - diff operation </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">friend</span> <span class="identifier">difference_type</span> 
+<a name="idp55863168-bb"></a><span class="keyword">operator</span><span class="special">-</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> pt<span class="special">,</span> <span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a> <span class="special">&amp;</span> pt2<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> - <code class="computeroutput"><a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a></code> operation </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.18.17.3.44.4.4.10"></a><h3>
+<a name="idp55868448-bb"></a><code class="computeroutput">offset_ptr</code> private member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp55869024-bb"></a><span class="identifier">assign</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span> ptr<span class="special">,</span> 
+              <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> T2<span class="special">&gt;</span> 
+  <span class="keyword">void</span> <a name="idp55872976-bb"></a><span class="identifier">assign</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="offset_ptr.html" title="Class template offset_ptr">offset_ptr</a><span class="special">&lt;</span> <span class="identifier">T2</span><span class="special">,</span> <span class="identifier">DifferenceType</span><span class="special">,</span> <span class="identifier">OffsetType</span><span class="special">,</span> <span class="identifier">OffsetAlignment</span> <span class="special">&gt;</span> <span class="special">&amp;</span> ptr<span class="special">,</span> 
+              <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2005-2015 Ion Gaztanaga<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="simple_seq_fit.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../interprocess/indexes_reference.html#header.boost.interprocess.offset_ptr_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operator_idp55877088.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

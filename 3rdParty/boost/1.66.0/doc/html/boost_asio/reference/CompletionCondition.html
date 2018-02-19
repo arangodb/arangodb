@@ -1,0 +1,113 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Completion condition requirements</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../reference.html" title="Reference">
+<link rel="prev" href="BufferedHandshakeHandler.html" title="Buffered handshake handler requirements">
+<link rel="next" href="CompletionHandler.html" title="Completion handler requirements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BufferedHandshakeHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="CompletionHandler.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_asio.reference.CompletionCondition"></a><a class="link" href="CompletionCondition.html" title="Completion condition requirements">Completion
+      condition requirements</a>
+</h3></div></div></div>
+<p>
+        A <span class="emphasis"><em>completion condition</em></span> is a function object that is
+        used with the algorithms <a class="link" href="read.html" title="read"><code class="computeroutput">read</code></a>,
+        <a class="link" href="async_read.html" title="async_read"><code class="computeroutput">async_read</code></a>,
+        <a class="link" href="write.html" title="write"><code class="computeroutput">write</code></a>, and
+        <a class="link" href="async_write.html" title="async_write"><code class="computeroutput">async_write</code></a>
+        to determine when the algorithm has completed transferring data.
+      </p>
+<p>
+        A type <code class="computeroutput">X</code> meets the <code class="computeroutput">CompletionCondition</code> requirements
+        if it satisfies the requirements of <code class="computeroutput">Destructible</code> (C++Std [destructible])
+        and <code class="computeroutput">CopyConstructible</code> (C++Std [copyconstructible]), as well
+        as the additional requirements listed below.
+      </p>
+<p>
+        In the table below, <code class="computeroutput">x</code> denotes a value of type <code class="computeroutput">X</code>,
+        <code class="computeroutput">ec</code> denotes a (possibly const) value of type <code class="computeroutput">error_code</code>,
+        and <code class="computeroutput">n</code> denotes a (possibly const) value of type <code class="computeroutput">size_t</code>.
+      </p>
+<div class="table">
+<a name="boost_asio.reference.CompletionCondition.t0"></a><p class="title"><b>Table&#160;6.&#160;CompletionCondition requirements</b></p>
+<div class="table-contents"><table class="table" summary="CompletionCondition requirements">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  expression
+                </p>
+              </th>
+<th>
+                <p>
+                  return type
+                </p>
+              </th>
+<th>
+                <p>
+                  assertion/note<br> pre/post-condition
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput">x(ec, n)</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput">size_t</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Let <code class="computeroutput">n</code> be the total number of bytes transferred by
+                  the read or write algorithm so far.<br> <br> Returns the maximum
+                  number of bytes to be transferred on the next <code class="computeroutput">read_some</code>,
+                  <code class="computeroutput">async_read_some</code>, <code class="computeroutput">write_some</code>, or <code class="computeroutput">async_write_some</code>
+                  operation performed by the algorithm. Returns <code class="computeroutput">0</code> to
+                  indicate that the algorithm is complete.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="BufferedHandshakeHandler.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../reference.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../boost_asio.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="CompletionHandler.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

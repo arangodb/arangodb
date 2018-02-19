@@ -1,0 +1,80 @@
+#!/usr/bin/env b2 -a --verbose-test
+# Copyright Rene Rivera 2011-2016
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import ../check/predef : require check : predef-require predef-check ;
+
+local predef-include-root ;
+local predef-dependency ;
+
+local modular-predef-h = [ glob $(BOOST_PREDEF_ROOT)/include/boost/predef.h ] ;
+local BOOST_RELEASE_LAYOUT ;
+if ! $(modular-predef-h)
+{
+    BOOST_RELEASE_LAYOUT = yes ;
+}
+
+# When using modular layout, header files are not present in $root/boost
+# unlink links are created, therefore instead of direct dependency on
+# a header, we need to use dependency on metatarget.
+if $(BOOST_RELEASE_LAYOUT)
+{
+   predef-dependency = $(predef-include-root)/boost/predef.h ;
+}
+else if $(BOOST_PREDEF_ROOT)
+{
+    predef-include-root = $(BOOST_PREDEF_ROOT)/include ;
+    predef-dependency = $(predef-include-root)/boost/predef.h ;
+}
+else if $(BOOST_MODULARLAYOUT)
+{
+    predef-include-root = $(BOOST_ROOT) ;
+    predef-dependency = /boost//predef-headers ;
+}
+else
+{
+   predef-dependency = $(predef-include-root)/boost/predef.h ;
+}
+
+project predef-test
+    :   requirements
+        <include>$(predef-include-root)
+        # Add explicit dependency since we don't have header scanner for
+        # .m and .mm files.
+        <dependency>$(predef-dependency)
+    ;
+
+using testing ;
+
+test-suite predef :
+    [ run info_as_cpp.cpp : : : <test-info>always_show_run_output ]
+    [ run info_as_c.c : : : <test-info>always_show_run_output ]
+    [ run info_as_objcpp.mm : : : <test-info>always_show_run_output ]
+    [ run info_as_objc.m : : : <test-info>always_show_run_output ]
+    [ run version.cpp ]
+    [ run make.cpp ]
+    [ compile macos_endian.c : [ predef-require "BOOST_OS_MACOS" : cpp ] ]
+    [ compile macos_vs_bsd.c : [ predef-require "BOOST_OS_MACOS" : cpp ] ]
+    [ run check_value.cpp : : : <test-info>always_show_run_output
+        [ predef-check "BOOST_COMP_CLANG > 0.0.0" "BOOST_OS_LINUX == 0" : : <cxxflags>-DCHECK_VALUE=true ] ]
+    [ run workaround.cpp ]
+    [ compile workaround_strict_config.cpp ]
+    [ run tested_at.cpp ]
+    [ compile-fail tested_at_outdated.cpp : <test-info>always_show_run_output ]
+	[ compile platform_windows.cpp ]
+    ;
+
+# Minimal testing done for predef for CI. Since
+# we don't have many we can just do all of them.
+alias minimal : predef ;
+
+# Full testing target for regular regression tests.
+alias full : predef ;
+
+# Extra's target. Nothing for Predef.
+alias extra ;
+
+explicit minimal ;
+explicit extra ;

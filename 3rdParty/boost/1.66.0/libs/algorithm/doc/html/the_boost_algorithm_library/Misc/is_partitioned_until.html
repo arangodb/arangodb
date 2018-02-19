@@ -1,0 +1,142 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>is_partitioned_until</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost Algorithm Library">
+<link rel="up" href="../../algorithm/Misc.html" title="Other Algorithms">
+<link rel="prev" href="is_palindrome.html" title="is_palindrome">
+<link rel="next" href="../../algorithm/reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_palindrome.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../algorithm/reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until"></a><a class="link" href="is_partitioned_until.html" title="is_partitioned_until">is_partitioned_until
+      </a>
+</h3></div></div></div>
+<p>
+        The header file 'is_partitioned_until.hpp' contains two variants of a single
+        algorithm, <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>.
+        The algorithm tests to see if a sequence is partitioned according to a predicate;
+        in other words, all the items in the sequence that satisfy the predicate
+        are at the beginning of the sequence.
+      </p>
+<p>
+        The routine <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+        takes a sequence and a predicate. It returns the last iterator 'it' in the
+        sequence [begin, end) for which the is_partitioned(begin, it) is true.
+      </p>
+<p>
+        <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code> come
+        in two forms; the first one takes two iterators to define the range. The
+        second form takes a single range parameter, and uses Boost.Range to traverse
+        it.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h0"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.interface"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.interface">interface</a>
+      </h5>
+<p>
+        The function <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+        returns the last iterator 'it' in the sequence [begin, end) for which the
+        is_partitioned(begin, it) is true. There are two versions; one takes two
+        iterators, and the other takes a range.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">InputIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="identifier">InputIterator</span> <span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">InputIterator</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">InputIterator</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">Range</span><span class="special">&gt;::</span><span class="identifier">type</span> <span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h1"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.examples"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.examples">Examples</a>
+      </h5>
+<p>
+        Given the container <code class="computeroutput"><span class="identifier">c</span></code> containing
+        <code class="computeroutput"><span class="special">{</span> <span class="number">0</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span>
+        <span class="number">2</span><span class="special">,</span> <span class="number">3</span><span class="special">,</span> <span class="number">14</span><span class="special">,</span> <span class="number">15</span> <span class="special">}</span></code>,
+        then
+</p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">isOdd</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i</span> <span class="special">%</span> <span class="number">2</span> <span class="special">==</span> <span class="number">1</span><span class="special">;</span> <span class="special">}</span>
+<span class="keyword">bool</span> <span class="identifier">lessThan10</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">)</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="number">10</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">isOdd</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">iterator</span> <span class="identifier">to</span> <span class="char">'1'</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">begin</span> <span class="special">()</span> <span class="special">+</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">lessThan10</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>
+<span class="identifier">is_partitioned_until</span> <span class="special">(</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">end</span> <span class="special">(),</span> <span class="identifier">isOdd</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">end</span>  <span class="comment">// empty range</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h2"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.iterator_requirements"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.iterator_requirements">Iterator
+        Requirements</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code> works
+        on all iterators except output iterators.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h3"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.complexity"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.complexity">Complexity</a>
+      </h5>
+<p>
+        Both of the variants of <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+        run in <span class="emphasis"><em>O(N)</em></span> (linear) time; that is, they compare against
+        each element in the list once. If the sequence is found to be not partitioned
+        at any point, the routine will terminate immediately, without examining the
+        rest of the elements.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h4"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.exception_safety"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.exception_safety">Exception
+        Safety</a>
+      </h5>
+<p>
+        Both of the variants of <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+        take their parameters by value or const reference, and do not depend upon
+        any global state. Therefore, all the routines in this file provide the strong
+        exception guarantee.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_partitioned_until.h5"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_partitioned_until.notes"></a></span><a class="link" href="is_partitioned_until.html#the_boost_algorithm_library.Misc.is_partitioned_until.notes">Notes</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <code class="computeroutput"><span class="identifier">is_partitioned_until</span></code>
+            returns iterator to the end for empty and single-element ranges, no matter
+            what predicate is passed to test against.
+          </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2012 Marshall Clow<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="is_palindrome.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../../algorithm/reference.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

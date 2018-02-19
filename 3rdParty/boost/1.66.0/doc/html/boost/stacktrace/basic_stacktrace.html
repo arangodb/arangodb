@@ -1,0 +1,366 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template basic_stacktrace</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../stacktrace/reference.html#header.boost.stacktrace.stacktrace_hpp" title="Header &lt;boost/stacktrace/stacktrace.hpp&gt;">
+<link rel="prev" href="../../stacktrace/reference.html" title="Reference">
+<link rel="next" href="operator_1_3_38_7_3_1_1_3.html" title="Function template operator&lt;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../stacktrace/reference.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../stacktrace/reference.html#header.boost.stacktrace.stacktrace_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operator_1_3_38_7_3_1_1_3.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.stacktrace.basic_stacktrace"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template basic_stacktrace</span></h2>
+<p>boost::stacktrace::basic_stacktrace</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../stacktrace/reference.html#header.boost.stacktrace.stacktrace_hpp" title="Header &lt;boost/stacktrace/stacktrace.hpp&gt;">boost/stacktrace/stacktrace.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Allocator<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// types</span>
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">value_type</span>             <a name="boost.stacktrace.basic_stacktrace.value_type"></a><span class="identifier">value_type</span><span class="special">;</span>            
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">allocator_type</span>         <a name="boost.stacktrace.basic_stacktrace.allocator_type"></a><span class="identifier">allocator_type</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_pointer</span>          <a name="boost.stacktrace.basic_stacktrace.pointer"></a><span class="identifier">pointer</span><span class="special">;</span>               
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_pointer</span>          <a name="boost.stacktrace.basic_stacktrace.const_pointer"></a><span class="identifier">const_pointer</span><span class="special">;</span>         
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_reference</span>        <a name="boost.stacktrace.basic_stacktrace.reference"></a><span class="identifier">reference</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_reference</span>        <a name="boost.stacktrace.basic_stacktrace.const_reference"></a><span class="identifier">const_reference</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">size_type</span>              <a name="boost.stacktrace.basic_stacktrace.size_type"></a><span class="identifier">size_type</span><span class="special">;</span>             
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">difference_type</span>        <a name="boost.stacktrace.basic_stacktrace.difference_type"></a><span class="identifier">difference_type</span><span class="special">;</span>       
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_iterator</span>         <a name="boost.stacktrace.basic_stacktrace.iterator"></a><span class="identifier">iterator</span><span class="special">;</span>              
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_iterator</span>         <a name="boost.stacktrace.basic_stacktrace.const_iterator"></a><span class="identifier">const_iterator</span><span class="special">;</span>        
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_reverse_iterator</span> <a name="boost.stacktrace.basic_stacktrace.reverse_iterator"></a><span class="identifier">reverse_iterator</span><span class="special">;</span>      
+  <span class="keyword">typedef</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span><span class="special">::</span><span class="identifier">const_reverse_iterator</span> <a name="boost.stacktrace.basic_stacktrace.const_reverse_iterator"></a><span class="identifier">const_reverse_iterator</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_stacktrace.html#boost.stacktrace.basic_stacktraceconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_16-bb"><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_17-bb"><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_18-bb"><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> 
+                   <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_19-bb"><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_22-bb"><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_20-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_23-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_21-bb"><span class="special">~</span><span class="identifier">basic_stacktrace</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15-bb">public member functions</a></span>
+  <span class="identifier">size_type</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_1-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reference</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_2-bb"><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_3-bb"><span class="identifier">begin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_4-bb"><span class="identifier">cbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_5-bb"><span class="identifier">end</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_6-bb"><span class="identifier">cend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_7-bb"><span class="identifier">rbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_8-bb"><span class="identifier">crbegin</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_9-bb"><span class="identifier">rend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">const_reverse_iterator</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_10-bb"><span class="identifier">crend</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">explicit</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_11-bb"><span class="keyword">operator</span> <span class="keyword">bool</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">bool</span> <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_12-bb"><span class="identifier">empty</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_15_13-bb"><span class="identifier">as_vector</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_24-bb">public static functions</a></span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Trait<span class="special">&gt;</span> 
+    <span class="keyword">static</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> 
+    <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_24_1-bb"><span class="identifier">from_dump</span></a><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">Char</span><span class="special">,</span> <span class="identifier">Trait</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">,</span> 
+              <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">static</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> 
+  <a class="link" href="basic_stacktrace.html#id-1_3_38_7_3_1_1_1_24_2-bb"><span class="identifier">from_dump</span></a><span class="special">(</span><span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">,</span> 
+            <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.38.7.2.3.4"></a><h2>Description</h2>
+<p>Class that on construction copies minimal information about call stack into its internals and provides access to that information. 
+</p>
+<div class="refsect2">
+<a name="id-1.3.38.7.2.3.4.3"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Allocator</pre>
+<p>Allocator to use during stack capture. </p>
+</li></ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.38.7.2.3.4.4"></a><h3>
+<a name="boost.stacktrace.basic_stacktraceconstruct-copy-destruct"></a><code class="computeroutput">basic_stacktrace</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_3_1_1_1_16-bb"></a><span class="identifier">basic_stacktrace</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Stores the current function call sequence inside *this without any decoding or any other heavy platform specific operations. <p><span class="bold"><strong>Complexity:</strong></span> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_38_7_3_1_1_1_17-bb"></a><span class="identifier">basic_stacktrace</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Stores the current function call sequence inside *this without any decoding or any other heavy platform specific operations. <p><span class="bold"><strong>Complexity:</strong></span> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe.</p>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">a</code></span></p></td>
+<td><p>Allocator that would be passed to underlying storeage. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_3_1_1_1_18-bb"></a><span class="identifier">basic_stacktrace</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> skip<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> max_depth<span class="special">,</span> 
+                 <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Stores [skip, skip + max_depth) of the current function call sequence inside *this without any decoding or any other heavy platform specific operations. <p><span class="bold"><strong>Complexity:</strong></span> O(N) where N is call sequence length, O(1) if BOOST_STACKTRACE_USE_NOOP is defined.</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe.</p>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">a</code></span></p></td>
+<td><p>Allocator that would be passed to underlying storeage.</p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">max_depth</code></span></p></td>
+<td><p>Max call sequence depth to collect.</p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">skip</code></span></p></td>
+<td><p>How many top calls to skip and do not store in *this.</p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Throws:</span></p></td>
+<td>Nothing. Note that default construction of allocator may throw, however it is performed outside the constructor and exception in <code class="computeroutput">allocator_type()</code> would not result in calling <code class="computeroutput">std::terminate</code>. </td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_3_1_1_1_19-bb"></a><span class="identifier">basic_stacktrace</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> st<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(st.size())</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_3_1_1_1_22-bb"></a><span class="identifier">basic_stacktrace</span><span class="special">(</span><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;&amp;</span> st<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction and copying are async signal safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> <a name="id-1_3_38_7_3_1_1_1_20-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> st<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(st.size())</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction, copying, Allocator::allocate and Allocator::deallocate are async signal safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;</span> <a name="id-1_3_38_7_3_1_1_1_23-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> <span class="special">&amp;&amp;</span> st<span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(st.size())</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator construction and copying are async signal safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_38_7_3_1_1_1_21-bb"></a><span class="special">~</span><span class="identifier">basic_stacktrace</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe if Allocator::deallocate is async signal safe. </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.38.7.2.3.4.5"></a><h3>
+<a name="id-1_3_38_7_3_1_1_1_15-bb"></a><code class="computeroutput">basic_stacktrace</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">size_type</span> <a name="id-1_3_38_7_3_1_1_1_15_1-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>
+<span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>Number of function names stored inside the class.</p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reference</span> <a name="id-1_3_38_7_3_1_1_1_15_2-bb"></a><span class="keyword">operator</span><span class="special">[</span><span class="special">]</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> frame_no<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p>
+
+<span class="bold"><strong>Complexity:</strong></span> O(1).</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term"><code class="computeroutput">frame_no</code></span></p></td>
+<td><p>Zero based index of frame to return. 0 is the function index where stacktrace was constructed and index close to this-&gt;size() contains function <code class="computeroutput">main()</code>. </p></td>
+</tr></tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p>frame that references the actual frame info, stored inside *this.</p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_3-bb"></a><span class="identifier">begin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_4-bb"></a><span class="identifier">cbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_5-bb"></a><span class="identifier">end</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_6-bb"></a><span class="identifier">cend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_7-bb"></a><span class="identifier">rbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_8-bb"></a><span class="identifier">crbegin</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_9-bb"></a><span class="identifier">rend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">const_reverse_iterator</span> <a name="id-1_3_38_7_3_1_1_1_15_10-bb"></a><span class="identifier">crend</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>
+<p><span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">explicit</span> <a name="id-1_3_38_7_3_1_1_1_15_11-bb"></a><span class="keyword">operator</span> <span class="keyword">bool</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Allows to check that stack trace capturing was successful. <p>
+<span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p><code class="computeroutput">true</code> if <code class="computeroutput">this-&gt;size() != 0</code></p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">bool</span> <a name="id-1_3_38_7_3_1_1_1_15_12-bb"></a><span class="identifier">empty</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Allows to check that stack trace failed. <p>
+<span class="bold"><strong>Complexity:</strong></span> O(1)</p>
+<p><span class="bold"><strong>Async-Handler-Safety</strong></span>: Safe. </p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Returns:</span></p></td>
+<td><p><code class="computeroutput">true</code> if <code class="computeroutput">this-&gt;size() == 0</code></p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <a class="link" href="frame.html" title="Class frame">boost::stacktrace::frame</a><span class="special">,</span> <span class="identifier">Allocator</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+<a name="id-1_3_38_7_3_1_1_1_15_13-bb"></a><span class="identifier">as_vector</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.38.7.2.3.4.6"></a><h3>
+<a name="id-1_3_38_7_3_1_1_1_24-bb"></a><code class="computeroutput">basic_stacktrace</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Char<span class="special">,</span> <span class="keyword">typename</span> Trait<span class="special">&gt;</span> 
+  <span class="keyword">static</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> 
+  <a name="id-1_3_38_7_3_1_1_1_24_1-bb"></a><span class="identifier">from_dump</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_istream</span><span class="special">&lt;</span> <span class="identifier">Char</span><span class="special">,</span> <span class="identifier">Trait</span> <span class="special">&gt;</span> <span class="special">&amp;</span> in<span class="special">,</span> 
+            <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs stacktrace from basic_istreamable that references the dumped stacktrace. Terminating zero frame is discarded.</p>
+<p><span class="bold"><strong>Complexity:</strong></span> O(N) </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <a class="link" href="basic_stacktrace.html" title="Class template basic_stacktrace">basic_stacktrace</a> 
+<a name="id-1_3_38_7_3_1_1_1_24_2-bb"></a><span class="identifier">from_dump</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">void</span> <span class="special">*</span> begin<span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> buffer_size_in_bytes<span class="special">,</span> 
+          <span class="keyword">const</span> <span class="identifier">allocator_type</span> <span class="special">&amp;</span> a <span class="special">=</span> <span class="identifier">allocator_type</span><span class="special">(</span><span class="special">)</span><span class="special">)</span><span class="special">;</span></pre>
+<p>Constructs stacktrace from raw memory dump. Terminating zero frame is discarded.</p>
+<p><span class="bold"><strong>Complexity:</strong></span> O(size) in worst case </p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Antony Polukhin<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../stacktrace/reference.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../stacktrace/reference.html#header.boost.stacktrace.stacktrace_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="operator_1_3_38_7_3_1_1_3.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

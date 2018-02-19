@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Revision History</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../boost_dll.html" title="Chapter&#160;12.&#160;Boost.DLL">
+<link rel="prev" href="dependencies.html" title="Dependencies">
+<link rel="next" href="acknowledgements.html" title="Acknowledgements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dependencies.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_dll.revision_history"></a><a class="link" href="revision_history.html" title="Revision History">Revision History</a>
+</h2></div></div></div>
+<h6>
+<a name="boost_dll.revision_history.h0"></a>
+      <span class="phrase"><a name="boost_dll.revision_history.1_0__first_boost_release_"></a></span><a class="link" href="revision_history.html#boost_dll.revision_history.1_0__first_boost_release_">1.0
+      (First Boost release)</a>
+    </h6>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Removed <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">load_self</span><span class="special">()</span></code>
+        </li>
+<li class="listitem">
+          Renamed <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">path</span><span class="special">()</span></code> to <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">location</span><span class="special">()</span></code>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">import_function</span><span class="special">*</span></code>
+          and <code class="computeroutput"><span class="identifier">import_variable</span><span class="special">*</span></code>
+          functions were refactored into <code class="computeroutput"><span class="identifier">import</span><span class="special">*</span></code> functions
+        </li>
+<li class="listitem">
+          Dropped dependency to 'boost::string_ref'
+        </li>
+<li class="listitem">
+          Multiple MacOS and Android fixes
+        </li>
+<li class="listitem">
+          Performance and memory optimizations for <code class="computeroutput"><span class="identifier">import</span><span class="special">*</span></code> functions
+        </li>
+<li class="listitem">
+          Refactored <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">load</span><span class="special">()</span></code> implementation, unified <code class="computeroutput"><span class="identifier">load_mode</span><span class="special">::</span><span class="identifier">append_decorations</span></code> behavior across platforms
+        </li>
+<li class="listitem">
+          Renamed <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">search_symbol</span><span class="special">()</span></code> to <code class="computeroutput"><span class="identifier">shared_library</span><span class="special">::</span><span class="identifier">has</span><span class="special">()</span></code>
+        </li>
+<li class="listitem">
+          Dropped support for useless Windows specific <code class="computeroutput"><span class="identifier">load_library_as_</span><span class="special">*</span></code> flags
+        </li>
+<li class="listitem">
+          Improved error reporting for failed library loads
+        </li>
+<li class="listitem">
+          Implemented a copy constructor and assignment operator for <code class="computeroutput"><span class="identifier">shared_library</span></code>
+        </li>
+</ul></div>
+<h6>
+<a name="boost_dll.revision_history.h1"></a>
+      <span class="phrase"><a name="boost_dll.revision_history.0_2"></a></span><a class="link" href="revision_history.html#boost_dll.revision_history.0_2">0.2</a>
+    </h6>
+<p>
+      Applied comments from "Boost query interest" mails and Boost Incubator,
+      implemented new features:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Project was renamed to Boost.DLL.
+        </li>
+<li class="listitem">
+          Improved docs.
+        </li>
+<li class="listitem">
+          Added library_info class.
+        </li>
+<li class="listitem">
+          Aliases macro for explicit specification of sections.
+        </li>
+<li class="listitem">
+          Aliases now use "boostdll" section.
+        </li>
+<li class="listitem">
+          Added <code class="computeroutput"><span class="identifier">symbol_location</span><span class="special">()</span></code>
+          methods.
+        </li>
+<li class="listitem">
+          Added <code class="computeroutput"><span class="identifier">this_line_location</span><span class="special">()</span></code> method.
+        </li>
+</ul></div>
+<h6>
+<a name="boost_dll.revision_history.h2"></a>
+      <span class="phrase"><a name="boost_dll.revision_history.0_1"></a></span><a class="link" href="revision_history.html#boost_dll.revision_history.0_1">0.1</a>
+    </h6>
+<p>
+      Boost.Plugin 0.1 (Initial Solo Prototype taken from <a href="https://github.com/retf/Boost.Application" target="_top">Boost.Application</a>
+      with many improvements)
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014 Renato Tegon Forti, Antony Polukhin<br>Copyright &#169; 2015 Antony Polukhin<br>Copyright &#169; 2016 Antony Polukhin, Klemens Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="dependencies.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../boost_dll.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

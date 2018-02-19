@@ -1,0 +1,99 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>quaternions, vectors, matrices</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>Quaternions, Vectors, Matrices</h3>
+</div>
+<p>Out of the box Boost QVM defines generic yet simple <i><span class="RenoLink"><a href="quat.html">quat</a></span></i>, <i><span class="RenoLink"><a href="vec.html">vec</a></span></i> and <i><span class="RenoLink"><a href="mat.html">mat</a></span></i> types. For example, the following snippet creates a quaternion object that rotates around the X axis:</p>
+<pre>#include &lt;<span class="RenoLink"><a href="boost_qvm_quat_hpp.html">boost/qvm/quat.hpp</a></span>&gt;
+#include &lt;<span class="RenoLink"><a href="boost_qvm_quat_operations_hpp.html">boost/qvm/quat_operations.hpp</a></span>&gt;
+
+....
+<span class="RenoLink"><a href="quat.html">quat</a></span>&lt;float&gt; rx=<span class="RenoLink"><a href="rotx_quat_scalar_.html">rotx_quat</a></span>(3.14159f);</pre>
+<p>Similarly, a matrix that translates by a given vector can be created as follows:</p>
+<pre>#include &lt;<span class="RenoLink"><a href="boost_qvm_mat_hpp.html">boost/qvm/mat.hpp</a></span>&gt;
+#include &lt;<span class="RenoLink"><a href="boost_qvm_vec_hpp.html">boost/qvm/vec.hpp</a></span>&gt;
+#include &lt;<span class="RenoLink"><a href="boost_qvm_map_vec_mat_hpp.html">boost/qvm/map_vec_mat.hpp</a></span>&gt;
+
+....
+<span class="RenoLink"><a href="vec.html">vec</a></span>&lt;float,3&gt; v={0,0,7};
+<span class="RenoLink"><a href="mat.html">mat</a></span>&lt;float,4,4&gt; tr=<span class="RenoLink"><a href="translation_mat.html">translation_mat</a></span>(v);</pre>
+<p>The usual quaternion, vector and matrix operations work on these Boost QVM types, however <i>the operations are decoupled from any specific types</i>: they work on any suitable type that has been registered by specializing the <i><span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span></i>, <i><span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span></i> and <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> templates.</p>
+<p>For example, a user-defined 3D vector type <i>float3</i> can be introduced to Boost QVM as follows:</p>
+<div class="RenoIncludeDIV"><pre>#include &lt;<span class="RenoLink"><a href="boost_qvm_vec_traits_hpp.html">boost/qvm/vec_traits.hpp</a></span>&gt;
+
+struct float3 { float a[3]; };
+
+namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;float3&gt;
+        {
+            static int const <span class="RenoLink"><a href="vec_traits_Vector_dim.html">dim</a></span>=3;
+            typedef float <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span>;
+
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element.html">write_element</a></span>( float3 &amp; v ) { return v.a[I]; }
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_read_element.html">read_element</a></span>( float3 const &amp; v ) { return v.a[I]; }
+
+            static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element_idx.html">write_element_idx</a></span>( int i, float3 &amp; v ) { return v.a[i]; } //optional
+            static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> <span class="RenoLink"><a href="vec_traits_V_read_element_idx.html">read_element_idx</a></span>( int i, float3 const &amp; v ) { return v.a[i]; } //optional
+        };
+    }
+}</pre>
+<p>Equivalently, using the <i><span class="RenoLink"><a href="vec_traits_defaults.html">vec_traits_defaults</a></span></i> template the above can be shortened to:</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+        template &lt;&gt;
+        struct <span class="RenoLink"><a href="vec_traits.html">vec_traits</a></span>&lt;float3&gt;: <span class="RenoLink"><a href="vec_traits_defaults.html">vec_traits_defaults</a></span>&lt;float3,float,3&gt;
+        {
+            template &lt;int I&gt; static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element.html">write_element</a></span>( float3 &amp; v ) { return v.a[I]; }
+
+            static inline <span class="RenoLink"><a href="vec_traits_V_scalar_type.html">scalar_type</a></span> &amp; <span class="RenoLink"><a href="vec_traits_V_write_element_idx.html">write_element_idx</a></span>( int i, float3 &amp; v ) { return v.a[i]; } //optional
+        };
+    }
+}</pre>
+</div><p>After a similar specialization of the <i><span class="RenoLink"><a href="mat_traits.html">mat_traits</a></span></i> template for a user-defined 3x3 matrix type <i>float33</i>, the full range of vector and matrix operations defined by Boost QVM headers becomes available automatically:</p>
+<pre>float3 v;
+<span class="RenoLink"><a href="accessing_vector_elements.html">X</a></span>(v) = 0;
+<span class="RenoLink"><a href="accessing_vector_elements.html">Y</a></span>(v) = 0;
+<span class="RenoLink"><a href="accessing_vector_elements.html">Z</a></span>(v) = 7;
+float vmag = <span class="RenoLink"><a href="mag_vec_.html">mag</a></span>(v);
+float33 m = <span class="RenoLink"><a href="rotx_mat_scalar_.html">rotx_mat</a></span>&lt;3&gt;(3.14159f);
+float3 vrot = m <span class="RenoLink"><a href="operator_times_mat_vec_.html">*</a></span> v;</pre>
+<p>User-defined quaternion types are similarly introduced to Boost QVM by specializing the <i><span class="RenoLink"><a href="quat_traits.html">quat_traits</a></span></i> template.</p>
+</div><div class="RenoIncludeDIV"><div class="RenoHR"><hr/></div>
+<p><b>Tutorial navigation:</b> <span class="RenoLink">Quaternions, Vectors, Matrices</span> | <span class="RenoLink"><a href="c_arrays.html">C Arrays</a></span> | <span class="RenoLink"><a href="Views.html">Views</a></span> | <span class="RenoLink"><a href="Swizzling.html">Swizzling</a></span> | <span class="RenoLink"><a href="Interoperability.html">Interoperability</a></span><span class="RenoBR">&nbsp;</span><br/><span class="RenoBR">&nbsp;</span><br/>See also: <span class="RenoLink"><a href="index.html">Boost QVM</a></span></p>
+</div><!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

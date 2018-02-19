@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC '-//W3C//DTD XHTML 1.0 Strict//EN'
+'http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd'>
+<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en' lang='en'>
+<head>
+	<meta http-equiv='Content-Type' content='text/html; charset=utf-8'/>
+	<title>deduce_quat2</title>
+	<link href='reno.css' type='text/css' rel='stylesheet'/>
+</head>
+<body>
+<div class="body-0">
+<div class="body-1">
+<div class="body-2">
+<div>
+<h1>QVM: Quaternions, Vectors, Matrices</h1>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div class="RenoIncludeDIV"><div class="RenoAutoDIV"><h3>deduce_quat2</h3>
+</div>
+<div class="RenoIncludeDIV"><p><span class="RenoEscape">&#35;<!--<wiki>`&#35;</wiki>--></span>include &lt;<span class="RenoLink"><a href="boost_qvm_deduce_quat_hpp.html">boost/qvm/deduce_quat.hpp</a></span>&gt;</p>
+<pre>namespace boost
+{
+    namespace <span class="RenoLink"><a href="qvm.html">qvm</a></span>
+    {
+<span class="RenoIncludeSPAN">        template &lt;class A,class B&gt;
+        struct <span class="RenoLink">deduce_quat2</span>
+        {
+            typedef /*unspecified*/ type;
+        };</span>
+    }
+}</pre>
+</div><h4>Assumptions:</h4>
+<div><ul><li>Both <i><span class="RenoLink"><a href="scalar.html">scalar</a></span>&lt;A&gt;::type</i> and <i><span class="RenoLink"><a href="scalar.html">scalar</a></span>&lt;B&gt;::type</i> are well defined</li>
+<li><i><span class="RenoLink"><a href="is_quat.html">is_quat</a></span>&lt;A&gt;::value || <span class="RenoLink"><a href="is_quat.html">is_quat</a></span>&lt;B&gt;::value</i> is <i>true</i></li>
+</ul></div>
+<h4>Requirements:</h4>
+<div><ul><li><i><span class="RenoLink"><a href="is_quat.html">is_quat</a></span>&lt;<span class="RenoLink">deduce_quat2</span>&lt;A,B&gt;::type&gt;::value</i> must be <i>true</i></li>
+<li><i><span class="RenoLink">deduce_quat2</span>&lt;A,B&gt;::type</i> must be copyable</li>
+</ul></div>
+<p>This template is used by Boost QVM whenever it needs to deduce a quaternion type from the types of two user-supplied function parameters. The returned type must have accessible copy constructor (the <i>A</i> and <i>B</i> types themselves could be non-copyable, and either one of them may not be a quaternion type.)</p>
+<p>The main template definition returns an unspecified quaternion type with <i><span class="RenoLink"><a href="mat_traits_M_scalar_type.html">scalar_type</a></span></i> obtained by <i><span class="RenoLink"><a href="deduce_scalar.html">deduce_scalar</a></span>&lt;A,B&gt;::type</i>, except if <i>A</i> and <i>B</i> are the same quaternion type <i>Q</i>, in which case <i>Q</i> is returned, which is only suitable for copyable types. Boost QVM also defines (partial) specializations for the non-copyable quaternion types it produces. Users can define other (partial) specializations for their own types.</p>
+<p>A typical use of the <i><span class="RenoLink">deduce_quat2</span></i> template is for specifying the preferred quaternion type to be returned by the generic function template overloads in Boost QVM depending on the type of their arguments.</p>
+</div><div class="RenoAutoDIV"><div class="RenoHR"><hr/></div>
+See also: <span class="RenoPageList"><a href="boost_qvm_deduce_quat_hpp.html">boost/qvm/deduce_quat.hpp</a>&nbsp;| <a href="boost_qvm_quat_traits_array_hpp.html">boost/qvm/quat_traits_array.hpp</a>&nbsp;| <a href="operator_times_quat_quat_.html">operator*(quat,quat)</a>&nbsp;| <a href="operator_plus_quat_quat_.html">operator+(quat,quat)</a>&nbsp;| <a href="operator_minus_quat_quat_.html">operator-(quat,quat)</a>&nbsp;| <a href="slerp.html">slerp</a></span>
+</div>
+<!-- Copyright (c) 2008-2016 Emil Dotchevski and Reverge Studios, Inc. -->
+<!-- Distributed under the Boost Software License, Version 1.0. (See accompanying -->
+<!-- file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt) -->
+<div id="footer">
+<p>
+<a class="logo" href="http://jigsaw.w3.org/css-validator/check/referer"><img class="logo_pic" src="valid-css.png" alt="Valid CSS" height="31" width="88"/></a>
+<a class="logo" href="http://validator.w3.org/check?uri=referer"><img class="logo_pic" src="valid-xhtml.png" alt="Valid XHTML 1.0" height="31" width="88"/></a>
+<small>Copyright (c) 2008-2016 by Emil Dotchevski and Reverge Studios, Inc.<br/>
+Distributed under the <a href="http://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.</small>
+</p>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

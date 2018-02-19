@@ -1,0 +1,82 @@
+[/
+ / Copyright (c) 2003-2017 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:ResolveHandler Resolve handler requirements]
+
+A resolve handler must meet the requirements for a [link boost_asio.reference.Handler
+handler]. A value `h` of a resolve handler class should work correctly in the
+expression `h(ec, r)`, where `ec` is an lvalue of type `const error_code` and
+`r` is an lvalue of type `const ip::basic_resolver_results<InternetProtocol>`.
+`InternetProtocol` is the template parameter of the [link
+boost_asio.reference.ip__basic_resolver `ip::basic_resolver<>`] which is used to
+initiate the asynchronous operation.
+
+[heading Examples]
+
+A free function as a resolve handler:
+
+  void resolve_handler(
+      const boost::system::error_code& ec,
+      boost::asio::ip::tcp::resolver::results_type results)
+  {
+    ...
+  }
+
+A resolve handler function object:
+
+  struct resolve_handler
+  {
+    ...
+    void operator()(
+        const boost::system::error_code& ec,
+        boost::asio::ip::tcp::resolver::results_type results)
+    {
+      ...
+    }
+    ...
+  };
+
+A lambda as a resolve handler:
+
+  resolver.async_resolve(...,
+      [](const boost::system::error_code& ec,
+        boost::asio::ip::tcp::resolver::results_type results)
+      {
+        ...
+      });
+
+A non-static class member function adapted to a resolve handler using
+`std::bind()`:
+
+  void my_class::resolve_handler(
+      const boost::system::error_code& ec,
+      boost::asio::ip::tcp::resolver::results_type results)
+  {
+    ...
+  }
+  ...
+  resolver.async_resolve(...,
+      std::bind(&my_class::resolve_handler,
+        this, std::placeholders::_1,
+        std::placeholders::_2));
+
+A non-static class member function adapted to a resolve handler using
+`boost::bind()`:
+
+  void my_class::resolve_handler(
+      const boost::system::error_code& ec,
+      boost::asio::ip::tcp::resolver::results_type results)
+  {
+    ...
+  }
+  ...
+  resolver.async_resolve(...,
+      boost::bind(&my_class::resolve_handler,
+        this, boost::asio::placeholders::error,
+        boost::asio::placeholders::results));
+
+[endsect]

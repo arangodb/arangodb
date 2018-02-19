@@ -1,0 +1,614 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Tutorial</title>
+<link rel="stylesheet" href="../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../process.html" title="Chapter&#160;29.&#160;Boost.Process">
+<link rel="prev" href="concepts.html" title="Concepts">
+<link rel="next" href="design.html" title="Design Rationale">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../boost.png"></td>
+<td align="center"><a href="../../../index.html">Home</a></td>
+<td align="center"><a href="../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_process.tutorial"></a><a class="link" href="tutorial.html" title="Tutorial">Tutorial</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.starting_a_process">Starting a
+      process</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.launch_mode">Launch functions</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.error_handling">Error</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.io">Synchronous I/O</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.async_io">Asynchronous I/O</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.group">Groups</a></span></dt>
+<dt><span class="section"><a href="tutorial.html#boost_process.tutorial.env">Environment</a></span></dt>
+</dl></div>
+<p>
+      In this section we will go step by step through the different features of boost.process.
+      For a full description see the <a class="link" href="../process/reference.html" title="Reference">reference</a>
+      and the <a class="link" href="concepts.html" title="Concepts">concepts</a> sections.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.starting_a_process"></a><a class="link" href="tutorial.html#boost_process.tutorial.starting_a_process" title="Starting a process">Starting a
+      process</a>
+</h3></div></div></div>
+<p>
+        We want to start a process, so let's start with a simple process. We will
+        invoke the gcc compiler to compile a simple program.
+      </p>
+<p>
+        With the standard library this looks like this.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <a href="http://en.cppreference.com/w/cpp/utility/program/system" target="_top">std::system</a><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Which we can write exactly like this in boost.process.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">bp</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">process</span><span class="special">;</span> <span class="comment">//we will assume this for all further examples</span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        If a single string (or the explicit form <code class="computeroutput">bp::cmd</code>),
+        it will be interpreted as a command line. That will cause the execution function
+        to search the <code class="computeroutput"><span class="identifier">PATH</span></code> variable
+        to find the executable. The alternative is the <code class="computeroutput"><span class="identifier">exe</span><span class="special">-</span><span class="identifier">args</span></code> style,
+        where the first string will be interpreted as a filename (including the path),
+        and the rest as arguments passed to said function.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          For more details on the <code class="computeroutput"><span class="identifier">cmd</span></code>/<code class="computeroutput"><span class="identifier">exe</span><span class="special">-</span><span class="identifier">args</span></code> style look <a class="link" href="design.html#boost_process.design.arg_cmd_style" title="Arguments/Command Style">here</a>
+        </p></td></tr>
+</table></div>
+<p>
+        So as a first step, we'll use the <code class="computeroutput"><span class="identifier">exe</span><span class="special">-</span><span class="identifier">args</span></code> style.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"/usr/bin/g++"</span><span class="special">,</span> <span class="string">"main.cpp"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        With that syntax we still have "g++" hard-coded, so let's assume
+        we get the string from an external source as <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span></code>,
+        we can do this too.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">p</span> <span class="special">=</span> <span class="string">"/usr/bin/g++"</span><span class="special">;</span> <span class="comment">//or get it from somewhere else.</span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="identifier">p</span><span class="special">,</span> <span class="string">"main.cpp"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now we might want to find the <code class="computeroutput"><span class="identifier">g</span><span class="special">++</span></code> executable in the <code class="computeroutput"><span class="identifier">PATH</span></code>-variable,
+        as the <code class="computeroutput"><span class="identifier">cmd</span></code> syntax would do.
+        <code class="computeroutput"><span class="identifier">Boost</span><span class="special">.</span><span class="identifier">process</span></code> provides a function to this end:
+        <code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">filesystem</span><span class="special">::</span><span class="identifier">path</span> <span class="identifier">p</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"g++"</span><span class="special">);</span> <span class="comment">//or get it from somewhere else.</span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="identifier">p</span><span class="special">,</span> <span class="string">"main.cpp"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">search_path</a></code>
+          will search for any executable with that name. This also includes to add
+          a file suffix on windows, such as <code class="computeroutput"><span class="special">.</span><span class="identifier">exe</span></code> or <code class="computeroutput"><span class="special">.</span><span class="identifier">bat</span></code>.
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.launch_mode"></a><a class="link" href="tutorial.html#boost_process.tutorial.launch_mode" title="Launch functions">Launch functions</a>
+</h3></div></div></div>
+<p>
+        Given that in our example used the <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">system</a></code>
+        function, our program will wait until the child process is completed. This
+        maybe unwanted, especially since compiling can take a while.
+      </p>
+<p>
+        In order to avoid that, boost.process provides several ways to launch a process.
+        Besides the already mentioned <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">system</a></code>
+        function and its asynchronous version <code class="computeroutput"><a class="link" href="../boost/process/async_system.html" title="Function template async_system">async_system</a></code>,
+        we can also use the <code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">spawn</a></code>
+        function or the <code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">child</a></code>
+        class.
+      </p>
+<p>
+        The <code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">spawn</a></code> function
+        launches a process and immediately detaches it, so no handle will be returned
+        and the process will be ignored. This is not what we need for compiling,
+        but maybe we want to entertain the user, while compiling:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">bp::spawn</a></code><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"chrome"</span><span class="special">),</span> <a href="../www.boost.org" target="_top">"www.boost.org"</a><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now for the more sensible approach for compiling: a non-blocking execution.
+        To implement that, we directly call the constructor of <code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">child</a></code>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"g++"</span><span class="special">),</span> <span class="string">"main.cpp"</span><span class="special">);</span>
+
+<span class="keyword">while</span> <span class="special">(</span><span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51327280-bb">running</a></code><span class="special">())</span>
+    <span class="identifier">do_some_stuff</span><span class="special">();</span>
+
+<span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code><span class="special">();</span> <span class="comment">//wait for the process to exit   </span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51324400-bb">exit_code</a></code><span class="special">();</span>
+</pre>
+<p>
+      </p>
+<p>
+        So we launch the process, by calling the child constructor. Then we check
+        and do other things while the process is running and afterwards get the exit
+        code. The call to <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code>
+        is necessary, to obtain it and tell the operating system, that no one is
+        waiting for the process anymore.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          You can also wait for a time span or a until a time point with <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51333872-bb">wait_for</a></code> and <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51340128-bb">wait_until</a></code>
+        </p></td></tr>
+</table></div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          If you don't call wait on a child object, it will be terminated on destruction.
+          This can be avoided by calling <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51319424-bb">detach</a></code>
+          beforehand
+        </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.error_handling"></a><a class="link" href="tutorial.html#boost_process.tutorial.error_handling" title="Error">Error</a>
+</h3></div></div></div>
+<p>
+        Until now, we have assumed that everything works out, but it is not impossible,
+        that "g++" is not present. That will cause the launch of the process
+        to fail. The default behaviour of all functions is to throw an <a href="http://en.cppreference.com/w/cpp/error/system_error" target="_top">std::system_error</a>
+        on failure. As with many other functions in this library, passing an <a href="http://en.cppreference.com/w/cpp/error/error_code" target="_top">std::error_code</a>
+        will change the behaviour, so that instead of throwing an exception, the
+        error will be a assigned to the error code.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.io"></a><a class="link" href="tutorial.html#boost_process.tutorial.io" title="Synchronous I/O">Synchronous I/O</a>
+</h3></div></div></div>
+<p>
+        In the examples given above, we have only started a program, but did not
+        consider the output. The default depends on the system, but usually this
+        will just write it to the same output as the launching process. If this shall
+        be guaranteed, the streams can be explicitly forwarded like this.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="identifier">stdout</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_err.html" title="Global std_err">bp::std_err</a></code> <span class="special">&gt;</span> <span class="identifier">stderr</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_in.html" title="Global std_in">bp::std_in</a></code> <span class="special">&lt;</span> <span class="identifier">stdin</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now for the first example, we might want to just ignore the output, which
+        can be done by redirecting it to the null-device. This can be achieved this
+        way:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <code class="computeroutput"><a class="link" href="../boost/process/null.html" title="Global null">bp::null</a></code><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Alternatively we can also easily redirect the output to a file:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"g++ main.cpp"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="string">"gcc_out.log"</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now, let's take a more visual example for reading data. <a href="http://pubs.opengroup.org/onlinepubs/009696699/utilities/nm.html" target="_top">nm</a>
+        is a tool on posix, which reads the outline, i.e. a list of all entry points,
+        of a binary. Every entry point will be put into a single line, and we will
+        use a pipe to read it. At the end an empty line is appended, which we use
+        as the indication to stop reading. Boost.process provides the pipestream
+        (<code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.ipstream">ipstream</a></code>, <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.opstream">opstream</a></code>, <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.pstream">pstream</a></code>)
+        to wrap around the <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.pipe">pipe</a></code>
+        and provide an implementation of the <a href="http://en.cppreference.com/w/cpp/io/basic_istream" target="_top">std::istream</a>,
+        <a href="http://en.cppreference.com/w/cpp/io/basic_ostream" target="_top">std::ostream</a>
+        and <a href="http://en.cppreference.com/w/cpp/io/basic_iostream" target="_top">std::iostream</a>
+        interface.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">read_outline</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">file</span><span class="special">)</span>
+<span class="special">{</span>
+    <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.ipstream">bp::ipstream</a></code> <span class="identifier">is</span><span class="special">;</span> <span class="comment">//reading pipe-stream</span>
+    <code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"nm"</span><span class="special">),</span> <span class="identifier">file</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="identifier">is</span><span class="special">);</span>
+
+    <a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">data</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">line</span><span class="special">;</span>
+
+    <span class="keyword">while</span> <span class="special">(</span><span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51327280-bb">running</a></code><span class="special">()</span> <span class="special">&amp;&amp;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">getline</span><span class="special">(</span><span class="identifier">is</span><span class="special">,</span> <span class="identifier">line</span><span class="special">)</span> <span class="special">&amp;&amp;</span> <span class="special">!</span><span class="identifier">line</span><span class="special">.</span><span class="identifier">empty</span><span class="special">())</span>
+        <span class="identifier">data</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">line</span><span class="special">);</span>
+
+    <span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code><span class="special">();</span>
+
+    <span class="keyword">return</span> <span class="identifier">data</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        What this does is redirect the <code class="computeroutput"><span class="identifier">stdout</span></code>
+        of the process into a pipe and we read this synchronously.
+      </p>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The pipe will cause a deadlock if you try to read after nm exited
+        </p></td></tr>
+</table></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          You can do the same thing with <code class="computeroutput"><a class="link" href="../boost/process/std_err.html" title="Global std_err">std_err</a></code>
+        </p></td></tr>
+</table></div>
+<p>
+        Now we get the name from <code class="computeroutput"><span class="identifier">nm</span></code>
+        and we might want to demangle it, so we use input and output. <code class="computeroutput"><span class="identifier">nm</span></code> has a demangle option, but for the sake
+        of the example, we'll use <a href="https://sourceware.org/binutils/docs/binutils/c_002b_002bfilt.html" target="_top">c++filt</a>
+        for this.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.opstream">bp::opstream</a></code> <span class="identifier">in</span><span class="special">;</span>
+<code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.ipstream">bp::ipstream</a></code> <span class="identifier">out</span><span class="special">;</span>
+
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"c++filt"</span><span class="special">,</span> <span class="identifier">std_out</span> <span class="special">&gt;</span> <span class="identifier">out</span><span class="special">,</span> <span class="identifier">std_in</span> <span class="special">&lt;</span> <span class="identifier">in</span><span class="special">);</span>
+
+<span class="identifier">in</span> <span class="special">&lt;&lt;</span> <span class="string">"_ZN5boost7process8tutorialE"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">value</span><span class="special">;</span>
+<span class="identifier">out</span> <span class="special">&gt;&gt;</span> <span class="identifier">value</span><span class="special">;</span>
+
+<span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51353632-bb">terminate</a></code><span class="special">();</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now you might want to forward output from one process to another processes
+        input.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">read_demangled_outline</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">file</span><span class="special">)</span>
+<span class="special">{</span>
+    <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.pipe">bp::pipe</a></code> <span class="identifier">p</span><span class="special">;</span>
+    <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.ipstream">bp::ipstream</a></code> <span class="identifier">is</span><span class="special">;</span>
+
+    <a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">outline</span><span class="special">;</span>
+
+    <span class="comment">//we just use the same pipe, so the </span>
+    <code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">nm</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"nm"</span><span class="special">),</span> <span class="identifier">file</span><span class="special">,</span>  <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="identifier">p</span><span class="special">);</span>
+    <code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">filt</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"c++filt"</span><span class="special">),</span> <code class="computeroutput"><a class="link" href="../boost/process/std_in.html" title="Global std_in">bp::std_in</a></code> <span class="special">&lt;</span> <span class="identifier">p</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="identifier">is</span><span class="special">);</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">line</span><span class="special">;</span>
+    <span class="keyword">while</span> <span class="special">(</span><span class="identifier">filt</span><span class="special">.</span><span class="identifier">running</span><span class="special">()</span> <span class="special">&amp;&amp;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">getline</span><span class="special">(</span><span class="identifier">is</span><span class="special">,</span> <span class="identifier">line</span><span class="special">))</span> <span class="comment">//when nm finished the pipe closes and c++filt exits</span>
+        <span class="identifier">outline</span><span class="special">.</span><span class="identifier">push_back</span><span class="special">(</span><span class="identifier">line</span><span class="special">);</span>
+
+    <span class="identifier">nm</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code><span class="special">();</span>
+    <span class="identifier">filt</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        This forwards the data from <code class="computeroutput"><span class="identifier">nm</span></code>
+        to <code class="computeroutput"><span class="identifier">c</span><span class="special">++</span><span class="identifier">filt</span></code> without your process needing to do
+        anything.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.async_io"></a><a class="link" href="tutorial.html#boost_process.tutorial.async_io" title="Asynchronous I/O">Asynchronous I/O</a>
+</h3></div></div></div>
+<p>
+        Boost.process allows the usage of boost.asio to implement asynchronous I/O.
+        If you are familiar with <a href="http://www.boost.org/doc/libs/release/libs/asio/" target="_top">boost.asio</a>
+        (which we highly recommend), you can use <code class="computeroutput"><a class="link" href="../boost/process/async_pipe.html" title="Class async_pipe">async_pipe</a></code>
+        which is implemented as an I/O-Object and can be used like <code class="computeroutput"><a class="link" href="../process/reference.html#boost.process.pipe">pipe</a></code>
+        as shown above.
+      </p>
+<p>
+        Now we get back to our compiling example. <code class="computeroutput"><span class="identifier">nm</span></code>
+        we might analyze it line by line, but the compiler output will just be put
+        into one large buffer.
+      </p>
+<p>
+        With <a href="http://www.boost.org/doc/libs/release/libs/asio/" target="_top">boost.asio</a>
+        this is what it looks like.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a> <span class="identifier">ios</span><span class="special">;</span>
+<a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">buf</span><span class="special">(</span><span class="number">4096</span><span class="special">);</span>
+
+<code class="computeroutput"><a class="link" href="../boost/process/async_pipe.html" title="Class async_pipe">bp::async_pipe</a></code> <span class="identifier">ap</span><span class="special">(</span><span class="identifier">ios</span><span class="special">);</span>
+
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"g++"</span><span class="special">),</span> <span class="string">"main.cpp"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <span class="identifier">ap</span><span class="special">);</span>
+
+<a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/async_read.html" target="_top">boost::asio::async_read</a><span class="special">(</span><span class="identifier">ap</span><span class="special">,</span> <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/buffer.html" target="_top">boost::asio::buffer</a><span class="special">(</span><span class="identifier">buf</span><span class="special">),</span>
+                <span class="special">[](</span><span class="keyword">const</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">system</span><span class="special">::</span><span class="identifier">error_code</span> <span class="special">&amp;</span><span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">){});</span>
+
+<span class="identifier">ios</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+<span class="identifier">c</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">exit_code</span><span class="special">();</span>
+</pre>
+<p>
+      </p>
+<p>
+        To make it easier, boost.process provides simpler interface for that, so
+        that the buffer can be passed directly, provided we also pass a reference
+        to an <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a>.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a> <span class="identifier">ios</span><span class="special">;</span>
+<a href="http://en.cppreference.com/w/cpp/container/vector" target="_top">std::vector</a><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="identifier">buf</span><span class="special">;</span>
+
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><code class="computeroutput"><a class="link" href="../boost/process/search_path.html" title="Function search_path">bp::search_path</a></code><span class="special">(</span><span class="string">"g++"</span><span class="special">),</span> <span class="string">"main.cpp"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/buffer.html" target="_top">boost::asio::buffer</a><span class="special">(</span><span class="identifier">buf</span><span class="special">),</span> <span class="identifier">ios</span><span class="special">);</span>
+
+<span class="identifier">ios</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span>
+<span class="identifier">c</span><span class="special">.</span><span class="identifier">wait</span><span class="special">();</span>
+<span class="keyword">int</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">c</span><span class="special">.</span><span class="identifier">exit_code</span><span class="special">();</span>
+</pre>
+<p>
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Passing an instance of <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a>
+          to the launching function automatically cause it to wait asynchronously
+          for the exit, so no call of <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code>
+          is needed
+        </p></td></tr>
+</table></div>
+<p>
+        To make it even easier, you can use <a href="http://en.cppreference.com/w/cpp/thread/future" target="_top">std::future</a>
+        for asynchronous operations (you will still need to pass a reference to a
+        <a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a>)
+        to the launching function, unless you use <code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code>
+        or <code class="computeroutput"><a class="link" href="../boost/process/async_system.html" title="Function template async_system">bp::async_system</a></code>.
+      </p>
+<p>
+        Now we will revisit our first example and read the compiler output asynchronously:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><a href="http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_service.html" target="_top">boost::asio::io_service</a> <span class="identifier">ios</span><span class="special">;</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">data</span><span class="special">;</span>
+
+<span class="identifier">child</span> <span class="identifier">c</span><span class="special">(</span><span class="string">"g++"</span><span class="special">,</span> <span class="string">"main.cpp"</span><span class="special">,</span> <span class="comment">//set the input</span>
+        <code class="computeroutput"><a class="link" href="../boost/process/std_in.html" title="Global std_in">bp::std_in</a></code><span class="special">.</span><span class="identifier">close</span><span class="special">(),</span>
+        <code class="computeroutput"><a class="link" href="../boost/process/std_out.html" title="Global std_out">bp::std_out</a></code> <span class="special">&gt;</span> <code class="computeroutput"><a class="link" href="../boost/process/null.html" title="Global null">bp::null</a></code><span class="special">,</span> <span class="comment">//so it can be written without anything</span>
+        <code class="computeroutput"><a class="link" href="../boost/process/std_err.html" title="Global std_err">bp::std_err</a></code> <span class="special">&gt;</span> <span class="identifier">data</span><span class="special">,</span>
+        <span class="identifier">ios</span><span class="special">);</span>
+
+
+<span class="identifier">ios</span><span class="special">.</span><span class="identifier">run</span><span class="special">();</span> <span class="comment">//this will actually block until the compiler is finished</span>
+
+<span class="keyword">auto</span> <span class="identifier">err</span> <span class="special">=</span>  <span class="identifier">data</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
+</pre>
+<p>
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.group"></a><a class="link" href="tutorial.html#boost_process.tutorial.group" title="Groups">Groups</a>
+</h3></div></div></div>
+<p>
+        When launching several processes, processes can be grouped together. This
+        will also apply for a child process, that launches other processes, if they
+        do not modify the group membership. E.g. if you call <code class="computeroutput"><span class="identifier">make</span></code>
+        which launches other processes and call terminate on it, it will not terminate
+        all the child processes of the child unless you use a group.
+      </p>
+<p>
+        The two main reasons to use groups are:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            Being able to terminate child processes of the child process
+          </li>
+<li class="listitem">
+            Grouping several processes into one, just so they can be terminated at
+            once
+          </li>
+</ol></div>
+<p>
+        If we have program like <code class="computeroutput"><span class="identifier">make</span></code>,
+        which does launch its own child processes, a call of <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51353632-bb">terminate</a></code>
+        might not suffice. I.e. if we have a makefile launching <code class="computeroutput"><span class="identifier">gcc</span></code>
+        and use the following code, the <code class="computeroutput"><span class="identifier">gcc</span></code>
+        process will still run afterwards:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"make"</span><span class="special">);</span>
+<span class="keyword">if</span> <span class="special">(!</span><span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51333872-bb">wait_for</a></code><span class="special">(</span><a href="http://en.cppreference.com/w/cpp/chrono/duration" target="_top">std::chrono::seconds</a><span class="special">(</span><span class="number">10</span><span class="special">))</span> <span class="comment">//give it 10 seconds</span>
+    <span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51353632-bb">terminate</a></code><span class="special">();</span> <span class="comment">//then terminate</span>
+</pre>
+<p>
+      </p>
+<p>
+        So in order to also terminate <code class="computeroutput"><span class="identifier">gcc</span></code>
+        we can use a group.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/group.html" title="Class group">bp::group</a></code> <span class="identifier">g</span><span class="special">;</span>
+<code class="computeroutput"><a class="link" href="../boost/process/child.html" title="Class child">bp::child</a></code> <span class="identifier">c</span><span class="special">(</span><span class="string">"make"</span><span class="special">,</span> <span class="identifier">g</span><span class="special">);</span>
+<span class="keyword">if</span> <span class="special">(!</span><span class="identifier">g</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/group.html#idp51839280-bb">wait_for</a></code><span class="special">(</span><a href="http://en.cppreference.com/w/cpp/chrono/duration" target="_top">std::chrono::seconds</a><span class="special">(</span><span class="number">10</span><span class="special">))</span>
+    <span class="identifier">g</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/group.html#idp51859136-bb">terminate</a></code><span class="special">();</span>
+
+<span class="identifier">c</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code><span class="special">();</span> <span class="comment">//to avoid a zombie process &amp; get the exit code</span>
+</pre>
+<p>
+      </p>
+<p>
+        Now given the example, we still call <code class="computeroutput"><a class="link" href="../boost/process/child.html#idp51330576-bb">wait</a></code>
+        to avoid a zombie process. An easier solution for that might be to use <code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">spawn</a></code>.
+      </p>
+<p>
+        To put two processes into one group, the following code suffices. Spawn already
+        launches a detached process (i.e. without a child-handle), but they can be
+        grouped, to that in the case of a problem, RAII is still a given.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">f</span><span class="special">()</span>
+<span class="special">{</span>
+    <code class="computeroutput"><a class="link" href="../boost/process/group.html" title="Class group">bp::group</a></code> <span class="identifier">g</span><span class="special">;</span>
+    <code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">bp::spawn</a></code><span class="special">(</span><span class="string">"foo"</span><span class="special">,</span> <span class="identifier">g</span><span class="special">);</span>
+    <code class="computeroutput"><a class="link" href="../boost/process/spawn.html" title="Function template spawn">bp::spawn</a></code><span class="special">(</span><span class="string">"bar"</span><span class="special">,</span> <span class="identifier">g</span><span class="special">);</span>
+
+    <span class="identifier">do_something</span><span class="special">();</span>
+
+    <span class="identifier">g</span><span class="special">.</span><code class="computeroutput"><a class="link" href="../boost/process/group.html#idp51835776-bb">wait</a></code><span class="special">();</span>
+<span class="special">};</span>
+</pre>
+<p>
+      </p>
+<p>
+        In the example, it will wait for both processes at the end of the function
+        unless an exception occurs. I.e. if an exception is thrown, the group will
+        be terminated.
+      </p>
+<p>
+        Please see the <code class="computeroutput"><a class="link" href="../process/reference.html#header.boost.process.group_hpp" title="Header &lt;boost/process/group.hpp&gt;">reference</a></code>
+        for more information.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_process.tutorial.env"></a><a class="link" href="tutorial.html#boost_process.tutorial.env" title="Environment">Environment</a>
+</h3></div></div></div>
+<p>
+        This library provides access to the environment of the current process and
+        allows setting it for the child process.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">//get a handle to the current environment</span>
+<span class="keyword">auto</span> <span class="identifier">env</span> <span class="special">=</span> <code class="computeroutput"><a class="link" href="../process/reference.html#boost.this_process.environment">boost::this_process::environment</a></code><span class="special">();</span>
+<span class="comment">//add a variable to the current environment</span>
+<span class="identifier">env</span><span class="special">[</span><span class="string">"VALUE_1"</span><span class="special">]</span> <span class="special">=</span> <span class="string">"foo"</span><span class="special">;</span>
+
+<span class="comment">//copy it into an environment separate to the one of this process</span>
+<code class="computeroutput"><a class="link" href="../boost/process/basic_environment.html" title="Class template basic_environment">bp::environment</a></code> <span class="identifier">env_</span> <span class="special">=</span> <span class="identifier">env</span><span class="special">;</span>
+<span class="comment">//append two values to a variable in the new env</span>
+<span class="identifier">env_</span><span class="special">[</span><span class="string">"VALUE_2"</span><span class="special">]</span> <span class="special">+=</span> <span class="special">{</span><span class="string">"bar1"</span><span class="special">,</span> <span class="string">"bar2"</span><span class="special">};</span>
+
+<span class="comment">//launch a process with `env_`</span>
+<code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"stuff"</span><span class="special">,</span> <span class="identifier">env_</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        A more convenient way to modify the environment for the child is the <code class="computeroutput"><a class="link" href="../boost/process/env.html" title="Global env">env</a></code> property, which the example as
+        following:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><code class="computeroutput"><a class="link" href="../boost/process/system.html" title="Function template system">bp::system</a></code><span class="special">(</span><span class="string">"stuff"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/env.html" title="Global env">bp::env</a></code><span class="special">[</span><span class="string">"VALUE_1"</span><span class="special">]=</span><span class="string">"foo"</span><span class="special">,</span> <code class="computeroutput"><a class="link" href="../boost/process/env.html" title="Global env">bp::env</a></code><span class="special">[</span><span class="string">"VALUE_2"</span><span class="special">]+={</span><span class="string">"bar1"</span><span class="special">,</span> <span class="string">"bar2"</span><span class="special">});</span>
+</pre>
+<p>
+      </p>
+<p>
+        Please see to the <code class="computeroutput"><a class="link" href="../process/reference.html#header.boost.process.environment_hpp" title="Header &lt;boost/process/environment.hpp&gt;">reference</a></code>
+        for more information.
+      </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2006-2012 Julio M. Merino Vidal, Ilya Sokolov,
+      Felipe Tanus, Jeff Flinn, Boris Schaeling<br>Copyright &#169; 2016 Klemens D. Morgenstern<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="concepts.html"><img src="../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../process.html"><img src="../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="design.html"><img src="../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

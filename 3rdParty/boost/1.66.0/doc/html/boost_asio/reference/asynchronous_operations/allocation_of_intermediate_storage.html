@@ -1,0 +1,82 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Allocation of intermediate storage</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../asynchronous_operations.html" title="Requirements on asynchronous operations">
+<link rel="prev" href="outstanding_work.html" title="Outstanding work">
+<link rel="next" href="execution_of_completion_handler_on_completion_of_asynchronous_operation.html" title="Execution of completion handler on completion of asynchronous operation">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="outstanding_work.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../asynchronous_operations.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="execution_of_completion_handler_on_completion_of_asynchronous_operation.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.asynchronous_operations.allocation_of_intermediate_storage"></a><a class="link" href="allocation_of_intermediate_storage.html" title="Allocation of intermediate storage">Allocation
+        of intermediate storage</a>
+</h4></div></div></div>
+<p>
+          Asynchronous operations may allocate memory. [<span class="emphasis"><em>Note:</em></span>
+          Such as a data structure to store copies of the <code class="computeroutput">completion_handler</code>
+          object and the initiating function's arguments. &#8212;<span class="emphasis"><em>end note</em></span>]
+        </p>
+<p>
+          Let <code class="computeroutput">Alloc1</code> be a type, satisfying the <a class="link" href="../ProtoAllocator.html" title="Proto-allocator requirements"><code class="computeroutput">ProtoAllocator</code></a>
+          requirements, that represents the asynchronous operation's default allocation
+          strategy. [<span class="emphasis"><em>Note:</em></span> Typically <code class="computeroutput">std::allocator&lt;void&gt;</code>.
+          &#8212;<span class="emphasis"><em>end note</em></span>] Let <code class="computeroutput">alloc1</code> be a value of type
+          <code class="computeroutput">Alloc1</code>.
+        </p>
+<p>
+          A completion handler object of type <code class="computeroutput">CompletionHandler</code> has
+          an associated allocator object <code class="computeroutput">alloc2</code> of type <code class="computeroutput">Alloc2</code>
+          satisfying the <a class="link" href="../ProtoAllocator.html" title="Proto-allocator requirements"><code class="computeroutput">ProtoAllocator</code></a>
+          requirements. The type <code class="computeroutput">Alloc2</code> is <code class="computeroutput">associated_allocator_t&lt;CompletionHandler,
+          Alloc1&gt;</code>. Let <code class="computeroutput">alloc2</code> be a value of type <code class="computeroutput">Alloc2</code>
+          obtained by performing <code class="computeroutput">get_associated_allocator(completion_handler,
+          alloc1)</code>.
+        </p>
+<p>
+          The asynchronous operations defined in this library:
+        </p>
+<p>
+          &#8212; If required, allocate memory using only the completion handler's associated
+          allocator.
+        </p>
+<p>
+          &#8212; Prior to completion handler execution, deallocate any memory allocated
+          using the completion handler's associated allocator.
+        </p>
+<p>
+          [std_note The implementation may perform operating system or underlying
+          API calls that perform memory allocations not using the associated allocator.
+          Invocations of the allocator functions may not introduce data races (See
+          C++Std [res.on.data.races]).]
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="outstanding_work.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../asynchronous_operations.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="execution_of_completion_handler_on_completion_of_asynchronous_operation.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

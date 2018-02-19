@@ -1,0 +1,42 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+# Boost.Mp11: A C++11 metaprogramming library
+Peter Dimov
+:toc: left
+:toclevels: 3
+:idprefix:
+:listing-caption: Code Example
+:table-caption: Illustration
+:docinfo: private-footer
+
+:leveloffset: +1
+
+include::mp11/overview.adoc[]
+
+include::mp11/definitions.adoc[]
+
+include::mp11/examples.adoc[]
+
+include::mp11/reference.adoc[]
+
+:leveloffset: -1
+
+[appendix]
+## Copyright, License, and Acknowledgments
+
+This documentation is
+
+* Copyright 2017 Peter Dimov
+* Copyright 2017 Bjørn Reese
+
+and is distributed under the http://www.boost.org/LICENSE_1_0.txt[Boost Software License, Version 1.0].
+
+The "Simple {cpp}11 metaprogramming" articles have been graciously converted to Asciidoc format for incorporation
+into this documentation by Glen Fernandes.

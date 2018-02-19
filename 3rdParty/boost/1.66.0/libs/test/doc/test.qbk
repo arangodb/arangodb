@@ -1,0 +1,250 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[library Boost.Test
+    [quickbook 1.7]
+    [copyright 2001 - 2017 Boost.Test contributors]
+    [id boost_test]
+    [purpose Testing library]
+    [license
+        Distributed under the Boost Software License, Version 1.0.
+        (See accompanying file LICENSE_1_0.txt or copy at
+        [@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+    [authors [Rozental, Gennadiy] [Enficiaud, Raffi]]
+    [category Correctness and testing]
+]
+
+[template ticket[number]'''<ulink url="https://svn.boost.org/trac/boost/ticket/'''[number]'''">'''#[number]'''</ulink>''']
+[template pull_request[number]'''<ulink url="https://github.com/boostorg/test/pull/'''[number]'''">'''#PR-[number]'''</ulink>''']
+
+[def __UTF__ /Unit Test Framework/]
+[def __PEM__ /Program Execution Monitor]
+
+[def __IEEE754__ [*IEEE754]]
+
+[def __part_faq__                         [link boost_test.section_faq FAQ]]
+
+[/ content in the test organization]
+
+[def __floating_points_testing_tools__    [link boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_theory Floating point comparison algorithms]]
+[def __master_test_suite__                [link boost_test.tests_organization.test_suite.master_test_suite master test suite]]
+
+[def __runtime_configuration__            [link boost_test.runtime_config runtime configuration]]
+[def __output_test_stream_tool__          [link boost_test.testing_tools.output_stream_testing output test stream]]
+
+[def __auto_linking__                     [link ref_pem_auto_link automatic linking]]
+
+[def __BOOST_TEST_ALTERNATIVE_INIT_API__  [link boost_test.utf_reference.link_references.link_boost_test_alternative_init_macro `BOOST_TEST_ALTERNATIVE_INIT_API`]]
+[def __BOOST_TEST_MAIN__                  [link boost_test.utf_reference.link_references.link_boost_test_main_macro             `BOOST_TEST_MAIN`]]
+[def __BOOST_TEST_DYN_LINK__              [link boost_test.utf_reference.link_references.link_boost_test_dyn_link               `BOOST_TEST_DYN_LINK`]]
+[def __BOOST_TEST_NO_LIB__                [link boost_test.utf_reference.link_references.link_boost_test_no_lib                 `BOOST_TEST_NO_LIB`]]
+[def __BOOST_TEST_NO_MAIN__               [link boost_test.utf_reference.link_references.link_boost_test_no_main                `BOOST_TEST_NO_MAIN`]]
+[def __BOOST_TEST_MODULE__                [link boost_test.utf_reference.link_references.link_boost_test_module_macro           `BOOST_TEST_MODULE`]]
+[def __BOOST_TEST_GLOBAL_CONFIGURATION__  [link boost_test.utf_reference.link_references.link_boost_test_global_configuration   `BOOST_TEST_GLOBAL_CONFIGURATION`]]
+
+[def __BOOST_TEST_CHECKPOINT__            [link boost_test.utf_reference.testout_reference.test_output_macro_checkpoint   `BOOST_TEST_CHECKPOINT`]]
+[def __BOOST_TEST_PASSPOINT__             [link boost_test.utf_reference.testout_reference.test_output_macro_passpoint    `BOOST_TEST_PASSPOINT`]]
+[def __BOOST_TEST_MESSAGE__               [link boost_test.utf_reference.testout_reference.test_output_macro_message      `BOOST_TEST_MESSAGE`]]
+[def __BOOST_TEST_INFO__                  [link boost_test.utf_reference.testout_reference.test_output_macro_info         `BOOST_TEST_INFO`]]
+[def __BOOST_TEST_CONTEXT__               [link boost_test.utf_reference.testout_reference.test_output_macro_context      `BOOST_TEST_CONTEXT`]]
+[def __BOOST_TEST_DONT_PRINT_LOG_VALUE__  [link boost_test.utf_reference.testout_reference.test_output_macro_disable_type `BOOST_TEST_DONT_PRINT_LOG_VALUE`]]
+
+
+[/ Assertions ]
+[def __BOOST_TEST__                       [link boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro `BOOST_TEST`]]
+[def __BOOST_TEST_LEVEL__                 [link boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro `BOOST_TEST_<level>`]]
+[def __BOOST_TEST_REQUIRE__               [link boost_test.utf_reference.testing_tool_ref.assertion_boost_test_universal_macro `BOOST_TEST_REQUIRE`]]
+
+[def __BOOST_LEVEL__                      [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level `BOOST_<level>`]]
+
+[def __BOOST_LEVEL_MESSAGE__              [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_message `BOOST_<level>_MESSAGE`]]
+
+[def __BOOST_LEVEL_EQUAL__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_eq `BOOST_<level>_EQUAL`]]
+
+[def __BOOST_LEVEL_PREDICATE__            [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_predicate `BOOST_<level>_PREDICATE`]]
+[def __BOOST_LEVEL_EQUAL_COLLECTIONS__    [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_eq_collections `BOOST_<level>_EQUAL_COLLECTIONS`]]
+[def __BOOST_LEVEL_NE__                   [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_ne `BOOST_<level>_NE`]]
+[def __BOOST_LEVEL_GE__                   [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_ge `BOOST_<level>_GE`]]
+[def __BOOST_LEVEL_GT__                   [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_gt `BOOST_<level>_GT`]]
+[def __BOOST_LEVEL_LE__                   [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_le `BOOST_<level>_LE`]]
+[def __BOOST_LEVEL_LT__                   [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_lt `BOOST_<level>_LT`]]
+
+[def __BOOST_LEVEL_NO_THROW__             [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_no_throw `BOOST_<level>_NO_THROW`]]
+[def __BOOST_LEVEL_THROW__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_throw `BOOST_<level>_THROW`]]
+[def __BOOST_LEVEL_EXCEPTION__            [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_exception `BOOST_<level>_EXCEPTION`]]
+
+[def __BOOST_LEVEL_BITWISE_EQUAL__        [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_bitwise_eq `BOOST_<level>_BITWISE_EQUAL`]]
+[def __BOOST_ERROR__                      [link boost_test.utf_reference.testing_tool_ref.assertion_boost_error `BOOST_ERROR`]]
+[def __BOOST_FAIL__                       [link boost_test.utf_reference.testing_tool_ref.assertion_boost_fail `BOOST_FAIL`]]
+[def __BOOST_IS_DEFINED__                 [link boost_test.utf_reference.testing_tool_ref.assertion_boost_is_defined `BOOST_IS_DEFINED`]]
+
+[def __BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES__ [link boost_test.utf_reference.testing_tool_ref.test_org_boost_test_case_expected_failure `BOOST_AUTO_TEST_CASE_EXPECTED_FAILURES`]]
+
+[/ Assertions / floating point]
+[def __BOOST_LEVEL_SMALL__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_small `BOOST_<level>_SMALL`]]
+[def __BOOST_CHECK_SMALL__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_small `BOOST_CHECK_SMALL`]]
+[def __BOOST_LEVEL_CLOSE__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_close `BOOST_<level>_CLOSE`]]
+[def __BOOST_CHECK_CLOSE__                [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_close `BOOST_CHECK_CLOSE`]]
+[def __BOOST_LEVEL_CLOSE_FRACTION__       [link boost_test.utf_reference.testing_tool_ref.assertion_boost_level_close_fraction `BOOST_<level>_CLOSE_FRACTION`]]
+
+[/ Assertion control]
+[def __BOOST_TEST_TOOLS_UNDER_DEBUGGER__  [link boost_test.utf_reference.testing_tool_ref.assertion_control_under_debugger `BOOST_TEST_TOOLS_UNDER_DEBUGGER`]]
+[def __BOOST_TEST_TOOLS_DEBUGGABLE__      [link boost_test.utf_reference.testing_tool_ref.assertion_control_under_debuggable `BOOST_TEST_TOOLS_DEBUGGABLE`]]
+
+[/ Tests cases organization]
+[def __BOOST_AUTO_TEST_CASE__                   [link boost_test.utf_reference.test_org_reference.test_org_boost_auto_test_case `BOOST_AUTO_TEST_CASE`]]
+[def __BOOST_TEST_CASE__                        [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case `BOOST_TEST_CASE`]]
+[def __BOOST_AUTO_TEST_CASE_TEMPLATE__          [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case_auto_template `BOOST_AUTO_TEST_CASE_TEMPLATE`]]
+[def __BOOST_TEST_CASE_TEMPLATE__               [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case_template `BOOST_TEST_CASE_TEMPLATE`]]
+[def __BOOST_TEST_CASE_TEMPLATE_FUNCTION__      [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case_template_function `BOOST_TEST_CASE_TEMPLATE_FUNCTION`]]
+[/ parametrized test cases]
+[def __BOOST_PARAM_TEST_CASE__                  [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case_parameter `BOOST_PARAM_TEST_CASE`]]
+[def __BOOST_DATA_TEST_CASE__                   [link boost_test.utf_reference.test_org_reference.test_org_boost_test_dataset `BOOST_DATA_TEST_CASE`]]
+[def __BOOST_DATA_TEST_CASE_F__                 [link boost_test.utf_reference.test_org_reference.test_org_boost_test_dataset_fixture `BOOST_DATA_TEST_CASE_F`]]
+[def __BOOST_TEST_DATASET_MAX_ARITY__           [link boost_test.utf_reference.test_org_reference.test_org_boost_test_dataset `BOOST_TEST_DATASET_MAX_ARITY`]]
+
+[/ test suites]
+[def __BOOST_AUTO_TEST_SUITE__                  [link boost_test.utf_reference.test_org_reference.test_org_boost_auto_test_suite `BOOST_AUTO_TEST_SUITE`]]
+[def __BOOST_AUTO_TEST_SUITE_END__              [link boost_test.utf_reference.test_org_reference.test_org_boost_auto_test_suite_end `BOOST_AUTO_TEST_SUITE_END`]]
+[def __BOOST_TEST_SUITE__                       [link boost_test.utf_reference.test_org_reference.test_org_boost_test_suite `BOOST_TEST_SUITE`]]
+[/ decorator]
+[def __BOOST_TEST_DECORATOR__                   [link boost_test.utf_reference.test_org_reference.test_org_boost_test_decorator `BOOST_TEST_DECORATOR`]]
+[/ fixtures]
+[def __BOOST_FIXTURE_TEST_CASE__                [link boost_test.utf_reference.test_org_reference.test_org_boost_test_case_fixture     `BOOST_FIXTURE_TEST_CASE`]]
+[def __BOOST_FIXTURE_TEST_SUITE__               [link boost_test.utf_reference.test_org_reference.test_org_boost_test_suite_fixture    `BOOST_FIXTURE_TEST_SUITE`]]
+[def __BOOST_GLOBAL_FIXTURE__                   [link boost_test.utf_reference.test_org_reference.test_org_boost_global_fixture        `BOOST_GLOBAL_FIXTURE`]]
+[def __BOOST_TEST_GLOBAL_FIXTURE__              [link boost_test.utf_reference.test_org_reference.test_org_boost_test_global_fixture   `BOOST_TEST_GLOBAL_FIXTURE`]]
+
+[/ log]
+[def __BOOST_TEST_LOG_LEVEL__                   [link boost_test.utf_reference.rt_param_reference.log_level `BOOST_TEST_LOG_LEVEL`]] [/ this is an environment variable]
+
+[/ runtime/cla parameters]
+[def __default_run_status__                     [link ref_default_run_status ['default run status]]]
+[def __param_run_test__                         [link boost_test.utf_reference.rt_param_reference.run_test `run_test`]]
+
+[/ decorators]
+[def __decorator_label__                        [link boost_test.utf_reference.test_org_reference.decorator_label `label`]]
+[def __decorator_enabled__                      [link boost_test.utf_reference.test_org_reference.decorator_enabled `enabled`]]
+[def __decorator_disabled__                     [link boost_test.utf_reference.test_org_reference.decorator_enabled `disabled`]]
+[def __decorator_enable_if__                    [link boost_test.utf_reference.test_org_reference.decorator_enable_if `enable_if`]]
+[def __decorator_depends_on__                   [link boost_test.utf_reference.test_org_reference.decorator_depends_on `depends_on`]]
+[def __decorator_precondition__                 [link boost_test.utf_reference.test_org_reference.decorator_precondition `precondition`]]
+[def __decorator_fixture__                      [link boost_test.utf_reference.test_org_reference.decorator_fixture `fixture`]]
+[def __decorator_description__                  [link boost_test.utf_reference.test_org_reference.decorator_description   `description`]]
+
+[def __decorator_expected_failures__            [link boost_test.utf_reference.testing_tool_ref.decorator_expected_failures `expected_failures`]]
+[def __decorator_timeout__                      [link boost_test.utf_reference.testing_tool_ref.decorator_timeout `timeout`]]
+[def __decorator_tolerance__                    [link boost_test.utf_reference.testing_tool_ref.decorator_tolerance `tolerance`]]
+
+
+
+[/=============================================================================]
+[/ templates ]
+
+
+[template bt_example[name descr rule]
+
+[h5 Example: [descr]]
+
+[import ../examples/[name].[rule].cpp]
+[import ../examples/[name].output]
+[table
+  [[Code]]
+  [[[example_code]]]
+]
+
+[table
+  [[Output]]
+  [[[example_output]]]
+]
+] [/ end bt_example]
+
+
+[/ ### template for the example page  ]
+[template bt_example_page[name descr]
+
+[section:ref_[name] [descr]]
+
+[import examples/[name].run-fail.cpp]
+[import examples/[name].output]
+
+[heading Source]
+[example_code]
+
+[heading Output]
+[example_output]
+
+[endsect]
+
+] [/ end bt_example_page]
+
+
+
+
+[/=============================================================================]
+
+[/ introduction material and general presentation ]
+[include introduction/introduction.qbk]
+
+[/ ##### Users guide ##### ]
+[/ intro into usage variants]
+[include usage_variants.qbk]
+
+[/ organizing, generating and registering tests]
+[include test_organization/test_organization.qbk]
+
+[/ creating assertions]
+[include testing_tools/testing_tools.qbk]
+
+[/ controlling outputs]
+[include test_output/test_output.qbk]
+
+[/ command line + environment options]
+[include runtime_configuration/runtime_configuration.qbk]
+
+[/ ##### Advanced scenarios ##### ]
+[include adv_scenarios.qbk]
+
+[/=============================================================================]
+
+[/TOFIX ]
+[/include program_execution_monitor.qbk]
+
+[/=============================================================================]
+
+[include usage_recommendations.qbk]
+
+[/=============================================================================]
+[/ Closing parts]
+
+[include closing_chapters/faq.qbk]
+[include closing_chapters/glossary.qbk]
+[include closing_chapters/change_log.qbk]
+[include closing_chapters/acknowledgments.qbk]
+
+
+[/=============================================================================]
+[/ References]
+
+[section:utf_reference __UTF__ API reference]
+[include test_organization/testorg_reference.qbk]
+[include testing_tools/testing_tools_reference.qbk]
+[include test_output/testout_reference.qbk]
+[include runtime_configuration/runtime_config_reference.qbk]
+[include adv_scenarios/link_reference.qbk]
+[/ doxygen auto-generated reference documentation]
+[xinclude doxygen_reference_generated_doc.xml]
+[endsect]
+
+
+
+[/=============================================================================]
+
+
+
+[/ EOF]

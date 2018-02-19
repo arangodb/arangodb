@@ -1,0 +1,92 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Production of initiating function return value</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../asynchronous_operations.html" title="Requirements on asynchronous operations">
+<link rel="prev" href="automatic_deduction_of_initiating_function_return_type.html" title="Automatic deduction of initiating function return type">
+<link rel="next" href="lifetime_of_initiating_function_arguments.html" title="Lifetime of initiating function arguments">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="automatic_deduction_of_initiating_function_return_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../asynchronous_operations.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lifetime_of_initiating_function_arguments.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.asynchronous_operations.production_of_initiating_function_return_value"></a><a class="link" href="production_of_initiating_function_return_value.html" title="Production of initiating function return value">Production
+        of initiating function return value</a>
+</h4></div></div></div>
+<p>
+          An initiating function produces its return type as follows:
+        </p>
+<p>
+          &#8212; constructing an object <code class="computeroutput">result</code> of type <code class="computeroutput">async_result&lt;decay_t&lt;CompletionToken&gt;,
+          Signature&gt;</code>, initialized as <code class="computeroutput">result(completion_handler)</code>;
+          and
+        </p>
+<p>
+          &#8212; using <code class="computeroutput">result.get()</code> as the operand of the return statement.
+        </p>
+<p>
+          [<span class="emphasis"><em>Example:</em></span> Given an asynchronous operation with <span class="emphasis"><em>Completion
+          signature</em></span> <code class="computeroutput">void(R1 r1, R2 r2)</code>, an initiating function
+          meeting these requirements may be implemented as follows:
+        </p>
+<pre class="programlisting">template&lt;class CompletionToken&gt;
+auto async_xyz(T1 t1, T2 t2, CompletionToken&amp;&amp; token)
+{
+  typename async_result&lt;decay_t&lt;CompletionToken&gt;, void(R1, R2)&gt;::completion_handler_type
+    completion_handler(forward&lt;CompletionToken&gt;(token));
+
+  async_result&lt;decay_t&lt;CompletionToken&gt;, void(R1, R2)&gt; result(completion_handler);
+
+  // initiate the operation and cause completion_handler to be invoked with
+  // the result
+
+  return result.get();
+}
+</pre>
+<p>
+          For convenience, initiating functions may be implemented using the <code class="computeroutput">async_completion</code>
+          template:
+        </p>
+<pre class="programlisting">template&lt;class CompletionToken&gt;
+auto async_xyz(T1 t1, T2 t2, CompletionToken&amp;&amp; token)
+{
+  async_completion&lt;CompletionToken, void(R1, R2)&gt; init(token);
+
+  // initiate the operation and cause init.completion_handler to be invoked
+  // with the result
+
+  return init.result.get();
+}
+</pre>
+<p>
+          &#8212;<span class="emphasis"><em>end example</em></span>]
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="automatic_deduction_of_initiating_function_return_type.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../asynchronous_operations.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="lifetime_of_initiating_function_arguments.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

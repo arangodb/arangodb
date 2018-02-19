@@ -1,0 +1,130 @@
+# Boost System Library test Jamfile
+
+# Copyright Beman Dawes 2003, 2006
+
+# Distributed under the Boost Software License, Version 1.0.
+# See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/system
+
+import testing ;
+
+project
+    : requirements
+      <library>/boost/system//boost_system
+      <toolset>msvc:<asynch-exceptions>on
+    ;
+    
+   lib throw_test
+     : throw_test.cpp
+     : <link>shared:<define>BOOST_SYSTEM_DYN_LINK=1
+       <link>static:<define>BOOST_SYSTEM_STATIC_LINK=1
+     ;
+
+   rule cxx03 ( properties * )
+   {
+      local result ;
+
+      if <toolset>gcc in $(properties) || <toolset>clang in $(properties)
+      {
+         result = <cxxflags>-std=c++03 ;
+      }
+      else
+      {
+         result = <build>no ;
+      }
+
+      return $(result) ;
+   }
+
+   rule cxx11 ( properties * )
+   {
+      local result ;
+
+      if <toolset-gcc:version>4.6 in $(properties)
+      {
+         result = <cxxflags>-std=c++0x ;
+      }
+      else if <toolset>gcc in $(properties) || <toolset>clang in $(properties)
+      {
+         result = <cxxflags>-std=c++11 ;
+      }
+      else
+      {
+         result = <build>no ;
+      }
+
+      return $(result) ;
+   }
+
+   test-suite "system"
+       : [ run error_code_test.cpp
+           : # command line
+           : # input files
+           : # requirements
+                   <link>static
+         ]
+         [ run error_code_test.cpp
+           :  :  : <link>shared : error_code_test_shared
+         ]
+         [ run error_code_test.cpp
+           :  :  : <link>static <conditional>@cxx03 : error_code_test_03
+         ]
+         [ run error_code_test.cpp
+           :  :  : <link>shared <conditional>@cxx03 : error_code_test_shared_03
+         ]
+         [ run error_code_test.cpp
+           :  :  : <link>static <conditional>@cxx11 : error_code_test_11
+         ]
+         [ run error_code_test.cpp
+           :  :  : <link>shared <conditional>@cxx11 : error_code_test_shared_11
+         ]
+         [ run error_code_user_test.cpp
+           :  :  : <link>static
+         ]
+         [ run error_code_user_test.cpp
+           :  :  : <link>shared : error_code_user_test_shared
+         ]
+         [ run system_error_test.cpp
+           :  :  : <link>static
+         ]
+         [ run system_error_test.cpp
+            :  :  : <link>shared : system_error_test_shared
+         ]
+         [ run dynamic_link_test.cpp throw_test
+           :  :  : <link>shared : throw_test_shared
+         ]
+         [ run initialization_test.cpp
+            :  :  : <link>shared : initialization_test_shared
+         ]
+         [ run header_only_test.cpp
+           :  :  : <link>static
+         ]
+         [ run config_test.cpp
+           :  :  : <test-info>always_show_run_output 
+         ]
+         [ run std_interop_test.cpp
+           :  :  : <link>static
+         ]
+         [ run std_interop_test.cpp
+            :  :  : <link>shared : std_interop_test_shared
+         ]
+         [ run std_mismatch_test.cpp
+           :  :  : <link>static <conditional>@cxx03 : std_mismatch_test_03
+         ]
+         [ run std_mismatch_test.cpp
+           :  :  : <link>shared <conditional>@cxx03 : std_mismatch_test_shared_03
+         ]
+         [ run std_mismatch_test.cpp
+           :  :  : <link>static <conditional>@cxx11 : std_mismatch_test_11
+         ]
+         [ run std_mismatch_test.cpp
+           :  :  : <link>shared <conditional>@cxx11 : std_mismatch_test_shared_11
+         ]
+         [ run header_only_test.cpp
+           :  :  : <link>static <define>BOOST_NO_ANSI_APIS : header_only_test_no_ansi
+         ]
+         ;
+
+# Quick (CI) test
+run quick.cpp ;

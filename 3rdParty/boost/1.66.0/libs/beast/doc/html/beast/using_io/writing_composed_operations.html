@@ -1,0 +1,491 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Writing Composed Operations</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_io.html" title="Using I/O">
+<link rel="prev" href="files.html" title="Files">
+<link rel="next" href="example_detect_ssl.html" title="Example: Detect SSL">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="files.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="example_detect_ssl.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_io.writing_composed_operations"></a><a class="link" href="writing_composed_operations.html" title="Writing Composed Operations">Writing Composed
+      Operations</a>
+</h3></div></div></div>
+<p>
+        Asynchronous operations are started by calling a free function or member
+        function known as an asynchronous <span class="emphasis"><em><a href="../../../../../../doc/html/boost_asio/reference/asynchronous_operations.html" target="_top">initiating
+        function</a></em></span>. This function accepts parameters specific to
+        the operation as well as a "completion token." The token is either
+        a completion handler, or a type defining how the caller is informed of the
+        asynchronous operation result. <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+        comes with the special tokens <a href="../../../../../../doc/html/boost_asio/reference/use_future_t.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">use_future</span></code></a> and <a href="../../../../../../doc/html/boost_asio/reference/yield_context.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">yield_context</span></code></a> for using futures
+        and coroutines respectively. This system of customizing the return value
+        and method of completion notification is known as the <span class="emphasis"><em>Extensible
+        Asynchronous Model</em></span> described in <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3747.pdf" target="_top"><span class="bold"><strong>N3747</strong></span></a>, and a built in to <a href="http://cplusplus.github.io/networking-ts/draft.pdf" target="_top"><span class="bold"><strong>N4588</strong></span></a>. Here is an example of an initiating
+        function which reads a line from the stream and echoes it back. This function
+        is developed further in the next section:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">CompletionToken</span><span class="special">&gt;</span>
+<span class="keyword">auto</span>
+<span class="identifier">async_echo</span><span class="special">(</span><span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">)</span>
+</pre>
+<p>
+        Authors using Beast can reuse the library's primitives to create their own
+        initiating functions for performing a series of other, intermediate asynchronous
+        operations before invoking a final completion handler. The set of intermediate
+        actions produced by an initiating function is known as a <a href="http://blog.think-async.com/2009/08/composed-operations-coroutines-and-code.html" target="_top"><span class="emphasis"><em>composed
+        operation</em></span></a>. To ensure full interoperability and well-defined
+        behavior, <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a> imposes
+        requirements on the implementation of composed operations. These classes
+        and functions make it easier to develop initiating functions and their composed
+        operations:
+      </p>
+<div class="table">
+<a name="beast.using_io.writing_composed_operations.asynchronous_helpers"></a><p class="title"><b>Table&#160;1.8.&#160;Asynchronous Helpers</b></p>
+<div class="table-contents"><table class="table" summary="Asynchronous Helpers">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__bind_handler.html" title="bind_handler"><code class="computeroutput"><span class="identifier">bind_handler</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function returns a new, nullary completion handler which when
+                  invoked with no arguments invokes the original completion handler
+                  with a list of bound arguments. The invocation is made from the
+                  same implicit or explicit strand as that which would be used to
+                  invoke the original handler. This works because the returned call
+                  wrapper uses the same associated executor and associated allocator
+                  as the bound handler.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__handler_ptr.html" title="handler_ptr"><code class="computeroutput"><span class="identifier">handler_ptr</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This is a smart pointer container used to manage the internal state
+                  of a composed operation. It is useful when the state is non trivial.
+                  For example when the state has non-copyable or expensive to copy
+                  types. The container takes ownership of the final completion handler,
+                  and provides boilerplate to invoke the final handler in a way that
+                  also deletes the internal state. The internal state is allocated
+                  using the final completion handler's associated allocator, benefiting
+                  from all handler memory management optimizations transparently.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.using_io.writing_composed_operations.echo"></a><a class="link" href="writing_composed_operations.html#beast.using_io.writing_composed_operations.echo" title="Echo">Echo</a>
+</h4></div></div></div>
+<p>
+          This example develops an initiating function called <span class="bold"><strong>echo</strong></span>.
+          The operation will read up to the first newline on a stream, and then write
+          the same line including the newline back on the stream. The implementation
+          performs both reading and writing, and has a non-trivially-copyable state.
+          First we define the input parameters and results, then declare our initiation
+          function. For our echo operation the only inputs are the stream and the
+          completion token. The output is the error code which is usually included
+          in all completion handler signatures.
+        </p>
+<pre class="programlisting"><span class="comment">/** Asynchronously read a line and echo it back.
+
+    This function is used to asynchronously read a line ending
+    in a carriage-return ("CR") from the stream, and then write
+    it back. The function call always returns immediately. The
+    asynchronous operation will continue until one of the
+    following conditions is true:
+
+    @li A line was read in and sent back on the stream
+
+    @li An error occurs.
+
+    This operation is implemented in terms of one or more calls to
+    the stream's `async_read_some` and `async_write_some` functions,
+    and is known as a &lt;em&gt;composed operation&lt;/em&gt;. The program must
+    ensure that the stream performs no other operations until this
+    operation completes. The implementation may read additional octets
+    that lie past the end of the line being read. These octets are
+    silently discarded.
+
+    @param The stream to operate on. The type must meet the
+    requirements of @b AsyncReadStream and @AsyncWriteStream
+
+    @param token The completion token to use. If this is a
+    completion handler, copies will be made as required.
+    The equivalent signature of the handler must be:
+    @code
+    void handler(
+        error_code ec       // result of operation
+    );
+    @endcode
+    Regardless of whether the asynchronous operation completes
+    immediately or not, the handler will not be invoked from within
+    this function. Invocation of the handler will be performed in a
+    manner equivalent to using `boost::asio::io_context::post`.
+*/</span>
+<span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span>
+    <span class="keyword">class</span> <span class="identifier">CompletionToken</span><span class="special">&gt;</span>
+<span class="identifier">BOOST_ASIO_INITFN_RESULT_TYPE</span><span class="special">(</span>          <a class="co" name="beast.using_io.writing_composed_operations.echo.c0" href="writing_composed_operations.html#beast.using_io.writing_composed_operations.echo.c1"><img src="../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a>
+    <span class="identifier">CompletionToken</span><span class="special">,</span>
+    <span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">))</span>     <a class="co" name="beast.using_io.writing_composed_operations.echo.c2" href="writing_composed_operations.html#beast.using_io.writing_composed_operations.echo.c3"><img src="../../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a>
+<span class="identifier">async_echo</span><span class="special">(</span>
+    <span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">);</span>
+</pre>
+<div class="calloutlist"><table border="0" summary="Callout list">
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="beast.using_io.writing_composed_operations.echo.c1"></a><a href="#beast.using_io.writing_composed_operations.echo.c0"><img src="../../../../../../doc/src/images/callouts/1.png" alt="1" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              <code class="computeroutput"><span class="identifier">BOOST_ASIO_INITFN_RESULT_TYPE</span></code>
+              customizes the return value based on the completion token
+            </p></td>
+</tr>
+<tr>
+<td width="5%" valign="top" align="left"><p><a name="beast.using_io.writing_composed_operations.echo.c3"></a><a href="#beast.using_io.writing_composed_operations.echo.c2"><img src="../../../../../../doc/src/images/callouts/2.png" alt="2" border="0"></a> </p></td>
+<td valign="top" align="left"><p>
+              This is the signature for the completion handler
+            </p></td>
+</tr>
+</table></div>
+<p>
+          Now that we have a declaration, we will define the body of the function.
+          We want to achieve the following goals: perform static type checking on
+          the input parameters, set up the return value as per <a href="http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3747.pdf" target="_top"><span class="bold"><strong>N3747</strong></span></a>, and launch the composed operation
+          by constructing the object and invoking it.
+        </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">echo_op</span><span class="special">;</span>
+
+<span class="comment">// Read a line and echo it back</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">CompletionToken</span><span class="special">&gt;</span>
+<span class="identifier">BOOST_ASIO_INITFN_RESULT_TYPE</span><span class="special">(</span><span class="identifier">CompletionToken</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">))</span>
+<span class="identifier">async_echo</span><span class="special">(</span><span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">CompletionToken</span><span class="special">&amp;&amp;</span> <span class="identifier">token</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Make sure stream meets the requirements. We use static_assert</span>
+    <span class="comment">// to cause a friendly message instead of an error novel.</span>
+    <span class="comment">//</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">is_async_stream</span><span class="special">&lt;</span><span class="identifier">AsyncStream</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span>
+        <span class="string">"AsyncStream requirements not met"</span><span class="special">);</span>
+
+    <span class="comment">// This helper manages some of the handler's lifetime and</span>
+    <span class="comment">// uses the result and handler specializations associated with</span>
+    <span class="comment">// the completion token to help customize the return value.</span>
+    <span class="comment">//</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_completion</span><span class="special">&lt;</span><span class="identifier">CompletionToken</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">)&gt;</span> <span class="identifier">init</span><span class="special">{</span><span class="identifier">token</span><span class="special">};</span>
+
+    <span class="comment">// Create the composed operation and launch it. This is a constructor</span>
+    <span class="comment">// call followed by invocation of operator(). We use BOOST_ASIO_HANDLER_TYPE</span>
+    <span class="comment">// to convert the completion token into the correct handler type,</span>
+    <span class="comment">// allowing user-defined specializations of the async_result template</span>
+    <span class="comment">// to be used.</span>
+    <span class="comment">//</span>
+    <span class="identifier">echo_op</span><span class="special">&lt;</span>
+        <span class="identifier">AsyncStream</span><span class="special">,</span>
+        <span class="identifier">BOOST_ASIO_HANDLER_TYPE</span><span class="special">(</span>
+            <span class="identifier">CompletionToken</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">))&gt;{</span>
+                <span class="identifier">stream</span><span class="special">,</span>
+                <span class="identifier">init</span><span class="special">.</span><span class="identifier">completion_handler</span><span class="special">}(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span><span class="special">{},</span> <span class="number">0</span><span class="special">);</span>
+
+    <span class="comment">// This hook lets the caller see a return value when appropriate.</span>
+    <span class="comment">// For example this might return std::future&lt;error_code&gt; if</span>
+    <span class="comment">// CompletionToken is boost::asio::use_future, or this might</span>
+    <span class="comment">// return an error code if CompletionToken specifies a coroutine.</span>
+    <span class="comment">//</span>
+    <span class="keyword">return</span> <span class="identifier">init</span><span class="special">.</span><span class="identifier">result</span><span class="special">.</span><span class="identifier">get</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The initiating function contains a few relatively simple parts. There is
+          the customization of the return value type, static type checking, building
+          the return value type using the helper, and creating and launching the
+          composed operation object. The <span class="bold"><strong><code class="computeroutput"><span class="identifier">echo_op</span></code></strong></span>
+          object does most of the work here, and has a somewhat non-trivial structure.
+          This structure is necessary to meet the stringent requirements of composed
+          operations (described in more detail in the <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+          documentation). We will touch on these requirements without explaining
+          them in depth.
+        </p>
+<p>
+          Here is the boilerplate present in all composed operations written in this
+          style:
+        </p>
+<pre class="programlisting"><span class="comment">// This composed operation reads a line of input and echoes it back.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">echo_op</span>
+<span class="special">{</span>
+    <span class="comment">// This holds all of the state information required by the operation.</span>
+    <span class="keyword">struct</span> <span class="identifier">state</span>
+    <span class="special">{</span>
+        <span class="comment">// The stream to read and write to</span>
+        <span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">;</span>
+
+        <span class="comment">// Indicates what step in the operation's state machine</span>
+        <span class="comment">// to perform next, starting from zero.</span>
+        <span class="keyword">int</span> <span class="identifier">step</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+        <span class="comment">// The buffer used to hold the input and output data.</span>
+        <span class="comment">//</span>
+        <span class="comment">// We use a custom allocator for performance, this allows</span>
+        <span class="comment">// the implementation of the io_context to make efficient</span>
+        <span class="comment">// re-use of memory allocated by composed operations during</span>
+        <span class="comment">// a continuation.</span>
+        <span class="comment">//</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">basic_streambuf</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">allocator_traits</span><span class="special">&lt;</span>
+            <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">associated_allocator_t</span><span class="special">&lt;</span><span class="identifier">Handler</span><span class="special">&gt;</span> <span class="special">&gt;::</span>
+                <span class="keyword">template</span> <span class="identifier">rebind_alloc</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+        <span class="comment">// handler_ptr requires that the first parameter to the</span>
+        <span class="comment">// contained object constructor is a reference to the</span>
+        <span class="comment">// managed final completion handler.</span>
+        <span class="comment">//</span>
+        <span class="keyword">explicit</span> <span class="identifier">state</span><span class="special">(</span><span class="identifier">Handler</span><span class="special">&amp;</span> <span class="identifier">handler</span><span class="special">,</span> <span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream_</span><span class="special">)</span>
+            <span class="special">:</span> <span class="identifier">stream</span><span class="special">(</span><span class="identifier">stream_</span><span class="special">)</span>
+            <span class="special">,</span> <span class="identifier">buffer</span><span class="special">((</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">numeric_limits</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;::</span><span class="identifier">max</span><span class="special">)(),</span>
+                <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">get_associated_allocator</span><span class="special">(</span><span class="identifier">handler</span><span class="special">))</span>
+        <span class="special">{</span>
+        <span class="special">}</span>
+    <span class="special">};</span>
+
+    <span class="comment">// The operation's data is kept in a cheap-to-copy smart</span>
+    <span class="comment">// pointer container called `handler_ptr`. This efficiently</span>
+    <span class="comment">// satisfies the CopyConstructible requirements of completion</span>
+    <span class="comment">// handlers with expensive-to-copy state.</span>
+    <span class="comment">//</span>
+    <span class="comment">// `handler_ptr` uses the allocator associated with the final</span>
+    <span class="comment">// completion handler, in order to allocate the storage for `state`.</span>
+    <span class="comment">//</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">handler_ptr</span><span class="special">&lt;</span><span class="identifier">state</span><span class="special">,</span> <span class="identifier">Handler</span><span class="special">&gt;</span> <span class="identifier">p_</span><span class="special">;</span>
+
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="comment">// Boost.Asio requires that handlers are CopyConstructible.</span>
+    <span class="comment">// In some cases, it takes advantage of handlers that are</span>
+    <span class="comment">// MoveConstructible. This operation supports both.</span>
+    <span class="comment">//</span>
+    <span class="identifier">echo_op</span><span class="special">(</span><span class="identifier">echo_op</span><span class="special">&amp;&amp;)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+    <span class="identifier">echo_op</span><span class="special">(</span><span class="identifier">echo_op</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+
+    <span class="comment">// The constructor simply creates our state variables in</span>
+    <span class="comment">// the smart pointer container.</span>
+    <span class="comment">//</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">DeducedHandler</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span>
+    <span class="identifier">echo_op</span><span class="special">(</span><span class="identifier">AsyncStream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span> <span class="identifier">DeducedHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">p_</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">DeducedHandler</span><span class="special">&gt;(</span><span class="identifier">handler</span><span class="special">),</span> <span class="identifier">stream</span><span class="special">)</span>
+    <span class="special">{</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Associated allocator support. This is Asio's system for</span>
+    <span class="comment">// allowing the final completion handler to customize the</span>
+    <span class="comment">// memory allocation strategy used for composed operation</span>
+    <span class="comment">// states. A composed operation should use the same allocator</span>
+    <span class="comment">// as the final handler. These declarations achieve that.</span>
+
+    <span class="keyword">using</span> <span class="identifier">allocator_type</span> <span class="special">=</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">associated_allocator_t</span><span class="special">&lt;</span><span class="identifier">Handler</span><span class="special">&gt;;</span>
+
+    <span class="identifier">allocator_type</span>
+    <span class="identifier">get_allocator</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">get_associated_allocator</span><span class="special">(</span><span class="identifier">p_</span><span class="special">.</span><span class="identifier">handler</span><span class="special">());</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Executor hook. This is Asio's system for customizing the</span>
+    <span class="comment">// manner in which asynchronous completion handlers are invoked.</span>
+    <span class="comment">// A composed operation needs to use the same executor to invoke</span>
+    <span class="comment">// intermediate completion handlers as that used to invoke the</span>
+    <span class="comment">// final handler.</span>
+
+    <span class="keyword">using</span> <span class="identifier">executor_type</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">associated_executor_t</span><span class="special">&lt;</span>
+        <span class="identifier">Handler</span><span class="special">,</span> <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">declval</span><span class="special">&lt;</span><span class="identifier">AsyncStream</span><span class="special">&amp;&gt;().</span><span class="identifier">get_executor</span><span class="special">())&gt;;</span>
+
+    <span class="identifier">executor_type</span> <span class="identifier">get_executor</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">get_associated_executor</span><span class="special">(</span>
+            <span class="identifier">p_</span><span class="special">.</span><span class="identifier">handler</span><span class="special">(),</span> <span class="identifier">p_</span><span class="special">-&gt;</span><span class="identifier">stream</span><span class="special">.</span><span class="identifier">get_executor</span><span class="special">());</span>
+    <span class="special">}</span>
+
+    <span class="comment">// The entry point for this handler. This will get called</span>
+    <span class="comment">// as our intermediate operations complete. Definition below.</span>
+    <span class="comment">//</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+          Next is to implement the function call operator. Our strategy is to make
+          our composed object meet the requirements of a completion handler by being
+          copyable (also movable), and by providing the function call operator with
+          the correct signature. Rather than using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind</span></code>
+          or <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span></code>, which destroys the type information
+          and therefore breaks the allocation and invocation hooks, we will simply
+          pass <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(*</span><span class="keyword">this</span><span class="special">)</span></code> as
+          the completion handler parameter for any operations that we initiate. For
+          the move to work correctly, care must be taken to ensure that no access
+          to data members are made after the move takes place. Here is the implementation
+          of the function call operator for this echo operation:
+        </p>
+<pre class="programlisting"><span class="comment">// echo_op is callable with the signature void(error_code, bytes_transferred),</span>
+<span class="comment">// allowing `*this` to be used as both a ReadHandler and a WriteHandler.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">AsyncStream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Handler</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">echo_op</span><span class="special">&lt;</span><span class="identifier">AsyncStream</span><span class="special">,</span> <span class="identifier">Handler</span><span class="special">&gt;::</span>
+<span class="keyword">operator</span><span class="special">()(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Store a reference to our state. The address of the state won't</span>
+    <span class="comment">// change, and this solves the problem where dereferencing the</span>
+    <span class="comment">// data member is undefined after a move.</span>
+    <span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">p</span> <span class="special">=</span> <span class="special">*</span><span class="identifier">p_</span><span class="special">;</span>
+
+    <span class="comment">// Now perform the next step in the state machine</span>
+    <span class="keyword">switch</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">?</span> <span class="number">2</span> <span class="special">:</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">step</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// initial entry</span>
+        <span class="keyword">case</span> <span class="number">0</span><span class="special">:</span>
+            <span class="comment">// read up to the first newline</span>
+            <span class="identifier">p</span><span class="special">.</span><span class="identifier">step</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_read_until</span><span class="special">(</span><span class="identifier">p</span><span class="special">.</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">,</span> <span class="string">"\r"</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(*</span><span class="keyword">this</span><span class="special">));</span>
+
+        <span class="keyword">case</span> <span class="number">1</span><span class="special">:</span>
+            <span class="comment">// write everything back</span>
+            <span class="identifier">p</span><span class="special">.</span><span class="identifier">step</span> <span class="special">=</span> <span class="number">2</span><span class="special">;</span>
+            <span class="comment">// async_read_until could have read past the newline,</span>
+            <span class="comment">// use buffers_prefix to make sure we only send one line</span>
+            <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">p</span><span class="special">.</span><span class="identifier">stream</span><span class="special">,</span>
+                <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">buffers_prefix</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">,</span> <span class="identifier">p</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">()),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">move</span><span class="special">(*</span><span class="keyword">this</span><span class="special">));</span>
+
+        <span class="keyword">case</span> <span class="number">2</span><span class="special">:</span>
+            <span class="identifier">p</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">);</span>
+            <span class="keyword">break</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// Invoke the final handler. The implementation of `handler_ptr`</span>
+    <span class="comment">// will deallocate the storage for the state before the handler</span>
+    <span class="comment">// is invoked. This is necessary to provide the</span>
+    <span class="comment">// destroy-before-invocation guarantee on handler memory</span>
+    <span class="comment">// customizations.</span>
+    <span class="comment">//</span>
+    <span class="comment">// If we wanted to pass any arguments to the handler which come</span>
+    <span class="comment">// from the `state`, they would have to be moved to the stack</span>
+    <span class="comment">// first or else undefined behavior results.</span>
+    <span class="comment">//</span>
+    <span class="identifier">p_</span><span class="special">.</span><span class="identifier">invoke</span><span class="special">(</span><span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">return</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+          This is the most important element of writing a composed operation, and
+          the part which is often neglected or implemented incorrectly. It is the
+          forwarding of the final handler's associated allocator and associated executor
+          to the composed operation.
+        </p>
+<p>
+          Our composed operation stores the final handler and performs its own intermediate
+          asynchronous operations. To ensure that I/O objects, in this case the stream,
+          are accessed safely it is important to use the same executor to invoke
+          intermediate handlers as that used to invoke the final handler. Similarly,
+          for memory allocations our composed operation should use the allocator
+          associated with the final handler.
+        </p>
+<p>
+          There are some common mistakes that should be avoided when writing composed
+          operations:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Type erasing the final handler. This will cause undefined behavior.
+            </li>
+<li class="listitem">
+              Forgetting to include a return statement after calling an initiating
+              function.
+            </li>
+<li class="listitem">
+              Calling a synchronous function by accident. In general composed operations
+              should not block for long periods of time, since this ties up a thread
+              running on the <a href="../../../../../../doc/html/boost_asio/reference/io_context.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span></code></a>.
+            </li>
+<li class="listitem">
+              Forgetting to provide <code class="computeroutput"><span class="identifier">executor_type</span></code>
+              and <code class="computeroutput"><span class="identifier">get_executor</span></code> for
+              the composed operation. This will cause undefined behavior. For example,
+              if someone calls the initiating function with a strand-wrapped function
+              object, and there is more than thread running on the <a href="../../../../../../doc/html/boost_asio/reference/io_context.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">io_context</span></code></a>, the underlying
+              stream may be accessed in a fashion that violates safety guarantees.
+            </li>
+<li class="listitem">
+              For operations which complete immediately (i.e. without calling an
+              intermediate initiating function), forgetting to use <a href="../../../../../../doc/html/boost_asio/reference/post.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">post</span></code></a> to invoke the final
+              handler. This breaks the following initiating function guarantee:
+              <span class="emphasis"><em>Regardless of whether the asynchronous operation completes
+              immediately or not, the handler will not be invoked from within this
+              function. Invocation of the handler will be performed in a manner equivalent
+              to using <a href="../../../../../../doc/html/boost_asio/reference/post.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">post</span></code></a></em></span>. The function
+              <a class="link" href="../ref/boost__beast__bind_handler.html" title="bind_handler"><code class="computeroutput"><span class="identifier">bind_handler</span></code></a> is provided for
+              this purpose.
+            </li>
+</ul></div>
+<p>
+          A complete, runnable version of this example may be found in the examples
+          directory.
+        </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016, 2017 Vinnie Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="files.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="example_detect_ssl.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

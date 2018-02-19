@@ -1,0 +1,162 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Beast</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="next" href="beast/introduction.html" title="Introduction">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="beast/introduction.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="beast"></a>Chapter&#160;1.&#160;Boost.Beast</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Vinnie</span> <span class="surname">Falco</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2016, 2017 Vinnie Falco</p></div>
+<div><div class="legalnotice">
+<a name="beast.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="beast/introduction.html">Introduction</a></span></dt>
+<dt><span class="section"><a href="beast/reports.html">Reports</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/reports.html#beast.reports.security_review_bishop_fox">Security Review
+      (Bishop Fox)</a></span></dt>
+<dt><span class="section"><a href="beast/reports.html#beast.reports.websocket_autobahn_testsuite">WebSocket
+      (Autobahn|Testsuite)</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/quick_start.html">Quick Start</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/quick_start.html#beast.quick_start.http_client">HTTP Client</a></span></dt>
+<dt><span class="section"><a href="beast/quick_start.html#beast.quick_start.websocket_client">WebSocket Client</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/examples.html">Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.clients">Clients</a></span></dt>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.servers">Servers</a></span></dt>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.servers_advanced">Servers (Advanced)</a></span></dt>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.common_files">Common Files</a></span></dt>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.documentation_samples">Documentation Samples</a></span></dt>
+<dt><span class="section"><a href="beast/examples.html#beast.examples.composed_operations">Composed Operations</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/using_io.html">Using I/O</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/using_io/asio_refresher.html">Asio Refresher</a></span></dt>
+<dt><span class="section"><a href="beast/using_io/stream_types.html">Stream Types</a></span></dt>
+<dt><span class="section"><a href="beast/using_io/buffer_types.html">Buffer Types</a></span></dt>
+<dt><span class="section"><a href="beast/using_io/files.html">Files</a></span></dt>
+<dt><span class="section"><a href="beast/using_io/writing_composed_operations.html">Writing Composed
+      Operations</a></span></dt>
+<dd><dl><dt><span class="section"><a href="beast/using_io/writing_composed_operations.html#beast.using_io.writing_composed_operations.echo">Echo</a></span></dt></dl></dd>
+<dt><span class="section"><a href="beast/using_io/example_detect_ssl.html">Example: Detect SSL</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/using_http.html">Using HTTP</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/using_http/protocol_primer.html">Protocol Primer</a></span></dt>
+<dt><span class="section"><a href="beast/using_http/message_containers.html">Message Containers</a></span></dt>
+<dt><span class="section"><a href="beast/using_http/message_stream_operations.html">Message Stream
+      Operations</a></span></dt>
+<dt><span class="section"><a href="beast/using_http/serializer_stream_operations.html">Serializer
+      Stream Operations</a></span></dt>
+<dt><span class="section"><a href="beast/using_http/parser_stream_operations.html">Parser Stream
+      Operations</a></span></dt>
+<dd><dl><dt><span class="section"><a href="beast/using_http/parser_stream_operations/incremental_read.html">Incremental
+        Read</a></span></dt></dl></dd>
+<dt><span class="section"><a href="beast/using_http/buffer_oriented_serializing.html">Buffer-Oriented
+      Serializing</a></span></dt>
+<dd><dl><dt><span class="section"><a href="beast/using_http/buffer_oriented_serializing.html#beast.using_http.buffer_oriented_serializing.write_to_std_ostream">Write
+        To std::ostream</a></span></dt></dl></dd>
+<dt><span class="section"><a href="beast/using_http/buffer_oriented_parsing.html">Buffer-Oriented
+      Parsing</a></span></dt>
+<dd><dl><dt><span class="section"><a href="beast/using_http/buffer_oriented_parsing.html#beast.using_http.buffer_oriented_parsing.read_from_std_istream">Read
+        From std::istream</a></span></dt></dl></dd>
+<dt><span class="section"><a href="beast/using_http/chunked_encoding.html">Chunked Encoding</a></span></dt>
+<dt><span class="section"><a href="beast/using_http/custom_body_types.html">Custom Body Types</a></span></dt>
+<dd><dl><dt><span class="section"><a href="beast/using_http/custom_body_types.html#beast.using_http.custom_body_types.file_body">File
+        Body</a></span></dt></dl></dd>
+<dt><span class="section"><a href="beast/using_http/custom_parsers.html">Custom Parsers</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/more_examples.html">More Examples</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/more_examples/change_body_type.html">Change Body Type</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/expect_100_continue_client.html">Expect
+      100-continue (Client)</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/expect_100_continue_server.html">Expect
+      100-continue (Server)</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/head_request_client.html">HEAD request
+      (Client)</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/head_response_server.html">HEAD response
+      (Server)</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/http_relay.html">HTTP Relay</a></span></dt>
+<dt><span class="section"><a href="beast/more_examples/send_child_process_output.html">Send Child
+      Process Output</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/using_websocket.html">Using WebSocket</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/using_websocket/creating_streams.html">Creating Streams</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/establishing_connections.html">Establishing
+      Connections</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/handshaking_clients.html">Handshaking
+      (Clients)</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/handshaking_servers.html">Handshaking
+      (Servers)</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/send_and_receive_messages.html">Send
+      and Receive Messages</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/control_frames.html">Control Frames</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/teardown.html">Teardown</a></span></dt>
+<dt><span class="section"><a href="beast/using_websocket/notes.html">Notes</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/concepts.html">Concepts</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/concepts/Body.html">Body</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/BodyReader.html">BodyReader</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/BodyWriter.html">BodyWriter</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/BufferSequence.html">BufferSequence</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/DynamicBuffer.html">DynamicBuffer</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/Fields.html">Fields</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/FieldsWriter.html">FieldsWriter</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/File.html">File</a></span></dt>
+<dt><span class="section"><a href="beast/concepts/streams.html">Streams</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/design_choices.html">Design Choices</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="beast/design_choices/http_message_container.html">HTTP Message
+      Container</a></span></dt>
+<dt><span class="section"><a href="beast/design_choices/http_comparison_to_other_librari.html">HTTP
+      Comparison to Other Libraries</a></span></dt>
+<dt><span class="section"><a href="beast/design_choices/comparison_to_zaphoyd_studios_we.html">Comparison
+      to Zaphoyd Studios WebSocket++</a></span></dt>
+<dt><span class="section"><a href="beast/design_choices/faq.html">FAQ</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="beast/quickref.html">Reference</a></span></dt>
+<dt><span class="section"><a href="beast/index.html">Index</a></span></dt>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: December 14, 2017 at 00:02:36 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="beast/introduction.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

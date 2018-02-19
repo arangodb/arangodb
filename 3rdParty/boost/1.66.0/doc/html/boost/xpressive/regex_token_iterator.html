@@ -1,0 +1,350 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Struct template regex_token_iterator</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="../../xpressive/reference.html#header.boost.xpressive.xpressive_fwd_hpp" title="Header &lt;boost/xpressive/xpressive_fwd.hpp&gt;">
+<link rel="prev" href="regex_iterator.html" title="Struct template regex_iterator">
+<link rel="next" href="regex_id_filter_predicate.html" title="Struct template regex_id_filter_predicate">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="regex_iterator.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/reference.html#header.boost.xpressive.xpressive_fwd_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="regex_id_filter_predicate.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.xpressive.regex_token_iterator"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Struct template regex_token_iterator</span></h2>
+<p>boost::xpressive::regex_token_iterator</p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../xpressive/reference.html#header.boost.xpressive.xpressive_fwd_hpp" title="Header &lt;boost/xpressive/xpressive_fwd.hpp&gt;">boost/xpressive/xpressive_fwd.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> BidiIter<span class="special">&gt;</span> 
+<span class="keyword">struct</span> <a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a> <span class="special">{</span>
+  <span class="comment">// <a class="link" href="regex_token_iterator.html#boost.xpressive.regex_token_iteratorconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_3-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_4-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><span class="identifier">BidiIter</span><span class="special">,</span> <span class="identifier">BidiIter</span><span class="special">,</span> <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> LetExpr<span class="special">&gt;</span> 
+    <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_5-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><span class="identifier">BidiIter</span><span class="special">,</span> <span class="identifier">BidiIter</span><span class="special">,</span> <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Subs<span class="special">&gt;</span> 
+    <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_6-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><span class="identifier">BidiIter</span><span class="special">,</span> <span class="identifier">BidiIter</span><span class="special">,</span> <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="identifier">Subs</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_flag_type</span> <span class="special">=</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_default</span><span class="special">)</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Subs<span class="special">,</span> <span class="keyword">typename</span> LetExpr<span class="special">&gt;</span> 
+    <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_7-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><span class="identifier">BidiIter</span><span class="special">,</span> <span class="identifier">BidiIter</span><span class="special">,</span> <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> 
+                         <span class="identifier">Subs</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span><span class="special">,</span> 
+                         <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_flag_type</span> <span class="special">=</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_default</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_8-bb"><span class="identifier">regex_token_iterator</span></a><span class="special">(</span><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+  <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_9-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_2-bb">public member functions</a></span>
+  <span class="identifier">value_type</span> <span class="keyword">const</span> <span class="special">&amp;</span> <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_2_1-bb"><span class="keyword">operator</span><span class="special">*</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <span class="keyword">const</span> <span class="special">*</span> <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_2_2-bb"><span class="keyword">operator</span><span class="special">-&gt;</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+  <a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_2_3-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <a class="link" href="regex_token_iterator.html#id-1_3_47_5_18_2_1_8_2_4-bb"><span class="keyword">operator</span><span class="special">++</span></a><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="id-1.3.47.5.19.18.4"></a><h2>Description</h2>
+<div class="refsect2">
+<a name="id-1.3.47.5.19.18.4.2"></a><h3>
+<a name="boost.xpressive.regex_token_iteratorconstruct-copy-destruct"></a><code class="computeroutput">regex_token_iterator</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_47_5_18_2_1_8_3-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Postconditions:</span></p></td>
+<td><p><code class="computeroutput">*this</code> is the end of sequence iterator. </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_47_5_18_2_1_8_4-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><span class="identifier">BidiIter</span> begin<span class="special">,</span> <span class="identifier">BidiIter</span> end<span class="special">,</span> 
+                     <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> rex<span class="special">)</span><span class="special">;</span></pre>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">begin</code></span></p></td>
+<td><p>The beginning of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">end</code></span></p></td>
+<td><p>The end of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rex</code></span></p></td>
+<td><p>The regex pattern to search for. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Requires:</span></p></td>
+<td><p><code class="computeroutput"></code>[begin,end) is a valid range. </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> LetExpr<span class="special">&gt;</span> 
+  <a name="id-1_3_47_5_18_2_1_8_5-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><span class="identifier">BidiIter</span> begin<span class="special">,</span> <span class="identifier">BidiIter</span> end<span class="special">,</span> 
+                       <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> rex<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> args<span class="special">)</span><span class="special">;</span></pre>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">args</code></span></p></td>
+<td><p>A let() expression with argument bindings for semantic actions. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">begin</code></span></p></td>
+<td><p>The beginning of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">end</code></span></p></td>
+<td><p>The end of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rex</code></span></p></td>
+<td><p>The regex pattern to search for. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Requires:</span></p></td>
+<td><p><code class="computeroutput"></code>[begin,end) is a valid range. </p></td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Subs<span class="special">&gt;</span> 
+  <a name="id-1_3_47_5_18_2_1_8_6-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><span class="identifier">BidiIter</span> begin<span class="special">,</span> <span class="identifier">BidiIter</span> end<span class="special">,</span> 
+                       <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> rex<span class="special">,</span> 
+                       <span class="identifier">Subs</span> <span class="keyword">const</span> <span class="special">&amp;</span> subs<span class="special">,</span> 
+                       <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_flag_type</span> flags <span class="special">=</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_default</span><span class="special">)</span><span class="special">;</span></pre>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">begin</code></span></p></td>
+<td><p>The beginning of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">end</code></span></p></td>
+<td><p>The end of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">flags</code></span></p></td>
+<td><p>Optional match flags, used to control how the expression is matched against the sequence. (See match_flag_type.) </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rex</code></span></p></td>
+<td><p>The regex pattern to search for. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">subs</code></span></p></td>
+<td><p>A range of integers designating sub-matches to be treated as tokens. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Requires:</span></p></td>
+<td>
+<p><code class="computeroutput"></code>[begin,end) is a valid range. </p>
+<p><code class="computeroutput">subs</code> is either an integer greater or equal to -1, or else an array or non-empty <code class="computeroutput">std::vector&lt;&gt;</code> of such integers. </p>
+</td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Subs<span class="special">,</span> <span class="keyword">typename</span> LetExpr<span class="special">&gt;</span> 
+  <a name="id-1_3_47_5_18_2_1_8_7-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><span class="identifier">BidiIter</span> begin<span class="special">,</span> <span class="identifier">BidiIter</span> end<span class="special">,</span> 
+                       <a class="link" href="basic_regex.html" title="Struct template basic_regex">basic_regex</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> rex<span class="special">,</span> 
+                       <span class="identifier">Subs</span> <span class="keyword">const</span> <span class="special">&amp;</span> subs<span class="special">,</span> <span class="emphasis"><em><span class="identifier">unspecified</span></em></span> args<span class="special">,</span> 
+                       <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_flag_type</span> flags <span class="special">=</span> <span class="identifier">regex_constants</span><span class="special">::</span><span class="identifier">match_default</span><span class="special">)</span><span class="special">;</span></pre>
+<p>
+
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">args</code></span></p></td>
+<td><p>A let() expression with argument bindings for semantic actions. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">begin</code></span></p></td>
+<td><p>The beginning of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">end</code></span></p></td>
+<td><p>The end of the character range to search. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">flags</code></span></p></td>
+<td><p>Optional match flags, used to control how the expression is matched against the sequence. (See match_flag_type.) </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">rex</code></span></p></td>
+<td><p>The regex pattern to search for. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">subs</code></span></p></td>
+<td><p>A range of integers designating sub-matches to be treated as tokens. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr>
+<tr>
+<td><p><span class="term">Requires:</span></p></td>
+<td>
+<p><code class="computeroutput"></code>[begin,end) is a valid range. </p>
+<p><code class="computeroutput">subs</code> is either an integer greater or equal to -1, or else an array or non-empty <code class="computeroutput">std::vector&lt;&gt;</code> of such integers. </p>
+</td>
+</tr>
+</tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="id-1_3_47_5_18_2_1_8_8-bb"></a><span class="identifier">regex_token_iterator</span><span class="special">(</span><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> that<span class="special">)</span><span class="special">;</span></pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Postconditions:</span></p></td>
+<td><p><code class="computeroutput">*this == that</code> </p></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="special">&amp;</span> 
+<a name="id-1_3_47_5_18_2_1_8_9-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> that<span class="special">)</span><span class="special">;</span></pre>
+<p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Postconditions:</span></p></td>
+<td><p><code class="computeroutput">*this == that</code> </p></td>
+</tr></tbody>
+</table></div>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="id-1.3.47.5.19.18.4.3"></a><h3>
+<a name="id-1_3_47_5_18_2_1_8_2-bb"></a><code class="computeroutput">regex_token_iterator</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><span class="identifier">value_type</span> <span class="keyword">const</span> <span class="special">&amp;</span> <a name="id-1_3_47_5_18_2_1_8_2_1-bb"></a><span class="keyword">operator</span><span class="special">*</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="identifier">value_type</span> <span class="keyword">const</span> <span class="special">*</span> <a name="id-1_3_47_5_18_2_1_8_2_2-bb"></a><span class="keyword">operator</span><span class="special">-&gt;</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <span class="special">&amp;</span> <a name="id-1_3_47_5_18_2_1_8_2_3-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="special">)</span><span class="special">;</span></pre>
+<p>If N == -1 then sets *this equal to the end of sequence iterator. Otherwise if N+1 &lt; subs.size(), then increments N and sets result equal to ((subs[N] == -1) ? value_type(what.prefix().str()) : value_type(what[subs[N]].str())). Otherwise if what.prefix().first != what[0].second and if the element match_prev_avail is not set in flags then sets it. Then locates the next match as if by calling regex_search(what[0].second, end, what, *pre, flags), with the following variation: in the event that the previous match found was of zero length (what[0].length() == 0) then attempts to find a non-zero length match starting at what[0].second, only if that fails and provided what[0].second != suffix().second does it look for a (possibly zero length) match starting from what[0].second + 1. If such a match is found then sets N equal to zero, and sets result equal to ((subs[N] == -1) ? value_type(what.prefix().str()) : value_type(what[subs[N]].str())). Otherwise if no further matches were found, then let last_end be the endpoint of the last match that was found. Then if last_end != end and subs[0] == -1 sets N equal to -1 and sets result equal to value_type(last_end, end). Otherwise sets *this equal to the end of sequence iterator. </p>
+</li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="regex_token_iterator.html" title="Struct template regex_token_iterator">regex_token_iterator</a><span class="special">&lt;</span> <span class="identifier">BidiIter</span> <span class="special">&gt;</span> <a name="id-1_3_47_5_18_2_1_8_2_4-bb"></a><span class="keyword">operator</span><span class="special">++</span><span class="special">(</span><span class="keyword">int</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2007 Eric Niebler<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="regex_iterator.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../xpressive/reference.html#header.boost.xpressive.xpressive_fwd_hpp"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="regex_id_filter_predicate.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

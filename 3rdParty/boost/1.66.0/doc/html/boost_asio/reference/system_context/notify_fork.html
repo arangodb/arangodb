@@ -1,0 +1,128 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>system_context::notify_fork</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../boost_asio.html" title="Boost.Asio">
+<link rel="up" href="../system_context.html" title="system_context">
+<link rel="prev" href="make_service.html" title="system_context::make_service">
+<link rel="next" href="shutdown.html" title="system_context::shutdown">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="make_service.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../system_context.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="shutdown.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_asio.reference.system_context.notify_fork"></a><a class="link" href="notify_fork.html" title="system_context::notify_fork">system_context::notify_fork</a>
+</h4></div></div></div>
+<p>
+          <span class="emphasis"><em>Inherited from execution_context.</em></span>
+        </p>
+<p>
+          <a class="indexterm" name="boost_asio.indexterm.system_context.notify_fork"></a> 
+Notify
+          the <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+          of a fork-related event.
+        </p>
+<pre class="programlisting">void notify_fork(
+    fork_event event);
+</pre>
+<p>
+          This function is used to inform the <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+          that the process is about to fork, or has just forked. This allows the
+          <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>,
+          and the services it contains, to perform any necessary housekeeping to
+          ensure correct operation following a fork.
+        </p>
+<p>
+          This function must not be called while any other <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+          function, or any function associated with the execution_context's derived
+          class, is being called in another thread. It is, however, safe to call
+          this function from within a completion handler, provided no other thread
+          is accessing the <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+          or its derived class.
+        </p>
+<h6>
+<a name="boost_asio.reference.system_context.notify_fork.h0"></a>
+          <span class="phrase"><a name="boost_asio.reference.system_context.notify_fork.parameters"></a></span><a class="link" href="notify_fork.html#boost_asio.reference.system_context.notify_fork.parameters">Parameters</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">event</span></dt>
+<dd><p>
+                A fork-related event.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.system_context.notify_fork.h1"></a>
+          <span class="phrase"><a name="boost_asio.reference.system_context.notify_fork.exceptions"></a></span><a class="link" href="notify_fork.html#boost_asio.reference.system_context.notify_fork.exceptions">Exceptions</a>
+        </h6>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">boost::system::system_error</span></dt>
+<dd><p>
+                Thrown on failure. If the notification fails the <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+                object should no longer be used and should be destroyed.
+              </p></dd>
+</dl>
+</div>
+<h6>
+<a name="boost_asio.reference.system_context.notify_fork.h2"></a>
+          <span class="phrase"><a name="boost_asio.reference.system_context.notify_fork.example"></a></span><a class="link" href="notify_fork.html#boost_asio.reference.system_context.notify_fork.example">Example</a>
+        </h6>
+<p>
+          The following code illustrates how to incorporate the <code class="computeroutput">notify_fork()</code>
+          function:
+        </p>
+<pre class="programlisting">my_execution_context.notify_fork(execution_context::fork_prepare);
+if (fork() == 0)
+{
+  // This is the child process.
+  my_execution_context.notify_fork(execution_context::fork_child);
+}
+else
+{
+  // This is the parent process.
+  my_execution_context.notify_fork(execution_context::fork_parent);
+}
+</pre>
+<h6>
+<a name="boost_asio.reference.system_context.notify_fork.h3"></a>
+          <span class="phrase"><a name="boost_asio.reference.system_context.notify_fork.remarks"></a></span><a class="link" href="notify_fork.html#boost_asio.reference.system_context.notify_fork.remarks">Remarks</a>
+        </h6>
+<p>
+          For each service object <code class="computeroutput">svc</code> in the <a class="link" href="../execution_context.html" title="execution_context"><code class="computeroutput">execution_context</code></a>
+          set, performs <code class="computeroutput">svc-&gt;notify_fork();</code>. When processing the
+          fork_prepare event, services are visited in reverse order of the beginning
+          of service object lifetime. Otherwise, services are visited in order of
+          the beginning of service object lifetime.
+        </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2017 Christopher M. Kohlhoff<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="make_service.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../system_context.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../boost_asio.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="shutdown.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

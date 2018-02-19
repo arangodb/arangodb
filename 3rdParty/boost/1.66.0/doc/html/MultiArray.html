@@ -1,0 +1,1068 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>MultiArray Concept</title>
+<link rel="stylesheet" href="../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="The Boost C++ Libraries BoostBook Documentation Subset">
+<link rel="up" href="multi_array.html" title="Chapter&#160;26.&#160;Boost.MultiArray Reference Manual">
+<link rel="prev" href="multi_array.html" title="Chapter&#160;26.&#160;Boost.MultiArray Reference Manual">
+<link rel="next" href="array_types.html" title="Array Components">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../boost.png"></td>
+<td align="center"><a href="../../index.html">Home</a></td>
+<td align="center"><a href="../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="multi_array.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="multi_array.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="array_types.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="sect1">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="MultiArray"></a>MultiArray Concept</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.8">Notation</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.9">Associated Types</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.10">Valid expressions</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.11">Complexity guarantees</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.12">Invariants</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#view_types">Associated Types for Views</a></span></dt>
+<dt><span class="sect2"><a href="MultiArray.html#id-1.3.27.5.14">Models</a></span></dt>
+</dl></div>
+<p>The MultiArray
+concept defines an interface to hierarchically nested
+containers.  It specifies operations for accessing elements,
+traversing containers, and creating views
+of array data.
+MultiArray defines
+a flexible memory model that accomodates
+a variety of data layouts.
+</p>
+<p>
+At each level (or dimension) of a MultiArray's
+container hierarchy lie a set of ordered containers, each of which
+contains the same number and type of values. The depth of this
+container hierarchy is the MultiArray's <span class="emphasis"><em>dimensionality</em></span>. 
+MultiArray is recursively defined; the
+containers at each level of the container hierarchy model
+MultiArray as well. While each dimension of a MultiArray
+has its own size, the list of sizes for all dimensions 
+defines the <span class="emphasis"><em>shape</em></span> of the entire MultiArray.
+At the base of this hierarchy lie 1-dimensional
+MultiArrays.  Their values are the contained
+objects of interest and not part of the container hierarchy. These are
+the MultiArray's elements.
+</p>
+<p>
+Like other container concepts, MultiArray exports
+iterators to traverse its values. In addition, values can be
+addressed directly using the familiar bracket notation.
+</p>
+<p>
+MultiArray also specifies
+routines for creating
+specialized views. A <span class="emphasis"><em>view</em></span> lets you treat a 
+subset of the underlying
+elements in a MultiArray as though it were a separate
+MultiArray. Since a view refers to the same underlying elements,
+changes made to a view's elements will be reflected in the original
+MultiArray. For
+example, given a 3-dimensional "cube" of elements, a 2-dimensional
+slice can be viewed as if it were an independent
+MultiArray.
+
+Views are created using <code class="literal">index_gen</code> and
+<code class="literal">index_range</code> objects.
+<code class="literal">index_range</code>s denote elements from a certain
+dimension that are to be included in a
+view. <code class="literal">index_gen</code> aggregates range data and performs
+bookkeeping to determine the view type to be returned.
+
+MultiArray's <code class="literal">operator[]</code>
+ must be passed the result
+of <code class="literal">N</code> chained calls to 
+<code class="literal">index_gen::operator[]</code>, i.e.
+
+</p>
+<pre class="programlisting">indices[a0][a1]...[aN];
+</pre>
+<p>
+
+where <code class="literal">N</code> is the 
+MultiArray's dimensionality and
+<code class="literal">indices</code> an object of type <code class="literal">index_gen</code>.
+
+The view type is dependent upon the number of degenerate dimensions
+specified to <code class="literal">index_gen</code>.  A degenerate dimension
+occurs when a single-index is specified to
+<code class="literal">index_gen</code> for a certain dimension.  For example, if
+<code class="literal">indices</code> is an object of type
+<code class="literal">index_gen</code>, then the following example:
+
+</p>
+<pre class="programlisting">indices[index_range(0,5)][2][index_range(0,4)];
+</pre>
+<p>
+
+has a degenerate second dimension.  The view generated from the above
+specification will have 2 dimensions with shape <code class="literal">5 x 4</code>.
+If the "<code class="literal">2</code>" above were replaced with
+another <code class="literal">index_range</code> object, for example:
+
+</p>
+<pre class="programlisting">indices[index_range(0,5)][index_range(0,2)][index_range(0,4)];
+</pre>
+<p>
+
+then the view would have 3 dimensions.</p>
+<p>
+MultiArray exports
+information regarding the memory
+layout of its contained elements. Its memory model for elements is
+completely defined by 4 properties: the origin, shape, index bases,
+and strides.  The origin is the address in memory of the element
+accessed as <code class="literal">a[0][0]...[0]</code>, where
+<code class="literal">a</code> is a MultiArray. The shape is a list of numbers
+specifying the size of containers at each dimension.  For example, the
+first extent is the size of the outermost container, the second extent
+is the size of its subcontainers, and so on. The index bases are a
+list of signed values specifying the index of the first value in a
+container. All containers at the same dimension share the same index
+base.  Note that since positive index bases are
+possible, the origin need not exist in order to determine the location
+in memory of the MultiArray's elements.
+  The strides determine how index values are mapped to memory offsets. 
+They accomodate a
+number of possible element layouts.  For example, the elements of a 2
+dimensional array can be stored by row (i.e., the elements of each row
+are stored contiguously) or by column (i.e., the elements of each
+column are stored contiguously).
+</p>
+<p>
+Two concept checking classes for the MultiArray concepts
+(<code class="literal">ConstMultiArrayConcept</code> and
+<code class="literal">MutableMultiArrayConcept</code>) are in the namespace
+<code class="literal">boost::multi_array_concepts</code> in
+<code class="literal">&lt;boost/multi_array/concept_checks.hpp&gt;</code>.
+</p>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.8"></a>Notation</h3></div></div></div>
+<p>What follows are the descriptions of symbols that will be used
+to describe the MultiArray interface.</p>
+<div class="table">
+<a name="id-1.3.27.5.8.3"></a><p class="title"><b>Table&#160;26.1.&#160;Notation</b></p>
+<div class="table-contents"><table class="table" summary="Notation">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><code class="literal">A</code></td>
+<td>A type that is a model of MultiArray
+</td>
+</tr>
+<tr>
+<td><code class="literal">a,b</code></td>
+<td>Objects of type <code class="literal">A</code>
+</td>
+</tr>
+<tr>
+<td><code class="literal">NumDims</code></td>
+<td>The numeric dimension parameter associated with
+<code class="literal">A</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">Dims</code></td>
+<td>Some numeric dimension parameter such that 
+<code class="literal">0&lt;Dims&lt;NumDims</code>.
+</td>
+</tr>
+<tr>
+<td><code class="literal">indices</code></td>
+<td>An object created by some number of chained calls
+to <code class="literal">index_gen::operator[](index_range)</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">index_list</code></td>
+<td>An object whose type models
+<a href="../../utility/Collection.html" target="_top">Collection</a>
+</td>
+</tr>
+<tr>
+<td><code class="literal">idx</code></td>
+<td>A signed integral value.</td>
+</tr>
+<tr>
+<td><code class="literal">tmp</code></td>
+<td>An object of type
+	      <code class="literal">boost::array&lt;index,NumDims&gt;</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.9"></a>Associated Types</h3></div></div></div>
+<p>
+</p>
+<div class="table">
+<a name="id-1.3.27.5.9.3"></a><p class="title"><b>Table&#160;26.2.&#160;Associated Types</b></p>
+<div class="table-contents"><table class="table" summary="Associated Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">value_type</code></td>
+<td>This is the value type of the container.
+  If <code class="literal">NumDims == 1</code>, then this is
+<code class="literal">element</code>. Otherwise, this is the value type of the
+immediately nested containers.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">reference</code>
+</td>
+<td>
+This is the reference type of the contained value. 
+If <code class="literal">NumDims == 1</code>, then this is 
+<code class="literal">element&amp;</code>. Otherwise, this is the same type as
+<code class="literal">template subarray&lt;NumDims-1&gt;::type</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">const_reference</code>
+</td>
+<td>
+This is the const reference type of the contained value.
+If <code class="literal">NumDims == 1</code>, then this is  
+<code class="literal">const element&amp;</code>. Otherwise, this is the same
+type as
+<code class="literal">template const_subarray&lt;NumDims-1&gt;::type</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">size_type</code>
+</td>
+<td>
+This is an unsigned integral type.  It is primarily used to specify array shape.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">difference_type</code>
+</td>
+<td>
+This is a signed integral type used to represent the distance between two
+iterators. It is the same type as
+<code class="literal">std::iterator_traits&lt;iterator&gt;::difference_type</code>.
+</td>
+</tr>
+<tr>
+<td><code class="literal">iterator</code></td>
+<td>
+This is an iterator over the values of <code class="literal">A</code>.
+If <code class="literal">NumDims == 1</code>, then it models 
+<a href="http://www.boost.org/doc/html/RandomAccessIterator.html" target="_top">
+<code class="literal">Random Access Iterator</code></a>. 
+Otherwise it models 
+<a href="./iterator_categories.html#concept_RandomAccessTraversalIterator" target="_top">
+Random Access Traversal Iterator</a>,
+<a href="./iterator_categories.html#concept_ReadableIterator" target="_top">
+Readable Iterator</a>,
+<a href="./iterator_categories.html#concept_WritableIterator" target="_top">
+Writable Iterator</a>, and 
+<a href="http://www.boost.org/doc/html/OutputIterator.html" target="_top">
+<code class="literal">Output Iterator</code></a>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">const_iterator</code>
+</td>
+<td>
+This is the const iterator over the values of <code class="literal">A</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">reverse_iterator</code>
+</td>
+<td>
+This is the reversed iterator, used to iterate backwards over the values of 
+<code class="literal">A</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">const_reverse_iterator</code>
+</td>
+<td>
+This is the reversed const iterator.
+<code class="literal">A</code>.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">element</code>
+</td>
+<td>
+This is the type of objects stored at the base of the
+hierarchy of MultiArrays. It is the same as
+<code class="literal">template subarray&lt;1&gt;::value_type</code>
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">index</code>
+</td>
+<td>
+This is a signed integral type used for indexing into <code class="literal">A</code>. It 
+is also used to represent strides and index bases.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">index_gen</code>
+</td>
+<td>
+This type is used to create a tuple of <code class="literal">index_range</code>s 
+passed to <code class="literal">operator[]</code> to create
+an <code class="literal">array_view&lt;Dims&gt;::type</code> object.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">index_range</code>
+</td>
+<td>
+This type specifies a range of indices over some dimension of a
+MultiArray.  This range will be visible through an 
+<code class="literal">array_view&lt;Dims&gt;::type</code> object.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">template subarray&lt;Dims&gt;::type</code>
+</td>
+<td>
+This is subarray type with <code class="literal">Dims</code> dimensions.
+It is the reference type of the <code class="literal">(NumDims - Dims)</code>
+dimension of <code class="literal">A</code> and also models
+MultiArray.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">template const_subarray&lt;Dims&gt;::type</code>
+</td>
+<td>
+This is the const subarray type.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">template array_view&lt;Dims&gt;::type</code>
+</td>
+<td>
+This is the view type with <code class="literal">Dims</code> dimensions.  It is
+returned by calling <code class="literal">operator[](<code class="literal">indices</code>)</code>.
+It models MultiArray.
+</td>
+</tr>
+<tr>
+<td>
+<code class="literal">template
+const_array_view&lt;Dims&gt;::type</code>
+</td>
+<td>
+This is the const view type with <code class="literal">Dims</code> dimensions.
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.10"></a>Valid expressions</h3></div></div></div>
+<div class="table">
+<a name="id-1.3.27.5.10.2"></a><p class="title"><b>Table&#160;26.3.&#160;Valid Expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid Expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Semantics</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">A::dimensionality</code></td>
+<td><code class="literal">size_type</code></td>
+<td>This compile-time constant represents the number of
+dimensions of the array (note that 
+<code class="literal">A::dimensionality == NumDims</code>).</td>
+</tr>
+<tr>
+<td><code class="literal">a.shape()</code></td>
+<td><code class="literal">const size_type*</code></td>
+<td>
+This returns a list of <code class="literal">NumDims</code> elements specifying the
+extent of each array dimension.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.strides()</code></td>
+<td><code class="literal">const index*</code></td>
+<td>
+This returns a list of <code class="literal">NumDims</code> elements specifying the
+stride associated with each array dimension. When accessing values,
+strides is used to calculate an element's location in memory.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.index_bases()</code></td>
+<td><code class="literal">const index*</code></td>
+<td>
+This returns a list of <code class="literal">NumDims</code> elements specifying the
+numeric index of the first element for each array dimension.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.origin()</code></td>
+<td>
+<code class="literal">element*</code> if <code class="literal">a</code> is mutable,
+<code class="literal">const element*</code> otherwise.
+</td>
+<td>
+This returns the address of the element accessed by the expression
+<code class="literal">a[0][0]...[0].</code>. If the index bases are positive,
+this element won't exist, but the address can still be used to locate
+a valid element given its indices.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.num_dimensions()</code></td>
+<td><code class="literal">size_type</code></td>
+<td>This returns the number of dimensions of the array
+(note that <code class="literal">a.num_dimensions() == NumDims</code>).</td>
+</tr>
+<tr>
+<td><code class="literal">a.num_elements()</code></td>
+<td><code class="literal">size_type</code></td>
+<td>This returns the number of elements contained
+in the array. It is equivalent to the following code:
+<pre class="programlisting">
+std::accumulate(a.shape(),a.shape+a.num_dimensions(),
+    size_type(1),std::multiplies&lt;size_type&gt;());
+</pre>
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.size()</code></td>
+<td><code class="literal">size_type</code></td>
+<td>
+This returns the number of values contained in
+<code class="literal">a</code>. It is equivalent to <code class="literal">a.shape()[0];</code>
+</td>
+</tr>
+<tr>
+<td><code class="literal">a(index_list)</code></td>
+<td>
+<code class="literal">element&amp;</code>;  if <code class="literal">a</code> is mutable,
+<code class="literal">const element&amp;</code> otherwise.
+            </td>
+<td>
+This expression accesses a specific element of
+<code class="literal">a</code>.<code class="literal">index_list</code> is the unique set
+of indices that address the element returned.  It is 
+equivalent to the following code (disregarding intermediate temporaries):
+<pre class="programlisting">
+    // multiply indices by strides
+    std::transform(index_list.begin(), index_list.end(),
+      a.strides(), tmp.begin(), std::multiplies&lt;index&gt;()),
+
+    // add the sum of the products to the origin
+    *std::accumulate(tmp.begin(), tmp.end(), a.origin());
+</pre>
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.begin()</code></td>
+<td>
+<code class="literal">iterator</code> if <code class="literal">a</code> is mutable,
+<code class="literal">const_iterator</code> otherwise.
+            </td>
+<td>This returns an iterator pointing to the beginning of
+<code class="literal">a</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">a.end()</code></td>
+<td>
+<code class="literal">iterator</code> if <code class="literal">a</code> is mutable,
+<code class="literal">const_iterator</code> otherwise.
+            </td>
+<td>This returns an iterator pointing to the end of
+<code class="literal">a</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">a.rbegin()</code></td>
+<td>
+<code class="literal">reverse_iterator</code> if <code class="literal">a</code> is mutable, 
+<code class="literal">const_reverse_iterator</code> otherwise.
+            </td>
+<td>This returns a reverse iterator pointing to the
+beginning of <code class="literal">a</code> reversed.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a.rend()</code></td>
+<td>
+<code class="literal">reverse_iterator</code> if <code class="literal">a</code> is mutable, 
+<code class="literal">const_reverse_iterator</code> otherwise.
+</td>
+<td>
+This returns a reverse iterator pointing to the end of <code class="literal">a</code>
+reversed.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a[idx]</code></td>
+<td>
+<code class="literal">reference</code> if <code class="literal">a</code> is mutable,
+<code class="literal">const_reference</code> otherwise.
+            </td>
+<td>
+This returns a reference type that is bound to the index
+<code class="literal">idx</code> value of <code class="literal">a</code>.  Note that if
+<code class="literal">i</code> is the index base for this dimension, the above
+expression returns the <code class="literal">(idx-i)</code>th element (counting
+from zero).  The expression is equivalent to
+<code class="literal">*(a.begin()+idx-a.index_bases()[0]);</code>.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a[indices]</code></td>
+<td>
+<code class="literal">array_view&lt;Dims&gt;::type</code> if
+<code class="literal">a</code> is mutable,
+<code class="literal">const_array_view&lt;Dims&gt;::type</code> otherwise.
+            </td>
+<td>
+This expression generates a view of the array determined by the
+<code class="literal">index_range</code> and <code class="literal">index</code> values
+ used to construct <code class="literal">indices</code>.
+</td>
+</tr>
+<tr>
+<td><code class="literal">a == b</code></td>
+<td>bool</td>
+<td>This performs a lexicographical comparison of the
+values of <code class="literal">a</code> and <code class="literal">b</code>.  The element
+type must model <a href="http://www.sgi.com/tech/stl/EqualityComparable.html" target="_top">EqualityComparable</a> for this
+expression to be valid.</td>
+</tr>
+<tr>
+<td><code class="literal">a &lt; b</code></td>
+<td>bool</td>
+<td>This performs a lexicographical comparison of the
+values of <code class="literal">a</code> and <code class="literal">b</code>.  The element
+type must model <a href="http://www.sgi.com/tech/stl/LessThanComparable.html" target="_top">LessThanComparable</a> for this
+expression to be valid.</td>
+</tr>
+<tr>
+<td><code class="literal">a &lt;= b</code></td>
+<td>bool</td>
+<td>This performs a lexicographical comparison of the
+values of <code class="literal">a</code> and <code class="literal">b</code>.  The element
+type must model <a href="http://www.sgi.com/tech/stl/EqualityComparable.html" target="_top">EqualityComparable</a> and
+<a href="http://www.sgi.com/tech/stl/LessThanComparable.html" target="_top">LessThanComparable</a> for this
+expression to be valid.</td>
+</tr>
+<tr>
+<td><code class="literal">a &gt; b</code></td>
+<td>bool</td>
+<td>This performs a lexicographical comparison of the
+values of <code class="literal">a</code> and <code class="literal">b</code>.  The element
+type must model <a href="http://www.sgi.com/tech/stl/EqualityComparable.html" target="_top">EqualityComparable</a> and 
+<a href="http://www.sgi.com/tech/stl/LessThanComparable.html" target="_top">LessThanComparable</a> for this
+expression to be valid.</td>
+</tr>
+<tr>
+<td><code class="literal">a &gt;= b</code></td>
+<td>bool</td>
+<td>This performs a lexicographical comparison of the
+values of <code class="literal">a</code> and <code class="literal">b</code>.  The element
+type must model <a href="http://www.sgi.com/tech/stl/LessThanComparable.html" target="_top">LessThanComparable</a> for this
+expression to be valid.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.11"></a>Complexity guarantees</h3></div></div></div>
+<code class="literal">begin()</code> and <code class="literal">end()</code> execute in amortized
+constant time.
+<code class="literal">size()</code> executes in at most linear time in the 
+MultiArray's size. 
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.12"></a>Invariants</h3></div></div></div>
+<div class="table">
+<a name="id-1.3.27.5.12.2"></a><p class="title"><b>Table&#160;26.4.&#160;Invariants</b></p>
+<div class="table-contents"><table class="table" summary="Invariants">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td>Valid range</td>
+<td>
+<code class="literal">[a.begin(),a.end())</code> is a valid range.
+            </td>
+</tr>
+<tr>
+<td>Range size</td>
+<td>
+<code class="literal">a.size() == std::distance(a.begin(),a.end());</code>.
+</td>
+</tr>
+<tr>
+<td>Completeness</td>
+<td>
+Iteration through the range 
+<code class="literal">[a.begin(),a.end())</code> will traverse across every
+<code class="literal">value_type</code> of <code class="literal">a</code>.
+</td>
+</tr>
+<tr>
+<td>Accessor Equivalence</td>
+<td>
+Calling <code class="literal">a[a1][a2]...[aN]</code> where <code class="literal">N==NumDims</code>
+yields the same result as calling 
+<code class="literal">a(index_list)</code>, where <code class="literal">index_list</code>
+is a <a href="../../utility/Collection.html" target="_top">Collection</a> containing the values <code class="literal">a1...aN</code>.
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="view_types"></a>Associated Types for Views</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="sect3"><a href="MultiArray.html#index_range"><code class="literal">index_range</code></a></span></dt>
+<dt><span class="sect3"><a href="MultiArray.html#index_gen"><code class="literal">index_gen</code></a></span></dt>
+</dl></div>
+<p>The following MultiArray  associated 
+types define the interface for creating views of existing
+MultiArrays. Their interfaces and roles in the
+concept are described below.</p>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="index_range"></a><code class="literal">index_range</code>
+</h4></div></div></div>
+<p><code class="literal">index_range</code> objects represent half-open
+strided intervals.  They are aggregated (using an
+<code class="literal">index_gen</code> object) and passed to 
+a MultiArray's <code class="literal">operator[]</code>
+to create an array view. When creating a view, 
+each <code class="literal">index_range</code> denotes a range of
+valid indices along one dimension of a MultiArray.
+Elements that are accessed through the set of ranges specified will be 
+included in the constructed view. In some cases, an
+<code class="literal">index_range</code> is created without specifying start
+or finish values.  In those cases, the object is interpreted to
+start at the beginning of a MultiArray dimension
+and end at its end.</p>
+<p>
+<code class="literal">index_range</code> objects can be constructed and modified 
+several ways in order to allow convenient and clear expression of a
+range of indices.  To specify ranges, <code class="literal">index_range</code>
+supports a set of constructors, mutating member functions, and a novel 
+specification involving inequality operators.  Using inequality
+operators,  a half open range [5,10) can be specified as follows:
+</p>
+<pre class="programlisting">5 &lt;= index_range() &lt; 10;</pre>
+<p> or
+</p>
+<pre class="programlisting">4 &lt; index_range() &lt;= 9;</pre>
+<p> and so on.
+
+The following describes the
+<code class="literal">index_range</code> interface.
+</p>
+<div class="table">
+<a name="id-1.3.27.5.13.3.4"></a><p class="title"><b>Table&#160;26.5.&#160;Notation</b></p>
+<div class="table-contents"><table class="table" summary="Notation">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><code class="literal">i</code></td>
+<td>An object of type <code class="literal">index_range</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">idx,idx1,idx2,idx3</code></td>
+<td>Objects of type <code class="literal">index</code>.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="id-1.3.27.5.13.3.5"></a><p class="title"><b>Table&#160;26.6.&#160;Associated Types</b></p>
+<div class="table-contents"><table class="table" summary="Associated Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">index</code></td>
+<td>This is a signed integral type. It is used to
+specify the start, finish, and stride values.</td>
+</tr>
+<tr>
+<td><code class="literal">size_type</code></td>
+<td>This is an unsigned integral type. It is used to
+report the size of the range an <code class="literal">index_range</code> 
+represents.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="id-1.3.27.5.13.3.6"></a><p class="title"><b>Table&#160;26.7.&#160;Valid Expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid Expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Semantics</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">index_range(idx1,idx2,idx3)</code></td>
+<td><code class="literal">index_range</code></td>
+<td>This constructs an <code class="literal">index_range</code>
+	    representing the interval <code class="literal">[idx1,idx2)</code>
+ with stride <code class="literal">idx3</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">index_range(idx1,idx2)</code></td>
+<td><code class="literal">index_range</code></td>
+<td>This constructs an <code class="literal">index_range</code>
+	    representing the interval <code class="literal">[idx1,idx2)</code>
+ with unit stride. It is equivalent to
+	    <code class="literal">index_range(idx1,idx2,1)</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">index_range()</code></td>
+<td><code class="literal">index_range</code></td>
+<td>This construct an <code class="literal">index_range</code>
+with unspecified start and finish values.</td>
+</tr>
+<tr>
+<td><code class="literal">i.start(idx1)</code></td>
+<td><code class="literal">index&amp;</code></td>
+<td>This sets the start index of <code class="literal">i</code> to
+	    <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.finish(idx)</code></td>
+<td><code class="literal">index&amp;</code></td>
+<td>This sets the finish index of <code class="literal">i</code> to 
+            <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.stride(idx)</code></td>
+<td><code class="literal">index&amp;</code></td>
+<td>This sets the stride length of <code class="literal">i</code> to
+            <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.start()</code></td>
+<td><code class="literal">index</code></td>
+<td>This returns the start index of <code class="literal">i</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.finish()</code></td>
+<td><code class="literal">index</code></td>
+<td>This returns the finish index of <code class="literal">i</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.stride()</code></td>
+<td><code class="literal">index</code></td>
+<td>This returns the stride length of <code class="literal">i</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.get_start(idx)</code></td>
+<td><code class="literal">index</code></td>
+<td>If <code class="literal">i</code> specifies a start
+value, this is equivalent to <code class="literal">i.start()</code>. Otherwise it
+returns <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.get_finish(idx)</code></td>
+<td><code class="literal">index</code></td>
+<td>If <code class="literal">i</code> specifies a finish
+value, this is equivalent to <code class="literal">i.finish()</code>. Otherwise it
+returns <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i.size(idx)</code></td>
+<td><code class="literal">size_type</code></td>
+<td>If <code class="literal">i</code> specifies a both finish and
+start values, this is equivalent to
+<code class="literal">(i.finish()-i.start())/i.stride()</code>. Otherwise it
+returns <code class="literal">idx</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i &lt; idx</code></td>
+<td><code class="literal">index</code></td>
+<td>This is another syntax for specifying the finish
+value. This notation does not include 
+<code class="literal">idx</code> in the range of valid indices. It is equivalent to 
+<code class="literal">index_range(r.start(), idx, r.stride())</code>
+</td>
+</tr>
+<tr>
+<td><code class="literal">i &lt;= idx</code></td>
+<td><code class="literal">index</code></td>
+<td>This is another syntax for specifying the finish
+value. This notation includes 
+<code class="literal">idx</code> in the range of valid indices. It is equivalent to 
+<code class="literal">index_range(r.start(), idx + 1, r.stride())</code>
+</td>
+</tr>
+<tr>
+<td><code class="literal">idx &lt; i</code></td>
+<td><code class="literal">index</code></td>
+<td>This is another syntax for specifying the start
+value. This notation does not include 
+<code class="literal">idx</code> in the range of valid indices. It is equivalent to 
+<code class="literal">index_range(idx + 1, i.finish(), i.stride())</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">idx &lt;= i</code></td>
+<td><code class="literal">index</code></td>
+<td>This is another syntax for specifying the start
+value. This notation includes
+<code class="literal">idx1</code> in the range of valid indices. It is equivalent to 
+<code class="literal">index_range(idx, i.finish(), i.stride())</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i + idx</code></td>
+<td><code class="literal">index</code></td>
+<td>This expression shifts the start and finish values
+of <code class="literal">i</code> up by <code class="literal">idx</code>. It is equivalent to 
+<code class="literal">index_range(r.start()+idx1, r.finish()+idx, r.stride())</code>
+</td>
+</tr>
+<tr>
+<td><code class="literal">i - idx</code></td>
+<td><code class="literal">index</code></td>
+<td>This expression shifts the start and finish values
+of <code class="literal">i</code> up by <code class="literal">idx</code>. It is equivalent to 
+<code class="literal">index_range(r.start()-idx1, r.finish()-idx, r.stride())</code>
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<div class="sect3">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="index_gen"></a><code class="literal">index_gen</code>
+</h4></div></div></div>
+<p> <code class="literal">index_gen</code> aggregates 
+<code class="literal">index_range</code> objects in order to specify view
+parameters.  Chained calls to <code class="literal">operator[]</code> store
+range and dimension information used to 
+instantiate a new view into a MultiArray.
+</p>
+<div class="table">
+<a name="id-1.3.27.5.13.4.3"></a><p class="title"><b>Table&#160;26.8.&#160;Notation</b></p>
+<div class="table-contents"><table class="table" summary="Notation">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><code class="literal">Dims,Ranges</code></td>
+<td>Unsigned integral values.</td>
+</tr>
+<tr>
+<td><code class="literal">x</code></td>
+<td>An object of type 
+<code class="literal">template gen_type&lt;Dims,Ranges&gt;::type</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">i</code></td>
+<td>An object of type 
+<code class="literal">index_range</code>.</td>
+</tr>
+<tr>
+<td><code class="literal">idx</code></td>
+<td>Objects of type <code class="literal">index</code>.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="id-1.3.27.5.13.4.4"></a><p class="title"><b>Table&#160;26.9.&#160;Associated Types</b></p>
+<div class="table-contents"><table class="table" summary="Associated Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Type</th>
+<th>Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">index</code></td>
+<td>This is a signed integral type. It is used to
+specify degenerate dimensions.</td>
+</tr>
+<tr>
+<td><code class="literal">size_type</code></td>
+<td>This is an unsigned integral type. It is used to
+report the size of the range an <code class="literal">index_range</code> 
+represents.</td>
+</tr>
+<tr>
+<td>
+<code class="literal">template gen_type::&lt;Dims,Ranges&gt;::type</code>
+</td>
+<td>This type generator names the result of 
+<code class="literal">Dims</code> chained calls to
+<code class="literal">index_gen::operator[]</code>.  The
+<code class="literal">Ranges</code> parameter is determined by the number of
+degenerate ranges specified (i.e. calls to
+<code class="literal">operator[](index)</code>). Note that  
+<code class="computeroutput">index_gen</code> and
+<code class="computeroutput">gen_type&lt;0,0&gt;::type</code> are the same type.</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="id-1.3.27.5.13.4.5"></a><p class="title"><b>Table&#160;26.10.&#160;Valid Expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid Expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>Expression</th>
+<th>Return type</th>
+<th>Semantics</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code class="literal">index_gen()</code></td>
+<td><code class="literal">gen_type&lt;0,0&gt;::type</code></td>
+<td>This constructs an <code class="literal">index_gen</code>
+object. This object can then be used to generate tuples of
+<code class="literal">index_range</code> values.</td>
+</tr>
+<tr>
+<td><code class="literal">x[i]</code></td>
+<td>
+<code class="literal">gen_type&lt;Dims+1,Ranges+1&gt;::type</code>
+</td>
+<td>Returns a new object containing all previous
+<code class="computeroutput">index_range</code> objects in addition to
+<code class="literal">i.</code> Chained calls to
+<code class="function">operator[]</code> are the means by which
+<code class="computeroutput">index_range</code> objects are aggregated.</td>
+</tr>
+<tr>
+<td><code class="literal">x[idx]</code></td>
+<td>
+<code class="literal">gen_type&lt;Dims,Ranges+1&gt;::type</code>
+</td>
+<td>Returns a new object containing all previous
+<code class="computeroutput">index_range</code> objects in addition to a degenerate
+range, <code class="literal">index_range(idx,idx).</code> Note that this is NOT
+equivalent to <code class="literal">x[index_range(idx,idx)].</code>, which will
+return an object of type
+<code class="literal">gen_type&lt;Dims+1,Ranges+1&gt;::type</code>.
+</td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+</div>
+<div class="sect2">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="id-1.3.27.5.14"></a>Models</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><code class="literal">multi_array</code></li>
+<li class="listitem"><code class="literal">multi_array_ref</code></li>
+<li class="listitem"><code class="literal">const_multi_array_ref</code></li>
+<li class="listitem"><code class="literal">template array_view&lt;Dims&gt;::type</code></li>
+<li class="listitem"><code class="literal">template const_array_view&lt;Dims&gt;::type</code></li>
+<li class="listitem"><code class="literal">template subarray&lt;Dims&gt;::type</code></li>
+<li class="listitem"><code class="literal">template const_subarray&lt;Dims&gt;::type</code></li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002 The Trustees of Indiana University</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="multi_array.html"><img src="../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="multi_array.html"><img src="../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="array_types.html"><img src="../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>
