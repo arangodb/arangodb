@@ -478,9 +478,42 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
 
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
 
-  if (col != nullptr && col->type() == type) {
-    // collection already exists. TODO: compare attributes
+  if (col != nullptr && 
+      col->type() == type && 
+      col->name() == name && 
+      (col->isSystem() || col->cid() == cid)) {
+    // collection already exists with same name.
+    if (!col->isSystem()) {
+      // collection exists. however, after creation, the collection is supposed to be empty, 
+      // so we will truncate it
+      SingleCollectionTransaction trx(
+          transaction::StandaloneContext::Create(_vocbase), col->cid(),
+          AccessMode::Type::EXCLUSIVE);
+      Result res = trx.begin();
+
+      if (!res.ok()) {
+        return res.errorNumber();
+      }
+
+      OperationOptions options;
+      OperationResult opRes = trx.truncate(col->name(), options);
+      res = trx.finish(opRes.code);
+
+      if (!res.ok()) {
+        return res.errorNumber();
+      }
+    }
+
+    // now we have an empty collection with the same name
     return TRI_ERROR_NO_ERROR;
+  }
+
+  if (col != nullptr) {
+    int res = _vocbase->dropCollection(col, true, -1.0);
+
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      return res;
+    }
   }
 
   // merge in "isSystem" attribute
@@ -567,8 +600,13 @@ int Syncer::createIndex(VPackSlice const& slice) {
 
     return res.errorNumber();
   } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught exception while restoring indexes: " << ex.what();
     return ex.code();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught exception while restoring indexes: " << ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "caught unknown exception while restoring indexes";
     return TRI_ERROR_INTERNAL;
   }
 }
@@ -595,7 +633,8 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     CollectionGuard guard(_vocbase, cid, cnameString);
 
     if (guard.collection() == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      // not a problem if we try to delete an index from a non-existing collection
+      return TRI_ERROR_NO_ERROR;
     }
 
     LogicalCollection* collection = guard.collection();
@@ -608,6 +647,10 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+      // if dropping an index for a non-existing collection fails, this is not a real problem
+      return TRI_ERROR_NO_ERROR;
+    }
     return ex.code();
   } catch (...) {
     return TRI_ERROR_INTERNAL;

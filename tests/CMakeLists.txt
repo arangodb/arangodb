@@ -13,6 +13,7 @@ add_executable(
   Agency/FailedServerTest.cpp
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
+  Agency/SupervisionTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp

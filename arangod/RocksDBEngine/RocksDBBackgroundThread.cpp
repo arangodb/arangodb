@@ -46,6 +46,8 @@ void RocksDBBackgroundThread::beginShutdown() {
 }
 
 void RocksDBBackgroundThread::run() {
+  double const startTime = TRI_microtime();
+
   while (!isStopping()) {
     {
       CONDITION_LOCKER(guard, _condition);
@@ -65,6 +67,7 @@ void RocksDBBackgroundThread::run() {
       if (cmTick < minTick) {
         minTick = cmTick;
       }
+
       if (DatabaseFeature::DATABASE != nullptr) {
         DatabaseFeature::DATABASE->enumerateDatabases(
             [force, &minTick](TRI_vocbase_t* vocbase) {
@@ -79,17 +82,24 @@ void RocksDBBackgroundThread::run() {
               }
             });
       }
-
-      // determine which WAL files can be pruned
-      _engine->determinePrunableWalFiles(minTick);
-      // and then prune them when they expired
-      _engine->pruneWalFiles();
+      
+      // only start pruning of obsolete WAL files a few minutes after
+      // server start. if we start pruning too early, replication slaves
+      // will not have a chance to reconnect to a restarted master in
+      // time so the master may purge WAL files that replication slaves
+      // would still like to peek into
+      if (TRI_microtime() >= startTime + 180.0) {
+        // determine which WAL files can be pruned
+        _engine->determinePrunableWalFiles(minTick);
+        // and then prune them when they expired
+        _engine->pruneWalFiles();
+      }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::FIXME)
-          << "caught exception in rocksdb background thread: " << ex.what();
+      LOG_TOPIC(WARN, Logger::ROCKSDB)
+          << "caught exception in RocksDB background thread: " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::FIXME)
-          << "caught unknown exception in rocksdb background";
+      LOG_TOPIC(WARN, Logger::ROCKSDB)
+          << "caught unknown exception in RocksDB background thread";
     }
   }
   _engine->counterManager()->sync(true);  // final write on shutdown

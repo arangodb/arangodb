@@ -148,7 +148,7 @@ void ClientConnection::disconnectSocket() {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::prepare(double timeout, bool isWrite) const {
+bool ClientConnection::prepare(double timeout, bool isWrite) {
   if (!TRI_isvalidsocket(_socket)) {
     _errorDetails = std::string("not a valid socket");
     return false;
@@ -164,6 +164,7 @@ bool ClientConnection::prepare(double timeout, bool isWrite) const {
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
+  double sinceLastSocketCheck = start;
   bool nowait = (timeout == 0.0);
   int towait;
   if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
@@ -207,6 +208,16 @@ bool ClientConnection::prepare(double timeout, bool isWrite) const {
       if (towait <= 0) {
         break;
       }
+
+      // periodically recheck our socket
+      if (end - sinceLastSocketCheck >= 20.0) {
+        sinceLastSocketCheck = end;
+        if (!checkSocket()) {
+          // socket seems broken
+          break;
+        }
+      }
+
       start = end;
       continue;
     }
