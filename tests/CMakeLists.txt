@@ -101,6 +101,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterRepairsTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp
