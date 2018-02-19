@@ -291,7 +291,6 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   opOptions.isRestore = false;
   opOptions.waitForSync = true;
   opOptions.silent = false;
-  opOptions.isSynchronousReplicationFrom = true;
 
   // find and load collection given by name or identifier
   auto ctx = transaction::StandaloneContext::Create(vocbase);
@@ -324,9 +323,12 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
 Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
                                       std::string const& functionFilterPrefix,
                                       velocypack::Builder& result) {
+  std::string aql;
   auto binds = std::make_shared<VPackBuilder>();
   binds->openObject();
-  if (! functionFilterPrefix.empty()) {
+  if (!functionFilterPrefix.empty()) {
+    aql = "FOR function IN @@col FILTER LEFT(function._key, @fnLength) == @ucName RETURN function";
+
     std::string uc(functionFilterPrefix);
     basics::StringUtils::toupperInPlace(&uc);
     if ((uc.length() < 2) ||
@@ -336,15 +338,11 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
     }
     binds->add("fnLength", VPackValue(uc.length()));
     binds->add("ucName", VPackValue(uc));
+  } else {
+    aql = "FOR function IN @@col RETURN function";
   }
   binds->add("@col", VPackValue(collectionName));
   binds->close();
-
-  std::string const aql(
-      "FOR function IN @@col "
-      "FILTER LEFT(function._key, @fnLength) == @ucName "
-      "RETURN function"
-  );
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
                              binds, nullptr, arangodb::aql::PART_MAIN);

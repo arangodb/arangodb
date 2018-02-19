@@ -99,12 +99,20 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     // skip ignored databases and collections
     if (RocksDBLogValue::containsDatabaseId(type)) {
       TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+      _currentDbId = dbId;
       if (!shouldHandleDB(dbId)) {
+        resetTransientState();
         return;
       }
       if (RocksDBLogValue::containsCollectionId(type)) {
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        _currentCid = cid;
         if (!shouldHandleCollection(dbId, cid)) {
+          if (type == RocksDBLogType::SingleRemove || type == RocksDBLogType::SinglePut) {
+            resetTransientState();
+          } else {
+            _currentCid = 0;
+          }
           return;
         }
       }
