@@ -42,7 +42,7 @@ class HandlerResult : public arangodb::Result {
 
   HandlerResult(std::set<std::string> const& roles,
                 auth::Source const& source)
-      : Result(0),
+      : Result(TRI_ERROR_NO_ERROR),
         _authSource(source),
         _roles(roles) {}
 

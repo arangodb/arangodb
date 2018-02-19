@@ -169,17 +169,6 @@ auth::User auth::User::newUser(std::string const& user,
   return entry;
 }
 
-/*void auth::User::fromDocumentRoles(auth::User& entry,
-                                   VPackSlice const& rolesSlice) {
-  for (auto const& it : VPackArrayIterator(rolesSlice)) {
-    if (it.isString()) {
-      std::string const role = it.copyString();
-
-      entry._roles.insert(role);
-    }
-  }
-}*/
-
 void auth::User::fromDocumentDatabases(auth::User& entry,
                                        VPackSlice const& databasesSlice,
                                        VPackSlice const& userSlice) {
@@ -308,12 +297,6 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (databasesSlice.isObject()) {
     fromDocumentDatabases(entry, databasesSlice, userSlice);
   }
-
-  // extract "roles" attribute
-  /*VPackSlice const rolesSlice = slice.get("roles");
-  if (rolesSlice.isArray()) {
-    fromDocumentRoles(entry, rolesSlice);
-  }*/
 
   VPackSlice userDataSlice = slice.get("userData");
   if (userDataSlice.isObject() && !userDataSlice.isEmptyObject()) {

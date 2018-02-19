@@ -934,7 +934,7 @@ Result RestReplicationHandler::processRestoreCollection(
   ExecContext const* exe = ExecContext::CURRENT;
   if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
-    AuthenticationFeature *af = AuthenticationFeature::instance();
+    AuthenticationFeature* af = AuthenticationFeature::instance();
     af->userManager()->updateUser(exe->user(), [&](auth::User& entry) {
       entry.grantCollection(_vocbase->name(), col->name(), auth::Level::RW);
       return TRI_ERROR_NO_ERROR;
@@ -1085,7 +1085,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     
     ExecContext const* exe = ExecContext::CURRENT;
     if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
-      AuthenticationFeature *af = AuthenticationFeature::instance();
+      AuthenticationFeature* af = AuthenticationFeature::instance();
       af->userManager()->updateUser(ExecContext::CURRENT->user(),
                    [&](auth::User& entry) {
                      entry.grantCollection(dbName, col->name(), auth::Level::RW);
