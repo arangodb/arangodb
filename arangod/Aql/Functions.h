@@ -207,6 +207,8 @@ struct Functions {
                                     VPackFunctionParameters const&);
     static AqlValue DateAdd(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+    static AqlValue DateSubtract(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
 
 
 

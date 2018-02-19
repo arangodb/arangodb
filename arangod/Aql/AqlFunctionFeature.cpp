@@ -452,7 +452,7 @@ void AqlFunctionFeature::addDateFunctions() {
        true, true, &Functions::DateDaysInMonth});
   add({"DATE_ADD", ".,.|.", true, false, true, true, &Functions::DateAdd});
   add({"DATE_SUBTRACT", ".,.|.", true, false, true,
-       true});
+       true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true,
        true});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true,

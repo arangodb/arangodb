@@ -26,11 +26,15 @@
 #include <boost/algorithm/string.hpp>
 #include <date/date.h>
 
+#include <regex>
+
 
 namespace arangodb {
 namespace basics {
 bool parse_dateTime(std::string const& dateTime,
                     std::chrono::system_clock::time_point& date_tp);
+
+bool regex_isoDuration(std::string const& isoDuration, std::smatch& duration_parts);
 }
 }  // namespace arangodb
 
