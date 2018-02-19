@@ -120,7 +120,7 @@ def getRestDescription():
     #print >>sys.stderr, "RESTDESCRIPTION"
     if thisVerb['description']:
         #print >> sys.stderr, thisVerb['description']
-        return thisVerb['description']
+        return RX3[0].sub(RX3[1], thisVerb['description'])
     else:
         #print >> sys.stderr, "ELSE"
         return ""
@@ -254,6 +254,7 @@ RX2 = [
     (re.compile(r"@RESTRETURNCODE{(.*)}"), r"* *\g<1>*:")
 ]
 
+RX3 = (re.compile(r'\*\*Example:\*\*((?:.|\n)*?)</code></pre>'), r"")
 
 match_RESTHEADER = re.compile(r"@RESTHEADER\{(.*)\}")
 match_RESTRETURNCODE = re.compile(r"@RESTRETURNCODE\{(.*)\}")
