@@ -1,7 +1,8 @@
-# Kafka & Zookeeper 
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+# Kafka & Zookeeper
 
-- How to deploy zookeeper 
-- How to deploy kafka 
+- How to deploy zookeeper
+- How to deploy kafka
 - Accessible ports
 
 ## Recommended deployment environment

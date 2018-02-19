@@ -128,7 +128,7 @@ string *text*. Positions start at 0.
 - **end** (number, *optional*): limit the search to a subset of the text,
   ending at *end*
 - returns **position** (number): the character position of the match. If *search*
-  is not contained in *text*, -1 is returned.
+  is not contained in *text*, -1 is returned. If **search** is empty, **start** is returned.
 
 ```js
 FIND_FIRST("foobarbaz", "ba") // 3
@@ -151,7 +151,8 @@ string *text*. Positions start at 0.
 - **end** (number, *optional*): limit the search to a subset of the text,
   ending at *end*
 - returns **position** (number): the character position of the match. If *search*
-  is not contained in *text*, -1 is returned.
+  is not contained in *text*, -1 is returned. 
+  If *search* is empty, the string length is returned, or *end* + 1.
 
 ```js
 FIND_LAST("foobarbaz", "ba") // 6

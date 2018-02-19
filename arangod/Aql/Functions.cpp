@@ -21,9 +21,11 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+
 #include "Functions.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/LanguageFeature.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
@@ -53,6 +55,7 @@
 
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
+#include <unicode/stsearch.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -121,16 +124,16 @@ std::string Functions::ExtractCollectionName(
     identifier = value.slice().copyString();
   } else {
     AqlValueMaterializer materializer(trx);
-    VPackSlice s = materializer.slice(value, true);
-    VPackSlice id = s;
+    VPackSlice slice = materializer.slice(value, true);
+    VPackSlice id = slice;
 
-    if (s.isObject() && s.hasKey(StaticStrings::IdString)) {
-      id = s.get(StaticStrings::IdString);
+    if (slice.isObject() && slice.hasKey(StaticStrings::IdString)) {
+      id = slice.get(StaticStrings::IdString);
     } 
     if (id.isString()) {
       identifier = id.copyString();
     } else if (id.isCustom()) {
-      identifier = trx->extractIdString(s);
+      identifier = trx->extractIdString(slice);
     }
   }
 
@@ -755,6 +758,138 @@ AqlValue Functions::Length(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(length));
 }
 
+
+/// @brief function FIND_FIRST
+/// FIND_FIRST(text, search, start, end) → position
+AqlValue Functions::FindFirst(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "FIND_FIRST", 2, 4);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue searchValue = ExtractFunctionParameterValue(parameters, 1);
+
+  transaction::StringBufferLeaser buf1(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+
+  transaction::StringBufferLeaser buf2(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  AppendAsString(trx, adapter2, searchValue);
+  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  auto searchLen = uSearchBuf.length();
+
+  int64_t startOffset = 0;
+  int64_t maxEnd = -1;
+
+  if (parameters.size() >= 3) {
+    AqlValue optionalStartOffset  = ExtractFunctionParameterValue(parameters, 2);
+    startOffset = optionalStartOffset.toInt64(trx);
+    if (startOffset < 0) {
+      return AqlValue(AqlValueHintInt(-1));
+    }
+  }
+  
+  maxEnd = uBuf.length();
+  if (parameters.size() == 4) {
+    AqlValue optionalEndMax  = ExtractFunctionParameterValue(parameters, 3);
+    if (!optionalEndMax.isNull(true)) {
+      maxEnd = optionalEndMax.toInt64(trx);
+      if ((maxEnd < startOffset) || (maxEnd < 0)) {
+        return AqlValue(AqlValueHintInt(-1));
+      }
+    }
+  }
+
+  if (searchLen == 0) {
+    return AqlValue(AqlValueHintInt(startOffset));
+  }
+  if (uBuf.length() == 0) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  auto locale = LanguageFeature::instance()->getLocale();
+  UErrorCode status = U_ZERO_ERROR;
+  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+
+  for(int pos = search.first(status);
+      U_SUCCESS(status) && pos != USEARCH_DONE;
+      pos = search.next(status)) {
+    if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
+      return AqlValue(AqlValueHintInt(pos));
+    }
+  }
+  return AqlValue(AqlValueHintInt(-1));
+}
+
+/// @brief function FIND_LAST
+/// FIND_FIRST(text, search, start, end) → position
+AqlValue Functions::FindLast(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "FIND_LAST", 2, 4);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue searchValue = ExtractFunctionParameterValue(parameters, 1);
+
+  transaction::StringBufferLeaser buf1(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+
+  transaction::StringBufferLeaser buf2(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter2(buf2->stringBuffer());
+  AppendAsString(trx, adapter2, searchValue);
+  UnicodeString uSearchBuf(buf2->c_str(), static_cast<int32_t>(buf2->length()));
+  auto searchLen = uSearchBuf.length();
+
+  int64_t startOffset = 0;
+  int64_t maxEnd = -1;
+
+  if (parameters.size() >= 3) {
+    AqlValue optionalStartOffset  = ExtractFunctionParameterValue(parameters, 2);
+    startOffset = optionalStartOffset.toInt64(trx);
+    if (startOffset < 0) {
+      return AqlValue(AqlValueHintInt(-1));
+    }
+  }
+  
+  maxEnd = uBuf.length();
+  int emptySearchCludge = 0;
+  if (parameters.size() == 4) {
+    AqlValue optionalEndMax  = ExtractFunctionParameterValue(parameters, 3);
+    if (!optionalEndMax.isNull(true)) {
+      maxEnd = optionalEndMax.toInt64(trx);
+      if ((maxEnd < startOffset) || (maxEnd < 0)) {
+        return AqlValue(AqlValueHintInt(-1));
+      }
+      emptySearchCludge = 1;
+    }
+  }
+
+  if (searchLen == 0) {
+    return AqlValue(AqlValueHintInt(maxEnd + emptySearchCludge));
+  }
+  if (uBuf.length() == 0) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  auto locale = LanguageFeature::instance()->getLocale();
+  UErrorCode status = U_ZERO_ERROR;
+  StringSearch search(uSearchBuf, uBuf, locale, NULL, status);
+
+  int foundPos = -1;
+  for(int pos = search.first(status);
+      U_SUCCESS(status) && pos != USEARCH_DONE;
+      pos = search.next(status)) {
+    if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
+      foundPos = pos;
+    }
+  }
+  return AqlValue(AqlValueHintInt(foundPos));
+}
+
 /// @brief function FIRST
 AqlValue Functions::First(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -945,7 +1080,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
     
   AqlValue separator = ExtractFunctionParameterValue(parameters, 0);
   AppendAsString(trx, adapter, separator);
-  std::string const s(buffer->c_str(), buffer->length());
+  std::string const plainStr(buffer->c_str(), buffer->length());
 
   buffer->clear();
 
@@ -954,7 +1089,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
 
     if (member.isArray()) {
       // reserve *some* space
-      buffer->reserve((s.size() + 10) * member.length());
+      buffer->reserve((plainStr.size() + 10) * member.length());
 
       AqlValueMaterializer materializer(trx);
       VPackSlice slice = materializer.slice(member, false);
@@ -964,7 +1099,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
           continue;
         }
         if (found) {
-          buffer->appendText(s);
+          buffer->appendText(plainStr);
         }
         // convert member to a string and append
         AppendAsString(trx, adapter, AqlValue(it.begin()));
@@ -975,7 +1110,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
   }
 
   // reserve *some* space
-  buffer->reserve((s.size() + 10) * n);
+  buffer->reserve((plainStr.size() + 10) * n);
   for (size_t i = 1; i < n; ++i) {
     AqlValue member = ExtractFunctionParameterValue(parameters, i);
 
@@ -983,7 +1118,7 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
       continue;
     }
     if (found) {
-      buffer->appendText(s);
+      buffer->appendText(plainStr);
     }
 
     // convert member to a string and append
@@ -1057,9 +1192,9 @@ AqlValue Functions::Lower(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  s.toLower(NULL);
-  s.toUTF8String(utf8);
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  unicodeStr.toLower(NULL);
+  unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
 }
@@ -1078,9 +1213,9 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  s.toUpper(NULL);
-  s.toUTF8String(utf8);
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  unicodeStr.toUpper(NULL);
+  unicodeStr.toUTF8String(utf8);
 
   return AqlValue(utf8);
 }
@@ -1098,7 +1233,7 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
 
   AppendAsString(trx, adapter, value);
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int32_t offset = static_cast<int32_t>(ExtractFunctionParameterValue(parameters, 1).toInt64(trx));
 
@@ -1107,13 +1242,13 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   }
 
   if (offset < 0) {
-    offset = s.moveIndex32(s.moveIndex32( s.length(), 0), offset);
+    offset = unicodeStr.moveIndex32(unicodeStr.moveIndex32( unicodeStr.length(), 0), offset);
   } else {
-    offset = s.moveIndex32(0, offset);
+    offset = unicodeStr.moveIndex32(0, offset);
   }
 
   std::string utf8;
-  s.tempSubString(offset, s.moveIndex32(offset, length) - offset)
+  unicodeStr.tempSubString(offset, unicodeStr.moveIndex32(offset, length) - offset)
   .toUTF8String(utf8);
 
   return AqlValue(utf8);
@@ -1134,8 +1269,8 @@ AqlValue Functions::Left(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString left = s.tempSubString(0, s.moveIndex32(0, length));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString left = unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -1156,11 +1291,57 @@ AqlValue Functions::Right(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
 
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
-  UnicodeString right = s.tempSubString(s.moveIndex32(s.length(), -static_cast<int32_t>(length)));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString right = unicodeStr.tempSubString(unicodeStr.moveIndex32(unicodeStr.length(), -static_cast<int32_t>(length)));
 
   right.toUTF8String(utf8);
   return AqlValue(utf8);
+}
+
+namespace {
+void ltrimInternal(uint32_t& startOffset,
+                   uint32_t& endOffset,
+                   UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces,
+                   UChar32* spaceChars) {
+  for (; startOffset < endOffset; startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
+    bool found = false;
+
+    for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+      if (unicodeStr.char32At(startOffset) == spaceChars[pos]) {
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      break;
+    }
+  } // for
+}
+void rtrimInternal(uint32_t& startOffset,
+                   uint32_t& endOffset,
+                   UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces,
+                   UChar32* spaceChars) {
+  for (uint32_t codeUnitPos = unicodeStr.moveIndex32(unicodeStr.length(),-1);
+       startOffset < codeUnitPos;
+       codeUnitPos = unicodeStr.moveIndex32(codeUnitPos, -1)) {
+    bool found = false;
+
+    for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
+      if (unicodeStr.char32At(codeUnitPos) == spaceChars[pos]) {
+        found = true;
+        break;
+      }
+    }
+
+    endOffset = unicodeStr.moveIndex32(codeUnitPos, 1);
+    if (!found) {
+      break;
+    }
+  } // for
+}
 }
 
 /// @brief function TRIM
@@ -1173,7 +1354,7 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
   transaction::StringBufferLeaser buffer(trx);
   arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
   AppendAsString(trx, adapter, value);
-  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
   UnicodeString whitespace("\r\n\t ");
@@ -1196,50 +1377,93 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
 
   uint32_t numWhitespaces = whitespace.countChar32();
   UErrorCode errorCode = U_ZERO_ERROR;
-  UChar32 *spaceChars = new UChar32[numWhitespaces];
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
-  whitespace.toUTF32(spaceChars, numWhitespaces, errorCode);
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
 
-  uint32_t startOffset = 0, endOffset = s.length();
+  uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
   if (howToTrim <= 1) {
-    for (; startOffset < endOffset; startOffset = s.moveIndex32(startOffset, 1)) {
-      bool found = false;
-
-      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
-        if (s.char32At(startOffset) == spaceChars[pos]) {
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) {
-        break;
-      }
-    } // for
+    ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
   if (howToTrim == 2 || howToTrim == 0) {
-    for (uint32_t codeUnitPos = s.moveIndex32(s.length(),-1); startOffset < codeUnitPos; codeUnitPos = s.moveIndex32(codeUnitPos, -1)) {
-      bool found = false;
-
-      for (uint32_t pos = 0; pos < numWhitespaces; pos++) {
-        if (s.char32At(codeUnitPos) == spaceChars[pos]) {
-          found = true;
-          break;
-        }
-      }
-
-      endOffset = s.moveIndex32(codeUnitPos, 1);
-      if (!found) {
-        break;
-      }
-    } // for
+    rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
   }
 
-  delete[] spaceChars;
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  std::string utf8;
+  result.toUTF8String(utf8);
+  return AqlValue(utf8);
+}
 
-  UnicodeString result = s.tempSubString(startOffset, endOffset - startOffset);
+/// @brief function LTRIM
+AqlValue Functions::LTrim(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LTRIM", 1, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString whitespace("\r\n\t ");
+
+  if (parameters.size() == 2) {
+    AqlValue pWhitespace = ExtractFunctionParameterValue(parameters, 1);
+    buffer->clear();
+    AppendAsString(trx, adapter, pWhitespace);
+    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  }
+
+  uint32_t numWhitespaces = whitespace.countChar32();
+  UErrorCode errorCode = U_ZERO_ERROR;
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
+
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
+
+  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+
+  ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
+
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
+  std::string utf8;
+  result.toUTF8String(utf8);
+  return AqlValue(utf8);
+}
+
+/// @brief function RTRIM
+AqlValue Functions::RTrim(arangodb::aql::Query* query,
+                         transaction::Methods* trx,
+                         VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "RTRIM", 1, 2);
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  AppendAsString(trx, adapter, value);
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  UnicodeString whitespace("\r\n\t ");
+
+  if (parameters.size() == 2) {
+    AqlValue pWhitespace = ExtractFunctionParameterValue(parameters, 1);
+    buffer->clear();
+    AppendAsString(trx, adapter, pWhitespace);
+    whitespace = UnicodeString(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  }
+
+  uint32_t numWhitespaces = whitespace.countChar32();
+  UErrorCode errorCode = U_ZERO_ERROR;
+  auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
+
+  whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
+
+  uint32_t startOffset = 0, endOffset = unicodeStr.length();
+
+  rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces, spaceChars.get());
+
+  UnicodeString result = unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -2513,11 +2737,11 @@ AqlValue Functions::ParseIdentifier(
   std::string identifier;
   if (value.isObject() && value.hasKey(trx, StaticStrings::IdString)) {
     bool localMustDestroy;
-    AqlValue s = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
-    AqlValueGuard guard(s, localMustDestroy);
+    AqlValue valueStr = value.get(trx, StaticStrings::IdString, localMustDestroy, false);
+    AqlValueGuard guard(valueStr, localMustDestroy);
 
-    if (s.isString()) {
-      identifier = s.slice().copyString();
+    if (valueStr.isString()) {
+      identifier = valueStr.slice().copyString();
     }
   } else if (value.isString()) {
     identifier = value.slice().copyString();
