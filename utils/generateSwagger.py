@@ -1009,18 +1009,18 @@ def example_arangosh_run(cargo, r=Regexen()):
     exampleHeader = brTrim(operation['x-examples'][currentExample]).strip()
 
     # new examples code TODO should include for each example own object in json file
-    # fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
-    # try:
-    #     examplefile = open(fn)
-    # except:
-    #     print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
-    #     raise
-    # operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
-    # 
-    # for line in examplefile.readlines():
-    #     operation['x-examples'][currentExample] += line
-    # 
-    # operation['x-examples'][currentExample] += '</code></pre>\n\n\n' TODO: re-enable.
+    fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
+    try:
+        examplefile = open(fn)
+    except:
+        print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
+        raise
+    operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
+    
+    for line in examplefile.readlines():
+        operation['x-examples'][currentExample] += line
+    
+    operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
 
     line = ""
 
