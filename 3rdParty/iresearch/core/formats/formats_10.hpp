@@ -34,7 +34,6 @@
 #include "store/data_output.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-#include "store/checksum_io.hpp"
 
 #include "index/field_meta.hpp"
 #include "utils/compression.hpp"
@@ -207,7 +206,8 @@ public:
   virtual void end() override;
 
 private:
-  checksum_index_input<::boost::crc_32_type> in_;
+  uint64_t checksum_{};
+  index_input::ptr in_;
 };
 
 /* -------------------------------------------------------------------

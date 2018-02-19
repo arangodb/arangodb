@@ -31,15 +31,22 @@ void expect_sign_eq(long double lhs, long double rhs) {
   EXPECT_TRUE((lhs == 0 && rhs == 0) || std::signbit(lhs) == std::signbit(rhs));
 }
 
+TEST(string_ref_tests, static_members) {
+  EXPECT_EQ(nullptr, irs::string_ref::nil.c_str());
+  EXPECT_EQ(0, irs::string_ref::nil.size());
+  EXPECT_TRUE(irs::string_ref::nil.null());
+  EXPECT_TRUE(irs::string_ref::nil.empty());
+}
+
 TEST(string_ref_tests, create) {
   using namespace iresearch;
 
-  // create null reference
+  // create default reference
   {
     const string_ref ref;
-    EXPECT_EQ(nullptr, ref.c_str());
+    EXPECT_NE(nullptr, ref.c_str());
     EXPECT_EQ(0, ref.size());
-    EXPECT_TRUE(ref.null());
+    EXPECT_FALSE(ref.null());
     EXPECT_TRUE(ref.empty());
   }
 

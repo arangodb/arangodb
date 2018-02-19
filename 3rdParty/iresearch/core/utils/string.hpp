@@ -126,10 +126,10 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  static const basic_string_ref nil;
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil;
 
   CONSTEXPR basic_string_ref() NOEXCEPT
-    : data_(nullptr), size_(0) {
+    : data_(EMPTY), size_(0) {
   }
 
   // Constructs a string reference object from a ref and a size.
@@ -169,7 +169,7 @@ class basic_string_ref {
   // Returns the string size.
   CONSTEXPR size_t size() const NOEXCEPT { return size_; }
 
-  CONSTEXPR bool null() const NOEXCEPT { return !data_; }
+  CONSTEXPR bool null() const NOEXCEPT { return nullptr == data_; }
   CONSTEXPR bool empty() const NOEXCEPT { return null() || 0 == size_; }
   CONSTEXPR const char_type* begin() const NOEXCEPT{ return data_; }
   CONSTEXPR const char_type* end() const NOEXCEPT{ return data_ + size_; }
@@ -258,13 +258,27 @@ class basic_string_ref {
  protected:
   const char_type* data_;
   size_t size_;
+
+ private:
+  static CONSTEXPR const char_type EMPTY[1]
+#if !(defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
+  {}
+#endif
+  ;
 }; // basic_string_ref
+
+template<typename Elem, typename Traits>
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil;
+
+template <typename _Elem, typename _Traits> 
+/*static*/ CONSTEXPR const _Elem  basic_string_ref< _Elem, _Traits >::EMPTY[1]
+#if (defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
+  {}
+#endif
+  ;
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
-
-template < typename _Elem, typename _Traits > 
-const basic_string_ref< _Elem, _Traits > basic_string_ref< _Elem, _Traits >::nil;
 
 template< typename _Elem, typename _Traits >
 inline bool starts_with(

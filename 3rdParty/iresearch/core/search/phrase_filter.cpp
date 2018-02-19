@@ -46,6 +46,7 @@
 
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -174,12 +175,12 @@ DEFINE_FACTORY_DEFAULT(by_phrase);
 by_phrase::by_phrase(): filter(by_phrase::type()) {
 }
 
-bool by_phrase::equals(const filter& rhs) const {
+bool by_phrase::equals(const filter& rhs) const NOEXCEPT {
   const by_phrase& trhs = static_cast<const by_phrase&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && phrase_ == trhs.phrase_;
 }
 
-size_t by_phrase::hash() const {
+size_t by_phrase::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

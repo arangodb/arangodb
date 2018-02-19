@@ -186,7 +186,7 @@ install:
   ############################################################################
   - cd %BOOST_ROOT%
   - bootstrap.bat
-  - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-filesystem --with-locale --with-system --with-thread
+  - b2 --build-dir=%BOOST_ROOT%\build --build-type=complete stage address-model=64 --with-locale --with-system --with-thread
  
   ############################################################################
   # Install Lz4

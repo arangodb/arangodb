@@ -58,27 +58,10 @@ source_group("document" ./document/*)
 source_group("error" ./error/*)
 source_group("formats" ./formats/*)
 source_group("index" ./index/*)
-if (USE_IQL)
-  source_group("iql" ./iql/*)
-endif()
+source_group("iql" ./iql/*)
 source_group("search" ./search/*)
 source_group("store" ./store/*)
 source_group("utils" ./utils/*)
-
-if (USE_IQL)
-  set(IResearch_core_iql_sources
-    ./iql/parser.cc
-    ./iql/parser_common.cpp
-    ./iql/parser_context.cpp
-    ./iql/query_builder.cpp
-  )
-
-  set(IResearch_core_iql_headers
-    ./iql/parser_common.hpp
-    ./iql/parser_context.hpp
-    ./iql/query_builder.hpp
-  )
-endif()
 
 set(IResearch_core_sources
   ./utils/string.cpp 
@@ -104,7 +87,10 @@ set(IResearch_core_sources
   ./index/segment_reader.cpp 
   ./index/segment_writer.cpp 
   ./index/transaction_store.cpp
-  ${IResearch_core_iql_sources}
+  ./iql/parser.cc
+  ./iql/parser_common.cpp
+  ./iql/parser_context.cpp
+  ./iql/query_builder.cpp
   ./search/all_filter.cpp
   ./search/all_iterator.cpp
   ./search/granular_range_filter.cpp
@@ -179,7 +165,9 @@ set(IResearch_core_headers
   ./index/segment_writer.hpp
   ./index/transaction_store.hpp
   ./index/index_writer.hpp
-  ${IResearch_core_iql_headers}
+  ./iql/parser_common.hpp
+  ./iql/parser_context.hpp
+  ./iql/query_builder.hpp
   ./search/all_filter.hpp
   ./search/all_iterator.hpp
   ./search/granular_range_filter.hpp
@@ -210,7 +198,6 @@ set(IResearch_core_headers
   ./utils/bit_packing.hpp
   ./utils/bit_utils.hpp
   ./utils/block_pool.hpp
-  ./utils/checksum.hpp
   ./utils/compression.hpp
   ./utils/file_utils.hpp
   ./utils/fst.hpp
@@ -550,7 +537,6 @@ elseif (MSVC)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
@@ -577,7 +563,6 @@ elseif (MSVC)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
     ${Unwind_STATIC_LIBS}
@@ -604,7 +589,6 @@ elseif (APPLE)
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
@@ -632,7 +616,6 @@ else()
 
   foreach(ELEMENT
     ${BFD_STATIC_LIBS}
-    ${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}

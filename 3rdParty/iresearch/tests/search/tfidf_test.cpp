@@ -42,7 +42,7 @@ class tfidf_test: public index_test_base {
    }
 
   virtual iresearch::format::ptr get_codec() {
-    return ir::formats::get("1_0");
+    return irs::formats::get("1_0");
   }
 };
 
@@ -181,6 +181,109 @@ TEST_F(tfidf_test, test_normalize_features) {
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+}
+
+TEST_F(tfidf_test, test_phrase) {
+  auto analyzed_json_field_factory = [](
+      tests::document& doc,
+      const std::string& name,
+      const tests::json_doc_generator::json_value& data) {
+    typedef templates::text_field<std::string> text_field;
+
+    class string_field : public templates::string_field {
+     public:
+      string_field(const irs::string_ref& name, const irs::string_ref& value)
+        : templates::string_field(name, value) {
+      }
+
+      const irs::flags& features() const {
+        static irs::flags features{ irs::frequency::type() };
+        return features;
+      }
+    }; // string_field
+
+    if (data.is_string()) {
+      // analyzed field
+      doc.indexed.push_back(std::make_shared<text_field>(
+        std::string(name.c_str()) + "_anl",
+        data.str
+      ));
+
+      // not analyzed field
+      doc.insert(std::make_shared<string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  };
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("phrase_sequential.json"),
+      analyzed_json_field_factory);
+    add_segment(gen);
+  }
+
+  irs::order order;
+  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil));
+  auto prepared_order = order.prepare();
+
+  auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
+    return prepared_order.less(lhs.c_str(), rhs.c_str());
+  };
+
+  // read segment
+  auto index = open_reader();
+  ASSERT(1, index->size());
+  auto& segment = *(index.begin());
+
+  // "jumps high" with order
+  {
+    irs::by_phrase filter;
+    filter.field("phrase_anl")
+          .push_back("jumps")
+          .push_back("high");
+
+    std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
+
+    std::vector<std::string> expected{
+      "P", // jumps high jumps left jumps right jumps down jumps back
+      "Q", // jumps high jumps left jumps right jumps down walks back
+      "O", // jumps high jumps high hotdog
+      "R"  // jumps high jumps left jumps right walks down walks back
+    };
+
+    auto prepared_filter = filter.prepare(*index, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+    ASSERT_TRUE(bool(score));
+
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+    irs::bytes_ref key_value;
+
+    while (docs->next()) {
+      score->evaluate();
+      ASSERT_TRUE(values(docs->value(), key_value));
+
+      sorted.emplace(
+        score_value,
+        irs::to_string<std::string>(key_value.c_str())
+      );
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
   }
 }
 
@@ -379,6 +482,7 @@ TEST_F(tfidf_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
       7, // 3.45083 = sqrt(1)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
       0, // 2.54612 = sqrt(3)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
       1, // 2.0789  = sqrt(2)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
@@ -424,6 +528,7 @@ TEST_F(tfidf_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
       0, // 4.239268 = sqrt(1)*(log(8/(3+1))+1) + sqrt(3)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)
       7, // 3.450832 = sqrt(0)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) + sqrt(1)*(log(8/(2+1))+1)
       5, // 3.163150 = sqrt(1)*(log(8/(3+1))+1) + sqrt(1)*(log(8/(4+1))+1) + sqrt(0)*(log(8/(2+1))+1)

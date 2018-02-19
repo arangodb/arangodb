@@ -272,12 +272,12 @@ ByExpression::ByExpression() noexcept
   : irs::filter(ByExpression::type()) {
 }
 
-bool ByExpression::equals(irs::filter const& rhs) const {
+bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& typed = static_cast<ByExpression const&>(rhs);
   return irs::filter::equals(rhs) && _ctx == typed._ctx;
 }
 
-size_t ByExpression::hash() const {
+size_t ByExpression::hash() const noexcept {
   return _ctx.hash();
 }
 

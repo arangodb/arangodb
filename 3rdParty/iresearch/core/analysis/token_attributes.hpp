@@ -92,8 +92,18 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_ATTRIBUTE_TYPE();
 
   void clear() {
-    value = bytes_ref::nil;
+    value = bytes_ref();
   }
+};
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief represents multiple sequential arbitrary byte sequences
+//////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API payload_iterator
+  : public attribute, public iterator<const bytes_ref&> {
+  DECLARE_ATTRIBUTE_TYPE();
+
+  payload_iterator() = default;
 };
 
 //////////////////////////////////////////////////////////////////////////////
@@ -215,15 +225,11 @@ class IRESEARCH_API position : public attribute {
   void reset(impl::ptr&& impl = nullptr) NOEXCEPT { impl_ = std::move(impl); }
 
   value_t seek(value_t target) const {
-    struct skewed_comparer: std::less<value_t> {
-      bool operator()(value_t lhs, value_t rhs) {
-        typedef std::less<value_t> Pred;
-        return Pred::operator()(1 + lhs, 1 + rhs);
-      }
-    };
-
-    typedef skewed_comparer pos_less;
-    iresearch::seek(*impl_, target, pos_less());
+    iresearch::seek(
+      *impl_, target,
+      [](value_t lhs, value_t rhs) {
+        return 1 + lhs < 1 + rhs;
+    });
     return impl_->value();
   }
 

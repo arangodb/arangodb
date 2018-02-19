@@ -306,10 +306,10 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
     }
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   _config.clear(); // set as uninitialized
@@ -359,10 +359,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
     return _cache.emplace(_type, _properties);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -480,10 +480,10 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     return std::make_pair(pool, itr.second);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return std::make_pair(AnalyzerPool::ptr(), false);
@@ -576,10 +576,10 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
     return 1;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return 0;
@@ -609,10 +609,10 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -893,10 +893,10 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     return true;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration: " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -1088,10 +1088,10 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     return true;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;

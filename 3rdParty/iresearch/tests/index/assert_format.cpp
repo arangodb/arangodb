@@ -176,7 +176,7 @@ void index_segment::add(const ifield& f) {
   auto& pay = attrs.get<iresearch::payload>();
 
   bool empty = true;
-  auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
+  auto doc_id = (irs::type_limits<irs::type_t::doc_id_t>::min)() + count_;
 
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());
@@ -324,8 +324,8 @@ void field_writer::write(
   const iresearch::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::nil };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::nil };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;
@@ -393,7 +393,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
-      return ir::type_limits<ir::type_t::doc_id_t>::eof();
+      return irs::type_limits<irs::type_t::doc_id_t>::eof();
     }
 
     prev_ = it;
@@ -788,8 +788,8 @@ void assert_terms_next(
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::nil };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::nil };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;

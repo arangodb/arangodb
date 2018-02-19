@@ -698,6 +698,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
       arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" ,
+      arangodb::velocypack::Slice(insertedDocs[26].vpack()), // {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"}
       arangodb::velocypack::Slice(insertedDocs[23].vpack()), // {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" }
       arangodb::velocypack::Slice(insertedDocs[18].vpack()), // {"name":"S","seq":18,"same":"xyz", "duplicated":"vczc"}
       arangodb::velocypack::Slice(insertedDocs[16].vpack()), // {"name":"Q","seq":16,"same":"xyz", "value":-32.5, "duplicated":"vczc"}
@@ -705,7 +706,6 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[7].vpack()),  // {"name":"H","seq":7,"same":"xyz", "value":123, "duplicated":"vczc"},
       arangodb::velocypack::Slice(insertedDocs[2].vpack()),  // {"name":"C","seq":2,"same":"xyz", "value":123, "duplicated":"vczc"}
       arangodb::velocypack::Slice(insertedDocs[1].vpack()),  // {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"}
-      arangodb::velocypack::Slice(insertedDocs[26].vpack()), // {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"}
       arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
       arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
       arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }

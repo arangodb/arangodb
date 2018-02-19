@@ -29,6 +29,7 @@
 #include "index/field_meta.hpp"
 
 #include "analysis/token_attributes.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -193,12 +194,12 @@ by_same_position::by_same_position()
   : filter(by_same_position::type()) {
 }
 
-bool by_same_position::equals(const filter& rhs) const {
+bool by_same_position::equals(const filter& rhs) const NOEXCEPT {
   const auto& trhs = static_cast<const by_same_position&>(rhs);
   return filter::equals(rhs) && terms_ == trhs.terms_;
 }
 
-size_t by_same_position::hash() const {
+size_t by_same_position::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   for (auto& term : terms_) {
