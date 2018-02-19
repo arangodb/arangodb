@@ -1,12 +1,17 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+* fixed Foxx API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
 * fix internal issue #1848
-    
+
   AQL optimizer was trying to resolve attribute accesses
   to attributes of constant object values at query compile time, but only did so far
   the very first attribute in each object
-    
+
   this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
 
 * fix inconvenience: If we want to start server with a non-existing
@@ -56,12 +61,12 @@ v3.2.11 (2018-01-17)
 * Truncate in RocksDB will now do intermediate commits every 10.000 documents
   if truncate fails or the server crashes during this operation all deletes
   that have been commited so far are persisted.
-  
+
 * fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
 
 * UI: fixed a query editor caching and parsing issue for arrays and objects
 
-* Fixed internal issue #1684: Web UI: saving arrays/objects as bind parameters faulty 
+* Fixed internal issue #1684: Web UI: saving arrays/objects as bind parameters faulty
 
 * Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
   within the documents overview of a collection.
@@ -84,7 +89,7 @@ v3.2.11 (2018-01-17)
 
 * fixed issue #3818: Foxx configuration keys cannot contain spaces (will not save)
 
-* UI: displayed wrong "waitForSync" property for a collection when 
+* UI: displayed wrong "waitForSync" property for a collection when
   using RocksDB as storage engine
 
 * prevent binding to the same combination of IP and port on Windows

@@ -1288,8 +1288,8 @@ describe('Foxx service', () => {
 
   const routes = [
     ['GET', '/_api/foxx/service'],
-    ['PATCH', '/_api/foxx/service'],
-    ['PUT', '/_api/foxx/service'],
+    ['PATCH', '/_api/foxx/service', { source: servicePath }],
+    ['PUT', '/_api/foxx/service', { source: servicePath }],
     ['DELETE', '/_api/foxx/service'],
     ['GET', '/_api/foxx/configuration'],
     ['PATCH', '/_api/foxx/configuration'],
@@ -1306,20 +1306,22 @@ describe('Foxx service', () => {
     ['GET', '/_api/foxx/readme'],
     ['GET', '/_api/foxx/swagger']
   ];
-  for (const [method, url] of routes) {
+  for (const [method, url, body] of routes) {
     it(`should return 400 when mount is omitted for ${method} ${url}`, () => {
       const resp = request({
         method,
         url,
+        body,
         json: true
       });
       expect(resp.status).to.equal(400);
     });
-    it(`should return 400 when mount is invalid for ${method} ${url}`, () => {
+    it(`should return 400 when mount is unknown for ${method} ${url}`, () => {
       const resp = request({
         method,
         url,
         qs: {mount: '/dev/null'},
+        body,
         json: true
       });
       expect(resp.status).to.equal(400);
@@ -1336,5 +1338,37 @@ describe('Foxx service', () => {
     expect(resp.json).to.have.property('pending');
     expect(resp.json).to.have.property('failures');
     expect(resp.json).to.have.property('passes');
+  });
+
+  it('replace on invalid mount should not be installed', () => {
+    const replaceResp = request.put('/_api/foxx/service', {
+      qs: {
+        mount
+      },
+      body: {
+        source: servicePath
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(400);
+    const resp = request.get(mount);
+    expect(resp.status).to.equal(404);
+  });
+
+  it('replace on invalid mount should be installed when forced', () => {
+    const replaceResp = request.put('/_api/foxx/service', {
+      qs: {
+        mount,
+        force: true
+      },
+      body: {
+        source: servicePath
+      },
+      json: true
+    });
+    expect(replaceResp.status).to.equal(200);
+    const resp = request.get(mount);
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.eql({hello: 'world'});
   });
 });
