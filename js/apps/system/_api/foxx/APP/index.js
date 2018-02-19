@@ -199,6 +199,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
+.queryParam('force', schemas.flag.default(false))
 .response(200, schemas.fullInfo);
 
 serviceRouter.delete((req, res) => {

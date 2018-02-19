@@ -1,6 +1,11 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fixed Foxx API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
@@ -112,8 +117,8 @@ v3.3.3 (2018-01-16)
 v3.3.2 (2018-01-04)
 -------------------
 
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
-  at 98,7: ArangoError 4: Expecting type String 
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js'
+  at 98,7: ArangoError 4: Expecting type String
 
 * fixed issue in agency supervision with a good server being left in
   failedServers
@@ -122,14 +127,14 @@ v3.3.2 (2018-01-04)
 
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
-* do not reuse collection ids when restoring collections from a dump, but assign 
+* do not reuse collection ids when restoring collections from a dump, but assign
   new collection ids, this should prevent collection id conflicts
 
 
 v3.3.1 (2017-12-28)
 -------------------
 
-* UI: displayed wrong wfs property for a collection when using RocksDB as 
+* UI: displayed wrong wfs property for a collection when using RocksDB as
   storage engine
 
 * added `--ignore-missing` option to arangoimp
@@ -140,10 +145,10 @@ v3.3.1 (2017-12-28)
 
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
   usage in some cases
-  When the optimization is applied, this especially speeds up fulltext index 
+  When the optimization is applied, this especially speeds up fulltext index
   queries in the cluster
 
-* UI: improved the behavior during collection creation in a cluster environment 
+* UI: improved the behavior during collection creation in a cluster environment
 
 * Agency lockup fixes for very small machines.
 
@@ -181,7 +186,7 @@ v3.3.rc8 (2017-12-12)
 v3.3.rc7 (2017-12-07)
 ---------------------
 
-* fixed issue #3741: fix terminal color output in Windows 
+* fixed issue #3741: fix terminal color output in Windows
 
 * UI: fixed issue #3822: disabled name input field for system collections
 
@@ -204,7 +209,7 @@ v3.3.rc7 (2017-12-07)
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
-  
+
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
 
