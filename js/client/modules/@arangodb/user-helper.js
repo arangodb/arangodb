@@ -42,7 +42,6 @@ const colName = `${namePrefix}Collection`;
 const rightLevels = ['rw', 'ro', 'none'];
 
 const userSet = new Set();
-//const roleSet = new Set();
 const systemLevel = {};
 const dbLevel = {};
 const colLevel = {};
@@ -183,9 +182,6 @@ exports.switchUser = (user, dbName) => {
   if (user === 'bob') {
     password = '';
   }
-  /*arango.reconnect(arango.getEndpoint(), "_system", "root", "");
-  print("Login as: ", database, user, password);
-  print("Auth Level", users.permission(user, database));*/
   arango.reconnect(arango.getEndpoint(), database, user, password);
 };
 
@@ -268,10 +264,8 @@ exports.systemLevel = systemLevel;
 exports.dbLevel = dbLevel;
 exports.colLevel = colLevel;
 exports.userSet = userSet;
-//exports.roleSet = roleSet;
 exports.namePrefix = namePrefix;
 exports.dbName = dbName;
 exports.colName = colName;
 exports.rightLevels = rightLevels;
 exports.userCount = 3 * 3 * 3;
-//exports.roleCount = 3 * 3 * 3;
