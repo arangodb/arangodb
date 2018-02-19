@@ -1104,9 +1104,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
-  LocalDocumentId const documentId = LocalDocumentId::create();
   prevRev = 0;
-
   revisionId = newRevisionId();
 
   VPackSlice key;
@@ -1148,15 +1146,15 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                          [&state]() { state->resetLogState(); });
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), documentId.id(),
-                          StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  state->prepareOperation(_logicalCollection->cid(), oldRevisionId,
+                          StringRef(key), TRI_VOC_DOCUMENT_OPERATION_REMOVE);
   res = removeDocument(trx, oldDocumentId, oldDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
     // report key size
-    res = state->addOperation(_logicalCollection->cid(), documentId.id(),
+    res = state->addOperation(_logicalCollection->cid(), revisionId,
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
                               res.keySize());
     // transaction size limit reached -- fail

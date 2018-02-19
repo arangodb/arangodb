@@ -77,6 +77,8 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
       return REPLICATION_VIEW_CHANGE;
     case RocksDBLogType::BeginTransaction:
       return REPLICATION_TRANSACTION_START;
+    case RocksDBLogType::CommitTransaction:
+      return REPLICATION_TRANSACTION_COMMIT;
 
     default:
       TRI_ASSERT(false);
@@ -419,6 +421,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
     TRI_ASSERT(!_removeDocumentKey.empty());
 
+    //uint64_t rid = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
     _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
@@ -433,6 +436,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _builder.add("data", VPackValue(VPackValueType::Object));
     // only pass on _key, but no _rev
     _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
+    //_builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
     _builder.close();
     _builder.close();
     _removeDocumentKey.clear();

@@ -1,6 +1,51 @@
 #!/bin/bash
+params=("$@")
 
-. `dirname $0`/cluster-run-common.sh
+rm -rf cluster
+if [ -d cluster-init ];then
+  echo "== creating cluster directory from existing cluster-init directory"
+  cp -a cluster-init cluster
+else
+  echo "== creating fresh directory"
+  mkdir -p cluster || { echo "failed to create cluster directory"; exit 1; }
+  #if we want to restart we should probably store the parameters line wise
+fi
+
+case $OSTYPE in
+  darwin*)
+    lib="$PWD/scripts/cluster-run-common.sh"
+  ;;
+  *)
+    lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+  ;;
+esac
+
+if [[ -f "$lib" ]]; then
+  . "$lib"
+else
+  echo "could not source $lib"
+  exit 1
+fi
+
+if [[ -f cluster/startup_parameters ]];then
+    string="$(< cluster/startup_parameters)"
+    if [[ -z "${params[@]}" ]]; then
+        params=( $string )
+    else
+        if ! [[ "$*" == "$string" ]]; then
+            echo "stored and given params do not match:"
+            echo "given: ${params[@]}"
+            echo "stored: $string"
+        fi
+    fi
+else
+    #store parmeters
+    if [[ -n "${params[@]}" ]]; then
+      echo "${params[@]}" > cluster/startup_parameters
+    fi
+fi
+
+parse_args "${params[@]}"
 
 if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
@@ -13,6 +58,10 @@ else
 fi
 DEFAULT_REPLICATION=""
 
+if [[ $NRAGENTS -le 0 ]]; then
+    echo "you need as least one agent currently you have $NRAGENTS"
+    exit 1
+fi
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"

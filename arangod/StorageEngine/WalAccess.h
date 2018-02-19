@@ -141,10 +141,12 @@ struct WalAccessContext {
   ~WalAccessContext() {}
 
   
+  /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
 
-  /// @brief Check if collection is in filter
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) const;
+  /// @brief Check if collection is in filter, will load collection
+  /// and prevent deletion
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);

@@ -192,6 +192,8 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
 #endif
     case arangodb::RocksDBLogType::BeginTransaction:
       return "BeginTransaction";
+    case arangodb::RocksDBLogType::CommitTransaction:
+      return "CommitTransaction";
     case arangodb::RocksDBLogType::DocumentOperationsPrologue:
       return "DocumentOperationsPrologue";
     case arangodb::RocksDBLogType::DocumentRemove:

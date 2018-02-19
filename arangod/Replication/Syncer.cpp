@@ -24,6 +24,7 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -585,7 +586,6 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  s.add("objectId", VPackSlice::nullSlice());
   if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
@@ -593,12 +593,13 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     s.add("cid", VPackSlice::nullSlice());
   }
   s.close();
-
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
+  // not just the top-level contains objectIDs, the index definitions also might
+  auto stripped = rocksutils::stripObjectIds(merged.slice());
   
   try {
-    col = vocbase->createCollection(merged.slice());
+    col = vocbase->createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

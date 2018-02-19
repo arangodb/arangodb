@@ -1202,7 +1202,6 @@ void RocksDBEngine::createIndex(TRI_vocbase_t* vocbase,
 
 void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
                                      arangodb::LogicalCollection* collection) {
-  // TODO: does anything else have to happen?
   collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
@@ -1292,6 +1291,13 @@ void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
   }
 
   WRITE_LOCKER(guard, _mapLock);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto it = _collectionMap.find(objectId);
+  if (it != _collectionMap.end()) {
+    TRI_ASSERT(it->second.first == did);
+    TRI_ASSERT(it->second.second == cid);
+  }
+#endif
   _collectionMap[objectId] = std::make_pair(did, cid);
 }
 

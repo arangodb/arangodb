@@ -64,6 +64,8 @@ RocksDBIndex::RocksDBIndex(
     createCache();
   }
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  // hack to get db id and cid in RocksDBWalAccess
+  engine->addCollectionMapping(_objectId, collection->vocbase()->id(), collection->cid());
   engine->addIndexMapping(_objectId, this);
 }
 
@@ -85,6 +87,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
     createCache();
   }
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->addCollectionMapping(_objectId, collection->vocbase()->id(), collection->cid());
   engine->addIndexMapping(_objectId, this);
 }
 
@@ -248,6 +251,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
                                     LocalDocumentId const& newDocumentId,
                                     arangodb::velocypack::Slice const& newDoc,
                                     OperationMode mode) {
+  TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX); // wal tailing would break
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
