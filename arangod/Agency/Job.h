@@ -76,7 +76,7 @@ struct Job {
     shard_t (std::string const& c, std::string const& s) :
       collection(c), shard(s) {}
   };
-  
+
   Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
       std::string const& jobId, std::string const& creator = std::string());
 
@@ -85,20 +85,27 @@ struct Job {
   virtual void run() = 0;
 
   void runHelper(std::string const& server, std::string const& shard) {
+    
     if (_status == FAILED) {  // happens when the constructor did not work
       return;
     }
+    
     try {
-      status();   // This runs everything to to with state PENDING if needed!
+      // Deal with jobs, which are pending and finish/fail/continue.
+      status(); 
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in status() method: "
         << e.what();
       finish(server, shard, false, e.what());
     }
+    
+    // deal with status 
     try {
       if (_status == TODO) {
+        // still in ToDo
         start();
       } else if (_status == NOTFOUND) {
+        // create and try to start immediately if possible
         if (create(nullptr)) {
           start();
         }
@@ -106,16 +113,26 @@ struct Job {
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
         "start() method: " << e.what();
+      // We don't need to clean blocked servers/shards,
+      // cause exception avoided start in first place
       finish("", "", false, e.what());
     }
   }
 
   virtual Result abort() = 0;
 
+  /**
+   * @brief finish Job in agency
+   * @return       Success
+   */
   virtual bool finish(
     std::string const& server, std::string const& shard, bool success = true,
     std::string const& reason = std::string(), query_t const payload = nullptr);
-  
+
+  /**
+   * @brief status of the last run.
+   * @return       this run's status 
+   */
   virtual JOB_STATUS status() = 0;
 
   virtual bool create(std::shared_ptr<VPackBuilder> b) = 0;
@@ -134,7 +151,7 @@ struct Job {
     Node const& snap, std::vector<std::string> const& exclude);
   static std::string randomIdleGoodAvailableServer(
     Node const& snap, VPackSlice const& exclude);
-  
+
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
 
@@ -154,7 +171,7 @@ struct Job {
   static std::string agencyPrefix;  // will be initialized in AgencyFeature
 
   std::shared_ptr<Builder> _jb;
-  
+
   static void doForAllShards(Node const& snapshot,
     std::string& database,
     std::vector<shard_t>& shards,
@@ -190,9 +207,9 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
   AgentInterface* _agent,
   Builder const& transaction,
   bool waitForCommit = true) {
-  
+
   query_t envelope = std::make_shared<Builder>();
-  
+
   Slice trx = transaction.slice();
   try {
     { VPackArrayBuilder listOfTrxs(envelope.get());
@@ -213,7 +230,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Supervision failed to build single-write transaction: " << e.what();
   }
-  
+
   auto ret = _agent->write(envelope);
   if (waitForCommit && !ret.indices.empty()) {
     auto maximum = *std::max_element(ret.indices.begin(), ret.indices.end());
@@ -226,14 +243,14 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
 
 inline arangodb::consensus::trans_ret_t generalTransaction(
   AgentInterface* _agent, Builder const& transaction) {
-  
+
   query_t envelope = std::make_shared<Builder>();
   Slice trx = transaction.slice();
-  
+
   try {
     { VPackArrayBuilder listOfTrxs(envelope.get());
       for (auto const& singleTrans : VPackArrayIterator(trx)) {
-        
+
         TRI_ASSERT(singleTrans.isArray() && singleTrans.length() > 0);
         if (singleTrans[0].isObject()) {
           VPackArrayBuilder onePair(envelope.get());
@@ -262,11 +279,11 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
   }
 
   auto ret = _agent->transact(envelope);
-  
+
   if (ret.maxind > 0) {
     _agent->waitFor(ret.maxind);
   }
-  
+
   return ret;
 
 }
@@ -297,7 +314,7 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
         << "Supervision failed to build transaction for transient: " << e.what();
   }
 
-  
+
   return _agent->transient(envelope);
 }
 

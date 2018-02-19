@@ -43,7 +43,7 @@ FailedLeader::FailedLeader(Node const& snapshot, AgentInterface* agent,
 FailedLeader::FailedLeader(
   Node const& snapshot, AgentInterface* agent, JOB_STATUS status,
   std::string const& jobId) : Job(status, snapshot, agent, jobId) {
-  
+
   // Get job details from agency:
   try {
     std::string path = pos[status] + _jobId + "/";
@@ -64,7 +64,7 @@ FailedLeader::FailedLeader(
     finish("", _shard, false, err.str());
     _status = FAILED;
   }
-  
+
 }
 
 FailedLeader::~FailedLeader() {}
@@ -98,9 +98,9 @@ void FailedLeader::rollback() {
   } else {
     rb.add(planned);
   }
-  
+
   auto cs = clones(_snapshot, _database, _collection, _shard);
-  
+
   // Transactions
   auto payload = std::make_shared<Builder>();
   { VPackObjectBuilder b(payload.get());
@@ -110,8 +110,10 @@ void FailedLeader::rollback() {
     }
   }
 
+  // Failed leader will finish.
+  // FailedServer finishes, when all child jobs have finished or failed.
   finish("", _shard, false, "Timed out.", payload);
-  
+
 }
 
 
@@ -120,7 +122,7 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
   using namespace std::chrono;
   LOG_TOPIC(INFO, Logger::SUPERVISION)
     << "Create failedLeader for " + _shard + " from " + _from;
-  
+
   _jb = std::make_shared<Builder>();
   { VPackArrayBuilder transaction(_jb.get());
     { VPackObjectBuilder operations(_jb.get());
@@ -137,9 +139,9 @@ bool FailedLeader::create(std::shared_ptr<VPackBuilder> b) {
         _jb->add(
           "timeCreated", VPackValue(timepointToString(system_clock::now())));
       }}}
-  write_ret_t res = singleWriteTransaction(_agent, *_jb);  
+  write_ret_t res = singleWriteTransaction(_agent, *_jb);
   return (res.accepted && res.indices.size() == 1 && res.indices[0]);
-  
+
 }
 
 
@@ -148,14 +150,14 @@ bool FailedLeader::start() {
   std::vector<std::string> existing =
     _snapshot.exists(planColPrefix + _database + "/" + _collection + "/" +
                      "distributeShardsLike");
-  
+
   // Fail if got distributeShardsLike
   if (existing.size() == 5) {
     finish("", _shard, false, "Collection has distributeShardsLike");
     return false;
   }
   // Fail if collection gone
-  else if (existing.size() < 4) { 
+  else if (existing.size() < 4) {
     finish("", _shard, true, "Collection " + _collection + " gone");
     return false;
   }
@@ -165,14 +167,16 @@ bool FailedLeader::start() {
     findNonblockedCommonHealthyInSyncFollower(
       _snapshot, _database, _collection, _shard);
   if (commonHealthyInSync.empty()) {
+    // Job should not finish, just because we have not found an in sync follower.
+    // One might show up later, subseqently we could continue and start this job.
     return false;
   } else {
     _to = commonHealthyInSync;
   }
-  
+
   LOG_TOPIC(INFO, Logger::SUPERVISION)
-    << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;  
-  
+    << "Start failedLeader for " + _shard + " from " + _from + " to " + _to;
+
   using namespace std::chrono;
 
   // Current servers vector
@@ -195,6 +199,8 @@ bool FailedLeader::start() {
         LOG_TOPIC(INFO, Logger::SUPERVISION)
           << "Failed to get key " + toDoPrefix + _jobId
           + " from agency snapshot";
+        // Just return here.
+        // Only way we get here is that the job no longer is in pending.
         return false;
       }
     } else {
@@ -218,10 +224,10 @@ bool FailedLeader::start() {
 
   // Transactions
   Builder pending;
-  
+
   { VPackArrayBuilder transactions(&pending);
     { VPackArrayBuilder transaction(&pending);
-      
+
       // Operations ----------------------------------------------------------
       { VPackObjectBuilder operations(&pending);
         // Add pending entry
@@ -238,7 +244,7 @@ bool FailedLeader::start() {
         // DB server vector -------
         Builder ns;
         { VPackArrayBuilder servers(&ns);
-          ns.add(VPackValue(_to));  
+          ns.add(VPackValue(_to));
           for (auto const& i : VPackArrayIterator(current)) {
             std::string s = i.copyString();
             if (s != _from && s != _to) {
@@ -283,17 +289,18 @@ bool FailedLeader::start() {
   try {
     std::string jobId = _snapshot(blockedShardsPrefix + _shard).getString();
     if (!abortable(_snapshot, jobId)) {
+      // If the blocking job is not abortable, just wait for better times.
       return false;
     } else {
       JobContext(PENDING, jobId, _snapshot, _agent).abort();
     }
   } catch (...) {}
-  
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "FailedLeader transaction: " << pending.toJson();
-  
+
   trans_ret_t res = generalTransaction(_agent, pending);
-  
+
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "FailedLeader result: " << res.result->toJson();
 
@@ -302,6 +309,7 @@ bool FailedLeader::start() {
   auto result = res.result->slice()[0];
 
   if (res.accepted && result.isNumber()) {
+    // Couldn't RAFT persist this. Will retry. Just return here.
     return true;
   }
 
@@ -311,7 +319,7 @@ bool FailedLeader::start() {
     LOG_TOPIC(INFO, Logger::SUPERVISION)
       << "Leadership lost! Job " << _jobId << " handed off.";
   }
-  
+
   if (result.isObject()) {
 
     // Still failing _from?
@@ -341,6 +349,9 @@ bool FailedLeader::start() {
     if (!slice.isNone()) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
         << "Plan no longer holds the expected server list. Will retry.";
+      ///
+      /// this does not "return false".  why?
+      ///
     }
 
     // To server blocked by other job?
@@ -363,19 +374,20 @@ bool FailedLeader::start() {
         slice.copyString();
     }
   }
-    
+
   return false;
-  
+
 }
 
 JOB_STATUS FailedLeader::status() {
 
   if(!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
     finish("", _shard, true, "Collection " + _collection + " gone");
+    // If finish cannot complete, we should not set this job as finished.
     return FINISHED;
   }
 
-  // Timedout after 77 minutes
+  // As of now the human-readable persistence of events is based on system_clock
   if (std::chrono::system_clock::now() - _created > std::chrono::seconds(4620)) {
     rollback();
   }
@@ -387,7 +399,7 @@ JOB_STATUS FailedLeader::status() {
   Node const& job = _snapshot(pendingPrefix + _jobId);
   std::string database = job("database").getString(),
     shard = job("shard").getString();
-  
+
   bool done = false;
   for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
     auto sub = database + "/" + clone.collection;
@@ -399,9 +411,9 @@ JOB_STATUS FailedLeader::status() {
     }
     done = true;
   }
-  
+
   if (done) {
-    // Remove shard to /arango/Target/FailedServers/<server> array
+    // Remove shard from /arango/Target/FailedServers/<server> array
     Builder del;
     { VPackArrayBuilder a(&del);
       { VPackObjectBuilder o(&del);
@@ -410,15 +422,19 @@ JOB_STATUS FailedLeader::status() {
           del.add("op", VPackValue("erase"));
           del.add("val", VPackValue(_shard));
         }}}
-    
+
+    // Not critical - best effort
     write_ret_t res = singleWriteTransaction(_agent, del);
+    
     if (finish("", shard)) {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
-        << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;  
-        return FINISHED;
+        << "Finished failedLeader for " + _shard + " from " + _from + " to " + _to;
+
+      // _state is not evaluated
+      return FINISHED;
     }
   }
-  
+
   return _status;
 }
 
@@ -433,5 +449,3 @@ arangodb::Result FailedLeader::abort() {
     return Result();
   }
 }
-
-
