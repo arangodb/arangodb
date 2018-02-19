@@ -212,7 +212,7 @@ void auth::UserManager::loadFromDB() {
 // this method can only be called by users with access to the _system collection
 Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replace) {
   if (entry.source() != auth::Source::LOCAL) {
-    return TRI_ERROR_USER_EXTERNAL;
+    return Result(TRI_ERROR_USER_EXTERNAL);
   }
 
   VPackBuilder data = entry.toVPackBuilder();
@@ -222,7 +222,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   if (vocbase == nullptr) {
-    return Result(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
 
   // we cannot set this execution context, otherwise the transaction
@@ -321,18 +321,18 @@ void auth::UserManager::createRootUser() {
     user.grantDatabase("*", auth::Level::RW);
     user.grantCollection("*", "*", auth::Level::RW);
     storeUserInternal(user, false);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "unable to create user \"root\": " << ex.what();
   } catch (...) {
     // No action
+    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "unable to create user \"root\"";
   }
 }
 
 VPackBuilder auth::UserManager::allUsers() {
   // will query db directly, no need for _userCacheLock
-  std::shared_ptr<VPackBuilder> users;
-  {
-    TRI_ASSERT(_queryRegistry != nullptr);
-    users = QueryAllUsers(_queryRegistry);
-  }
+  TRI_ASSERT(_queryRegistry != nullptr);
+  std::shared_ptr<VPackBuilder> users = QueryAllUsers(_queryRegistry);
 
   VPackBuilder result;
   VPackArrayBuilder a(&result);
@@ -474,7 +474,7 @@ Result auth::UserManager::updateUser(std::string const& username,
   }
 
   auth::User user = it->second; // make a copy
-  TRI_ASSERT(!user.key().empty() && user.key() != 0);
+  TRI_ASSERT(!user.key().empty() && user.rev() != 0);
   Result r = func(user);
   if (r.fail()) {
     return r;
@@ -531,7 +531,7 @@ static Result RemoveUserInternal(auth::User const& entry) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   if (vocbase == nullptr) {
-    return Result(TRI_ERROR_INTERNAL);
+    return Result(TRI_ERROR_INTERNAL, "unable to find system database");
   }
 
   // we cannot set this execution context, otherwise the transaction

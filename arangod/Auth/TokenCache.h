@@ -80,7 +80,7 @@ class TokenCache {
 
   /// set new jwt secret, regenerate _jetToken
   void setJwtSecret(std::string const&);
-  std::string jwtSecret() const noexcept;
+  std::string jwtSecret() const;
   /// Get the jwt token, which should be used for communicatin
   std::string const& jwtToken() const noexcept {
     TRI_ASSERT(!_jwtToken.empty());

@@ -134,9 +134,6 @@ class User {
     DBAuthContext(auth::Level dbLvl, CollLevelMap&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
-    //auth::Level collectionAuthLevel(std::string const& collectionName,
-    //                                bool& notFound) const;
-
    public:
     auth::Level _databaseAuthLevel;
     CollLevelMap _collectionAccess;
@@ -157,7 +154,7 @@ class User {
   velocypack::Builder _userData;
   velocypack::Builder _configData;
 
-  /// Time when user was loaded form DB / LDAP
+  /// Time when user was loaded from DB / LDAP
   double _loaded;
   
 #ifdef USE_ENTERPRISE

@@ -63,8 +63,6 @@ AuthenticationFeature::AuthenticationFeature(
 AuthenticationFeature::~AuthenticationFeature() {
   delete _userManager;
   delete _authCache;
-  _userManager = nullptr;
-  _authCache = nullptr;
 }
 
 void AuthenticationFeature::collectOptions(
@@ -125,8 +123,7 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
 void AuthenticationFeature::prepare() {
   TRI_ASSERT(isEnabled());
-  
-  //if (ServerState::instance()->isSingleServerOrCoordinator()) {
+  TRI_ASSERT(_userManager != nullptr); 
 #if USE_ENTERPRISE
     if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
         ->isEnabled()) {
@@ -137,7 +134,7 @@ void AuthenticationFeature::prepare() {
 #else
     _userManager = new auth::UserManager();
 #endif
-  //}
+  TRI_ASSERT(_authCache != nullptr); 
   _authCache = new auth::TokenCache(_userManager, _authenticationTimeout);
   
   std::string jwtSecret = _jwtSecretProgramOption;

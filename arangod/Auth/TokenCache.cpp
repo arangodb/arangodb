@@ -42,7 +42,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
@@ -73,7 +72,7 @@ void auth::TokenCache::setJwtSecret(std::string const& jwtSecret) {
   generateJwtToken();
 }
 
-std::string auth::TokenCache::jwtSecret() const noexcept {
+std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtLock);
   return _jwtSecret;
 }
