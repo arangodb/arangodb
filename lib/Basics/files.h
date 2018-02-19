@@ -285,7 +285,7 @@ void TRI_SetApplicationName(char const*);
 std::string TRI_GetTempPath();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get a temporary file name
+/// @brief set the system's temporary path - WARN: The directory is not created
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
