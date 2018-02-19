@@ -199,7 +199,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
     AqlValue limit = ExtractFunctionParameterValue(parameters, 3);
     if (!limit.isNull(true) && !limit.isNumber()) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "FULLTEXT");
-    } 
+    }
     if (limit.isNumber()) {
       int64_t value = limit.toInt64(trx);
       if (value > 0) {
@@ -226,7 +226,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   for (auto const& it : basics::StringUtils::split(attributeName, '.')) {
     search.back().emplace_back(it, false);
   }
-  
+
   // NOTE: The shared_ptr is protected by trx lock.
   // It is safe to use the raw pointer directly.
   // We are NOT allowed to delete the index.

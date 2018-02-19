@@ -44,7 +44,7 @@ MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(
       _cursor(nullptr),
       _coor(),
       _params(std::move(params)),
-      _near(_params.maxDistance >= geo::kEarthRadiusInMeters),
+      _near(_params.maxDistance >= geo::kMaxDistanceBetweenPoints),
       _done(false) {
   TRI_ASSERT(_params.minDistance == 0);
 }

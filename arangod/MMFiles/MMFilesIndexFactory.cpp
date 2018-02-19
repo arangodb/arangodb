@@ -65,7 +65,7 @@ static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder
                               size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
-  
+
   VPackSlice fieldsSlice = definition.get("fields");
   builder.add(VPackValue("fields"));
   builder.openArray();
@@ -75,29 +75,29 @@ static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder
       if (!it.isString()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
-      
+
       StringRef f(it);
-      
+
       if (f.empty() || (create && f == StaticStrings::IdString)) {
         // accessing internal attributes is disallowed
         return TRI_ERROR_BAD_PARAMETER;
       }
-      
+
       if (fields.find(f) != fields.end()) {
         // duplicate attribute name
         return TRI_ERROR_BAD_PARAMETER;
       }
-      
+
       fields.insert(f);
       builder.add(it);
     }
   }
-  
+
   size_t cc = fields.size();
   if (cc == 0 || cc < minFields || cc > maxField) {
     return TRI_ERROR_BAD_PARAMETER;
   }
-  
+
   builder.close();
   return TRI_ERROR_NO_ERROR;
 }
@@ -353,7 +353,7 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       case Index::TRI_IDX_TYPE_GEO2_INDEX:
         res = EnhanceJsonIndexGeo2(definition, enhanced, create);
         break;
-        
+
       case Index::TRI_IDX_TYPE_S2_INDEX:
         res = EnhanceJsonIndexGeoS2(definition, enhanced, create);
         break;
