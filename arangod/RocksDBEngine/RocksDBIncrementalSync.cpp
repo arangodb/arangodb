@@ -46,6 +46,9 @@ int syncChunkRocksDB(
     std::string const& highString,
     std::vector<std::pair<std::string, uint64_t>> const& markers,
     std::string& errorMsg) {
+  syncer.sendExtendBatch();
+  syncer.sendExtendBarrier();
+  
   std::string const baseUrl = syncer.BaseUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
@@ -68,7 +71,7 @@ int syncChunkRocksDB(
                     std::to_string(chunkSize) + "&low=" + lowString;
 
   std::string progress =
-      "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
+      "fetching keys chunk " + std::to_string(chunkId) + " from " + url;
   syncer.setProgress(progress);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -224,6 +227,9 @@ int syncChunkRocksDB(
                                         << " documents for this chunk";
 
   if (!toFetch.empty()) {
+    syncer.sendExtendBatch();
+    syncer.sendExtendBarrier();
+
     VPackBuilder keysBuilder;
     keysBuilder.openArray();
     for (auto& it : toFetch) {
@@ -236,7 +242,7 @@ int syncChunkRocksDB(
                       std::to_string(chunkSize) + "&low=" + lowString;
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
-               " for collection '" + collectionName + "' from " + url;
+               " (" + std::to_string(toFetch.size()) + " keys) for collection '" + collectionName + "' from " + url;
     syncer.setProgress(progress);
 
     std::string const keyJsonString(keysBuilder.slice().toJson());
@@ -415,6 +421,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
+    
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -471,6 +480,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
+    
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 

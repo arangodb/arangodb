@@ -305,6 +305,9 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::WRITE);
+        
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -379,6 +382,9 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), coll->cid(),
         AccessMode::Type::WRITE);
+        
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 

@@ -441,9 +441,17 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
-                                                           RocksDBReplicationContext::DefaultTTL);
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
+    
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (found) {
+      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+    }
+
+    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to create replication context");
@@ -459,17 +467,15 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.close();
 
     // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    TRI_server_id_t serverId = 0;
-
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    } else {
+    if (serverId == 0) {
       serverId = ctx->id();
     }
-
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    // we are inserting the current tick (WAL sequence number) here.
+    // this is ok because the batch creation is the first operation done
+    // for initial synchronization. the inventory request and collection
+    // dump requests will all happen after the batch creation, so the
+    // current tick value here is good
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -489,11 +495,11 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -516,7 +522,10 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       serverId = ctx->id();
     }
 
-    _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    // last tick value in context should not have changed compared to the
+    // initial tick value used in the context (it's only updated on bind()
+    // call, which is only executed when a batch is initially created)
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
@@ -577,6 +586,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid from/to values");
     return;
+  }
+    
+  std::string const& value3 = _request->value("serverId", found);
+
+  TRI_server_id_t serverId = 0;
+  if (found) {
+    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
   }
 
   bool includeSystem = true;
@@ -650,6 +666,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.fromTickIncluded() ? "true" : "false");
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTSCANNED,
+                         StringUtils::itoa(result.lastScannedTick()));
 
   if (length > 0) {
     if (useVst) {
@@ -676,16 +694,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
         httpResponse->body().appendChar('\n');
       }
     }
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
-    }
-    _vocbase->updateReplicationClient(serverId, result.maxTick());
   }
+    
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

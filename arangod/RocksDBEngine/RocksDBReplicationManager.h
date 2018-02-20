@@ -26,6 +26,8 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/replication-common.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -54,7 +56,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl);
+  RocksDBReplicationContext* createContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -72,7 +74,7 @@ class RocksDBReplicationManager {
 
   RocksDBReplicationContext* find(
       RocksDBReplicationId, bool& isBusy,
-      double ttl = RocksDBReplicationContext::DefaultTTL);
+      double ttl = TRI_REPLICATION_BATCH_DEFAULT_TIMEOUT);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use

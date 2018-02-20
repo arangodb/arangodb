@@ -416,13 +416,15 @@ void SslClientConnection::disconnectSocket() {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::prepare(double timeout, bool isWrite) const {
+bool SslClientConnection::prepare(double timeout, bool isWrite) {
   auto const fd = TRI_get_fd_or_handle_of_socket(_socket);
   double start = TRI_microtime();
   int res;
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
+  static double const POLL_DURATION = 0.5;
+  double sinceLastSocketCheck = start;
   bool nowait = (timeout == 0.0);
   int towait;
   if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
@@ -437,21 +439,49 @@ bool SslClientConnection::prepare(double timeout, bool isWrite) const {
   poller.events = isWrite ? POLLOUT : POLLIN;
 
   while (true) {  // will be left by break
-    res = poll(&poller, 1, towait);
+    res = poll(&poller, 1, towait > static_cast<int>(POLL_DURATION * 1000.0)
+                               ? static_cast<int>(POLL_DURATION * 1000.0)
+                               : towait);
     if (res == -1 && errno == EINTR) {
       if (!nowait) {
         double end = TRI_microtime();
         towait -= static_cast<int>((end - start) * 1000.0);
         start = end;
-        if (towait < 0) {  // Should not happen, but there might be rounding
-                           // errors, so just to prevent a poll call with
-                           // negative timeout...
+        if (towait <= 0) {  // Should not happen, but there might be rounding
+                            // errors, so just to prevent a poll call with
+                            // negative timeout...
           res = 0;
           break;
         }
       }
       continue;
     }
+    
+    if (res == 0) {
+      if (isInterrupted()) {
+        _errorDetails = std::string("command locally aborted");
+        TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      double end = TRI_microtime();
+      towait -= static_cast<int>((end - start) * 1000.0);
+      if (towait <= 0) {
+        break;
+      }
+
+      // periodically recheck our socket
+      if (end - sinceLastSocketCheck >= 20.0) {
+        sinceLastSocketCheck = end;
+        if (!checkSocket()) {
+          // socket seems broken
+          break;
+        }
+      }
+
+      start = end;
+      continue;
+    }
+
     break;
   }
 // Now res can be:

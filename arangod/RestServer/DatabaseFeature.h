@@ -128,7 +128,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void isInitiallyEmpty(bool value) { _isInitiallyEmpty = value; }
 
  private:
-  void closeDatabases();
+  void stopAppliers();
   void updateContexts();
 
   /// @brief create base app directory

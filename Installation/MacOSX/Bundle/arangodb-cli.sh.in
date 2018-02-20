@@ -1,6 +1,7 @@
 #!/bin/bash
 WD=$(dirname "$0")
-ROOTDIR=$(cd "$WD" && pwd)
+# We are in Contents/MacOS. However everything is located under Contents/Resources
+ROOTDIR=$(cd "$WD" && cd "../Resources" && pwd)
 # create start script
 
 ARANGOD_CONF_DIR="${HOME}@INC_CPACK_INSTALL_SYSCONFDIR@/"

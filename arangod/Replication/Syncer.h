@@ -79,6 +79,10 @@ class Syncer {
   void setLeaderId(std::string const& leaderId) {
     _leaderId = leaderId;
   }
+  
+  std::string const& databaseName() const {
+    return _databaseName;
+  }
 
  protected:
 

@@ -85,7 +85,7 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief prepare connection for read/write I/O
   //////////////////////////////////////////////////////////////////////////////
 
-  bool prepare(double, bool) const override;
+  bool prepare(double, bool) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data to the connection

@@ -170,7 +170,7 @@ class GeneralClientConnection {
   /// @brief prepare connection for read/write I/O
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual bool prepare(double, bool) const = 0;
+  virtual bool prepare(double, bool) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief write data to the connection

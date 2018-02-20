@@ -130,6 +130,7 @@ router.post(prepareServiceRequestBody, (req, res) => {
   ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
+  res.status(201);
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
 .queryParam('mount', schemas.mount)
@@ -198,6 +199,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
+.queryParam('force', schemas.flag.default(false))
 .response(200, schemas.fullInfo);
 
 serviceRouter.delete((req, res) => {
@@ -284,7 +286,7 @@ depsRouter.get((req, res) => {
 depsRouter.patch((req, res) => {
   const warnings = FoxxManager.setDependencies(req.service.mount, {
     dependencies: req.body,
-    replace: true
+    replace: false
   });
   const values = req.service.getDependencies(req.queryParams.minimal);
   if (req.queryParams.minimal) {
