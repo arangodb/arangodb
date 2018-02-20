@@ -888,10 +888,11 @@ def restreplybody(cargo, r=Regexen()):
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
         # once this is solved we can skip this:
-        operation['description'] += "**A json document with these Properties is returned:**\n"
-        swagger['paths'][httpPath][method]['responses'][currentReturnCode][
-            'x-description-offset'] = len(swagger['paths'][httpPath][method]['description'])
-        swagger['paths'][httpPath][method]['responses'][currentReturnCode]['schema'] = {
+        operation['description'] += '\n#### HTTP ' + currentReturnCode + '\n'
+        operation['description'] += "*A json document with these Properties is returned:*\n"
+        operation['responses'][currentReturnCode]['x-description-offset'] = len(operation['description'])
+
+        operation['responses'][currentReturnCode]['schema'] = {
                 '$ref': '#/definitions/' + rcBlock
                 }
         swagger['paths'][httpPath][method] ['produces'] = [
@@ -1313,7 +1314,7 @@ for route in swagger['paths'].keys():
                 #print descOffset 
                 #print offsetPlus
                 descOffset += offsetPlus
-                addText = '\n#### HTTP ' + nRC
+                addText = ''
                 #print thisVerb['responses'][nRC]['description']
                 postText = thisVerb['description'][:descOffset]
                 #print postText
