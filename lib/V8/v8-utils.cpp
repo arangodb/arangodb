@@ -813,7 +813,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       endpoint = "srv://" + endpoint;
     } else if (url.substr(0, 7) == "unix://") {
       // Can only have arrived here if endpoints is non empty
-      TRI_ASSERT(!endpoints.empty());
+      if (endpoints.empty()) {
+        TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
+      }
       endpoint = endpoints.front();
       relative = url.substr(endpoint.size());
     } else if (!url.empty() && url[0] == '/') {
