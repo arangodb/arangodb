@@ -435,6 +435,7 @@ int Syncer::applyCollectionDumpMarkerInternal(
       errorMsg = "document remove operation failed: " +
                  std::string(TRI_errno_string(res));
     } catch (std::exception const& ex) {
+      res = TRI_ERROR_INTERNAL;
       errorMsg = "document remove operation failed: " +
                  std::string(ex.what());
     } catch (...) {
