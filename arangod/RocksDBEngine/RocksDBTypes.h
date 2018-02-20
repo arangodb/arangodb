@@ -78,10 +78,10 @@ enum class RocksDBLogType : char {
   ViewRename = 'B',
   CommitTransaction = 'C',
 #ifdef USE_IRESEARCH
-  IResearchLinkDrop = 'D'
+  IResearchLinkDrop = 'D',
 #endif
  DocumentRemoveV2 = 'E',
- SingleRemoveV2 = 'F',
+ SingleRemoveV2 = 'F'
 };
 
 enum class RocksDBSettingsType : char {
