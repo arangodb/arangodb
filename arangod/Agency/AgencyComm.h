@@ -292,7 +292,7 @@ public:
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
 
-struct AgencyGeneralTransaction : public AgencyTransaction {
+/*struct AgencyGeneralTransaction : public AgencyTransaction {
 
   typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
@@ -337,7 +337,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
-};
+};*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction

@@ -68,7 +68,7 @@ InitialSyncer::InitialSyncer(
       _processedCollections(),
       _batchId(0),
       _batchUpdateTime(0),
-      _batchTtl(300) {}
+      _batchTtl(defaultBatchTimeout) {}
 
 InitialSyncer::~InitialSyncer() {
   try {
@@ -82,13 +82,14 @@ Result InitialSyncer::sendStartBatch() {
     return Result();
   }
   
+  double const now = TRI_microtime();
   _batchId = 0;
   std::string const url =
       ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  std::string const progress = "send batch start command to url " + url;
+  std::string const progress = "sending batch start command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
@@ -116,7 +117,7 @@ Result InitialSyncer::sendStartBatch() {
   }
 
   _batchId = StringUtils::uint64(id);
-  _batchUpdateTime = TRI_microtime();
+  _batchUpdateTime = now;
 
   return Result();
 }
@@ -127,10 +128,10 @@ Result InitialSyncer::sendExtendBatch() {
     return Result();
   }
 
-  double now = TRI_microtime();
+  double const now = TRI_microtime();
 
-  if (now <= _batchUpdateTime + _batchTtl - 60.0) {
-    // no need to extend the batch yet
+  if (now <= _batchUpdateTime + _batchTtl * 0.25) {
+    // no need to extend the batch yet - only extend it if a quarter of its ttl is already over
     return Result();
   }
 
@@ -139,7 +140,7 @@ Result InitialSyncer::sendExtendBatch() {
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
-  std::string const progress = "send batch extend command to url " + url;
+  std::string const progress = "sending batch extend command to url " + url;
   setProgress(progress);
 
   std::unique_ptr<SimpleHttpResult> response(
@@ -149,7 +150,7 @@ Result InitialSyncer::sendExtendBatch() {
     return buildHttpError(response.get(), url);
   }
   
-  _batchUpdateTime = TRI_microtime();
+  _batchUpdateTime = now;
 
   return Result();
 }
@@ -165,7 +166,7 @@ Result InitialSyncer::sendFinishBatch() {
                             "?serverId=" + _localServerIdString;
 
     // send request
-    std::string const progress = "send batch finish command to url " + url;
+    std::string const progress = "sending batch finish command to url " + url;
     setProgress(progress);
 
     std::unique_ptr<SimpleHttpResult> response(

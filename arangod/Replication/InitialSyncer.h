@@ -35,6 +35,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class InitialSyncer : public Syncer {
+ public:
+  static constexpr double defaultBatchTimeout = 300.0;
 
  public:
   explicit InitialSyncer(ReplicationApplierConfiguration const&);

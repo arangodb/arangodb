@@ -190,11 +190,6 @@
           name: 'Dashboard',
           view: undefined,
           active: true
-        },
-        {
-          name: 'Logs',
-          view: undefined,
-          disabled: true
         }
       ],
       collections: [

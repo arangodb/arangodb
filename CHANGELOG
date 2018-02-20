@@ -1,4 +1,59 @@
-v3.3.3 (XXXX-XX-XX)
+v3.3.4 (XXXX-XX-XX)
+-------------------
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
+* fixed Foxx API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
+* internal issue #1726: supervision failed to remove multiple servers
+  from health monitoring at once.
+
+
+v3.3.3 (2018-01-26)
+-------------------
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
+* fix timeout issues in replication client expiration
+
+* added missing edge filter to neighbors-only traversals
+  in case a filter condition was moved into the traverser and the traversal was
+  executed in breadth-first mode and was returning each visited vertex exactly
+  once, and there was a filter on the edges of the path and the resulting vertices
+  and edges were not used later, the edge filter was not applied
+
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
+* fix internal issue #1848: AQL optimizer was trying to resolve attribute accesses
+  to attributes of constant object values at query compile time, but only did so far
+  the very first attribute in each object
+
+  this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a javascript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got
+         accidently removed by selfhealing this is not the case anymore.
+
+v3.3.3 (2018-01-16)
 -------------------
 
 * fix issue #4272: VERSION file keeps disappearing
@@ -60,11 +115,12 @@ v3.3.3 (XXXX-XX-XX)
 
 * fixed incorrect persistence of RAFT vote and term
 
+
 v3.3.2 (2018-01-04)
 -------------------
 
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
-  at 98,7: ArangoError 4: Expecting type String 
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js'
+  at 98,7: ArangoError 4: Expecting type String
 
 * fixed issue in agency supervision with a good server being left in
   failedServers
@@ -73,7 +129,8 @@ v3.3.2 (2018-01-04)
 
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
-* do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
+* do not reuse collection ids when restoring collections from a dump, but assign
+  new collection ids, this should prevent collection id conflicts
 
 * fix issue #4393: broken handling of unix domain sockets in
   JS_Download
@@ -82,7 +139,7 @@ v3.3.2 (2018-01-04)
 v3.3.1 (2017-12-28)
 -------------------
 
-* UI: displayed wrong wfs property for a collection when using RocksDB as 
+* UI: displayed wrong wfs property for a collection when using RocksDB as
   storage engine
 
 * added `--ignore-missing` option to arangoimp
@@ -93,10 +150,10 @@ v3.3.1 (2017-12-28)
 
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
   usage in some cases
-  When the optimization is applied, this especially speeds up fulltext index 
+  When the optimization is applied, this especially speeds up fulltext index
   queries in the cluster
 
-* UI: improved the behavior during collection creation in a cluster environment 
+* UI: improved the behavior during collection creation in a cluster environment
 
 * Agency lockup fixes for very small machines.
 
@@ -134,7 +191,7 @@ v3.3.rc8 (2017-12-12)
 v3.3.rc7 (2017-12-07)
 ---------------------
 
-* fixed issue #3741: fix terminal color output in Windows 
+* fixed issue #3741: fix terminal color output in Windows
 
 * UI: fixed issue #3822: disabled name input field for system collections
 
@@ -157,7 +214,7 @@ v3.3.rc7 (2017-12-07)
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
-  
+
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
 

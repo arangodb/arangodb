@@ -103,12 +103,11 @@ module.exports =
         definition.mount,
         definition.noisy
       );
-      FoxxService.validateServiceFiles(definition.mount, manifest);
+      FoxxService.validateServiceFiles(basePath, manifest);
       return manifest;
     }
 
-    static validateServiceFiles (mount, manifest, rev) {
-      const servicePath = FoxxService.basePath(mount);
+    static validateServiceFiles (servicePath, manifest, rev) {
       if (manifest.main) {
         parseFile(servicePath, manifest.main);
       }
@@ -463,12 +462,13 @@ module.exports =
     getConfiguration (simple) {
       const config = {};
       const definitions = this.manifest.configuration;
-      const options = this._configuration;
+      const options = this.configuration;
       for (const name of Object.keys(definitions)) {
         const dfn = definitions[name];
         const value = options[name] === undefined ? dfn.default : options[name];
         config[name] = simple ? value : Object.assign({}, dfn, {
           title: getReadableName(name),
+          currentRaw: this._configuration[name],
           current: value
         });
       }

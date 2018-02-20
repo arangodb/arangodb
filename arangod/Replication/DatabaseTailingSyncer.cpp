@@ -92,11 +92,6 @@ Result DatabaseTailingSyncer::saveApplierState() {
   return TRI_ERROR_INTERNAL;
 }
 
-std::unique_ptr<InitialSyncer> DatabaseTailingSyncer::initialSyncer() {
-  TRI_ASSERT(!_configuration._skipCreateDrop);
-  return std::make_unique<DatabaseInitialSyncer>(vocbase(), _configuration);
-}
-
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName) {

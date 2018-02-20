@@ -118,7 +118,7 @@ class DatabaseInitialSyncer : public InitialSyncer {
   }
   
   /// @brief check whether the initial synchronization should be aborted
-  bool checkAborted();
+  bool isAborted() const override;
   
   /// @brief insert the batch id and barrier ID.
   ///        For use in globalinitalsyncer
@@ -198,6 +198,6 @@ class DatabaseInitialSyncer : public InitialSyncer {
   /// @brief maximum internal value for chunkSize
   static size_t const MaxChunkSize;
 };
-}
+} // arangodb
 
 #endif

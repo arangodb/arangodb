@@ -28,7 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Transaction/Context.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -51,6 +51,7 @@ struct MMFilesReplicationDumpContext {
         _buffer(nullptr),
         _chunkSize(chunkSize),
         _lastFoundTick(0),
+        _lastScannedTick(0),
         _restrictCollection(restrictCollection),
         _collectionNames(),
         _vpackOptions(arangodb::velocypack::Options::Defaults),
@@ -87,6 +88,7 @@ struct MMFilesReplicationDumpContext {
   TRI_string_buffer_t* _buffer;
   size_t _chunkSize;
   TRI_voc_tick_t _lastFoundTick;
+  TRI_voc_tick_t _lastScannedTick;
   TRI_voc_cid_t _restrictCollection;
   std::unordered_map<TRI_voc_cid_t, std::string> _collectionNames;
   arangodb::velocypack::Options _vpackOptions;
