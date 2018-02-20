@@ -443,10 +443,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
       auth::Level lvl = af->userManager()->databaseAuthLevel(username, vocbase->name());
-      if (lvl != auth::Level::NONE) {
-        std::string str = auth::Level::RO == lvl ? "ro" : "rw";
+      if (lvl != auth::Level::NONE) { // hide non accessible collections
         result->ForceSet(TRI_V8_STD_STRING(isolate, vocbase->name()),
-                         TRI_V8_STD_STRING(isolate, str));
+                         TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
       }
     });
     TRI_V8_RETURN(result);

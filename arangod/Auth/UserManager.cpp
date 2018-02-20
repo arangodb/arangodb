@@ -56,6 +56,10 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
+static bool inline IsRole(std::string const& name) {
+  return StringUtils::isPrefix(name, ":role:");
+}
+
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
@@ -214,6 +218,13 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
   if (entry.source() != auth::Source::LOCAL) {
     return Result(TRI_ERROR_USER_EXTERNAL);
   }
+  if (!IsRole(entry.username()) && entry.username() != "root") {
+    AuthenticationFeature* af = AuthenticationFeature::instance();
+    TRI_ASSERT(af != nullptr);
+    if (af != nullptr && !af->localAuthentication()) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Local users are disabled");
+    }
+  }
 
   VPackBuilder data = entry.toVPackBuilder();
   bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
@@ -265,7 +276,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
         _userCache.emplace(entry.username(), auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
-      if (StringUtils::isPrefix(entry.username(), ":role:")) {
+      if (IsRole(entry.username())) {
         for (UserMap::value_type& pair : _userCache) {
           if (pair.second.source() != auth::Source::LOCAL &&
               pair.second.roles().find(entry.username()) != pair.second.roles().end()) {
@@ -455,9 +466,9 @@ Result auth::UserManager::enumerateUsers(
   return res;
 }
 
-Result auth::UserManager::updateUser(std::string const& username,
+Result auth::UserManager::updateUser(std::string const& name,
                                      UserCallback&& func) {
-  if (username.empty()) {
+  if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
@@ -466,13 +477,14 @@ Result auth::UserManager::updateUser(std::string const& username,
   // we require a consistent view on the user object
   WRITE_LOCKER(writeGuard, _userCacheLock);
 
-  UserMap::iterator it = _userCache.find(username);
+  UserMap::iterator it = _userCache.find(name);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
   } else if (it->second.source() != auth::Source::LOCAL) {
     return TRI_ERROR_USER_EXTERNAL;
   }
 
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
   auth::User user = it->second; // make a copy
   TRI_ASSERT(!user.key().empty() && user.rev() != 0);
   Result r = func(user);
@@ -629,7 +641,7 @@ Result auth::UserManager::removeAllUsers() {
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
   // AuthResult result(username);
-  if (username.empty() || StringUtils::isPrefix(username, ":role:")) {
+  if (username.empty() || IsRole(username)) {
     return false;
   }
 
@@ -689,6 +701,7 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
       return auth::Level::RO;
     }
   }
+  TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
   return level;
 }
 
@@ -723,6 +736,7 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
       return auth::Level::RO;
     }
   }
+  TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
   return level;
 }
 

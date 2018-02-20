@@ -80,13 +80,19 @@ class User {
   /// Grant collection rights, "*" is a valid parameter for dbname and
   /// collection.  The combination of "*"/"*" is automatically used for
   /// the root
-  void grantCollection(std::string const& dbname, std::string const& collection,
+  void grantCollection(std::string const& dbname, std::string const& cname,
                        auth::Level level);
 
   /// Removes the collection right, returns true if entry existed
   bool removeCollection(std::string const& dbname,
                         std::string const& collection);
 
+  // Resolve the access level for this database.
+  auth::Level configuredDBAuthLevel(std::string const& dbname) const;
+  // Resolve rights for the specified collection.
+  auth::Level configuredCollectionAuthLevel(std::string const& dbname,
+                                            std::string const& cname) const;
+  
   // Resolve the access level for this database. Might fall back to
   // the special '*' entry if the specific database is not found
   auth::Level databaseAuthLevel(std::string const& dbname) const;
@@ -95,11 +101,7 @@ class User {
   // special '*' entry if either the database or collection is not
   // found.
   auth::Level collectionAuthLevel(std::string const& dbname,
-                                  std::string const& collectionName) const;
-
-  bool hasSpecificDatabase(std::string const& dbname) const;
-  bool hasSpecificCollection(std::string const& dbname,
-                             std::string const& collectionName) const;
+                                  std::string const& cname) const;
 
   /// Content of `userData` or `extra` fields
   velocypack::Slice userData() const { return _userData.slice(); }

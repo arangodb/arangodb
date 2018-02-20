@@ -31,7 +31,7 @@ namespace arangodb {
 namespace auth {
 
 /// Supported access levels for data
-enum class Level { NONE = 0, RO = 1, RW = 2 };
+enum class Level : char {UNDEFINED = 0, NONE = 1, RO = 2, RW = 3 };
 
 /// Supported source types of users sources
 enum class Source { LOCAL, LDAP };
