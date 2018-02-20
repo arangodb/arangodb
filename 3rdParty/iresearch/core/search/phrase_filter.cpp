@@ -120,9 +120,9 @@ class phrase_query : public filter::prepared {
     auto terms = phrase_state->reader->iterator();
     auto term_stats = stats_.begin();
     for (auto& term_state : phrase_state->terms) {
-      // use bytes_ref::nil here since we do not need just to "jump"
+      // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
-      if (!terms->seek(bytes_ref::nil, *term_state.first)) {
+      if (!terms->seek(bytes_ref::blank, *term_state.first)) {
         return doc_iterator::empty();
       }
 

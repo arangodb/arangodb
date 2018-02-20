@@ -50,14 +50,17 @@ struct char_traits<::iresearch::byte_type> {
   static void assign(char_type& dst, const char_type& src) { dst = src; }
 
   static char_type* assign(char_type* ptr, size_t count, char_type ch) {
+    assert(ptr);
     return reinterpret_cast<char_type*>(std::memset(ptr, ch, count));
   }
 
   static int compare(const char_type* lhs, const char_type* rhs, size_t count) {
+    assert(lhs && rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
   static char_type* copy(char_type* dst, const char_type* src, size_t count) {
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
 
@@ -68,6 +71,7 @@ struct char_traits<::iresearch::byte_type> {
   static bool eq_int_type(int_type lhs, int_type rhs) { return lhs == rhs; }
 
   static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) {
+    assert(ptr);
     return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
   }
 
@@ -80,6 +84,7 @@ struct char_traits<::iresearch::byte_type> {
   static bool lt(char_type lhs, char_type rhs) { return lhs < rhs; }
 
   static char_type* move(char_type* dst, const char_type* src, size_t count) {
+    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 
@@ -126,7 +131,8 @@ class basic_string_ref {
   typedef Traits traits_type;
   typedef Elem char_type;
 
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil;
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil; // null string
+  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref blank; // empty string
 
   CONSTEXPR basic_string_ref() NOEXCEPT
     : data_(EMPTY), size_(0) {
@@ -271,11 +277,10 @@ template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil(nullptr, 0);
 
 template<typename Elem, typename Traits>
-/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1]
-#if (defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
-  { 0 }
-#endif
-;
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::blank;
+
+template<typename Elem, typename Traits>
+/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1] MSVC2013_ONLY({ Elem() });
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;

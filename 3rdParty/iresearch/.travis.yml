@@ -261,7 +261,7 @@ matrix:
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (long-running tests)
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
@@ -271,7 +271,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*:*concurrent_read_*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*:-:*concurrent_read_*"
 
     ############################################################################
     # Debug build, shared library
@@ -287,7 +300,7 @@ matrix:
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (long-running tests)
     ############################################################################
     - os: linux
       dist: trusty # gcc7 is not available in `precise`
@@ -297,7 +310,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
       env:
         - SET_ENV="CC=gcc-7 && CXX=g++-7"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*:*concurrent_read_*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      dist: trusty # gcc7 is not available in `precise`
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-7 valgrind
+      env:
+        - SET_ENV="CC=gcc-7 && CXX=g++-7"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*:-:*concurrent_read_*"
 
     ############################################################################
     # OSX
@@ -329,7 +355,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*:*concurrent_read_*"
 
     ############################################################################
     # Release build, static library (remaining tests)
@@ -343,7 +369,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*:-:*concurrent_read_*"
 
     ############################################################################
     # Debug build, shared library
@@ -371,7 +397,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*europarl_docs*:*monarch_eco_onthology*:*concurrent_read_*"
 
     ############################################################################
     # Release build, shared library (remaining tests)
@@ -385,7 +411,7 @@ matrix:
       env:
         - SET_ENV="PATH=/usr/local/opt/bison/bin:$PATH"
         - BOOST_B2_ARGS="boost.locale.iconv=off"
-        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:*europarl_docs*:-:*monarch_eco_onthology*:-:*concurrent_read_*"
 
 before_install:
   - eval "${SET_ENV}"
