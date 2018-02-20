@@ -4,6 +4,7 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* fixed a bug where compiler optimsation flags were neglected for build.
 
 v3.3.3 (2018-01-26)
 -------------------
@@ -125,6 +126,8 @@ v3.3.2 (2018-01-04)
 * do not reuse collection ids when restoring collections from a dump, but assign 
   new collection ids, this should prevent collection id conflicts
 
+* fixed compiler optimization flag usage, adding the used flags to the
+  console version print
 
 v3.3.1 (2017-12-28)
 -------------------
