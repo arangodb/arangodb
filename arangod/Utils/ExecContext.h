@@ -101,12 +101,18 @@ class ExecContext : public RequestContext {
 
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
-  auth::Level systemAuthLevel() const { return _systemDbAuthLevel; };
+  auth::Level systemAuthLevel() const {
+    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
+    return _systemDbAuthLevel;
+  };
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
-  auth::Level databaseAuthLevel() const { return _databaseAuthLevel; };
+  auth::Level databaseAuthLevel() const {
+    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
+    return _databaseAuthLevel;
+  };
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(auth::Level requested) const {

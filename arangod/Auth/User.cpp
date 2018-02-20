@@ -123,9 +123,11 @@ static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   } else if (lvl == auth::Level::RO) {
     builder.add("read", VPackValue(true));
     builder.add("write", VPackValue(false));
-  } else {
+  } else if (lvl == auth::Level::NONE) {
     builder.add("read", VPackValue(false));
     builder.add("write", VPackValue(false));
+  } else if (lvl == auth::Level::UNDEFINED) {
+    builder.add("undefined", VPackValue(true));
   }
 }
 
@@ -138,6 +140,10 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
   v = slice.get("read");
   if (v.isBool() && v.isTrue()) {
     return auth::Level::RO;
+  }
+  v = slice.get("undefined");
+  if (v.isBool() && v.isTrue()) {
+    return auth::Level::UNDEFINED;
   }
   return auth::Level::NONE;
 }
@@ -418,15 +424,15 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for empty db name");
   }
-
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       level != auth::Level::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
-
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Granting " <<
+  auth::convertFromAuthLevel(level) << " on " << dbname;
+  
   auto it = _dbAccess.find(dbname);
-
   if (it != _dbAccess.end()) {
     it->second._databaseAuthLevel = level;
   } else {
@@ -448,6 +454,7 @@ bool auth::User::removeDatabase(std::string const& dbname) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
   }
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Removing grant on " << dbname;
   return _dbAccess.erase(dbname) > 0;
 }
 
@@ -470,52 +477,74 @@ void auth::User::grantCollection(std::string const& dbname,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Invalid database / collection pair");
   }
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Granting " <<
+  auth::convertFromAuthLevel(level) << " on " << dbname << "/" << cname;
+  
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     it->second._collectionAccess[cname] = level;
   } else {
     // do not overwrite wildcard access to a database, by granting more
     // specific rights to a collection in a specific db
-    auth::Level dbLevel = auth::Level::NONE;
-    it = _dbAccess.find("*");
-    if (it != _dbAccess.end()) {
-      dbLevel = it->second._databaseAuthLevel;
-    }
-    _dbAccess.emplace(dbname, DBAuthContext(dbLevel, CollLevelMap({{cname, level}})));
+    auth::Level lvl = auth::Level::UNDEFINED;
+    _dbAccess.emplace(dbname, DBAuthContext(lvl, CollLevelMap({{cname, level}})));
   }
 }
 
 /// Removes the collection right, returns true if entry existed
 bool auth::User::removeCollection(std::string const& dbname,
-                                  std::string const& coll) {
-  if (dbname.empty() || coll.empty()) {
+                                  std::string const& cname) {
+  if (dbname.empty() || cname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
   }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      (coll == "*")) {
+      (cname == "*")) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a collection in _system");
   }
+  LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Removing grant on "
+    << dbname << "/" << cname;
   auto const& it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
-    return it->second._collectionAccess.erase(coll) > 0;
+    return it->second._collectionAccess.erase(cname) > 0;
   }
   return false;
 }
 
-auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
+// Resolve the access level for this database.
+auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) { // found specific grant
     return it->second._databaseAuthLevel;
   }
-  auth::Level lvl = auth::Level::NONE;
-  if (dbname != "*") { // take best from wildcard or _system
-    it = _dbAccess.find("*");
+  return auth::Level::UNDEFINED;
+}
+
+// Resolve rights for the specified collection.
+auth::Level auth::User::configuredCollectionAuthLevel(std::string const& dbname,
+                                                      std::string const& cname) const {
+  auto it = _dbAccess.find(dbname);
+  if (it != _dbAccess.end()) {
+    // Second try to find a specific grant
+    CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
+    if (pair != it->second._collectionAccess.end()) {
+      return pair->second; // found specific collection grant
+    }
+  }
+  return auth::Level::UNDEFINED;
+}
+
+auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
+  
+  auth::Level lvl = configuredDBAuthLevel(dbname);
+  if (lvl == auth::Level::UNDEFINED && dbname != "*") {
+    // take best from wildcard or _system
+    auto it = _dbAccess.find("*");
     if (it != _dbAccess.end()) {
-      lvl = it->second._databaseAuthLevel;
+      lvl = std::max(it->second._databaseAuthLevel, lvl);
     }
     if (dbname != StaticStrings::SystemDatabase) {
       it = _dbAccess.find(StaticStrings::SystemDatabase);
@@ -525,7 +554,7 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
     }
   }
   
-  return lvl;
+  return std::max(lvl, auth::Level::NONE);
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
@@ -554,12 +583,14 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     auto it = _dbAccess.find(dbname);
     if (it != _dbAccess.end()) {
       if (isSystem) { // First handle system collections
-        return it->second._databaseAuthLevel;
+        return std::max(it->second._databaseAuthLevel, auth::Level::NONE);
       }
       // Second try to find a specific grant
       CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
         return pair->second; // found specific collection grant
+      } else if (cname == "*") { // skip special rules for wildcard
+        return auth::Level::NONE;
       }
       
       // Fallback step 1.
@@ -568,6 +599,14 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       if (pair != it->second._collectionAccess.end()) {
         // found wildcard collection grant, take better default
         lvl = std::max(pair->second, lvl);
+      }
+    }
+    
+    if (dbname != StaticStrings::SystemDatabase) {
+      // Fallback step 3. look into _system
+      it = _dbAccess.find(StaticStrings::SystemDatabase);
+      if (it != _dbAccess.end()) {
+        lvl = std::max(it->second._databaseAuthLevel, lvl);
       }
     }
   }
@@ -585,27 +624,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     }
     // nothing found
   }
-  if (dbname != StaticStrings::SystemDatabase) {
-    // Fallback step 3. look into _system
-    it = _dbAccess.find(StaticStrings::SystemDatabase);
-    if (it != _dbAccess.end()) {
-      lvl = std::max(it->second._databaseAuthLevel, lvl);
-    }
-  }
-
+  
   return lvl;
 }
 
-bool auth::User::hasSpecificDatabase(std::string const& dbname) const {
-  return _dbAccess.find(dbname) != _dbAccess.end();
-}
-
-bool auth::User::hasSpecificCollection(
-    std::string const& dbname, std::string const& collectionName) const {
-  auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {
-    return it->second._collectionAccess.find(collectionName) !=
-           it->second._collectionAccess.end();
-  }
-  return false;
-}

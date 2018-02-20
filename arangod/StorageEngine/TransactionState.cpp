@@ -324,7 +324,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     
     auth::Level level = exec->collectionAuthLevel(_vocbase->name(), colName);
-    
+    TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
     if (level == auth::Level::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
       << " has collection auth::Level::NONE";

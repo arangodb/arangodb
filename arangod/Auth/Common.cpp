@@ -27,6 +27,7 @@
 
 using namespace arangodb;
 
+static_assert(auth::Level::UNDEFINED < auth::Level::NONE, "undefined < none");
 static_assert(auth::Level::NONE < auth::Level::RO, "none < ro");
 static_assert(auth::Level::RO < auth::Level::RW, "none < ro");
 
@@ -37,6 +38,8 @@ static auth::Level _convertToAuthLevel(arangodb::StringRef ref) {
     return auth::Level::RO;
   } else if (ref.compare("none") == 0 || ref.empty()) {
     return auth::Level::NONE;
+  } else if (ref.compare("undefined")) {
+    return auth::Level::UNDEFINED;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "expecting access type 'rw', 'ro' or 'none'");
@@ -55,7 +58,9 @@ std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
     return "rw";
   } else if (lvl == auth::Level::RO) {
     return "ro";
-  } else {
+  } else if (lvl == auth::Level::NONE) {
     return "none";
+  } else {
+    return "undefined";
   }
 }

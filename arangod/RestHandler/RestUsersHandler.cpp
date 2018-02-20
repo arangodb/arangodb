@@ -181,28 +181,24 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   Result res = um->accessUser(username, [&](auth::User const& user) {
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
       
-      auth::Level lvl = user.databaseAuthLevel(vocbase->name());
       if (full) {
-        std::string str = "undefined";
-        if (user.hasSpecificDatabase(vocbase->name())) {
-          str = convertFromAuthLevel(lvl);
-        }
+        auth::Level lvl = user.configuredDBAuthLevel(vocbase->name());
+        std::string str = convertFromAuthLevel(lvl);
         VPackObjectBuilder b(&data, vocbase->name(), true);
         data.add("permission", VPackValue(str));
         VPackObjectBuilder b2(&data, "collections", true);
         methods::Collections::enumerate(
             vocbase, [&](LogicalCollection* c) {
-              if (user.hasSpecificCollection(vocbase->name(), c->name())) {
-                lvl = user.collectionAuthLevel(vocbase->name(), c->name());
-                data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
-              } else {
-                data.add(c->name(), VPackValue("undefined"));
-              }
+              lvl = user.configuredCollectionAuthLevel(vocbase->name(), c->name());
+              data.add(c->name(), VPackValue(convertFromAuthLevel(lvl)));
             });
-        lvl = user.collectionAuthLevel(vocbase->name(), "*");
+        lvl = user.configuredCollectionAuthLevel(vocbase->name(), "*");
         data.add("*", VPackValue(convertFromAuthLevel(lvl)));
-      } else if (lvl != auth::Level::NONE) {  // hide db's without access
-        data.add(vocbase->name(), VPackValue(convertFromAuthLevel(lvl)));
+      } else {  // hide db's without access
+        auth::Level lvl = user.databaseAuthLevel(vocbase->name());
+        if (lvl >= auth::Level::RO) {
+          data.add(vocbase->name(), VPackValue(convertFromAuthLevel(lvl)));
+        }
       }
     });
     if (full) {
@@ -328,7 +324,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
     }
   } else if (suffixes.size() == 3 || suffixes.size() == 4) {
     // update database / collection permissions
-    std::string const& user = suffixes[0];
+    std::string const& name = suffixes[0];
     if (suffixes[1] == "database") {
       // update a user's permissions
       std::string const& db = suffixes[2];
@@ -350,7 +346,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       // contains response in case of success
       VPackBuilder b;
       b(VPackValue(VPackValueType::Object));
-      Result r = um->updateUser(user, [&](auth::User& entry) {
+      Result r = um->updateUser(name, [&](auth::User& entry) {
         if (coll.empty()) {
           entry.grantDatabase(db, lvl);
           b(db, VPackValue(convertFromAuthLevel(lvl)))();
@@ -368,7 +364,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
     } else if (suffixes[1] == "config") {
       // update internal config data, used in the admin dashboard
-      if (!canAccessUser(user)) {
+      if (!canAccessUser(name)) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -379,7 +375,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         // The API expects: { value : <toStore> }
         // If we get sth else than the above it is translated
         // to a remove of the config option.
-        res = um->updateUser(user, [&](auth::User& u) {
+        res = um->updateUser(name, [&](auth::User& u) {
           
           VPackSlice newVal = parsedBody->slice();
           VPackSlice oldConf = u.userData();

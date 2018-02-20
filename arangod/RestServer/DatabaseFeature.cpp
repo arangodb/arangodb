@@ -928,7 +928,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
 
       if (af->isActive()) {
         auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
-        if (level == auth::Level::NONE) {
+        if (level == auth::Level::NONE) { // hide dbs without access
           continue;
         }
       }
