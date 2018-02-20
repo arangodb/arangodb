@@ -588,9 +588,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string url = TRI_ObjectToString(isolate, args[0]);
-
+  std::vector<std::string> endpoints;
+    
   if (!url.empty() && url[0] == '/') {
-    std::vector<std::string> endpoints;
 
     // check if we are a server
     try {
@@ -813,6 +813,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = url.substr(6);
       }
       endpoint = "srv://" + endpoint;
+    } else if (url.substr(0, 7) == "unix://") {
+      // Can only have arrived here if endpoints is non empty
+      TRI_ASSERT(!endpoints.empty());
+      endpoint = endpoints.front();
+      relative = url.substr(endpoint.size());
     } else if (!url.empty() && url[0] == '/') {
       size_t found;
       // relative URL. prefix it with last endpoint
@@ -845,7 +850,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER, std::string("invalid URL ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
