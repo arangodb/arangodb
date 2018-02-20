@@ -1,5 +1,5 @@
 
-@startDocuBlock cluster_test_GET
+@startDocuBlock get_cluster_test
 @brief executes a cluster roundtrip for sharding
 
 @RESTHEADER{GET /_admin/cluster-test, Execute cluster roundtrip}

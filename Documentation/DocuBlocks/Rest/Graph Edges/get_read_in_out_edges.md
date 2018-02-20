@@ -1,4 +1,4 @@
-@startDocuBlock API_EDGE_READINOUTBOUND
+@startDocuBlock get_read_in_out_edges
 @brief get edges
 
 @RESTHEADER{GET /_api/edges/{collection-id}, Read in- or outbound edges}

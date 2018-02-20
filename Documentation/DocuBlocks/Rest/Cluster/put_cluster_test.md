@@ -1,8 +1,8 @@
 
-@startDocuBlock cluster_test_PATCH
+@startDocuBlock put_cluster_test
 @brief executes a cluster roundtrip for sharding
 
-@RESTHEADER{PATCH /_admin/cluster-test, Update cluster roundtrip}
+@RESTHEADER{PUT /_admin/cluster-test, Execute cluster roundtrip}
 
 @RESTALLBODYPARAM{body,object,required}
 

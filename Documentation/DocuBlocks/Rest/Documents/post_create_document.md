@@ -1,4 +1,4 @@
-@startDocuBlock REST_DOCUMENT_CREATE
+@startDocuBlock post_create_document
 @brief creates documents
 
 @RESTHEADER{POST /_api/document/{collection}, Create document}

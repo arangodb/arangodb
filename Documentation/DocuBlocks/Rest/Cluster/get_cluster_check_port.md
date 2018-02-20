@@ -1,5 +1,5 @@
 
-@startDocuBlock cluster_check_port_GET
+@startDocuBlock get_cluster_check_port
 @brief allows to check whether a given port is usable
 
 @RESTHEADER{GET /_admin/clusterCheckPort, Check port}

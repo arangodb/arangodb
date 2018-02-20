@@ -1,19 +1,33 @@
 
-@startDocuBlock REST_DOCUMENT_REPLACE_MULTI
-@brief replaces multiple documents
+@startDocuBlock patch_update_document_MULTI
+@brief updates multiple documents
 
-@RESTHEADER{PUT /_api/document/{collection},Replace documents}
+@RESTHEADER{PATCH /_api/document/{collection},Update documents}
 
 @RESTALLBODYPARAM{documents,json,required}
-A JSON representation of an array of documents.
+A JSON representation of an array of document updates as objects.
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{collection,string,required}
 This URL parameter is the name of the collection in which the
-documents are replaced.
+documents are updated.
 
 @RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the patch
+command, the URL query parameter *keepNull* can be used with a value
+of *false*. This will modify the behavior of the patch command to
+remove any attributes from the existing document that are contained
+in the patch document with an attribute value of *null*.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in
+both the existing and the patch document. If set to *false*, the
+value in the patch document will overwrite the existing document's
+value. If set to *true*, objects will be merged. The default is
+*true*.
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until the new documents have been synced to disk.
@@ -22,7 +36,7 @@ Wait until the new documents have been synced to disk.
 By default, or if this is set to *true*, the *_rev* attributes in 
 the given documents are ignored. If this is set to *false*, then
 any *_rev* attribute given in a body document is taken as a
-precondition. The document is only replaced if the current revision
+precondition. The document is only updated if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
@@ -34,9 +48,16 @@ Return additionally the complete new documents under the attribute *new*
 in the result.
 
 @RESTDESCRIPTION
-Replaces multiple documents in the specified collection with the
-ones in the body, the replaced documents are specified by the *_key*
-attributes in the body documents.
+Partially updates documents, the documents to update are specified
+by the *_key* attributes in the body objects. The body of the
+request must contain a JSON array of document updates with the
+attributes to patch (the patch documents). All attributes from the
+patch documents will be added to the existing documents if they do
+not yet exist, and overwritten in the existing documents if they do
+exist there.
+
+Setting an attribute value to *null* in the patch documents will cause a
+value of *null* to be saved for the attribute by default.
 
 If *ignoreRevs* is *false* and there is a *_rev* attribute in a
 document in the body and its value does not match the revision of
@@ -59,7 +80,7 @@ of *true*.
 
 The body of the response contains a JSON array of the same length
 as the input array with the information about the handle and the
-revision of the replaced documents. In each entry, the attribute
+revision of the updated documents. In each entry, the attribute
 *_id* contains the known *document-handle* of each updated document,
 *_key* contains the key which uniquely identifies a document in a
 given collection, and the attribute *_rev* contains the new document
@@ -86,11 +107,11 @@ cases the error 1200 "revision conflict" and in 10 cases the error
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the documents were replaced successfully and
+is returned if the documents were updated successfully and
 *waitForSync* was *true*.
 
 @RESTRETURNCODE{202}
-is returned if the documents were replaced successfully and
+is returned if the documents were updated successfully and
 *waitForSync* was *false*.
 
 @RESTRETURNCODE{400}

@@ -1,5 +1,5 @@
 
-@startDocuBlock cluster_statistics_GET
+@startDocuBlock get_cluster_statistics
 @brief allows to query the statistics of a DBserver in the cluster
 
 @RESTHEADER{GET /_admin/clusterStatistics, Queries statistics of DBserver}

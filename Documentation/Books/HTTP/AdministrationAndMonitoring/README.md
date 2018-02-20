@@ -39,4 +39,4 @@ monitoring of the server.
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock cluster_statistics_GET
+@startDocuBlock get_cluster_statistics

@@ -1,4 +1,4 @@
-@startDocuBlock REST_DOCUMENT_DELETE
+@startDocuBlock delete_remove_document
 @brief removes a document
 
 @RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document}

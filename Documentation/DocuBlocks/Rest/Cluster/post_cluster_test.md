@@ -1,5 +1,5 @@
 
-@startDocuBlock cluster_test_POST
+@startDocuBlock post_cluster_test
 @brief executes a cluster roundtrip for sharding
 
 @RESTHEADER{POST /_admin/cluster-test, Execute cluster roundtrip}

@@ -1,11 +1,11 @@
 
-@startDocuBlock REST_DOCUMENT_REPLACE
-@brief replaces a document
+@startDocuBlock patch_update_document
+@brief updates a document
 
-@RESTHEADER{PUT /_api/document/{document-handle},Replace document}
+@RESTHEADER{PATCH /_api/document/{document-handle},Update document}
 
 @RESTALLBODYPARAM{document,json,required}
-A JSON representation of a single document.
+A JSON representation of a document update as an object.
 
 @RESTURLPARAMETERS
 
@@ -14,6 +14,20 @@ This URL parameter must be a document handle.
 
 @RESTQUERYPARAMETERS
 
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the patch
+command, the URL query parameter *keepNull* can be used with a value
+of *false*. This will modify the behavior of the patch command to
+remove any attributes from the existing document that are contained
+in the patch document with an attribute value of *null*.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in
+both the existing and the patch document. If set to *false*, the
+value in the patch document will overwrite the existing document's
+value. If set to *true*, objects will be merged. The default is
+*true*.
+
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until document has been synced to disk.
 
@@ -21,7 +35,7 @@ Wait until document has been synced to disk.
 By default, or if this is set to *true*, the *_rev* attributes in 
 the given document is ignored. If this is set to *false*, then
 the *_rev* attribute given in the body document is taken as a
-precondition. The document is only replaced if the current revision
+precondition. The document is only updated if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
@@ -34,19 +48,25 @@ in the result.
 
 @RESTQUERYPARAM{silent,boolean,optional}
 If set to *true*, an empty object will be returned as response. No meta-data 
-will be returned for the replaced document. This option can be used to
+will be returned for the updated document. This option can be used to
 save some network traffic.
 
 @RESTHEADERPARAMETERS
 
 @RESTHEADERPARAM{If-Match,string,optional}
-You can conditionally replace a document based on a target revision id by
+You can conditionally update a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-Replaces the document with handle <document-handle> with the one in
-the body, provided there is such a document and no precondition is
-violated.
+Partially updates the document identified by *document-handle*.
+The body of the request must contain a JSON document with the
+attributes to patch (the patch document). All attributes from the
+patch document will be added to the existing document if they do not
+yet exist, and overwritten in the existing document if they do exist
+there.
+
+Setting an attribute value to *null* in the patch document will cause a
+value of *null* to be saved for the attribute by default.
 
 If the *If-Match* header is specified and the revision of the
 document in the database is unequal to the given revision, the
@@ -62,11 +82,11 @@ If a precondition is violated, an *HTTP 412* is returned.
 If the document exists and can be updated, then an *HTTP 201* or
 an *HTTP 202* is returned (depending on *waitForSync*, see below),
 the *Etag* header field contains the new revision of the document
-and the *Location* header contains a complete URL under which the
-document can be queried.
+(in double quotes) and the *Location* header contains a complete URL
+under which the document can be queried.
 
 Optionally, the query parameter *waitForSync* can be used to force
-synchronization of the document replacement operation to disk even in case
+synchronization of the updated document operation to disk even in case
 that the *waitForSync* flag had been disabled for the entire collection.
 Thus, the *waitForSync* query parameter can be used to force synchronization
 of just specific operations. To use this, set the *waitForSync* parameter
@@ -96,11 +116,11 @@ body of the response contains an error document.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
-is returned if the document was replaced successfully and
+is returned if the document was updated successfully and
 *waitForSync* was *true*.
 
 @RESTRETURNCODE{202}
-is returned if the document was replaced successfully and
+is returned if the document was updated successfully and
 *waitForSync* was *false*.
 
 @RESTRETURNCODE{400}
@@ -119,60 +139,64 @@ returned.
 
 @EXAMPLES
 
-Using a document handle
+Patches an existing document with new content.
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocument}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPatchDocument}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
-    var document = db.products.save({"hello":"world"});
+    var document = db.products.save({"one":"world"});
     var url = "/_api/document/" + document._id;
 
-    var response = logCurlRequest('PUT', url, '{"Hello": "you"}');
+    var response = logCurlRequest("PATCH", url, { "hello": "world" });
 
     assert(response.code === 202);
 
     logJsonResponse(response);
+    var response2 = logCurlRequest("PATCH", url, { "numbers": { "one": 1, "two": 2, "three": 3, "empty": null } });
+    assert(response2.code === 202);
+    logJsonResponse(response2);
+    var response3 = logCurlRequest("GET", url);
+    assert(response3.code === 200);
+    logJsonResponse(response3);
+    var response4 = logCurlRequest("PATCH", url + "?keepNull=false", { "hello": null, "numbers": { "four": 4 } });
+    assert(response4.code === 202);
+    logJsonResponse(response4);
+    var response5 = logCurlRequest("GET", url);
+    assert(response5.code === 200);
+    logJsonResponse(response5);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-Unknown document handle
+Merging attributes of an object using `mergeObjects`:
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentUnknownHandle}
+@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPatchDocumentMerge}
     var cn = "products";
     db._drop(cn);
     db._create(cn);
 
-    var document = db.products.save({"hello":"world"});
-    db.products.remove(document._id);
+    var document = db.products.save({"inhabitants":{"china":1366980000,"india":1263590000,"usa":319220000}});
     var url = "/_api/document/" + document._id;
 
-    var response = logCurlRequest('PUT', url, "{}");
-
-    assert(response.code === 404);
-
+    var response = logCurlRequest("GET", url);
+    assert(response.code === 200);
     logJsonResponse(response);
-  ~ db._drop(cn);
-@END_EXAMPLE_ARANGOSH_RUN
 
-Produce a revision conflict
+    var response = logCurlRequest("PATCH", url + "?mergeObjects=true", { "inhabitants": {"indonesia":252164800,"brazil":203553000 }});
+    assert(response.code === 202);
 
-@EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerUpdateDocumentIfMatchOther}
-    var cn = "products";
-    db._drop(cn);
-    db._create(cn);
+    var response2 = logCurlRequest("GET", url);
+    assert(response2.code === 200);
+    logJsonResponse(response2);
 
-    var document = db.products.save({"hello":"world"});
-    var document2 = db.products.save({"hello2":"world"});
-    var url = "/_api/document/" + document._id;
-    var headers = {"If-Match":  "\"" + document2._rev + "\""};
+    var response3 = logCurlRequest("PATCH", url + "?mergeObjects=false", { "inhabitants": { "pakistan":188346000 }});
+    assert(response3.code === 202);
+    logJsonResponse(response3);
 
-    var response = logCurlRequest('PUT', url, '{"other":"content"}', headers);
-
-    assert(response.code === 412);
-
-    logJsonResponse(response);
+    var response4 = logCurlRequest("GET", url);
+    assert(response4.code === 200);
+    logJsonResponse(response4);
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock

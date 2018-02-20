@@ -1,5 +1,5 @@
 
-@startDocuBlock REST_DOCUMENT_READ_ALL
+@startDocuBlock put_read_all_documents
 @brief reads all documents from collection
 
 @RESTHEADER{PUT /_api/simple/all-keys, Read all documents}

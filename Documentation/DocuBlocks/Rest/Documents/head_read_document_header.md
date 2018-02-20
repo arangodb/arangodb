@@ -1,5 +1,5 @@
 
-@startDocuBlock REST_DOCUMENT_READ_HEAD
+@startDocuBlock head_read_document_header
 @brief reads a single document head
 
 @RESTHEADER{HEAD /_api/document/{document-handle},Read document header}

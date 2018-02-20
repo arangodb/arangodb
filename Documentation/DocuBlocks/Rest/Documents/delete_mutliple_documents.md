@@ -1,4 +1,4 @@
-@startDocuBlock REST_DOCUMENT_DELETE_MULTI
+@startDocuBlock delete_remove_document_MULTI
 @brief removes multiple document
 
 @RESTHEADER{DELETE /_api/document/{collection},Removes multiple documents}

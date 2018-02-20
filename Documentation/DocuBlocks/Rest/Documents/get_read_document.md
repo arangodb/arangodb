@@ -1,5 +1,5 @@
 
-@startDocuBlock REST_DOCUMENT_READ
+@startDocuBlock get_read_document
 @brief reads a single document
 
 @RESTHEADER{GET /_api/document/{document-handle},Read document}
