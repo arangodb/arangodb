@@ -1026,6 +1026,14 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
+  if (pool._type.null()) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failure to persist IResearch analyzer '" << pool.name()
+        << "' configuration with 'null' type";
+
+    return false;
+  }
+
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
@@ -1054,7 +1062,15 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     builder.openObject();
     builder.add("name", arangodb::velocypack::Value(pool.name()));
     builder.add("type", toValuePair(pool._type));
-    builder.add("properties", toValuePair(pool._properties));
+
+    // do not allow to pass null properties since it causes undefined
+    // behavior in `arangodb::velocypack::Builder`
+    if (pool._properties.null()) {
+      builder.add("properties", arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null));
+    } else {
+      builder.add("properties", toValuePair(pool._properties));
+    }
+
     builder.close();
     options.waitForSync = true;
 
