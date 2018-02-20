@@ -88,8 +88,8 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
 void RestUsersHandler::generateUserResult(rest::ResponseCode code,
                                           VPackBuilder const& doc) {
   VPackBuilder b;
-  b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-      "code", VPackValue((int)code))();
+  b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
+      StaticStrings::Code, VPackValue((int)code))();
   b = VPackCollection::merge(doc.slice(), b.slice(), false);
   generateResult(code, b.slice());
 }
@@ -467,8 +467,8 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
     Result r = authInfo->removeUser(user);
     if (r.ok()) {
       VPackBuilder b;
-      b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-          "code", VPackValue(202))();
+      b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
+          StaticStrings::Code, VPackValue(202))();
       generateResult(ResponseCode::ACCEPTED, b.slice());
     } else {
       generateError(r);
@@ -506,8 +506,8 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       });
       if (r.ok()) {
         VPackBuilder b;
-        b(VPackValue(VPackValueType::Object))("error", VPackValue(false))(
-                     "code", VPackValue(202))();
+        b(VPackValue(VPackValueType::Object))(StaticStrings::Error, VPackValue(false))(
+                     StaticStrings::Code, VPackValue(202))();
         generateResult(ResponseCode::ACCEPTED, b.slice());
       } else {
         generateError(r);

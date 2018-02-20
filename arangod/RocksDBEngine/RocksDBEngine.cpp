@@ -1328,7 +1328,7 @@ std::vector<std::string> RocksDBEngine::currentWalFiles() {
 
 void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
   rocksdb::VectorLogPtr files;
-
+  
   auto status = _db->GetSortedWalFiles(files);
   if (!status.ok()) {
     return;  // TODO: error here?
@@ -1350,7 +1350,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep) {
       auto const& f = files[current].get();
       if (f->Type() == rocksdb::WalFileType::kArchivedLogFile) {
         if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
-          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' added to prunable list";
+          LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "RocksDB WAL file '" << f->PathName() << "' with start sequence " << f->StartSequence() << " added to prunable list";
           _prunableWalFiles.emplace(f->PathName(),
                                     TRI_microtime() + _pruneWaitTime);
         }

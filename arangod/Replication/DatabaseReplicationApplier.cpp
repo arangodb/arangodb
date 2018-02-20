@@ -31,6 +31,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseTailingSyncer.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -144,7 +145,12 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   }
 }
 
-std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+std::unique_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
+  return std::make_unique<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
+}
+
+std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                                              bool useTick, TRI_voc_tick_t barrierId) const {
   return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
                                                            initialTick, useTick, barrierId);
 }

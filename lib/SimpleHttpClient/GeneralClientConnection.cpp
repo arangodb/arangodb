@@ -167,7 +167,7 @@ void GeneralClientConnection::disconnect() {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool isWrite) const {
+bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool isWrite) {
   // wait for at most 0.5 seconds for poll/select to complete
   // if it takes longer, break each poll/select into smaller chunks so we can
   // interrupt the whole process if it takes too long in total
@@ -178,6 +178,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
+  double sinceLastSocketCheck = start;
   bool nowait = (timeout == 0.0);
   int towait;
   if (timeout * 1000.0 > static_cast<double>(INT_MAX)) {
@@ -221,6 +222,16 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       if (towait <= 0) {
         break;
       }
+
+      // periodically recheck our socket
+      if (end - sinceLastSocketCheck >= 20.0) {
+        sinceLastSocketCheck = end;
+        if (!checkSocket()) {
+          // socket seems broken. now escape this loop
+          break;
+        }
+      }
+
       start = end;
       continue;
     }

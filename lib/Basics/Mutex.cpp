@@ -45,14 +45,6 @@ Mutex::Mutex() : _mutex() {
 #endif
   pthread_mutexattr_init(&_attributes);
 
-#ifdef __linux__
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
-  // use an error checking mutex if available (only for LinuxThread) and only
-  // in maintainer mode
-  pthread_mutexattr_settype(&_attributes, PTHREAD_MUTEX_ERRORCHECK_NP);
-#endif
-#endif
-  
   pthread_mutex_init(&_mutex, &_attributes);
 }
 

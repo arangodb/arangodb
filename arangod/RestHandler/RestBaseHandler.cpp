@@ -108,8 +108,8 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
     VPackBuffer<uint8_t> buffer;
     VPackBuilder tmp(buffer);
     tmp.add(VPackValue(VPackValueType::Object));
-    tmp.add("error", VPackValue(false));
-    tmp.add("code", VPackValue(static_cast<int>(code)));
+    tmp.add(StaticStrings::Error, VPackValue(false));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.add("result", payload);
     tmp.close();
     
@@ -128,8 +128,8 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   try {
     VPackBuilder tmp;
     tmp.add(VPackValue(VPackValueType::Object));
-    tmp.add("error", VPackValue(false));
-    tmp.add("code", VPackValue(static_cast<int>(code)));
+    tmp.add(StaticStrings::Error, VPackValue(false));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.close();
     
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
@@ -168,15 +168,15 @@ void RestBaseHandler::generateError(rest::ResponseCode code, int errorCode,
   VPackBuilder builder(buffer);
   try {
     builder.add(VPackValue(VPackValueType::Object));
-    builder.add("error", VPackValue(true));
+    builder.add(StaticStrings::Error, VPackValue(true));
     if (message.empty()) {
       // prevent empty error messages
-      builder.add("errorMessage", VPackValue(TRI_errno_string(errorCode)));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(TRI_errno_string(errorCode)));
     } else {
-      builder.add("errorMessage", VPackValue(message));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
     }
-    builder.add("code", VPackValue(static_cast<int>(code)));
-    builder.add("errorNum", VPackValue(errorCode));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorCode));
     builder.close();
 
     VPackOptions options(VPackOptions::Defaults);

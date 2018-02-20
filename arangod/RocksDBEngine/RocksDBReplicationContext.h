@@ -40,10 +40,6 @@ namespace arangodb {
 class DatabaseGuard;
 
 class RocksDBReplicationContext {
- public:
-  /// default time-to-live for contexts
-  static double const DefaultTTL;
-
  private:
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
@@ -52,7 +48,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  explicit RocksDBReplicationContext(double ttl);
+  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -107,6 +103,8 @@ class RocksDBReplicationContext {
   void releaseDumpingResources();
 
  private:
+  TRI_vocbase_t* _vocbase;
+  TRI_server_id_t const _serverId;
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   uint64_t _currentTick; // shows how often dump was called
@@ -121,7 +119,6 @@ class RocksDBReplicationContext {
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
-
   
   /// @brief holds last document
   ManagedDocumentResult _mdr;
@@ -129,6 +126,7 @@ class RocksDBReplicationContext {
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
 
+  double const _ttl;
   double _expires;
   bool _isDeleted;
   bool _isUsed;

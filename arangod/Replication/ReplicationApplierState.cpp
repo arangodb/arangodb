@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierState.h"
-#include "VocBase/replication-common.h"
+#include "Replication/common-defines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -34,7 +34,7 @@ ReplicationApplierState::ReplicationApplierState()
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
       _safeResumeTick(0),
-      _state(ActivityState::INACTIVE),
+      _phase(ActivityPhase::INACTIVE),
       _preventStart(false),
       _stopInitialSynchronization(false),
       _progressMsg(),
@@ -53,7 +53,7 @@ ReplicationApplierState::~ReplicationApplierState() {}
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset(true);
 
-  _state = other._state;
+  _phase = other._phase;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
   _lastProcessedContinuousTick = other._lastProcessedContinuousTick;
   _lastAvailableContinuousTick = other._lastAvailableContinuousTick;
@@ -96,15 +96,30 @@ void ReplicationApplierState::reset(bool resetState) {
   _skippedOperations = 0;
   
   if (resetState) {
-    _state = ActivityState::INACTIVE;
+    _phase = ActivityPhase::INACTIVE;
   }
+}
+
+static std::string ActivityToString(ReplicationApplierState::ActivityPhase ph) {
+  switch (ph) {
+    case ReplicationApplierState::ActivityPhase::INACTIVE:
+      return "inactive";
+    case ReplicationApplierState::ActivityPhase::INITIAL:
+      return "initial";
+    case ReplicationApplierState::ActivityPhase::TAILING:
+      return "running";
+    case ReplicationApplierState::ActivityPhase::SHUTDOWN:
+      return "shutdown";
+  }
+  return "unknown";
 }
 
 void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) const {
   result.openObject();
 
   if (full) {
-    result.add("running", VPackValue(isRunning()));
+    result.add("running", VPackValue(isTailing())); // isRunning
+    result.add("phase", VPackValue(ActivityToString(_phase)));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {
@@ -165,3 +180,4 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
 
   result.close();
 }
+

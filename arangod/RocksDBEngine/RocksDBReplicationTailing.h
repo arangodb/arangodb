@@ -25,10 +25,10 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_TAILING_H 1
 
 #include "Basics/Common.h"
+#include "Replication/common-defines.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/replication-common.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
