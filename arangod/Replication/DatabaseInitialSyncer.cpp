@@ -95,10 +95,8 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
   try {
     setProgress("fetching master state");
     
-#warning REMove log message
-    LOG_TOPIC(ERR, Logger::FIXME) << "dumping: " << vocbase()->name();
-
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state to dump"
+      << vocbase()->name();
     Result r;
     if (!_isChildSyncer) {
       r = getMasterState();
