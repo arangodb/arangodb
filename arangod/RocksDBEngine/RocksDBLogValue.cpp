@@ -395,6 +395,7 @@ bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {
   type == RocksDBLogType::IndexCreate ||
   type == RocksDBLogType::IndexDrop ||
   type == RocksDBLogType::BeginTransaction ||
+  type == RocksDBLogType::CommitTransaction ||
   type == RocksDBLogType::SinglePut ||
   type == RocksDBLogType::SingleRemoveV2;
 }
