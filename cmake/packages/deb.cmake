@@ -24,6 +24,8 @@ else()
   set(CPACK_SYSTEMD_FOUND "0")
 endif()
 
+set(LOGROTATE_GROUP "adm")
+
 # substitute the package name so debconf works:
 configure_file (
   "${PROJECT_SOURCE_DIR}/Installation/debian/templates.in"
