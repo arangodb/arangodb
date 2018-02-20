@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_collection_count
+@startDocuBlock get_api_collection_count
 @brief Counts the documents in a collection
 
 @RESTHEADER{GET /_api/collection/{collection-name}/count, Return number of documents in a collection}

@@ -5,7 +5,7 @@ Working with Geo Indexes
 @startDocuBlock post_api_index_geo
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_near
+@startDocuBlock put_api_simple_near
 
 <!-- js/actions/api-simple.js -->
-@startDocuBlock JSA_put_api_simple_within
+@startDocuBlock put_api_simple_within

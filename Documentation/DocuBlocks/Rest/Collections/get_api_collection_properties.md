@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_collection_properties
+@startDocuBlock get_api_collection_properties
 @brief reads the properties of the specified collection
 
 @RESTHEADER{GET /_api/collection/{collection-name}/properties, Read properties of a collection}

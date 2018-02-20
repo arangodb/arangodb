@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_view_name
+@startDocuBlock get_api_view_name
 @brief returns a view
 
 @RESTHEADER{GET /_api/view/{view-name}, Return information about a view}

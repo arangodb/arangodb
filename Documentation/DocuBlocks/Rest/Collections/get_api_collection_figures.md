@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_collection_figures
+@startDocuBlock get_api_collection_figures
 @brief Fetch the statistics of a collection
 
 @RESTHEADER{GET /_api/collection/{collection-name}/figures, Return statistics for a collection}

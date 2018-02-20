@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_collection_revision
+@startDocuBlock get_api_collection_revision
 @brief Retrieve the collections revision id
 
 @RESTHEADER{GET /_api/collection/{collection-name}/revision, Return collection revision id}

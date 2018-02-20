@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_get_api_view_properties
+@startDocuBlock get_api_view_properties
 @brief reads the properties of the specified view
 
 @RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a view}

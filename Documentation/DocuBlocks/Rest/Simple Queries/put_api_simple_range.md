@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_range
+@startDocuBlock put_api_simple_range
 @brief returns all documents of a collection within a range
 
 @RESTHEADER{PUT /_api/simple/range, Simple range query}

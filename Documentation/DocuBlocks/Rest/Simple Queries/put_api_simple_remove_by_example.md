@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_remove_by_example
+@startDocuBlock put_api_simple_remove_by_example
 @brief removes all documents of a collection that match an example
 
 @RESTHEADER{PUT /_api/simple/remove-by-example, Remove documents by example}

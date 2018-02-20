@@ -1,8 +1,8 @@
 
-@startDocuBlock JSA_put_api_simple_near
-@brief returns all documents of a collection near a given location
+@startDocuBlock put_api_simple_within
+@brief returns all documents of a collection within a given radius
 
-@RESTHEADER{PUT /_api/simple/near, Returns documents near a coordinate}
+@RESTHEADER{PUT /_api/simple/within, Find documents within a radius around a coordinate}
 
 @RESTBODYPARAM{collection,string,required,string}
 The name of the collection to query.
@@ -12,6 +12,9 @@ The latitude of the coordinate.
 
 @RESTBODYPARAM{longitude,string,required,string}
 The longitude of the coordinate.
+
+@RESTBODYPARAM{radius,string,required,string}
+The maximal radius (in meters).
 
 @RESTBODYPARAM{distance,string,required,string}
 If given, the attribute key used to return the distance to
@@ -29,27 +32,25 @@ If given, the identifier of the geo-index to use. (optional)
 
 @RESTDESCRIPTION
 
-The default will find at most 100 documents near the given coordinate.  The
-returned array is sorted according to the distance, with the nearest document
-being first in the return array. If there are near documents of equal distance, documents
-are chosen randomly from this set until the limit is reached.
+This will find all documents within a given radius around the coordinate
+(*latitude*, *longitude*). The returned list is sorted by distance.
 
-In order to use the *near* operator, a geo index must be defined for the
-collection. This index also defines which attribute holds the coordinates
-for the document.  If you have more than one geo-spatial index, you can use
-the *geo* field to select a particular index.
+In order to use the *within* operator, a geo index must be defined for
+the collection. This index also defines which attribute holds the
+coordinates for the document.  If you have more than one geo-spatial index,
+you can use the *geo* field to select a particular index.
 
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 
-Note: the *near* simple query is **deprecated** as of ArangoDB 2.6. 
+Note: the *within* simple query is **deprecated** as of ArangoDB 2.6. 
 This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
-to issue an [AQL query](../../AQL/Functions/Geo.html) using the *NEAR* function as follows: 
+to issue an [AQL query](../../AQL/Functions/Geo.html) using the *WITHIN* function as follows: 
 
 
-    FOR doc IN NEAR(@@collection, @latitude, @longitude, @limit)
-      RETURN doc`
+    FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
+      RETURN doc
 
 @RESTRETURNCODES
 
@@ -68,7 +69,7 @@ response body contains an error document in this case.
 
 Without distance
 
-@EXAMPLE_ARANGOSH_RUN{RestSimpleNear}
+@EXAMPLE_ARANGOSH_RUN{RestSimpleWithin}
     var cn = "products";
     db._drop(cn);
     var products = db._create(cn);
@@ -83,7 +84,8 @@ Without distance
       "latitude" : 0,
       "longitude" : 0,
       "skip" : 1,
-      "limit" : 2
+      "limit" : 2,
+      "radius" : 500
     };
 
     var response = logCurlRequest('PUT', url, body);
@@ -96,7 +98,7 @@ Without distance
 
 With distance
 
-@EXAMPLE_ARANGOSH_RUN{RestSimpleNearDistance}
+@EXAMPLE_ARANGOSH_RUN{RestSimpleWithinDistance}
     var cn = "products";
     db._drop(cn);
     var products = db._create(cn);
@@ -106,14 +108,8 @@ With distance
       products.save({ name : "Name/" + i + "/",loc: [ i, 0 ] });
     }
     var url = "/_api/simple/near";
-    var body = {
-      "collection": "products",
-      "latitude" : 0,
-      "longitude" : 0,
-      "skip" : 1,
-      "limit" : 3,
-      "distance" : "distance"
-    };
+    var body = { "collection": "products", "latitude" : 0, "longitude" : 0,
+               "skip" : 1, "limit" : 3, "distance" : "distance", "radius" : 300 };
 
     var response = logCurlRequest('PUT', url, body);
 

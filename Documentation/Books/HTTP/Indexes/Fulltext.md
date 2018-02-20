@@ -8,4 +8,4 @@ If a [fulltext index](../../Manual/Appendix/Glossary.html#fulltext-index) exists
 @startDocuBlock post_api_index_fulltext
 
 <!-- js/actions/api-index.js -->
-@startDocuBlock JSA_put_api_simple_fulltext
+@startDocuBlock put_api_simple_fulltext

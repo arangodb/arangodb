@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_first_example
+@startDocuBlock put_api_simple_first_example
 @brief returns one document of a collection matching a given example
 
 @RESTHEADER{PUT /_api/simple/first-example, Find documents matching an example}

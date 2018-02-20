@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_all
+@startDocuBlock put_api_simple_all
 @brief returns all documents of a collection
 
 @RESTHEADER{PUT /_api/simple/all, Return all documents}

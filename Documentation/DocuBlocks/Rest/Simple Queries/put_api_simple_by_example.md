@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_by_example
+@startDocuBlock put_api_simple_by_example
 @brief returns all documents of a collection matching a given example
 
 @RESTHEADER{PUT /_api/simple/by-example, Simple query by-example}

@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_any
+@startDocuBlock put_api_simple_any
 @brief returns a random document from a collection
 
 @RESTHEADER{PUT /_api/simple/any, Return a random document}

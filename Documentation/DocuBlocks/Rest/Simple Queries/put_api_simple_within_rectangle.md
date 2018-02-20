@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_within_rectangle
+@startDocuBlock put_api_simple_within_rectangle
 @brief returns all documents of a collection within a rectangle
 
 @RESTHEADER{PUT /_api/simple/within-rectangle, Within rectangle query}

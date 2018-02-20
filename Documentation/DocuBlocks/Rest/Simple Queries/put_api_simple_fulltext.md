@@ -1,5 +1,5 @@
 
-@startDocuBlock JSA_put_api_simple_fulltext
+@startDocuBlock put_api_simple_fulltext
 @brief returns documents of a collection as a result of a fulltext query
 
 @RESTHEADER{PUT /_api/simple/fulltext, Fulltext index query}

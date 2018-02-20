@@ -7,7 +7,7 @@ If a suitable hash index exists, then */_api/simple/by-example* will use this in
 @startDocuBlock post_api_index_hash
 
 <!-- js/actions/api-index.js -->
-@startDocuBlock JSA_put_api_simple_by_example
+@startDocuBlock put_api_simple_by_example
 
 <!-- js/actions/api-index.js -->
-@startDocuBlock JSA_put_api_simple_first_example
+@startDocuBlock put_api_simple_first_example
