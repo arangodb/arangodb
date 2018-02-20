@@ -1,5 +1,5 @@
 /* jshint strict: false */
-/* global _, Backbone, frontendConfig, window, arangoHelper, localStorage, $ */
+/* global _, Backbone, frontendConfig, window, arangoHelper, sessionStorage, $ */
 window.UserConfig = Backbone.Model.extend({
   defaults: {
     graphs: '',
@@ -39,7 +39,7 @@ window.UserConfig = Backbone.Model.extend({
   },
 
   getLocalConfig: function () {
-    var item = localStorage.getItem(this.getConfigPath());
+    var item = sessionStorage.getItem(this.getConfigPath());
     try {
       item = JSON.parse(item);
     } catch (ignore) {
@@ -54,7 +54,7 @@ window.UserConfig = Backbone.Model.extend({
   },
 
   saveLocalConfig: function () {
-    localStorage.setItem(this.getConfigPath(), JSON.stringify(this.toJSON()));
+    sessionStorage.setItem(this.getConfigPath(), JSON.stringify(this.toJSON()));
   },
 
   getLocalItem: function (keyName, callback) {
