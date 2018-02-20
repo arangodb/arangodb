@@ -268,14 +268,14 @@ class basic_string_ref {
 }; // basic_string_ref
 
 template<typename Elem, typename Traits>
-/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil;
+/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil(nullptr, 0);
 
-template <typename _Elem, typename _Traits> 
-/*static*/ CONSTEXPR const _Elem  basic_string_ref< _Elem, _Traits >::EMPTY[1]
+template<typename Elem, typename Traits>
+/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1]
 #if (defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
-  {}
+  { 0 }
 #endif
-  ;
+;
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;

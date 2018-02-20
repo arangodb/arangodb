@@ -56,7 +56,7 @@ bool append_path(std::string& buf, const wstring_ref& value) {
 
   buf.resize(start + size); // allocate enough space for the converted value
 
-  std::mbstate_t state;
+  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
   const wchar_t* from_next;
   char* to_next;
   auto result = fs_cvt.out(
@@ -80,6 +80,11 @@ bool append_path(std::string& buf, const wstring_ref& value) {
   return true;
 }
 
+#if defined (__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wunused-function"
+#endif
+
 bool append_path(std::wstring& buf, const irs::string_ref& value) {
   static auto& fs_cvt = fs_codecvt();
   auto size = value.size() * 3; // same ratio as boost::filesystem
@@ -87,7 +92,7 @@ bool append_path(std::wstring& buf, const irs::string_ref& value) {
 
   buf.resize(start + size); // allocate enough space for the converted value
 
-  std::mbstate_t state;
+  std::mbstate_t state = std::mbstate_t(); // RHS required for MSVC
   const char* from_next;
   wchar_t* to_next;
   auto result = fs_cvt.in(
@@ -116,6 +121,10 @@ bool append_path(std::wstring& buf, const wstring_ref& value) {
 
   return true;
 }
+
+#if defined (__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
 
 NS_END
 
