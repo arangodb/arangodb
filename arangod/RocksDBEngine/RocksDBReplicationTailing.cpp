@@ -192,10 +192,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           TRI_ASSERT(_vocbase->id() == dbid);
           LogicalCollection* coll = loadCollection(cid);
           TRI_ASSERT(coll != nullptr);
-          uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
           VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
           auto stripped = rocksutils::stripObjectIds(indexDef);
 
+          uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
           _builder.openObject();
           _builder.add("tick", VPackValue(std::to_string(tick)));
           _builder.add("type", VPackValue(REPLICATION_INDEX_CREATE));
@@ -285,7 +285,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {
-          _state = SINGLE_REMOVE;
+          _state = SINGLE_REMOVE; // revisionId is unknown
         }
         break;
       }

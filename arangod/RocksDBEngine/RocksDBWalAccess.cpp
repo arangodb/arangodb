@@ -133,15 +133,26 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         // wait for marker data in Put entry
         break;
       case RocksDBLogType::CollectionCreate:
+        resetTransientState(); // finish ongoing trx
+        if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
+                                   RocksDBLogValue::collectionId(blob))) {
+          _state = COLLECTION_CREATE;
+        }
+        break;
       case RocksDBLogType::CollectionRename:
+        resetTransientState(); // finish ongoing trx
+        if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
+                                   RocksDBLogValue::collectionId(blob))) {
+          _state = COLLECTION_RENAME; // collection name is not needed 
+          // LOG_TOPIC(DEBUG, Logger::REPLICATION) << "renaming "
+          // << RocksDBLogValue::oldCollectionName(blob).toString();
+        }
+        break;
       case RocksDBLogType::CollectionChange:
         resetTransientState(); // finish ongoing trx
         if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
                                    RocksDBLogValue::collectionId(blob))) {
-          _state = (State)type;
-          TRI_ASSERT(_state == COLLECTION_CREATE ||
-                     _state == COLLECTION_RENAME ||
-                     _state == COLLECTION_CHANGE);
+          _state = COLLECTION_CHANGE;
         }
         break;
       case RocksDBLogType::CollectionDrop: {
@@ -177,22 +188,22 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          LogicalCollection* col = loadCollection(dbid, cid);
-          TRI_ASSERT(vocbase != nullptr && col != nullptr);
+          LogicalCollection* coll = loadCollection(dbid, cid);
+          TRI_ASSERT(vocbase != nullptr && coll != nullptr);
           VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
           auto stripped = rocksutils::stripObjectIds(indexDef);
-            {
-              uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(tick)));
-              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("cuid", VPackValue(col->globallyUniqueId()));
-              marker->add("data", stripped.first);
-            }
-            _callback(vocbase, _builder.slice());
-            _responseSize += _builder.size();
-            _builder.clear();
+          {
+            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(tick)));
+            marker->add("type", VPackValue(rocksutils::convertLogType(type)));
+            marker->add("db", VPackValue(vocbase->name()));
+            marker->add("cuid", VPackValue(coll->globallyUniqueId()));
+            marker->add("data", stripped.first);
+          }
+          _callback(vocbase, _builder.slice());
+          _responseSize += _builder.size();
+          _builder.clear();
         }
         break;
       }
@@ -280,7 +291,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {
-          _state = SINGLE_REMOVE;
+          _state = SINGLE_REMOVE; // revisionId is unknown
         }
         break;
       }
