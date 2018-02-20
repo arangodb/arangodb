@@ -291,6 +291,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::DocumentRemoveV2: { // remove within a trx
         if (_state == TRANSACTION) {
+          TRI_ASSERT(_removedDocRid == 0);
           _removedDocRid = RocksDBLogValue::revisionId(blob);
         } else {
           resetTransientState();
@@ -410,16 +411,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteCF(uint32_t column_family_id,
                            rocksdb::Slice const& key) override {
-    return handleDeletion(column_family_id, key);
-  }
-
-  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
-                                 rocksdb::Slice const& key) override {
-    return handleDeletion(column_family_id, key);
-  }
-
-  rocksdb::Status handleDeletion(uint32_t column_family_id,
-                                 rocksdb::Slice const& key) {
     tick();
     
     if (column_family_id != _primaryCF) {

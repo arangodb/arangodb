@@ -286,6 +286,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
       }
       case RocksDBLogType::DocumentRemoveV2: { // remove within a trx
         if (_state == TRANSACTION) {
+          TRI_ASSERT(_removedDocRid == 0);
           _removedDocRid = RocksDBLogValue::revisionId(blob);
         } else {
           resetTransientState();
