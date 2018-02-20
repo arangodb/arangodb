@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, _, FileReader, localStorage, frontendConfig, window, ArangoQuery, $, arangoHelper */
+/* global Backbone, _, FileReader, sessionStorage, frontendConfig, window, ArangoQuery, $, arangoHelper */
 (function () {
   'use strict';
 
@@ -50,7 +50,7 @@
       this.reset();
       var self = this;
       // fetch and add queries
-      var item = localStorage.getItem(this.getQueryPath());
+      var item = sessionStorage.getItem(this.getQueryPath());
       try {
         item = JSON.parse(item);
         _.each(item, function (val, key) {
@@ -92,7 +92,7 @@
     },
 
     saveLocalCollectionQueries: function (data, callbackFunc) {
-      localStorage.setItem(this.getQueryPath(), JSON.stringify(data));
+      sessionStorage.setItem(this.getQueryPath(), JSON.stringify(data));
 
       if (callbackFunc) {
         callbackFunc(false, data);
