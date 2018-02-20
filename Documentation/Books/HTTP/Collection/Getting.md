@@ -20,4 +20,4 @@ Getting Information about a Collection
 @startDocuBlock JSA_get_api_collection_checksum
 
 <!-- js/actions/api-collection.js -->
-@startDocuBlock JSF_get_api_collections
+@startDocuBlock get_api_collections

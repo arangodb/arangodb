@@ -5,34 +5,34 @@ Sharding only should be used by developers!
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_GET
+@startDocuBlock cluster_test_GET
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_POST
+@startDocuBlock cluster_test_POST
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_PUT
+@startDocuBlock cluster_test_PUT
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_DELETE
+@startDocuBlock cluster_test_DELETE
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_PATCH
+@startDocuBlock cluster_test_PATCH
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_test_HEAD
+@startDocuBlock cluster_test_HEAD
 
 
 <!-- js/actions/api-cluster.js -->
 
-@startDocuBlock JSF_cluster_check_port_GET
+@startDocuBlock cluster_check_port_GET
