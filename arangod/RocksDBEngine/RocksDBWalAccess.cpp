@@ -447,7 +447,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     tick();
     
     if (column_family_id != _primaryCF) {
-      return rocksdb::Status();
+      return rocksdb::Status(); // ignore all document operations
     } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return rocksdb::Status();

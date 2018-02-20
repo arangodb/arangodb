@@ -414,13 +414,12 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     tick();
     
     if (column_family_id != _primaryCF) {
-      return rocksdb::Status();
+      return rocksdb::Status(); // ignore all document operations
     } else if (_state != TRANSACTION && _state != SINGLE_REMOVE) {
       resetTransientState();
       return rocksdb::Status();
     }
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId == 0);
-    TRI_ASSERT(_removedDocRid == 0);
     
     uint64_t objectId = RocksDBKey::objectId(key);
     auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
