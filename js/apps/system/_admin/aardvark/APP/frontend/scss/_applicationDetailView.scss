@@ -125,7 +125,7 @@
 
         span {
           display: block;
-          max-width: 100px;
+          max-width: 55%;
           float: left;
           height: 17px;
           overflow: hidden;
@@ -134,7 +134,17 @@
 
           &:first-child {
             min-width: 75px;
+            max-width: 20%;
           }
+        }
+
+        span {
+          text-overflow: inherit;
+          white-space: normal;
+          word-wrap: break-word;
+          word-break: normal;
+          overflow: visible;
+          height: auto;
         }
       }
     }
