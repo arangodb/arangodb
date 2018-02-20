@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, setTimeout, localStorage, ace, Storage, window, _, console, btoa */
+/* global Backbone, $, setTimeout, sessionStorage, ace, Storage, window, _, console, btoa */
 /* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
@@ -117,14 +117,14 @@
 
     storeQuerySize: function (e) {
       if (typeof (Storage) !== 'undefined') {
-        localStorage.setItem('querySize', $(e.currentTarget).val());
+        sessionStorage.setItem('querySize', $(e.currentTarget).val());
       }
     },
 
     restoreQuerySize: function () {
       if (typeof (Storage) !== 'undefined') {
-        if (localStorage.getItem('querySize')) {
-          $('#querySize').val(localStorage.getItem('querySize'));
+        if (sessionStorage.getItem('querySize')) {
+          $('#querySize').val(sessionStorage.getItem('querySize'));
         }
       }
     },
@@ -277,7 +277,7 @@
             $('.aqlEditorWrapper').first().width(this.settings.aqlWidth);
           }
 
-          if (localStorage.getItem('lastOpenQuery') !== 'undefined') {
+          if (sessionStorage.getItem('lastOpenQuery') !== 'undefined') {
             $('#updateCurrentQuery').show();
           }
         }
@@ -366,7 +366,7 @@
         this.toggleQueries();
       }
 
-      var lastQueryName = localStorage.getItem('lastOpenQuery');
+      var lastQueryName = sessionStorage.getItem('lastOpenQuery');
       // backup the last query
       this.state.lastQuery.query = this.aqlEditor.getValue();
       this.state.lastQuery.bindParam = this.bindParamTableObj;
@@ -378,7 +378,7 @@
       this.currentQuery = this.collection.findWhere({name: name});
 
       if (this.currentQuery) {
-        localStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));
+        sessionStorage.setItem('lastOpenQuery', this.currentQuery.get('name'));
       }
 
       $('#updateCurrentQuery').show();
@@ -601,7 +601,7 @@
         if (queryObject !== null && queryObject !== undefined && queryObject !== '' && Object.keys(queryObject).length > 0) {
           this.aqlEditor.setValue(queryObject.query, 1);
 
-          var queryName = localStorage.getItem('lastOpenQuery');
+          var queryName = sessionStorage.getItem('lastOpenQuery');
 
           if (queryName !== undefined && queryName !== 'undefined') {
             try {
@@ -634,7 +634,7 @@
 
     getCachedQuery: function () {
       if (Storage !== 'undefined') {
-        var cache = localStorage.getItem('cachedQuery');
+        var cache = sessionStorage.getItem('cachedQuery');
         if (cache !== undefined) {
           var query = JSON.parse(cache);
           this.currentQuery = query;
@@ -654,7 +654,7 @@
             parameter: vars
           };
           this.currentQuery = myObject;
-          localStorage.setItem('cachedQuery', JSON.stringify(myObject));
+          sessionStorage.setItem('cachedQuery', JSON.stringify(myObject));
         }
       }
     },
@@ -1084,7 +1084,7 @@
       }
 
       // check if existing entry already has a stored value
-      var queryName = localStorage.getItem('lastOpenQuery');
+      var queryName = sessionStorage.getItem('lastOpenQuery');
       var query = this.collection.findWhere({name: queryName});
 
       try {
@@ -1414,7 +1414,7 @@
     },
 
     createAQL: function () {
-      localStorage.setItem('lastOpenQuery', undefined);
+      sessionStorage.setItem('lastOpenQuery', undefined);
       this.aqlEditor.setValue('');
 
       this.refreshAQL(true);
@@ -2539,7 +2539,7 @@
           self.getCachedQueryAfterRender();
 
           // old storage method
-          var item = localStorage.getItem('customQueries');
+          var item = sessionStorage.getItem('customQueries');
           if (item) {
             var queries = JSON.parse(item);
             // save queries in user collections extra attribute
@@ -2557,7 +2557,7 @@
                   'Could not import old local storage queries'
                 );
               } else {
-                localStorage.removeItem('customQueries');
+                sessionStorage.removeItem('customQueries');
               }
             };
             self.collection.saveCollectionQueries(callback);
