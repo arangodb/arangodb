@@ -22,10 +22,11 @@
 
 #include "ClusterRepairs.h"
 
-#include "Logger/Logger.h"
 #include "ClusterInfo.h"
+#include "Logger/Logger.h"
 #include "velocypack/Iterator.h"
 
+#include <boost/iterator/zip_iterator.hpp>
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
@@ -91,8 +92,8 @@ struct Collection {
 
   std::string database;
   std::string name;
-  boost::optional<std::string> distributeShardsLike;
-  boost::optional<std::string> repairingDistributeShardsLike;
+  boost::optional<CollectionId const> distributeShardsLike;
+  boost::optional<CollectionId const> repairingDistributeShardsLike;
   std::map<std::string, DBServers, VersionSort> shardsByName;
 
   // maybe more?
@@ -101,6 +102,7 @@ struct Collection {
   // replicationFactor
   // deleted
 };
+
 
 std::map<CollectionId, struct Collection>
 readCollections(const VPackSlice &plan) {
@@ -125,12 +127,16 @@ readCollections(const VPackSlice &plan) {
       std::string const collectionId = collectionIterator.key.copyString();
       Slice const &collectionSlice = collectionIterator.value;
       std::string const collectionName = collectionSlice.get("name").copyString();
-      boost::optional<std::string> distributeShardsLike, repairingDistributeShardsLike;
+      boost::optional<std::string const> distributeShardsLike, repairingDistributeShardsLike;
       if (collectionSlice.hasKey("distributeShardsLike")) {
-        distributeShardsLike = collectionSlice.get("distributeShardsLike").copyString();
+        distributeShardsLike.emplace(
+          collectionSlice.get("distributeShardsLike").copyString()
+        );
       }
       if (collectionSlice.hasKey("repairingDistributeShardsLike")) {
-        repairingDistributeShardsLike = collectionSlice.get("repairingDistributeShardsLike").copyString();
+        repairingDistributeShardsLike.emplace(
+          collectionSlice.get("repairingDistributeShardsLike").copyString()
+        );
       }
 
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -180,12 +186,49 @@ readCollections(const VPackSlice &plan) {
   return collections;
 }
 
+
+std::vector<CollectionId>
+findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
+  std::vector<CollectionId> collectionsToFix;
+
+  for (auto const &it : collections) {
+    CollectionId const& collectionId = it.first;
+    struct Collection const& collection = it.second;
+
+    if (collection.repairingDistributeShardsLike) {
+      collectionsToFix.emplace_back(collectionId);
+      continue;
+    }
+    if (! collection.distributeShardsLike) {
+      continue;
+    }
+
+    struct Collection & proto = collections[collection.distributeShardsLike.get()];
+
+    for (auto const& shardIt : collection.shardsByName) {
+      std::string const& shardName = shardIt.first;
+      DBServers const& dbServers = shardIt.second;
+      DBServers const& protoDbServers = proto.shardsByName[shardName];
+
+      if (dbServers != protoDbServers) {
+        collectionsToFix.emplace_back(collectionId);
+        break;
+      }
+    }
+  }
+
+  return collectionsToFix;
+}
+
+
 AgencyWriteTransaction
 ClusterRepairs::repairDistributeShardsLike(VPackSlice &&plan) {
   LOG_TOPIC(ERR, arangodb::Logger::FIXME)
   << "[tg] ClusterMethods::repairDistributeShardsLike()";
 
   std::map<CollectionId, struct Collection> collections = readCollections(plan);
+
+  std::vector<CollectionId> collectionsToFix = findCollectionsToFix(collections);
 
   // Phase 1:
   // Step 1.1: filter collections to fix
