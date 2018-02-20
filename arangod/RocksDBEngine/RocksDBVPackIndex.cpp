@@ -113,7 +113,7 @@ bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, si
   arangodb::Result r = mthds->Get(_index->columnFamily(), _key.ref(), value.buffer());
 
   if (r.ok()) {
-    cb(LocalDocumentId(RocksDBValue::revisionId(*value.buffer())));
+    cb(RocksDBValue::documentId(*value.buffer()));
   }
 
   // there is at most one element, so we are done now
@@ -182,11 +182,8 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
   while (limit > 0) {
     TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 
-    LocalDocumentId const documentId(
-        _index->_unique
-            ? RocksDBValue::revisionId(_iterator->value())
-            : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
-    cb(documentId);
+   cb(_index->_unique ? RocksDBValue::documentId(_iterator->value())
+                        : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
 
     --limit;
     if (_reverse) {
@@ -570,7 +567,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
-  RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId.id())
+  RocksDBValue value = _unique ? RocksDBValue::UniqueVPackIndexValue(documentId)
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
@@ -618,7 +615,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   }
 
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    LocalDocumentId rev(RocksDBValue::revisionId(existing));
+    LocalDocumentId rev = RocksDBValue::documentId(existing);
     ManagedDocumentResult mmdr;
     bool success = _collection->getPhysical()->readDocument(trx, rev, mmdr);
     TRI_ASSERT(success);
@@ -685,7 +682,7 @@ Result RocksDBVPackIndex::updateInternal(transaction::Methods* trx,
       return IndexResult(res, this);
     }
 
-    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId.id());
+    RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
     size_t const count = elements.size();
     for (size_t i = 0; i < count; ++i) {
       RocksDBKey& key = elements[i];

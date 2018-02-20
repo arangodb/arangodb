@@ -34,7 +34,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -294,22 +293,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       for (auto& trxCollection : _collections) {
         RocksDBTransactionCollection* collection =
             static_cast<RocksDBTransactionCollection*>(trxCollection);
-        int64_t adjustment =
-            collection->numInserts() - collection->numRemoves();
-
-        if (collection->numInserts() != 0 || collection->numRemoves() != 0 ||
-            collection->revision() != 0) {
-          RocksDBCollection* coll = static_cast<RocksDBCollection*>(
-              trxCollection->collection()->getPhysical());
-          coll->adjustNumberDocuments(adjustment);
-          coll->setRevision(collection->revision());
-
-          RocksDBEngine* engine = rocksutils::globalRocksEngine();
-          RocksDBSettingsManager::CounterAdjustment update(
-              latestSeq, collection->numInserts(), collection->numRemoves(),
-              collection->revision());
-          engine->settingsManager()->updateCounter(coll->objectId(), update);
-        }
         // we need this in case of an intermediate commit. The number of
         // initial documents is adjusted and numInserts / removes is set to 0
         // index estimator updates are buffered

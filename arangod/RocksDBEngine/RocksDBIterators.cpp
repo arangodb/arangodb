@@ -335,8 +335,7 @@ bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t li
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId(RocksDBValue::revisionId(_iterator->value()));
-    cb(documentId);
+    cb(RocksDBValue::documentId(_iterator->value()));
 
     --limit;
 
