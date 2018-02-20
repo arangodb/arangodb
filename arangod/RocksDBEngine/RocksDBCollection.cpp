@@ -712,21 +712,22 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    LocalDocumentId docId(RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key()));
     VPackSlice doc = VPackSlice(iter->value().data());
     TRI_ASSERT(doc.isObject());
-
-    VPackSlice key = doc.get(StaticStrings::KeyString);
+    
+    // To print the WAL we need key and RID
+    VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
     TRI_ASSERT(key.isString());
-
-    blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
-
-    state->prepareOperation(_logicalCollection->cid(), docId.id(),
-                            StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    TRI_voc_rid_t rid = transaction::helpers::extractRevFromDocument(doc);
+    TRI_ASSERT(rid != 0);
+    
+    state->prepareOperation(_logicalCollection->cid(), rid, // actual revision ID!!
+                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    
+    LocalDocumentId const docId = RocksDBKey::documentId(RocksDBEntryType::Document, iter->key());
     auto res = removeDocument(trx, docId, doc, options);
     if (res.fail()) {
-      // Failed to remove document in truncate.
-      // Throw
+      // Failed to remove document in truncate. Throw
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
     res = state->addOperation(_logicalCollection->cid(), docId.id(),
@@ -773,7 +774,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
-                                                     VPackSlice const& key) {
+                                             VPackSlice const& key) const {
   TRI_ASSERT(key.isString());
   return primaryIndex()->lookupKey(trx, StringRef(key));
 }
@@ -855,7 +856,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   transaction::BuilderLeaser builder(trx);
   RocksDBOperationResult res(
-      newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
+      newObjectForInsert(trx, slice, fromSlice, toSlice,
                          isEdgeCollection, *builder.get(), options.isRestore, revisionId));
   if (res.fail()) {
     return res;
@@ -865,9 +866,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   auto mthds = RocksDBTransactionState::toMethods(trx);
   RocksDBSavePoint guard(mthds, trx->isSingleOperationTransaction(),
-                         [&state]() { state->resetLogState(); });
+                         [&state]() { });
 
-  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   res = insertDocument(trx, documentId, newSlice, options);
@@ -915,7 +916,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   LocalDocumentId const oldDocumentId = previous.localDocumentId();
 
   VPackSlice oldDoc(previous.vpack());
-  TRI_voc_rid_t oldRevisionId =
+  TRI_voc_rid_t const oldRevisionId =
       transaction::helpers::extractRevFromDocument(oldDoc);
   prevRev = oldRevisionId;
 
@@ -947,8 +948,8 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                        documentId, options.mergeObjects,
-                        options.keepNull, *builder.get(), options.isRestore, revisionId);
+                        options.mergeObjects, options.keepNull, *builder.get(),
+                        options.isRestore, revisionId);
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
@@ -964,10 +965,10 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
-                         [&state]() { state->resetLogState(); });
+                         [&state]() { });
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
 
@@ -1043,8 +1044,8 @@ Result RocksDBCollection::replace(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore, revisionId);
+                      isEdgeCollection, *builder.get(),
+                      options.isRestore, revisionId);
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
@@ -1061,10 +1062,10 @@ Result RocksDBCollection::replace(
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
-                         [&state]() { state->resetLogState(); });
+                         [&state]() { });
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
+  state->prepareOperation(_logicalCollection->cid(), revisionId,
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult = updateDocument(
@@ -1143,11 +1144,11 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
-                         [&state]() { state->resetLogState(); });
+                         [&state]() {  });
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), oldRevisionId,
-                          StringRef(key), TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+                          TRI_VOC_DOCUMENT_OPERATION_REMOVE);
   res = removeDocument(trx, oldDocumentId, oldDoc, options);
 
   if (res.ok()) {
@@ -1378,7 +1379,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   TRI_ASSERT(trx->state()->isRunning());
 
   RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, documentId.id());
+  key->constructDocument(_objectId, documentId);
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
@@ -1421,7 +1422,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, documentId.id());
+  key->constructDocument(_objectId, documentId);
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
@@ -1464,7 +1465,6 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
   }
 
   LocalDocumentId documentId = primaryIndex()->lookupKey(trx, StringRef(key));
-
   if (documentId.isSet()) {
     return lookupDocumentVPack(documentId, trx, mdr, true);
   }
@@ -1486,7 +1486,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
 
   // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
-  newKey->constructDocument(_objectId, newDocumentId.id());
+  newKey->constructDocument(_objectId, newDocumentId);
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
   blackListKey(newKey->string().data(),
@@ -1502,7 +1502,7 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   }
 
   RocksDBKeyLeaser oldKey(trx);
-  oldKey->constructDocument(_objectId, oldDocumentId.id());
+  oldKey->constructDocument(_objectId, oldDocumentId);
   blackListKey(oldKey->string().data(),
                static_cast<uint32_t>(oldKey->string().size()));
 
@@ -1536,7 +1536,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, documentId.id());
+  key->constructDocument(_objectId, documentId);
 
   bool lockTimeout = false;
   if (withCache && useCache()) {
@@ -1598,7 +1598,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBKeyLeaser key(trx);
-  key->constructDocument(_objectId, documentId.id());
+  key->constructDocument(_objectId, documentId);
 
   bool lockTimeout = false;
   if (withCache && useCache()) {

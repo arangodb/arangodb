@@ -84,9 +84,6 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
 
-  /// @brief reset previous log state after a rollback to safepoint
-  void resetLogState() { _lastUsedCollection = 0; }
-
   inline bool hasOperations() const {
     return (_numInserts > 0 || _numRemoves > 0 || _numUpdates > 0 || _numInternal > 0);
   }
@@ -95,8 +92,7 @@ class RocksDBTransactionState final : public TransactionState {
     return (_status == transaction::Status::ABORTED) && hasOperations();
   }
 
-  void prepareOperation(TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-                        StringRef const& key,
+  void prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
@@ -191,8 +187,6 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-  /// @brief Last collection used for transaction. Used for WAL
-  TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;

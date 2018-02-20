@@ -70,7 +70,6 @@ RocksDBTransactionState::RocksDBTransactionState(
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
-      _lastUsedCollection(0),
       _keys{_arena},
       _parallel(false) {}
 
@@ -201,7 +200,6 @@ void RocksDBTransactionState::createTransaction() {
     ++_numLogdata;
 #endif
   }
-  TRI_ASSERT(_lastUsedCollection == 0);
 }
 
 void RocksDBTransactionState::cleanupTransaction() noexcept {
@@ -221,21 +219,6 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 
 arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(_rocksTransaction != nullptr);
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  uint64_t x = _numInserts + _numRemoves + _numUpdates;
-  if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-    TRI_ASSERT(x <= 1 && _numLogdata == x);
-  } else {
-    if (_numLogdata < 1 + (x > 0 ? 1 : 0) + _numRemoves) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "_numInserts " << _numInserts << "  "
-                                      << "_numRemoves " << _numRemoves << "  "
-                                      << "_numUpdates " << _numUpdates << "  "
-                                      << "_numLogdata " << _numLogdata;
-    }
-    // begin transaction + n DocumentOpsPrologue + m doc removes
-    TRI_ASSERT(_numLogdata >= 1 + (x > 0 ? 1 : 0) + _numRemoves);
-  }
-#endif
 
   ExecContext const* exe = ExecContext::CURRENT;
   if (!isReadOnlyTransaction() && exe != nullptr) {
@@ -247,6 +230,34 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
 
   Result result;
   if (_rocksTransaction->GetNumKeys() > 0) {
+    
+    // we are actually going to attempt a commit
+    if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      // add custom commit marker to increase WAL tailing reliability
+      RocksDBLogValue logValue = RocksDBLogValue::CommitTransaction(_vocbase->id(), id());
+      _rocksTransaction->PutLogData(logValue.slice());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _numLogdata++;
+#endif
+    }
+    
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    uint64_t x = _numInserts + _numRemoves + _numUpdates;
+    if (hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+      TRI_ASSERT(x <= 1 && _numLogdata == x);
+    } else {
+      if (_numLogdata != (2 + _numRemoves)) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "_numInserts " << _numInserts << "  "
+        << "_numRemoves " << _numRemoves << "  "
+        << "_numUpdates " << _numUpdates << "  "
+        << "_numLogdata " << _numLogdata;
+        sleep(1); // let it print
+      }
+      // begin transaction + commit transaction + n doc removes
+      TRI_ASSERT(_numLogdata == (2 + _numRemoves));
+    }
+#endif
+    
     // set wait for sync flag if required
     if (waitForSync()) {
       _rocksWriteOptions.sync = true;
@@ -378,78 +389,47 @@ Result RocksDBTransactionState::abortTransaction(
   return result;
 }
 
-void RocksDBTransactionState::prepareOperation(
-    TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId, StringRef const& key,
+void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t rid,
     TRI_voc_document_operation_e operationType) {
   TRI_ASSERT(!isReadOnlyTransaction());
 
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
-  if (collectionId != _lastUsedCollection) {
-    // single operations should never call this method twice
-    // singleOp => lastUsedColl == 0
-    TRI_ASSERT(!singleOp || _lastUsedCollection == 0);
-    _lastUsedCollection = collectionId;
-
-    if (!singleOp) {
-      if (operationType != TRI_VOC_DOCUMENT_OPERATION_UNKNOWN) {
-        RocksDBLogValue logValue =
-            RocksDBLogValue::DocumentOpsPrologue(collectionId);
+  if (singleOp) {
+    // singleOp => no modifications yet
+    TRI_ASSERT(!singleOp || (_rocksTransaction->GetNumPuts() == 0 &&
+                             _rocksTransaction->GetNumDeletes() == 0));
+    switch (operationType) {
+      case TRI_VOC_DOCUMENT_OPERATION_INSERT:
+      case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
+      case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
+        RocksDBLogValue logValue = RocksDBLogValue::SinglePut(_vocbase->id(), cid);
         _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        ++_numLogdata;
+        TRI_ASSERT(_numLogdata++ == 0);
 #endif
+        break;
       }
-    } else {
-      // singleOp => no modifications yet
-      TRI_ASSERT(!singleOp || (_rocksTransaction->GetNumPuts() == 0 &&
-                               _rocksTransaction->GetNumDeletes() == 0));
+      case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
+        TRI_ASSERT(rid != 0);
+        RocksDBLogValue logValue = RocksDBLogValue::SingleRemoveV2(_vocbase->id(),
+                                                                   cid, rid);
+        _rocksTransaction->PutLogData(logValue.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      TRI_ASSERT(_numLogdata == 0);
+        TRI_ASSERT(_numLogdata++ == 0);
 #endif
-
-      switch (operationType) {
-        case TRI_VOC_DOCUMENT_OPERATION_INSERT:
-        case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
-        case TRI_VOC_DOCUMENT_OPERATION_REPLACE: {
-          RocksDBLogValue logValue =
-              RocksDBLogValue::SinglePut(_vocbase->id(), collectionId);
-          _rocksTransaction->PutLogData(logValue.slice());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          ++_numLogdata;
-#endif
-          break;
-        }
-        case TRI_VOC_DOCUMENT_OPERATION_REMOVE: {
-          TRI_ASSERT(!key.empty());
-          RocksDBLogValue logValue =
-              RocksDBLogValue::SingleRemove(_vocbase->id(), collectionId, key);
-          _rocksTransaction->PutLogData(logValue.slice());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          ++_numLogdata;
-#endif
-        } break;
-        case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
-          break;
-      }
+      } break;
+      case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
+        break;
     }
-  }
-
-  // we need to log the remove log entry, if we don't have the single
-  // optimization
-  if (!singleOp && (operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-                    operationType == TRI_VOC_DOCUMENT_OPERATION_REPLACE ||
-                    operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE)) {
+    
+  } else {
     if (operationType == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
-      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemove(key);
+      RocksDBLogValue logValue = RocksDBLogValue::DocumentRemoveV2(rid);
       _rocksTransaction->PutLogData(logValue.slice());
-    } else {
-      RocksDBLogValue logValue =
-          RocksDBLogValue::DocumentRemoveAsPartOfUpdate(key);
-      _rocksTransaction->PutLogData(logValue.slice());
-    }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    ++_numLogdata;
+      ++_numLogdata;
 #endif
+    }
   }
 }
 
@@ -584,7 +564,6 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
     TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
   }
 
-  _lastUsedCollection = 0;
   _numInternal = 0;
   _numInserts = 0;
   _numUpdates = 0;

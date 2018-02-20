@@ -98,7 +98,7 @@ TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
 /// _key and _id attributes
 void PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& newValue, bool isEdgeCollection,
     bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
 
@@ -243,8 +243,8 @@ void PhysicalCollection::mergeObjectsForUpdate(
 int PhysicalCollection::newObjectForInsert(
     transaction::Methods* trx, VPackSlice const& value,
     VPackSlice const& fromSlice, VPackSlice const& toSlice,
-    LocalDocumentId const& documentId, bool isEdgeCollection, 
-    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
+    bool isEdgeCollection, VPackBuilder& builder, bool isRestore,
+                                           TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -327,7 +327,6 @@ int PhysicalCollection::newObjectForInsert(
 /// @brief new object for remove, must have _key set
 void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
                                             VPackSlice const& oldValue,
-                                            LocalDocumentId const& documentId,
                                             VPackBuilder& builder,
                                             bool isRestore, TRI_voc_rid_t& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
@@ -349,7 +348,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 void PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& toSlice, bool isEdgeCollection,
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 

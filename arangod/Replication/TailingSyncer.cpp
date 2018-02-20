@@ -1034,6 +1034,9 @@ retry:
         ++_applier->_state._totalResyncs;
       }
       
+#warning remove log message
+      LOG_TOPIC(ERR, Logger::FIXME) << "Performing resync";
+      
       // do an automatic full resync
       LOG_TOPIC(WARN, Logger::REPLICATION)
       << "restarting initial synchronization for database '"

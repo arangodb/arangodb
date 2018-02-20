@@ -185,7 +185,7 @@ bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t l
     LocalDocumentId const documentId(
         _index->_unique
             ? RocksDBValue::revisionId(_iterator->value())
-            : RocksDBKey::revisionId(_bounds.type(), _iterator->key()));
+            : RocksDBKey::documentId(_bounds.type(), _iterator->key()));
     cb(documentId);
 
     --limit;
@@ -352,7 +352,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
       // value(s) + revisionID
       // - Value: empty
       RocksDBKey key;
-      key.constructVPackIndexValue(_objectId, leased.slice(), documentId.id());
+      key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
       elements.emplace_back(std::move(key));
       hashes.push_back(leased.slice().normalizedHash());
     }
@@ -401,7 +401,7 @@ void RocksDBVPackIndex::addIndexValue(VPackBuilder& leased,
     // + primary key
     // - Value: empty
     RocksDBKey key;
-    key.constructVPackIndexValue(_objectId, leased.slice(), documentId.id());
+    key.constructVPackIndexValue(_objectId, leased.slice(), documentId);
     elements.emplace_back(std::move(key));
     hashes.push_back(leased.slice().normalizedHash());
   }
