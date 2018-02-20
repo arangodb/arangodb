@@ -95,6 +95,29 @@ TransactionCollection* TransactionState::collection(
   return trxCollection;
 }
 
+void TransactionState::addStatusChangeCallback(
+    StatusChangeCallback const& callback
+) {
+  _statusChangeCallbacks.emplace_back(&callback);
+}
+
+TransactionState::Cookie* TransactionState::cookie(
+    void const* key
+) noexcept {
+  auto itr = _cookies.find(key);
+
+  return itr == _cookies.end() ? nullptr : itr->second.get();
+}
+
+TransactionState::Cookie::ptr TransactionState::cookie(
+    void const* key,
+    TransactionState::Cookie::ptr&& cookie
+) {
+  _cookies[key].swap(cookie);
+
+  return std::move(cookie);
+}
+
 /// @brief add a collection to a transaction
 int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
@@ -178,7 +201,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
 Result TransactionState::ensureCollections(int nestingLevel) {
   return useCollections(nestingLevel);
 }
-  
+
 /// @brief run a callback on all collections
 void TransactionState::allCollections(std::function<bool(TransactionCollection*)> const& cb) {
   for (auto& trxCollection : _collections) {
@@ -381,4 +404,18 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
+
+  for (auto& callback: _statusChangeCallbacks) {
+    TRI_ASSERT(callback);
+
+    try {
+      (*callback)(*this);
+    } catch (...) {
+      // we must not propagate exceptions from here
+    }
+  }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

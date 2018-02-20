@@ -4,7 +4,7 @@ Highlights
 Version 3.3
 -----------
 
-### Enterprise Edition
+**Enterprise Edition**
 
 - [**Datacenter to Datacenter Replication**](Deployment/DC2DC.md): Replicate
   the entire structure and content of an ArangoDB cluster asynchronously to
@@ -16,7 +16,7 @@ Version 3.3
   Arangodump can create backups encrypted with a secret key using AES256
   block cipher.
 
-### All Editions
+**All Editions**
 
 - [**Server-level Replication**](Administration/Replication/Asynchronous/ServerLevelSetup.md):
   In addition to per-database replication, there is now an additional

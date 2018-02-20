@@ -36,6 +36,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
+
 namespace arangodb {
 class DatabaseInitialSyncer;
 class LogicalCollection;
@@ -159,6 +161,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;
+
+  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
   //// operations on databasea
 

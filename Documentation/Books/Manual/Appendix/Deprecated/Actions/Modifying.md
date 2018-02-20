@@ -1,5 +1,5 @@
 Modifying Request and Response
-------------------------------
+==============================
 
 As we've seen in the previous examples, actions get called with the request and
 response objects (named *req* and *res* in the examples) passed as parameters to

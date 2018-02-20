@@ -84,7 +84,9 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
+    setUp: function () {
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
+    },
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -140,7 +142,7 @@ function recoverySuite () {
       let idx = c.getIndexes()[1];
       assertEqual(est2, idx.selectivityEstimate);
     },
- 
+
     testManyAttributesHashIndexInfo: function() {
       let c = db._collection(colName3);
       let idx = c.getIndexes()[1];
@@ -166,7 +168,7 @@ function recoverySuite () {
       let idx = c.getIndexes()[1];
       assertEqual(est3, idx.selectivityEstimate);
     },
- 
+
   };
 }
 

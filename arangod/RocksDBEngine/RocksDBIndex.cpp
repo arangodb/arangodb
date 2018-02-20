@@ -63,6 +63,8 @@ RocksDBIndex::RocksDBIndex(
   if (_cacheEnabled) {
     createCache();
   }
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->addIndexMapping(_objectId, this);
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -82,6 +84,8 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   if (_cacheEnabled) {
     createCache();
   }
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->addIndexMapping(_objectId, this);
 }
 
 RocksDBIndex::~RocksDBIndex() {
@@ -176,8 +180,10 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::serializeEstimate(std::string&, uint64_t) const {
+rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
+    std::string&, rocksdb::SequenceNumber seq) const {
   // All indexes that do not have an estimator do not serialize anything.
+  return seq;
 }
 
 bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
@@ -321,14 +327,10 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
   }
 }
 
-std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> RocksDBIndex::estimator() const {
-  return std::make_pair(nullptr, 0);
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
+  return nullptr;
 }
 
-void RocksDBIndex::applyCommitedEstimates(
-    std::vector<uint64_t> const& inserts,
-    std::vector<uint64_t> const& removes) {
-  // This function is required to be overloaded by indexes with Estimates. All other should not call this function.
-  // In Production this call will be ignored, it is not critical
-  TRI_ASSERT(false);
+bool RocksDBIndex::needToPersistEstimate() const {
+  return false;
 }

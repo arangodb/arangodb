@@ -811,7 +811,7 @@ void RestoreFeature::start() {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
                                               << dbName << "'";
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << _httpClient->getErrorMessage() << "'";
+          << _httpClient->getErrorMessage();
       FATAL_ERROR_EXIT();
     }
 
@@ -826,8 +826,7 @@ void RestoreFeature::start() {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Could not connect to endpoint "
         << _httpClient->getEndpointSpecification();
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
-                                              << "'";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage();
     FATAL_ERROR_EXIT();
   }
 

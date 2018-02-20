@@ -28,6 +28,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -40,6 +41,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
@@ -48,10 +50,10 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
-
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
-    : _id(TRI_NewTickServer()),
+RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId)
+    : _vocbase(vocbase),
+      _serverId(serverId),
+      _id(TRI_NewTickServer()),
       _lastTick(0),
       _currentTick(0),
       _trx(),
@@ -60,7 +62,8 @@ RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _expires(TRI_microtime() + ttl),
+      _ttl(ttl),
+      _expires(TRI_microtime() + _ttl),
       _isDeleted(false),
       _isUsed(true),
       _hasMore(true) {}
@@ -521,15 +524,31 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  if (ttl <= 0.0) {
-    ttl = DefaultTTL;
+  if (_ttl > 0.0) {
+    ttl = _ttl;
+  } else {
+    ttl = InitialSyncer::defaultBatchTimeout;
   }
   _expires = TRI_microtime() + ttl;
+  if (_serverId != 0) {
+    _vocbase->updateReplicationClient(_serverId, ttl);
+  }
 }
 
 void RocksDBReplicationContext::release() {
   TRI_ASSERT(_isUsed);
   _isUsed = false;
+  if (_serverId != 0) {
+    double ttl;
+    if (_ttl > 0.0) {
+      // use TTL as configured
+      ttl = _ttl;
+    } else {
+      // none configuration. use default
+      ttl = InitialSyncer::defaultBatchTimeout;
+    }
+    _vocbase->updateReplicationClient(_serverId, ttl);
+  }
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {

@@ -1,5 +1,5 @@
 A Hello World Example for JSON
-------------------------------
+==============================
 
 If you change the example slightly, then a JSON object will be delivered.
 

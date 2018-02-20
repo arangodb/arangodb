@@ -88,7 +88,7 @@ class RocksDBEngine final : public StorageEngine {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
-  
+
   // minimum timeout for the synchronous replication
   double minimumSyncReplicationTimeout() const override { return 1.0; }
 
@@ -166,6 +166,7 @@ class RocksDBEngine final : public StorageEngine {
   void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
+  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;
@@ -359,7 +360,7 @@ class RocksDBEngine final : public StorageEngine {
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
-  
+
   // use write-throttling
   bool _useThrottle;
 

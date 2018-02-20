@@ -159,8 +159,8 @@ void RestExplainHandler::explainQuery() {
     result.add("stats", VPackSlice::noneSlice());
   }
 
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
 
   result.close();
 

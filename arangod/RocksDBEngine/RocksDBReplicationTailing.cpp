@@ -106,12 +106,20 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     // skip ignored databases and collections
     if (RocksDBLogValue::containsDatabaseId(type)) {
       TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+      _currentDbId = dbId;
       if (!shouldHandleDB(dbId)) {
+        resetTransientState();
         return;
       }
       if (RocksDBLogValue::containsCollectionId(type)) {
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        _currentCid = cid;
         if (!shouldHandleCollection(dbId, cid)) {
+          if (type == RocksDBLogType::SingleRemove || type == RocksDBLogType::SinglePut) {
+            resetTransientState();
+          } else {
+            _currentCid = 0;
+          }
           return;
         }
       }
@@ -176,6 +184,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
           _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCid)));
+          std::string const& cname = nameFromCid(_currentCid);
+          if (!cname.empty()) {
+            _builder.add("cname", VPackValue(cname));
+          }
           _builder.add("data", indexSlice);
           _builder.close();
           updateLastEmittedTick(tick);
@@ -407,7 +419,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
     TRI_ASSERT(!_removeDocumentKey.empty());
 
-    uint64_t revId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
     _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
@@ -420,8 +431,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
     _builder.add("data", VPackValue(VPackValueType::Object));
+    // only pass on _key, but no _rev
     _builder.add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-    _builder.add(StaticStrings::RevString, VPackValue(std::to_string(revId)));
     _builder.close();
     _builder.close();
     _removeDocumentKey.clear();
@@ -631,6 +642,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   TRI_ASSERT(tickStart <= tickEnd);
   uint64_t lastTick = tickStart;// generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;// contains end tick of last wb
+  uint64_t lastScannedTick = tickStart;
   
   //LOG_TOPIC(WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
   //tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
@@ -667,6 +679,11 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     
     rocksdb::BatchResult batch = iterator->GetBatch();
     TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
+
+    if (batch.sequence <= tickEnd) {
+      lastScannedTick = batch.sequence;
+    }
+
     if (!minTickIncluded && batch.sequence <= tickStart &&
         batch.sequence <= tickEnd) {
       minTickIncluded = true;
@@ -698,6 +715,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   }
 
   RocksDBReplicationResult result(TRI_ERROR_NO_ERROR, lastWrittenTick);
+  result.lastScannedTick(lastScannedTick);
   if (!s.ok()) {  // TODO do something?
     result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }

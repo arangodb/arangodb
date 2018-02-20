@@ -81,8 +81,8 @@ bool RestQueryHandler::readQueryProperties() {
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.add("enabled", VPackValue(queryList->enabled()));
   result.add("trackSlowQueries", VPackValue(queryList->trackSlowQueries()));
   result.add("trackBindVars", VPackValue(queryList->trackBindVars()));
@@ -162,8 +162,8 @@ bool RestQueryHandler::deleteQuerySlow() {
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-  result.add("error", VPackValue(false));
-  result.add("code", VPackValue((int)rest::ResponseCode::OK));
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
@@ -181,8 +181,8 @@ bool RestQueryHandler::deleteQuery(std::string const& name) {
   if (res == TRI_ERROR_NO_ERROR) {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)rest::ResponseCode::OK));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
     result.close();
 
     generateResult(rest::ResponseCode::OK, result.slice());
@@ -330,8 +330,8 @@ bool RestQueryHandler::parseQuery() {
   VPackBuilder result;
   {
     VPackObjectBuilder b(&result);
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue((int)rest::ResponseCode::OK));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
     result.add("parsed", VPackValue(true));
 
     result.add("collections", VPackValue(VPackValueType::Array));

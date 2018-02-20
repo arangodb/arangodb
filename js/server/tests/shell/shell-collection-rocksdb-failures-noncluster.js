@@ -49,7 +49,7 @@ function CollectionTruncateFailuresSuite() {
   for (let i = 0; i < 10000; ++i) {
     docs.push({value: i % 250, value2: i % 100});
   }
- 
+
   return {
 
     tearDown: cleanUp,
@@ -79,7 +79,7 @@ function CollectionTruncateFailuresSuite() {
       // All docments should be removed through intermediate commits.
       // We have two packs that fill up those commits.
       // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 0); 
+      assertEqual(c.count(), 0);
 
       // Test Primary
       {
@@ -118,6 +118,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -152,7 +153,7 @@ function CollectionTruncateFailuresSuite() {
       // All docments should be removed through intermediate commits.
       // We have two packs that fill up those commits.
       // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 20000); 
+      assertEqual(c.count(), 20000);
 
       // Test Primary
       {
@@ -191,6 +192,7 @@ function CollectionTruncateFailuresSuite() {
 
       // Test Selectivity Estimates
       {
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {
@@ -208,7 +210,7 @@ function CollectionTruncateFailuresSuite() {
           }
         }
       }
- 
+
     },
 
     testTruncateFailsBetweenCommits: function () {
@@ -227,7 +229,7 @@ function CollectionTruncateFailuresSuite() {
       // All docments should be removed through intermediate commits.
       // We have two packs that fill up those commits.
       // Now validate that we endup with an empty collection.
-      assertEqual(c.count(), 10000); 
+      assertEqual(c.count(), 10000);
 
       // Test Primary
       {
@@ -273,6 +275,7 @@ function CollectionTruncateFailuresSuite() {
       // Test Selectivity Estimates
       // This may be fuzzy...
       {
+        internal.waitForEstimatorSync(); // make sure estimates are consistent
         let indexes = c.getIndexes(true);
         for (let i of indexes) {
           switch (i.type) {

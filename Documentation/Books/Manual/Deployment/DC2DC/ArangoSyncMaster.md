@@ -1,12 +1,14 @@
-# ArangoSync Master 
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+# ArangoSync Master
 
 The _ArangoSync Master_ is responsible for managing all synchronization, creating
 tasks and assigning those to the _ArangoSync Workers_.
-<br/> At least 2 instances muts be deployed in each datacenter.
+
+At least 2 instances must be deployed in each datacenter.
 One instance will be the "leader", the other will be an inactive slave. When the
 leader is gone for a short while, one of the other instances will take over.
 
-With clusters of a significant size, the _sync master_ will require a 
+With clusters of a significant size, the _sync master_ will require a
 significant set of resources. Therefore it is recommended to deploy the _sync masters_
 on their own servers, equiped with sufficient CPU power and memory capacity.
 
@@ -14,12 +16,12 @@ To start an _ArangoSync Master_ using a `systemd` service, use a unit like this:
 
 ```text
 [Unit]
-Description=Run ArangoSync in master mode 
+Description=Run ArangoSync in master mode
 After=network.target
 
 [Service]
 Restart=on-failure
-EnvironmentFile=/etc/arangodb.env 
+EnvironmentFile=/etc/arangodb.env
 EnvironmentFile=/etc/arangodb.env.local
 LimitNOFILE=8192
 ExecStart=/usr/sbin/arangosync run master \
@@ -41,8 +43,8 @@ TimeoutStopSec=60
 WantedBy=multi-user.target
 ```
 
-The _sync master_ needs a TLS server certificate and a 
-If you want the service to create a TLS certificate & client authentication 
+The _sync master_ needs a TLS server certificate and a
+If you want the service to create a TLS certificate & client authentication
 certificate, for authenticating with _ArangoSync Masters_ in another datacenter,
 for every start, add this to the `Service` section.
 
@@ -65,7 +67,7 @@ ExecStartPre=/usr/sbin/arangosync create client-auth keyfile \
 ```
 
 The _ArangoSync Master_ must be reachable on a TCP port `${MASTERPORT}` (used with `--server.port` option).
-This port must be reachable from inside the datacenter (by sync workers and operations) 
+This port must be reachable from inside the datacenter (by sync workers and operations)
 and from inside of the other datacenter (by sync masters in the other datacenter).
 
 ## Recommended deployment environment

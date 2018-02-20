@@ -1216,12 +1216,12 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
           responseBodyBuf.c_str(), responseBodyBuf.length());
       VPackSlice slice = builder->slice();
 
-      if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+      if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
         errorNum = TRI_ERROR_INTERNAL;
       }
 
       if (slice.isObject()) {
-        VPackSlice v = slice.get("errorNum");
+        VPackSlice v = slice.get(StaticStrings::ErrorNum);
         if (v.isNumber()) {
           if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
             /* if we've got an error num, error has to be true. */
@@ -1230,7 +1230,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
           }
         }
 
-        v = slice.get("errorMessage");
+        v = slice.get(StaticStrings::ErrorMessage);
         if (v.isString()) {
           errorMessage += v.copyString();
         } else {
@@ -1529,7 +1529,7 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
         responseBodyBuf.c_str(), responseBodyBuf.length());
     VPackSlice slice = builder->slice();
 
-    if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
@@ -1558,7 +1558,7 @@ bool RemoteBlock::hasMore() {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
   bool hasMore = true;
@@ -1586,7 +1586,7 @@ int64_t RemoteBlock::count() const {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 
@@ -1615,7 +1615,7 @@ int64_t RemoteBlock::remaining() {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 

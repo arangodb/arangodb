@@ -867,14 +867,29 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     CHECK((i == expected.size()));
   }
 
-  // bound view name is not supported
+  // test existent (bool) with bound view name
   {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[1].slice(),
+    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW @@testView FILTER EXISTS(d.value, @type, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
-      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"type\", \"testView\": \"testView\" }")
+      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"type\", \"@testView\": \"testView\" }")
     );
-    REQUIRE(TRI_ERROR_QUERY_PARSE == result.code);
+
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
   }
 
   // test existent (bool) via []

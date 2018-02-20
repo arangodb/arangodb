@@ -86,7 +86,7 @@ class ViewExpressionContext final : public aql::ExpressionContext {
 class IResearchViewBlockBase : public aql::ExecutionBlock {
  public:
   IResearchViewBlockBase(
-    arangodb::iresearch::CompoundReader&& reader,
+    arangodb::iresearch::PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine&,
     IResearchViewNode const&
   );
@@ -117,7 +117,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 
   irs::attribute_view _filterCtx; // filter context
   ViewExpressionContext _ctx;
-  iresearch::CompoundReader _reader;
+  iresearch::PrimaryKeyIndexReader const& _reader;
   irs::filter::prepared::ptr _filter;
   irs::order::prepared _order;
   iresearch::ExpressionExecutionContext _execCtx; // expression execution context
@@ -133,7 +133,7 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
 class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
  public:
   IResearchViewUnorderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -166,7 +166,7 @@ class IResearchViewUnorderedBlock : public IResearchViewBlockBase {
 class IResearchViewBlock final : public IResearchViewUnorderedBlock {
  public:
   IResearchViewBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );
@@ -194,7 +194,7 @@ class IResearchViewBlock final : public IResearchViewUnorderedBlock {
 class IResearchViewOrderedBlock final : public IResearchViewBlockBase {
  public:
   IResearchViewOrderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
   );

@@ -36,7 +36,7 @@ stages) and scorers (used during the sorting stage) allowing full control over
 the behaviour of the engine.
 
 
-### ArangoSearch Scorers:
+### ArangoSearch Scorers
 
 ArangoSearch accesses scorers directly by their internal names. The
 name (in upper-case) of the scorer is the function name to be used in the
@@ -132,7 +132,7 @@ ArangoDB collection a link definition must be added to the properties of the
 said ArangoSearch view defining the link parameters as per the section
 [View definition/modification](#view-definitionmodification).
 
-### Analyzers:
+### Analyzers
 
 To simplify query syntax ArangoSearch provides a concept of 
 [named analyzers](ArangoSearch/Analyzers.md) which
@@ -201,24 +201,24 @@ During view modification the following directives apply:
 
     * bytes: (optional; for default values use an empty object: `{}`)
 
-      * intervalStep: (optional, default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional, default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > segment_bytes / (all_segment_bytes / #segments)`
 
     * bytes_accum: (optional; for default values use: `{}`)
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > (segment_bytes + sum_of_merge_candidate_segment_bytes) / all_segment_bytes`
 
     * count: (optional; for default values use: `{}`)
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > segment_docs{valid} / (all_segment_docs{valid} / #segments)`
@@ -226,8 +226,8 @@ During view modification the following directives apply:
     * fill: (optional)
       if specified, use empty object for default values, i.e. `{}`
 
-      * intervalStep: (optional; default: `10`; to disable use: `0`)
-        apply consolidation policy with every Nth commit
+      * segmentThreshold: (optional; default: `300`; to disable use: `0`)
+        apply consolidation policy IFF {segmentThreshold} >= #segments
 
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`

@@ -26,11 +26,20 @@
 
 #include "Aql/Query.h"
 #include "Aql/AstNode.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <vector>
 
-struct TRI_vocbase_t;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a TRI_vocbase_t that will call shutdown() on deallocation
+///        to force deallocation of dropped collections
+////////////////////////////////////////////////////////////////////////////////
+struct Vocbase: public TRI_vocbase_t {
+  template<typename... Args>
+  Vocbase(Args&&... args): TRI_vocbase_t(std::forward<Args>(args)...) {}
+  ~Vocbase() { shutdown(); }
+};
 
 namespace v8 {
 class Isolate; // forward declaration

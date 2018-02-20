@@ -5,24 +5,22 @@ General Options
 
 `--database.auto-upgrade`
 
-Specifying this option will make the server perform a database upgrade at
-start. A database upgrade will first compare the version number stored in the
-file VERSION in the database directory with the current server version.
-
-If the two version numbers match, the server will start normally.
+Specifying this option will make the server perform a database upgrade instead
+of starting the server normally. A database upgrade will first compare the
+version number stored in the file VERSION in the database directory with the
+current server version.
 
 If the version number found in the database directory is higher than the version
 number the server is running, the server expects this is an unintentional
-downgrade and will warn about this. It will however start normally. Using the
-server in these conditions is however not recommended nor supported.
+downgrade and will warn about this. Using the server in these conditions is
+neither recommended nor supported.
 
 If the version number found in the database directory is lower than the version
 number the server is running, the server will check whether there are any
 upgrade tasks to perform. It will then execute all required upgrade tasks and
 print their statuses. If one of the upgrade tasks fails, the server will exit
-and refuse to start. Re-starting the server with the upgrade option will then
-again trigger the upgrade check and execution until the problem is fixed. If all
-tasks are finished, the server will start normally.
+with an error. Re-starting the server with the upgrade option will then again
+trigger the upgrade check and execution until the problem is fixed.
 
 Whether or not this option is specified, the server will always perform a
 version check on startup. Running the server with a non-matching version number

@@ -128,19 +128,7 @@ resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // source branch for pull requests
-mainBranch = "unknown"
-
-if ("devel" == "devel") {
-    mainBranch = "devel"
-}
-else { 
-    mainBranch = "3.3"
-}
-
-if (! env.BRANCH_NAME) {
-    env.BRANCH_NAME = mainBranch
-}
-
+mainBranch = "devel"
 sourceBranchLabel = env.BRANCH_NAME
 
 if (env.BRANCH_NAME =~ /^PR-/) {
@@ -1351,7 +1339,11 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            logFile = "..\\" + logFile
+            echo "starting windows configure and build"
+            workspace = "${env.WORKSPACE}"
+            workspace = workspace.replace("\\", "/")
+            logFile = workspace + "/" + logFile
+
             extra = "-DUSE_CATCH_TESTS=ON -DUSE_FAILURE_TESTS=ON -DDEBUG_SYNC_REPLICATION=ON"
             if( edition == "enterprise"){
                 extra += " -DUSE_ENTERPRISE=ON"
@@ -1363,7 +1355,7 @@ def buildEdition(os, edition, maintainer) {
             powershell "Remove-Item -Force -Recurse ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -Force -ItemType Directory ${arch} -ErrorAction SilentlyContinue"
             powershell "New-Item -ItemType Directory -Force -Path build"
-            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru ${logFile}"
+            powershell "cd build; ..\\configure\\${os}_vs2017_RelWithDebInfo.ps1 -build ${extra} | Add-Content -PassThru -Path \"${logFile}\""
         }
 
         logStopStage(os, logFile)

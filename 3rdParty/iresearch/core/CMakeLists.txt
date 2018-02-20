@@ -293,32 +293,32 @@ if(MSVC)
   )
 endif()
 
-if (USE_IQL)
+# generate IQL grammar
+if(MSVC)
+  # force dependency modification validation by comparing with local copy of the
+  # source file to suppress file regeneration by scripts generated for MSVC
   add_custom_command(
     OUTPUT iql/parser.cc
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    DEPENDS iql ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    COMMAND bison --graph --report=all -o parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
-    WORKING_DIRECTORY iql
-  )
-
-  add_custom_command(
-    OUTPUT iql
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     COMMAND ${CMAKE_COMMAND} -E make_directory iql
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
+  )
+else()
+  add_custom_command(
+    OUTPUT iql/parser.cc
+    MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E make_directory iql
+    COMMAND bison --graph --report=all -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
   )
 endif()
 
-add_custom_command(
-  OUTPUT utils
-  COMMAND ${CMAKE_COMMAND} -E make_directory utils
-)
-
 # trigger generation of BUILD_IDENTIFIER if needed
 add_custom_command(
-  OUTPUT ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER 
+  OUTPUT ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
   COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_BINARY_DIR}/BUILD_IDENTIFIER
-  DEPENDS utils
-  WORKING_DIRECTORY utils
 )
 
 # trigger regeneration of utils/version_utils.cpp with build_id from file: BUILD_IDENTIFIER
