@@ -122,6 +122,10 @@ struct Functions {
                            VPackFunctionParameters const&);
    static AqlValue Length(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue FindFirst(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+   static AqlValue FindLast(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
    static AqlValue First(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Last(arangodb::aql::Query*, transaction::Methods*,
