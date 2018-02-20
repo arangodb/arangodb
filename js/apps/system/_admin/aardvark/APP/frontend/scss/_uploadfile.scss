@@ -78,4 +78,8 @@
     position: relative;
     top: -22px;
   }
+
+  _::-webkit-full-page-media, _:future, span {
+    top: 0px;
+  }
 }
