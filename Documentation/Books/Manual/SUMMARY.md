@@ -152,7 +152,7 @@
 ## OPERATIONS		
 
 * [Deployment](Deployment/README.md)
-  * [Single instance](Deployment/SingleSingleInstance/README.md)
+  * [Single instance](Deployment/SingleInstance/README.md)
   * [Master/Slave](Deployment/MasterSlave/README.md)
   * [Active Failover](Deployment/ActiveFailover/README.md)
   * [Cluster](Deployment/Cluster/README.md)  
