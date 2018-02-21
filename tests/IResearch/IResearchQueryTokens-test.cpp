@@ -118,7 +118,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
     }
 
     _term.value(_data);
-    _data = irs::bytes_ref::nil;
+    _data = irs::bytes_ref::NIL;
     return true;
   }
 

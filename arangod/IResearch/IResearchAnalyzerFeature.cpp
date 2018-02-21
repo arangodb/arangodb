@@ -106,7 +106,7 @@ bool IdentityAnalyzer::next() {
 
   _term.value(irs::ref_cast<irs::byte_type>(_value));
   _empty = true;
-  _value = irs::string_ref::nil;
+  _value = irs::string_ref::NIL;
 
   return !empty;
 }
@@ -292,9 +292,9 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
     if (instance) {
       _config.clear();
       _config.append(type).append(properties);
-      _key = irs::string_ref::nil;
-      _type = irs::string_ref::nil;
-      _properties = irs::string_ref::nil;
+      _key = irs::string_ref::NIL;
+      _type = irs::string_ref::NIL;
+      _properties = irs::string_ref::NIL;
 
       if (!type.null()) {
         _type = irs::string_ref(&(_config[0]), type.size());
@@ -318,9 +318,9 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
   }
 
   _config.clear(); // set as uninitialized
-  _key = irs::string_ref::nil; // set as uninitialized
-  _type = irs::string_ref::nil; // set as uninitialized
-  _properties = irs::string_ref::nil; // set as uninitialized
+  _key = irs::string_ref::NIL; // set as uninitialized
+  _type = irs::string_ref::NIL; // set as uninitialized
+  _properties = irs::string_ref::NIL; // set as uninitialized
   _features.clear(); // set as uninitialized
 
   return false;
@@ -330,7 +330,7 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(
     irs::string_ref const& key
 ) {
   if (key.null()) {
-    _key = irs::string_ref::nil;
+    _key = irs::string_ref::NIL;
 
     return; // nothing more to do
   }
@@ -502,7 +502,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::ensure(
   // placeholders will be loaded/validation during start()/loadConfiguration()
   return _started
     ? get(name)
-    : emplace(name, irs::string_ref::nil, irs::string_ref::nil, false).first;
+    : emplace(name, irs::string_ref::NIL, irs::string_ref::NIL, false).first;
 }
 
 size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
@@ -638,7 +638,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         PTR_NAMED(AnalyzerPool, pool, name);
 
         if (!pool
-            || !pool->init(IdentityAnalyzer::type().name(), irs::string_ref::nil, extraFeatures)) {
+            || !pool->init(IdentityAnalyzer::type().name(), irs::string_ref::NIL, extraFeatures)) {
           LOG_TOPIC(WARN, IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
           throw irs::illegal_state(); // this should never happen, treat as an assertion failure
         }
@@ -869,9 +869,9 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
         // safe to reset since loadConfiguration(...) is called from start() which is single-thread
         if (pool) {
           pool->_config.clear(); // noexcept
-          pool->_key = irs::string_ref::nil; // noexcept
-          pool->_type = irs::string_ref::nil; // noexcept
-          pool->_properties = irs::string_ref::nil; // noexcept
+          pool->_key = irs::string_ref::NIL; // noexcept
+          pool->_type = irs::string_ref::NIL; // noexcept
+          pool->_properties = irs::string_ref::NIL; // noexcept
         }
       }
    }

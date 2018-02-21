@@ -408,7 +408,7 @@ void IResearchViewBlock::resetIterator() {
     _scrVal = _scr->value();
   } else {
     _scr = &irs::score::no_score();
-    _scrVal = irs::bytes_ref::nil;
+    _scrVal = irs::bytes_ref::NIL;
   }
 }
 
