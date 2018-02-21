@@ -114,12 +114,11 @@ function getModifyQueryResultsRaw (query, bindVars) {
 // / @brief return the results of a query, version
 // //////////////////////////////////////////////////////////////////////////////
 
-function getRawQueryResults (query, bindVars, opts) {
-  opts = opts || {
+function getRawQueryResults (query, bindVars) {
+  var queryResult = AQL_EXECUTE(query, bindVars, {
     count: true,
     batchSize: 3000
-  };
-  var queryResult = AQL_EXECUTE(query, bindVars, opts);
+  });
   return queryResult.json;
 }
 
@@ -127,7 +126,7 @@ function getRawQueryResults (query, bindVars, opts) {
 // / @brief return the results of a query in a normalized way
 // //////////////////////////////////////////////////////////////////////////////
 
-function getQueryResults (query, bindVars, recursive, opts) {
+function getQueryResults (query, bindVars, recursive) {
   var result = getRawQueryResults(query, bindVars);
 
   if (Array.isArray(result)) {
