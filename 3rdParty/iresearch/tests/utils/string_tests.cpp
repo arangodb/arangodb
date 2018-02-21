@@ -44,10 +44,11 @@ TEST(string_ref_tests, create) {
   // create default reference
   {
     const string_ref ref;
-    EXPECT_NE(nullptr, ref.c_str());
+    EXPECT_EQ(nullptr, ref.c_str());
     EXPECT_EQ(0, ref.size());
-    EXPECT_FALSE(ref.null());
+    EXPECT_TRUE(ref.null());
     EXPECT_TRUE(ref.empty());
+    EXPECT_EQ(irs::string_ref::nil, ref);
   }
 
   // create empty reference

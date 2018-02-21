@@ -144,7 +144,7 @@ class same_position_query final : public filter::prepared {
 
       // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::blank, *term_state.cookie)) {
+      if (!term->seek(bytes_ref::nil, *term_state.cookie)) {
         return doc_iterator::empty();
       }
 

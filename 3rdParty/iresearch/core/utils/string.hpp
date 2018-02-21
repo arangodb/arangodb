@@ -55,11 +55,19 @@ struct char_traits<::iresearch::byte_type> {
   }
 
   static int compare(const char_type* lhs, const char_type* rhs, size_t count) {
+    if (0 == count) {
+      return 0;
+    }
+
     assert(lhs && rhs);
     return std::memcmp(lhs, rhs, count);
   }
 
   static char_type* copy(char_type* dst, const char_type* src, size_t count) {
+    if (0 == count) {
+      return dst;
+    }
+
     assert(dst && src);
     return reinterpret_cast<char_type*>(std::memcpy(dst, src, count));
   }
@@ -71,6 +79,10 @@ struct char_traits<::iresearch::byte_type> {
   static bool eq_int_type(int_type lhs, int_type rhs) { return lhs == rhs; }
 
   static const char_type* find(const char_type* ptr, size_t count, const char_type& ch) {
+    if (0 == count) {
+      return nullptr;
+    }
+
     assert(ptr);
     return reinterpret_cast<char_type const*>(std::memchr(ptr, ch, count));
   }
@@ -84,6 +96,10 @@ struct char_traits<::iresearch::byte_type> {
   static bool lt(char_type lhs, char_type rhs) { return lhs < rhs; }
 
   static char_type* move(char_type* dst, const char_type* src, size_t count) {
+    if (0 == count) {
+      return dst;
+    }
+
     assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
@@ -132,10 +148,9 @@ class basic_string_ref {
   typedef Elem char_type;
 
   IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref nil; // null string
-  IRESEARCH_HELPER_DLL_LOCAL static const basic_string_ref blank; // empty string
 
   CONSTEXPR basic_string_ref() NOEXCEPT
-    : data_(EMPTY), size_(0) {
+    : data_(nullptr), size_(0) {
   }
 
   // Constructs a string reference object from a ref and a size.
@@ -225,14 +240,6 @@ class basic_string_ref {
     return lhs.compare(0, std::basic_string<char_type>::npos, rhs.c_str(), rhs.size()) < 0;
   }
  
-  //friend bool operator==(const std::basic_string<_Elem>& lhs, const basic_string_ref& rhs) {
-  //  return 0 == lhs.compare(0, std::basic_string<_Elem>::npos, rhs.c_str(), rhs.size());
-  //}
-  
-  //friend bool operator<(const basic_string_ref& lhs, const std::basic_string<_Elem>& rhs) {
-  //  return compare(lhs, rhs.c_str(), rhs.size()) < 0;
-  //}
-
   friend bool operator>=( const basic_string_ref& lhs, const basic_string_ref& rhs ) {
     return !( lhs < rhs );
   }
@@ -264,23 +271,10 @@ class basic_string_ref {
  protected:
   const char_type* data_;
   size_t size_;
-
- private:
-  static CONSTEXPR const char_type EMPTY[1]
-#if !(defined(_MSC_VER) && _MSC_VER < 1900) // MSVC 2013 has no constexpr support
-  {}
-#endif
-  ;
 }; // basic_string_ref
 
 template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::nil(nullptr, 0);
-
-template<typename Elem, typename Traits>
-/*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::blank;
-
-template<typename Elem, typename Traits>
-/*static*/ CONSTEXPR const Elem basic_string_ref<Elem, Traits>::EMPTY[1] MSVC2013_ONLY({ Elem() });
 
 template class IRESEARCH_API basic_string_ref<char>;
 template class IRESEARCH_API basic_string_ref<byte_type>;

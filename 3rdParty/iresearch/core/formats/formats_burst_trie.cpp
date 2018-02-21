@@ -1166,8 +1166,8 @@ term_reader::term_reader(term_reader&& rhs) NOEXCEPT
     owner_(rhs.owner_) {
   min_term_ref_ = min_term_;
   max_term_ref_ = max_term_;
-  rhs.min_term_ref_ = bytes_ref::blank;
-  rhs.max_term_ref_ = bytes_ref::blank;
+  rhs.min_term_ref_ = bytes_ref::nil;
+  rhs.max_term_ref_ = bytes_ref::nil;
   rhs.terms_count_ = 0;
   rhs.doc_count_ = 0;
   rhs.doc_freq_ = 0;
@@ -1606,7 +1606,7 @@ void field_writer::end_field(
   }
 
   // cause creation of all final blocks
-  push(bytes_ref::blank);
+  push(bytes_ref());
 
   // write root block with empty prefix
   write_blocks(0, stack.size());

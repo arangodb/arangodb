@@ -73,8 +73,6 @@ struct IRESEARCH_API increment : basic_attribute<uint32_t> {
 struct IRESEARCH_API term_attribute : attribute {
   DECLARE_ATTRIBUTE_TYPE();
 
-  term_attribute() NOEXCEPT;
-
   const bytes_ref& value() const {
     return value_;
   }
@@ -92,7 +90,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_ATTRIBUTE_TYPE();
 
   void clear() {
-    value = bytes_ref();
+    value = bytes_ref::nil;
   }
 };
 
