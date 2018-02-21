@@ -313,14 +313,18 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // extract "rev"
   VPackSlice const rev = doc.get(StaticStrings::RevString);
 
-  if (!rev.isString()) {
+  if (!rev.isNone() && !rev.isString()) {
+    // _rev is an optional attribute
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document revision format");
   }
 
   _documentBuilder.clear();
   _documentBuilder.openObject();
   _documentBuilder.add(StaticStrings::KeyString, key);
-  _documentBuilder.add(StaticStrings::RevString, rev);
+  if (rev.isString()) {
+    // _rev is an optional attribute
+    _documentBuilder.add(StaticStrings::RevString, rev);
+  }
   _documentBuilder.close();
 
   VPackSlice const old = _documentBuilder.slice();

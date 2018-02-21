@@ -105,6 +105,9 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#if defined(ARCHITECTURE_OPTIMIZATIONS)
+  Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
+#endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
