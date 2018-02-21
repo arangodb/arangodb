@@ -690,7 +690,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::lookupIndex(arangodb::v
   return nullptr;
 }
 
-arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) {
+arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
   before();
   TRI_ASSERT(false);
   return arangodb::LocalDocumentId();
