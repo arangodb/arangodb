@@ -56,7 +56,9 @@ std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
     return "rw";
   } else if (lvl == auth::Level::RO) {
     return "ro";
-  } else {
+  } else if (lvl == auth::Level::NONE) {
     return "none";
+  } else {
+    return "undefined";
   }
 }
