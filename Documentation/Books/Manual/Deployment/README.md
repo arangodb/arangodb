@@ -1,9 +1,9 @@
 Deployment
 ==========
 
-In this Chapter we describe various possibilities to deploy ArangoDB.
+This _Chapter_ describes various possibilities to deploy ArangoDB:
 
-- [Single instance](Single.md)
+- [Single instance](SingleInstance/README.md)
 - [Master/Slave](MasterSlave/README.md)
 - [Active Failover](ActiveFailover/README.md)
 - [Cluster](Cluster/README.md)

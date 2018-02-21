@@ -1,15 +1,17 @@
-# Active Failover deployment
+Active Failover Deployment
+==========================
 
-This _Section_ describes how to deploy an _Active Failover_ environement.
-For a general introduction to _Active Failover_, please refer to the [Active Failover](../../Scalability/ActiveFailover/README.md) chapter.
+This _Section_ describes how to deploy an _Active Failover_ environment.
+For a general introduction to _Active Failover_, please refer to the
+[Active Failover](../../Scalability/ActiveFailover/README.md) chapter.
 
 As usual there are two main ways to start an Active-Failover setup:
-Either [manually](Starting Manually) or using the [ArangoDB starter](Using the ArangoDB Starter) 
+Either [manually](README.md#starting-manually) or using the [_ArangoDB Starter_](README.md#using-the-arangodb-starter) 
 (possibly in conjunction with docker).
 
 ## Starting Manually
 
-We are going to start two single server instances and one agency.
+We are going to start two single server instances and one _Agency_.
 First we need to start the 
 ```bash
     arangod \
@@ -28,7 +30,7 @@ First we need to start the
         | tee dbdir/4001.stdout 2>&1 &
 ```
 
-Next we are going to start the leader (wait until this server is fully started)
+Next we are going to start the _leader_ (wait until this server is fully started)
 ```bash
     arangod \
       --database.directory dbdir/data8530 \
@@ -43,7 +45,7 @@ Next we are going to start the leader (wait until this server is fully started)
       | tee cluster/8530.stdout 2>&1 &
 ```
 
-After the Leader server is fully started then you can add additional Followers,
+After the _leader_ server is fully started then you can add additional _followers_,
 with basically the same startup parameters (except for their address and database directory)
 
 ```bash
@@ -64,8 +66,8 @@ with basically the same startup parameters (except for their address and databas
 ## Using the ArangoDB Starter
 
 If you want to start a resilient single database server, use `--starter.mode=resilientsingle`.
-In this mode a 3 machine agency is started and 2 single servers that perform
-asynchronous replication an failover if needed.
+In this mode a 3 machine _Agency is started as well as 2 single servers that perform
+asynchronous replication an failover, if needed.
 
 ```bash
 arangodb --starter.mode=resilientsingle --starter.join A,B,C
@@ -73,7 +75,7 @@ arangodb --starter.mode=resilientsingle --starter.join A,B,C
 
 Run this on machine A, B & C.
 
-The starter will decide on which 2 machines to run a single server instance.
+The _Starter_ will decide on which 2 machines to run a single server instance.
 To override this decision (only valid while bootstrapping), add a
 `--cluster.start-single=false` to the machine where the single server
 instance should NOT be scheduled.

@@ -1,5 +1,5 @@
-Single instance deployment
---------------------------
+Single Instance Deployment
+==========================
 
 The latest official builds of ArangoDB for all supported operating systems may be obtained from https://www.arangodb.com/download/.
 

@@ -152,7 +152,7 @@
 ## OPERATIONS		
 
 * [Deployment](Deployment/README.md)
-  * [Single instance](Deployment/Single.md)
+  * [Single instance](Deployment/SingleSingleInstance/README.md)
   * [Master/Slave](Deployment/MasterSlave/README.md)
   * [Active Failover](Deployment/ActiveFailover/README.md)
   * [Cluster](Deployment/Cluster/README.md)  
@@ -211,9 +211,10 @@
     * [Events](Administration/Auditing/AuditEvents.md)  
   * [Satellite Collections](Administration/Satellites.md) 
   * [Master/Slave](Administration/MasterSlave/README.md)
-    * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
-    * [Per-Database Setup](Administration/MasterSlave/DatabaseSetup.md)
-    * [Server-Level Setup](Administration/MasterSlave/ServerLevelSetup.md)
+    * [Setting up](Administration/MasterSlave/SettingUp.md)
+      * [Replication Applier](Administration/MasterSlave/ReplicationApplier.md)
+      * [Per-Database Setup](Administration/MasterSlave/DatabaseSetup.md)
+      * [Server-Level Setup](Administration/MasterSlave/ServerLevelSetup.md)
     * [Syncing Collections](Administration/MasterSlave/SyncingCollections.md)
   * [Active Failover](Administration/ActiveFailover/README.md)  
   * [Cluster](Administration/Cluster/README.md)

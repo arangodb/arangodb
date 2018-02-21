@@ -1,8 +1,8 @@
 Master/Slave Limitations
 =========================
 
-The Master/Slave setup in ArangoDB has a few limitations. Some of these limitations may be 
-removed in later versions of ArangoDB:
+The Master/Slave setup in ArangoDB has a few limitations. Some of these limitations
+may be removed in later versions of ArangoDB:
 
 * there is no feedback from the slaves to the master. If a slave cannot apply an event
   it got from the master, the master will have a different state of data. In this 
