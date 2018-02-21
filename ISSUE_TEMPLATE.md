@@ -1,72 +1,29 @@
-## my environment running ArangoDB
-I'm using the latest ArangoDB of the respective release series:
-- [ ] 2.8
-- [ ] 3.0
-- [ ] 3.1
-- [ ] 3.2
-- [ ] 3.3
-- [ ] self-compiled devel branch
+## My environment
 
-Mode:
-- [ ] Cluster
-- [ ] Single-Server
+* __ArangoDB version__ _(e.g. 3.3.2)_: 
+* __Storage engine__ _(MMFiles / RocksDB)_: 
+* __Deployment mode__ _(single server / Master/Slave / Active Failover / Cluster / DC2DC)_: 
+* __Configuration__ _(cluster setup details, notable server settings)_: 
+* __Infrastructure__ _(AWS / Azure / ... / own)_: 
+* __Operating system__ _(DCOS 1.10 / Ubuntu 17.10.1 / Windows 10 / ...)_: 
 
-Storage-Engine:
-- [ ] mmfiles
-- [ ] rocksdb
+## Component
 
-On this operating system:
-- [ ] DCOS on
-  - [ ] AWS
-  - [ ] Azure
-  - [ ] own infrastructure
-- [ ] Linux 
-  - [ ] Debian .deb
-  - [ ] Ubuntu .deb
-  - [ ] SUSE   .rpm
-  - [ ] RedHat .rpm
-  - [ ] Fedora .rpm
-  - [ ] Gentoo
-  - [ ] docker - official docker library
-  - [ ] other:
-- [ ] Windows, version: 
-- [ ] MacOS, version:
+__Affected feature__
+_(e.g. AQL query using web interface / arangosh / with driver ...)_:
 
 
-### this is an AQL-related issue:
-[ ] I'm using graph features
-
-I'm issuing AQL via:
-- [ ] web interface with this browser:     running on this OS:
-- [ ] arangosh
-- [ ] this Driver:
-
-I've run `db._explain("<my aql query>")` and it didn't shed more light on this.
-The AQL query in question is:
-
-The issue can be reproduced using this dataset:
-
-Please provide a way to create the dataset to run the above query on; either by a gist with an arangodump, or `db.collection.save({my: "values"}) statements. If it can be reproduced with one of the ArangoDB example datasets, it's a plus.
-
-### Foxx
+__Dataset__
+ _(description, or if possible, please share an example dataset to reproduce the issue)_:
 
 
-### this is a web interface-related issue:
-I'm using the web interface with this browser:     running on this OS:
-- [ ] authentication is enabled?
-- [ ] using the cluster?
-- [ ] _system database?
+## Steps to reproduce
 
-These are the steps to reproduce:
-1) open the browser on http://127.0.0.1:8529
-2) log in as ...
-3) use database [ ] `_system` [ ] other: 
-4) click to ...
-...
+1.
+2.
+3.
 
-The following problem occurs: [Screenshot?] 
-Instead I would be expecting: 
+__Problem__:
 
+__Expected result__:
 
-### this is an installation-related issue:
-Describe which steps you carried out, what you expected to happen and what actually happened.
