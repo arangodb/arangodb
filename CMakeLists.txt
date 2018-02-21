@@ -363,7 +363,7 @@ if (CMAKE_COMPILER_IS_GNUCC)
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "7.9.9")
     message(FATAL_ERROR "ArangoDB doesn't support g++ 8.0 yet.")
   endif()
-  set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
+  set(BASE_C_FLAGS "${BASE_C_FLAGS}")
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC OR APPLE)
@@ -493,8 +493,11 @@ else ()
     set(ARANGODB_SSE42_FLAGS "-msse4.2")
   endif ()
 
-  set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
+  set(BASE_FLAGS "${Vc_ARCHITECTURE_FLAGS} ${BASE_FLAGS}")
 endif ()
+
+set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
+
 
 ################################################################################
 ## BACKTRACE
