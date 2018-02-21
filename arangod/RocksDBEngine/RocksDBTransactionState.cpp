@@ -379,8 +379,8 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
   bool singleOp = hasHint(transaction::Hints::Hint::SINGLE_OPERATION);
   if (singleOp) {
     // singleOp => no modifications yet
-    TRI_ASSERT(!singleOp || (_rocksTransaction->GetNumPuts() == 0 &&
-                             _rocksTransaction->GetNumDeletes() == 0));
+    TRI_ASSERT(_rocksTransaction->GetNumPuts() == 0 &&
+               _rocksTransaction->GetNumDeletes() == 0);
     switch (operationType) {
       case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       case TRI_VOC_DOCUMENT_OPERATION_UPDATE:

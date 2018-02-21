@@ -29,7 +29,8 @@ namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
 static rocksdb::Slice Placeholder(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&placeholder),
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &placeholder),
     1);
 
 static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
@@ -253,7 +254,4 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-
-char arangodb::rocksDBFormatVersion() {
-  return '0';
-}
+char arangodb::rocksDBFormatVersion() { return '0'; }
