@@ -146,7 +146,9 @@ Result executeTransactionJS(
     // parse all other options. `allowImplicitCollections` will
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
-    TRI_V8ToVPack(isolate, builder, object, false);
+    // we must use "convertFunctionsToNull" here, because "action" is most
+    // likey a JavaScript function
+    TRI_V8ToVPack(isolate, builder, object, false, /*convertFunctionsToNull*/ true);
     if (!builder.isClosed()) {
       builder.close();
     }
