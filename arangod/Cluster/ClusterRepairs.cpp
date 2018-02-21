@@ -89,6 +89,8 @@ using DBServers = std::vector<std::string>;
 using CollectionId = std::string;
 
 struct Collection {
+  // corresponding slice
+  VPackSlice const* slice;
 
   std::string database;
   std::string name;
@@ -170,6 +172,7 @@ readCollections(const VPackSlice &plan) {
       }
 
       struct Collection collection {
+        &collectionSlice,
         databaseId,
         collectionName,
         distributeShardsLike,
@@ -263,8 +266,18 @@ AgencyWriteTransaction fixShard(
     << ")";
 
 
+  std::string const agencyCollectionId =
+    "Plan/Collections/" + collection.database + "/" + collection.name;
+
+  std::vector<AgencyPrecondition> agencyPreconditions = {
+    AgencyPrecondition(
+      agencyCollectionId,
+      AgencyPrecondition::Type::VALUE,
+      *collection.slice
+    )
+  };
+
   std::vector<AgencyOperation> agencyOperations = {};
-  std::vector<AgencyPrecondition> agencyPreconditions = {};
 
   // TODO both arguments may either be a single Op/Precond or a vector. Use a single value if applicable.
   AgencyWriteTransaction trx(agencyOperations, agencyPreconditions);
@@ -277,6 +290,9 @@ std::vector<AgencyWriteTransaction>
 ClusterRepairs::repairDistributeShardsLike(VPackSlice &&plan) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
   << "[tg] ClusterRepairs::repairDistributeShardsLike()";
+
+  // Needed to build agency transactions
+  TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
   std::map<CollectionId, struct Collection> collectionMap = readCollections(plan);
 

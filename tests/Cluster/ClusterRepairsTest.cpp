@@ -28,11 +28,13 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
 #include "lib/Random/RandomGenerator.h"
-#include <iostream>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/Compare.h>
+
+#include <iostream>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -61,28 +63,42 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
   GIVEN("") {
-    std::vector<AgencyWriteTransaction> transactions
-      = ClusterRepairs::repairDistributeShardsLike(planBuilder->slice());
+    // save old manager (maybe null)
+    std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
 
-    VPackBuilder transactionBuilder = Builder();
+    try {
+      // get a new manager
+      AgencyCommManager::initialize("testArangoAgencyPrefix");
 
-    REQUIRE(transactions.size() == 2);
+      std::vector<AgencyWriteTransaction> transactions
+        = ClusterRepairs::repairDistributeShardsLike(planBuilder->slice());
 
-    transactions[0].toVelocyPack(transactionBuilder);
+      VPackBuilder transactionBuilder = Builder();
 
-    std::shared_ptr<VPackBuilder> expectedTransaction
-      = R"=([{"myTrx1": "foo"}])="_vpack;
+      REQUIRE(transactions.size() == 2);
 
-    REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
-    REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
+      transactions[0].toVelocyPack(transactionBuilder);
 
-    transactions[1].toVelocyPack(transactionBuilder);
+      std::shared_ptr<VPackBuilder> expectedTransaction
+        = R"=([{"myTrx1": "foo"}])="_vpack;
 
-    expectedTransaction
-      = R"=([{"myTrx2": "bar"}])="_vpack;
+      REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
+      REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
 
-    REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
-    REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
+      transactions[1].toVelocyPack(transactionBuilder);
+
+      expectedTransaction
+        = R"=([{"myTrx2": "bar"}])="_vpack;
+
+      REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
+      REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
+    } catch(...) {
+      // restore old manager
+      AgencyCommManager::MANAGER = std::move(old_manager);
+      throw;
+    }
+    // restore old manager
+    AgencyCommManager::MANAGER = std::move(old_manager);
   }
 }
 
