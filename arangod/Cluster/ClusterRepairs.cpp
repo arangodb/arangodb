@@ -110,7 +110,7 @@ readCollections(const VPackSlice &plan) {
 
   Slice const &collectionsByDatabase = plan.get("Collections");
 
-  // maybe extract more, like
+  // maybe extract more fields, like
   // "Lock": "..."
   // "DBServers": {...}
   // ?
@@ -147,20 +147,7 @@ readCollections(const VPackSlice &plan) {
         << "    distributeShardsLike: " << distributeShardsLike.get();
       }
 
-      struct Collection collection1 {
-        databaseId,
-        collectionName,
-        distributeShardsLike,
-        repairingDistributeShardsLike,
-        {}
-      };
-
-      auto const& pairRv = collections.emplace(std::make_pair(collectionId, collection1));
-
-      //auto& collectionIt = pairRv.first;
-      struct Collection& collection = pairRv.first->second;
-
-      std::map<std::string, DBServers, VersionSort> &shards = collection.shardsByName;
+      std::map<std::string, DBServers, VersionSort> shardsByName;
 
       Slice const &shardsSlice = collectionSlice.get("shards");
 
@@ -179,9 +166,18 @@ readCollections(const VPackSlice &plan) {
           dbServers.emplace_back(dbServerId);
         }
 
-        shards.emplace(std::make_pair(shardId, dbServers));
+        shardsByName.emplace(std::make_pair(shardId, std::move(dbServers)));
       }
 
+      struct Collection collection {
+        databaseId,
+        collectionName,
+        distributeShardsLike,
+        repairingDistributeShardsLike,
+        std::move(shardsByName)
+      };
+
+      collections.emplace(std::make_pair(collectionId, std::move(collection)));
     }
 
   }
