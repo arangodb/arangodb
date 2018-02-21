@@ -420,7 +420,7 @@ VPackBuilder auth::User::toVPackBuilder() const {
 }
 
 void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
-  if (dbname.empty()) {
+  if (dbname.empty() || level == auth::Level::UNDEFINED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for empty db name");
   }
@@ -461,9 +461,8 @@ bool auth::User::removeDatabase(std::string const& dbname) {
 void auth::User::grantCollection(std::string const& dbname,
                                  std::string const& cname,
                                  auth::Level const level) {
-  if (dbname.empty() || cname.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
+  if (dbname.empty() || cname.empty() || level == auth::Level::UNDEFINED) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
   } else if (cname[0] == '_') {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
