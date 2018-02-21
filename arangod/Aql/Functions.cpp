@@ -1599,6 +1599,9 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
 }
 
 
+
+
+
 #include <iostream>
 // DATE FUNCTIONS
 
@@ -1611,11 +1614,33 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
   uint64_t dur = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 
   return AqlValue(AqlValueHintUInt(dur));
+}
 
-  // return AqlValue(static_cast<uint64_t>(duration_cast<milliseconds>(
-  //   system_clock::now().time_since_epoch() ) .count() ));
+bool Functions::ParameterToTimePoint(arangodb::aql::Query *const query,
+                                 transaction::Methods *const trx,
+                                 VPackFunctionParameters const& parameters,
+                                 std::chrono::system_clock::time_point& tp,
+                                 std::string const& functionName,
+                                 size_t parameterIndex) {
+  using namespace std::chrono;
 
-    //dur = duration_cast< duration<uint64_t, std::milli>>(system_clock::now().time_since_epoch() ) .count();
+  AqlValue value = ExtractFunctionParameterValue(parameters, parameterIndex);
+
+  if (!value.isString() && !value.isNumber() ) {
+    RegisterInvalidArgumentWarning(query, functionName.c_str());
+    return false;
+  }
+
+  if (value.isNumber()) {
+    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+  } else {
+    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+      RegisterWarning(query, functionName.c_str(), TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return false;
+    }
+  }
+
+  return true;
 }
 
 /// @brief function DATE_ISO8601
@@ -1628,23 +1653,9 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
   system_clock::time_point tp;
 
   if (parameters.size() == 1) {
-    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-    if (!value.isString() && !value.isNumber() ) {
-      RegisterInvalidArgumentWarning(query, "DATE_ISO8601");
+    if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISO8601", 0)) {
       return AqlValue(AqlValueHintNull());
     }
-
-    if (value.isNumber()) {
-      tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-    } else {
-      if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-        RegisterWarning(query, "DATE_ISO8601",
-          TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
     // YMD is a must
   } else if (parameters.size() >= 3 && parameters.size() <= 7) {
     for (uint8_t i = 0; i < parameters.size(); i++) {
@@ -1687,7 +1698,7 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
     RegisterInvalidArgumentWarning(query, "DATE_ISO8601");
   }
 
-  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) )); // %Y-%m-%d
+  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
 }
 
 /// @brief function DATE_TIMESTAMP
@@ -1698,23 +1709,10 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
   using namespace date;
 
   if (parameters.size() == 1) {
-    AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-    if (!value.isString() && !value.isNumber() ) {
-      RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
-      return AqlValue(AqlValueHintNull());
-    }
-
     system_clock::time_point tp;
 
-    if (value.isNumber()) {
-      tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-    } else {
-      if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-        RegisterWarning(query, "DATE_TIMESTAMP",
-          TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
+    if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_TIMESTAMP", 0)) {
+      return AqlValue(AqlValueHintNull());
     }
 
     return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(tp.time_since_epoch()).count()));
@@ -1750,7 +1748,7 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
     }
 
-    if (parameters.size() >= 7) {
+    if (parameters.size() == 7) {
       ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
     }
 
@@ -1790,23 +1788,10 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_DAYOFWEEK");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_DAYOFWEEK",
-        TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFWEEK", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintUInt(
@@ -1821,22 +1806,10 @@ AqlValue Functions::DateYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_YEAR");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_YEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_YEAR", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintInt(
@@ -1851,22 +1824,10 @@ AqlValue Functions::DateMonth(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_MONTH");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MONTH", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintUInt(
@@ -1881,22 +1842,10 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_DAY");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_DAY", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAY", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintUInt(
@@ -1911,22 +1860,10 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_HOUR");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_HOUR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_HOUR", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   uint64_t hours = make_time(tp - floor<days>(tp)).hours().count();
@@ -1941,22 +1878,10 @@ AqlValue Functions::DateMinute(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_MINUTE");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_MINUTE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MINUTE", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   uint64_t minutes = make_time(tp - floor<days>(tp)).minutes().count();
@@ -1971,22 +1896,10 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_SECOND");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_SECOND", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SECOND", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   uint64_t seconds = make_time(tp - floor<days>(tp)).seconds().count();
@@ -2001,22 +1914,10 @@ AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_MILLISECOND");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_MILLISECOND", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MILLISECOND", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   // duration_cast<milliseconds>(  system_clock::now().time_since_epoch() ).count();
@@ -2033,22 +1934,10 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_DAYOFYEAR");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_DAYOFYEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFYEAR", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
@@ -2064,22 +1953,10 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_ISOWEEK");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_ISOWEEK", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISOWEEK", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
@@ -2095,22 +1972,10 @@ AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_LEAPYEAR");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_LEAPYEAR", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_LEAPYEAR", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintBool(year_month_day(floor<days>(tp)).year().is_leap()));
@@ -2123,22 +1988,10 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_QUARTER");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_QUARTER", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_QUARTER", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   return AqlValue(AqlValueHintUInt(
@@ -2153,22 +2006,10 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterInvalidArgumentWarning(query, "DATE_DAYS_IN_MONTH");
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_DAYS_IN_MONTH", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYS_IN_MONTH", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
    auto yearMonthDay = year_month_day(floor<days>(tp));
@@ -2187,27 +2028,10 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  // DATE_ADD(date, amount, unit) → isoDate
-  // DATE_ADD(date, isoDuration) → isoDate
-  // date (number|string): numeric timestamp or ISO 8601 date time string
-
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
-  // time_point<system_clock, milliseconds> tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ADD", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   // size == 3 unit / unit type
@@ -2294,28 +2118,10 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  // DATE_SUBTRACT(date, amount, unit) → isoDate
-  // DATE_SUBTRACT(date, isoDuration) → isoDate
-  // date (number|string): numeric timestamp or ISO 8601 date time string
-
-  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-
-  if (!value.isString() && !value.isNumber() ) {
-    std::cout << "!string && !number\n";
-    RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    return AqlValue(AqlValueHintNull());
-  }
-
   system_clock::time_point tp;
-  // time_point<system_clock, milliseconds> tp;
 
-  if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
-  } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
-      RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
+  if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SUBTRACT", 0)) {
+    return AqlValue(AqlValueHintNull());
   }
 
   // size == 3 unit / unit type
@@ -2370,36 +2176,8 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
 
     std::string const duration = isoDuration.slice().copyString();
 
-    if (duration == "P") {
-      RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    std::regex duration_regex("P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\.(\\d{1,3}))?S)?)?");
     std::smatch duration_parts;
-    /* REGEX GROUPS
-    P1Y2M3W4DT5H6M7.891S
-      submatch 0: P1Y2M3W4DT5H6M7.891S
-      submatch 1: 1Y
-      submatch 2: 1
-      submatch 3: 2M
-      submatch 4: 2
-      submatch 5: 3W
-      submatch 6: 3
-      submatch 7: 4D
-      submatch 8: 4
-      submatch 9: T5H6M7.891S
-      submatch 10: 5H
-      submatch 11: 5
-      submatch 12: 6M
-      submatch 13: 6
-      submatch 14: 7.891S
-      submatch 15: 7
-      submatch 16: .891
-      submatch 17: 891
-    */
-
-    if (!std::regex_match(duration, duration_parts, duration_regex)) {
+    if (!basics::regex_isoDuration(duration, duration_parts)) {
       RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
@@ -2423,9 +2201,76 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
 }
 
+/// @brief function DATE_DIFF
+AqlValue Functions::DateDiff(arangodb::aql::Query* query,
+                                 transaction::Methods* trx,
+                                 VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  double diff;
+  bool  asFloat = false;
 
+  system_clock::time_point tp1;
+  system_clock::time_point tp2;
 
+  if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_DIFF", 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_DIFF", 1)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  auto diffDuration = tp2 - tp1;
+
+  AqlValue unitValue = ExtractFunctionParameterValue(parameters, 2);
+  if (!unitValue.isString()) {
+    RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string unit = unitValue.slice().copyString();
+  std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
+
+  if (parameters.size() == 4) {
+    AqlValue asFloatValue = ExtractFunctionParameterValue(parameters, 3);
+    if (!asFloatValue.isBoolean()) {
+      RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+      return AqlValue(AqlValueHintNull());
+    }
+    asFloat = asFloatValue.toBoolean();
+  }
+
+  if (unit == "y" || unit == "year" || unit == "years") {
+    diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(diffDuration).count();
+  } else if (unit == "m" || unit == "month" || unit == "months") {
+    diff = duration_cast<duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(diffDuration).count();
+  } else if (unit == "w" || unit == "week" || unit == "weeks") {
+    diff = duration_cast<duration<int, std::ratio_multiply<std::ratio<7>, days::period>>>(diffDuration).count();
+  } else if (unit == "d" || unit == "day" || unit == "days") {
+    diff = duration_cast<duration<double, std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>>(diffDuration).count();
+  } else if (unit == "h" || unit == "hour" || unit == "hours") {
+    diff = duration_cast<duration<double, std::ratio<3600>>>(diffDuration).count();
+  } else if (unit == "i" || unit == "minute" || unit == "minutes") {
+    diff = duration_cast<duration<double, std::ratio<60>>>(diffDuration).count();
+  } else if (unit == "s" || unit == "second" || unit == "seconds") {
+    diff = duration_cast<duration<double>>(diffDuration).count();
+  } else if (unit == "f" || unit == "millisecond" || unit == "milliseconds") {
+    diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
+  } else {
+    RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (asFloat) {
+    return AqlValue(AqlValueHintDouble(diff));
+  } else {
+    return AqlValue(AqlValueHintInt(
+      static_cast<int64_t>(std::round(diff))
+    ));
+  }
+}
 
 
 

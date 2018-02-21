@@ -1294,16 +1294,16 @@ testDateDaysInMonth() {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(1, 'P1Y', 1))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_ADD(1, 'P1Y', 1)))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(null, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(null, 1, 'year'))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(null, 1, 'year')))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(false, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD(false, 1, 'year'))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD(false, 1, 'year')))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD([], 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD([], 1, 'year'))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD([], 1, 'year')))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD({}, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_ADD({}, 1, 'year'))");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ADD({}, 1, 'year')))");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ADD(DATE_NOW(), 1, 'sugar'))");
@@ -1440,16 +1440,16 @@ testDateSubtractInvalid : function () {
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 'P1Y', 1))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 'P1Y', 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(null, 1, 'year'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(null, 1, 'year'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(null, 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(false, 1, 'year'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(false, 1, 'year'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(false, 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT([], 1, 'year'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT([], 1, 'year'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT([], 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT({}, 1, 'year'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT({}, 1, 'year'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT({}, 1, 'year')))");
 
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 1, 'sugar'))");
@@ -1484,8 +1484,8 @@ testDateSubtractInvalid : function () {
 /// @brief test date_subtract function
 ////////////////////////////////////////////////////////////////////////////////
 
-testDateSubtract : function () {
-  var values = [
+testDateSubtract() {
+  const values = [
     [ ["2000-05-01", 2, "days"], "2000-04-29T00:00:00.000Z" ],
     [ ["2000-05-01Z", "P2D"], "2000-04-29T00:00:00.000Z" ],
     [ ["2000-05-01Z", 2, "days"], "2000-04-29T00:00:00.000Z" ],
@@ -1565,8 +1565,140 @@ testDateSubtract : function () {
   });
 },
 
-// TODO: DATE_SUBTRACT()
-// TODO: DATE_DIFF()
+testDateDiffInvalid : function () {
+
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF())");
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF()))");
+
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 1, 1, 1))");
+  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 1, 1, 1)))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(null, 1, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(null, 1, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, null, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, null, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, null))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, null)))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'y', null))");
+  // assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'y', []])))"); // js version accepts non bool values
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'yo'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'yo')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(false, 1, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(false, 1, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, true, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, true, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF([], 1, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF([], 1, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, [], 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, [], 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF({}, 1, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF({}, 1, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, {}, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, {}, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF('', 1, 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF('', 1, 'y')))");
+
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, '', 'y'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, '', 'y')))");
+},
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_subtract function
+////////////////////////////////////////////////////////////////////////////////
+
+testDateDiff() {
+  const values = [
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "milliseconds", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "millisecond", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "f", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "seconds", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "second", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "s", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minutes", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minute", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "i", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hours", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hour", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "h", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "days", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "day", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "d", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "weeks", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "week", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "w", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "months", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "month", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "m", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "years", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "year", true], 0 ],
+    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "y", true], 0 ],
+
+    [ ["2000-05-01", "2000-05-01 00:00:00.500", "milliseconds", true], 500 ],
+    [ ["2000-05-01", "2000-05-01 00:00:00.500", "millisecond", true], 500 ],
+    [ ["2000-05-01", "2000-05-01 00:00:00.500", "f", true], 500 ],
+    [ ["2000-05-01", "2000-05-01 00:00:59.500", "seconds", true], 59.5 ],
+    [ ["2000-05-01", "2000-05-01 00:00:59.500", "second", true], 59.5 ],
+    [ ["2000-05-01", "2000-05-01 00:01:59.500", "s", true], 119.5 ],
+    [ ["2000-05-01", "2000-05-01 00:00:30.000", "minutes", true], 0.5 ],
+    [ ["2000-05-01", "2000-05-01 00:00:30.000", "minute", true], 0.5 ],
+    [ ["2000-05-01", "2000-05-01 00:00:30.000", "i", true], 0.5 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "minutes", true], 1440 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "minute", true], 1440 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "i", true], 1440 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "hours", true], 24 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "hour", true], 24 ],
+    [ ["2000-05-01", "2000-05-02 00:00:00.000", "h", true], 24 ],
+    [ ["2000-05-01", "2000-05-01 02:30:00.000", "hours", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-01 02:30:00.000", "hour", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-01 02:30:00.000", "h", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-03 12:00:00.000", "days", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-03 12:00:00.000", "day", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-03 12:00:00.000", "d", true], 2.5 ],
+    [ ["2000-05-01", "2000-05-08 00:00:00.000", "weeks", true], 1 ],
+    [ ["2000-05-01", "2000-05-08 00:00:00.000", "week", true], 1 ],
+    [ ["2000-05-01", "2000-05-08 00:00:00.000", "w", true], 1 ],
+    [ ["2000-05-01", "2000-06-01 00:00:00.000", "months", false], 1 ],
+    [ ["2000-05-01", "2000-06-01 00:00:00.000", "month", false], 1 ],
+    [ ["2000-05-01", "2000-06-01 00:00:00.000", "m", false], 1 ],
+    [ ["2000-05-01", "2050-05-01 00:00:00.000", "years", false], 50 ],
+    [ ["2000-05-01", "2050-05-01 00:00:00.000", "year", false], 50 ],
+    [ ["2000-05-01", "2050-05-01 00:00:00.000", "y", false], 50 ],
+    [ ["2000-05-01", "2400-05-01 00:00:00.000", "years", true], 400 ],
+    [ ["2000-05-01", "2400-05-01 00:00:00.000", "year", true], 400 ],
+    [ ["2000-05-01", "2400-05-01 00:00:00.000", "y", true], 400 ],
+    [ ["2000-05-01", "2000-04-30 00:00:00.000", "days", true], -1 ],
+    [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ]
+  ];
+
+  values.forEach(function (value) {
+    let actual = getQueryResults(`RETURN NOOPT(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
+        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+    assertEqual( [ value[1] ], actual);
+
+    actual = getQueryResults(`RETURN NOOPT(V8(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
+        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+    assertEqual( [ value[1] ], actual);
+  });
+},
+
+
+
+
+
+
+
+
 // TODO: DATE_COMPARE()
 // TODO: DATE_FORMAT()
 

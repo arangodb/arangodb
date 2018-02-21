@@ -454,7 +454,7 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_SUBTRACT", ".,.|.", true, false, true,
        true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true,
-       true});
+       true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true,
        true});
   add({"DATE_FORMAT", ".,.", true, false, true,

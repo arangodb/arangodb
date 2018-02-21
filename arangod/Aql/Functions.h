@@ -92,6 +92,13 @@ struct Functions {
                                    VPackFunctionParameters const& parameters,
                                    char const* funcName, bool recursive);
 
+    static bool ParameterToTimePoint(arangodb::aql::Query *const query,
+                                 transaction::Methods *const trx,
+                                 VPackFunctionParameters const& parameters,
+                                 std::chrono::system_clock::time_point& tp,
+                                 std::string const& functionName,
+                                 size_t parameterIndex);
+
   public:
    /// @brief helper function. not callable as a "normal" AQL function
    static void Stringify(transaction::Methods* trx,
@@ -213,6 +220,8 @@ struct Functions {
                             VPackFunctionParameters const&);
     static AqlValue DateSubtract(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
+    static AqlValue DateDiff(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
 
 
 
