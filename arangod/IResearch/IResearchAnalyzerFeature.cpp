@@ -264,6 +264,11 @@ NS_BEGIN(iresearch)
     irs::string_ref const& type,
     irs::string_ref const& properties
 ) {
+  if (type.empty()) {
+    // in ArangoSearch we don't allow to have analyzers with empty type string
+    return nullptr;
+  }
+
   // ArangoDB, for API consistency, only supports analyzers configurable via jSON
   return irs::analysis::analyzers::get(type, irs::text_format::json, properties);
 }
