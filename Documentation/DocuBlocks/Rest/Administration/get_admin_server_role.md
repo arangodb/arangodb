@@ -21,5 +21,19 @@ Possible return values for *role* are:
 
 @RESTRETURNCODE{200}
 Is returned in all cases.
+
+@RESTREPLYBODY{error,boolean,required,}
+allways *false*
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code, allways 200
+
+@RESTREPLYBODY{errorNum,integer,required,int64}
+the server error number
+
+@RESTREPLYBODY{role,string,required,string}
+one of [ *SINGLE*, *COORDINATOR*, *PRIMARY*, *SECONDARY*, *AGENT*, *UNDEFINED*]
+
+
 @endDocuBlock
 
