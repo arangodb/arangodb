@@ -37,8 +37,8 @@ std::shared_ptr<VPackBuilder> planBuilder = R"=(
         "type": 2,
         "shards": {
           "s27050123": [
-            "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
-            "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
+            "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+            "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
           ]
         },
         "status": 3,
@@ -223,8 +223,8 @@ std::shared_ptr<VPackBuilder> planBuilder = R"=(
             "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
           ],
           "s27050238": [
-            "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
-            "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
+            "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+            "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
           ],
           "s27050236": [
             "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",

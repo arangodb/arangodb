@@ -33,8 +33,11 @@
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/Compare.h>
 
+#include <boost/range/combine.hpp>
+
 #include <iostream>
 #include <memory>
+
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -59,7 +62,7 @@ std::shared_ptr<VPackBuilder> operator "" _vpack(const char* json, size_t) {
   return createBuilder(json);
 }
 
-SCENARIO("Broken distributeShardsLike collections", "[cluster][shards]") {
+SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
   GIVEN("") {
@@ -73,25 +76,65 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards]") {
       std::vector<AgencyWriteTransaction> transactions
         = ClusterRepairs::repairDistributeShardsLike(planBuilder->slice());
 
+      // TODO there are more values that might be needed in the preconditions,
+      // like distributeShardsLike / repairingDistributeShardsLike,
+      // or maybe replicationFactor
+
+      std::vector< std::shared_ptr<VPackBuilder> > expectedTransactions {
+        R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "op": "set",
+              "new": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
+              ]
+            }
+          }
+        ])="_vpack,
+        R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "op": "set",
+              "new": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
+              ]
+            }
+          }
+          ])="_vpack
+      };
+
+      REQUIRE(transactions.size() == expectedTransactions.size());
+
       VPackBuilder transactionBuilder = Builder();
+      for (auto const& it : boost::combine(transactions, expectedTransactions)) {
+        auto const& transactionIt = it.get<0>();
+        auto const& expectedTransactionIt = it.get<1>();
 
-      REQUIRE(transactions.size() == 2);
+        transactionIt.toVelocyPack(transactionBuilder);
 
-      transactions[0].toVelocyPack(transactionBuilder);
+        REQUIRE(
+          transactionBuilder.slice().toJson() == expectedTransactionIt->slice().toJson()
+        ); // either, or:
+        REQUIRE(NormalizedCompare::equals(
+          transactionBuilder.slice(),
+          expectedTransactionIt->slice()
+        ));
+      }
 
-      std::shared_ptr<VPackBuilder> expectedTransaction
-        = R"=([{"myTrx1": "foo"}])="_vpack;
-
-      REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
-      REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
-
-      transactions[1].toVelocyPack(transactionBuilder);
-
-      expectedTransaction
-        = R"=([{"myTrx2": "bar"}])="_vpack;
-
-      REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
-      REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
     } catch(...) {
       // restore old manager
       AgencyCommManager::MANAGER = std::move(old_manager);
