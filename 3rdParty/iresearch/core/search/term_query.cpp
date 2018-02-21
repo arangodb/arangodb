@@ -111,7 +111,7 @@ doc_iterator::ptr term_query::execute(
 
   // use bytes_ref::blank here since we need just to "jump" to the cached state,
   // and we are not interested in term value itself
-  if (!terms->seek(bytes_ref::nil, *state->cookie)) {
+  if (!terms->seek(bytes_ref::NIL, *state->cookie)) {
     return doc_iterator::empty();
   }
 

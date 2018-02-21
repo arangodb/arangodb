@@ -36,10 +36,10 @@ TEST(file_utils_tests, path_parts) {
   // nullptr
   {
     auto parts = irs::file_utils::path_parts(nullptr);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
-    ASSERT_EQ(ref_t::nil, parts.basename);
-    ASSERT_EQ(ref_t::nil, parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.basename);
+    ASSERT_EQ(ref_t::NIL, parts.stem);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // ...........................................................................
@@ -50,17 +50,17 @@ TEST(file_utils_tests, path_parts) {
   {
     auto data = STRING("");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(), parts.basename);
     ASSERT_EQ(ref_t(), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // no parent, stem(empty), extension(empty)
   {
     auto data = STRING(".");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING(".")), parts.basename);
     ASSERT_EQ(ref_t(STRING("")), parts.stem);
     ASSERT_EQ(ref_t(STRING("")), parts.extension);
@@ -70,7 +70,7 @@ TEST(file_utils_tests, path_parts) {
   {
     auto data = STRING(".xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING(".xyz")), parts.basename);
     ASSERT_EQ(ref_t(STRING("")), parts.stem);
     ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
@@ -80,17 +80,17 @@ TEST(file_utils_tests, path_parts) {
   {
     auto data = STRING("abc");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
   
   // no parent, stem(non-empty), extension(empty)
   {
     auto data = STRING("abc.");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc.")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t(STRING("")), parts.extension);
@@ -100,7 +100,7 @@ TEST(file_utils_tests, path_parts) {
   {
     auto data = STRING("abc.xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc.xyz")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
     ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
@@ -110,7 +110,7 @@ TEST(file_utils_tests, path_parts) {
   {
     auto data = STRING("abc.def..xyz");
     auto parts = irs::file_utils::path_parts(data);
-    ASSERT_EQ(ref_t::nil, parts.dirname);
+    ASSERT_EQ(ref_t::NIL, parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc.def..xyz")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc.def.")), parts.stem);
     ASSERT_EQ(ref_t(STRING("xyz")), parts.extension);
@@ -127,7 +127,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("")), parts.dirname);
     ASSERT_EQ(ref_t(STRING("")), parts.basename);
     ASSERT_EQ(ref_t(STRING("")), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // parent(empty), stem(empty), extension(empty)
@@ -157,7 +157,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("")), parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // parent(empty), stem(non-empty), extension(empty)
@@ -201,7 +201,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
     ASSERT_EQ(ref_t(STRING("")), parts.basename);
     ASSERT_EQ(ref_t(STRING("")), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // parent(non-empty), stem(empty), extension(empty)
@@ -231,7 +231,7 @@ TEST(file_utils_tests, path_parts) {
     ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
     ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
     ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-    ASSERT_EQ(ref_t::nil, parts.extension);
+    ASSERT_EQ(ref_t::NIL, parts.extension);
   }
 
   // parent(non-empty), stem(non-empty), extension(empty)
@@ -286,7 +286,7 @@ TEST(file_utils_tests, path_parts) {
       ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
       ASSERT_EQ(ref_t(STRING("")), parts.basename);
       ASSERT_EQ(ref_t(STRING("")), parts.stem);
-      ASSERT_EQ(ref_t::nil, parts.extension);
+      ASSERT_EQ(ref_t::NIL, parts.extension);
     }
 
     // parent(non-empty), stem(empty), extension(empty)
@@ -316,7 +316,7 @@ TEST(file_utils_tests, path_parts) {
       ASSERT_EQ(ref_t(STRING("klm")), parts.dirname);
       ASSERT_EQ(ref_t(STRING("abc")), parts.basename);
       ASSERT_EQ(ref_t(STRING("abc")), parts.stem);
-      ASSERT_EQ(ref_t::nil, parts.extension);
+      ASSERT_EQ(ref_t::NIL, parts.extension);
     }
 
     // parent(non-empty), stem(non-empty), extension(empty)

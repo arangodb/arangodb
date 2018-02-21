@@ -881,7 +881,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -900,7 +900,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(it->next());
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -933,7 +933,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "abcd" }, { 4, "abcde" }
@@ -952,7 +952,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(it->next());
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -999,7 +999,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "A" }, { 2, "B" }, { 3, "C" }, { 4, "D" }
@@ -1018,7 +1018,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(it->next());
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
 
@@ -1051,7 +1051,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(!payload);
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
       std::vector<std::pair<irs::doc_id_t, irs::string_ref>> expected_values = {
         { 1, "abcd" }, { 4, "abcde" }
@@ -1070,7 +1070,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes) {
       ASSERT_FALSE(it->next());
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       ASSERT_EQ(i, expected_values.size());
     }
   }
@@ -1210,7 +1210,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         for (; it->next(); ) {
           ASSERT_TRUE(payload->next());
@@ -1229,7 +1229,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1302,7 +1302,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         for (; it->next(); ) {
           ASSERT_TRUE(payload->next());
@@ -1321,7 +1321,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1417,7 +1417,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         for (; it->next(); ) {
           ASSERT_TRUE(payload->next());
@@ -1436,7 +1436,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -1509,7 +1509,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         for (; it->next(); ) {
           ASSERT_TRUE(payload->next());
@@ -1528,7 +1528,7 @@ TEST_F(transaction_store_tests, read_write_doc_attributes_big) {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         ASSERT_EQ(docs_count, expected_id);
       }
     }
@@ -2077,7 +2077,7 @@ TEST_F(transaction_store_tests, read_multipart_doc_attributes) {
     ASSERT_FALSE(!payload);
     ASSERT_FALSE(payload->next());
     ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-    ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+    ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
     std::vector<std::pair<irs::doc_id_t, std::vector<irs::string_ref>>> expected_values = {
       { 1, { "abc" } },
@@ -2098,13 +2098,13 @@ TEST_F(transaction_store_tests, read_multipart_doc_attributes) {
 
       ASSERT_FALSE(payload->next());
       ASSERT_EQ(expected_value.first, it->value());
-      ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+      ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
     }
 
     ASSERT_FALSE(it->next());
     ASSERT_FALSE(payload->next());
     ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-    ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+    ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
     ASSERT_EQ(expected_values.size(), i);
   }
 
@@ -2641,7 +2641,7 @@ TEST_F(transaction_store_tests, insert_null_empty_term) {
     // doc0: empty, nullptr
     std::vector<field> doc0;
     doc0.emplace_back(std::string("name"), irs::string_ref("", 0));
-    doc0.emplace_back(std::string("name"), irs::string_ref::nil);
+    doc0.emplace_back(std::string("name"), irs::string_ref::NIL);
     ASSERT_TRUE(writer.insert([&doc0](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc0.begin(), doc0.end());
       return false;
@@ -2649,9 +2649,9 @@ TEST_F(transaction_store_tests, insert_null_empty_term) {
 
     // doc1: nullptr, empty, nullptr
     std::vector<field> doc1;
-    doc1.emplace_back(std::string("name1"), irs::string_ref::nil);
+    doc1.emplace_back(std::string("name1"), irs::string_ref::NIL);
     doc1.emplace_back(std::string("name1"), irs::string_ref("", 0));
-    doc1.emplace_back(std::string("name"), irs::string_ref::nil);
+    doc1.emplace_back(std::string("name"), irs::string_ref::NIL);
     ASSERT_TRUE(writer.insert([&doc1](irs::store_writer::document& doc)->bool {
       doc.insert(irs::action::index, doc1.begin(), doc1.end());
       return false;

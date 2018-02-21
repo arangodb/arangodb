@@ -187,7 +187,7 @@ bool delimited_token_stream::next() {
     : eval_term(term_buf_, payload_.value)
   );
   data_ = size >= data_.size()
-        ? bytes_ref::nil
+        ? bytes_ref::NIL
         : bytes_ref(data_.c_str() + next, data_.size() - next)
         ;
 

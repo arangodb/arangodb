@@ -543,12 +543,12 @@ struct empty_term_reader : iresearch::singleton<empty_term_reader>, iresearch::t
 
   // less significant term
   virtual const iresearch::bytes_ref& (min)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 
   // most significant term
   virtual const iresearch::bytes_ref& (max)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 }; // empty_term_reader
 

@@ -695,22 +695,22 @@ class format_test_case_base : public index_test_base {
          // with state
          {
            auto term = term_reader->iterator();
-           ASSERT_FALSE(term->seek(irs::bytes_ref::nil));
+           ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
            ASSERT_EQ((term_reader->min)(), term->value());
-           ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::nil));
+           ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
            ASSERT_EQ((term_reader->min)(), term->value());
          }
 
          // without state
          {
            auto term = term_reader->iterator();
-           ASSERT_FALSE(term->seek(irs::bytes_ref::nil));
+           ASSERT_FALSE(term->seek(irs::bytes_ref::NIL));
            ASSERT_EQ((term_reader->min)(), term->value());
          }
 
          {
            auto term = term_reader->iterator();
-           ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::nil));
+           ASSERT_EQ(irs::SeekResult::NOT_FOUND, term->seek_ge(irs::bytes_ref::NIL));
            ASSERT_EQ((term_reader->min)(), term->value());
          }
        }
@@ -1516,7 +1516,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
           {"field0_doc0", 0},
@@ -1538,7 +1538,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // seek over field0 values (cached)
@@ -1552,7 +1552,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
           {"field0_doc0", { 0, 0 } },
@@ -1573,7 +1573,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // iterate over field1 values (not cached)
@@ -1587,7 +1587,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<std::vector<irs::string_ref>, irs::doc_id_t>> expected_values = {
           { { "field1_doc0", "field1_doc0_1" }, 0},
@@ -1612,7 +1612,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // seek over field1 values (cached)
@@ -1626,7 +1626,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<std::vector<irs::string_ref>, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
           { { "field1_doc0", "field1_doc0_1" }, { 0, 0 } }, { { "field1_doc0", "field1_doc0_1" }, { 0, 0 } },
@@ -1653,7 +1653,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // check field1 (multiple values per document - cached)
@@ -1752,7 +1752,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
           {"field2_doc1", 1}
@@ -1772,7 +1772,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // seek over field2 values (cached)
@@ -1786,7 +1786,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
           {"field2_doc1", { 1, 1 } }
@@ -1806,7 +1806,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
 
@@ -1832,7 +1832,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
           {"segment_2_field1_doc0", 0},
@@ -1853,7 +1853,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // seek over field0 values (cached)
@@ -1867,7 +1867,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
           {"segment_2_field1_doc0", { 0, 0 } },
@@ -1887,12 +1887,12 @@ class format_test_case_base : public index_test_base {
 
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(13));
         ASSERT_FALSE(payload->next());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // check field0 (cached)
@@ -1919,7 +1919,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
           {"segment_2_field1_doc0", 0},
@@ -1940,7 +1940,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
   }
@@ -1982,19 +1982,19 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, column);
         auto mask = column->values();
         ASSERT_TRUE(mask(0, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(4, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(6, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(8, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(9, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       }
 
       // seek over field values (cached)
@@ -2008,7 +2008,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
           { 0, 0 },
@@ -2026,13 +2026,13 @@ class format_test_case_base : public index_test_base {
 
           ASSERT_EQ(expected_value, it->seek(value_to_find));
           ASSERT_EQ(!irs::type_limits<irs::type_t::doc_id_t>::eof(expected_value), payload->next());
-          ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         }
 
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // iterate over field values (cached)
@@ -2046,7 +2046,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
           0, 4, 8, 9
@@ -2056,14 +2056,14 @@ class format_test_case_base : public index_test_base {
         for (; it->next(); ++i) {
           ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_values[i], it->value());
-          ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         }
 
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
 
@@ -2087,7 +2087,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
           0, 4, 8, 9
@@ -2097,14 +2097,14 @@ class format_test_case_base : public index_test_base {
         for (; it->next(); ++i) {
           ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_values[i], it->value());
-          ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         }
 
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
 
       // read field values (cached)
@@ -2113,19 +2113,19 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, column);
         auto mask = column->values();
         ASSERT_TRUE(mask(0, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(1, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(4, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_FALSE(mask(6, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(8, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
         ASSERT_TRUE(mask(9, actual_value));
-        ASSERT_EQ(irs::bytes_ref::nil, actual_value);
+        ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       }
 
       // iterate over field values (cached)
@@ -2139,7 +2139,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         std::vector<irs::doc_id_t> expected_values = {
           0, 4, 8, 9
@@ -2149,14 +2149,14 @@ class format_test_case_base : public index_test_base {
         for (; it->next(); ++i) {
           ASSERT_TRUE(payload->next());
           ASSERT_EQ(expected_values[i], it->value());
-          ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+          ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
         }
 
         ASSERT_FALSE(it->next());
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(i, expected_values.size());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
   }
@@ -2250,7 +2250,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         ASSERT_TRUE(it->next());
         ASSERT_TRUE(payload->next());
@@ -2285,7 +2285,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
 
         ASSERT_EQ(0, it->seek(0));
         ASSERT_TRUE(payload->next());
@@ -2507,7 +2507,7 @@ class format_test_case_base : public index_test_base {
             ASSERT_FALSE(!payload);
             ASSERT_FALSE(payload->next());
             ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-            ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
           }
 
           auto& it = res.first->second;
@@ -2546,7 +2546,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
 
@@ -2585,7 +2585,7 @@ class format_test_case_base : public index_test_base {
             ASSERT_FALSE(!payload);
             ASSERT_FALSE(payload->next());
             ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
-            ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+            ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
           }
 
           auto& it = res.first->second;
@@ -2624,7 +2624,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_FALSE(!payload);
         ASSERT_FALSE(payload->next());
         ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
-        ASSERT_EQ(irs::bytes_ref::nil, payload->value());
+        ASSERT_EQ(irs::bytes_ref::NIL, payload->value());
       }
     }
   }

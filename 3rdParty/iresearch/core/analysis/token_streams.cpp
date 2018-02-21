@@ -116,7 +116,7 @@ bool string_token_stream::next() {
   term_.value(value_);
   offset_.start = 0;
   offset_.end = static_cast<uint32_t>(value_.size());
-  value_ = irs::bytes_ref::nil;
+  value_ = irs::bytes_ref::NIL;
   in_use_ = true;
   return !in_use;
 }
@@ -157,7 +157,7 @@ bytes_ref numeric_token_stream::numeric_term::value(
     }
   }
 
-  return bytes_ref::nil;
+  return bytes_ref::NIL;
 }
 
 

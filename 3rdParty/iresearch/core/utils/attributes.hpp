@@ -301,7 +301,7 @@ template<
   struct ref {
     typedef Ref<U, Args...> type;
 
-    IRESEARCH_HELPER_DLL_LOCAL static const type nil;
+    IRESEARCH_HELPER_DLL_LOCAL static const type NIL;
 
     static_assert(
       sizeof(typename ref<T>::type) == sizeof(type),
@@ -384,7 +384,7 @@ template<
 
   template<typename A>
   inline const typename ref<A>::type& get(
-      const typename ref<A>::type& fallback = ref<A>::nil
+      const typename ref<A>::type& fallback = ref<A>::NIL
   ) const NOEXCEPT {
     typedef typename std::enable_if<
       std::is_base_of<attribute, A>::value, A
@@ -447,7 +447,7 @@ template<
 
   const typename ref<T>::type& get(
       const attribute::type_id& type,
-      const typename ref<T>::type& fallback = ref<T>::nil
+      const typename ref<T>::type& fallback = ref<T>::NIL
   ) const NOEXCEPT {
     return const_cast<attribute_map*>(this)->get(type, const_cast<typename ref<T>::type&>(fallback));
   }
@@ -474,7 +474,7 @@ template<
 template<typename T, template <typename, typename...> class Ref, typename... Args>
 template<typename U>
 typename attribute_map<T, Ref, Args...>::template ref<U>::type
-const attribute_map<T, Ref, Args...>::ref<U>::nil;
+const attribute_map<T, Ref, Args...>::ref<U>::NIL;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes

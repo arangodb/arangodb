@@ -79,7 +79,7 @@ using namespace tests;
 
 TEST_F(bm25_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
   ASSERT_EQ(1, order.add(true, scorer).size());
@@ -90,7 +90,7 @@ TEST_F(bm25_test, test_load) {
 TEST_F(bm25_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
@@ -148,7 +148,7 @@ TEST_F(bm25_test, make_from_array) {
 TEST_F(bm25_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -294,7 +294,7 @@ TEST_F(bm25_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -619,7 +619,7 @@ TEST_F(bm25_test, test_query_norms) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -730,7 +730,7 @@ TEST_F(bm25_test, test_query_norms) {
 TEST_F(bm25_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());

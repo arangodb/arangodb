@@ -134,10 +134,10 @@ bool move(const file_path_t src_path, const file_path_t dst_path) NOEXCEPT;
 
 struct path_parts_t {
   typedef irs::basic_string_ref<std::remove_pointer<file_path_t>::type> ref_t;
-  ref_t basename;  // path component after the last path delimiter (ref_t::nil if not present)
-  ref_t dirname;   // path component before the last path delimiter (ref_t::nil if not present)
-  ref_t extension; // basename extension (ref_t::nil if not present)
-  ref_t stem;      // basename without extension (ref_t::nil if not present)
+  ref_t basename;  // path component after the last path delimiter (ref_t::NIL if not present)
+  ref_t dirname;   // path component before the last path delimiter (ref_t::NIL if not present)
+  ref_t extension; // basename extension (ref_t::NIL if not present)
+  ref_t stem;      // basename without extension (ref_t::NIL if not present)
 };
 
 IRESEARCH_API path_parts_t path_parts(const file_path_t path) NOEXCEPT;

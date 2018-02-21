@@ -90,7 +90,7 @@ struct IRESEARCH_API payload : basic_attribute<bytes_ref> {
   DECLARE_ATTRIBUTE_TYPE();
 
   void clear() {
-    value = bytes_ref::nil;
+    value = bytes_ref::NIL;
   }
 };
 

@@ -742,7 +742,7 @@ path_parts_t path_parts(const file_path_t path) NOEXCEPT {
   }
 
   bool have_extension = false;
-  path_parts_t::ref_t dirname = path_parts_t::ref_t::nil;
+  path_parts_t::ref_t dirname = path_parts_t::ref_t::NIL;
   size_t stem_end = 0;
 
   for(size_t i = 0;; ++i) {

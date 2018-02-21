@@ -150,7 +150,7 @@ struct empty_seek_term_iterator: public irs::seek_term_iterator {
   }
 
   virtual const irs::bytes_ref& value() const override {
-    return irs::bytes_ref::nil;
+    return irs::bytes_ref::NIL;
   }
 };
 
@@ -230,9 +230,9 @@ class store_reader_impl final: public irs::sub_reader {
   struct term_reader_t: public irs::term_reader {
     irs::attribute_view attrs_;
     uint64_t doc_count_;
-    irs::bytes_ref max_term_{ irs::bytes_ref::nil };
+    irs::bytes_ref max_term_{ irs::bytes_ref::NIL };
     const irs::transaction_store::field_meta_builder::ptr meta_; // copy from 'store' because field in store may disapear
-    irs::bytes_ref min_term_{ irs::bytes_ref::nil };
+    irs::bytes_ref min_term_{ irs::bytes_ref::NIL };
     term_entries_t terms_;
 
     term_reader_t(const irs::transaction_store::field_meta_builder::ptr& meta)
@@ -415,7 +415,7 @@ class store_columnstore_iterator final: public store_doc_iterator_base {
 
     virtual bool next() {
       if (!offset_) {
-        value_ = irs::bytes_ref::nil;
+        value_ = irs::bytes_ref::NIL;
 
         return false;
       }
@@ -554,7 +554,7 @@ class store_doc_iterator final: public store_doc_iterator_base {
       }
 
       pay_.value = !irs::read<uint8_t>(ptr)
-        ? irs::bytes_ref::nil
+        ? irs::bytes_ref::NIL
         : irs::vread_string<irs::bytes_ref>(ptr);
         ;
 
@@ -630,7 +630,7 @@ class store_term_iterator: public irs::seek_term_iterator {
 
   virtual bool next() override {
     if (next_itr_ == terms_.end()) {
-      term_ = irs::bytes_ref::nil;
+      term_ = irs::bytes_ref::NIL;
       term_entry_ = nullptr;
 
       return false;
@@ -743,7 +743,7 @@ irs::columnstore_reader::values_reader_f store_reader_impl::column_reader_t::val
     bool multi_valued = false;
     auto next_offset = itr->offset_;
 
-    value = irs::bytes_ref::nil;
+    value = irs::bytes_ref::NIL;
     value_buf.clear();
 
     while(next_offset) {

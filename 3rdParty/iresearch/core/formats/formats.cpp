@@ -42,8 +42,17 @@ class format_register :
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
 
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), key.c_str(), key.size());
+    std::memcpy(
+      &filename[0],
+      FILENAME_PREFIX.c_str(),
+      FILENAME_PREFIX.size()
+    );
+
+    irs::string_ref::traits_type::copy(
+      &filename[0] + FILENAME_PREFIX.size(),
+      key.c_str(),
+      key.size()
+    );
 
     return filename;
   }

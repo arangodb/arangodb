@@ -45,7 +45,7 @@ matrix:
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -54,7 +54,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -71,7 +84,7 @@ matrix:
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -80,7 +93,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
       env:
         - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.8 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -101,7 +127,7 @@ matrix:
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -110,7 +136,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -127,7 +166,7 @@ matrix:
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -136,7 +175,20 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
       env:
         - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-4.9 valgrind
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
         - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
@@ -156,7 +208,7 @@ matrix:
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -165,7 +217,19 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
@@ -180,7 +244,7 @@ matrix:
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -189,7 +253,19 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
       env:
         - SET_ENV="CC=gcc-5 && CXX=g++-5"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-5 valgrind
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # GCC 6
@@ -208,7 +284,7 @@ matrix:
         - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, static library
+    # Release build, static library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -217,7 +293,19 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
-        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, static library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # Debug build, shared library
@@ -232,7 +320,7 @@ matrix:
         - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
 
     ############################################################################
-    # Release build, shared library
+    # Release build, shared library (filesystem tests)
     ############################################################################
     - os: linux
       before_install:
@@ -241,7 +329,19 @@ matrix:
         - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
       env:
         - SET_ENV="CC=gcc-6 && CXX=g++-6"
-        - BUILD_TYPE="Release"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=fs_index_test*:mmap_index_test*"
+
+    ############################################################################
+    # Release build, shared library (remaining tests)
+    ############################################################################
+    - os: linux
+      before_install:
+        - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+        - travis_retry sudo apt-get update
+        - travis_retry sudo apt-get install cmake cmake-data g++-6 valgrind
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release" TEST_PARAMS="--gtest_filter=*:-:fs_index_test*:-:mmap_index_test*"
 
     ############################################################################
     # GCC 7

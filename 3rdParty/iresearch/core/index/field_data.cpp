@@ -258,7 +258,7 @@ class term_iterator : public irs::term_iterator {
     postings_.clear();
     postings_.insert(field.terms_.begin(), field.terms_.end());
 
-    max = min = &irs::bytes_ref::nil;
+    max = min = &irs::bytes_ref::NIL;
     if (!postings_.empty()) {
       min = &(postings_.begin()->first);
       max = &((--postings_.end())->first);
@@ -270,7 +270,7 @@ class term_iterator : public irs::term_iterator {
     // reset state
     itr_ = postings_.begin();
     itr_increment_ = false;
-    term_ = irs::bytes_ref::nil;
+    term_ = irs::bytes_ref::NIL;
   }
 
   virtual const bytes_ref& value() const override {
@@ -315,7 +315,7 @@ class term_iterator : public irs::term_iterator {
 
     if (itr_ == postings_.end()) {
       itr_increment_ = false;
-      term_ = irs::bytes_ref::nil;
+      term_ = irs::bytes_ref::NIL;
 
       return false;
     }
@@ -380,8 +380,8 @@ class term_reader final : public irs::basic_term_reader, util::noncopyable {
 
  private:
   mutable detail::term_iterator it_;
-  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
-  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* min_{ &irs::bytes_ref::NIL };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::NIL };
 }; // term_reader
 
 NS_END // detail

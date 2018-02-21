@@ -79,7 +79,7 @@ using namespace tests;
 
 TEST_F(tfidf_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+  auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
   ASSERT_EQ(1, order.add(true, scorer).size());
@@ -105,7 +105,7 @@ TEST_F(tfidf_test, make_from_bool) {
 TEST_F(tfidf_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& tfidf = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
@@ -140,7 +140,7 @@ TEST_F(tfidf_test, make_from_array) {
 TEST_F(tfidf_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -227,7 +227,7 @@ TEST_F(tfidf_test, test_phrase) {
   }
 
   irs::order order;
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
   auto prepared_order = order.prepare();
 
   auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
@@ -304,7 +304,7 @@ TEST_F(tfidf_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -618,7 +618,7 @@ TEST_F(tfidf_test, test_query) {
 TEST_F(tfidf_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(false, scr.normalize());

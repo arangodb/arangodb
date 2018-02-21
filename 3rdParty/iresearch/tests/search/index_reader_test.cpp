@@ -77,7 +77,7 @@ TEST(directory_reader_test, open_newest_index) {
       out = segments_file;
       return true;
     }
-    virtual void read(const irs::directory& dir, irs::index_meta& meta, const irs::string_ref& filename = irs::string_ref::nil) override {
+    virtual void read(const irs::directory& dir, irs::index_meta& meta, const irs::string_ref& filename = irs::string_ref::NIL) override {
       read_file.assign(filename.c_str(), filename.size());
     };
     std::string segments_file;
