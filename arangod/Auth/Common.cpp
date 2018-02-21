@@ -38,8 +38,6 @@ static auth::Level _convertToAuthLevel(arangodb::StringRef ref) {
     return auth::Level::RO;
   } else if (ref.compare("none") == 0 || ref.empty()) {
     return auth::Level::NONE;
-  } else if (ref.compare("undefined") == 0) {
-    return auth::Level::UNDEFINED;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                  "expecting access type 'rw', 'ro' or 'none'");
@@ -58,9 +56,7 @@ std::string arangodb::auth::convertFromAuthLevel(auth::Level lvl) {
     return "rw";
   } else if (lvl == auth::Level::RO) {
     return "ro";
-  } else if (lvl == auth::Level::NONE) {
-    return "none";
   } else {
-    return "undefined";
+    return "none";
   }
 }
