@@ -92,12 +92,11 @@ const executeJS = (code) => {
 };
 
 helper.removeAllUsers();
+helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
-
   it('should test rights for', () => {
+    expect(userSet.size).to.be.greaterThan(0); 
     for (let name of userSet) {
       let canUse = false;
       try {
