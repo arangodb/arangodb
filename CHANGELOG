@@ -1,6 +1,8 @@
 v3.2.12 (XXXX-XX-XX)
 --------------------
 
+* remove long disfunctional admin/long_echo handler
+
 * fixed Foxx API:
 
   * PUT /_api/foxx/service: Respect force flag
