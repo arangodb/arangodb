@@ -82,25 +82,6 @@ actions.defineHttp({
 });
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_admin_long_echo
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/long_echo',
-  prefix: true,
-
-  callback: function (req, res) {
-    require('console').log('long polling request from client %s', req.client.id);
-
-    res.responseCode = actions.HTTP_OK;
-    res.contentType = 'application/json; charset=utf-8';
-    res.headers = { 'transfer-encoding': 'chunked' };
-
-    res.body = JSON.stringify(req);
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_statistics
 // //////////////////////////////////////////////////////////////////////////////
 
