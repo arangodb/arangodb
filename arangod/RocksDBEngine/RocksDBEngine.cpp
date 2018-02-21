@@ -1295,7 +1295,7 @@ void RocksDBEngine::addRestHandlers(rest::RestHandlerFactory* handlerFactory) {
 
 void RocksDBEngine::addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
                                          TRI_voc_cid_t cid) {
-  if (objectId == 0) {
+  if (objectId != 0) {
     WRITE_LOCKER(guard, _mapLock);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto it = _collectionMap.find(objectId);
@@ -1346,7 +1346,7 @@ RocksDBEngine::IndexTriple RocksDBEngine::mapObjectToIndex(
   READ_LOCKER(guard, _mapLock);
   auto it = _indexMap.find(objectId);
   if (it == _indexMap.end()) {
-    return {0, 0, 0};
+    return RocksDBEngine::IndexTriple(0, 0, 0);
   }
   return it->second;
 }

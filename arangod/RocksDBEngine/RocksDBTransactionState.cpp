@@ -65,7 +65,6 @@ RocksDBTransactionState::RocksDBTransactionState(
       _rocksReadOptions(),
       _cacheTx(nullptr),
       _numCommits(0),
-      _numInternal(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -185,7 +184,8 @@ void RocksDBTransactionState::createTransaction() {
 
   TRI_ASSERT(_rocksTransaction == nullptr ||
              _rocksTransaction->GetState() == rocksdb::Transaction::COMMITED ||
-             _rocksTransaction->GetState() == rocksdb::Transaction::ROLLEDBACK);
+             (_rocksTransaction->GetState() == rocksdb::Transaction::STARTED &&
+             _rocksTransaction->GetNumKeys() == 0));
   _rocksTransaction =
       db->BeginTransaction(_rocksWriteOptions, trxOpts, _rocksTransaction);
 
@@ -228,7 +228,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   }
 
   Result result;
-  if (_rocksTransaction->GetNumKeys() > 0) {
+  
+  if (hasOperations()) {
     
     // we are actually going to attempt a commit
     if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -301,6 +302,10 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       }
     }
   } else {
+    TRI_ASSERT(_rocksTransaction->GetNumKeys() == 0 &&
+               _rocksTransaction->GetNumPuts() == 0 &&
+               _rocksTransaction->GetNumDeletes() == 0);
+    
     for (auto& trxCollection : _collections) {
       RocksDBTransactionCollection* collection =
           static_cast<RocksDBTransactionCollection*>(trxCollection);
@@ -471,28 +476,6 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   return RocksDBOperationResult();
 }
 
-/// @brief add an internal operation for a transaction
-RocksDBOperationResult RocksDBTransactionState::addInternalOperation(
-    uint64_t operationSize, uint64_t keySize) {
-  size_t currentSize =
-      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-  uint64_t newSize = currentSize + operationSize + keySize;
-  if (newSize > _options.maxTransactionSize) {
-    // we hit the transaction size limit
-    std::string message =
-        "aborting transaction because maximal transaction size limit of " +
-        std::to_string(_options.maxTransactionSize) + " bytes is reached";
-    return RocksDBOperationResult(Result(TRI_ERROR_RESOURCE_LIMIT, message));
-  }
-
-  ++_numInternal;
-
-  // perform an intermediate commit if necessary
-  checkIntermediateCommit(newSize);
-
-  return RocksDBOperationResult();
-}
-
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
   TRI_ASSERT(_rocksMethods);
   return _rocksMethods.get();
@@ -538,7 +521,10 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "INTERMEDIATE COMMIT!";
 #endif
 
-  internalCommit();
+  Result res = internalCommit();
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -547,7 +533,6 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
     TRI_SegfaultDebugging("SegfaultAfterIntermediateCommit");
   }
 
-  _numInternal = 0;
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
@@ -558,7 +543,7 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
 }
 
 void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
-  auto numOperations = _numInserts + _numUpdates + _numRemoves + _numInternal;
+  auto numOperations = _numInserts + _numUpdates + _numRemoves;
   // perform an intermediate commit
   // this will be done if either the "number of operations" or the
   // "transaction size" counters have reached their limit

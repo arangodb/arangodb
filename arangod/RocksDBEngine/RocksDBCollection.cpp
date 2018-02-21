@@ -706,13 +706,16 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   rocksdb::ReadOptions ro = mthd->readOptions();
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
+  
+  // avoid OOM error for truncate by committing earlier
+  uint64_t const prvICC = state->options().intermediateCommitCount;
+  state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   std::unique_ptr<rocksdb::Iterator> iter =
       mthd->NewIterator(ro, documentBounds.columnFamily());
   iter->Seek(documentBounds.start());
 
   uint64_t found = 0;
-
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
@@ -734,7 +737,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     auto res = removeDocument(trx, docId, doc, options);
     if (res.fail()) {
       // Failed to remove document in truncate. Throw
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      THROW_ARANGO_EXCEPTION(res);
     }
     res = state->addOperation(_logicalCollection->cid(), docId.id(),
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
@@ -746,12 +749,11 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
     trackWaitForSync(trx, options);
-
-    if (found % 10000 == 0) {
-      state->triggerIntermediateCommit();
-    }
     iter->Next();
   }
+  
+  // reset to previous value after truncate is finished
+  state->options().intermediateCommitCount = prvICC;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (state->numCommits() == 0) {

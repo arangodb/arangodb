@@ -214,23 +214,24 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    RocksDBEngine::IndexTriple idx = engine->mapObjectToIndex(objectId);
-    if (std::get<0>(idx) == 0 && std::get<1>(idx) == 0) {
+    RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
+    if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
       return nullptr;
     }
     
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(std::get<0>(idx));
-    if (vocbase == nullptr) {
+    DatabaseFeature* df = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
+    if (vb == nullptr) {
       return nullptr;
     }
-    TRI_DEFER(vocbase->release());
+    TRI_DEFER(vb->release());
     
-    LogicalCollection* coll = vocbase->lookupCollection(std::get<1>(idx));
+    LogicalCollection* coll = vb->lookupCollection(std::get<1>(triple));
     if (coll == nullptr) {
       return nullptr;
     }
     
-    std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(idx));
+    std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
     if (index == nullptr) {
       return nullptr;
     }
