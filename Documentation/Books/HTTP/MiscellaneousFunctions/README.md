@@ -27,8 +27,6 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 <!-- js/actions/api-system.js -->
 @startDocuBlock JSF_get_admin_echo
 
-@startDocuBlock JSF_get_admin_long_echo
-
 @startDocuBlock JSF_get_admin_database_version
 
 <!-- lib/Admin/RestShutdownHandler.cpp -->
