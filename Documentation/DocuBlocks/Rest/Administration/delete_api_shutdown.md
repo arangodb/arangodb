@@ -1,5 +1,5 @@
 
-@startDocuBlock get_api_initiate
+@startDocuBlock delete_api_initiate
 @brief initiates the shutdown sequence
 
 @RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence}
@@ -10,6 +10,7 @@ This call initiates a clean shutdown sequence. Requires administrive privileges
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-is returned in all cases.
+is returned in all cases, `OK` will be returned in the result buffer on success.
+
 @endDocuBlock
 

@@ -30,7 +30,7 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 @startDocuBlock get_admin_database_version
 
 <!-- lib/Admin/RestShutdownHandler.cpp -->
-@startDocuBlock get_api_initiate
+@startDocuBlock delete_api_shutdown
 
 <!-- js/actions/api-system.js -->
 @startDocuBlock post_admin_test
