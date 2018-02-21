@@ -10,10 +10,10 @@ be used in your queries.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name, string, required}
 The name of the graph.
 
-@RESTPARAM{definition-name, string, required}
+@RESTURLPARAM{definition-name, string, required}
 The name of the edge collection used in the definition.
 
 @RESTQUERYPARAMETERS

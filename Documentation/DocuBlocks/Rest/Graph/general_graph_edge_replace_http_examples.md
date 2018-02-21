@@ -8,13 +8,13 @@ Replaces the data of an edge in the collection.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name, string, required}
 The name of the graph.
 
-@RESTPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name, string, required} 
 The name of the edge collection the edge belongs to.
 
-@RESTPARAM{edge-key, string, required} 
+@RESTURLPARAM{edge-key, string, required} 
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS

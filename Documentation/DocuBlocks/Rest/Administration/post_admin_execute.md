@@ -24,5 +24,16 @@ The default value of this option is `false`, which disables the execution of
 user-defined code and disables this API endpoint entirely. 
 This is also the recommended setting for production. 
 
+@RESTRETURNCODE{200}
+is returned when everything went well, or if a timeout occurred. In the
+latter case a body of type application/json indicating the timeout
+is returned. depending on *returnAsJSON* this is a json object or a plain string.
+
+@RESTRETURNCODE{403}
+is returned if ArangoDB is not running in cluster mode.
+
+@RESTRETURNCODE{404}
+is returned if ArangoDB was not compiled for cluster operation.
+
 @endDocuBlock
 

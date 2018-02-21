@@ -11,7 +11,7 @@ The name of the collection to drop.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{isSystem,bool,optional}
+@RESTQUERYPARAM{isSystem,boolean,optional}
 Whether or not the collection to drop is a system collection. This parameter
 must be set to *true* in order to drop a system collection.
 

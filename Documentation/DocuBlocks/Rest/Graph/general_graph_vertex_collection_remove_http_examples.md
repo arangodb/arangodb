@@ -9,10 +9,10 @@ if it is not used in any other graph.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name, string, required}
 The name of the graph.
 
-@RESTPARAM{collection-name, string, required}
+@RESTURLPARAM{collection-name, string, required}
 The name of the vertex collection.
 
 @RESTQUERYPARAMETERS

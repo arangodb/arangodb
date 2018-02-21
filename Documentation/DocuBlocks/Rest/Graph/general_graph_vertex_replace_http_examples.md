@@ -9,13 +9,13 @@ Replaces the data of a vertex in the collection.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name, string, required}
 The name of the graph.
 
-@RESTPARAM{collection-name, string, required} 
+@RESTURLPARAM{collection-name, string, required} 
 The name of the vertex collection the vertex belongs to.
 
-@RESTPARAM{vertex-key, string, required} 
+@RESTURLPARAM{vertex-key, string, required} 
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS

@@ -8,7 +8,7 @@ Removes a graph from the collection *_graphs*.
 
 @RESTURLPARAMETERS
 
-@RESTPARAM{graph-name, string, required}
+@RESTURLPARAM{graph-name, string, required}
 The name of the graph.
 
 @RESTQUERYPARAMETERS
