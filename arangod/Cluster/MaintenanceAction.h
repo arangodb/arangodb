@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,130 +21,134 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
-#define ARANGODB_CLUSTER_MAINTENANCE_ACTION_H
+#ifndef ARANGOD_CLUSTER_MAINTENANCE_ACTION
+#define ARANGOD_CLUSTER_MAINTENANCE_ACTION 1
 
-#include "ActionDescription.h"
+#include <map>
+#include <memory>
 
-#include "lib/Basics/Result.h"
-
-#include <chrono>
+#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
+
+class MaintenanceFeature;
+
 namespace maintenance {
 
-  /**
-   * Threading notes:
-   * MaintenanceAction is managed by a MaintenanceWorker object.  The
-   * execution could be on a worker pool thread or the Action creator's thread.
-   * Rest API and supervisory code may read status information at
-   * any time.  Similarly, the Rest API might change the state to PAUSED
-   * or FAILED (for delete) at any time.
-   */
 
 typedef std::map<std::string, std::string> ActionDescription_t;
+typedef std::shared_ptr<class MaintenanceAction> MaintenanceActionPtr_t;
 
 class MaintenanceAction {
+ public:
+  MaintenanceAction(arangodb::MaintenanceFeature & feature, ActionDescription_t & description);
 
-public:
+  MaintenanceAction() = delete;
 
-  /// @brief what is this action doing right now
-  enum State {
-    ANYSTATE,      // used for calls with a state comparison, NOT a valid state for object
-    READY,         // Action is ready to start/resume execution
-    EXECUTING,     // thread working the task
-    WAITING,       // a predecessor Action must complete first
-    PAUSED,        // this Action was paused (maybe by UI)
-    COMPLETE,      // Action completed successfully, awaiting removal from deque
-    FAILED         // Action had an error or was canceled, awaiting removal from deque
+  virtual ~MaintenanceAction() {};
+
+ public:
+
+  //
+  // MaintenanceWork entry points
+  //
+
+  /// @brief initial call to object to perform a unit of work.
+  ///   really short tasks could do all work here and return false
+  /// @return true to continue processing, false done (result() set)
+  virtual bool first();
+
+  /// @brief iterative call to perform a unit of work
+  /// @return true to continue processing, false done (result() set)
+  virtual bool next();
+
+
+  //
+  // state accessor and set functions
+  //  (some require time checks and/or combination tests)
+  //
+  enum ActionState {
+    READY = 1,     // waiting for a worker on the deque
+    EXECUTING = 2, // user or worker thread currently executing
+    WAITING = 3,   // initiated a pre-task, waiting for its completion
+    PAUSED = 4,    // (not implemented) user paused task
+    COMPLETE = 5,  // task completed successfully
+    FAILED = 6,    // task failed, no longer executing
   };
 
+  /// @brief execution finished successfully or failed ... and race timer expired
+  bool done() const {/** TODO: NEEDS TIME COMPONENT **/ return COMPLETE==_state || FAILED==_state;};
 
+  /// @brief waiting for a worker to grab it and go!
+  bool runable() const {return READY==_state;};
 
-  /// @brief construct with parameter description
-  MaintenanceAction(ActionDescription_t && description, uint64_t id);
+  /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
+  ActionState getState() const {return _state;};
 
-  /// @brief clean up
-  virtual ~MaintenanceAction();
+  /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
+  void setState(ActionState state) {_state = state;};
 
-  /// @brief let external users and inherited classes adjust state
-  void setState(State NewState) noexcept;
+  /// @brief return object related Result value
+  Result result() const;
 
-  /// @brief external routine, calls firstWrapped() virtual function.
-  ///  MaintenanceWorker calls this for first piece of work for this action.
-  ///  Short / atomic actions might perform all work in this call.  If so,
-  ///  set state to COMPLETE  or FAILED during such atomic calls.
-  ///  Wrapper will set FAILED state if result is not ok().
-  arangodb::Result first() noexcept;
+  /// @brief update incremental statistics
+  void startStats() {};
 
-  /// @brief external routine, calls nextWrapped() virtual function.
-  ///  For continued iteration work.  Set state to COMPLETE or FAILED
-  ///  once last iteration completed.  Wrapper will set FAILED state if
-  ///  result is not ok().
-  arangodb::Result next() noexcept;
+  /// @brief update incremental statistics
+  void incStats() {};
 
-  /// @brief thread safe mechanism for changing state.  Optional precondition
-  ///  is to prevent a Rest API from changing a COMPLETE to FAILED (or similar)
-  ///  in a race condition between external thread and internal thread making changes
-  arangodb::Result setState(State NewState, State PreconditionState=ANYSTATE) noexcept;
+  /// @brief finalize statistics
+  void endStats() {};
 
+  /// @brief Once PreAction completes, remove its pointer
+  void clearPreAction() {_preAction.reset();};
 
-  /// @brief external routine, puts state information into builder then calls
-  ///  toJsonWrapped for inherited classes to added whatever.  No exceptions,
-  ///  set a bad Result code
-  arangodb::Result toJson(/* vpackbuilder & ToDo */) noexcept;
+  /// @brief Retrieve pointer to action that should run before this one
+  MaintenanceActionPtr_t getPreAction() {return _preAction;};
+
+  /// @brief Retrieve pointer to action that should run directly after this one
+  MaintenanceActionPtr_t getNextAction() {return _nextAction;};
+
+  /// @brief Save pointer to successor action
+  void setNextAction(MaintenanceActionPtr_t next) {_nextAction=next;}
+
+  /// @brief hash value of ActionDescription_t
+  /// @return uint64_t hash
+  uint64_t hash() const {return _hash;};
+
+  /// @brief hash value of ActionDescription_t
+  /// @return uint64_t hash
+  uint64_t id() const {return _id;};
+
+  /// @brief Returns json array of object contents for status reports
+  ///  Thread safety of this function is questionable for some member objects
+  virtual Result toJson(/* builder */);
+
+  /// @brief Return Result object contain action specific status
+  Result result() {return _result;}
 
 protected:
-  /// @brief map of options needed to execute this action
-  ActionDescription_t _description;
+  arangodb::MaintenanceFeature & _feature;
 
-  /// @brief unique, process specific identifier set at construction
+  ActionDescription_t & _description;
+
+  uint64_t _hash;
+
   uint64_t _id;
 
-  //
-  // state variables
-  //
+  std::atomic<ActionState> _state;
 
-  /// @brief protection of all state variables
-  basics::ReadWriteLock _stateLock;
+  // NOTE: preAction should only be set within first() or next(), not construction
+  MaintenanceActionPtr_t _preAction;
+  MaintenanceActionPtr_t _nextAction;
 
-  /// @brief what is this action doing right now
-  State _state;
+  Result _result;
 
-  /// @brief when object was created
-  std::chrono::steady_clock::time_point _timeCreated;
+};// class MaintenanceAction
 
-  /// @brief when object was completed or failed
-  std::chrono::steady_clock::time_point _timeStopped;
+} // namespace maintenance
+} // namespace arangodb
 
-  /// @brief when last activity finished: first(), next(), or paused
-  std::chrono::steady_clock::time_point _timeLastActive;
-
-  /// @brief activity counter incremented on first() and next()
-  uint64_t _activityCount;
-
-  //
-  // methods used by inheriting classes
-  //
-
-  /// @brief code to set up iteration and/or perform initial
-  ///  assessment of server state, might push a predecessor task
-  ///  Note: only called when _activityCount is zero (non-zero
-  ///  occurs on restart of PAUSED or WAITING tasks)
-  ///  Default implementation returns an error Result.
-  virtual Result firstWrapped() noexcept;
-
-  /// @brief actual iteration for long running tasks.  This can
-  ///  call could push a predecessor task, but why?
-  ///  Default implementation returns an error Result.
-  virtual Result nextWrapped() noexcept;
-
-  /// @brief Optional.  Allows inheriting classes to add information
-  ///  to status json.  No throws.  Send back errors via Result.
-  ///  Default implementation is a no-op returning ok() Result.
-  virtual Result toJsonWrapped() noexcept;
-
-};
-
-}}
 #endif

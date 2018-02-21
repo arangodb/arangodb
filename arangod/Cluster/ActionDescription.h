@@ -57,9 +57,9 @@ static std::string const OBJECT_ID("objectId");
  * action. Members are declared const, thus thread safety guards are ommited.
  */
 struct ActionDescription {
-  
+
 public:
-  
+
   /**
    * @brief Construct with properties
    * @param  desc  Descriminatory properties, which are considered for hash
@@ -70,7 +70,7 @@ public:
 
   /**
    * @brief Clean up
-   */ 
+   */
   virtual ~ActionDescription();
 
   /**
@@ -84,6 +84,7 @@ public:
    * @param  other  Other descriptor
    */
   std::size_t hash() const noexcept;
+  static std::size_t hash(std::map<std::string, std::string> desc);
 
   /// @brief Name of action
   std::string const& name() const noexcept;
@@ -138,17 +139,17 @@ public:
    * @return    Non discriminatory properties
    */
   VPackSlice properties() const noexcept;
-  
+
 private:
 
   /// Note: members are const. No thread safety guards needed.
-  
+
   /** @brief discriminatory properties */
-  std::map<std::string, std::string> const _description; 
+  std::map<std::string, std::string> const _description;
 
   /** @brief non-discriminatory properties */
   VPackBuilder const _properties;
-  
+
 };
 
 }}
@@ -167,4 +168,3 @@ template<> struct hash<arangodb::maintenance::ActionDescription> {
 }
 
 #endif
-

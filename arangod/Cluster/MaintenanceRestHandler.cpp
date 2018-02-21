@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -127,7 +127,8 @@ void MaintenanceRestHandler::putAction() {
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID  TRI_ERROR_SHUTTING_DOWN
-
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    result.errorMessage());
     } // if
   } // if
 

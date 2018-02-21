@@ -48,7 +48,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual void prepare() override;
 
   // start the feature
-  virtual void start() override {};
+  virtual void start() override;
 
   // notify the feature about a shutdown request
   virtual void beginShutdown() override {_isShuttingDown=true;};
@@ -67,20 +67,50 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
   ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  Result addAction(maintenance::ActionDescription_t & description, bool executeNow=false) noexcept;
+  Result addAction(maintenance::ActionDescription_t & description, bool executeNow=false);
 
   /// @brief This is the API for MaintenanceAction objects to call to create and
   ///  start a preprocess Action.  The Action executes on the caller's thread AFTER
   ///  returning to the MaintenanceWorker object.
   ///  ActionDescription parameter will be COPIED to new object.
-  Result addPreprocess(maintenance::ActionDescription_t & description, std::shared_ptr<class MaintenanceAction> existingAction) noexcept;
+  Result addPreprocess(maintenance::ActionDescription_t & description, std::shared_ptr<class maintenance::MaintenanceAction> existingAction);
+
+
+  maintenance::MaintenanceActionPtr_t createAction(maintenance::ActionDescription_t & description,
+                                                   bool executeNow);
 
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
-  Result deleteAction(uint64_t id) noexcept;
+  Result deleteAction(uint64_t id);
 
   /// @brief Returns json array of all MaintenanceActions within the deque
-  Result toJson(/* builder */) noexcept;
+  Result toJson(/* builder */);
+
+  /// @brief Return pointer to next ready action, or nullptr
+  maintenance::MaintenanceActionPtr_t findReadyAction();
+
+  /// @brief Process specific ID for a new action
+  /// @returns uint64_t
+  uint64_t nextActionId() {return _nextActionId++;};
+
+  bool isShuttingDown() const {return(_isShuttingDown);};
+
+protected:
+  /// @brief Search for action by hash
+  /// @return shared pointer to action object if exists, _actionRegistry.end() if not
+  maintenance::MaintenanceActionPtr_t findActionHash(size_t hash);
+
+  /// @brief Search for action by hash (but lock already held by caller)
+  /// @return shared pointer to action object if exists, nullptr if not
+  maintenance::MaintenanceActionPtr_t findActionHashNoLock(size_t hash);
+
+  /// @brief Search for action by Id
+  /// @return shared pointer to action object if exists, nullptr if not
+  maintenance::MaintenanceActionPtr_t findActionId(uint64_t id);
+
+  /// @brief Search for action by Id (but lock already held by caller)
+  /// @return shared pointer to action object if exists, nullptr if not
+  maintenance::MaintenanceActionPtr_t findActionIdNoLock(size_t hash);
 
 
 protected:
@@ -99,10 +129,23 @@ protected:
   std::atomic<bool> _isShuttingDown;
 
   /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
-  uint64_t _nextActionId;
+  std::atomic<uint64_t> _nextActionId;
 
+  //
+  // Lock notes:
+  //  Reading _actionRegistry requires Read or Write lock via _actionRegistryLock
+  //  Writing _actionRegistry requires BOTH:
+  //    - CONDITION_LOCKER on _actionRegistryCond
+  //    - then write lock via _actionRegistryLock
+  //
   /// @brief all actions executing, waiting, and done
-  std::deque<std::shared_ptr<MaintenanceAction>> _actionRegistry;
+  std::deque<maintenance::MaintenanceActionPtr_t> _actionRegistry;
+
+  /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
+  arangodb::basics::ReadWriteLock _actionRegistryLock;
+
+  /// @brief condition variable to motivate workers to find new action
+  arangodb::basics::ConditionVariable _actionRegistryCond;
 
 };
 

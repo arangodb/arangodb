@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,52 +21,27 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Action.h"
+#include "MaintenanceAction.h"
 
-#include "Cluster/ActionBase.h"
-#include "Cluster/CreateDatabase.h"
-#include "Cluster/DropDatabase.h"
+#include "Cluster/ActionDescription.h"
+#include "Cluster/MaintenanceFeature.h"
 
-#include "Logger/Logger.h"
+namespace arangodb {
 
-using namespace arangodb::maintenance;
+namespace maintenance {
 
-Action::Action(ActionDescription const& d) : _action(nullptr) {
-  TRI_ASSERT(d.has("name"));
-  std::string name = d.name();
-  if (name == "CreateDatabase") {
-    _action = new CreateDatabase(d);
-  } else if (name == "DropDatabase") {
-    _action = new DropDatabase(d);
-  } else {
-    // We should never get here
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
-    TRI_ASSERT(false);
-  }
-}
 
-ActionDescription Action::describe() const {
-  TRI_ASSERT(_action != nullptr);
-  return _action->describe();
-}
+MaintenanceAction::MaintenanceAction(arangodb::MaintenanceFeature & feature,
+                                     ActionDescription_t & description)
+  : _feature(feature), _description(description), _state(READY) {
 
-arangodb::Result Action::run(
-  std::chrono::duration<double> const& d, bool& f) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->run(d, f);
-}
+  _hash = ActionDescription::hash(description);
+  _id = feature.nextActionId();
+  return;
 
-arangodb::Result Action::kill(Signal const& signal) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->kill(signal);
-}
+} // MaintenanceAction::MaintenanceAction
 
-arangodb::Result Action::progress(double& p) {
-  TRI_ASSERT(_action != nullptr);
-  return _action->progress(p);
-}
 
-Action::~Action() {
-  if(_action != nullptr)
-    delete _action;
-}
+} // namespace maintenance
+
+} // namespace arangodb
