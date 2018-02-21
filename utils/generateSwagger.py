@@ -576,16 +576,16 @@ def resturlparam(cargo, r=Regexen()):
 
     parametersList = parameters(last).split(',')
 
-    if parametersList[2] != 'required':
+    if parametersList[2].strip() != 'required':
         print >> sys.stderr, "only required is supported in RESTURLPARAM"
-        raise
+        raise Exception("invalid url parameter")
 
     para = {
-        'name': parametersList[0],
+        'name': parametersList[0].strip(),
         'in': 'path',
-        'format': parametersList[1],
+        'format': parametersList[1].strip(),
         'description': '',
-        'type': parametersList[1].lower(),
+        'type': parametersList[1].strip().lower(),
         'required': True
         }
     swagger['paths'][httpPath][method]['parameters'].append(para) 
