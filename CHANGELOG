@@ -3,6 +3,8 @@ v3.3.4 (XXXX-XX-XX)
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
+* remove long disfunctional admin/long_echo handler
+
 * fixed Foxx API:
 
   * PUT /_api/foxx/service: Respect force flag
