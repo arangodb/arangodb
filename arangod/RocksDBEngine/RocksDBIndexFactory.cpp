@@ -400,10 +400,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   if (typeString == "persistent") {
     return std::make_shared<RocksDBPersistentIndex>(iid, col, info);
   }
-  if (typeString == "geo1" || typeString == "geo2") {
-    return std::make_shared<RocksDBGeoIndex>(iid, col, info);
-  }
-  if (typeString == "s2index") {
+  if (typeString == "geo1" || typeString == "geo2" || typeString == "s2index") {
     return std::make_shared<RocksDBGeoS2Index>(iid, col, info, typeString);
   }
   if (typeString == "fulltext") {
