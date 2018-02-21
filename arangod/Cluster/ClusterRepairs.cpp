@@ -118,7 +118,7 @@ readCollections(const VPackSlice &plan) {
   for (auto const &databaseIterator : ObjectIterator(collectionsByDatabase)) {
     std::string const databaseId = databaseIterator.key.copyString();
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
     << "  db: " << databaseId;
 
     Slice const &collectionsSlice = databaseIterator.value;
@@ -139,11 +139,11 @@ readCollections(const VPackSlice &plan) {
         );
       }
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "    collection: " << collectionId << " / " << collectionName;
 
       if (distributeShardsLike) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "    distributeShardsLike: " << distributeShardsLike.get();
       }
 
@@ -153,14 +153,14 @@ readCollections(const VPackSlice &plan) {
 
       for (auto const &shardIterator : ObjectIterator(shardsSlice)) {
         std::string const shardId = shardIterator.key.copyString();
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "      shard: " << shardId;
 
         DBServers dbServers;
 
         for (auto const &dbServerIterator : ArrayIterator(shardIterator.value)) {
           std::string const dbServerId = dbServerIterator.copyString();
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "        dbserver: " << dbServerId;
 
           dbServers.emplace_back(dbServerId);
@@ -189,14 +189,14 @@ readCollections(const VPackSlice &plan) {
 std::vector<CollectionId>
 findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
   std::vector<CollectionId> collectionsToFix;
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
   << "[tg] findCollectionsToFix()";
 
-  for (auto const &it : collections) {
-    CollectionId const& collectionId = it.first;
-    struct Collection const& collection = it.second;
+  for (auto const &collectionIterator : collections) {
+    CollectionId const& collectionId = collectionIterator.first;
+    struct Collection const& collection = collectionIterator.second;
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
     << "[tg]   checking collection " << collectionId;
 
     if (collection.repairingDistributeShardsLike) {
@@ -206,93 +206,121 @@ findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
       continue;
     }
     if (! collection.distributeShardsLike) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "[tg]     distributeShardsLike doesn't exist, not fixing";
       continue;
     }
 
     struct Collection & proto = collections[collection.distributeShardsLike.get()];
 
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
     << "[tg]   against proto collection " << collection.distributeShardsLike.get();
 
-//    auto zippedShards = boost::make_zip_iterator(
-//      boost::make_tuple(collection.shardsByName.begin(), proto.shardsByName.begin())
-//    );
-//    auto zippedShards = boost::zip_iterator(
-//      collection.shardsByName.begin(),
-//      collection.shardsByName.end(),
-//      proto.shardsByName.begin(),
-//      proto.shardsByName.end()
-//    );
-
     if (collection.shardsByName.size() != proto.shardsByName.size()) {
-      // TODO This should maybe not be a warning. Also, "proto collection" should be changed in something more
-      // meaningful to the user.
+      // TODO This should maybe not be a warning.
+      // TODO Is there anything we can do in this case? Why does this happen anyway?
       LOG_TOPIC(WARN, arangodb::Logger::FIXME)
       << "Unequal number of shards in collection " << collection.database << "/" << collection.name
-      << " and its proto collection " << proto.database << "/" << proto.name;
+      << " and its distributeShardsLike collection " << proto.database << "/" << proto.name;
 
       continue;
     }
 
-    for (auto const& it : boost::combine(collection.shardsByName, proto.shardsByName)) {
-      // boost::tie(auto const& shardIt, auto const& protoShardIt) = it;
-      auto const& shardIt = it.get<0>();
-      auto const& protoShardIt = it.get<1>();
+    for (auto const& zippedShardsIt : boost::combine(collection.shardsByName, proto.shardsByName)) {
+      auto const& shardIt = zippedShardsIt.get<0>();
+      auto const& protoShardIt = zippedShardsIt.get<1>();
 
       DBServers const& dbServers = shardIt.second;
       DBServers const& protoDbServers = protoShardIt.second;
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "[tg]     comparing shards " << shardIt.first << " and " << protoShardIt.first;
 
       if (dbServers != protoDbServers) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "[tg]       fixing shard";
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+        << "[tg]       fixing collection";
         collectionsToFix.emplace_back(collectionId);
         break;
       }
     }
-
-//    for (auto const& shardIt : collection.shardsByName) {
-//      std::string const& shardName = shardIt.first;
-//      DBServers const& dbServers = shardIt.second;
-//      DBServers const& protoDbServers = proto.shardsByName[shardName];
-//
-//      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-//      << "[tg]     checking shard " << shardName;
-//
-//      if (dbServers != protoDbServers) {
-//        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-//        << "[tg]       fixing shard";
-//        collectionsToFix.emplace_back(collectionId);
-//        break;
-//      }
-//    }
   }
 
   return collectionsToFix;
 }
 
 
-AgencyWriteTransaction
-ClusterRepairs::repairDistributeShardsLike(VPackSlice &&plan) {
+AgencyWriteTransaction fixShard(
+  Collection const& collection,
+  Collection const& proto,
+  std::string const& shardId,
+  std::string const& protoShardId
+) {
   LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-  << "[tg] ClusterMethods::repairDistributeShardsLike()";
+  << "[tg] fixShard("
+    << "\"" << collection.database << "/" << collection.name << "\","
+    << "\"" << proto.database << "/" << proto.name << "\","
+    << "\"" << shardId << "/" << protoShardId << "\","
+    << ")";
 
-  std::map<CollectionId, struct Collection> collections = readCollections(plan);
 
-  std::vector<CollectionId> collectionsToFix = findCollectionsToFix(collections);
+  std::vector<AgencyOperation> agencyOperations = {};
+  std::vector<AgencyPrecondition> agencyPreconditions = {};
 
-  // TODO maybe it makes more sense to find the shards to fix instead of the collections?
+  // TODO both arguments may either be a single Op/Precond or a vector. Use a single value if applicable.
+  AgencyWriteTransaction trx(agencyOperations, agencyPreconditions);
 
-  for (auto const& collectionIt : collectionsToFix) {
-    for (auto const& shardIt : collections[collectionIt].shardsByName) {
-      std::string const& shardName = shardIt.first;
+  return trx;
+}
 
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "[tg] fix shard " << shardName;
+
+std::vector<AgencyWriteTransaction>
+ClusterRepairs::repairDistributeShardsLike(VPackSlice &&plan) {
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  << "[tg] ClusterRepairs::repairDistributeShardsLike()";
+
+  std::map<CollectionId, struct Collection> collectionMap = readCollections(plan);
+
+  std::vector<CollectionId> collectionsToFix = findCollectionsToFix(collectionMap);
+
+  std::vector<AgencyWriteTransaction> transactions;
+
+  for (auto const& collectionIdIterator : collectionsToFix) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    << "[tg] fix collection " << collectionIdIterator;
+    struct Collection const& collection = collectionMap[collectionIdIterator];
+
+    // TODO rename distributeShardsLike to repairingDistributeShardsLike in
+    // collection
+    std::string protoId;
+    if (collection.distributeShardsLike) {
+      protoId = collection.distributeShardsLike.get();
+    }
+    else if (collection.repairingDistributeShardsLike) {
+      protoId = collection.repairingDistributeShardsLike.get();
+    }
+
+    struct Collection& proto = collectionMap[protoId];
+
+    for (auto const& zippedShardsIterator : boost::combine(collection.shardsByName, proto.shardsByName)) {
+      auto const &shardIterator = zippedShardsIterator.get<0>();
+      auto const &protoShardIterator = zippedShardsIterator.get<1>();
+
+      std::string const& shardId = shardIterator.first;
+      std::string const& protoShardId = protoShardIterator.first;
+
+      DBServers const &dbServers = shardIterator.second;
+      DBServers const &protoDbServers = protoShardIterator.second;
+
+      if (dbServers != protoDbServers) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "[tg] shard " << shardId << " needs fixing";
+        AgencyWriteTransaction trx = fixShard(collection, proto, shardId, protoShardId);
+        transactions.emplace_back(trx);
+      }
+      else {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "[tg] shard " << shardId << " doesn't need fixing";
+      }
     }
   }
 
@@ -304,11 +332,6 @@ ClusterRepairs::repairDistributeShardsLike(VPackSlice &&plan) {
   // Phase 2:
   // fixShard()
 
-  std::vector<AgencyOperation> agencyOperations = {};
-  std::vector<AgencyPrecondition> agencyPreconditions = {};
 
-  // TODO both arguments may either be a single Op/Precond or a vector. Use a single value if applicable.
-  AgencyWriteTransaction trans(agencyOperations, agencyPreconditions);
-
-  return trans;
+  return transactions;
 }

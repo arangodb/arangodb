@@ -36,7 +36,7 @@ class Slice;
 class ClusterRepairs {
  public:
 
-  static AgencyWriteTransaction
+  static std::vector<AgencyWriteTransaction>
   repairDistributeShardsLike(VPackSlice &&plan);
 };
 

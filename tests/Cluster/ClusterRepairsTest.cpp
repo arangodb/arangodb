@@ -61,17 +61,27 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
   GIVEN("") {
-    AgencyWriteTransaction transaction
+    std::vector<AgencyWriteTransaction> transactions
       = ClusterRepairs::repairDistributeShardsLike(planBuilder->slice());
 
     VPackBuilder transactionBuilder = Builder();
 
-    transaction.toVelocyPack(transactionBuilder);
+    REQUIRE(transactions.size() == 2);
+
+    transactions[0].toVelocyPack(transactionBuilder);
 
     std::shared_ptr<VPackBuilder> expectedTransaction
-      = R"=([{"myTrx": "foo"}])="_vpack;
+      = R"=([{"myTrx1": "foo"}])="_vpack;
 
-    REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson());
+    REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
+    REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
+
+    transactions[1].toVelocyPack(transactionBuilder);
+
+    expectedTransaction
+      = R"=([{"myTrx2": "bar"}])="_vpack;
+
+    REQUIRE(transactionBuilder.slice().toJson() == expectedTransaction->slice().toJson()); // either, or:
     REQUIRE(NormalizedCompare::equals(transactionBuilder.slice(), expectedTransaction->slice()));
   }
 }
