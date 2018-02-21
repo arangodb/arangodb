@@ -1,6 +1,8 @@
 devel
 -----
 
+* remove long disfunctional admin/long_echo handler
+
 * fixed Foxx API:
 
   * PUT /_api/foxx/service: Respect force flag
