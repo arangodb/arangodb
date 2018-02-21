@@ -90,7 +90,7 @@ using CollectionId = std::string;
 
 struct Collection {
   // corresponding slice
-  VPackSlice const* slice;
+  Slice const slice;
 
   std::string database;
   std::string name;
@@ -98,12 +98,35 @@ struct Collection {
   boost::optional<CollectionId const> repairingDistributeShardsLike;
   std::map<std::string, DBServers, VersionSort> shardsByName;
 
+  std::map<std::string, Slice> residualAttributes;
+
   // maybe more?
   // isSystem
   // numberOfShards
   // replicationFactor
   // deleted
 };
+
+std::map<std::string, DBServers, VersionSort>
+readShards(Slice const& shards) {
+  std::map<std::string, DBServers, VersionSort> shardsByName;
+
+  for (auto const &shardIterator : ObjectIterator(shards)) {
+    std::string const shardId = shardIterator.key.copyString();
+
+    DBServers dbServers;
+
+    for (auto const &dbServerIterator : ArrayIterator(shardIterator.value)) {
+      std::string const dbServerId = dbServerIterator.copyString();
+
+      dbServers.emplace_back(dbServerId);
+    }
+
+    shardsByName.emplace(std::make_pair(shardId, std::move(dbServers)));
+  }
+
+  return shardsByName;
+}
 
 
 std::map<CollectionId, struct Collection>
@@ -120,64 +143,48 @@ readCollections(const VPackSlice &plan) {
   for (auto const &databaseIterator : ObjectIterator(collectionsByDatabase)) {
     std::string const databaseId = databaseIterator.key.copyString();
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-    << "  db: " << databaseId;
-
     Slice const &collectionsSlice = databaseIterator.value;
 
     for (auto const &collectionIterator : ObjectIterator(collectionsSlice)) {
       std::string const collectionId = collectionIterator.key.copyString();
       Slice const &collectionSlice = collectionIterator.value;
-      std::string const collectionName = collectionSlice.get("name").copyString();
+
+      // attributes
+      std::string collectionName;
       boost::optional<std::string const> distributeShardsLike, repairingDistributeShardsLike;
-      if (collectionSlice.hasKey("distributeShardsLike")) {
-        distributeShardsLike.emplace(
-          collectionSlice.get("distributeShardsLike").copyString()
-        );
-      }
-      if (collectionSlice.hasKey("repairingDistributeShardsLike")) {
-        repairingDistributeShardsLike.emplace(
-          collectionSlice.get("repairingDistributeShardsLike").copyString()
-        );
-      }
+      Slice shardsSlice;
+      std::map<std::string, Slice> residualAttributes;
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-      << "    collection: " << collectionId << " / " << collectionName;
-
-      if (distributeShardsLike) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "    distributeShardsLike: " << distributeShardsLike.get();
-      }
-
-      std::map<std::string, DBServers, VersionSort> shardsByName;
-
-      Slice const &shardsSlice = collectionSlice.get("shards");
-
-      for (auto const &shardIterator : ObjectIterator(shardsSlice)) {
-        std::string const shardId = shardIterator.key.copyString();
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "      shard: " << shardId;
-
-        DBServers dbServers;
-
-        for (auto const &dbServerIterator : ArrayIterator(shardIterator.value)) {
-          std::string const dbServerId = dbServerIterator.copyString();
-          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-          << "        dbserver: " << dbServerId;
-
-          dbServers.emplace_back(dbServerId);
+      for (auto const& it : ObjectIterator(collectionSlice)) {
+        std::string const& key = it.key.copyString();
+        if (key == "name") {
+          collectionName = it.value.copyString();
         }
-
-        shardsByName.emplace(std::make_pair(shardId, std::move(dbServers)));
+        else if(key == "distributeShardsLike") {
+          distributeShardsLike.emplace(it.value.copyString());
+        }
+        else if(key == "repairingDistributeShardsLike") {
+          repairingDistributeShardsLike.emplace(it.value.copyString());
+        }
+        else if(key == "shards") {
+          shardsSlice = it.value;
+        }
+        else {
+          residualAttributes.emplace(std::make_pair(key, it.value));
+        }
       }
+
+      std::map<std::string, DBServers, VersionSort> shardsByName
+        = readShards(shardsSlice);
 
       struct Collection collection {
-        &collectionSlice,
+        collectionSlice,
         databaseId,
         collectionName,
         distributeShardsLike,
         repairingDistributeShardsLike,
-        std::move(shardsByName)
+        std::move(shardsByName),
+        std::move(residualAttributes)
       };
 
       collections.emplace(std::make_pair(collectionId, std::move(collection)));
@@ -273,7 +280,7 @@ AgencyWriteTransaction fixShard(
     AgencyPrecondition(
       agencyCollectionId,
       AgencyPrecondition::Type::VALUE,
-      *collection.slice
+      collection.slice
     )
   };
 
