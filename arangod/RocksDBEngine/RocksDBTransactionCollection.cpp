@@ -295,7 +295,7 @@ void RocksDBTransactionCollection::commitCounts() {
     ridx->applyCommitedEstimates(pair.second.first, pair.second.second);
   }
 
-  _initialNumberDocuments = _numInserts - _numRemoves;
+  _initialNumberDocuments += _numInserts - _numRemoves;
   _operationSize = 0;
   _numInserts = 0;
   _numUpdates = 0;
