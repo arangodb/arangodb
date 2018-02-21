@@ -66,7 +66,7 @@ RocksDBIndex::RocksDBIndex(
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   // hack to get db id and cid in RocksDBWalAccess
   engine->addCollectionMapping(_objectId, collection->vocbase()->id(), collection->cid());
-  engine->addIndexMapping(_objectId, this);
+  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -88,7 +88,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   }
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
   engine->addCollectionMapping(_objectId, collection->vocbase()->id(), collection->cid());
-  engine->addIndexMapping(_objectId, this);
+  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
 }
 
 RocksDBIndex::~RocksDBIndex() {

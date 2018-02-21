@@ -211,15 +211,30 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(
-      uint64_t objectId) {
+  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    Index* index = engine->mapObjectToIndex(objectId);
+    RocksDBEngine::IndexTriple idx = engine->mapObjectToIndex(objectId);
+    if (std::get<0>(idx) == 0 && std::get<1>(idx) == 0) {
+      return nullptr;
+    }
+    
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(std::get<0>(idx));
+    if (vocbase == nullptr) {
+      return nullptr;
+    }
+    TRI_DEFER(vocbase->release());
+    
+    LogicalCollection* coll = vocbase->lookupCollection(std::get<1>(idx));
+    if (coll == nullptr) {
+      return nullptr;
+    }
+    
+    std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(idx));
     if (index == nullptr) {
       return nullptr;
     }
-    return static_cast<RocksDBIndex*>(index)->estimator();
+    return static_cast<RocksDBIndex*>(index.get())->estimator();
   }
 
   void updateMaxTick(uint32_t column_family_id, const rocksdb::Slice& key,

@@ -232,8 +232,8 @@ arangodb::Result globalRocksDBRemove(
 
 uint64_t latestSequenceNumber();
 
-void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);

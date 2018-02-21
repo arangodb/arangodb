@@ -422,9 +422,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId == 0);
     
     uint64_t objectId = RocksDBKey::objectId(key);
-    auto dbCollPair = rocksutils::mapObjectToCollection(objectId);
-    TRI_voc_tick_t const dbid = dbCollPair.first;
-    TRI_voc_cid_t const cid = dbCollPair.second;
+    auto triple = rocksutils::mapObjectToIndex(objectId);
+    TRI_voc_tick_t const dbid = std::get<0>(triple);
+    TRI_voc_cid_t const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
       _removedDocRid = 0; // ignore rid too
       return rocksdb::Status(); // no reset here
