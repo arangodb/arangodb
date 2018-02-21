@@ -646,7 +646,6 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
     newSlice,
     fromSlice,
     toSlice,
-    arangodb::LocalDocumentId(),
     isEdgeCollection,
     builder,
     options.isRestore,
