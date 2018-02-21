@@ -860,8 +860,21 @@ function uninstall (mount, options = {}) {
 }
 
 function replace (serviceInfo, mount, options = {}) {
-  utils.validateMount(mount);
   ensureFoxxInitialized();
+  if (!options.force) {
+    const serviceDefinition = utils.getServiceDefinition(mount);
+    if (!serviceDefinition) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
+        errorMessage: dd`
+          ${errors.ERROR_SERVICE_NOT_FOUND.message}
+          Mount path: "${mount}".
+        `
+      });
+    }
+  } else {
+    utils.validateMount(mount);
+  }
   const tempPaths = _prepareService(serviceInfo, options);
   FoxxService.validatedManifest({
     mount,
@@ -877,7 +890,17 @@ function replace (serviceInfo, mount, options = {}) {
 
 function upgrade (serviceInfo, mount, options = {}) {
   ensureFoxxInitialized();
-  const serviceOptions = utils.getServiceDefinition(mount).options;
+  const serviceDefinition = utils.getServiceDefinition(mount);
+  if (!serviceDefinition) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_NOT_FOUND.code,
+      errorMessage: dd`
+        ${errors.ERROR_SERVICE_NOT_FOUND.message}
+        Mount path: "${mount}".
+      `
+    });
+  }
+  const serviceOptions = serviceDefinition.options;
   Object.assign(serviceOptions.configuration, options.configuration);
   Object.assign(serviceOptions.dependencies, options.dependencies);
   serviceOptions.development = options.development;
