@@ -41,14 +41,15 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
   RocksDBGeoS2Index() = delete;
 
   RocksDBGeoS2Index(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                    velocypack::Slice const&);
+                    velocypack::Slice const&,
+                    std::string const& typeName);
 
   ~RocksDBGeoS2Index() override {}
 
  public:
   constexpr IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
-  constexpr char const* typeName() const override { return "s2index"; }
+  char const* typeName() const override { return _typeName.c_str(); }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -80,6 +81,9 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
+
+ private:
+  std::string const _typeName;
 };
 }  // namespace arangodb
 

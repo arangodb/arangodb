@@ -40,7 +40,8 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
   MMFilesGeoS2Index() = delete;
 
   MMFilesGeoS2Index(TRI_idx_iid_t, LogicalCollection*,
-                    arangodb::velocypack::Slice const&);
+                    arangodb::velocypack::Slice const&,
+                    std::string const& typeName);
 
  public:
 
@@ -57,7 +58,7 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
  public:
   constexpr IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
 
-  constexpr char const* typeName() const override { return "s2index"; }
+  char const* typeName() const override { return _typeName.c_str(); }
 
   constexpr bool allowExpansion() const override { return false; }
 
@@ -97,6 +98,7 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
  private:
 
   MMFilesGeoS2Index::IndexTree _tree;
+  std::string const _typeName;
 };
 }
 

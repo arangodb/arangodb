@@ -325,7 +325,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
     case Index::TRI_IDX_TYPE_GEO2_INDEX:
       res = EnhanceJsonIndexGeo2(definition, enhanced, create);
       break;
-      
+
     case Index::TRI_IDX_TYPE_S2_INDEX:
       res = EnhanceJsonIndexGeoS2(definition, enhanced, create);
       break;
@@ -404,7 +404,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     return std::make_shared<RocksDBGeoIndex>(iid, col, info);
   }
   if (typeString == "s2index") {
-    return std::make_shared<RocksDBGeoS2Index>(iid, col, info);
+    return std::make_shared<RocksDBGeoS2Index>(iid, col, info, typeString);
   }
   if (typeString == "fulltext") {
     return std::make_shared<RocksDBFulltextIndex>(iid, col, info);

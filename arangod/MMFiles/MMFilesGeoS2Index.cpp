@@ -250,9 +250,11 @@ struct NearIterator final : public IndexIterator {
 
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
-                                     VPackSlice const& info)
+                                     VPackSlice const& info,
+                                     std::string const& typeName)
 : MMFilesIndex(iid, collection, info),
-  geo_index::Index(info, _fields) {
+  geo_index::Index(info, _fields),
+  _typeName(typeName) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;

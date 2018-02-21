@@ -226,9 +226,11 @@ class RDBNearIterator final : public IndexIterator {
 
 RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
-                                     VPackSlice const& info)
+                                     VPackSlice const& info,
+                                     std::string const& typeName)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
-      geo_index::Index(info, _fields) {
+      geo_index::Index(info, _fields),
+      _typeName(typeName) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
