@@ -41,6 +41,7 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::cluster_repairs;
 
 namespace arangodb {
 namespace tests {
@@ -73,8 +74,10 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
 
+      DistributeShardsLikeRepairer repairer;
+
       std::list<AgencyWriteTransaction> transactions
-        = ClusterRepairs::repairDistributeShardsLike(
+        = repairer.repairDistributeShardsLike(
           VPackSlice(planCollections->data()),
           VPackSlice(planDbServers->data())
         );

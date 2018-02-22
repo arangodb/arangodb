@@ -26,17 +26,120 @@
 #include <arangod/Agency/AgencyComm.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
+
+#include <boost/optional.hpp>
+#include <boost/variant.hpp>
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
 }
 
-class ClusterRepairs {
+namespace cluster_repairs {
+
+using DBServers = std::vector<std::string>;
+using CollectionId = std::string;
+
+
+class VersionSort {
+  using CharOrInt = boost::variant<char, uint64_t>;
+
  public:
-  static std::list<AgencyWriteTransaction> repairDistributeShardsLike(
-      VPackSlice const& planCollections, VPackSlice const& planDbServers);
+
+  bool operator()(std::string const &a, std::string const &b);
+
+ private:
+
+  std::vector<CharOrInt> static splitVersion(std::string const &str);
 };
+
+
+struct Collection {
+  // corresponding slice
+  // TODO remove this, it should not be needed
+  VPackSlice const slice;
+
+  std::string database;
+  std::string name;
+  uint64_t replicationFactor;
+  boost::optional<CollectionId const> distributeShardsLike;
+  boost::optional<CollectionId const> repairingDistributeShardsLike;
+  boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
+  std::map<std::string, DBServers, VersionSort> shardsByName;
+
+  std::map<std::string, VPackSlice> residualAttributes;
+
+  std::string inline agencyCollectionId() {
+    return "Plan/Collections/" + this->database + "/" + this->name;
+  }
+
+  void
+  addShardDbServerArray(
+    VPackBuilder& builder,
+    std::string const& shardId
+  );
+
+  // maybe more?
+  // isSystem
+  // numberOfShards
+  // deleted
+};
+
+
+class DistributeShardsLikeRepairer {
+ public:
+  std::list<AgencyWriteTransaction> repairDistributeShardsLike(
+    VPackSlice const& planCollections, VPackSlice const& planDbServers
+  );
+
+ private:
+  std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _buffers;
+
+  std::map<std::string, DBServers, VersionSort> static
+  readShards(VPackSlice const& shards);
+
+  DBServers static
+  readDatabases(VPackSlice const& planDbServers);
+
+  std::map<CollectionId, struct Collection> static
+  readCollections(VPackSlice const& collectionsByDatabase);
+
+  boost::optional<std::string const> static
+  findFreeServer(DBServers availableDbServers, DBServers shardDbServers);
+
+  std::vector<CollectionId> static
+  findCollectionsToFix(std::map<CollectionId, struct Collection> collections);
+
+  AgencyWriteTransaction
+  createMoveShardTransaction(
+    Collection& collection,
+    std::string const& shardId,
+    std::string const& from,
+    std::string const& to
+  );
+
+  std::list<AgencyWriteTransaction>
+  fixLeader(
+    DBServers const& availableDbServers,
+    Collection& collection,
+    Collection& proto,
+    std::string const& shardId,
+    std::string const& protoShardId
+  );
+
+  std::list<AgencyWriteTransaction>
+  fixShard(
+    DBServers const& availableDbServers,
+    Collection& collection,
+    Collection& proto,
+    std::string const& shardId,
+    std::string const& protoShardId
+  );
+};
+
+
+}
 }
 
 #endif  // ARANGODB3_CLUSTERREPAIRS_H

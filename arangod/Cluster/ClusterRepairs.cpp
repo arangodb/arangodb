@@ -35,102 +35,68 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
+using namespace arangodb::cluster_repairs;
 
-class VersionSort {
-  using CharOrInt = boost::variant<char, uint64_t>;
+bool VersionSort::operator()(std::string const &a, std::string const &b) {
+  std::vector<CharOrInt> va = splitVersion(a);
+  std::vector<CharOrInt> vb = splitVersion(b);
 
- public:
-
-  bool operator()(std::string const &a, std::string const &b) {
-    std::vector<CharOrInt> va = splitVersion(a);
-    std::vector<CharOrInt> vb = splitVersion(b);
-
-    return std::lexicographical_compare(
-      va.begin(), va.end(),
-      vb.begin(), vb.end(),
-      [](CharOrInt const &a, CharOrInt const &b) -> bool {
-        if (a.which() != b.which()) {
-          return a.which() < b.which();
-        }
-        return a < b;
+  return std::lexicographical_compare(
+    va.begin(), va.end(),
+    vb.begin(), vb.end(),
+    [](CharOrInt const &a, CharOrInt const &b) -> bool {
+      if (a.which() != b.which()) {
+        return a.which() < b.which();
       }
-    );
-  }
-
- private:
-
-  std::vector<CharOrInt> static splitVersion(std::string const &str) {
-    size_t from = std::string::npos;
-    size_t to = std::string::npos;
-
-    std::vector<CharOrInt> result;
-
-    for (size_t pos = 0; pos < str.length(); pos++) {
-      if (isdigit(str[pos])) {
-        if (from == std::string::npos) {
-          from = pos;
-        }
-        to = pos;
-      } else if (to != std::string::npos) {
-        result.emplace_back(std::stoul(str.substr(from, to)));
-        from = to = std::string::npos;
-      } else {
-        result.emplace_back(str[pos]);
-      }
+      return a < b;
     }
+  );
+}
 
-    if (to != std::string::npos) {
+std::vector<VersionSort::CharOrInt>
+VersionSort::splitVersion(std::string const &str) {
+  size_t from = std::string::npos;
+  size_t to = std::string::npos;
+
+  std::vector<CharOrInt> result;
+
+  for (size_t pos = 0; pos < str.length(); pos++) {
+    if (isdigit(str[pos])) {
+      if (from == std::string::npos) {
+        from = pos;
+      }
+      to = pos;
+    } else if (to != std::string::npos) {
       result.emplace_back(std::stoul(str.substr(from, to)));
+      from = to = std::string::npos;
+    } else {
+      result.emplace_back(str[pos]);
     }
-
-    return result;
-  }
-};
-
-using DBServers = std::vector<std::string>;
-using CollectionId = std::string;
-
-struct Collection {
-  // corresponding slice
-  // TODO remove this, it should not be needed
-  Slice const slice;
-
-  std::string database;
-  std::string name;
-  uint64_t replicationFactor;
-  boost::optional<CollectionId const> distributeShardsLike;
-  boost::optional<CollectionId const> repairingDistributeShardsLike;
-  boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
-  std::map<std::string, DBServers, VersionSort> shardsByName;
-
-  std::map<std::string, Slice> residualAttributes;
-
-  std::string agencyCollectionId() {
-    return "Plan/Collections/" + this->database + "/" + this->name;
   }
 
-  VPackBuilder createShardDbServerArrayVpack(std::string const& shardId) {
-    // TODO preserve the memory behind builder.buffer()!
-    VPackBuilder builder;
-    builder.add(Value(ValueType::Array));
-
-    for (auto const& it : shardsByName[shardId]) {
-      builder.add(Value(it));
-    }
-
-    builder.close();
-
-    return builder;
+  if (to != std::string::npos) {
+    result.emplace_back(std::stoul(str.substr(from, to)));
   }
 
-  // maybe more?
-  // isSystem
-  // numberOfShards
-  // deleted
-};
+  return result;
+}
+
+void
+Collection::addShardDbServerArray(
+  VPackBuilder& builder,
+  std::string const& shardId
+) {
+  builder.add(Value(ValueType::Array));
+
+  for (auto const& it : shardsByName[shardId]) {
+    builder.add(Value(it));
+  }
+
+  builder.close();
+}
 
 std::map<std::string, DBServers, VersionSort>
-readShards(Slice const& shards) {
+DistributeShardsLikeRepairer::readShards(Slice const& shards) {
   std::map<std::string, DBServers, VersionSort> shardsByName;
 
   for (auto const &shardIterator : ObjectIterator(shards)) {
@@ -151,7 +117,7 @@ readShards(Slice const& shards) {
 }
 
 DBServers
-readDatabases(const Slice &planDbServers) {
+DistributeShardsLikeRepairer::readDatabases(const Slice &planDbServers) {
   DBServers dbServers;
 
   // TODO use .[0].arango.Supervision.Health instead of .[0].arango.Plan.DBServers
@@ -166,7 +132,7 @@ readDatabases(const Slice &planDbServers) {
 
 
 std::map<CollectionId, struct Collection>
-readCollections(const Slice &collectionsByDatabase) {
+DistributeShardsLikeRepairer::readCollections(const Slice &collectionsByDatabase) {
   std::map<CollectionId, struct Collection> collections;
 
   // maybe extract more fields, like
@@ -237,7 +203,7 @@ readCollections(const Slice &collectionsByDatabase) {
 
 
 std::vector<CollectionId>
-findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
+DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
   std::vector<CollectionId> collectionsToFix;
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
   << "[tg] findCollectionsToFix()";
@@ -302,7 +268,7 @@ findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
 }
 
 boost::optional<std::string const>
-findFreeServer(
+DistributeShardsLikeRepairer::findFreeServer(
   DBServers availableDbServers,
   DBServers shardDbServers) {
   std::sort(availableDbServers.begin(), availableDbServers.end());
@@ -324,7 +290,7 @@ findFreeServer(
 }
 
 AgencyWriteTransaction
-createMoveShardTransaction(
+DistributeShardsLikeRepairer::createMoveShardTransaction(
   Collection& collection,
   std::string const& shardId,
   std::string const& from,
@@ -333,10 +299,10 @@ createMoveShardTransaction(
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  // TODO fix builder/buffer memory management
-  VPackBuilder builder = collection.createShardDbServerArrayVpack(shardId);
+  VPackBuilder builder;
+  collection.addShardDbServerArray(builder, shardId);
   VPackSlice oldDbServerSlice = builder.slice();
-  std::shared_ptr<VPackBuffer<uint8_t>> oldDbServerBuffer = builder.steal();
+  _buffers.emplace_back(builder.steal());
 
   AgencyPrecondition agencyPrecondition {
     agencyShardId,
@@ -350,9 +316,10 @@ createMoveShardTransaction(
     }
   }
 
-  builder = collection.createShardDbServerArrayVpack(shardId);
+  builder = VPackBuilder();
+  collection.addShardDbServerArray(builder, shardId);
   VPackSlice newDbServerSlice = builder.slice();
-  std::shared_ptr<VPackBuffer<uint8_t>> newDbServerBuffer = builder.steal();
+  _buffers.emplace_back(builder.steal());
 
   AgencyOperation agencyOperation {
     agencyShardId,
@@ -364,7 +331,8 @@ createMoveShardTransaction(
 }
 
 
-std::list<AgencyWriteTransaction> fixLeader(
+std::list<AgencyWriteTransaction>
+DistributeShardsLikeRepairer::fixLeader(
   DBServers const& availableDbServers,
   Collection& collection,
   Collection& proto,
@@ -432,7 +400,8 @@ std::list<AgencyWriteTransaction> fixLeader(
 }
 
 
-std::list<AgencyWriteTransaction> fixShard(
+std::list<AgencyWriteTransaction>
+DistributeShardsLikeRepairer::fixShard(
   DBServers const& availableDbServers,
   Collection& collection,
   Collection& proto,
@@ -466,7 +435,7 @@ std::list<AgencyWriteTransaction> fixShard(
 
 
 std::list<AgencyWriteTransaction>
-ClusterRepairs::repairDistributeShardsLike(
+DistributeShardsLikeRepairer::repairDistributeShardsLike(
   Slice const& planCollections,
   Slice const& planDbServers
 ) {
