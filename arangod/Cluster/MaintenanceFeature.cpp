@@ -74,8 +74,48 @@ void MaintenanceFeature::prepare() {
 
 
 void MaintenanceFeature::start() {
+  int loop;
+  bool flag;
+
   // start threads
+  for (loop=0; loop<_maintenanceThreadsMax; ++loop) {
+    maintenance::MaintenanceWorker * newWorker = new maintenance::MaintenanceWorker(*this);
+    _activeWorkers.push_back(newWorker);
+    flag = newWorker->start(&_workerCompletion);
+
+    if (!flag) {
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "MaintenanceFeature::start:  newWorker start failed";
+    } // if
+  } // for
 } // MaintenanceFeature::start
+
+
+void MaintenanceFeature::beginShutdown() {
+
+    _isShuttingDown=true;
+    CONDITION_LOCKER(cLock, _actionRegistryCond);
+    _actionRegistryCond.broadcast();
+
+    return;
+
+} // MaintenanceFeature
+
+
+void MaintenanceFeature::stop() {
+
+  for (auto itWorker : _activeWorkers ) {
+    CONDITION_LOCKER(cLock, _workerCompletion);
+
+    // loop on each worker, retesting at 10ms just in case
+    if (itWorker->isRunning()) {
+      _workerCompletion.wait(10000);
+    } // if
+  } // for
+
+  return;
+
+} // MaintenanceFeature::stop
 
 
   /// @brief This is the  API for creating an Action and executing it.

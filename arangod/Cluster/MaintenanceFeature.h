@@ -30,6 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceAction.h"
+#include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
 
 namespace arangodb {
@@ -51,10 +52,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   virtual void start() override;
 
   // notify the feature about a shutdown request
-  virtual void beginShutdown() override {_isShuttingDown=true;};
+  virtual void beginShutdown() override;
 
   // stop the feature
-  virtual void stop() override {};
+  virtual void stop() override;
 
   // shut down the feature
   virtual void unprepare() override {};
@@ -94,6 +95,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   uint64_t nextActionId() {return _nextActionId++;};
 
   bool isShuttingDown() const {return(_isShuttingDown);};
+
+  uint32_t getSecondsActionsBlock() const {return _secondsActionsBlock;};
 
 protected:
   /// @brief Search for action by hash
@@ -146,6 +149,12 @@ protected:
 
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;
+
+  /// @brief list of background workers
+  std::vector<maintenance::MaintenanceWorker *> _activeWorkers;
+
+  /// @brief condition variable to indicate thread completion
+  arangodb::basics::ConditionVariable _workerCompletion;
 
 };
 

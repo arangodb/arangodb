@@ -24,6 +24,7 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_ACTION
 #define ARANGOD_CLUSTER_MAINTENANCE_ACTION 1
 
+#include <chrono>
 #include <map>
 #include <memory>
 
@@ -58,11 +59,11 @@ class MaintenanceAction {
   /// @brief initial call to object to perform a unit of work.
   ///   really short tasks could do all work here and return false
   /// @return true to continue processing, false done (result() set)
-  virtual bool first();
+  virtual bool first() = 0 ;
 
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
-  virtual bool next();
+  virtual bool next() {return false;};
 
 
   //
@@ -79,7 +80,7 @@ class MaintenanceAction {
   };
 
   /// @brief execution finished successfully or failed ... and race timer expired
-  bool done() const {/** TODO: NEEDS TIME COMPONENT **/ return COMPLETE==_state || FAILED==_state;};
+  bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
   bool runable() const {return READY==_state;};
@@ -94,13 +95,13 @@ class MaintenanceAction {
   Result result() const;
 
   /// @brief update incremental statistics
-  void startStats() {};
+  void startStats();
 
   /// @brief update incremental statistics
-  void incStats() {};
+  void incStats();
 
   /// @brief finalize statistics
-  void endStats() {};
+  void endStats();
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() {_preAction.reset();};
@@ -124,7 +125,7 @@ class MaintenanceAction {
 
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
-  virtual Result toJson(/* builder */);
+//  virtual Result toJson(/* builder */) {return Result;};
 
   /// @brief Return Result object contain action specific status
   Result result() {return _result;}
@@ -143,6 +144,15 @@ protected:
   // NOTE: preAction should only be set within first() or next(), not construction
   MaintenanceActionPtr_t _preAction;
   MaintenanceActionPtr_t _nextAction;
+
+  // times for user reporting (and _actionDone used by done() to prevent
+  //  race conditions of same task executing twice
+  std::chrono::system_clock::time_point _actionCreated;
+  std::chrono::system_clock::time_point _actionStarted;
+  std::chrono::system_clock::time_point _actionLastStat;
+  std::chrono::system_clock::time_point _actionDone;
+
+  std::atomic<uint64_t> _progress;
 
   Result _result;
 
