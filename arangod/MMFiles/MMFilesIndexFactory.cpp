@@ -431,7 +431,7 @@ std::shared_ptr<Index> MMFilesIndexFactory::prepareIndexFromSlice(
     }
     return std::make_shared<MMFilesEdgeIndex>(iid, col);
   }
-  if (typeString == "geo1" || typeString == "geo2" || typeString == "s2index") {
+  if ("geo1" == typeString || "geo2" == typeString || "s2index" == typeString) {
     return std::make_shared<MMFilesGeoS2Index>(iid, col, info, typeString);
   }
   if (typeString == "hash") {

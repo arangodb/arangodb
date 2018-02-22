@@ -52,7 +52,7 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp, bool dedup) noexcept
   TRI_ASSERT(_params.origin.isValid());
   reset();
   TRI_ASSERT(_params.sorted);
-  TRI_ASSERT(_maxBound > 0 && _maxBound <= M_PI);
+  TRI_ASSERT(_maxBound >= _minBound && _maxBound <= M_PI);
   static_assert(isAscending() || isDescending(), "Invalid template");
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);

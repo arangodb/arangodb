@@ -53,8 +53,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
   TRI_ASSERT(_condition != nullptr);
 }
 
-/// @brief constructor for IndexNode 
-IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) 
+/// @brief constructor for IndexNode
+IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       DocumentProducingNode(plan, base),
       _vocbase(plan->getAst()->query()->vocbase()),
@@ -66,11 +66,11 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-        
+
   _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
-  _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", true);
+  _options.ascending = !basics::VelocyPackHelper::readBooleanValue(base, "reverse", false);
   _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
-        
+
   if (_collection == nullptr) {
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
@@ -111,10 +111,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
-  
+
   // add outvariable and projection
   DocumentProducingNode::toVelocyPack(nodes);
-  
+
   nodes.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&nodes);
@@ -125,7 +125,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
   nodes.add("sorted", VPackValue(_options.sorted));
-  nodes.add("ascending", VPackValue(_options.ascending));
+  nodes.add("reverse", VPackValue(!_options.ascending));
   nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
 
   // And close it:
