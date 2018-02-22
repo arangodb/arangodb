@@ -1,6 +1,8 @@
 devel
 -----
 
+* remove _admin/echo handler
+
 * remove long disfunctional admin/long_echo handler
 
 * fixed Foxx API:
