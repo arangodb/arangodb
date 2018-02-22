@@ -199,6 +199,7 @@ class IRESEARCH_API skip_reader: util::noncopyable {
     size_t length() const override;
     bool eof() const override;
     void seek(size_t pos) override;
+    int64_t checksum(size_t offset) const override;
 
     index_input::ptr stream; // level data stream
     uint64_t begin; // where current level starts
