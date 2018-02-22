@@ -124,7 +124,7 @@ struct Analyzer {
 
 std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
-    { "identity", { "identity", irs::string_ref::nil, irs::flags::empty_instance() } },
+    { "identity", { "identity", irs::string_ref::NIL, irs::flags::empty_instance() } },
     {"text_de", { "text", "{ \"locale\": \"de.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
     {"text_en", { "text", "{ \"locale\": \"en.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
     {"text_es", { "text", "{ \"locale\": \"es.UTF-8\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
@@ -317,7 +317,7 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
-    CHECK((true == !feature.emplace("test_analyzer5", "TestAnalyzer", irs::string_ref::nil).first));
+    CHECK((true == !feature.emplace("test_analyzer5", "TestAnalyzer", irs::string_ref::NIL).first));
     CHECK((true == !feature.get("test_analyzer5")));
   }
 
@@ -325,7 +325,7 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
-    CHECK((true == !feature.emplace("test_analyzer6", "invalid", irs::string_ref::nil).first));
+    CHECK((true == !feature.emplace("test_analyzer6", "invalid", irs::string_ref::NIL).first));
     CHECK((true == !feature.get("test_analyzer6")));
   }
 
@@ -345,7 +345,7 @@ SECTION("test_emplace") {
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
-    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
+    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::NIL).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
     CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
@@ -356,7 +356,7 @@ SECTION("test_emplace") {
   // add static analyzer (feature not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
+    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::NIL).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
     CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
@@ -652,7 +652,7 @@ SECTION("test_persistence") {
     }
 
     std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-      { "valid0", { "identity", irs::string_ref::nil } },
+      { "valid0", { "identity", irs::string_ref::NIL } },
       { "valid2", { "identity", "abc" } },
       { "valid4", { "identity", "[1,\"abc\"]" } },
       { "valid5", { "identity", "{\"a\":7,\"b\":\"c\"}" } },
@@ -736,8 +736,8 @@ SECTION("test_persistence") {
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
-        { "identity", { "identity", irs::string_ref::nil } },
-        { "valid", { "identity", irs::string_ref::nil } },
+        { "identity", { "identity", irs::string_ref::NIL } },
+        { "valid", { "identity", irs::string_ref::NIL } },
       };
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
 
@@ -893,7 +893,7 @@ SECTION("test_start") {
 
     auto expected = staticAnalyzers();
 
-    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple(irs::string_ref::nil, irs::string_ref::nil));
+    expected.emplace(std::piecewise_construct, std::forward_as_tuple("test_analyzer"), std::forward_as_tuple(irs::string_ref::NIL, irs::string_ref::NIL));
     feature.visit([&expected, &feature](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));

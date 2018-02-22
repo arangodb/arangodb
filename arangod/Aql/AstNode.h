@@ -249,7 +249,7 @@ struct AstNode {
   bool isOnlyEqualityMatch() const;
 
   /// @brief computes a hash value for a value node
-  uint64_t hashValue(uint64_t) const;
+  uint64_t hashValue(uint64_t) const noexcept;
 
 /// @brief dump the node (for debugging purposes)
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -761,7 +761,7 @@ struct AstNodeValueLess {
 };
 
 struct AstNodeValueHash {
-  inline size_t operator()(AstNode const* value) const {
+  inline size_t operator()(AstNode const* value) const noexcept {
     return static_cast<size_t>(value->hashValue(0x12345678));
   }
 };
