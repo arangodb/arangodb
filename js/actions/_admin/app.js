@@ -50,7 +50,7 @@ actions.defineHttp({
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_echo
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 actions.defineHttp({
   url: '_admin/echo',
   prefix: true,
@@ -61,12 +61,12 @@ actions.defineHttp({
     req.rawRequestBody = require('internal').rawRequestBody(req);
     res.body = JSON.stringify(req);
   }
-});
+});*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_statistics
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 actions.defineHttp({
   url: '_admin/statistics',
   prefix: false,
@@ -88,12 +88,12 @@ actions.defineHttp({
       actions.resultException(req, res, err, undefined, false);
     }
   }
-});
+});*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_statistics_description
 // //////////////////////////////////////////////////////////////////////////////
-
+/*
 actions.defineHttp({
   url: '_admin/statistics-description',
   prefix: false,
@@ -414,7 +414,7 @@ actions.defineHttp({
       actions.resultException(req, res, err, undefined, false);
     }
   }
-});
+});*/
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_post_admin_execute
