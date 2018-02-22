@@ -173,7 +173,7 @@ reqOpt = ["required", "optional"]
 def CheckReqOpt(token):
     if token not in reqOpt:
         print >> sys.stderr, "This is supposed to be required or optional!"
-        raise Exception("invalid value")
+        raise Exception("invalid value '%s'" % token)
 
 ################################################################################
 ### @brief trim_text
