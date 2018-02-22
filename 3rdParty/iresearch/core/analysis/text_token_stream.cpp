@@ -25,19 +25,6 @@
 #include <fstream>
 #include <mutex>
 #include <unordered_map>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
-  #include <boost/filesystem.hpp>
-
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#endif
-
 #include <boost/locale/encoding.hpp>
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <unicode/brkiter.h> // for icu::BreakIterator
@@ -72,6 +59,8 @@
 #include "utils/misc.hpp"
 #include "utils/runtime_utils.hpp"
 #include "utils/thread_utils.hpp"
+#include "utils/utf8_path.hpp"
+
 #include "text_token_stream.hpp"
 
 NS_ROOT
@@ -129,7 +118,7 @@ bool get_ignored_words(
   const std::string* path = nullptr
 ) {
   auto language = irs::locale_utils::language(locale);
-  boost::filesystem::path stopword_path;
+  irs::utf8_path stopword_path;
   auto* custom_stopword_path =
     path
     ? path->c_str()
@@ -137,36 +126,58 @@ bool get_ignored_words(
     ;
 
   if (custom_stopword_path) {
-    stopword_path = boost::filesystem::path(custom_stopword_path);
+    bool absolute;
 
-    if (!stopword_path.is_absolute()) {
-      stopword_path = boost::filesystem::current_path() /= stopword_path;
+    stopword_path = irs::utf8_path(custom_stopword_path);
+
+    if (!stopword_path.absolute(absolute)) {
+      IR_FRMT_ERROR("Failed to determine absoluteness of path: %s", stopword_path.utf8().c_str());
+
+      return false;
+    }
+
+    if (!absolute) {
+      stopword_path = irs::utf8_path(true) /= custom_stopword_path;
     }
   }
   else {
     // use CWD if the environment variable STOPWORD_PATH_ENV_VARIABLE is undefined
-    stopword_path = boost::filesystem::current_path();
+    stopword_path = irs::utf8_path(true);
   }
 
   try {
-    if (!boost::filesystem::is_directory(stopword_path) ||
-        !boost::filesystem::is_directory(stopword_path.append(language))) {
-      IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
+    bool result;
+
+    if (!stopword_path.exists_directory(result) || !result
+        || !(stopword_path /= language).exists_directory(result) || !result) {
+      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.utf8().c_str());
 
       return false;
     }
 
     ignored_words_t ignored_words;
+    auto visitor = [&ignored_words, &stopword_path](
+        const irs::utf8_path::native_char_t* name
+    )->bool {
+      auto path = stopword_path;
+      bool result;
 
-    for (boost::filesystem::directory_iterator dir_itr(stopword_path), end; dir_itr != end; ++dir_itr) {
-      if (boost::filesystem::is_directory(dir_itr->status())) {
-        continue;
+      path /= name;
+
+      if (!path.exists_file(result)) {
+        IR_FRMT_ERROR("Failed to identify stopword path: %s", path.utf8().c_str());
+
+        return false;
       }
 
-      std::ifstream in(dir_itr->path().native());
+      if (!result) {
+        return true; // skip non-files
+      }
+
+      std::ifstream in(path.native());
 
       if (!in) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, dir_itr->path().c_str());
+        IR_FRMT_ERROR("Failed to load stopwords from path: %s", path.utf8().c_str());
 
         return false;
       }
@@ -182,14 +193,20 @@ bool get_ignored_words(
           ignored_words.insert(line.substr(0, i));
         }
       }
+
+      return true;
+    };
+
+    if (!stopword_path.visit_directory(visitor, false)) {
+      return false;
     }
 
     buf.insert(ignored_words.begin(), ignored_words.end());
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while loading stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
-    IR_EXCEPTION();
+    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.utf8().c_str());
+    IR_LOG_EXCEPTION();
   }
 
   return false;

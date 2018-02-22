@@ -41,10 +41,8 @@ iresearch::bstring encode(T value, size_t offset = 0) {
 
 NS_END
 
-namespace ir = iresearch;
-
 TEST(numeric_utils_test, encode32) {
-  const ir::byte_type TYPE_MAGIC = 0;
+  const irs::byte_type TYPE_MAGIC = 0;
 
   // 0
   {
@@ -52,11 +50,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 0
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -67,11 +65,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 8 
     {
       const size_t shift = 8;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -81,11 +79,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 16
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -94,11 +92,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 24 
     {
       const size_t shift = 24;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -106,31 +104,31 @@ TEST(numeric_utils_test, encode32) {
     // shift = 32
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 43
     {
       const size_t shift = 43;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint32_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode32(actual.data()));
     }
   }
 
@@ -140,11 +138,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 0
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -155,11 +153,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 8
     {
       const size_t shift = 8;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -169,11 +167,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 16
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -182,11 +180,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 24 
     {
       const size_t shift = 24;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -194,31 +192,31 @@ TEST(numeric_utils_test, encode32) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 1132 
     {
       const size_t shift = 1132;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint32_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode32(actual.data()));
     }
   }
 
@@ -229,11 +227,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 0
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0x30);
@@ -244,11 +242,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 8
     {
       const size_t shift = 8;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0x30);
@@ -258,11 +256,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -271,11 +269,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 24 
     {
       const size_t shift = 24;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -283,31 +281,31 @@ TEST(numeric_utils_test, encode32) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // invalid shift = 54 
     {
       const size_t shift = 54;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint32_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode32(actual.data()));
     }
   }
 
@@ -318,11 +316,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 0
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0])));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0])));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0x44);
       expected.append(1, 0);
@@ -333,11 +331,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 8
     {
       const size_t shift = 8;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0x44);
       expected.append(1, 0);
@@ -347,11 +345,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0x44);
       ASSERT_EQ(actual, expected);
@@ -360,11 +358,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 24 
     {
       const size_t shift = 24;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -372,31 +370,31 @@ TEST(numeric_utils_test, encode32) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // invalid shift = 33 
     {
       const size_t shift = 33;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint32_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode32(actual.data()));
     }
   }
 
@@ -407,11 +405,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 0
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xFF);
       expected.append(1, 0xFF);
       expected.append(1, 0xFE);
@@ -422,11 +420,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 8
     {
       const size_t shift = 8;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xFF);
       expected.append(1, 0xFF);
       expected.append(1, 0xFE);
@@ -436,11 +434,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 16
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xFF);
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
@@ -449,11 +447,11 @@ TEST(numeric_utils_test, encode32) {
     // shift = 24 
     {
       const size_t shift = 24;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xFF);
       ASSERT_EQ(actual, expected);
     }
@@ -461,31 +459,31 @@ TEST(numeric_utils_test, encode32) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // invalid shift = 33
     {
       const size_t shift = 33;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode32(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode32(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint32_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int32_t>::size());
-      actual.resize(ir::numeric_utils::encode32(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode32(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint32_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int32_t>::size());
+      actual.resize(irs::numeric_utils::encode32(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode32(actual.data()));
     }
   }
 }
@@ -518,7 +516,7 @@ TEST(numeric_utils_test, i32_lexicographical_sort) {
 
   // sort values as a strings 
   {
-    ir::bstring lhsb, rhsb;
+    irs::bstring lhsb, rhsb;
     lhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
     rhsb.resize(iresearch::numeric_utils::numeric_traits<int32_t>::size());
 
@@ -588,7 +586,7 @@ TEST(numeric_utils_test, i64_lexicographical_sort) {
 
   // sort values as a strings 
   {
-    ir::bstring lhsb, rhsb;
+    irs::bstring lhsb, rhsb;
     lhsb.resize(iresearch::numeric_utils::numeric_traits<int64_t>::size());
     rhsb.resize(iresearch::numeric_utils::numeric_traits<int64_t>::size());
 
@@ -632,8 +630,8 @@ TEST(numeric_utils_test, double_lexicographical_sort) {
   // sort values as a strings 
   {
     typedef iresearch::numeric_utils::numeric_traits<double_t> traits_t;
-    
-    ir::bstring lhsb, rhsb;
+
+    irs::bstring lhsb, rhsb;
     lhsb.resize(traits_t::size());
     rhsb.resize(traits_t::size());
 
@@ -650,7 +648,7 @@ TEST(numeric_utils_test, double_lexicographical_sort) {
 }
 
 TEST(numeric_utils_test, encode64) {
-  const ir::byte_type TYPE_MAGIC = 0x60;
+  const irs::byte_type TYPE_MAGIC = 0x60;
 
   // 0
   {
@@ -658,11 +656,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -677,11 +675,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -694,11 +692,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -709,11 +707,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -722,11 +720,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -734,31 +732,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -768,11 +766,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -787,11 +785,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -804,11 +802,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -819,11 +817,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -832,11 +830,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -844,31 +842,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -878,11 +876,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -897,11 +895,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -914,11 +912,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -929,11 +927,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -942,11 +940,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -954,31 +952,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -988,11 +986,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1007,11 +1005,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1025,11 +1023,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1040,11 +1038,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -1053,11 +1051,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -1065,31 +1063,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -1099,11 +1097,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1118,11 +1116,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1135,11 +1133,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1150,11 +1148,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -1163,11 +1161,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -1175,31 +1173,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -1209,11 +1207,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1228,11 +1226,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1245,11 +1243,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0);
@@ -1260,11 +1258,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -1273,11 +1271,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -1285,31 +1283,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -1319,11 +1317,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0xFA);
@@ -1338,11 +1336,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0xFA);
@@ -1355,11 +1353,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       expected.append(1, 0xFA);
@@ -1370,11 +1368,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0);
       ASSERT_EQ(actual, expected);
@@ -1383,11 +1381,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -1395,31 +1393,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -1429,11 +1427,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1448,11 +1446,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1465,11 +1463,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1480,11 +1478,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       expected.append(1, 0xEF);
       ASSERT_EQ(actual, expected);
@@ -1493,11 +1491,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0x80);
       ASSERT_EQ(actual, expected);
     }
@@ -1505,31 +1503,31 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 
@@ -1539,11 +1537,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 0 
     {
       const size_t shift = 0;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xAA);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1558,11 +1556,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 16 
     {
       const size_t shift = 16;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xAA);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1575,11 +1573,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 32 
     {
       const size_t shift = 32;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xAA);
       expected.append(1, 0xEF);
       expected.append(1, 0xFA);
@@ -1590,11 +1588,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 48 
     {
       const size_t shift = 48;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xAA);
       expected.append(1, 0xEF);
       ASSERT_EQ(actual, expected);
@@ -1603,11 +1601,11 @@ TEST(numeric_utils_test, encode64) {
     // shift = 56 
     {
       const size_t shift = 56;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       expected.append(1, 0xAA);
       ASSERT_EQ(actual, expected);
     }
@@ -1615,37 +1613,37 @@ TEST(numeric_utils_test, encode64) {
     // shift = 64 
     {
       const size_t shift = 64;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
     }
 
     // shift = 65 
     {
       const size_t shift = 65;
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ir::bstring expected;
-      expected.append(1, TYPE_MAGIC + static_cast<ir::byte_type>(shift));
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      irs::bstring expected;
+      expected.append(1, TYPE_MAGIC + static_cast<irs::byte_type>(shift));
       ASSERT_EQ(actual, expected);
-      ASSERT_EQ(0, ir::numeric_utils::decode64(actual.data()));
+      ASSERT_EQ(0, irs::numeric_utils::decode64(actual.data()));
     }
 
-    for (size_t shift = 0; shift < ir::bits_required<uint64_t>(); ++shift) {
-      ir::bstring actual;
-      actual.resize(ir::numeric_utils::numeric_traits<int64_t>::size());
-      actual.resize(ir::numeric_utils::encode64(value, &(actual[0]), shift));
-      ASSERT_EQ(((value >> shift) << shift), ir::numeric_utils::decode64(actual.data()));
+    for (size_t shift = 0; shift < irs::bits_required<uint64_t>(); ++shift) {
+      irs::bstring actual;
+      actual.resize(irs::numeric_utils::numeric_traits<int64_t>::size());
+      actual.resize(irs::numeric_utils::encode64(value, &(actual[0]), shift));
+      ASSERT_EQ(((value >> shift) << shift), irs::numeric_utils::decode64(actual.data()));
     }
   }
 }
 
 TEST(numeric_utils_test, int_traits) {
-  typedef ir::numeric_utils::numeric_traits<int32_t> traits_t;
+  typedef irs::numeric_utils::numeric_traits<int32_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
@@ -1683,7 +1681,7 @@ TEST(numeric_utils_test, int_traits) {
 }
 
 TEST(numeric_utils_test, uint_traits) {
-  typedef ir::numeric_utils::numeric_traits<uint32_t> traits_t;
+  typedef irs::numeric_utils::numeric_traits<uint32_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
@@ -1735,7 +1733,7 @@ TEST(numeric_utils_test, uint_traits) {
 }
 
 TEST(numeric_utils_test, long_traits) {
-  typedef ir::numeric_utils::numeric_traits<int64_t> traits_t;
+  typedef irs::numeric_utils::numeric_traits<int64_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
@@ -1773,7 +1771,7 @@ TEST(numeric_utils_test, long_traits) {
 }
 
 TEST(numeric_utils_test, ulong_traits) {
-  typedef ir::numeric_utils::numeric_traits<uint64_t> traits_t;
+  typedef irs::numeric_utils::numeric_traits<uint64_t> traits_t;
   typedef traits_t::integral_t type;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
@@ -1826,7 +1824,7 @@ TEST(numeric_utils_test, ulong_traits) {
 
 TEST(numeric_utils_test, float_traits) {
   typedef float_t type;
-  typedef ir::numeric_utils::numeric_traits<type> traits_t;
+  typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
     traits_t::decode(traits_t::min().c_str())
@@ -1884,7 +1882,7 @@ TEST(numeric_utils_test, float_traits) {
 
 TEST(numeric_utils_test, double_traits) {
   typedef double_t type;
-  typedef ir::numeric_utils::numeric_traits<type> traits_t;
+  typedef irs::numeric_utils::numeric_traits<type> traits_t;
   ASSERT_EQ(
     std::numeric_limits<type>::min(), 
     traits_t::decode(traits_t::min().c_str())
@@ -1939,3 +1937,7 @@ TEST(numeric_utils_test, double_traits) {
     );
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

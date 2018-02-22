@@ -38,12 +38,6 @@ NS_BEGIN(memory)
 // --SECTION--                                                    is_shared_ptr
 // ----------------------------------------------------------------------------
 
-template<typename T>
-struct is_shared_ptr : std::false_type {};
-
-template<typename T>
-struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
-
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////

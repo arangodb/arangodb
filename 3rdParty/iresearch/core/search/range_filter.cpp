@@ -86,12 +86,12 @@ by_range::by_range() NOEXCEPT
   : filter(by_range::type()) {
 }
 
-bool by_range::equals(const filter& rhs) const {
+bool by_range::equals(const filter& rhs) const NOEXCEPT {
   const by_range& trhs = static_cast<const by_range&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
 }
 
-size_t by_range::hash() const {
+size_t by_range::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

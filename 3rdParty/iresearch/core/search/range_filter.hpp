@@ -149,10 +149,10 @@ class IRESEARCH_API by_range : public filter {
     return scored_terms_limit_;
   }
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
  protected:
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
  private: 
   typedef detail::range<bstring> range_t;

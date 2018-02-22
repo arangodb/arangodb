@@ -23,8 +23,54 @@
 
 #include "tests_shared.hpp"
 #include "utils/std.hpp"
+#include "store/memory_directory.hpp"
 
 using namespace iresearch;
+
+TEST(std_test, input_output_iterator) {
+  irs::memory_directory dir;
+
+  const std::vector<uint32_t> data {
+    55166,20924,23894,46071,81213,
+    81092,38660,6758,4597,9303,
+    66094,47660,27789,30110,50809,
+    90418,49504,49175,50150,2151,
+    1, 18, 5, 128, 9000, 782, 8974,
+    irs::integer_traits<uint32_t>::const_max,
+    irs::integer_traits<uint32_t>::const_min
+  };
+
+  // write data
+  {
+    auto out = dir.create("out");
+    ASSERT_NE(nullptr, out);
+    irs::output_buf buf(out.get());
+    std::ostream ostrm(&buf);
+
+    auto ostrm_iterator = irs::irstd::make_ostream_iterator(ostrm);
+
+    for (const auto& v : data) {
+      irs::vwrite(ostrm_iterator, v);
+    }
+  }
+
+  // read data
+  {
+    auto in = dir.open("out", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, in);
+    irs::input_buf buf(in.get());
+    std::istream istrm(&buf);
+    ASSERT_TRUE(bool(istrm));
+
+    auto istrm_iterator = irs::irstd::make_istream_iterator(istrm);
+
+    for (const auto& v : data) {
+     ASSERT_EQ(v, irs::vread<uint32_t>(istrm_iterator));
+    }
+
+    ASSERT_TRUE(in->eof()); // reached the end
+  }
+}
 
 TEST(std_test, head_for_each_if) {
   /* usual case */

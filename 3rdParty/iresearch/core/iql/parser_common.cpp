@@ -233,7 +233,7 @@ bool function_arg::value(
 /*static*/ function_arg function_arg::wrap(const function_arg& wrapped) {
   return wrapped.m_bValueNil
     ? function_arg(fn_args_t(),
-        iresearch::bytes_ref::nil,
+        iresearch::bytes_ref::NIL,
         [&wrapped](
           iresearch::iql::proxy_filter& buf,
           const std::locale& locale,
