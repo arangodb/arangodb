@@ -65,8 +65,9 @@ const tests = {
       'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
       'ldap.bindpasswd': 'password',
       'ldap.basedn': 'dc=arangodb,dc=com',
-      'ldap.roles-attribute-name': 'sn',
       'ldap.superuser-role': 'adminrole',
+      // Use Roles Attribute Mode #1
+      'ldap.roles-attribute-name': 'sn',
       // 'log.level': 'ldap=trace',
       'javascript.allow-admin-execute': 'true',
       'server.local-authentication': 'true'
@@ -87,7 +88,55 @@ const tests = {
       // Search Mode activate the following for RoleSearch:
       'ldap.search-filter': 'objectClass=*',
       'ldap.search-attribute': 'uid',
-      'ldap.roles-search': '(&(objectClass=person)(uid={USER}))',
+      'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+      // 'log.level': 'ldap=trace',
+      'javascript.allow-admin-execute': 'true',
+      'ldap.superuser-role': 'adminrole',
+      'server.local-authentication': 'true'
+    }
+  },
+  ldapModeRolesPrefixSuffix: {
+    name: 'ldapModeRolesPrefixSuffix',
+    conf: {
+      'server.authentication': true,
+      'server.authentication-system-only': true,
+      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
+      'ldap.enabled': true,
+      'ldap.server': '127.0.0.1',
+      'ldap.port': '389',
+      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
+      'ldap.bindpasswd': 'password',
+      'ldap.basedn': 'dc=arangodb,dc=com',
+      'ldap.superuser-role': 'adminrole',
+      // Use Roles Attribute Mode #3
+      'ldap.roles-attribute-name': 'sn',
+      // Use Simple Login Mode
+      'ldap.prefix': 'uid=',
+      'ldap.suffix': ',dc=arangodb,dc=com',
+      // 'log.level': 'ldap=trace',
+      'javascript.allow-admin-execute': 'true',
+      'server.local-authentication': 'true'
+    }
+  },
+  ldapModeSearchPrefixSuffix: {
+    name: 'ldapModeSearchPrefixSuffix',
+    conf: {
+      'server.authentication': true,
+      'server.authentication-system-only': true,
+      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
+      'ldap.enabled': true,
+      'ldap.port': '389',
+      'ldap.basedn': 'dc=arangodb,dc=com',
+      'ldap.server': '127.0.0.1',
+      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
+      'ldap.bindpasswd': 'password',
+      // Search Mode activate the following for RoleSearch:
+      'ldap.search-filter': 'objectClass=*',
+      'ldap.search-attribute': 'uid',
+      'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+      // Use Simple Login Mode
+      'ldap.prefix': 'uid=',
+      'ldap.suffix': ',dc=arangodb,dc=com',
       // 'log.level': 'ldap=trace',
       'javascript.allow-admin-execute': 'true',
       'ldap.superuser-role': 'adminrole',
@@ -110,87 +159,68 @@ function parseOptions (options) {
   return toReturn;
 }
 
-/*
-function startLdap (options) {
-  const results = { failed: 0 };
-  const opts = parseOptions(options);
-
-  print(`LDAP Server is: ${opts.ldapHost}:${opts.ldapPort}`);
-
+function authenticationLdapAllModes (options) {
   if (options.skipLdap === true) {
-    print('skipping LDAP tests!');
+    print('skipping Ldap Authentication tests!');
     return {
-      failed: 0,
-      ldap: {
-        failed: 0,
+      authenticationLdapPermissions: {
         status: true,
         skipped: true
       }
     };
   }
-
-  print(CYAN + 'LDAP tests...' + RESET);
-  // we append one cleanup directory for the invoking logic...
-  let dummyDir = fs.join(fs.getTempPath(), 'ldap_dummy');
-  fs.makeDirectory(dummyDir);
-  pu.cleanupDBDirectoriesAppend(dummyDir);
-
+  const opts = parseOptions(options);
   if (options.cluster) {
-    options['server.jwt-secret'] = 'ldap';
     options.dbServers = 2;
     options.coordinators = 2;
-
-    for (const test of tests) {
-      test.conf['server.jwt-secret'] = 'ldap';
-    }
   }
 
-  for (const t of tests) {
-    let cleanup = true;
-    let adbInstance = pu.startInstance('tcp', options, t.conf, 'ldap');
-    if (adbInstance === false) {
-      results.failed += 1;
-      results[t.name] = {
-        failed: 1,
-        status: false,
-        message: 'failed to start server!'
-      };
-      continue;
-    }
+  print(CYAN + 'Running all client LDAP Permission tests...' + RESET);
+  // let testCases = tu.scanTestPath('js/client/tests/ldap');
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
 
-    const res = request.post({
-      url: `${adbInstance.url}/_open/auth`,
-      body: JSON.stringify(
-        {
-          username: t.user.name,
-          password: t.user.password
-        })
-    });
-
-    if (res.statusCode !== 200) {
-      results.failed += 1;
-      results[t.name] = {
-        failed: 1,
-        status: false
-      };
-      cleanup = false;
-    } else {
-      results[t.name] = {
-        failed: 0,
-        status: true
-      };
-    }
-    pu.shutdownInstance(adbInstance, options);
-
-    if (cleanup) {
-      pu.cleanupLastDirectory(options);
-    }
-  }
-
-  print(results);
-  return results;
+  // #1 role mode
+  print('Performing #1 Test: Role Mode');
+  print(opts.ldapModeRoles.conf);
+  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
+  // #2 search mode
+  print('Performing #2 Test: Search Mode');
+  print(opts.ldapModeSearch.conf);
+  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
+  // #3 role mode with prefix and suffix
+  print('Performing #3 Test: Role Mode - Simple Login Mode');
+  print(opts.ldapModeRolesPrefixSuffix.conf);
+  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
+  // #3 search mode with prefix and suffix
+  print('Performing #4 Test: Search Mode - Simple Login Mode');
+  print(opts.ldapModeSearchPrefixSuffix.conf);
+  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
 }
-*/
+
+function authenticationLdapSearchModePrefixSuffix (options) {
+  if (options.skipLdap === true) {
+    print('skipping Ldap Authentication tests!');
+    return {
+      authenticationLdapPermissions: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  const opts = parseOptions(options);
+  if (options.cluster) {
+    options.dbServers = 2;
+    options.coordinators = 2;
+  }
+
+  print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
+  // let testCases = tu.scanTestPath('js/client/tests/ldap');
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
+
+  print('Performing #4 Test: Search Mode - Simple Login Mode');
+  print(opts.ldapModeSearchPrefixSuffix.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
+}
 
 function authenticationLdapSearchMode (options) {
   if (options.skipLdap === true) {
@@ -212,8 +242,34 @@ function authenticationLdapSearchMode (options) {
   // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
-  print(opts.ldapModeSearch);
+  print('Performing #2 Test: Search Mode');
+  print(opts.ldapModeSearch.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
+}
+
+function authenticationLdapRolesModePrefixSuffix (options) {
+  if (options.skipLdap === true) {
+    print('skipping Ldap Authentication tests!');
+    return {
+      authenticationLdapPermissions: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+  const opts = parseOptions(options);
+  if (options.cluster) {
+    options.dbServers = 2;
+    options.coordinators = 2;
+  }
+
+  print(CYAN + 'Client LDAP Permission tests...' + RESET);
+  // let testCases = tu.scanTestPath('js/client/tests/ldap');
+  let testCases = tu.scanTestPath('js/client/tests/authentication');
+
+  print('Performing #3 Test: Role Mode - Simple Login Mode');
+  print(opts.ldapModeRolesPrefixSuffix.conf);
+  return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
 }
 
 function authenticationLdapRolesMode (options) {
@@ -236,14 +292,18 @@ function authenticationLdapRolesMode (options) {
   // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
-  print(opts.ldapModeRoles);
+  print('Performing #1 Test: Role Mode');
+  print(opts.ldapModeRoles.conf);
   return tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   // testFns['ldap_start'] = startLdap;
-  testFns['ldap'] = authenticationLdapRolesMode;
+  testFns['ldap'] = authenticationLdapAllModes;
+  testFns['ldaprole'] = authenticationLdapRolesMode;
   testFns['ldapsearch'] = authenticationLdapSearchMode;
+  testFns['ldaprolesimple'] = authenticationLdapRolesModePrefixSuffix;
+  testFns['ldapsearchsimple'] = authenticationLdapSearchModePrefixSuffix;
 
   // defaultFns.push('ldap'); // turn off ldap tests by default
   // turn off ldap tests by default.
