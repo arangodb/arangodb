@@ -75,7 +75,7 @@ arangodb::velocypack::Slice const& emptyObjectSlice();
 //////////////////////////////////////////////////////////////////////////////
 inline irs::string_ref getStringRef(VPackSlice const& slice) {
   if (slice.isNull()) {
-    return irs::string_ref::nil;
+    return irs::string_ref::NIL;
   }
 
   TRI_ASSERT(slice.isString());

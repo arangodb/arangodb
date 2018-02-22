@@ -175,6 +175,69 @@ inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
   return back_emplace_iterator<Container>(cont);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @class output_stream_iterator
+/// @brief lightweight single pass `OutputIterator` that writes successive
+///        characters into underlying stream
+//////////////////////////////////////////////////////////////////////////////
+template<typename Stream>
+class output_stream_iterator
+    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+  public:
+   explicit output_stream_iterator(Stream& strm) NOEXCEPT
+     : strm_(&strm) {
+   }
+
+    output_stream_iterator& operator*() NOEXCEPT { return *this; }
+    output_stream_iterator& operator++() NOEXCEPT { return *this; }
+    output_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+
+    template<typename T>
+    output_stream_iterator& operator=(const T& value) {
+      strm_->put(value);
+      return *this;
+    }
+
+  private:
+   Stream* strm_;
+};
+
+template<typename Stream>
+output_stream_iterator<Stream> make_ostream_iterator(Stream& strm) {
+  return output_stream_iterator<Stream>(strm);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @class input_stream_iterator
+/// @brief lightweight single pass `InputIterator` that reads successive
+///        characters from underlying stream
+//////////////////////////////////////////////////////////////////////////////
+template<typename Stream>
+class input_stream_iterator
+    : public std::iterator<std::input_iterator_tag, typename Stream::char_type> {
+  public:
+   typedef typename Stream::int_type int_type;
+
+   explicit input_stream_iterator(Stream& strm) NOEXCEPT
+     : strm_(&strm) {
+   }
+
+    int_type operator*() const NOEXCEPT {
+      return strm_->get();
+    }
+
+    input_stream_iterator& operator++() NOEXCEPT { return *this; }
+    input_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+
+  private:
+   Stream* strm_;
+}; // input_stream_iterator
+
+template<typename Stream>
+input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {
+  return input_stream_iterator<Stream>(strm);
+}
+
 NS_END
 NS_END
 

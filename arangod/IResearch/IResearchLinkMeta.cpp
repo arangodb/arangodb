@@ -50,11 +50,11 @@ bool equalAnalyzers(
   std::unordered_multiset<irs::string_ref> expected;
 
   for (auto& entry: lhs) {
-    expected.emplace(entry ? irs::string_ref(entry->name()) : irs::string_ref::nil);
+    expected.emplace(entry ? irs::string_ref(entry->name()) : irs::string_ref::NIL);
   }
 
   for (auto& entry: rhs) {
-    auto itr = expected.find(entry ? irs::string_ref(entry->name()) : irs::string_ref::nil);
+    auto itr = expected.find(entry ? irs::string_ref(entry->name()) : irs::string_ref::NIL);
 
     if (itr == expected.end()) {
       return false; // values do not match

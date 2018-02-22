@@ -64,11 +64,11 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -92,12 +92,12 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -124,12 +124,12 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -156,12 +156,12 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       size_t docs_count = 0;
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
         ++docs_count;
       }
       ASSERT_FALSE(column_it->next());
@@ -188,11 +188,11 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -216,11 +216,11 @@ class column_existence_filter_test_case
       ASSERT_NE(nullptr, column);
       auto column_it = column->iterator();
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(column->size(), ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_it->attributes()));
 
       while (filter_it->next()) {
         ASSERT_TRUE(column_it->next());
-        ASSERT_EQ(filter_it->value(), column_it->value().first);
+        ASSERT_EQ(filter_it->value(), column_it->value());
       }
       ASSERT_FALSE(column_it->next());
     }
@@ -241,7 +241,7 @@ class column_existence_filter_test_case
       auto& segment = (*rdr)[0];
 
       auto filter_it = prepared->execute(segment);
-      ASSERT_EQ(0, ir::cost::extract(filter_it->attributes()));
+      ASSERT_EQ(0, irs::cost::extract(filter_it->attributes()));
 
       ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), filter_it->value());
       ASSERT_FALSE(filter_it->next());
@@ -536,7 +536,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 
@@ -612,7 +612,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 
@@ -689,7 +689,7 @@ class column_existence_filter_test_case
         ASSERT_FALSE(!score);
         scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
-        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ASSERT_EQ(filter_itr->value(), column_itr->value());
         ++docs_count;
       }
 
@@ -728,7 +728,7 @@ TEST(by_column_existence, boost) {
 }
 
 TEST(by_column_existence, equal) {
-  ASSERT_EQ(ir::by_column_existence(), ir::by_column_existence());
+  ASSERT_EQ(irs::by_column_existence(), irs::by_column_existence());
 
   {
     irs::by_column_existence q0;
@@ -792,8 +792,11 @@ class fs_column_existence_test_case
     : public tests::column_existence_filter_test_case {
 protected:
   virtual irs::directory* get_directory() override {
-    const fs::path dir = fs::path(test_dir()).append("index");
-    return new irs::fs_directory(dir.string());
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new irs::fs_directory(dir.utf8());
   }
 
   virtual irs::format::ptr get_codec() override {
@@ -807,3 +810,7 @@ TEST_F(fs_column_existence_test_case, exact_prefix_match) {
   simple_sequential_prefix_match();
   simple_sequential_order();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

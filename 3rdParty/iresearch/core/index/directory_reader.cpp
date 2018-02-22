@@ -69,7 +69,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
       return ref;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
 
       return nullptr;
     }
@@ -140,7 +140,7 @@ iresearch::index_file_refs::ref_t load_newest_index_meta(
 
     return std::move(newest.ref);
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -350,3 +350,7 @@ directory_reader_impl::directory_reader_impl(
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

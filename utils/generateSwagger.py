@@ -552,7 +552,7 @@ def restheader(cargo, r=Regexen()):
         'x-filename': fn,
         'x-examples': [],
         'tags': [currentTag],
-        'summary': summary,
+        'summary': summary.strip(),
         'description': '',
         'parameters' : [],
         }
@@ -1016,10 +1016,10 @@ def example_arangosh_run(cargo, r=Regexen()):
         print >> sys.stderr, "Failed to open example file:\n  '%s'" % fn
         raise
     operation['x-examples'][currentExample]= '\n\n**Example:**\n ' + exampleHeader.strip('\n ') + '\n\n<pre><code class="json">'
-
+    
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += line
-
+    
     operation['x-examples'][currentExample] += '</code></pre>\n\n\n'
 
     line = ""
@@ -1254,6 +1254,10 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
         currentDocuBlock = None
         lastDocuBlock = None
 
+# Sort arrays by offset helper:
+def descOffsetGet(value):
+    return value["descOffset"]
+
 for route in swagger['paths'].keys():
     for verb in swagger['paths'][route].keys():
         offsetPlus = 0;
@@ -1263,45 +1267,67 @@ for route in swagger['paths'].keys():
             print >> sys.stderr, "in :" + verb + " " + route
             #raise TODO
         # insert the post json description into the place we extracted it:
+        # Collect the blocks we want to work on, sort them by replacement place:
+        sortVec = []
         for nParam in range(0, len(thisVerb['parameters'])):
             if thisVerb['parameters'][nParam]['in'] == 'body':
-                descOffset = thisVerb['parameters'][nParam]['x-description-offset']
-                addText = ''
-                postText = ''
-                paramDesc = thisVerb['description'][:descOffset]
-                if len(paramDesc) > 0: 
-                    postText += paramDesc
-                if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
-                    addText = "\n" + unwrapPostJson(getReference(thisVerb['parameters'][nParam]['schema'], route, verb),1) + "\n\n"
-                
+                sortVec.append({
+                    "nParam": nParam,
+                    "descOffset": thisVerb['parameters'][nParam]['x-description-offset']
+                })
+
+        sortVec.sort(key=descOffsetGet)
+        for oneItem in sortVec:
+            nParam = oneItem["nParam"]
+            descOffset = thisVerb['parameters'][nParam]['x-description-offset']
+            addText = ''
+            postText = ''
+            paramDesc = thisVerb['description'][:(descOffset+offsetPlus)]
+            if len(paramDesc) > 0: 
+                postText += paramDesc
+            if 'additionalProperties' not in thisVerb['parameters'][nParam]['schema']:
+                addText = "\n" + unwrapPostJson(getReference(thisVerb['parameters'][nParam]['schema'], route, verb),1) + "\n\n"
+            
+            postText += addText
+            postText += thisVerb['description'][(offsetPlus+descOffset):]
+            offsetPlus += len(addText)
+            thisVerb['description'] = postText
+
+        
+        # insert the reply json description into the place we extracted it:
+        if 'responses' in thisVerb:
+
+            # Collect the blocks we want to work on, sort them by replacement place:
+            sortVec = []
+            for nRC in thisVerb['responses']:
+                if 'x-description-offset' in thisVerb['responses'][nRC]:
+                    sortVec.append({
+                        "nParam": nRC,
+                        "descOffset": thisVerb['responses'][nRC]['x-description-offset']
+                    })
+
+	    sortVec.sort(key=descOffsetGet)
+            for oneItem in sortVec:
+                nRC = oneItem["nParam"]
+                descOffset = thisVerb['responses'][nRC]['x-description-offset']
+                #print descOffset 
+                #print offsetPlus
+                descOffset += offsetPlus
+                addText = '\n#### HTTP ' + nRC
+                #print thisVerb['responses'][nRC]['description']
+                postText = thisVerb['description'][:descOffset]
+                #print postText
+                replyDescription = TrimThisParam(thisVerb['responses'][nRC]['description'], 0)
+                if (len(replyDescription) > 0): 
+                    addText += '\n' + replyDescription + '\n'
+                if 'additionalProperties' not in thisVerb['responses'][nRC]['schema']:
+                    addText += "\n" + unwrapPostJson(
+                        getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
+                #print addText
                 postText += addText
                 postText += thisVerb['description'][descOffset:]
                 offsetPlus += len(addText)
                 thisVerb['description'] = postText
-
-        # insert the reply json description into the place we extracted it:
-        if 'responses' in thisVerb:
-            for nRC in thisVerb['responses']:
-                if 'x-description-offset' in thisVerb['responses'][nRC]:
-                    descOffset = thisVerb['responses'][nRC]['x-description-offset']
-                    #print descOffset 
-                    #print offsetPlus
-                    descOffset += offsetPlus
-                    addText = '\n## HTTP ' + nRC
-                    #print thisVerb['responses'][nRC]['description']
-                    postText = thisVerb['description'][:descOffset]
-                    #print postText
-                    replyDescription = TrimThisParam(thisVerb['responses'][nRC]['description'], 0)
-                    if (len(replyDescription) > 0): 
-                        addText += '\n' + replyDescription + '\n'
-                    if 'additionalProperties' not in thisVerb['responses'][nRC]['schema']:
-                        addText += "\n" + unwrapPostJson(
-                            getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
-                    #print addText
-                    postText += addText
-                    postText += thisVerb['description'][descOffset:]
-                    offsetPlus += len(addText)
-                    thisVerb['description'] = postText
 
             #print '-'*80
             #print thisVerb['description']

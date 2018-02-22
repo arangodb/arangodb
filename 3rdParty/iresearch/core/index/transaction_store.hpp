@@ -556,22 +556,35 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
   }
 
  private:
-  // a bstring implementation of data_output
-  class IRESEARCH_API bstring_output final: public data_output {
-   public:
-    bstring_output(bstring& buf): buf_(buf), pos_(0) {}
-    bstring_output(bstring& buf, size_t pos): buf_(buf), pos_(pos) {}
-    bstring& operator*() NOEXCEPT { return buf_; }
-    bstring* operator->() NOEXCEPT { return &buf_; }
-    byte_type* operator[](size_t offset) { return &buf_[offset]; }
+  // a data_output implementation backed by an output_iterator
+  struct bstring_data_output: public data_output {
+    bstring_output& out_;
+    bstring_data_output(bstring_output& out): out_(out) {}
     virtual void close() override {}
-    virtual size_t file_pointer() const NOEXCEPT { return pos_; }
-    void seek(size_t pos) NOEXCEPT { pos_ = pos; }
     virtual void write_byte(byte_type b) override { write_bytes(&b, 1); }
-    virtual void write_bytes(const byte_type* b, size_t size) override;
+    virtual void write_bytes(const byte_type* b, size_t size) override {
+      out_.write(b, size);
+    }
+  };
+
+  // an output_iterator implementation backed by a bstring
+  class IRESEARCH_API bstring_output
+    : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
+   public:
+    bstring_output(bstring& buf): buf_(buf), pos_(0) { ensure(pos_); }
+    bstring::value_type& operator[](size_t i) { ensure(i); return buf_[i]; }
+    bstring::value_type& operator*() { return buf_[pos_]; }
+    bstring_output& operator++() { ensure(++pos_); return *this; }
+    bstring_output& operator+=(size_t i) { ensure(pos_ += i); return *this; }
+    size_t file_pointer() const NOEXCEPT { return pos_; }
+    void seek(size_t pos) NOEXCEPT { pos_ = pos; }
+    void write(const byte_type* value, size_t size);
+
    private:
     bstring& buf_;
     size_t pos_;
+
+    void ensure(size_t pos);
   };
 
   struct modification_context {
@@ -635,7 +648,7 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
       bstring_output out(*(doc.buf_));
       document doc_wrapper(*this, doc, out, doc_state);
 
-      doc_wrapper.out_.write_byte(0); // reserved for internal use (force all offsets to not be 0)
+      irs::write<uint8_t>(doc_wrapper.out_, 0); // reserved for internal use (force all offsets to not be 0)
       has_next = func(doc_wrapper);
 
       if (!doc_wrapper.valid()) {
@@ -692,8 +705,9 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
     auto& tokens = static_cast<token_stream&>(field.get_tokens());
     const auto& features = static_cast<const flags&>(field.features());
     auto start = out.file_pointer();
+    bstring_data_output field_out(out);
 
-    if (field.write(out)
+    if (field.write(field_out)
         && store(out, state, name, doc, start)
         && index(out, state, name, features, doc, tokens)) {
       return true;
@@ -717,11 +731,12 @@ class IRESEARCH_API store_writer final: private util::noncopyable {
       static_cast<const string_ref&>(field.name()),
       std::hash<string_ref>()
     );
-
     assert(doc.buf_);
     auto start = out.file_pointer();
+    bstring_data_output field_out(out);
 
-    if (field.write(out) && store(out, state, name, doc, start)) {
+    if (field.write(field_out)
+        && store(out, state, name, doc, start)) {
       return true;
     }
 

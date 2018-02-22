@@ -65,7 +65,7 @@ struct empty_doc_iterator : doc_iterator {
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_iterator : term_iterator {
-  virtual const bytes_ref& value() const override { return bytes_ref::nil; }
+  virtual const bytes_ref& value() const override { return bytes_ref::NIL; }
   virtual doc_iterator::ptr postings(const flags&) const override {
     return doc_iterator::empty();
   }
@@ -94,12 +94,12 @@ struct empty_term_reader : singleton<empty_term_reader>, term_reader {
 
   // less significant term
   virtual const iresearch::bytes_ref& (min)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 
   // most significant term
   virtual const iresearch::bytes_ref& (max)() const { 
-    return iresearch::bytes_ref::nil; 
+    return iresearch::bytes_ref::NIL; 
   }
 }; // empty_term_reader
 

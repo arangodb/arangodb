@@ -106,7 +106,7 @@ bool IdentityAnalyzer::next() {
 
   _term.value(irs::ref_cast<irs::byte_type>(_value));
   _empty = true;
-  _value = irs::string_ref::nil;
+  _value = irs::string_ref::NIL;
 
   return !empty;
 }
@@ -264,6 +264,11 @@ NS_BEGIN(iresearch)
     irs::string_ref const& type,
     irs::string_ref const& properties
 ) {
+  if (type.empty()) {
+    // in ArangoSearch we don't allow to have analyzers with empty type string
+    return nullptr;
+  }
+
   // ArangoDB, for API consistency, only supports analyzers configurable via jSON
   return irs::analysis::analyzers::get(type, irs::text_format::json, properties);
 }
@@ -287,9 +292,9 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
     if (instance) {
       _config.clear();
       _config.append(type).append(properties);
-      _key = irs::string_ref::nil;
-      _type = irs::string_ref::nil;
-      _properties = irs::string_ref::nil;
+      _key = irs::string_ref::NIL;
+      _type = irs::string_ref::NIL;
+      _properties = irs::string_ref::NIL;
 
       if (!type.null()) {
         _type = irs::string_ref(&(_config[0]), type.size());
@@ -306,16 +311,16 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
     }
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while initializing an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   _config.clear(); // set as uninitialized
-  _key = irs::string_ref::nil; // set as uninitialized
-  _type = irs::string_ref::nil; // set as uninitialized
-  _properties = irs::string_ref::nil; // set as uninitialized
+  _key = irs::string_ref::NIL; // set as uninitialized
+  _type = irs::string_ref::NIL; // set as uninitialized
+  _properties = irs::string_ref::NIL; // set as uninitialized
   _features.clear(); // set as uninitialized
 
   return false;
@@ -325,7 +330,7 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(
     irs::string_ref const& key
 ) {
   if (key.null()) {
-    _key = irs::string_ref::nil;
+    _key = irs::string_ref::NIL;
 
     return; // nothing more to do
   }
@@ -359,10 +364,10 @@ irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const
     return _cache.emplace(_type, _properties);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while instantiating an IResearch analizer type '" << _type << "' properties '" << _properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -480,10 +485,10 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
     return std::make_pair(pool, itr.second);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return std::make_pair(AnalyzerPool::ptr(), false);
@@ -497,7 +502,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::ensure(
   // placeholders will be loaded/validation during start()/loadConfiguration()
   return _started
     ? get(name)
-    : emplace(name, irs::string_ref::nil, irs::string_ref::nil, false).first;
+    : emplace(name, irs::string_ref::NIL, irs::string_ref::NIL, false).first;
 }
 
 size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
@@ -576,10 +581,10 @@ size_t IResearchAnalyzerFeature::erase(irs::string_ref const& name) noexcept {
     return 1;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing an IResearch analizer name '" << name << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return 0;
@@ -609,10 +614,10 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     TRI_set_errno(TRI_ERROR_INTERNAL);
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while retrieving an IResearch analizer name '" << name << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -633,7 +638,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
         PTR_NAMED(AnalyzerPool, pool, name);
 
         if (!pool
-            || !pool->init(IdentityAnalyzer::type().name(), irs::string_ref::nil, extraFeatures)) {
+            || !pool->init(IdentityAnalyzer::type().name(), irs::string_ref::NIL, extraFeatures)) {
           LOG_TOPIC(WARN, IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
           throw irs::illegal_state(); // this should never happen, treat as an assertion failure
         }
@@ -864,9 +869,9 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
         // safe to reset since loadConfiguration(...) is called from start() which is single-thread
         if (pool) {
           pool->_config.clear(); // noexcept
-          pool->_key = irs::string_ref::nil; // noexcept
-          pool->_type = irs::string_ref::nil; // noexcept
-          pool->_properties = irs::string_ref::nil; // noexcept
+          pool->_key = irs::string_ref::NIL; // noexcept
+          pool->_type = irs::string_ref::NIL; // noexcept
+          pool->_properties = irs::string_ref::NIL; // noexcept
         }
       }
    }
@@ -893,10 +898,10 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
     return true;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration: " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -1026,6 +1031,14 @@ void IResearchAnalyzerFeature::stop() {
 }
 
 bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
+  if (pool._type.null()) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failure to persist IResearch analyzer '" << pool.name()
+        << "' configuration with 'null' type";
+
+    return false;
+  }
+
   auto vocbase = getSystemDatabase();
 
   if (!vocbase) {
@@ -1054,7 +1067,15 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     builder.openObject();
     builder.add("name", arangodb::velocypack::Value(pool.name()));
     builder.add("type", toValuePair(pool._type));
-    builder.add("properties", toValuePair(pool._properties));
+
+    // do not allow to pass null properties since it causes undefined
+    // behavior in `arangodb::velocypack::Builder`
+    if (pool._properties.null()) {
+      builder.add("properties", arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null));
+    } else {
+      builder.add("properties", toValuePair(pool._properties));
+    }
+
     builder.close();
     options.waitForSync = true;
 
@@ -1088,10 +1109,10 @@ bool IResearchAnalyzerFeature::storeConfiguration(AnalyzerPool& pool) {
     return true;
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "': " << e.what();
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during persist of an AnalyzerPool configuration while persisting configuration for IResearch analyzer name '" << pool.name() << "'";
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;

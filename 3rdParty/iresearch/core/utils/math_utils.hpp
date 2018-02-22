@@ -236,42 +236,42 @@ FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
   return log2_floor_64(v) + CEIL_EXTRA[is_power2(v)];
 }
 
-template<typename T>
+template<typename T, size_t N = sizeof(T)>
 struct math_traits {
   static size_t clz(T value);
   static size_t ctz(T value);
   static size_t pop(T value);
 }; // math_traits 
 
-template<>
-struct math_traits<uint32_t> {
-  typedef uint32_t type;
+template<typename T>
+struct math_traits<T, sizeof(uint32_t)> {
+  typedef T type;
 
   static size_t clz(type value) { return clz32(value); }
   static size_t ctz(type value) { return ctz32(value); }
   static size_t pop(type value) { return pop32(value); }
 }; // math_traits
 
-template<>
-struct math_traits<uint64_t> {
-  typedef uint64_t type;
+template<typename T>
+struct math_traits<T, sizeof(uint64_t)> {
+  typedef T type;
 
   static size_t clz(type value) { return clz64(value); }
   static size_t ctz(type value) { return ctz64(value); }
   static size_t pop(type value) { return pop64(value); }
 }; // math_traits
 
-// MacOS size_t is a different type from any of the above
-#if defined(__APPLE__)
-  template<>
-  struct math_traits<size_t> {
-    typedef size_t type;
-
-    static size_t clz(type value) { return clz64(value); }
-    static size_t ctz(type value) { return ctz64(value); }
-    static size_t pop(type value) { return pop64(value); }
-  };
-#endif
+//// MacOS size_t is a different type from any of the above
+//#if defined(__APPLE__)
+//  template<>
+//  struct math_traits<size_t> {
+//    typedef size_t type;
+//
+//    static size_t clz(type value) { return clz64(value); }
+//    static size_t ctz(type value) { return ctz64(value); }
+//    static size_t pop(type value) { return pop64(value); }
+//  };
+//#endif
 
 NS_END // math
 NS_END // root
