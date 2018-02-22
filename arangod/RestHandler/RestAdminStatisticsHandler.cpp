@@ -62,9 +62,6 @@ void RestAdminStatisticsHandler::getStatistics() {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object, true));
-  tmp.add(StaticStrings::Error, VPackValue(false));
-  tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
-  tmp.add("result", VPackValue(VPackValueType::Object, true));
   
   tmp.add("time", VPackValue(TRI_microtime()));
   tmp.add("enabled", VPackValue(StatisticsFeature::enabled()));
@@ -85,7 +82,8 @@ void RestAdminStatisticsHandler::getStatistics() {
   desc->serverStatistics(tmp);
   tmp.close(); // server
   
-  tmp.close(); // result
+  tmp.add(StaticStrings::Error, VPackValue(false));
+  tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
   tmp.close(); // outer
   generateResult(ResponseCode::OK, std::move(buffer));
 }
@@ -101,9 +99,6 @@ void RestAdminStatisticsHandler::getStatisticsDescription() {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object));
-  tmp.add(StaticStrings::Error, VPackValue(false));
-  tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
-  tmp.add("result", VPackValue(VPackValueType::Object, true));
   
   tmp.add("groups", VPackValue(VPackValueType::Array, true));
   for (stats::Group const& group : desc->groups()) {
@@ -121,7 +116,8 @@ void RestAdminStatisticsHandler::getStatisticsDescription() {
   }
   tmp.close(); // figures
   
-  tmp.close(); // result
+  tmp.add(StaticStrings::Error, VPackValue(false));
+  tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
   tmp.close(); // outer
   generateResult(ResponseCode::OK, std::move(buffer));
 }

@@ -375,7 +375,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
-  RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
