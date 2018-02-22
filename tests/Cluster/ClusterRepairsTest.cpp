@@ -73,8 +73,11 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
 
-      std::vector<AgencyWriteTransaction> transactions
-        = ClusterRepairs::repairDistributeShardsLike(VPackSlice(plan->data()));
+      std::list<AgencyWriteTransaction> transactions
+        = ClusterRepairs::repairDistributeShardsLike(
+          VPackSlice(planCollections->data()),
+          VPackSlice(planDbServers->data())
+        );
 
       // TODO there are more values that might be needed in the preconditions,
       // like distributeShardsLike / repairingDistributeShardsLike,
@@ -83,9 +86,27 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
       std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > const& expectedTransactions
         = expectedTransactionsWithTwoSwappedDBServers;
 
+      VPackBuilder transactionBuilder = Builder();
+
+      INFO("Expected transactions are:" << std::accumulate(
+        expectedTransactions.begin(), expectedTransactions.end(),
+        std::string(),
+        [&transactionBuilder](std::string const& left, std::shared_ptr<VPackBuffer<uint8_t>> const& right) {
+          std::string result = left + VPackSlice(right->data()).toString();
+          return result;
+        }
+      ));
+      INFO("Actual transactions are:" << std::accumulate(
+        transactions.begin(), transactions.end(),
+        std::string(),
+        [&transactionBuilder](std::string const& left, AgencyWriteTransaction const& right) {
+          right.toVelocyPack(transactionBuilder);
+          return left + transactionBuilder.slice().toString();
+        }
+      ));
+
       REQUIRE(transactions.size() == expectedTransactions.size());
 
-      VPackBuilder transactionBuilder = Builder();
       for (auto const& it : boost::combine(transactions, expectedTransactions)) {
         auto const& transactionIt = it.get<0>();
         auto const& expectedTransactionIt = it.get<1>();
@@ -105,13 +126,12 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
       }
 
       WHEN("The unused DBServer is marked as non-healthy") {
-        // TODO should this fail, or reduce the replicationFactor to 1 to move
-        // the leader?
+        // TODO this should fail
       }
     }
 
     GIVEN("An agency where the replicationFactor equals the number of DBServers") {
-      // TODO
+      // TODO this should reduce the replicationFactor for the leader-move
     }
 
   } catch (...) {

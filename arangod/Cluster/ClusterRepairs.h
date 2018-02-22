@@ -23,10 +23,9 @@
 #ifndef ARANGODB3_CLUSTERREPAIRS_H
 #define ARANGODB3_CLUSTERREPAIRS_H
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/Slice.h>
 #include <arangod/Agency/AgencyComm.h>
-
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -35,12 +34,9 @@ class Slice;
 
 class ClusterRepairs {
  public:
-
-  static std::vector<AgencyWriteTransaction>
-  repairDistributeShardsLike(VPackSlice &&plan);
+  static std::list<AgencyWriteTransaction> repairDistributeShardsLike(
+      VPackSlice const& planCollections, VPackSlice const& planDbServers);
 };
-
 }
 
-
-#endif //ARANGODB3_CLUSTERREPAIRS_H
+#endif  // ARANGODB3_CLUSTERREPAIRS_H
