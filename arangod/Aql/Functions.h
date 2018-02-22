@@ -222,6 +222,8 @@ struct Functions {
                                  VPackFunctionParameters const&);
     static AqlValue DateDiff(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
+    static AqlValue DateCompare(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
 
 
 

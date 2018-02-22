@@ -1598,13 +1598,6 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
   return AqlValue(result);
 }
 
-
-
-
-
-#include <iostream>
-// DATE FUNCTIONS
-
 /// @brief function DATE_NOW
 AqlValue Functions::DateNow(arangodb::aql::Query* query,
                              transaction::Methods* trx,
@@ -2272,9 +2265,154 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
   }
 }
 
+/// @brief function DATE_COMPARE
+AqlValue Functions::DateCompare(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
+  using namespace std::chrono;
+  using namespace date;
 
+  system_clock::time_point tp1;
+  system_clock::time_point tp2;
 
+  if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_COMPARE", 0)) {
+    return AqlValue(AqlValueHintNull());
+  }
 
+  if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_COMPARE", 1)) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  uint8_t rangeStart;
+  uint8_t rangeEnd;
+
+  AqlValue rangeStartValue = ExtractFunctionParameterValue(parameters, 2);
+
+  if (!rangeStartValue.isString()) {
+    RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string rangeStartStr = rangeStartValue.slice().copyString();
+  std::transform(rangeStartStr.begin(), rangeStartStr.end(), rangeStartStr.begin(), ::tolower);
+
+  if (rangeStartStr == "years" || rangeStartStr == "year" || rangeStartStr == "y") {
+    rangeStart = 6;
+  } else if (rangeStartStr == "months" || rangeStartStr == "month" || rangeStartStr == "m") {
+    rangeStart = 5;
+  } else if (rangeStartStr == "days" || rangeStartStr == "day" || rangeStartStr == "d") {
+    rangeStart = 4;
+  } else if (rangeStartStr == "hours" || rangeStartStr == "hour" || rangeStartStr == "h") {
+    rangeStart = 3;
+  } else if (rangeStartStr == "minutes" || rangeStartStr == "minute" || rangeStartStr == "i") {
+    rangeStart = 2;
+  } else if (rangeStartStr == "seconds" || rangeStartStr == "second" || rangeStartStr == "s") {
+    rangeStart = 1;
+  } else if (rangeStartStr == "milliseconds" || rangeStartStr == "millisecond" || rangeStartStr == "f") {
+    rangeStart = 0;
+  } else {
+    RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 4) {
+    AqlValue rangeEndValue = ExtractFunctionParameterValue(parameters, 3);
+
+    if (!rangeEndValue.isString()) {
+      RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string rangeEndStr = rangeEndValue.slice().copyString();
+    std::transform(rangeEndStr.begin(), rangeEndStr.end(), rangeEndStr.begin(), ::tolower);
+
+    if (rangeEndStr == "years" || rangeEndStr == "year" || rangeEndStr == "y") {
+      rangeEnd = 0;
+    } else if (rangeEndStr == "months" || rangeEndStr == "month" || rangeEndStr == "m") {
+      rangeEnd = 1;
+    } else if (rangeEndStr == "days" || rangeEndStr == "day" || rangeEndStr == "d") {
+      rangeEnd = 2;
+    } else if (rangeEndStr == "hours" || rangeEndStr == "hour" || rangeEndStr == "h") {
+      rangeEnd = 3;
+    } else if (rangeEndStr == "minutes" || rangeEndStr == "minute" || rangeEndStr == "i") {
+      rangeEnd = 4;
+    } else if (rangeEndStr == "seconds" || rangeEndStr == "second" || rangeEndStr == "s") {
+      rangeEnd = 5;
+    } else if (rangeEndStr == "milliseconds" || rangeEndStr == "millisecond" || rangeEndStr == "f") {
+      rangeEnd = 6;
+    } else {
+      RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  } else {
+    rangeEnd = std::abs(rangeStart - 6);
+  }
+
+  if (rangeStart == 6 && rangeEnd >= 0 ) { // compare year
+    auto ymd1 = year_month_day{floor<days>(tp1)};
+    auto ymd2 = year_month_day{floor<days>(tp2)};
+
+    if (ymd1.year() != ymd2.year()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart >= 5 && rangeEnd >= 1) { // compare month
+    auto ymd1 = year_month_day{floor<days>(tp1)};
+    auto ymd2 = year_month_day{floor<days>(tp2)};
+
+    if (ymd1.month() != ymd2.month()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart >= 4 && rangeEnd >= 2) { // compare day
+    auto ymd1 = year_month_day{floor<days>(tp1)};
+    auto ymd2 = year_month_day{floor<days>(tp2)};
+
+    if (ymd1.day() != ymd2.day()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart >= 3 && rangeEnd >= 3) { // compare hour
+    auto time1 = make_time(tp1 - floor<days>(tp1));
+    auto time2 = make_time(tp2 - floor<days>(tp2));
+
+    if (time1.hours() != time2.hours()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart >= 2 && rangeEnd >= 4) { // compare minute
+    auto time1 = make_time(tp1 - floor<days>(tp1));
+    auto time2 = make_time(tp2 - floor<days>(tp2));
+
+    if (time1.minutes() != time2.minutes()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart >= 1 && rangeEnd >= 5) { // compare second
+    auto time1 = make_time(tp1 - floor<days>(tp1));
+    auto time2 = make_time(tp2 - floor<days>(tp2));
+
+    if (time1.seconds() != time2.seconds()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  if (rangeStart == 0 && rangeEnd == 6) { // compare millisecond
+    auto time1 = make_time(tp1 - floor<days>(tp1));
+    auto time2 = make_time(tp2 - floor<days>(tp2));
+
+    if (time1.subseconds() != time2.subseconds()) {
+      return AqlValue(AqlValueHintBool(false));
+    }
+  }
+
+  return AqlValue(AqlValueHintBool(true));
+}
 
 /// @brief function PASSTHRU
 AqlValue Functions::Passthru(arangodb::aql::Query* query,
