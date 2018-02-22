@@ -110,7 +110,7 @@ protected:
 
   /// @brief Search for action by Id (but lock already held by caller)
   /// @return shared pointer to action object if exists, nullptr if not
-  maintenance::MaintenanceActionPtr_t findActionIdNoLock(size_t hash);
+  maintenance::MaintenanceActionPtr_t findActionIdNoLock(uint64_t hash);
 
 
 protected:
