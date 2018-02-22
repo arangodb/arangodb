@@ -1952,10 +1952,58 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
-  uint64_t isoweek = duration_cast<weeks>( sys_days(floor<days>(tp)) - sys_days(firstDayInYear) ).count();
+  auto sysdays = floor<days>(tp);
 
-  return AqlValue(AqlValueHintUInt(isoweek));
+  auto firstDayInYear = year{year_month_day(sysdays).year()}/1/0;
+  int64_t daysSinceFirst = duration_cast<days>( sysdays - sys_days(firstDayInYear) ).count();
+  int64_t weekdayIdx = unsigned(weekday( sysdays ));
+
+  if (weekdayIdx == 0) {
+    weekdayIdx = 7;
+  }
+
+  uint64_t isoWeek = std::floor( (daysSinceFirst - weekdayIdx + 10) / 7.0f );
+
+  if (isoWeek == 0) {
+    // if 0? last week of prev year -> calc max week for last year
+    int64_t lastYear = int(firstDayInYear.year()) - 1;
+    uint64_t p = static_cast<int64_t>(lastYear + std::floor(lastYear/4.0f) - std::floor(lastYear / 100.0f) + std::floor(lastYear / 400.0f)) % 7;
+
+    if ( p == 4) {
+      isoWeek = 53;
+
+    } else {
+      // check for 3
+      lastYear -= 1;
+      p = static_cast<int64_t>(lastYear + std::floor(lastYear/4.0f) - std::floor(lastYear / 100.0f) + std::floor(lastYear / 400.0f)) % 7;
+
+      if (p == 3) {
+        isoWeek = 53;
+      } else {
+        isoWeek = 52;
+      }
+    }
+  } else if (isoWeek == 53) {
+    // if 53? check for validity
+
+    // check if asked year has 53 weeks
+    int64_t askedYear = int(firstDayInYear.year());
+    uint64_t p = static_cast<int64_t>(askedYear + std::floor(askedYear/4.0f) - std::floor(askedYear / 100.0f) + std::floor(askedYear / 400.0f)) % 7;
+
+    if ( p == 4) {
+      ; // ok
+    } else {
+      // check for 3
+      askedYear -= 1;
+      p = static_cast<int64_t>(askedYear + std::floor(askedYear/4.0f) - std::floor(askedYear / 100.0f) + std::floor(askedYear / 400.0f)) % 7;
+
+      if (p != 3) { // "overflow" to next year
+        isoWeek = 1;
+      }
+    }
+  }
+
+  return AqlValue(AqlValueHintUInt(isoWeek));
 }
 
 /// @brief function DATE_LEAPYEAR
