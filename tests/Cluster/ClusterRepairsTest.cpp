@@ -41,13 +41,12 @@
 
 using namespace arangodb;
 using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
 namespace cluster_repairs_test {
 
-std::shared_ptr<VPackBuilder> createBuilder(char const *c) {
+std::shared_ptr<VPackBuffer<uint8_t>> vpackFromJsonString(char const *c) {
   Options options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
@@ -55,67 +54,34 @@ std::shared_ptr<VPackBuilder> createBuilder(char const *c) {
 
   std::shared_ptr<VPackBuilder> builder = parser.steal();
 
-  return builder;
+  return builder->steal();
 }
 
-std::shared_ptr<VPackBuilder> operator "" _vpack(const char* json, size_t) {
-  return createBuilder(json);
+std::shared_ptr<VPackBuffer<uint8_t>> operator "" _vpack(const char* json, size_t) {
+  return vpackFromJsonString(json);
 }
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
-  GIVEN("") {
-    // save old manager (maybe null)
-    std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
+  // save old manager (maybe null)
+  std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
 
-    try {
-      // get a new manager
-      AgencyCommManager::initialize("testArangoAgencyPrefix");
+  try {
+    // get a new manager
+    AgencyCommManager::initialize("testArangoAgencyPrefix");
+
+    GIVEN("An agency where on two shards the DBServers are swapped") {
 
       std::vector<AgencyWriteTransaction> transactions
-        = ClusterRepairs::repairDistributeShardsLike(planBuilder->slice());
+        = ClusterRepairs::repairDistributeShardsLike(VPackSlice(plan->data()));
 
       // TODO there are more values that might be needed in the preconditions,
       // like distributeShardsLike / repairingDistributeShardsLike,
       // or maybe replicationFactor
 
-      std::vector< std::shared_ptr<VPackBuilder> > expectedTransactions {
-        R"=([
-          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
-              "op": "set",
-              "new": [
-                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
-                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
-              ]
-            }
-          },
-          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
-              "old": [
-                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
-                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
-              ]
-            }
-          }
-        ])="_vpack,
-        R"=([
-          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
-              "op": "set",
-              "new": [
-                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
-                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
-              ]
-            }
-          },
-          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
-              "old": [
-                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
-                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
-              ]
-            }
-          }
-          ])="_vpack
-      };
+      std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > const& expectedTransactions
+        = expectedTransactionsWithTwoSwappedDBServers;
 
       REQUIRE(transactions.size() == expectedTransactions.size());
 
@@ -126,23 +92,35 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
 
         transactionIt.toVelocyPack(transactionBuilder);
 
+        Slice const& transactionSlice = transactionBuilder.slice();
+        Slice const& expectedTransactionSlice = VPackSlice(expectedTransactionIt->data());
+
         REQUIRE(
-          transactionBuilder.slice().toJson() == expectedTransactionIt->slice().toJson()
+          transactionSlice.toJson() == expectedTransactionSlice.toJson()
         ); // either, or:
         REQUIRE(NormalizedCompare::equals(
-          transactionBuilder.slice(),
-          expectedTransactionIt->slice()
+          transactionSlice,
+          expectedTransactionSlice
         ));
       }
 
-    } catch(...) {
-      // restore old manager
-      AgencyCommManager::MANAGER = std::move(old_manager);
-      throw;
+      WHEN("The unused DBServer is marked as non-healthy") {
+        // TODO should this fail, or reduce the replicationFactor to 1 to move
+        // the leader?
+      }
     }
+
+    GIVEN("An agency where the replicationFactor equals the number of DBServers") {
+      // TODO
+    }
+
+  } catch (...) {
     // restore old manager
     AgencyCommManager::MANAGER = std::move(old_manager);
+    throw;
   }
+  // restore old manager
+  AgencyCommManager::MANAGER = std::move(old_manager);
 }
 
 }

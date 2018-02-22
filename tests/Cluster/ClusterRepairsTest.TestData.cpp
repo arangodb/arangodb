@@ -1,6 +1,7 @@
 // .[0].arango.Plan
 
-std::shared_ptr<VPackBuilder> planBuilder = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>>
+plan = R"=(
 {
   "DBServers": {
     "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a": "none",
@@ -829,3 +830,115 @@ std::shared_ptr<VPackBuilder> planBuilder = R"=(
   "AsyncReplication": {}
 }
 )="_vpack;
+
+std::vector< std::shared_ptr<VPackBuffer<uint8_t>> >
+expectedTransactionsWithTwoSwappedDBServers {
+// shard s27050123 of collection 27050122
+// make room on the dbserver where the leader should be
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "op": "set",
+              "new": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
+              ]
+            }
+          }
+        ])="_vpack,
+// move leader to the correct dbserver
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "op": "set",
+              "new": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "old": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          }
+        ])="_vpack,
+// fix the remaining shard
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "op": "set",
+              "new": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050122/shards/s27050123": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          }
+        ])="_vpack,
+// shard s27050238 of collection 27050217
+// same procedure as for the first shard
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "op": "set",
+              "new": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a"
+              ]
+            }
+          }
+          ])="_vpack,
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "op": "set",
+              "new": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "old": [
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          }
+          ])="_vpack,
+R"=([
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "op": "set",
+              "new": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-98de05bc-bfa8-4211-906d-b0b8f704f9a9"
+              ]
+            }
+          },
+          { "/testArangoAgencyPrefix/Plan/Collections/someDB/27050217/shards/s27050238": {
+              "old": [
+                "PRMR-edec30ad-1540-4346-b79b-a0cbe6ac6f6a",
+                "PRMR-46cd11ba-ed50-423a-a087-5781e3cfbb0f"
+              ]
+            }
+          }
+          ])="_vpack,
+};
