@@ -40,8 +40,8 @@ RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
-  return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
+RocksDBValue RocksDBValue::PrimaryIndexValue(LocalDocumentId const& docId) {
+  return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, docId);
 }
 
 RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
@@ -52,8 +52,8 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
-RocksDBValue RocksDBValue::UniqueVPackIndexValue(TRI_voc_rid_t revisionId) {
-  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, revisionId);
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
+  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice const& data) {
@@ -72,16 +72,16 @@ RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(RocksDBValue const& value) {
-  return revisionId(value._buffer.data(), value._buffer.size());
+LocalDocumentId RocksDBValue::documentId(RocksDBValue const& value) {
+  return documentId(value._buffer.data(), value._buffer.size());
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(rocksdb::Slice const& slice) {
-  return revisionId(slice.data(), slice.size());
+LocalDocumentId RocksDBValue::documentId(rocksdb::Slice const& slice) {
+  return documentId(slice.data(), slice.size());
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(std::string const& s) {
-  return revisionId(s.data(), s.size());
+LocalDocumentId RocksDBValue::documentId(std::string const& s) {
+  return documentId(s.data(), s.size());
 }
 
 StringRef RocksDBValue::vertexId(rocksdb::Slice const& s) {
@@ -114,13 +114,13 @@ uint64_t RocksDBValue::keyValue(std::string const& s) {
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
+RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       _buffer.reserve(sizeof(uint64_t));
-      uint64ToPersistent(_buffer, data);  // revision id
+      uint64ToPersistent(_buffer, docId.id()); // LocalDocumentId
       break;
     }
 
@@ -166,9 +166,9 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
   }
 }
 
-TRI_voc_rid_t RocksDBValue::revisionId(char const* data, uint64_t size) {
-  TRI_ASSERT(data != nullptr && size >= sizeof(uint64_t));
-  return uint64FromPersistent(data);
+LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {
+  TRI_ASSERT(data != nullptr && size >= sizeof(LocalDocumentId::BaseType));
+  return LocalDocumentId(uint64FromPersistent(data));
 }
 
 StringRef RocksDBValue::vertexId(char const* data, size_t size) {

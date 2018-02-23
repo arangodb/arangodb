@@ -344,8 +344,8 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId = LocalDocumentId(RocksDBKey::revisionId(
-        RocksDBEntryType::EdgeIndexValue, _iterator->key()));
+    LocalDocumentId const documentId = RocksDBKey::documentId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key());
 
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(documentId.id()));
@@ -453,7 +453,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -486,7 +486,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -525,7 +525,7 @@ void RocksDBEdgeIndex::batchInsert(
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
     RocksDBKeyLeaser key(trx);
-    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first.id());
+    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
     Result r = mthds->Put(_cf, key.ref(),
@@ -841,7 +841,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      LocalDocumentId const documentId(RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key));
+      LocalDocumentId const documentId = RocksDBKey::documentId(RocksDBEntryType::EdgeIndexValue, key);
       if (rocksColl->readDocument(trx, documentId, mmdr)) {
         builder.add(VPackValue(documentId.id()));
 
