@@ -69,6 +69,7 @@ struct Collection {
   boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
   std::map<std::string, DBServers, VersionSort> shardsByName;
 
+  // TODO this shouldn't be needed anymore and can be removed
   std::map<std::string, VPackSlice> residualAttributes;
 
   std::string inline fullName() const {
@@ -119,8 +120,13 @@ class DistributeShardsLikeRepairer {
   findCollectionsToFix(std::map<CollectionId, struct Collection> collections);
 
   DBServers static serverSetDifference(
-    DBServers availableDbServers,
-    DBServers shardDbServers
+    DBServers setA,
+    DBServers setB
+  );
+
+  DBServers static serverSetSymmetricDifference(
+    DBServers setA,
+    DBServers setB
   );
 
   AgencyWriteTransaction

@@ -37,11 +37,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
-// TODO Fix/rewrite logging:
-// TODO * Loglevels (are all ERR or TRACE right now)
-// TODO * Logtopics (are all FIXME)
-// TODO * Messages (are all prefixed with [tg] and many currently useless)
-
 bool VersionSort::operator()(std::string const &a, std::string const &b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
@@ -126,7 +121,9 @@ DistributeShardsLikeRepairer::readShards(Slice const& shards) {
 }
 
 DBServers
-DistributeShardsLikeRepairer::readDatabases(const Slice &supervisionHealth) {
+DistributeShardsLikeRepairer::readDatabases(
+  const Slice &supervisionHealth
+) {
   DBServers dbServers;
 
   for (auto const &it : ObjectIterator(supervisionHealth)) {
@@ -143,7 +140,9 @@ DistributeShardsLikeRepairer::readDatabases(const Slice &supervisionHealth) {
 
 
 std::map<CollectionId, struct Collection>
-DistributeShardsLikeRepairer::readCollections(const Slice &collectionsByDatabase) {
+DistributeShardsLikeRepairer::readCollections(
+  const Slice &collectionsByDatabase
+) {
   std::map<CollectionId, struct Collection> collections;
 
   // maybe extract more fields, like
@@ -222,10 +221,13 @@ DistributeShardsLikeRepairer::readCollections(const Slice &collectionsByDatabase
 
 
 std::vector<CollectionId>
-DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct Collection> collections) {
+DistributeShardsLikeRepairer::findCollectionsToFix(
+  std::map<CollectionId, struct Collection> collections
+) {
+  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::findCollectionsToFix: started";
+
   std::vector<CollectionId> collectionsToFix;
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-  << "[tg] findCollectionsToFix()";
 
   // TODO Are there additional criteria when a collection shouldn't be fixed?
   // e.g. deleted: true, some status, isSystem, ...?
@@ -234,25 +236,29 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
     CollectionId const& collectionId = collectionIterator.first;
     struct Collection const& collection = collectionIterator.second;
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-    << "[tg]   checking collection " << collectionId;
+    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    << "findCollectionsToFix: checking collection " << collection.fullName();
 
     if (collection.repairingDistributeShardsLike) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-      << "[tg]     repairingDistributeShardsLike exists, fixing";
+      // TODO Reduce loglevel and rewrite message as soon as this is tested
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "findCollectionsToFix: repairingDistributeShardsLike exists, adding "
+      << collection.fullName();
       collectionsToFix.emplace_back(collectionId);
       continue;
     }
     if (! collection.distributeShardsLike) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-      << "[tg]     distributeShardsLike doesn't exist, not fixing";
+      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      << "findCollectionsToFix: distributeShardsLike doesn't exist, not fixing "
+      << collection.fullName();
       continue;
     }
 
     struct Collection& proto = collections[collection.distributeShardsLike.get()];
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-    << "[tg]   against proto collection " << collection.distributeShardsLike.get();
+    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    << "findCollectionsToFix: comparing against distributeShardsLike collection "
+    << proto.fullName();
 
     if (collection.shardsByName.size() != proto.shardsByName.size()) {
       // TODO This should maybe not be a warning.
@@ -260,9 +266,9 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
 
       // answer: This should only happen if collection has "isSmart": true. In
       // that case, the number of shards should be 0.
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-      << "Unequal number of shards in collection " << collection.database << "/" << collection.name
-      << " and its distributeShardsLike collection " << proto.database << "/" << proto.name;
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      << "Unequal number of shards in collection " << collection.fullName()
+      << " and its distributeShardsLike collection " << proto.fullName();
 
       continue;
     }
@@ -274,12 +280,15 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
       DBServers const& dbServers = shardIt.second;
       DBServers const& protoDbServers = protoShardIt.second;
 
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-      << "[tg]     comparing shards " << shardIt.first << " and " << protoShardIt.first;
+      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      << "findCollectionsToFix: comparing shards " << shardIt.first << " and " << protoShardIt.first;
 
       if (dbServers != protoDbServers) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "[tg]       fixing collection";
+        LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+        << "findCollectionsToFix: collection "
+        << collection.fullName() << " needs fixing because (at least) shard "
+        << shardIt.first << " differs from "
+        << protoShardIt.first << " in " << proto.fullName();
         collectionsToFix.emplace_back(collectionId);
         break;
       }
@@ -292,10 +301,11 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
 boost::optional<std::string const>
 DistributeShardsLikeRepairer::findFreeServer(
   DBServers const& availableDbServers,
-  DBServers const& shardDbServers) {
+  DBServers const& shardDbServers
+) {
   DBServers freeServer = serverSetDifference(availableDbServers, shardDbServers);
 
-  if (freeServer.size() > 0) {
+  if (!freeServer.empty()) {
     return freeServer[0];
   }
 
@@ -303,22 +313,43 @@ DistributeShardsLikeRepairer::findFreeServer(
 }
 
 DBServers DistributeShardsLikeRepairer::serverSetDifference(
-  DBServers availableDbServers,
-  DBServers shardDbServers
+  DBServers setA,
+  DBServers setB
 ) {
-  sort(availableDbServers.begin(), availableDbServers.end());
-  sort(shardDbServers.begin(), shardDbServers.end());
+  sort(setA.begin(), setA.end());
+  sort(setB.begin(), setB.end());
 
-  DBServers freeServer;
+  DBServers difference;
 
   set_difference(
-    availableDbServers.begin(), availableDbServers.end(),
-    shardDbServers.begin(), shardDbServers.end(),
-    back_inserter(freeServer)
+    setA.begin(), setA.end(),
+    setB.begin(), setB.end(),
+    back_inserter(difference)
   );
 
-  return freeServer;
+  return difference;
 }
+
+
+DBServers
+DistributeShardsLikeRepairer::serverSetSymmetricDifference(
+  DBServers setA,
+  DBServers setB
+) {
+  sort(setA.begin(), setA.end());
+  sort(setB.begin(), setB.end());
+
+  DBServers symmetricDifference;
+
+  std::set_symmetric_difference(
+    setA.begin(), setA.end(),
+    setB.begin(), setB.end(),
+    back_inserter(symmetricDifference)
+  );
+
+  return symmetricDifference;
+}
+
 
 AgencyWriteTransaction
 DistributeShardsLikeRepairer::createMoveShardTransaction(
@@ -330,7 +361,11 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createMoveShardTransaction()";
+  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::createMoveShardTransaction: "
+    << "Creating transaction to move shard " << shardId
+    << " of collection " << collection.fullName()
+    << " from server " << fromServerId << " to " << toServerId;
 
   std::shared_ptr<VPackBuffer<uint8_t>>
     vpack = collection.createShardDbServerArray(shardId);
@@ -371,8 +406,8 @@ DistributeShardsLikeRepairer::fixLeader(
   std::string const& shardId,
   std::string const& protoShardId
 ) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-  << "[tg] fixLeader("
+  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::fixLeader("
   << "\"" << collection.database << "/" << collection.name << "\","
   << "\"" << proto.database << "/" << proto.name << "\","
   << "\"" << shardId << "/" << protoShardId << "\","
@@ -440,12 +475,13 @@ DistributeShardsLikeRepairer::fixShard(
   std::string const& shardId,
   std::string const& protoShardId
 ) {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
-  << "[tg] fixShard("
-    << "\"" << collection.database << "/" << collection.name << "\","
-    << "\"" << proto.database << "/" << proto.name << "\","
-    << "\"" << shardId << "/" << protoShardId << "\","
-    << ")";
+  LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::fixShard: "
+  << "Fixing DBServers"
+  << " on shard " << shardId
+  << " of collection " << collection.fullName()
+  << " to match shard " << protoShardId
+  << " of collection " << proto.fullName();
 
   std::list<AgencyWriteTransaction> transactions;
   transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
@@ -490,25 +526,27 @@ DistributeShardsLikeRepairer::fixShard(
 std::list<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::repairDistributeShardsLike(
   Slice const& planCollections,
-  Slice const& planDbServers
+  Slice const& supervisionHealth
 ) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-  << "[tg] ClusterRepairs::repairDistributeShardsLike()";
+  LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+  << "Starting to collect neccessary repairs";
 
   // Needed to build agency transactions
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
   std::map<CollectionId, struct Collection> collectionMap = readCollections(planCollections);
-  DBServers const availableDbServers = readDatabases(planDbServers);
+  DBServers const availableDbServers = readDatabases(supervisionHealth);
 
   std::vector<CollectionId> collectionsToFix = findCollectionsToFix(collectionMap);
 
   std::list<AgencyWriteTransaction> transactions;
 
   for (auto const& collectionIdIterator : collectionsToFix) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-    << "[tg] fix collection " << collectionIdIterator;
     struct Collection& collection = collectionMap[collectionIdIterator];
+    LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+    << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing collection "
+    << collection.fullName();
 
     // TODO rename distributeShardsLike to repairingDistributeShardsLike in
     // collection
@@ -533,8 +571,9 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       DBServers const &protoDbServers = protoShardIterator.second;
 
       if (dbServers != protoDbServers) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "[tg] shard " << shardId << " needs fixing";
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+        << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+        << "fixing shard " << shardId;
         // TODO Do we need to check that dbServers and protoDbServers are not empty?
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
         std::list<AgencyWriteTransaction> newTransactions
@@ -542,8 +581,9 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         transactions.splice(transactions.end(), newTransactions);
       }
       else {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "[tg] shard " << shardId << " doesn't need fixing";
+        LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+        << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+        << "shard " << shardId << " doesn't need fixing";
       }
     }
 
@@ -564,11 +604,16 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createFixServerOrderTransaction()";
+  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::createFixServerOrderTransaction: "
+  << "Fix DBServer order on " << collection.fullName() << "/"  << shardId
+  << " to match " << proto.fullName() << "/"  << protoShardId;
 
   DBServers& dbServers = collection.shardsByName.at(shardId);
   DBServers const& protoDbServers = proto.shardsByName.at(protoShardId);
 
+  // TODO This test may not be necessary, as the symmetric set difference
+  // TODO should catch this case. Keep it or remove it?
   if (dbServers.size() != protoDbServers.size()) {
     // TODO this should never happen. throw a meaningful exception.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
@@ -584,7 +629,16 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
   }
 
+  if (!serverSetSymmetricDifference(dbServers, protoDbServers).empty()) {
+    // TODO this should never happen. throw a meaningful exception.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
   if (dbServers == protoDbServers) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+    << "DistributeShardsLikeRepairer::createFixServerOrderTransaction: "
+    << "Order is already equal, doing nothing";
+
     return boost::none;
   }
 
