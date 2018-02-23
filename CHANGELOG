@@ -57,9 +57,11 @@ v3.2.12 (2018-02-23)
 
 * fix issue #4393: broken handling of unix domain sockets in
   JS_Download
-  
+
 * fix internal bug #1726: supervision failed to remove multiple
   removed servers from health UI
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
 
 
 v3.2.11 (2018-01-17)
