@@ -31,6 +31,50 @@ A statistics figure is described by
 @RESTRETURNCODE{200}
 Description was returned successfully.
 
+
+@RESTREPLYBODY{groups,array,required,admin_statistics_group_struct}
+A statistics group
+
+@RESTSTRUCT{group,admin_statistics_group_struct,string,required,}
+The identifier of the group.
+
+@RESTSTRUCT{name,admin_statistics_group_struct,string,required,}
+The name of the group.
+
+@RESTSTRUCT{description,admin_statistics_group_struct,string,required,}
+A description of the group.
+
+
+@RESTREPLYBODY{figures,array,required,admin_statistics_figures_struct}
+A statistics figure
+
+@RESTSTRUCT{group,admin_statistics_figures_struct,string,required,}
+The identifier of the group to which this figure belongs.
+
+@RESTSTRUCT{identifier,admin_statistics_figures_struct,string,required,}
+The identifier of the figure. It is unique within the group.
+
+@RESTSTRUCT{name,admin_statistics_figures_struct,string,required,}
+The name of the figure.
+
+@RESTSTRUCT{description,admin_statistics_figures_struct,string,required,}
+A description of the figure.
+
+@RESTSTRUCT{type,admin_statistics_figures_struct,string,required,}
+Either *current*, *accumulated*, or *distribution*.
+
+@RESTSTRUCT{cuts,admin_statistics_figures_struct,string,required,}
+The distribution vector.
+
+@RESTSTRUCT{units,admin_statistics_figures_struct,string,required,}
+Units in which the figure is measured.
+
+@RESTREPLYBODY{code,integer,required,int64}
+the HTTP status code
+
+@RESTREPLYBODY{error,bool,required,}
+the error, *false* in this case
+
 @EXAMPLES
 
 @EXAMPLE_ARANGOSH_RUN{RestAdminStatisticsDescription1}
