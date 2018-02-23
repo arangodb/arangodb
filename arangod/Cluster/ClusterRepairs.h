@@ -47,7 +47,7 @@ class VersionSort {
 
  public:
 
-  bool operator()(std::string const &a, std::string const &b);
+  bool operator()(std::string const &a, std::string const &b) const;
 
  private:
 
@@ -105,10 +105,18 @@ class DistributeShardsLikeRepairer {
   readCollections(VPackSlice const& collectionsByDatabase);
 
   boost::optional<std::string const> static
-  findFreeServer(DBServers availableDbServers, DBServers shardDbServers);
+  findFreeServer(
+    DBServers const& availableDbServers,
+    DBServers const& shardDbServers
+  );
 
   std::vector<CollectionId> static
   findCollectionsToFix(std::map<CollectionId, struct Collection> collections);
+
+  DBServers static serverSetDifference(
+    DBServers availableDbServers,
+    DBServers shardDbServers
+  );
 
   AgencyWriteTransaction
   createMoveShardTransaction(
@@ -136,9 +144,10 @@ class DistributeShardsLikeRepairer {
     std::string const& protoShardId
   );
 
-  AgencyWriteTransaction
-  createCopyServerOrderTransaction(
+  boost::optional<AgencyWriteTransaction>
+  createFixServerOrderTransaction(
     Collection& collection,
+    Collection const& proto,
     std::string const& shardId,
     std::string const& protoShardId
   );

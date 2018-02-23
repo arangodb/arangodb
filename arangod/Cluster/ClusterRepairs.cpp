@@ -42,7 +42,7 @@ using namespace arangodb::cluster_repairs;
 // TODO * Logtopics (are all FIXME)
 // TODO * Messages (are all prefixed with [tg] and many currently useless)
 
-bool VersionSort::operator()(std::string const &a, std::string const &b) {
+bool VersionSort::operator()(std::string const &a, std::string const &b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
 
@@ -95,7 +95,7 @@ cluster_repairs::Collection::createShardDbServerArray(
 
   builder.add(Value(ValueType::Array));
 
-  for (auto const& it : shardsByName[shardId]) {
+  for (auto const& it : shardsByName.at(shardId)) {
     builder.add(Value(it));
   }
 
@@ -278,24 +278,33 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
 
 boost::optional<std::string const>
 DistributeShardsLikeRepairer::findFreeServer(
-  DBServers availableDbServers,
-  DBServers shardDbServers) {
-  std::sort(availableDbServers.begin(), availableDbServers.end());
-  std::sort(shardDbServers.begin(), shardDbServers.end());
-
-  DBServers freeServer;
-
-  std::set_difference(
-    availableDbServers.begin(), availableDbServers.end(),
-    shardDbServers.begin(), shardDbServers.end(),
-    std::back_inserter(freeServer)
-  );
+  DBServers const& availableDbServers,
+  DBServers const& shardDbServers) {
+  DBServers freeServer = serverSetDifference(availableDbServers, shardDbServers);
 
   if (freeServer.size() > 0) {
     return freeServer[0];
   }
 
   return boost::none;
+}
+
+DBServers DistributeShardsLikeRepairer::serverSetDifference(
+  DBServers availableDbServers,
+  DBServers shardDbServers
+) {
+  sort(availableDbServers.begin(), availableDbServers.end());
+  sort(shardDbServers.begin(), shardDbServers.end());
+
+  DBServers freeServer;
+
+  set_difference(
+    availableDbServers.begin(), availableDbServers.end(),
+    shardDbServers.begin(), shardDbServers.end(),
+    back_inserter(freeServer)
+  );
+
+  return freeServer;
 }
 
 AgencyWriteTransaction
@@ -308,7 +317,7 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createMoveShardTransaction():";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createMoveShardTransaction()";
 
   std::shared_ptr<VPackBuffer<uint8_t>>
     vpack = collection.createShardDbServerArray(shardId);
@@ -321,7 +330,7 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
     oldDbServerSlice
   };
 
-  for (auto& it : collection.shardsByName[shardId]) {
+  for (auto& it : collection.shardsByName.at(shardId)) {
     if (it == fromServerId) {
       it = toServerId;
     }
@@ -356,8 +365,8 @@ DistributeShardsLikeRepairer::fixLeader(
   << "\"" << shardId << "/" << protoShardId << "\","
   << ")";
 
-  DBServers const& protoShardDbServers = proto.shardsByName[protoShardId];
-  DBServers& shardDbServers = collection.shardsByName[shardId];
+  DBServers const& protoShardDbServers = proto.shardsByName.at(protoShardId);
+  DBServers& shardDbServers = collection.shardsByName.at(shardId);
 
   std::string const& protoLeader = protoShardDbServers.front();
   std::string const& shardLeader = shardDbServers.front();
@@ -428,24 +437,14 @@ DistributeShardsLikeRepairer::fixShard(
   std::list<AgencyWriteTransaction> transactions;
   transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
 
-  DBServers const& protoShardDbServers = proto.shardsByName[protoShardId];
-  DBServers& shardDbServers = collection.shardsByName[shardId];
+  DBServers const& protoShardDbServers = proto.shardsByName.at(protoShardId);
+  DBServers& shardDbServers = collection.shardsByName.at(shardId);
 
-  DBServers serversOnlyOnProto;
+  DBServers serversOnlyOnProto
+    = serverSetDifference(protoShardDbServers, shardDbServers);
 
-  std::set_difference(
-    protoShardDbServers.begin(), protoShardDbServers.end(),
-    shardDbServers.begin(), shardDbServers.end(),
-    std::back_inserter(serversOnlyOnProto)
-  );
-
-  DBServers serversOnlyOnShard;
-
-  std::set_difference(
-    shardDbServers.begin(), shardDbServers.end(),
-    protoShardDbServers.begin(), protoShardDbServers.end(),
-    std::back_inserter(serversOnlyOnShard)
-  );
+  DBServers serversOnlyOnShard
+    = serverSetDifference(shardDbServers, protoShardDbServers);
 
   if (serversOnlyOnProto.size() != serversOnlyOnShard.size()) {
 // [PSEUDO]  If (onProto.length != onFollower.length) { fail(); } // Here the replicationFactor is violated. Will not fix
@@ -467,9 +466,9 @@ DistributeShardsLikeRepairer::fixShard(
 // [PSEUDO-TODO]    }
   }
 
-  AgencyWriteTransaction trx =
-    createCopyServerOrderTransaction(collection, shardId, protoShardId);
-  transactions.emplace_back(trx);
+  if(auto trx = createFixServerOrderTransaction(collection, proto, shardId, protoShardId)) {
+    transactions.emplace_back(trx.get());
+  }
 
   return transactions;
 }
@@ -539,18 +538,20 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   return transactions;
 }
 
-AgencyWriteTransaction DistributeShardsLikeRepairer::createCopyServerOrderTransaction(
-  Collection &collection,
+boost::optional<AgencyWriteTransaction>
+DistributeShardsLikeRepairer::createFixServerOrderTransaction(
+  Collection& collection,
+  Collection const& proto,
   std::string const& shardId,
   std::string const& protoShardId
 ) {
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createCopyServerOrderTransaction()";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createFixServerOrderTransaction()";
 
-  DBServers& dbServers = collection.shardsByName[shardId];
-  DBServers const& protoDbServers = collection.shardsByName[protoShardId];
+  DBServers& dbServers = collection.shardsByName.at(shardId);
+  DBServers const& protoDbServers = proto.shardsByName.at(protoShardId);
 
   if (dbServers.size() != protoDbServers.size()) {
     // TODO this should never happen. throw a meaningful exception.
@@ -565,6 +566,10 @@ AgencyWriteTransaction DistributeShardsLikeRepairer::createCopyServerOrderTransa
   if (dbServers[0] != protoDbServers[0]) {
     // TODO this should never happen. throw a meaningful exception.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  if (dbServers == protoDbServers) {
+    return boost::none;
   }
 
   std::shared_ptr<VPackBuffer<uint8_t>>
