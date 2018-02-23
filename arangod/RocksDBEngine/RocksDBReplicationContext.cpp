@@ -24,6 +24,7 @@
 #include "RocksDBReplicationContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "Replication/common-defines.h"
 #include "Replication/InitialSyncer.h"
@@ -211,7 +212,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
-    VPackBuilder& builder, bool useExternal,
+    VPackBuilder& builder, bool useExt,
     std::function<bool()> const& afterDocCb) {
   TRI_ASSERT(vocbase != nullptr);
   if (!_trx) {
@@ -225,18 +226,20 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized", _lastTick);
   }
   TRI_ASSERT(!_sortedIterator && dynamic_cast<RocksDBAllIndexIterator*>(_iter.get()));
-
-  auto cb = [this, &builder, useExternal](LocalDocumentId const& documentId,
+  
+  auto cb = [this, &builder, useExt](LocalDocumentId const& documentId,
                                           VPackSlice const& doc) {
 
     builder.openObject();
     // set type
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
-    if (useExternal) {
+    if (useExt) { // types will be converted outside
       builder.add(VPackValue("data"));
       builder.addExternal(doc.begin());
     } else {
-      builder.add("data", doc);
+      builder.add(VPackValue("data"));
+      basics::VelocyPackHelper::sanitizeNonClientTypes(doc, VPackSlice::noneSlice(),
+                                                       builder, builder.options, true, true, true);
     }
     builder.close();
   };

@@ -728,7 +728,10 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      generateResult(rest::ResponseCode::OK, std::move(buffer), ctx);
+      resetResponse(rest::ResponseCode::OK);      
+      _response->setContentType(rest::ContentType::VPACK);
+      _response->setPayload(std::move(buffer), true, *(vpb.options),
+                            /*resolveExternals*/ false);
     }
     
     // set headers

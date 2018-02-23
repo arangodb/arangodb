@@ -359,7 +359,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
           tmpBuffer.reserve(inputLength); // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
-                                                   builder, options, true, true);
+                                                   builder, options, true, true, true);
           output = VPackSlice(tmpBuffer.data());
         }
       }

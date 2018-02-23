@@ -448,7 +448,8 @@ class VelocyPackHelper {
                                      arangodb::velocypack::Slice base,
                                      arangodb::velocypack::Builder& output,
                                      arangodb::velocypack::Options const*,
-                                     bool sanitizeExternals, bool sanitizeCustom);
+                                     bool sanitizeExternals, bool sanitizeCustom,
+                                     bool allowUnindexed = false);
 
   static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
       arangodb::velocypack::Slice,

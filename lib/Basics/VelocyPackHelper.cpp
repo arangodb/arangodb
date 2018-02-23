@@ -1042,10 +1042,12 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
                                               VPackBuilder& output,
                                               VPackOptions const* options,
                                               bool sanitizeExternals,
-                                              bool sanitizeCustom) {
+                                              bool sanitizeCustom,
+                                              bool allowUnindexed) {
   if (sanitizeExternals && input.isExternal()) {
     // recursively resolve externals
-    sanitizeNonClientTypes(input.resolveExternal(), base, output, options, sanitizeExternals, sanitizeCustom);
+    sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
+                           sanitizeExternals, sanitizeCustom, allowUnindexed);
   } else if (sanitizeCustom && input.isCustom()) {
     if (options == nullptr || options->customTypeHandler == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot sanitize vpack without custom type handler"); 
@@ -1053,18 +1055,20 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
     std::string custom = options->customTypeHandler->toString(input, options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
-    output.openObject();
+    output.openObject(allowUnindexed);
     for (auto const& it : VPackObjectIterator(input)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
-      sanitizeNonClientTypes(it.value, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it.value, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else if (input.isArray()) {
-    output.openArray();
+    output.openArray(allowUnindexed);
     for (auto const& it : VPackArrayIterator(input)) {
-      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals, sanitizeCustom);
+      sanitizeNonClientTypes(it, input, output, options,
+                             sanitizeExternals, sanitizeCustom, allowUnindexed);
     }
     output.close();
   } else {

@@ -75,9 +75,8 @@ class RocksDBReplicationContext {
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
-                                std::string const& collectionName,
-                                velocypack::Builder&, bool useExternal,
+  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase, std::string const& cname,
+                                velocypack::Builder&, bool useExt,
                                 std::function<bool()> const& afterDocCb);
 
   // iterates over all documents in a collection, previously bound with
