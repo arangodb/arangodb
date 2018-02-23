@@ -64,7 +64,10 @@ class RocksDBReplicationContext {
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
+  int bindCollectionForIncremental(TRI_vocbase_t* vocbase,
+                                   std::string const& coll) {
+    return bindCollection(vocbase, coll, /* sorted */true);
+  }
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
@@ -74,7 +77,8 @@ class RocksDBReplicationContext {
   // creating a new iterator if one does not exist for this collection
   RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
                                 std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize);
+                                velocypack::Builder&, bool useExternal,
+                                std::function<bool()> const& afterDocCb);
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
@@ -100,6 +104,8 @@ class RocksDBReplicationContext {
   void release();
 
  private:
+  
+  int bindCollection(TRI_vocbase_t*, std::string const& collIdent, bool sorted);
   void releaseDumpingResources();
 
  private:
@@ -116,15 +122,13 @@ class RocksDBReplicationContext {
   
   /// @brief Iterator on collection
   std::unique_ptr<IndexIterator> _iter;
+  bool _sortedIterator;
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
   
   /// @brief holds last document
   ManagedDocumentResult _mdr;
-  /// @brief type handler used to render documents
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
-  arangodb::velocypack::Options _vpackOptions;
 
   double const _ttl;
   double _expires;

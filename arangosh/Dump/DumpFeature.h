@@ -71,6 +71,8 @@ class DumpFeature final : public application_features::ApplicationFeature,
   int dumpShard(int fd, std::string const& DBserver, std::string const& name,
                 std::string& errorMsg);
   int runClusterDump(std::string& errorMsg);
+                            
+ public:
 
   bool writeData(int fd, char const* data, size_t len);
   void beginEncryption(int fd);

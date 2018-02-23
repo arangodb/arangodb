@@ -49,11 +49,13 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <cstring>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Validator.h>
+
 #include <velocypack/velocypack-aliases.h>
-#include <cstring>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -218,100 +220,140 @@ Result DatabaseInitialSyncer::sendFlush() {
   return Result();
 }
 
+/// @brief handle a single dump marker
+Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& trx,
+                                                        LogicalCollection* coll,
+                                                        VPackSlice const& marker) {
+  
+  std::string const invalidMsg =
+  "received invalid dump data for collection '" + coll->name() + "'";
+
+  if (!marker.isObject()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
+  }
+  
+  TRI_replication_operation_e type = REPLICATION_INVALID;
+  VPackSlice doc;
+  
+  std::string const typeString("type");
+  std::string const dataString("data");
+  for (auto const& it : VPackObjectIterator(marker, true)) {
+    if (it.key.isEqualString(typeString)) {
+      if (it.value.isNumber()) {
+        type = static_cast<TRI_replication_operation_e>(
+                                                        it.value.getNumber<int>());
+      }
+    } else if (it.key.isEqualString(dataString)) {
+      if (it.value.isObject()) {
+        doc = it.value;
+      }
+    }
+  }
+  
+  char const* key = nullptr;
+  VPackValueLength keyLength = 0;
+  
+  if (!doc.isNone()) {
+    VPackSlice value = doc.get(StaticStrings::KeyString);
+    if (value.isString()) {
+      key = value.getString(keyLength);
+    }
+  }
+  
+  // key must not be empty, but doc can be empty
+  if (key == nullptr || keyLength == 0) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
+  }
+  
+  transaction::BuilderLeaser oldBuilder(&trx);
+  oldBuilder->openObject(true);
+  oldBuilder->add(StaticStrings::KeyString, VPackValuePair(key, keyLength, VPackValueType::String));
+  oldBuilder->close();
+  
+  VPackSlice const old = oldBuilder->slice();
+  
+  return applyCollectionDumpMarker(trx, coll, type, old, doc);
+}
+
 /// @brief apply the data from a collection dump
-Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
+Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
                                                   LogicalCollection* coll,
                                                   SimpleHttpResult* response,
                                                   uint64_t& markersProcessed) {
   std::string const invalidMsg =
-      "received invalid dump data for collection '" + coll->name() + "'";
-
-  StringBuffer& data = response->getBody();
+  "received invalid dump data for collection '" + coll->name() + "'";
+  
+  StringBuffer const& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
-
-  // buffer must end with a NUL byte
-  TRI_ASSERT(*end == '\0');
-
-  auto builder = std::make_shared<VPackBuilder>();
-  std::string const typeString("type");
-  std::string const dataString("data");
-
-  while (p < end) {
-    char const* q = strchr(p, '\n');
-
-    if (q == nullptr) {
-      q = end;
-    }
-
-    if (q - p < 2) {
-      // we are done
-      return Result();
-    }
-
-    TRI_ASSERT(q <= end);
-
+  
+  bool found = false;
+  std::string cType = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+  bool isVelocyPack = found && (cType == StaticStrings::MimeTypeVPack);
+  
+  if (isVelocyPack) {
+    
+    VPackOptions options;
+    options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+    //options.customTypeHandler = customTypeHandler.get();
+    options.validateUtf8Strings = true;
+    VPackValidator validator(&options);
+    
     try {
-      builder->clear();
-      VPackParser parser(builder);
-      parser.parse(p, static_cast<size_t>(q - p));
-    } catch (velocypack::Exception const& e) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection dump: " << e.what();
+      // throws if the data is invalid
+      validator.validate(data.c_str(), data.length());
+    } catch(velocypack::Exception const& e) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Error parsing VPack response: " << e.what();
       return Result(e.errorCode(), e.what());
     }
-
-    p = q + 1;
-
-    VPackSlice const slice = builder->slice();
-
-    if (!slice.isObject()) {
+    
+    VPackSlice dump(data.c_str());
+    if (!dump.isArray()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "VPack response is not an array";
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
     }
-
-    TRI_replication_operation_e type = REPLICATION_INVALID;
-    VPackSlice doc;
-
-    for (auto const& it : VPackObjectIterator(slice, true)) {
-      if (it.key.isEqualString(typeString)) {
-        if (it.value.isNumber()) {
-          type = static_cast<TRI_replication_operation_e>(
-              it.value.getNumber<int>());
-        }
-      } else if (it.key.isEqualString(dataString)) {
-        if (it.value.isObject()) {
-          doc = it.value;
-        }
+    for (VPackSlice slice : VPackArrayIterator(dump)) {
+      Result r = parseCollectionDumpMarker(trx, coll, slice);
+      if (r.fail()) {
+        return r;
       }
+      ++markersProcessed;
     }
-
-    char const* key = nullptr;
-    VPackValueLength keyLength = 0;
-
-    if (!doc.isNone()) {
-      VPackSlice value = doc.get(StaticStrings::KeyString);
-      if (value.isString()) {
-        key = value.getString(keyLength);
+    
+  } else {
+    // buffer must end with a NUL byte
+    TRI_ASSERT(*end == '\0');
+    
+    auto builder = std::make_shared<VPackBuilder>();
+    while (p < end) {
+      char const* q = strchr(p, '\n');
+      if (q == nullptr) {
+        q = end;
       }
-    }
-
-    // key must not be empty, but doc can be empty
-    if (key == nullptr || keyLength == 0) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
-    }
-
-    ++markersProcessed;
-
-    transaction::BuilderLeaser oldBuilder(&trx);
-    oldBuilder->openObject(true);
-    oldBuilder->add(StaticStrings::KeyString, VPackValuePair(key, keyLength, VPackValueType::String));
-    oldBuilder->close();
-
-    VPackSlice const old = oldBuilder->slice();
-
-    Result r = applyCollectionDumpMarker(trx, coll, type, old, doc);
-
-    if (r.fail()) {
-      return r;
+      
+      if (q - p < 2) {
+        // we are done
+        return Result();
+      }
+      
+      TRI_ASSERT(q <= end);
+      try {
+        builder->clear();
+        VPackParser parser(builder);
+        parser.parse(p, static_cast<size_t>(q - p));
+      } catch (velocypack::Exception const& e) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection dump: " << e.what();
+        return Result(e.errorCode(), e.what());
+      }
+      
+      p = q + 1;
+      
+      VPackSlice const slice = builder->slice();
+      Result r = parseCollectionDumpMarker(trx, coll, slice);
+      if (r.fail()) {
+        return r;
+      }
+      ++markersProcessed;
     }
   }
 
@@ -320,9 +362,9 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* coll,
-                                                   std::string const& leaderColl,
-                                                   TRI_voc_tick_t maxTick) {
+Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
   std::string appendix;
 
   if (_hasFlushed) {
@@ -378,8 +420,15 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     // use async mode for first batch
     auto headers = createHeaders();
     if (batch == 1) {
-      headers["X-Arango-Async"] = "store";
+      headers[StaticStrings::Async] = "store";
     }
+    int vv = _masterInfo._majorVersion * 10000 + _masterInfo._minorVersion * 100 +
+            _masterInfo._patchVersion;
+    if (vv >= 30303) { 
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Accepting VPack over Http";
+      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+    }
+    
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::GET, url, nullptr, 0, headers));
 
@@ -498,7 +547,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
 
     trx.pinData(coll->cid());  // will throw when it fails
 
-    res = applyCollectionDump(trx, coll, response.get(), markersProcessed);
+    res = parseCollectionDump(trx, coll, response.get(), markersProcessed);
     if (res.fail()) {
       return res;
     }
@@ -539,9 +588,9 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
 }
 
 /// @brief incrementally fetch data from a collection
-Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* coll,
-                                                   std::string const& leaderColl,
-                                                   TRI_voc_tick_t maxTick) {
+Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
+                                                  std::string const& leaderColl,
+                                                  TRI_voc_tick_t maxTick) {
   sendExtendBatch();
   sendExtendBarrier();
 
@@ -562,7 +611,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   // complete,
   // so we're sending the x-arango-async header here
   auto headers = createHeaders();
-  headers["X-Arango-Async"] = "store";
+  headers[StaticStrings::Async] = "store";
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
 
@@ -928,9 +977,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : StringUtils::itoa(masterCid);
     if (incremental && getSize(col) > 0) {
-      res = handleCollectionSync(col, masterColl, _masterInfo._lastLogTick);
+      res = fetchCollectionSync(col, masterColl, _masterInfo._lastLogTick);
     } else {
-      res = handleCollectionDump(col, masterColl, _masterInfo._lastLogTick);
+      res = fetchCollectionDump(col, masterColl, _masterInfo._lastLogTick);
     }
 
     if (!res.ok()) {

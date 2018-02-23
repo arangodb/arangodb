@@ -88,6 +88,7 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
       _authorized(false),
+      _authMethod(rest::AuthenticationMethod::NONE),
       _authenticatedUser(),
       _protocolVersion(protocolVersion) {
   _protocol = "vst";
@@ -254,23 +255,22 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   
   std::string authString;
   std::string user = "";
-  AuthenticationMethod authType = AuthenticationMethod::NONE;
 
   std::string encryption = header.at(2).copyString();
   if (encryption == "jwt") {// doing JWT
     authString = header.at(3).copyString();
-    authType = AuthenticationMethod::JWT;
+    _authMethod = AuthenticationMethod::JWT;
   } else if (encryption == "plain") {
     user = header.at(3).copyString();
     std::string pass = header.at(4).copyString();
     authString = basics::StringUtils::encodeBase64(user + ":" + pass);
-    authType = AuthenticationMethod::BASIC;
+    _authMethod = AuthenticationMethod::BASIC;
   } else {
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
   if (_authentication->isActive()) { // will just fail if method is NONE
-    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
+    AuthResult result = _authentication->authInfo()->checkAuthentication(_authMethod, authString);
     _authorized = result._authorized;
     if (_authorized) {
       _authenticatedUser = std::move(result._username);
@@ -389,6 +389,7 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
+      request->setAuthenticationMethod(_authMethod);
       bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       if (!res || request->requestContext() == nullptr) {
         handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,

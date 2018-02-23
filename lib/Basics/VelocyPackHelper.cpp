@@ -1072,7 +1072,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
   }
 }
 
-VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
+/*VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
     VPackSlice input, VPackOptions const* options, bool sanitizeExternals, bool sanitizeCustom) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer, options);
@@ -1087,7 +1087,7 @@ VPackBuffer<uint8_t> VelocyPackHelper::sanitizeNonClientTypesChecked(
     builder.add(input);
   }
   return buffer;  // elided
-}
+}*/
 
 /// @brief extract the collection id from VelocyPack
 uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {

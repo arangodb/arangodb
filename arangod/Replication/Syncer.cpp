@@ -435,7 +435,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
-    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
+    // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
     OperationOptions options;
     options.silent = true;
@@ -494,7 +494,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
   }
 
   else if (type == REPLICATION_MARKER_REMOVE) {
-    // {"type":2402,"key":"592063"}
+    // {"type":2302,"key":"592063"}
     
     try {
       OperationOptions options;
@@ -856,13 +856,11 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
     return Result(TRI_ERROR_REPLICATION_LOOP, std::string("got same server id (") + _localServerIdString + ")" + endpointString + " as the local applier server's id");
   }
 
-  int major = 0;
-  int minor = 0;
-
+  int major = 0, minor = 0, patch = 0;
   std::string const versionString(version.copyString());
-
-  if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE, std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
+  if (sscanf(versionString.c_str(), "%d.%d.%d", &major, &minor, &patch) != 3) {
+    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE,
+                  std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
   }
 
   if (major != 3) {
@@ -872,6 +870,7 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
   _masterInfo._majorVersion = major;
   _masterInfo._minorVersion = minor;
+  _masterInfo._patchVersion = patch;
   _masterInfo._serverId = masterId;
   _masterInfo._lastLogTick = lastLogTick;
   _masterInfo._active = running;
