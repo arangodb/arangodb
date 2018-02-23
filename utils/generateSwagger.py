@@ -1149,6 +1149,9 @@ def TrimThisParam(text, indent):
     return removeLF.sub("\n" + ' ' * indent, text)
 
 def unwrapPostJson(reference, layer):
+    swaggerDataTypes = ["number", "integer", "string", "boolean", "array", "object"]
+    ####
+    # print >>sys.stderr, "xx" * layer + reference
     global swagger
     rc = ''
     for param in swagger['definitions'][reference]['properties'].keys():
@@ -1156,18 +1159,23 @@ def unwrapPostJson(reference, layer):
         required = ('required' in swagger['definitions'][reference] and
                     param in swagger['definitions'][reference]['required'])
 
+        # print >> sys.stderr, thisParam
         if '$ref' in thisParam:
             subStructRef = getReference(thisParam, reference, None)
 
             rc += '  ' * layer + "- **" + param + "**:\n"
+            ####
+            # print >>sys.stderr, "yy" * layer + param
             rc += unwrapPostJson(subStructRef, layer + 1)
     
         elif thisParam['type'] == 'object':
             rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
-        elif swagger['definitions'][reference]['properties'][param]['type'] == 'array':
+        elif thisParam['type'] == 'array':
             rc += '  ' * layer + "- **" + param + "**"
             trySubStruct = False
             lf=""
+            ####
+            # print >>sys.stderr, "zz" * layer + param
             if 'type' in thisParam['items']:
                 rc += " (" + thisParam['items']['type']  + ")"
                 lf="\n"
@@ -1186,6 +1194,10 @@ def unwrapPostJson(reference, layer):
                     print >>sys.stderr, thisParam
                 rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
         else:
+            if thisParam['type'] not in swaggerDataTypes:
+                print >>sys.stderr, "while analyzing: " + param
+                print >>sys.stderr, thisParam['type'] + "is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes)
+                raise Exception("invalid swagger type")
             rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
 
