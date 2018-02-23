@@ -90,22 +90,22 @@ TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
 
 /// WAL parser
 class WALParser : public rocksdb::WriteBatch::Handler {
-  
-  enum State : char { // mirrors code in RocksDBLogType
+  // internal WAL parser states
+  enum State : char {
     INVALID = 0,
-    COLLECTION_CREATE = '3',
-    COLLECTION_DROP = '4',
-    COLLECTION_RENAME = '5',
-    COLLECTION_CHANGE = '6',
-    INDEX_CREATE = '7',
-    INDEX_DROP = '8',
-    VIEW_CREATE = '9',
-    VIEW_DROP = ':',
-    VIEW_CHANGE = ';',
-    TRANSACTION = '<',
-    SINGLE_PUT = '?',
-    SINGLE_REMOVE = '@',
-    VIEW_RENAME = 'B',
+    COLLECTION_CREATE,
+    COLLECTION_DROP,
+    COLLECTION_RENAME,
+    COLLECTION_CHANGE,
+    INDEX_CREATE,
+    INDEX_DROP,
+    VIEW_CREATE,
+    VIEW_DROP,
+    VIEW_CHANGE,
+    VIEW_RENAME,
+    TRANSACTION,
+    SINGLE_PUT,
+    SINGLE_REMOVE
   };
   
  public:

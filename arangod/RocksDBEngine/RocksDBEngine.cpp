@@ -558,9 +558,11 @@ void RocksDBEngine::start() {
       _db->Get(rocksdb::ReadOptions(), cfHandles[0], key.string(), &oldVersion);
   if (dbExisted) {
     if (s.IsNotFound() || oldVersion.data()[0] < version) {
+      // Should only ever happen if we forgot to provide an upgrade routine
+      // and CheckVersionFeature did not prevent the start for some reason
       LOG_TOPIC(FATAL, Logger::ENGINES) << "Your db directory is in an old "
-                                           "format. Please delete the "
-                                           "directory.";
+                                        << "format. Please downgrade the server, "
+                                        << "export & re-import your data.";
       FATAL_ERROR_EXIT();
     } else if (oldVersion.data()[0] > version) {
       LOG_TOPIC(FATAL, Logger::ENGINES)

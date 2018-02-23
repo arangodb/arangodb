@@ -82,23 +82,24 @@ WalAccessResult RocksDBWalAccess::openTransactions(
 /// outside of the transaction
 class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext {
   
-  enum State : char { // mirrors code in RocksDBLogType
-    INVALID = 0,
-    DB_CREATE = '1',
-    DB_DROP = '2',
-    COLLECTION_CREATE = '3',
-    COLLECTION_DROP = '4',
-    COLLECTION_RENAME = '5',
-    COLLECTION_CHANGE = '6',
-    INDEX_CREATE = '7',
-    INDEX_DROP = '8',
-    VIEW_CREATE = '9',
-    VIEW_DROP = ':',
-    VIEW_CHANGE = ';',
-    TRANSACTION = '<',
-    SINGLE_PUT = '?',
-    SINGLE_REMOVE = '@',
-    VIEW_RENAME = 'B',
+  // internal WAL parser states
+  enum State : char {
+    INVALID,
+    DB_CREATE,
+    DB_DROP,
+    COLLECTION_CREATE,
+    COLLECTION_DROP,
+    COLLECTION_RENAME,
+    COLLECTION_CHANGE,
+    INDEX_CREATE,
+    INDEX_DROP,
+    VIEW_CREATE,
+    VIEW_DROP,
+    VIEW_CHANGE,
+    VIEW_RENAME,
+    TRANSACTION,
+    SINGLE_PUT,
+    SINGLE_REMOVE
   };
   
  public:

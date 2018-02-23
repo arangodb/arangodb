@@ -43,7 +43,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
-      _operationSize(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -264,7 +263,7 @@ void RocksDBTransactionCollection::release() {
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(
-    TRI_voc_document_operation_e operationType, uint64_t operationSize,
+    TRI_voc_document_operation_e operationType,
     TRI_voc_rid_t revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -283,7 +282,6 @@ void RocksDBTransactionCollection::addOperation(
       _revision = revisionId;
       break;
   }
-  _operationSize += operationSize;
 }
 
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
@@ -355,7 +353,6 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
   }
 
   _initialNumberDocuments += adjustment;
-  _operationSize = 0;
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;

@@ -95,10 +95,8 @@ class RocksDBTransactionState final : public TransactionState {
                         TRI_voc_document_operation_e operationType);
 
   /// @brief add an operation for a transaction collection
-  RocksDBOperationResult addOperation(
-      TRI_voc_cid_t collectionId, TRI_voc_rid_t revisionId,
-      TRI_voc_document_operation_e operationType, uint64_t operationSize,
-      uint64_t keySize);
+  Result addOperation(TRI_voc_cid_t collectionId,
+      TRI_voc_rid_t revisionId, TRI_voc_document_operation_e opType);
 
   RocksDBMethods* rocksdbMethods();
 
@@ -136,11 +134,6 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBKey* leaseRocksDBKey();
   /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
-  /// @brief Trigger an intermediate commit.
-  /// Handle with care if failing after this commit it will only
-  /// be rolled back until this point of time.
-  /// Not thread safe
-  void triggerIntermediateCommit();
 
   /// @brief Every index can track hashes inserted into this index
   ///        Used to update the estimate after the trx commited
@@ -157,8 +150,15 @@ class RocksDBTransactionState final : public TransactionState {
   void cleanupTransaction() noexcept;
   /// @brief internally commit a transaction
   arangodb::Result internalCommit();
+  
+  /// @brief Trigger an intermediate commit.
+  /// Handle with care if failing after this commit it will only
+  /// be rolled back until this point of time.
+  /// Not thread safe
+  Result triggerIntermediateCommit();
+  
   /// @brief check sizes and call internalCommit if too big
-  void checkIntermediateCommit(uint64_t newSize);
+  Result checkIntermediateCommit(uint64_t newSize);
 
  private:
   /// @brief rocksdb transaction may be null for read only transactions

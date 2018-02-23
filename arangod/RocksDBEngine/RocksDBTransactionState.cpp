@@ -422,19 +422,16 @@ void RocksDBTransactionState::prepareOperation(TRI_voc_cid_t cid, TRI_voc_rid_t 
 }
 
 /// @brief add an operation for a transaction collection
-RocksDBOperationResult RocksDBTransactionState::addOperation(
+Result RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
-    TRI_voc_document_operation_e operationType, uint64_t operationSize,
-    uint64_t keySize) {
-  size_t currentSize =
-      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
-  uint64_t newSize = currentSize + operationSize + keySize;
-  if (newSize > _options.maxTransactionSize) {
+    TRI_voc_document_operation_e operationType) {
+  size_t currentSize = _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  if (currentSize > _options.maxTransactionSize) {
     // we hit the transaction size limit
     std::string message =
         "aborting transaction because maximal transaction size limit of " +
         std::to_string(_options.maxTransactionSize) + " bytes is reached";
-    return RocksDBOperationResult(Result(TRI_ERROR_RESOURCE_LIMIT, message));
+    return Result(Result(TRI_ERROR_RESOURCE_LIMIT, message));
   }
 
   auto collection =
@@ -447,7 +444,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   }
 
   // should not fail or fail with exception
-  collection->addOperation(operationType, operationSize, revisionId);
+  collection->addOperation(operationType, revisionId);
 
   // clear the query cache for this collection
   if (arangodb::aql::QueryCache::instance()->mayBeActive()) {
@@ -471,9 +468,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
   }
 
   // perform an intermediate commit if necessary
-  checkIntermediateCommit(newSize);
-
-  return RocksDBOperationResult();
+  return checkIntermediateCommit(currentSize);
 }
 
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
@@ -508,7 +503,7 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
 }
 
-void RocksDBTransactionState::triggerIntermediateCommit() {
+Result RocksDBTransactionState::triggerIntermediateCommit() {
   TRI_IF_FAILURE("FailBeforeIntermediateCommit") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -523,7 +518,8 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
 
   Result res = internalCommit();
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
+    // FIXME: do we abort the transaction ?
+    return res;
   }
 
   TRI_IF_FAILURE("FailAfterIntermediateCommit") {
@@ -540,17 +536,19 @@ void RocksDBTransactionState::triggerIntermediateCommit() {
   _numLogdata = 0;
 #endif
   createTransaction();
+  return TRI_ERROR_NO_ERROR;
 }
 
-void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
+Result RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
   auto numOperations = _numInserts + _numUpdates + _numRemoves;
   // perform an intermediate commit
   // this will be done if either the "number of operations" or the
   // "transaction size" counters have reached their limit
   if (_options.intermediateCommitCount <= numOperations ||
       _options.intermediateCommitSize <= newSize) {
-    triggerIntermediateCommit();
+    return triggerIntermediateCommit();
   }
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief temporarily lease a Builder object

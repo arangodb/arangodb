@@ -58,24 +58,6 @@ class ColumnFamilyHandle;
 
 namespace arangodb {
 
-class RocksDBOperationResult : public Result {
-public:
-  RocksDBOperationResult() 
-      : Result(), _keySize(0) {}
-  
-  RocksDBOperationResult(Result const& other) 
-      : Result(other), _keySize(0) {}
-  
-  RocksDBOperationResult(Result&& other) noexcept 
-      : Result(std::move(other)), _keySize(0) {}
-  
-  uint64_t keySize() const { return _keySize; }
-  void keySize(uint64_t s) { _keySize = s; }
-  
-protected:
-  uint64_t _keySize;
-};
-
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
