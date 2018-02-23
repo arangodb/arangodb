@@ -81,12 +81,12 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
       std::list<AgencyWriteTransaction> transactions
         = repairer.repairDistributeShardsLike(
           VPackSlice(planCollections->data()),
-          VPackSlice(planDbServers->data())
+          VPackSlice(supervisionHealth3Healthy0Bad->data())
         );
 
       // TODO there are more values that might be needed in the preconditions,
       // like distributeShardsLike / repairingDistributeShardsLike,
-      // or maybe replicationFactor
+      // waitForSync, or maybe replicationFactor
 
       std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > const& expectedTransactions
         = expectedTransactionsWithTwoSwappedDBServers;

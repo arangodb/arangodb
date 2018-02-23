@@ -71,14 +71,18 @@ struct Collection {
 
   std::map<std::string, VPackSlice> residualAttributes;
 
-  std::string inline agencyCollectionId() {
+  std::string inline fullName() const {
+    return this->database + "/" + this->name;
+  }
+
+  std::string inline agencyCollectionId() const {
     return "Plan/Collections/" + this->database + "/" + this->id;
   }
 
   std::shared_ptr<VPackBuffer<uint8_t>>
   createShardDbServerArray(
     std::string const &shardId
-  );
+  ) const;
 
   // maybe more?
   // isSystem

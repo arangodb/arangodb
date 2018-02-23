@@ -90,7 +90,7 @@ VersionSort::splitVersion(std::string const &str) {
 std::shared_ptr<VPackBuffer<uint8_t>>
 cluster_repairs::Collection::createShardDbServerArray(
   std::string const &shardId
-) {
+) const {
   VPackBuilder builder;
 
   builder.add(Value(ValueType::Array));
@@ -126,14 +126,16 @@ DistributeShardsLikeRepairer::readShards(Slice const& shards) {
 }
 
 DBServers
-DistributeShardsLikeRepairer::readDatabases(const Slice &planDbServers) {
+DistributeShardsLikeRepairer::readDatabases(const Slice &supervisionHealth) {
   DBServers dbServers;
 
-  // TODO use .[0].arango.Supervision.Health instead of .[0].arango.Plan.DBServers
-  // TODO return only healthy DBServers, i.e. key =~ ^PRMR- and value.Status == "GOOD"
-
-  for (auto const &it : ObjectIterator(planDbServers)) {
-     dbServers.emplace_back(it.key.copyString());
+  for (auto const &it : ObjectIterator(supervisionHealth)) {
+    std::string const &serverId = it.key.copyString();
+    if (serverId.substr(0, 5) == "PRMR-"
+        && it.value.hasKey("Status")
+        && it.value.get("Status").copyString() == "GOOD") {
+      dbServers.emplace_back(it.key.copyString());
+    }
   }
 
   return dbServers;
@@ -415,7 +417,7 @@ DistributeShardsLikeRepairer::fixLeader(
   transactions.emplace_back(trx);
 
   if (collection.repairingDistributeShardsLikeReplicationFactorReduced
-    and collection.repairingDistributeShardsLikeReplicationFactorReduced.get()) {
+    && collection.repairingDistributeShardsLikeReplicationFactorReduced.get()) {
     collection.replicationFactor += 1;
     collection.repairingDistributeShardsLikeReplicationFactorReduced = boost::none;
     // TODO write test (see above). Add a transaction. Don't forget to add

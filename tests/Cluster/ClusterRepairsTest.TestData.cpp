@@ -28,19 +28,9 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-// Agency output of .[0].arango.Plan.DBServers
-std::shared_ptr<VPackBuffer<uint8_t>>
-  planDbServers = R"=(
-{
-  "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB": "none",
-  "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC": "none",
-  "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA": "none"
-}
-)="_vpack;
-
 // Agency output of .[0].arango.Supervision.Health
 std::shared_ptr<VPackBuffer<uint8_t>>
-  supervisionHealth = R"=(
+  supervisionHealth3Healthy0Bad = R"=(
 {
   "CRDN-976e3d6a-9148-4ece-99e9-326dc69834b2": {
   },
