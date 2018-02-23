@@ -38,6 +38,9 @@
 
 #include <rocksdb/db.h>
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 template <typename CMP = geo_index::DocumentsAscending>
@@ -76,6 +79,32 @@ class RDBNearIterator final : public IndexIterator {
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
         if (cb(_near.nearest().document)) {
+          limit--;
+        }
+        _near.popNearest();
+      }
+      // need to fetch more geo results
+      if (limit > 0 && !_near.isDone()) {
+        TRI_ASSERT(!_near.hasNearest());
+        performScan();
+      }
+    }
+    return !_near.isDone();
+  }
+
+  inline bool nextTokenWithDistance(
+      std::function<bool(LocalDocumentId token, double distRad)>&& cb,
+      size_t limit) {
+    if (_near.isDone()) {
+      // we already know that no further results will be returned by the index
+      TRI_ASSERT(!_near.hasNearest());
+      return false;
+    }
+
+    while (limit > 0 && !_near.isDone()) {
+      while (limit > 0 && _near.hasNearest()) {
+        auto nearest = _near.nearest();
+        if (cb(nearest.document, nearest.distRad)) {
           limit--;
         }
         _near.popNearest();
@@ -153,8 +182,8 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    //size_t seeks = 0;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    // size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
       geo::Interval const& it = scan[i];
@@ -186,7 +215,8 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min; seeks++;
+        // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] seeking:" << it.min;
+        // seeks++;
         _iter->Seek(bds.start());
       }
 
@@ -198,7 +228,7 @@ class RDBNearIterator final : public IndexIterator {
         _iter->Next();
       }
     }
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -244,7 +274,8 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("geoJson",
+              VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -294,7 +325,8 @@ bool RocksDBGeoS2Index::matchesDefinition(VPackSlice const& info) const {
   }
 
   if (n == 1) {
-    bool gj1 = basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
+    bool gj1 =
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     bool gj2 = _variant == geo_index::Index::Variant::GEOJSON;
     if (gj1 != gj2) {
       return false;
@@ -403,7 +435,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
-  if (res.fail()) { // might occur if insert is rolled back
+  if (res.fail()) {  // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
@@ -422,4 +454,67 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
     }
   }
   return IndexResult();
+}
+
+namespace {
+void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
+                  double lat, double lon, double radius, size_t count,
+                  std::string const& attributeName, VPackBuilder& builder) {
+  geo::QueryParams params;
+  params.origin = {lat, lon};
+  params.sorted = true;
+  if (radius > 0.0) {
+    params.maxDistance = radius;
+  }
+  size_t limit = (count > 0) ? count : SIZE_MAX;
+
+  ManagedDocumentResult mmdr;
+  LogicalCollection* collection = index.collection();
+  RDBNearIterator<geo_index::DocumentsAscending> iter(collection, trx, &mmdr,
+                                                   &index, std::move(params));
+  auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
+    bool read = collection->readDocument(trx, token, mmdr);
+    if (!read) {
+      return false;
+    }
+    VPackSlice doc(mmdr.vpack());
+    double distance = distRad * geo::kEarthRadiusInMeters;
+
+    // add to builder results
+    if (!attributeName.empty()) {
+      // We have to copy the entire document
+      VPackObjectBuilder docGuard(&builder);
+      builder.add(attributeName, VPackValue(distance));
+      for (auto const& entry : VPackObjectIterator(doc)) {
+        std::string key = entry.key.copyString();
+        if (key != attributeName) {
+          builder.add(key, entry.value);
+        }
+      }
+    } else {
+      mmdr.addToBuilder(builder, true);
+    }
+
+    return true;
+  };
+
+  bool more = iter.nextTokenWithDistance(fetchDoc, limit);
+  TRI_ASSERT(count > 0 || !more);
+}
+}  // namespace
+
+/// @brief looks up all points within a given radius
+void RocksDBGeoS2Index::withinQuery(transaction::Methods* trx, double lat,
+                                    double lon, double radius,
+                                    std::string const& attributeName,
+                                    VPackBuilder& builder) const {
+  ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
+}
+
+/// @brief looks up the nearest points
+void RocksDBGeoS2Index::nearQuery(transaction::Methods* trx, double lat,
+                                  double lon, size_t count,
+                                  std::string const& attributeName,
+                                  VPackBuilder& builder) const {
+  ::retrieveNear(*this, trx, lat, lon, -1.0, count, attributeName, builder);
 }

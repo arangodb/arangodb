@@ -44,7 +44,6 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
                     std::string const& typeName);
 
  public:
-
   struct IndexValue {
     IndexValue() : documentId(0), centroid(-1, -1) {}
     IndexValue(LocalDocumentId lid, geo::Coordinate&& c)
@@ -90,16 +89,23 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
+  /// @brief looks up all points within a given radius
+  void withinQuery(transaction::Methods*, double, double,
+                              double, std::string const&, VPackBuilder&) const;
+
+  /// @brief looks up the nearest points
+  void nearQuery(transaction::Methods*, double, double,
+                            size_t, std::string const&, VPackBuilder&) const;
+
   void load() override {}
   void unload() override;
 
   IndexTree const& tree() const { return _tree; }
 
  private:
-
   MMFilesGeoS2Index::IndexTree _tree;
   std::string const _typeName;
 };
-}
+}  // namespace arangodb
 
 #endif

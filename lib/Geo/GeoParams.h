@@ -39,7 +39,7 @@ constexpr double kPi = std::acos(-1);
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
-// const double kEarthRadiusInMeters = (6378.137 * 1000);
+// constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
 constexpr double kEarthRadiusInMeters = (6371.008 * 1000);
 constexpr double kMaxDistanceBetweenPoints = kPi * kEarthRadiusInMeters;

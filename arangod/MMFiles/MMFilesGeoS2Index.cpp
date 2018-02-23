@@ -36,6 +36,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 
 /*struct SimpleIterator final : public IndexIterator {
@@ -128,11 +131,37 @@ struct NearIterator final : public IndexIterator {
     return !_near.isDone();
   }
 
+  inline bool nextTokenWithDistance(
+      std::function<bool(LocalDocumentId token, double distRad)>&& cb,
+      size_t limit) {
+    if (_near.isDone()) {
+      // we already know that no further results will be returned by the index
+      TRI_ASSERT(!_near.hasNearest());
+      return false;
+    }
+
+    while (limit > 0 && !_near.isDone()) {
+      while (limit > 0 && _near.hasNearest()) {
+        auto nearest = _near.nearest();
+        if (cb(nearest.document, nearest.distRad)) {
+          limit--;
+        }
+        _near.popNearest();
+      }
+      // need to fetch more geo results
+      if (limit > 0 && !_near.isDone()) {
+        TRI_ASSERT(!_near.hasNearest());
+        performScan();
+      }
+    }
+    return !_near.isDone();
+  }
+
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
         [this, &cb](LocalDocumentId const& token) -> bool {
           if (!_collection->readDocument(_trx, token, *_mmdr)) {
-            return false; // skip
+            return false;  // skip
           }
           VPackSlice doc(_mmdr->vpack());
           geo::FilterType const ft = _near.filterType();
@@ -141,11 +170,13 @@ struct NearIterator final : public IndexIterator {
             TRI_ASSERT(!filter.empty());
             geo::ShapeContainer test;
             Result res = _index->shape(doc, test);
-            TRI_ASSERT(res.ok() && !test.empty());  // this should never fail here
+            TRI_ASSERT(res.ok() &&
+                       !test.empty());  // this should never fail here
             if (res.fail() ||
                 (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
-                (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
-              return false; // skip
+                (ft == geo::FilterType::INTERSECTS &&
+                 !filter.intersects(&test))) {
+              return false;  // skip
             }
           }
           cb(token, doc);  // return result
@@ -191,8 +222,8 @@ struct NearIterator final : public IndexIterator {
 
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    //size_t seeks = 0;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    // size_t seeks = 0;
 
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
@@ -204,18 +235,18 @@ struct NearIterator final : public IndexIterator {
       bool seek = true;
       if (i > 0) {
         TRI_ASSERT(scan[i - 1].max < interval.min);
-        if (it == tree.end()) { // no more valid keys after this
+        if (it == tree.end()) {  // no more valid keys after this
           break;
         } else if (it->first > interval.max) {
-          continue; // beyond range already
+          continue;  // beyond range already
         } else if (interval.min <= it->first) {
-          seek = false; // already in range: min <= key <= max
+          seek = false;  // already in range: min <= key <= max
           TRI_ASSERT(it->first <= interval.max);
         }
       }
 
-      if (seek) { // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min); //seeks++;
+      if (seek) {  // try to avoid seeking at all cost
+        it = tree.lower_bound(interval.min);  // seeks++;
       }
 
       while (it != tree.end() && it->first <= interval.max) {
@@ -223,7 +254,7 @@ struct NearIterator final : public IndexIterator {
         it++;
       }
     }
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -247,14 +278,13 @@ struct NearIterator final : public IndexIterator {
   geo_index::NearUtils<CMP> _near;
 };
 
-
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
                                      VPackSlice const& info,
                                      std::string const& typeName)
-: MMFilesIndex(iid, collection, info),
-  geo_index::Index(info, _fields),
-  _typeName(typeName) {
+    : MMFilesIndex(iid, collection, info),
+      geo_index::Index(info, _fields),
+      _typeName(typeName) {
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
@@ -272,7 +302,8 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
   MMFilesIndex::toVelocyPack(builder, withFigures, forPersistence);
   _coverParams.toVelocyPack(builder);
-  builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
+  builder.add("geoJson",
+              VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
@@ -359,7 +390,8 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  //LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << " doc: " << doc.toJson() << " center: " << centroid.toString();
+  // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
+  // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
              std::abs(centroid.longitude) <= 180.0);
   IndexValue value(documentId, std::move(centroid));
@@ -379,11 +411,12 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   geo::Coordinate centroid(-1, -1);
 
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
-  if (res.fail()) { // might occur if insert is rolled back
+  if (res.fail()) {  // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  //LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << " doc: " << doc.toJson();
+  // LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << "
+  // doc: " << doc.toJson();
   TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
              std::abs(centroid.longitude) <= 180.0);
 
@@ -441,4 +474,66 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
 
 void MMFilesGeoS2Index::unload() {
   _tree.clear();  // TODO: do we need load?
+}
+
+namespace {
+void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
+                  double lat, double lon, double radius, size_t count,
+                  std::string const& attributeName, VPackBuilder& builder) {
+  geo::QueryParams params;
+  params.origin = {lat, lon};
+  params.sorted = true;
+  if (radius > 0.0) {
+    params.maxDistance = radius;
+  }
+  size_t limit = (count > 0) ? count : SIZE_MAX;
+
+  ManagedDocumentResult mmdr;
+  LogicalCollection* collection = index.collection();
+  NearIterator<geo_index::DocumentsAscending> iter(collection, trx, &mmdr,
+                                                   &index, std::move(params));
+  auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
+    bool read = collection->readDocument(trx, token, mmdr);
+    if (!read) {
+      return false;
+    }
+    VPackSlice doc(mmdr.vpack());
+    double distance = distRad * geo::kEarthRadiusInMeters;
+
+    // add to builder results
+    if (!attributeName.empty()) {
+      // We have to copy the entire document
+      VPackObjectBuilder docGuard(&builder);
+      builder.add(attributeName, VPackValue(distance));
+      for (auto const& entry : VPackObjectIterator(doc)) {
+        std::string key = entry.key.copyString();
+        if (key != attributeName) {
+          builder.add(key, entry.value);
+        }
+      }
+    } else {
+      mmdr.addToBuilder(builder, true);
+    }
+
+    return true;
+  };
+
+  bool more = iter.nextTokenWithDistance(fetchDoc, limit);
+  TRI_ASSERT(count > 0 || !more);
+}
+}  // namespace
+
+/// @brief looks up all points within a given radius
+void MMFilesGeoS2Index::withinQuery(transaction::Methods* trx, double lat,
+                                    double lon, double radius,
+                                    std::string const& attributeName,
+                                    VPackBuilder& builder) const {
+  ::retrieveNear(*this, trx, lat, lon, radius, 0, attributeName, builder);
+}
+
+void MMFilesGeoS2Index::nearQuery(transaction::Methods* trx, double lat,
+                                  double lon, size_t count,
+                                  std::string const& attributeName,
+                                  VPackBuilder& builder) const {
+  ::retrieveNear(*this, trx, lat, lon, -1.0, count, attributeName, builder);
 }

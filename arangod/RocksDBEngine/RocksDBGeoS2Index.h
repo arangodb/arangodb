@@ -41,8 +41,7 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
   RocksDBGeoS2Index() = delete;
 
   RocksDBGeoS2Index(TRI_idx_iid_t, arangodb::LogicalCollection*,
-                    velocypack::Slice const&,
-                    std::string const& typeName);
+                    velocypack::Slice const&, std::string const& typeName);
 
   ~RocksDBGeoS2Index() override {}
 
@@ -81,6 +80,14 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
+
+  /// @brief looks up all points within a given radius
+  void withinQuery(transaction::Methods*, double, double,
+                              double, std::string const&, VPackBuilder&) const;
+
+  /// @brief looks up the nearest points
+  void nearQuery(transaction::Methods*, double, double,
+                            size_t, std::string const&, VPackBuilder&) const;
 
  private:
   std::string const _typeName;
