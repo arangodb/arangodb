@@ -70,35 +70,35 @@ VSS of the process
 informations about the connected clients and their resource usage
 
 
-@RESTSTRUCT{sum,setof_statistics_struct_struct,number,required,}
+@RESTSTRUCT{sum,setof_statistics_struct,number,required,}
 sumarized value of all counts
 
-@RESTSTRUCT{count,setof_statistics_struct_struct,integer,required,}
+@RESTSTRUCT{count,setof_statistics_struct,integer,required,}
 number of values sumarized
 
-@RESTSTRUCT{counts,setof_statistics_struct_struct,array,required,integer}
+@RESTSTRUCT{counts,setof_statistics_struct,array,required,integer}
 array containing the values
 
 
-@RESTSTRUCT{connectionTime,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{connectionTime,client_statistics_struct,object,required,setof_statistics_struct}
 total connection times
 
-@RESTSTRUCT{totalTime,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{totalTime,client_statistics_struct,object,required,setof_statistics_struct}
 the system time 
 
-@RESTSTRUCT{requestTime,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{requestTime,client_statistics_struct,object,required,setof_statistics_struct}
 the request times
 
-@RESTSTRUCT{queueTime,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{queueTime,client_statistics_struct,object,required,setof_statistics_struct}
 the time requests were queued waiting for processing
 
-@RESTSTRUCT{ioTime,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{ioTime,client_statistics_struct,object,required,setof_statistics_struct}
 IO Time
 
-@RESTSTRUCT{bytesSent,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{bytesSent,client_statistics_struct,object,required,setof_statistics_struct}
 number of bytes sent to the clients
 
-@RESTSTRUCT{bytesReceived,client_statistics_struct,setof_statistics_struct,required,}
+@RESTSTRUCT{bytesReceived,client_statistics_struct,object,required,setof_statistics_struct}
 number of bytes received from the clients
 
 
@@ -151,7 +151,7 @@ time the server is up and running
 available physical memory on the server
 
 
-@RESTSTRUCT{v8Context,server_statistics_struct,v8_context_struct,required,}
+@RESTSTRUCT{v8Context,server_statistics_struct,object,required,v8_context_struct}
 Statistics about the V8 javascript contexts
 
 @RESTSTRUCT{available,v8_context_struct,integer,required,}
@@ -170,7 +170,7 @@ the number of V8 contexts that are free to use
 the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
 
 
-@RESTSTRUCT{threads,server_statistics_struct,server_threads_struct,required,}
+@RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
 Statistics about the server worker threads (excluding V8 specific or jemalloc specific threads and system threads)
 
 @RESTSTRUCT{running,server_threads_struct,integer,required,}

@@ -72,7 +72,7 @@ Units in which the figure is measured.
 @RESTREPLYBODY{code,integer,required,int64}
 the HTTP status code
 
-@RESTREPLYBODY{error,bool,required,}
+@RESTREPLYBODY{error,boolean,required,}
 the error, *false* in this case
 
 @EXAMPLES
