@@ -13,6 +13,8 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
 
 v3.3.3 (2018-01-26)
 -------------------
