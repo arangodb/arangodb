@@ -302,8 +302,8 @@ AgencyWriteTransaction
 DistributeShardsLikeRepairer::createMoveShardTransaction(
   Collection& collection,
   std::string const& shardId,
-  std::string const& from,
-  std::string const& to
+  std::string const& fromServerId,
+  std::string const& toServerId
 ) {
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
@@ -322,8 +322,8 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
   };
 
   for (auto& it : collection.shardsByName[shardId]) {
-    if (it == from) {
-      it = to;
+    if (it == fromServerId) {
+      it = toServerId;
     }
   }
 
@@ -428,7 +428,48 @@ DistributeShardsLikeRepairer::fixShard(
   std::list<AgencyWriteTransaction> transactions;
   transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
 
-  // TODO implement fixShard
+  DBServers const& protoShardDbServers = proto.shardsByName[protoShardId];
+  DBServers& shardDbServers = collection.shardsByName[shardId];
+
+  DBServers serversOnlyOnProto;
+
+  std::set_difference(
+    protoShardDbServers.begin(), protoShardDbServers.end(),
+    shardDbServers.begin(), shardDbServers.end(),
+    std::back_inserter(serversOnlyOnProto)
+  );
+
+  DBServers serversOnlyOnShard;
+
+  std::set_difference(
+    shardDbServers.begin(), shardDbServers.end(),
+    protoShardDbServers.begin(), protoShardDbServers.end(),
+    std::back_inserter(serversOnlyOnShard)
+  );
+
+  if (serversOnlyOnProto.size() != serversOnlyOnShard.size()) {
+// [PSEUDO]  If (onProto.length != onFollower.length) { fail(); } // Here the replicationFactor is violated. Will not fix
+    // TODO write a test and throw a meaningful exception
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  for (auto const& zipIt : boost::combine(serversOnlyOnProto, serversOnlyOnShard)) {
+    auto const& protoServerIt = zipIt.get<0>();
+    auto const& shardServerIt = zipIt.get<1>();
+
+    AgencyWriteTransaction trx =
+      createMoveShardTransaction(collection, shardId, shardServerIt, protoServerIt);
+    transactions.emplace_back(trx);
+
+// [PSEUDO-TODO]    if (onProto.length >= col.replicationFactor - 2 && i == 0) {
+// [PSEUDO-TODO]      // Security that we at least keep one insync follower
+// [PSEUDO-TODO]      waitForSync();
+// [PSEUDO-TODO]    }
+  }
+
+  AgencyWriteTransaction trx =
+    createCopyServerOrderTransaction(collection, shardId, protoShardId);
+  transactions.emplace_back(trx);
 
   return transactions;
 }
@@ -495,14 +536,59 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     }
   }
 
-  // Phase 1:
-  // Step 1.1: filter collections to fix
-  // Step 1.1a: link proto collection to each collection to fix
-  // Step 1.2: add collections with repairingDistributeShardsLike and corresponding proto collection
-  // Step 1.3:
-  // Phase 2:
-  // fixShard()
-
-
   return transactions;
+}
+
+AgencyWriteTransaction DistributeShardsLikeRepairer::createCopyServerOrderTransaction(
+  Collection &collection,
+  std::string const& shardId,
+  std::string const& protoShardId
+) {
+  std::string const agencyShardId
+    = collection.agencyCollectionId() + "/shards/" + shardId;
+
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createCopyServerOrderTransaction()";
+
+  DBServers& dbServers = collection.shardsByName[shardId];
+  DBServers const& protoDbServers = collection.shardsByName[protoShardId];
+
+  if (dbServers.size() != protoDbServers.size()) {
+    // TODO this should never happen. throw a meaningful exception.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  if (dbServers.size() == 0) {
+    // TODO this should never happen. return an empty transaction or throw a meaningful exception?
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  if (dbServers[0] != protoDbServers[0]) {
+    // TODO this should never happen. throw a meaningful exception.
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  std::shared_ptr<VPackBuffer<uint8_t>>
+    vpack = collection.createShardDbServerArray(shardId);
+  VPackSlice oldDbServerSlice = Slice(vpack->data());
+  _vPackBuffers.emplace_back(std::move(vpack));
+
+  AgencyPrecondition agencyPrecondition {
+    agencyShardId,
+    AgencyPrecondition::Type::VALUE,
+    oldDbServerSlice
+  };
+
+  dbServers = protoDbServers;
+
+  vpack = collection.createShardDbServerArray(shardId);
+  VPackSlice newDbServerSlice = Slice(vpack->data());
+  _vPackBuffers.emplace_back(std::move(vpack));
+
+  AgencyOperation agencyOperation {
+    agencyShardId,
+    AgencyValueOperationType::SET,
+    newDbServerSlice
+  };
+
+  return AgencyWriteTransaction { agencyOperation, agencyPrecondition };
 }

@@ -41,7 +41,7 @@ namespace cluster_repairs {
 using DBServers = std::vector<std::string>;
 using CollectionId = std::string;
 
-
+// TODO add tests
 class VersionSort {
   using CharOrInt = boost::variant<char, uint64_t>;
 
@@ -114,8 +114,8 @@ class DistributeShardsLikeRepairer {
   createMoveShardTransaction(
     Collection& collection,
     std::string const& shardId,
-    std::string const& from,
-    std::string const& to
+    std::string const& fromServerId,
+    std::string const& toServerId
   );
 
   std::list<AgencyWriteTransaction>
@@ -132,6 +132,13 @@ class DistributeShardsLikeRepairer {
     DBServers const& availableDbServers,
     Collection& collection,
     Collection& proto,
+    std::string const& shardId,
+    std::string const& protoShardId
+  );
+
+  AgencyWriteTransaction
+  createCopyServerOrderTransaction(
+    Collection& collection,
     std::string const& shardId,
     std::string const& protoShardId
   );
