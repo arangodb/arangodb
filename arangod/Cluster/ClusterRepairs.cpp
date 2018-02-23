@@ -533,6 +533,9 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         << "[tg] shard " << shardId << " doesn't need fixing";
       }
     }
+
+    // TODO rename repairingDistributeShardsLike to distributeShardsLike in
+    // TODO collection. Use preconditions to guarantee that everything was fixed.
   }
 
   return transactions;
