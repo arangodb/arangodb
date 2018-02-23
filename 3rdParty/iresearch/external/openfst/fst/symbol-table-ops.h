@@ -1,28 +1,12 @@
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: sorenj@google.com (Jeffrey Sorensen)
+#ifndef FST_SYMBOL_TABLE_OPS_H_
+#define FST_SYMBOL_TABLE_OPS_H_
 
-#ifndef FST_LIB_SYMBOL_TABLE_OPS_H_
-#define FST_LIB_SYMBOL_TABLE_OPS_H_
-
-#include <vector>
-using std::vector;
 #include <string>
 #include <unordered_set>
-using std::unordered_set;
-using std::unordered_multiset;
+#include <vector>
 
 
 #include <fst/fst.h>
@@ -34,26 +18,22 @@ namespace fst {
 // Returns a minimal symbol table containing only symbols referenced by the
 // passed fst.  Symbols preserve their original numbering, so fst does not
 // require relabeling.
-template<class Arc>
+template <class Arc>
 SymbolTable *PruneSymbolTable(const Fst<Arc> &fst, const SymbolTable &syms,
                               bool input) {
-  unordered_set<typename Arc::Label> seen;
-  seen.insert(0);  // Always keep epslion
-  StateIterator<Fst<Arc> > siter(fst);
-  for (; !siter.Done(); siter.Next()) {
-    ArcIterator<Fst<Arc> > aiter(fst, siter.Value());
-    for (; !aiter.Done(); aiter.Next()) {
-      typename Arc::Label sym = (input) ? aiter.Value().ilabel :
-                                          aiter.Value().olabel;
+  std::unordered_set<typename Arc::Label> seen;
+  seen.insert(0);  // Always keep epsilon.
+  for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
+    for (ArcIterator<Fst<Arc>> aiter(fst, siter.Value()); !aiter.Done();
+         aiter.Next()) {
+      const auto sym = (input) ? aiter.Value().ilabel : aiter.Value().olabel;
       seen.insert(sym);
     }
   }
-  SymbolTable *pruned = new SymbolTable(syms.Name() + "_pruned");
+  auto *pruned = new SymbolTable(syms.Name() + "_pruned");
   for (SymbolTableIterator stiter(syms); !stiter.Done(); stiter.Next()) {
-    typename Arc::Label label = stiter.Value();
-    if (seen.find(label) != seen.end()) {
-      pruned->AddSymbol(stiter.Symbol(), stiter.Value());
-    }
+    const auto label = stiter.Value();
+    if (seen.count(label)) pruned->AddSymbol(stiter.Symbol(), label);
   }
   return pruned;
 }
@@ -72,20 +52,25 @@ SymbolTable *CompactSymbolTable(const SymbolTable &syms);
 // tables.  You can reconcile them in the following way:
 //   Fst<Arc> a, b;
 //   bool relabel;
-//   SymbolTable *bnew = MergeSymbolTable(a.OutputSymbols(),
-//                                        b.InputSymbols(), &relabel);
+//   std::unique_ptr<SymbolTable> bnew(MergeSymbolTable(a.OutputSymbols(),
+//                                     b.InputSymbols(), &relabel);
 //   if (relabel) {
-//     Relabel(b, bnew, NULL);
+//     Relabel(b, bnew.get(), nullptr);
 //   }
 //   b.SetInputSymbols(bnew);
-//   delete bnew;
 SymbolTable *MergeSymbolTable(const SymbolTable &left, const SymbolTable &right,
-                              bool *right_relabel_output = 0);
+                              bool *right_relabel_output = nullptr);
 
 // Read the symbol table from any Fst::Read()able file, without loading the
-// corresponding Fst.  Returns NULL if the Fst does not contain a symbol table
-// or the symbol table cannot be read.
+// corresponding Fst.  Returns nullptr if the Fst does not contain a symbol
+// table or the symbol table cannot be read.
 SymbolTable *FstReadSymbols(const string &filename, bool input);
 
+// Adds a contiguous range of symbols to a symbol table using a simple prefix
+// for the string, returning false if the inserted symbol string clashes with
+// any currently present.
+bool AddAuxiliarySymbols(const string &prefix, int64 start_label,
+                         int64 nlabels, SymbolTable *syms);
+
 }  // namespace fst
-#endif  // FST_LIB_SYMBOL_TABLE_OPS_H_
+#endif  // FST_SYMBOL_TABLE_OPS_H_

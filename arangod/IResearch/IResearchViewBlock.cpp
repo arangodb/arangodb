@@ -408,7 +408,7 @@ void IResearchViewBlock::resetIterator() {
     _scrVal = _scr->value();
   } else {
     _scr = &irs::score::no_score();
-    _scrVal = irs::bytes_ref::nil;
+    _scrVal = irs::bytes_ref::NIL;
   }
 }
 
@@ -641,7 +641,7 @@ bool IResearchViewOrderedBlock::next(
     if (!score) {
       LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
-      IR_STACK_TRACE();
+      IR_LOG_STACK_TRACE();
 
       continue; // if here then there is probably a bug in IResearchView while querying
     }

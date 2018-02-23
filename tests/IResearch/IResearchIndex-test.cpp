@@ -102,14 +102,14 @@ class TestAnalyzer: public irs::analysis::analyzer {
 
   virtual bool next() override {
     _term.value(_data);
-    _data = irs::bytes_ref::nil;
+    _data = irs::bytes_ref::NIL;
 
     return !_term.value().null();
   }
 
   virtual bool reset(irs::string_ref const& data) override {
     _data = irs::ref_cast<irs::byte_type>(data);
-    _term.value(irs::bytes_ref::nil);
+    _term.value(irs::bytes_ref::NIL);
 
     return true;
   }

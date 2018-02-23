@@ -58,10 +58,14 @@ bool index_lock::try_lock(size_t wait_timeout /* = 1000 */) NOEXCEPT {
 
     return locked;
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

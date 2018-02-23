@@ -372,12 +372,15 @@ TEST_F(memory_pool_allocator_test, profile_std_map) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = test_dir();
+
+  path /= "profile_memory_pool_allocator.log";
+
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_multimap) {
@@ -568,12 +571,15 @@ TEST_F(memory_pool_allocator_test, profile_std_multimap) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = test_dir();
+
+  path /= "profile_memory_pool_allocator.log";
+
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_list) {
@@ -709,12 +715,15 @@ TEST_F(memory_pool_allocator_test, profile_std_list) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = test_dir();
+
+  path /= "profile_memory_pool_allocator.log";
+
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, profile_std_set) {
@@ -876,12 +885,15 @@ TEST_F(memory_pool_allocator_test, profile_std_set) {
     }
   }
 
-  auto path = fs::path(test_dir()).append("profile_memory_pool_allocator.log");
+  auto path = test_dir();
+
+  path /= "profile_memory_pool_allocator.log";
+
   std::ofstream out(path.native());
 
   flush_timers(out);
   out.close();
-  std::cout << "Path to timing log: " << fs::absolute(path).string() << std::endl;
+  std::cout << "Path to timing log: " << path.utf8_absolute() << std::endl;
 }
 
 TEST_F(memory_pool_allocator_test, allocate_unique) {

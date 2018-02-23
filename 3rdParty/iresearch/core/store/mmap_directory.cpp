@@ -75,7 +75,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     try {
       handle = std::make_shared<mmap_handle>();
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
       return nullptr;
     }
 
@@ -144,7 +144,7 @@ index_input::ptr mmap_directory::open(
   try {
     (path/=directory())/=name;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
     return nullptr;
   }
 
