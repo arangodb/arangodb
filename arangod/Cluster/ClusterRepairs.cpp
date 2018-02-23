@@ -225,6 +225,9 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
   << "[tg] findCollectionsToFix()";
 
+  // TODO Are there additional criteria when a collection shouldn't be fixed?
+  // e.g. deleted: true, some status, isSystem, ...?
+
   for (auto const &collectionIterator : collections) {
     CollectionId const& collectionId = collectionIterator.first;
     struct Collection const& collection = collectionIterator.second;
@@ -244,7 +247,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(std::map<CollectionId, struct
       continue;
     }
 
-    struct Collection & proto = collections[collection.distributeShardsLike.get()];
+    struct Collection& proto = collections[collection.distributeShardsLike.get()];
 
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
     << "[tg]   against proto collection " << collection.distributeShardsLike.get();
@@ -435,7 +438,7 @@ DistributeShardsLikeRepairer::fixShard(
   std::string const& shardId,
   std::string const& protoShardId
 ) {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(INFO, arangodb::Logger::FIXME)
   << "[tg] fixShard("
     << "\"" << collection.database << "/" << collection.name << "\","
     << "\"" << proto.database << "/" << proto.name << "\","
