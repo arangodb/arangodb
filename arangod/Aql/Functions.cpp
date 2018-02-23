@@ -29,7 +29,6 @@
 #include "Aql/Function.h"
 #include "Aql/Query.h"
 #include "Aql/RegexCache.h"
-#include "Basics/datetime.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
@@ -1612,7 +1611,7 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
 bool Functions::ParameterToTimePoint(arangodb::aql::Query *const query,
                                  transaction::Methods *const trx,
                                  VPackFunctionParameters const& parameters,
-                                 std::chrono::system_clock::time_point& tp,
+                                 tp_sys_clock_ms& tp,
                                  std::string const& functionName,
                                  size_t parameterIndex) {
   using namespace std::chrono;
@@ -1625,7 +1624,7 @@ bool Functions::ParameterToTimePoint(arangodb::aql::Query *const query,
   }
 
   if (value.isNumber()) {
-    tp = system_clock::time_point(milliseconds(value.toInt64(trx)));
+    tp = tp_sys_clock_ms(milliseconds(value.toInt64(trx)));
   } else {
     if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
       RegisterWarning(query, functionName.c_str(), TRI_ERROR_QUERY_INVALID_DATE_VALUE);
@@ -1643,7 +1642,7 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (parameters.size() == 1) {
     if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISO8601", 0)) {
@@ -1702,7 +1701,7 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
   using namespace date;
 
   if (parameters.size() == 1) {
-    system_clock::time_point tp;
+    tp_sys_clock_ms tp;
 
     if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_TIMESTAMP", 0)) {
       return AqlValue(AqlValueHintNull());
@@ -1767,7 +1766,7 @@ AqlValue Functions::IsDatestring(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintBool(false));
   }
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   return AqlValue(AqlValueHintBool(
     basics::parse_dateTime(value.slice().copyString(), tp)
@@ -1781,7 +1780,7 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFWEEK", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1799,7 +1798,7 @@ AqlValue Functions::DateYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_YEAR", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1817,7 +1816,7 @@ AqlValue Functions::DateMonth(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MONTH", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1835,7 +1834,7 @@ AqlValue Functions::DateDay(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAY", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1853,7 +1852,7 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_HOUR", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1871,7 +1870,7 @@ AqlValue Functions::DateMinute(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MINUTE", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1889,7 +1888,7 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SECOND", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1907,13 +1906,11 @@ AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MILLISECOND", 0)) {
     return AqlValue(AqlValueHintNull());
   }
-
-  // duration_cast<milliseconds>(  system_clock::now().time_since_epoch() ).count();
 
   uint64_t mss = make_time( floor<milliseconds>(tp) - floor<days>(tp) ).subseconds().count();
 
@@ -1927,7 +1924,7 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFYEAR", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -1946,7 +1943,7 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISOWEEK", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2013,7 +2010,7 @@ AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_LEAPYEAR", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2029,7 +2026,7 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_QUARTER", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2047,7 +2044,7 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYS_IN_MONTH", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2069,7 +2066,7 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ADD", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2116,7 +2113,7 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
       RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration() + ms};
+    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
 
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
@@ -2139,7 +2136,7 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
     ymd += years{atoi(duration_parts[2].str().c_str())};
     ymd += months{atoi(duration_parts[4].str().c_str())};
 
-    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration()};
+    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration()};
 
     tp += weeks{atoi(duration_parts[6].str().c_str())} + days{atoi(duration_parts[8].str().c_str())};
 
@@ -2159,7 +2156,7 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp;
+  tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SUBTRACT", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2206,7 +2203,7 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
-    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration() + ms};
+    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
 
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
@@ -2229,7 +2226,7 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
     ymd -= years{atoi(duration_parts[2].str().c_str())};
     ymd -= months{atoi(duration_parts[4].str().c_str())};
 
-    tp = system_clock::time_point{sys_days(ymd) + day_time.to_duration()};
+    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration()};
 
     tp -= weeks{atoi(duration_parts[6].str().c_str())} + days{atoi(duration_parts[8].str().c_str())};
 
@@ -2252,8 +2249,8 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
   double diff;
   bool  asFloat = false;
 
-  system_clock::time_point tp1;
-  system_clock::time_point tp2;
+  tp_sys_clock_ms tp1;
+  tp_sys_clock_ms tp2;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_DIFF", 0)) {
     return AqlValue(AqlValueHintNull());
@@ -2320,8 +2317,8 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
   using namespace std::chrono;
   using namespace date;
 
-  system_clock::time_point tp1;
-  system_clock::time_point tp2;
+  tp_sys_clock_ms tp1;
+  tp_sys_clock_ms tp2;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_COMPARE", 0)) {
     return AqlValue(AqlValueHintNull());

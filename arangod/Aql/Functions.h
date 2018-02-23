@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_FUNCTIONS_H
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
-
+#include "Basics/datetime.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Aql/AqlValue.h"
@@ -95,7 +95,7 @@ struct Functions {
     static bool ParameterToTimePoint(arangodb::aql::Query *const query,
                                  transaction::Methods *const trx,
                                  VPackFunctionParameters const& parameters,
-                                 std::chrono::system_clock::time_point& tp,
+                                 tp_sys_clock_ms& tp,
                                  std::string const& functionName,
                                  size_t parameterIndex);
 

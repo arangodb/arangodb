@@ -30,9 +30,12 @@
 
 
 namespace arangodb {
+
+using tp_sys_clock_ms = std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds>;
+
 namespace basics {
 bool parse_dateTime(std::string const& dateTime,
-                    std::chrono::system_clock::time_point& date_tp);
+                    tp_sys_clock_ms& date_tp);
 
 bool regex_isoDuration(std::string const& isoDuration, std::smatch& duration_parts);
 }

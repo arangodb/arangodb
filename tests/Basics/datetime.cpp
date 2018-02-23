@@ -9,7 +9,7 @@ SCENARIO("testing", "[datetime]") {
     using namespace std::chrono;
     using namespace date;
     
-    system_clock::time_point tp;
+    tp_sys_clock_ms tp;
 
     std::vector<std::string> dates{"2017", "2017-11", "2017-11-12"};
     std::vector<std::string> times{"", "T12:34",
