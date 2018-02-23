@@ -170,6 +170,13 @@ DistributeShardsLikeRepairer::readCollections(const Slice &collectionsByDatabase
         if (key == "name") {
           collectionName = it.value.copyString();
         }
+        else if (key == "id") {
+          std::string const id = it.value.copyString();
+          if (id != collectionId) {
+            // TODO throw a meaningful exception
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+          }
+        }
         else if (key == "replicationFactor") {
           replicationFactor = it.value.getUInt();
         }
@@ -194,6 +201,7 @@ DistributeShardsLikeRepairer::readCollections(const Slice &collectionsByDatabase
         collectionSlice,
         databaseId,
         collectionName,
+        collectionId,
         replicationFactor,
         distributeShardsLike,
         repairingDistributeShardsLike,

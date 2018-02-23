@@ -62,6 +62,7 @@ struct Collection {
 
   std::string database;
   std::string name;
+  std::string id;
   uint64_t replicationFactor;
   boost::optional<CollectionId const> distributeShardsLike;
   boost::optional<CollectionId const> repairingDistributeShardsLike;
@@ -71,7 +72,7 @@ struct Collection {
   std::map<std::string, VPackSlice> residualAttributes;
 
   std::string inline agencyCollectionId() {
-    return "Plan/Collections/" + this->database + "/" + this->name;
+    return "Plan/Collections/" + this->database + "/" + this->id;
   }
 
   std::shared_ptr<VPackBuffer<uint8_t>>
