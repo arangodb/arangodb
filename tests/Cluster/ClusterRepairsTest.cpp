@@ -47,7 +47,8 @@ namespace arangodb {
 namespace tests {
 namespace cluster_repairs_test {
 
-std::shared_ptr<VPackBuffer<uint8_t>> vpackFromJsonString(char const *c) {
+std::shared_ptr<VPackBuffer<uint8_t>>
+vpackFromJsonString(char const *c) {
   Options options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
@@ -58,14 +59,15 @@ std::shared_ptr<VPackBuffer<uint8_t>> vpackFromJsonString(char const *c) {
   return builder->steal();
 }
 
-std::shared_ptr<VPackBuffer<uint8_t>> operator "" _vpack(const char* json, size_t) {
+std::shared_ptr<VPackBuffer<uint8_t>>
+operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]") {
+SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
-  // save old manager (maybe null)
+  // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
 
   try {
@@ -92,7 +94,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
       VPackBuilder transactionBuilder;
 
       Options optPretty = VPackOptions::Defaults;
-      optPretty.prettyPrint = false;
+      optPretty.prettyPrint = true;
 
       INFO("Expected transactions are:" << std::accumulate(
         expectedTransactions.begin(), expectedTransactions.end(),
@@ -103,21 +105,31 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
           return result;
         }
       ));
-      INFO("Actual transactions are:" << std::accumulate(
+      INFO("Actual transactions are (clientIds are ignored in the comparison):"
+        << std::accumulate(
         transactions.begin(), transactions.end(),
         std::string(),
         [&transactionBuilder,&optPretty](std::string const& left, AgencyWriteTransaction const& right) {
-          std::stringstream ss;
-          ss << &right;
           transactionBuilder.clear();
           right.toVelocyPack(transactionBuilder);
           return left + "\n"
-                 + "@" + ss.str() + " "
                  + transactionBuilder.slice().toJson(&optPretty);
         }
       ));
 
       REQUIRE(transactions.size() == expectedTransactions.size());
+
+      { // Transaction IDs shall be unique.
+        std::set<std::string> transactionClientIds;
+        for (auto& it : transactions) {
+          bool inserted;
+          std::tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
+          REQUIRE(inserted);
+
+          // Overwrite the client ID for the following comparisons to work
+          it.clientId = "dummy-client-id";
+        }
+      }
 
       for (auto const& it : boost::combine(transactions, expectedTransactions)) {
         auto const& transactionIt = it.get<0>();
