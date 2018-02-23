@@ -46,7 +46,14 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
   ~RocksDBGeoS2Index() override {}
 
  public:
-  constexpr IndexType type() const override { return TRI_IDX_TYPE_S2_INDEX; }
+  IndexType type() const override {
+    if ("geo1" == _typeName) {
+      return TRI_IDX_TYPE_GEO1_INDEX;
+    } else if ("geo2" == _typeName) {
+      return TRI_IDX_TYPE_GEO2_INDEX;
+    }
+    return TRI_IDX_TYPE_S2_INDEX;
+  }
 
   char const* typeName() const override { return _typeName.c_str(); }
 

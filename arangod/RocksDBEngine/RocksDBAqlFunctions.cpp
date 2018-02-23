@@ -199,7 +199,9 @@ static arangodb::RocksDBGeoS2Index* getGeoIndex(
 
   arangodb::RocksDBGeoS2Index* index = nullptr;
   for (auto const& idx : document->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
       index = static_cast<arangodb::RocksDBGeoS2Index*>(idx.get());
       break;
     }

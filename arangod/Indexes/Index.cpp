@@ -416,7 +416,7 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   TRI_ASSERT(builder.isOpenObject());
   builder.add("id", VPackValue(std::to_string(_iid)));
   //builder.add("type", VPackValue(oldtypeName()));
-  builder.add("type", VPackValue(typeName()));
+  builder.add("type", VPackValue(oldtypeName(type())));
 
   builder.add(VPackValue("fields"));
   builder.openArray();
