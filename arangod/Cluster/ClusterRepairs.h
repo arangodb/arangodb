@@ -74,10 +74,9 @@ struct Collection {
     return "Plan/Collections/" + this->database + "/" + this->name;
   }
 
-  void
-  addShardDbServerArray(
-    VPackBuilder& builder,
-    std::string const& shardId
+  std::shared_ptr<VPackBuffer<uint8_t>>
+  createShardDbServerArray(
+    std::string const &shardId
   );
 
   // maybe more?
@@ -94,7 +93,7 @@ class DistributeShardsLikeRepairer {
   );
 
  private:
-  std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _buffers;
+  std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _vPackBuffers;
 
   std::map<std::string, DBServers, VersionSort> static
   readShards(VPackSlice const& shards);

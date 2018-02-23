@@ -37,6 +37,11 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
+// TODO Fix/rewrite logging:
+// TODO * Loglevels (are all ERR or TRACE right now)
+// TODO * Logtopics (are all FIXME)
+// TODO * Messages (are all prefixed with [tg] and many currently useless)
+
 bool VersionSort::operator()(std::string const &a, std::string const &b) {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
@@ -81,11 +86,13 @@ VersionSort::splitVersion(std::string const &str) {
   return result;
 }
 
-void
-Collection::addShardDbServerArray(
-  VPackBuilder& builder,
-  std::string const& shardId
+
+std::shared_ptr<VPackBuffer<uint8_t>>
+cluster_repairs::Collection::createShardDbServerArray(
+  std::string const &shardId
 ) {
+  VPackBuilder builder;
+
   builder.add(Value(ValueType::Array));
 
   for (auto const& it : shardsByName[shardId]) {
@@ -93,6 +100,8 @@ Collection::addShardDbServerArray(
   }
 
   builder.close();
+
+  return builder.steal();
 }
 
 std::map<std::string, DBServers, VersionSort>
@@ -299,10 +308,12 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
-  VPackBuilder builder;
-  collection.addShardDbServerArray(builder, shardId);
-  VPackSlice oldDbServerSlice = builder.slice();
-  _buffers.emplace_back(builder.steal());
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "[tg] createMoveShardTransaction():";
+
+  std::shared_ptr<VPackBuffer<uint8_t>>
+    vpack = collection.createShardDbServerArray(shardId);
+  VPackSlice oldDbServerSlice = Slice(vpack->data());
+  _vPackBuffers.emplace_back(std::move(vpack));
 
   AgencyPrecondition agencyPrecondition {
     agencyShardId,
@@ -316,10 +327,9 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
     }
   }
 
-  builder = VPackBuilder();
-  collection.addShardDbServerArray(builder, shardId);
-  VPackSlice newDbServerSlice = builder.slice();
-  _buffers.emplace_back(builder.steal());
+  vpack = collection.createShardDbServerArray(shardId);
+  VPackSlice newDbServerSlice = Slice(vpack->data());
+  _vPackBuffers.emplace_back(std::move(vpack));
 
   AgencyOperation agencyOperation {
     agencyShardId,
@@ -339,7 +349,7 @@ DistributeShardsLikeRepairer::fixLeader(
   std::string const& shardId,
   std::string const& protoShardId
 ) {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
   << "[tg] fixLeader("
   << "\"" << collection.database << "/" << collection.name << "\","
   << "\"" << proto.database << "/" << proto.name << "\","
@@ -377,12 +387,12 @@ DistributeShardsLikeRepairer::fixLeader(
 
     AgencyWriteTransaction trx = createMoveShardTransaction(collection, shardId, protoLeader, tmpServer.get());
 
-    transactions.push_back(trx);
+    transactions.emplace_back(trx);
   }
 
   AgencyWriteTransaction trx = createMoveShardTransaction(collection, shardId, shardLeader, protoLeader);
 
-  transactions.push_back(trx);
+  transactions.emplace_back(trx);
 
   if (collection.repairingDistributeShardsLikeReplicationFactorReduced
     and collection.repairingDistributeShardsLikeReplicationFactorReduced.get()) {
@@ -415,22 +425,12 @@ DistributeShardsLikeRepairer::fixShard(
     << "\"" << shardId << "/" << protoShardId << "\","
     << ")";
 
-  fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
+  std::list<AgencyWriteTransaction> transactions;
+  transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
 
-  std::vector<AgencyPrecondition> agencyPreconditions = {
-    AgencyPrecondition(
-      collection.agencyCollectionId(),
-      AgencyPrecondition::Type::VALUE,
-      collection.slice
-    )
-  };
+  // TODO implement fixShard
 
-  std::vector<AgencyOperation> agencyOperations = {};
-
-  // TODO both arguments may either be a single Op/Precond or a vector. Use a single value if applicable.
-  AgencyWriteTransaction trx(agencyOperations, agencyPreconditions);
-
-  return {trx};
+  return transactions;
 }
 
 
@@ -453,7 +453,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   std::list<AgencyWriteTransaction> transactions;
 
   for (auto const& collectionIdIterator : collectionsToFix) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
     << "[tg] fix collection " << collectionIdIterator;
     struct Collection& collection = collectionMap[collectionIdIterator];
 
@@ -480,7 +480,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       DBServers const &protoDbServers = protoShardIterator.second;
 
       if (dbServers != protoDbServers) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "[tg] shard " << shardId << " needs fixing";
         // TODO Do we need to check that dbServers and protoDbServers are not empty?
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
@@ -489,7 +489,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         transactions.splice(transactions.end(), newTransactions);
       }
       else {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
         << "[tg] shard " << shardId << " doesn't need fixing";
       }
     }

@@ -89,22 +89,31 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
       std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > const& expectedTransactions
         = expectedTransactionsWithTwoSwappedDBServers;
 
-      VPackBuilder transactionBuilder = Builder();
+      VPackBuilder transactionBuilder;
+
+      Options optPretty = VPackOptions::Defaults;
+      optPretty.prettyPrint = false;
 
       INFO("Expected transactions are:" << std::accumulate(
         expectedTransactions.begin(), expectedTransactions.end(),
         std::string(),
-        [&transactionBuilder](std::string const& left, std::shared_ptr<VPackBuffer<uint8_t>> const& right) {
-          std::string result = left + VPackSlice(right->data()).toString();
+        [&optPretty](std::string const& left, std::shared_ptr<VPackBuffer<uint8_t>> const& right) {
+          std::string result = left + "\n"
+                               + VPackSlice(right->data()).toJson(&optPretty);
           return result;
         }
       ));
       INFO("Actual transactions are:" << std::accumulate(
         transactions.begin(), transactions.end(),
         std::string(),
-        [&transactionBuilder](std::string const& left, AgencyWriteTransaction const& right) {
+        [&transactionBuilder,&optPretty](std::string const& left, AgencyWriteTransaction const& right) {
+          std::stringstream ss;
+          ss << &right;
+          transactionBuilder.clear();
           right.toVelocyPack(transactionBuilder);
-          return left + transactionBuilder.slice().toString();
+          return left + "\n"
+                 + "@" + ss.str() + " "
+                 + transactionBuilder.slice().toJson(&optPretty);
         }
       ));
 
@@ -114,6 +123,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][!mayfail]
         auto const& transactionIt = it.get<0>();
         auto const& expectedTransactionIt = it.get<1>();
 
+        transactionBuilder.clear();
         transactionIt.toVelocyPack(transactionBuilder);
 
         Slice const& transactionSlice = transactionBuilder.slice();
