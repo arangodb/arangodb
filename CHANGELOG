@@ -1,4 +1,4 @@
-v3.2.12 (XXXX-XX-XX)
+v3.2.12 (2018-02-23)
 --------------------
 
 * remove long disfunctional admin/long_echo handler
@@ -41,6 +41,9 @@ v3.2.12 (XXXX-XX-XX)
      and creating the follower collection afterwards.
 
 * fix timeout issues in replication client expiration
+
++ fix some inconsistencies in replication for RocksDB engine that could have led
+  to some operations not being shipped from master to slave servers
 
 * fix issue #4272: VERSION file keeps disappearing
 
