@@ -50,6 +50,9 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   }
   centroid.latitude = lat.getNumericValue<double>();
   centroid.longitude = lon.getNumericValue<double>();
+  if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
   S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
   cells.emplace_back(ll);
   return TRI_ERROR_NO_ERROR;

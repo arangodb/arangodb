@@ -91,6 +91,9 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       centroid = shape.centroid();
+      if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+        return TRI_ERROR_BAD_PARAMETER;
+      }
     }
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
@@ -104,6 +107,9 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     }
     centroid.latitude = lat.getNumericValue<double>();
     centroid.longitude = lon.getNumericValue<double>();
+    if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
     return GeoUtils::indexCells(centroid, cells);
   }
   return TRI_ERROR_INTERNAL;

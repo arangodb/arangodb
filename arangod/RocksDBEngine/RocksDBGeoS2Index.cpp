@@ -277,8 +277,10 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.add("geoJson",
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
-  // geo indexes are always sparse.
   builder.add("unique", VPackValue(false));
+  // geo indexes always ignore null
+  builder.add("ignoreNull", VPackValue(true));
+  // geo indexes are always sparse.
   builder.add("sparse", VPackValue(true));
   builder.close();
 }

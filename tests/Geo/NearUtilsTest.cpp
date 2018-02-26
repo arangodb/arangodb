@@ -124,8 +124,8 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   size_t counter = 0;
 
   // add some entries to it
-  for (double lat=-40; lat <=40 ; ++lat) {
-    for (double lon=-40; lon <= 40; ++lon) {
+  for (double lat=-90; lat <=90 ; ++lat) {
+    for (double lon=-180; lon <= 180; ++lon) {
       //geocol.insert({lat,lon});
       geo::Coordinate cc(lat, lon);
 
@@ -140,6 +140,9 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
       docs.emplace(rev, cc);
     }
   }
+  REQUIRE(65341 == counter);
+  REQUIRE(docs.size() == counter);
+  REQUIRE(index.size() == counter);
 
   geo::QueryParams params;
   params.sorted = true;
