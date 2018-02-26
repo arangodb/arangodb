@@ -78,7 +78,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(basics::VelocyPackHelper::stringUInt64(info, "objectId")),
       _numberDocuments(0),
       _revisionId(0),
-      _hasGeoIndex(false),
+      _numberOfGeoIndexes(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
@@ -106,7 +106,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _objectId(static_cast<RocksDBCollection const*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0),
-      _hasGeoIndex(false),
+      _numberOfGeoIndexes(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
@@ -257,7 +257,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
   for (std::shared_ptr<Index> it : _indexes) {
     if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
         it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      _hasGeoIndex = true;
+      ++_numberOfGeoIndexes;
     }
   }
 }
@@ -626,6 +626,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         // trigger compaction before deleting the object
         cindex->cleanup();
 
+        bool isGeoIndex = (cindex->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+                           cindex->type() == Index::TRI_IDX_TYPE_GEO2_INDEX);
+
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
         // toVelocyPackIgnore will take a read lock and we don't need the
@@ -644,6 +647,13 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
             builder.slice(),
             RocksDBLogValue::IndexDrop(_logicalCollection->vocbase()->id(),
                                        _logicalCollection->cid(), iid));
+        
+        if (isGeoIndex) {
+          // decrease total number of geo indexes by one
+          TRI_ASSERT(_numberOfGeoIndexes > 0);
+          --_numberOfGeoIndexes;
+        }
+
         return res == TRI_ERROR_NO_ERROR;
       }
 
@@ -1224,7 +1234,7 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   _indexes.emplace_back(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
       idx->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-    _hasGeoIndex = true;
+    ++_numberOfGeoIndexes;
   }
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id() == 0);
