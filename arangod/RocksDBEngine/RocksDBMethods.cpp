@@ -37,9 +37,8 @@ using namespace arangodb;
 // ================= RocksDBSavePoint ==================
 
 RocksDBSavePoint::RocksDBSavePoint(
-    RocksDBMethods* trx, bool handled,
-    std::function<void()> const& rollbackCallback)
-    : _trx(trx), _rollbackCallback(rollbackCallback), _handled(handled) {
+    RocksDBMethods* trx, bool handled)
+    : _trx(trx), _handled(handled) {
   TRI_ASSERT(trx != nullptr);
   if (!_handled) {
     _trx->SetSavePoint();
@@ -61,7 +60,6 @@ void RocksDBSavePoint::rollback() {
   TRI_ASSERT(!_handled);
   _trx->RollbackToSavePoint();
   _handled = true;  // in order to not roll back again by accident
-  _rollbackCallback();
 }
 
 // =================== RocksDBMethods ===================

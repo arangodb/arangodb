@@ -124,9 +124,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(
-      transaction::Methods* trx,
-      arangodb::velocypack::Slice const& key) override;
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
@@ -230,19 +229,19 @@ class RocksDBCollection final : public PhysicalCollection {
     return _primaryIndex;
   }
 
-  arangodb::RocksDBOperationResult insertDocument(
+  arangodb::Result insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult removeDocument(
+  arangodb::Result removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult lookupDocument(
+  arangodb::Result lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
       ManagedDocumentResult& result) const;
 
-  arangodb::RocksDBOperationResult updateDocument(
+  arangodb::Result updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
       arangodb::velocypack::Slice const& oldDoc,
       LocalDocumentId const& newDocumentId,

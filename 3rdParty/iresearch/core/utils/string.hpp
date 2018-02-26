@@ -276,9 +276,6 @@ class basic_string_ref {
  protected:
   const char_type* data_;
   size_t size_;
-
- private:
-  static const char_type EMPTY_STRING[1];
 }; // basic_string_ref
 
 template<typename Elem, typename Traits>
@@ -287,13 +284,8 @@ template<typename Elem, typename Traits>
 );
 
 template<typename Elem, typename Traits>
-/*static*/ const Elem basic_string_ref<Elem, Traits >::EMPTY_STRING[1]{
-  Elem()
-};
-
-template<typename Elem, typename Traits>
 /*static*/ const basic_string_ref<Elem, Traits> basic_string_ref<Elem, Traits >::EMPTY(
-  basic_string_ref<Elem, Traits >::EMPTY_STRING, 0
+  reinterpret_cast<const Elem*>(""), 0 // FIXME
 );
 
 template class IRESEARCH_API basic_string_ref<char>;

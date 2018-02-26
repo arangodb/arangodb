@@ -174,7 +174,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
-      return LocalDocumentId(RocksDBValue::revisionId(s));
+      return RocksDBValue::documentId(s);
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
@@ -213,7 +213,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  return LocalDocumentId(RocksDBValue::revisionId(value));
+  return RocksDBValue::documentId(value);
 }
 
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
@@ -224,7 +224,7 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
+  auto value = RocksDBValue::PrimaryIndexValue(documentId);
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
@@ -254,7 +254,7 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId.id());
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId);
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
