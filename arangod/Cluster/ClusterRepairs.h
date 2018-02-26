@@ -31,6 +31,8 @@
 #include <boost/optional.hpp>
 #include <boost/variant.hpp>
 
+#include "ClusterInfo.h"
+
 namespace arangodb {
 namespace velocypack {
 class Slice;
@@ -38,8 +40,7 @@ class Slice;
 
 namespace cluster_repairs {
 
-using DBServers = std::vector<std::string>;
-using CollectionId = std::string;
+using DBServers = std::vector<ServerID>;
 
 // TODO add tests
 class VersionSort {
@@ -60,14 +61,14 @@ struct Collection {
   // TODO remove this, it should not be needed
   VPackSlice const slice;
 
-  std::string database;
+  DatabaseID database;
   std::string name;
-  std::string id;
+  CollectionID id;
   uint64_t replicationFactor;
-  boost::optional<CollectionId const> distributeShardsLike;
-  boost::optional<CollectionId const> repairingDistributeShardsLike;
+  boost::optional<CollectionID const> distributeShardsLike;
+  boost::optional<CollectionID const> repairingDistributeShardsLike;
   boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
-  std::map<std::string, DBServers, VersionSort> shardsByName;
+  std::map<ShardID, DBServers, VersionSort> shardsById;
 
   // TODO this shouldn't be needed anymore and can be removed
   std::map<std::string, VPackSlice> residualAttributes;
@@ -82,7 +83,7 @@ struct Collection {
 
   std::shared_ptr<VPackBuffer<uint8_t>>
   createShardDbServerArray(
-    std::string const &shardId
+    ShardID const &shardId
   ) const;
 
   // maybe more?
@@ -101,23 +102,23 @@ class DistributeShardsLikeRepairer {
  private:
   std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _vPackBuffers;
 
-  std::map<std::string, DBServers, VersionSort> static
+  std::map<ShardID, DBServers, VersionSort> static
   readShards(VPackSlice const& shards);
 
   DBServers static
   readDatabases(VPackSlice const& planDbServers);
 
-  std::map<CollectionId, struct Collection> static
+  std::map<CollectionID, struct Collection> static
   readCollections(VPackSlice const& collectionsByDatabase);
 
-  boost::optional<std::string const> static
+  boost::optional<ServerID const> static
   findFreeServer(
     DBServers const& availableDbServers,
     DBServers const& shardDbServers
   );
 
-  std::vector<CollectionId> static
-  findCollectionsToFix(std::map<CollectionId, struct Collection> collections);
+  std::vector<CollectionID> static
+  findCollectionsToFix(std::map<CollectionID, struct Collection> collections);
 
   DBServers static serverSetDifference(
     DBServers setA,
@@ -132,9 +133,9 @@ class DistributeShardsLikeRepairer {
   AgencyWriteTransaction
   createMoveShardTransaction(
     Collection& collection,
-    std::string const& shardId,
-    std::string const& fromServerId,
-    std::string const& toServerId
+    ShardID const& shardId,
+    ServerID const& fromServerId,
+    ServerID const& toServerId
   );
 
   std::list<AgencyWriteTransaction>
@@ -142,8 +143,8 @@ class DistributeShardsLikeRepairer {
     DBServers const& availableDbServers,
     Collection& collection,
     Collection& proto,
-    std::string const& shardId,
-    std::string const& protoShardId
+    ShardID const& shardId,
+    ShardID const& protoShardId
   );
 
   std::list<AgencyWriteTransaction>
@@ -151,16 +152,16 @@ class DistributeShardsLikeRepairer {
     DBServers const& availableDbServers,
     Collection& collection,
     Collection& proto,
-    std::string const& shardId,
-    std::string const& protoShardId
+    ShardID const& shardId,
+    ShardID const& protoShardId
   );
 
   boost::optional<AgencyWriteTransaction>
   createFixServerOrderTransaction(
     Collection& collection,
     Collection const& proto,
-    std::string const& shardId,
-    std::string const& protoShardId
+    ShardID const& shardId,
+    ShardID const& protoShardId
   );
 };
 

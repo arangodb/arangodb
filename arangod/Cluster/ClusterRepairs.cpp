@@ -22,7 +22,6 @@
 
 #include "ClusterRepairs.h"
 
-#include "ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "velocypack/Iterator.h"
 
@@ -84,13 +83,13 @@ VersionSort::splitVersion(std::string const &str) {
 
 std::shared_ptr<VPackBuffer<uint8_t>>
 cluster_repairs::Collection::createShardDbServerArray(
-  std::string const &shardId
+  ShardID const &shardId
 ) const {
   VPackBuilder builder;
 
   builder.add(Value(ValueType::Array));
 
-  for (auto const& it : shardsByName.at(shardId)) {
+  for (auto const& it : shardsById.at(shardId)) {
     builder.add(Value(it));
   }
 
@@ -99,25 +98,25 @@ cluster_repairs::Collection::createShardDbServerArray(
   return builder.steal();
 }
 
-std::map<std::string, DBServers, VersionSort>
+std::map<ShardID, DBServers, VersionSort>
 DistributeShardsLikeRepairer::readShards(Slice const& shards) {
-  std::map<std::string, DBServers, VersionSort> shardsByName;
+  std::map<ShardID, DBServers, VersionSort> shardsById;
 
   for (auto const &shardIterator : ObjectIterator(shards)) {
-    std::string const shardId = shardIterator.key.copyString();
+    ShardID const shardId = shardIterator.key.copyString();
 
     DBServers dbServers;
 
     for (auto const &dbServerIterator : ArrayIterator(shardIterator.value)) {
-      std::string const dbServerId = dbServerIterator.copyString();
+      ServerID const dbServerId = dbServerIterator.copyString();
 
       dbServers.emplace_back(dbServerId);
     }
 
-    shardsByName.emplace(std::make_pair(shardId, std::move(dbServers)));
+    shardsById.emplace(std::make_pair(shardId, std::move(dbServers)));
   }
 
-  return shardsByName;
+  return shardsById;
 }
 
 DBServers
@@ -127,7 +126,7 @@ DistributeShardsLikeRepairer::readDatabases(
   DBServers dbServers;
 
   for (auto const &it : ObjectIterator(supervisionHealth)) {
-    std::string const &serverId = it.key.copyString();
+    ServerID const &serverId = it.key.copyString();
     if (serverId.substr(0, 5) == "PRMR-"
         && it.value.hasKey("Status")
         && it.value.get("Status").copyString() == "GOOD") {
@@ -139,11 +138,11 @@ DistributeShardsLikeRepairer::readDatabases(
 }
 
 
-std::map<CollectionId, struct Collection>
+std::map<CollectionID, struct Collection>
 DistributeShardsLikeRepairer::readCollections(
   const Slice &collectionsByDatabase
 ) {
-  std::map<CollectionId, struct Collection> collections;
+  std::map<CollectionID, struct Collection> collections;
 
   // maybe extract more fields, like
   // "Lock": "..."
@@ -151,18 +150,19 @@ DistributeShardsLikeRepairer::readCollections(
   // ?
 
   for (auto const &databaseIterator : ObjectIterator(collectionsByDatabase)) {
-    std::string const databaseId = databaseIterator.key.copyString();
+    DatabaseID const databaseId = databaseIterator.key.copyString();
 
     Slice const &collectionsSlice = databaseIterator.value;
 
     for (auto const &collectionIterator : ObjectIterator(collectionsSlice)) {
-      std::string const collectionId = collectionIterator.key.copyString();
+      CollectionID const collectionId = collectionIterator.key.copyString();
       Slice const &collectionSlice = collectionIterator.value;
 
       // attributes
       std::string collectionName;
       uint64_t replicationFactor;
-      boost::optional<std::string const> distributeShardsLike, repairingDistributeShardsLike;
+      boost::optional<CollectionID const> distributeShardsLike;
+      boost::optional<CollectionID const> repairingDistributeShardsLike;
       Slice shardsSlice;
       std::map<std::string, Slice> residualAttributes;
 
@@ -195,7 +195,7 @@ DistributeShardsLikeRepairer::readCollections(
         }
       }
 
-      std::map<std::string, DBServers, VersionSort> shardsByName
+      std::map<ShardID, DBServers, VersionSort> shardsById
         = readShards(shardsSlice);
 
       struct Collection collection {
@@ -207,7 +207,7 @@ DistributeShardsLikeRepairer::readCollections(
         distributeShardsLike,
         repairingDistributeShardsLike,
         boost::none,
-        std::move(shardsByName),
+        std::move(shardsById),
         std::move(residualAttributes)
       };
 
@@ -220,20 +220,20 @@ DistributeShardsLikeRepairer::readCollections(
 }
 
 
-std::vector<CollectionId>
+std::vector<CollectionID>
 DistributeShardsLikeRepairer::findCollectionsToFix(
-  std::map<CollectionId, struct Collection> collections
+  std::map<CollectionID, struct Collection> collections
 ) {
   LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::findCollectionsToFix: started";
 
-  std::vector<CollectionId> collectionsToFix;
+  std::vector<CollectionID> collectionsToFix;
 
   // TODO Are there additional criteria when a collection shouldn't be fixed?
   // e.g. deleted: true, some status, isSystem, ...?
 
   for (auto const &collectionIterator : collections) {
-    CollectionId const& collectionId = collectionIterator.first;
+    CollectionID const& collectionId = collectionIterator.first;
     struct Collection const& collection = collectionIterator.second;
 
     LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
@@ -260,7 +260,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
     << "findCollectionsToFix: comparing against distributeShardsLike collection "
     << proto.fullName();
 
-    if (collection.shardsByName.size() != proto.shardsByName.size()) {
+    if (collection.shardsById.size() != proto.shardsById.size()) {
       // TODO This should maybe not be a warning.
       // TODO Is there anything we can do in this case? Why does this happen anyway?
 
@@ -273,7 +273,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
       continue;
     }
 
-    for (auto const& zippedShardsIt : boost::combine(collection.shardsByName, proto.shardsByName)) {
+    for (auto const& zippedShardsIt : boost::combine(collection.shardsById, proto.shardsById)) {
       auto const& shardIt = zippedShardsIt.get<0>();
       auto const& protoShardIt = zippedShardsIt.get<1>();
 
@@ -298,7 +298,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
   return collectionsToFix;
 }
 
-boost::optional<std::string const>
+boost::optional<ServerID const>
 DistributeShardsLikeRepairer::findFreeServer(
   DBServers const& availableDbServers,
   DBServers const& shardDbServers
@@ -355,9 +355,9 @@ DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 AgencyWriteTransaction
 DistributeShardsLikeRepairer::createMoveShardTransaction(
   Collection& collection,
-  std::string const& shardId,
-  std::string const& fromServerId,
-  std::string const& toServerId
+  ShardID const& shardId,
+  ServerID const& fromServerId,
+  ServerID const& toServerId
 ) {
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
@@ -379,7 +379,7 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
     oldDbServerSlice
   };
 
-  for (auto& it : collection.shardsByName.at(shardId)) {
+  for (auto& it : collection.shardsById.at(shardId)) {
     if (it == fromServerId) {
       it = toServerId;
     }
@@ -404,8 +404,8 @@ DistributeShardsLikeRepairer::fixLeader(
   DBServers const& availableDbServers,
   Collection& collection,
   Collection& proto,
-  std::string const& shardId,
-  std::string const& protoShardId
+  ShardID const& shardId,
+  ShardID const& protoShardId
 ) {
   LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::fixLeader("
@@ -414,11 +414,11 @@ DistributeShardsLikeRepairer::fixLeader(
   << "\"" << shardId << "/" << protoShardId << "\","
   << ")";
 
-  DBServers const& protoShardDbServers = proto.shardsByName.at(protoShardId);
-  DBServers& shardDbServers = collection.shardsByName.at(shardId);
+  DBServers const& protoShardDbServers = proto.shardsById.at(protoShardId);
+  DBServers& shardDbServers = collection.shardsById.at(shardId);
 
-  std::string const& protoLeader = protoShardDbServers.front();
-  std::string const& shardLeader = shardDbServers.front();
+  ServerID const& protoLeader = protoShardDbServers.front();
+  ServerID const& shardLeader = shardDbServers.front();
 
   std::list<AgencyWriteTransaction> transactions;
 
@@ -437,7 +437,7 @@ DistributeShardsLikeRepairer::fixLeader(
   }
   
   if (std::find(shardDbServers.begin(), shardDbServers.end(), protoLeader) != shardDbServers.end()) {
-    boost::optional<std::string const> tmpServer = findFreeServer(availableDbServers, shardDbServers);
+    boost::optional<ServerID const> tmpServer = findFreeServer(availableDbServers, shardDbServers);
 
     if (! tmpServer) {
       // This happens if all db servers that don't contain the shard are unhealthy
@@ -474,8 +474,8 @@ DistributeShardsLikeRepairer::fixShard(
   DBServers const& availableDbServers,
   Collection& collection,
   Collection& proto,
-  std::string const& shardId,
-  std::string const& protoShardId
+  ShardID const& shardId,
+  ShardID const& protoShardId
 ) {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::fixShard: "
@@ -488,8 +488,8 @@ DistributeShardsLikeRepairer::fixShard(
   std::list<AgencyWriteTransaction> transactions;
   transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
 
-  DBServers const& protoShardDbServers = proto.shardsByName.at(protoShardId);
-  DBServers& shardDbServers = collection.shardsByName.at(shardId);
+  DBServers const& protoShardDbServers = proto.shardsById.at(protoShardId);
+  DBServers& shardDbServers = collection.shardsById.at(shardId);
 
   DBServers serversOnlyOnProto
     = serverSetDifference(protoShardDbServers, shardDbServers);
@@ -537,10 +537,10 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   // Needed to build agency transactions
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
-  std::map<CollectionId, struct Collection> collectionMap = readCollections(planCollections);
+  std::map<CollectionID, struct Collection> collectionMap = readCollections(planCollections);
   DBServers const availableDbServers = readDatabases(supervisionHealth);
 
-  std::vector<CollectionId> collectionsToFix = findCollectionsToFix(collectionMap);
+  std::vector<CollectionID> collectionsToFix = findCollectionsToFix(collectionMap);
 
   std::list<AgencyWriteTransaction> transactions;
 
@@ -552,7 +552,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
     // TODO rename distributeShardsLike to repairingDistributeShardsLike in
     // collection
-    std::string protoId;
+    ShardID protoId;
     if (collection.distributeShardsLike) {
       protoId = collection.distributeShardsLike.get();
     }
@@ -562,12 +562,12 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
     struct Collection& proto = collectionMap[protoId];
 
-    for (auto const& zippedShardsIterator : boost::combine(collection.shardsByName, proto.shardsByName)) {
+    for (auto const& zippedShardsIterator : boost::combine(collection.shardsById, proto.shardsById)) {
       auto const &shardIterator = zippedShardsIterator.get<0>();
       auto const &protoShardIterator = zippedShardsIterator.get<1>();
 
-      std::string const& shardId = shardIterator.first;
-      std::string const& protoShardId = protoShardIterator.first;
+      ShardID const& shardId = shardIterator.first;
+      ShardID const& protoShardId = protoShardIterator.first;
 
       DBServers const &dbServers = shardIterator.second;
       DBServers const &protoDbServers = protoShardIterator.second;
@@ -601,8 +601,8 @@ boost::optional<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   Collection& collection,
   Collection const& proto,
-  std::string const& shardId,
-  std::string const& protoShardId
+  ShardID const& shardId,
+  ShardID const& protoShardId
 ) {
   std::string const agencyShardId
     = collection.agencyCollectionId() + "/shards/" + shardId;
@@ -612,8 +612,8 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   << "Fix DBServer order on " << collection.fullName() << "/"  << shardId
   << " to match " << proto.fullName() << "/"  << protoShardId;
 
-  DBServers& dbServers = collection.shardsByName.at(shardId);
-  DBServers const& protoDbServers = proto.shardsByName.at(protoShardId);
+  DBServers& dbServers = collection.shardsById.at(shardId);
+  DBServers const& protoDbServers = proto.shardsById.at(protoShardId);
 
   // TODO This test may not be necessary, as the symmetric set difference
   // TODO should catch this case. Keep it or remove it?
