@@ -306,10 +306,13 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
-  // geo indexes always ignore null
-  builder.add("ignoreNull", VPackValue(true));
   // geo indexes are always sparse.
   builder.add("sparse", VPackValue(true));
+  if (_typeName == "geo1" || _typeName == "geo2") {
+    // flags for backwards compatibility
+    builder.add("ignoreNull", VPackValue(true));
+    builder.add("constraint", VPackValue(false));
+  }
   builder.close();
 }
 
