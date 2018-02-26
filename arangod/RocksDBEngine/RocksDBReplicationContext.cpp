@@ -227,19 +227,38 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   }
   TRI_ASSERT(!_sortedIterator && dynamic_cast<RocksDBAllIndexIterator*>(_iter.get()));
   
-  auto cb = [this, &builder, useExt](LocalDocumentId const& documentId,
-                                          VPackSlice const& doc) {
+  VPackOptions const* opts = builder.options;
+  VPackCustomTypeHandler* ch = builder.options->customTypeHandler;
+  auto cb = [this, &builder, useExt, ch, opts](LocalDocumentId const& documentId,
+                                               VPackSlice const& doc) {
 
-    builder.openObject();
+    builder.openObject(true);
     // set type
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     if (useExt) { // types will be converted outside
       builder.add(VPackValue("data"));
       builder.addExternal(doc.begin());
     } else {
-      builder.add(VPackValue("data"));
+      /*builder.add(VPackValue("data"));
       basics::VelocyPackHelper::sanitizeNonClientTypes(doc, VPackSlice::noneSlice(),
-                                                       builder, builder.options, true, true, true);
+                                                       builder, builder.options, true, true, true);*/
+#warning TODO Attribute Translator, sequential iterator in ObjectIterator
+#warning VPackBuffer wrong size ?
+      // Fast object sanitization only on first level (effectively only on _id)
+      TRI_ASSERT(doc.isObject());
+      builder.add("data", VPackValue(VPackValueType::Object, true));
+      for (auto const& it : VPackObjectIterator(doc, true)) {
+        TRI_ASSERT(!it.value.isExternal());
+        VPackValueLength l;
+        char const* p = it.key.getString(l);
+        builder.add(VPackValuePair(p, l, VPackValueType::String));
+        if (it.value.isCustom()) {
+          builder.add(VPackValue(ch->toString(it.value, opts, doc)));
+        } else {
+          builder.add(it.value);
+        }
+      }
+      builder.close();
     }
     builder.close();
   };

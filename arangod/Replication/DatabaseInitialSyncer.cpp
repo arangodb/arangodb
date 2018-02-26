@@ -308,7 +308,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       LOG_TOPIC(ERR, Logger::REPLICATION) << "VPack response is not an array";
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
     }
-    for (VPackSlice slice : VPackArrayIterator(dump)) {
+    for (VPackSlice const& slice : VPackArrayIterator(dump)) {
       Result r = parseCollectionDumpMarker(trx, coll, slice);
       if (r.fail()) {
         r.reset(r.errorNumber(), invalidMsg);
@@ -1100,7 +1100,7 @@ Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlic
   TRI_ASSERT(collSlice.isArray());
 
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
-  for (VPackSlice it : VPackArrayIterator(collSlice)) {
+  for (VPackSlice const& it : VPackArrayIterator(collSlice)) {
     if (!it.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "collection declaration is invalid in response");

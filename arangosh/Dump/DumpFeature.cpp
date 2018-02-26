@@ -420,7 +420,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
           errorMsg =  "VPack response is not an array";
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
-        for (VPackSlice slice : VPackArrayIterator(dump)) {
+        for (VPackSlice const& slice : VPackArrayIterator(dump)) {
           dumper.dump(slice);
           tmpBuffer.appendChar('\n');
           _stats._totalWritten++;

@@ -730,7 +730,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     //LOG_TOPIC(ERR, Logger::FIXME) << vpb.slice().toJson();
     
     // generate the result
-    if (buffer.byteSize() == 0) {
+    if (result.fail()) {
+      generateError(result);
+    } else if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       LOG_TOPIC(ERR, Logger::FIXME) << "Dump has size of " << buffer.byteSize();
