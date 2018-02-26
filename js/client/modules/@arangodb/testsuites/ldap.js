@@ -36,10 +36,7 @@ const optionsDocumentation = [
 
 // const helper = require('@arangodb/user-helper');
 const _ = require('lodash');
-// const fs = require('fs');
-// const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
-// const request = require('@arangodb/request');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -159,44 +156,6 @@ function parseOptions (options) {
   return toReturn;
 }
 
-function authenticationLdapAllModes (options) {
-  if (options.skipLdap === true) {
-    print('skipping Ldap Authentication tests!');
-    return {
-      authenticationLdapPermissions: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-  const opts = parseOptions(options);
-  if (options.cluster) {
-    options.dbServers = 2;
-    options.coordinators = 2;
-  }
-
-  print(CYAN + 'Running all client LDAP Permission tests...' + RESET);
-  // let testCases = tu.scanTestPath('js/client/tests/ldap');
-  let testCases = tu.scanTestPath('js/client/tests/authentication');
-
-  // #1 role mode
-  print('Performing #1 Test: Role Mode');
-  print(opts.ldapModeRoles.conf);
-  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRoles.conf);
-  // #2 search mode
-  print('Performing #2 Test: Search Mode');
-  print(opts.ldapModeSearch.conf);
-  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearch.conf);
-  // #3 role mode with prefix and suffix
-  print('Performing #3 Test: Role Mode - Simple Login Mode');
-  print(opts.ldapModeRolesPrefixSuffix.conf);
-  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeRolesPrefixSuffix.conf);
-  // #3 search mode with prefix and suffix
-  print('Performing #4 Test: Search Mode - Simple Login Mode');
-  print(opts.ldapModeSearchPrefixSuffix.conf);
-  tu.performTests(options, testCases, 'ldap', tu.runInArangosh, opts.ldapModeSearchPrefixSuffix.conf);
-}
-
 function authenticationLdapSearchModePrefixSuffix (options) {
   if (options.skipLdap === true) {
     print('skipping Ldap Authentication tests!');
@@ -214,7 +173,6 @@ function authenticationLdapSearchModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   print('Performing #4 Test: Search Mode - Simple Login Mode');
@@ -239,7 +197,6 @@ function authenticationLdapSearchMode (options) {
   }
 
   print(CYAN + 'Client LDAP Search Mode Permission tests...' + RESET);
-  // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   print('Performing #2 Test: Search Mode');
@@ -264,7 +221,6 @@ function authenticationLdapRolesModePrefixSuffix (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   print('Performing #3 Test: Role Mode - Simple Login Mode');
@@ -289,7 +245,6 @@ function authenticationLdapRolesMode (options) {
   }
 
   print(CYAN + 'Client LDAP Permission tests...' + RESET);
-  // let testCases = tu.scanTestPath('js/client/tests/ldap');
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   print('Performing #1 Test: Role Mode');
@@ -298,14 +253,14 @@ function authenticationLdapRolesMode (options) {
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  // testFns['ldap_start'] = startLdap;
-  testFns['ldap'] = authenticationLdapAllModes;
+  // just a convenicen wrapper for the regular tests
+  testFns['ldap'] = [ 'ldaprole', 'ldaprole', 'ldapsearch', 'ldaprolesimple', 'ldapsearchsimple' ];
+
   testFns['ldaprole'] = authenticationLdapRolesMode;
   testFns['ldapsearch'] = authenticationLdapSearchMode;
   testFns['ldaprolesimple'] = authenticationLdapRolesModePrefixSuffix;
   testFns['ldapsearchsimple'] = authenticationLdapSearchModePrefixSuffix;
 
-  // defaultFns.push('ldap'); // turn off ldap tests by default
   // turn off ldap tests by default.
   opts['skipLdap'] = true;
 
