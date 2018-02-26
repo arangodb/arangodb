@@ -57,16 +57,6 @@ NS_LOCAL
 
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
-const irs::columnstore_iterator::value_type INVALID{
-  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
-  irs::bytes_ref::nil
-};
-
-const irs::columnstore_iterator::value_type EOFMAX{
-  irs::type_limits<irs::type_t::doc_id_t>::eof(),
-  irs::bytes_ref::nil
-};
-
 NS_END
 
 NS_ROOT
@@ -1301,7 +1291,7 @@ bool index_meta_reader::last_segments_file(const directory& dir, std::string& ou
 void index_meta_reader::read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename /*= string_ref::nil*/) {
+    const string_ref& filename /*= string_ref::NIL*/) {
 
   const std::string meta_file = filename.null()
     ? file_name<index_meta_reader>(meta)
@@ -1319,34 +1309,34 @@ void index_meta_reader::read(
     throw detailed_io_error(ss.str());
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+  const auto checksum = format_utils::checksum(*in);
 
   // check header
   format_utils::check_header(
-    check_in,
+    *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
     index_meta_writer::FORMAT_MAX
   );
 
   // read data from segments file
-  auto gen = check_in.read_vlong();
-  auto cnt = check_in.read_long();
-  auto seg_count = check_in.read_vint();
+  auto gen = in->read_vlong();
+  auto cnt = in->read_long();
+  auto seg_count = in->read_vint();
   index_meta::index_segments_t segments(seg_count);
 
   for (size_t i = 0, count = segments.size(); i < count; ++i) {
     auto& segment = segments[i];
 
-    segment.filename = read_string<std::string>(check_in);
-    segment.meta.codec = formats::get(read_string<std::string>(check_in));
+    segment.filename = read_string<std::string>(*in);
+    segment.meta.codec = formats::get(read_string<std::string>(*in));
 
     auto reader = segment.meta.codec->get_segment_meta_reader();
 
     reader->read(dir, segment.meta, segment.filename);
   }
 
-  format_utils::check_footer(check_in);
+  format_utils::check_footer(*in, checksum);
   complete(meta, gen, cnt, std::move(segments));
 }
 
@@ -1395,7 +1385,7 @@ void segment_meta_writer::write(directory& dir, const segment_meta& meta) {
 void segment_meta_reader::read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename /*= string_ref::nil*/) {
+    const string_ref& filename /*= string_ref::NIL*/) {
 
   const std::string meta_file = filename.null()
     ? file_name<segment_meta_writer>(meta)
@@ -1413,21 +1403,21 @@ void segment_meta_reader::read(
     throw detailed_io_error(ss.str());
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
+  const auto checksum = format_utils::checksum(*in);
 
   format_utils::check_header(
-    check_in,
+    *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
     segment_meta_writer::FORMAT_MAX
   );
 
-  auto name = read_string<std::string>(check_in);
-  auto version = check_in.read_vlong();
-  int64_t count = check_in.read_vlong();
-  auto flags = check_in.read_byte();
+  auto name = read_string<std::string>(*in);
+  const auto version = in->read_vlong();
+  const int64_t count = in->read_vlong();
+  const auto flags = in->read_byte();
 
-  if ( count < 0 ) {
+  if (count < 0) {
     // corrupted index
     throw index_error();
   }
@@ -1441,9 +1431,9 @@ void segment_meta_reader::read(
   meta.version = version;
   meta.column_store = flags & segment_meta_writer::flags_t::HAS_COLUMN_STORE;
   meta.docs_count = count;
-  meta.files = read_strings<segment_meta::file_set>(check_in);
+  meta.files = read_strings<segment_meta::file_set>(*in);
 
-  format_utils::check_footer(check_in);
+  format_utils::check_footer(*in, checksum);
 }
 
 // ----------------------------------------------------------------------------
@@ -1507,10 +1497,6 @@ bool document_mask_reader::prepare(
 
   // possible that the file does not exist since document_mask is optional
   if (dir.exists(exists, in_name) && !exists) {
-    checksum_index_input<boost::crc_32_type> empty_in;
-
-    in_.swap(empty_in);
-
     if (!seen) {
       IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
 
@@ -1527,45 +1513,42 @@ bool document_mask_reader::prepare(
   );
 
   if (!in) {
-    checksum_index_input<boost::crc_32_type> empty_in;
-
     IR_FRMT_ERROR("Failed to open file, path: %s", in_name.c_str());
-    in_.swap(empty_in);
 
     return false;
   }
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
-
-  in_.swap(check_in);
+  checksum_ = format_utils::checksum(*in);
 
   if (seen) {
     *seen = true;
   }
+
+  in_ = std::move(in);
 
   return true;
 }
 
 uint32_t document_mask_reader::begin() {
   format_utils::check_header(
-    in_,
+    *in_,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
     document_mask_writer::FORMAT_MAX
   );
 
-  return in_.read_vint();
+  return in_->read_vint();
 }
 
 void document_mask_reader::read(doc_id_t& doc_id) {
-  auto id = in_.read_vlong();
+  auto id = in_->read_vlong();
 
   static_assert(sizeof(doc_id_t) == sizeof(decltype(id)), "sizeof(doc_id) != sizeof(decltype(id))");
   doc_id = id;
 }
 
 void document_mask_reader::end() {
-  format_utils::check_footer(in_);
+  format_utils::check_footer(*in_, checksum_);
 }
 
 // ----------------------------------------------------------------------------
@@ -1629,8 +1612,8 @@ void meta_writer::write(const std::string& name, field_id id) {
 }
 
 void meta_writer::flush() {
-  format_utils::write_footer(*out_);
   out_->write_int(count_); // write total number of written objects
+  format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
 }
@@ -1645,7 +1628,7 @@ class meta_reader final : public iresearch::column_meta_reader {
   virtual bool read(column_meta& column) override;
 
  private:
-  checksum_index_input<boost::crc_32_type> in_;
+  index_input::ptr in_;
   field_id count_{0};
 }; // meta_writer
 
@@ -1665,21 +1648,25 @@ bool meta_reader::prepare(
     return false;
   }
 
-  // read number of objects to read 
-  in->seek(in->length() - sizeof(field_id));
+  const auto checksum = format_utils::checksum(*in);
+
+  in->seek(in->length() - sizeof(field_id) - format_utils::FOOTER_LEN);
+
+  // read number of objects to read
   count = in->read_int();
+
+  format_utils::check_footer(*in, checksum);
+
   in->seek(0);
 
-  checksum_index_input<boost::crc_32_type> check_in(std::move(in));
-
   format_utils::check_header(
-    check_in, 
+    *in,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
     meta_writer::FORMAT_MAX
   );
 
-  in_.swap(check_in);
+  in_ = std::move(in);
   count_ = count;
   return true;
 }
@@ -1689,8 +1676,8 @@ bool meta_reader::read(column_meta& column) {
     return false;
   }
 
-  const auto id = in_.read_vint();
-  column.name = read_string<std::string>(in_);
+  const auto id = in_->read_vint();
+  column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
   return true;
@@ -2016,7 +2003,7 @@ class writer final : public iresearch::columnstore_writer {
       //   const auto res = expr0() | expr1();
       // otherwise it would violate format layout
       auto block_props = block_index_.flush(out, buf);
-      block_props |= write_compact(out, ctx_->comp_, block_buf_);
+      block_props |= write_compact(out, ctx_->comp_, static_cast<bytes_ref>(block_buf_));
       length_ += block_buf_.size();
 
       // refresh column properties
@@ -2184,12 +2171,6 @@ class sparse_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_iterator::value_type value_t;
-
-    const value_t& value() const NOEXCEPT {
-      return value_;
-    }
-
     bool seek(doc_id_t doc) NOEXCEPT {
       next_ = std::lower_bound(
         begin_, end_, doc,
@@ -2200,19 +2181,25 @@ class sparse_block : util::noncopyable {
       return next();
     }
 
+    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+
+    const irs::bytes_ref& value_payload() const NOEXCEPT {
+      return value_payload_;
+    }
+
     bool next() NOEXCEPT {
       if (next_ == end_) {
         return false;
       }
 
-      value_.first = next_->key;
+      value_ = next_->key;
       const auto vbegin = next_->offset;
 
       begin_ = next_;
       const auto vend = (++next_ == end_ ? data_->size() : next_->offset);
 
       assert(vend >= vbegin);
-      value_.second = bytes_ref(
+      value_payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
@@ -2221,12 +2208,14 @@ class sparse_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = EOFMAX;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_payload_ = irs::bytes_ref::NIL;
       next_ = begin_ = end_;
     }
 
     void reset(const sparse_block& block) NOEXCEPT {
-      value_ = INVALID;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      value_payload_ = irs::bytes_ref::NIL;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -2247,7 +2236,8 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    value_t value_{ INVALID };
+    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
@@ -2363,16 +2353,10 @@ class dense_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_iterator::value_type value_t;
-
-    const value_t& value() const NOEXCEPT {
-      return value_;
-    }
-
     bool seek(doc_id_t doc) NOEXCEPT {
-      if (doc <= value_.first) {
-        // before the current element
-        doc = value_.first;
+      // before the current element
+      if (doc <= value_) {
+        doc = value_;
       }
 
       // FIXME refactor
@@ -2381,26 +2365,33 @@ class dense_block : util::noncopyable {
       return next();
     }
 
+    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+
+    const irs::bytes_ref& value_payload() const NOEXCEPT {
+      return value_payload_;
+    }
+
     bool next() NOEXCEPT {
       if (it_ >= end_) {
         // after the last element
         return false;
       }
 
-      value_.first = base_ + std::distance(begin_, it_);
+      value_ = base_ + std::distance(begin_, it_);
       next_value();
 
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = EOFMAX;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_payload_ = irs::bytes_ref::NIL;
       it_ = begin_ = end_;
     }
 
     void reset(const dense_block& block) NOEXCEPT {
-      value_.first = block.base_;
-      value_.second = bytes_ref::nil;
+      value_ = block.base_;
+      value_payload_ = bytes_ref::NIL;
       it_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -2416,19 +2407,21 @@ class dense_block : util::noncopyable {
     }
 
    private:
+    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+
     // note that function increments 'it_'
     void next_value() NOEXCEPT {
       const auto vbegin = *it_;
       const auto vend = (++it_ == end_ ? data_->size() : *it_);
 
       assert(vend >= vbegin);
-      value_.second = bytes_ref(
+      value_payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
         vend - vbegin // length
       );
     }
 
-    value_t value_{ INVALID };
     const uint64_t* begin_{};
     const uint64_t* it_{};
     const uint64_t* end_{};
@@ -2535,15 +2528,9 @@ class dense_fixed_length_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_iterator::value_type value_t;
-
-    const value_t& value() const NOEXCEPT {
-      return value_;
-    }
-
     bool seek(doc_id_t doc) NOEXCEPT {
-      if (doc < value_.first) {
-        doc = value_.first;
+      if (doc < value_) {
+        doc = value_;
       }
 
       // FIXME refactor
@@ -2552,25 +2539,32 @@ class dense_fixed_length_block : util::noncopyable {
       return next();
     }
 
+    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+
+    const irs::bytes_ref& value_payload() const NOEXCEPT {
+      return value_payload_;
+    }
+
     bool next() NOEXCEPT {
       if (begin_ >= end_) {
         return false;
       }
 
-      value_.first = base_ + begin_ / avg_length_;
+      value_ = base_ + begin_ / avg_length_;
       next_value();
 
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = EOFMAX;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_payload_ = irs::bytes_ref::NIL;
       begin_ = end_ = 0;
     }
 
     void reset(const dense_fixed_length_block& block) NOEXCEPT {
-      value_.first = block.base_key_;
-      value_.second = bytes_ref::nil;
+      value_ = block.base_key_;
+      value_payload_ = bytes_ref::NIL;
       begin_ = 0;
       end_ = block.avg_length_*block.size_;
       avg_length_ = block.avg_length_;
@@ -2587,13 +2581,15 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
    private:
+    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+
     // note that function increases 'begin_' value
     void next_value() NOEXCEPT {
-      value_.second = bytes_ref(data_->c_str() + begin_, avg_length_);
+      value_payload_ = bytes_ref(data_->c_str() + begin_, avg_length_);
       begin_ += avg_length_;
     }
 
-    value_t value_{ INVALID };
     uint64_t begin_{}; // start offset
     uint64_t end_{}; // end offset
     uint64_t avg_length_{}; // average value length
@@ -2677,16 +2673,16 @@ class sparse_mask_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_iterator::value_type value_t;
-
-    const value_t& value() const NOEXCEPT {
-      return value_;
-    }
-
     bool seek(doc_id_t doc) NOEXCEPT {
       it_ = std::lower_bound(begin_, end_, doc);
 
       return next();
+    }
+
+    const irs::doc_id_t& value() const NOEXCEPT { return value_; }
+
+    const irs::bytes_ref& value_payload() const NOEXCEPT {
+      return value_payload_;
     }
 
     bool next() NOEXCEPT {
@@ -2695,17 +2691,19 @@ class sparse_mask_block : util::noncopyable {
       }
 
       begin_ = it_;
-      value_.first = *it_++;
+      value_ = *it_++;
       return true;
     }
 
     void seal() NOEXCEPT {
-      value_ = EOFMAX;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+      value_payload_ = irs::bytes_ref::NIL;
       it_ = begin_ = end_;
     }
 
     void reset(const sparse_mask_block& block) NOEXCEPT {
-      value_ = INVALID;
+      value_ = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      value_payload_ = irs::bytes_ref::NIL;
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -2721,7 +2719,8 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    value_t value_{ INVALID };
+    irs::bytes_ref value_payload_ { irs::bytes_ref::NIL };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
@@ -2991,25 +2990,33 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final : public irs::columnstore_iterator {
+class column_iterator final: public irs::doc_iterator {
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
   typedef typename block_t::iterator block_iterator_t;
-  typedef typename block_iterator_t::value_t value_t;
 
   explicit column_iterator(
       const column_t& column,
       const typename column_t::block_ref* begin,
-      const typename column_t::block_ref* end)
-    : begin_(begin), seek_origin_(begin), end_(end), column_(&column) {
+      const typename column_t::block_ref* end
+  ): attrs_(1), // payload_iterator
+     begin_(begin),
+     seek_origin_(begin),
+     end_(end),
+     column_(&column) {
+    attrs_.emplace(payload_);
   }
 
-  virtual const value_t& value() const NOEXCEPT override {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return attrs_;
+  }
+
+  virtual doc_id_t value() const NOEXCEPT override {
     return block_.value();
   }
 
-  virtual const value_t& seek(irs::doc_id_t doc) override {
+  virtual doc_id_t seek(irs::doc_id_t doc) override {
     begin_ = column_->find_block(seek_origin_, end_, doc);
 
     if (!next_block()) {
@@ -3038,11 +3045,21 @@ class column_iterator final : public irs::columnstore_iterator {
  private:
   typedef typename column_t::refs_t refs_t;
 
+  struct payload_iterator: public irs::payload_iterator {
+    const irs::bytes_ref* value_{ nullptr };
+    virtual bool next() { return nullptr != value_; }
+    virtual const irs::bytes_ref& value() const {
+      return value_ ? *value_ : irs::bytes_ref::NIL;
+    }
+  };
+
   bool next_block() {
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
+      payload_.value_ = nullptr;
+
       return false;
     }
 
@@ -3052,11 +3069,14 @@ class column_iterator final : public irs::columnstore_iterator {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
+      payload_.value_ = nullptr;
+
       return false;
     }
 
     if (block_ != *cached) {
       block_.reset(*cached);
+      payload_.value_ = &(block_.value_payload());
     }
 
     seek_origin_ = begin_++;
@@ -3064,7 +3084,9 @@ class column_iterator final : public irs::columnstore_iterator {
     return true;
   }
 
+  irs::attribute_view attrs_;
   block_iterator_t block_;
+  payload_iterator payload_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -3208,12 +3230,12 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const override {
+  virtual doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
-      ? columnstore_reader::empty_iterator()
-      : columnstore_iterator::make<iterator_t>(
+      ? doc_iterator::empty()
+      : doc_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size() - 1 // -1 for upper bound
@@ -3406,16 +3428,17 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const override {
+  virtual doc_iterator::ptr iterator() const override {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
-      ? columnstore_reader::empty_iterator()
-      : columnstore_iterator::make<iterator_t>(
+      ? irs::doc_iterator::empty()
+      : irs::doc_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size()
-        );
+        )
+      ;
   }
 
   virtual columnstore_reader::values_reader_f values() const override {
@@ -3545,7 +3568,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   }
 
   bool value(doc_id_t key, bytes_ref& value) const NOEXCEPT {
-    value = bytes_ref::nil;
+    value = bytes_ref::NIL;
     return key > min_ && key <= this->max();
   }
 
@@ -3555,7 +3578,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     auto doc = min_;
 
     for (auto left = this->size(); left; --left) {
-      if (!visitor(++doc, bytes_ref::nil)) {
+      if (!visitor(++doc, bytes_ref::NIL)) {
         return false;
       }
     }
@@ -3563,48 +3586,56 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return true;
   }
 
-  virtual columnstore_iterator::ptr iterator() const override;
+  virtual doc_iterator::ptr iterator() const override;
 
   virtual columnstore_reader::values_reader_f values() const override {
     return column_values<column_t>(*this);
   }
 
  private:
-  class column_iterator final : public columnstore_iterator {
+  class column_iterator final: public doc_iterator {
    public:
     explicit column_iterator(const column_t& column) NOEXCEPT
       : min_(1 + column.min_), max_(column.max()) {
     }
 
-    virtual const value_type& value() const NOEXCEPT override {
+    virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+      return irs::attribute_view::empty_instance();
+    }
+
+    virtual irs::doc_id_t value() const NOEXCEPT override {
       return value_;
     }
 
-    virtual const value_type& seek(irs::doc_id_t doc) NOEXCEPT override {
+    virtual irs::doc_id_t seek(irs::doc_id_t doc) NOEXCEPT override {
       if (doc < min_) {
-        if (!type_limits<type_t::doc_id_t>::valid(value_.first)) {
+        if (!type_limits<type_t::doc_id_t>::valid(value_)) {
           next();
         }
+
         return value();
       }
 
       min_ = doc;
       next();
+
       return value();
     }
 
     virtual bool next() NOEXCEPT override {
       if (min_ > max_) {
-        value_.first = type_limits<type_t::doc_id_t>::eof();
+        value_ = type_limits<type_t::doc_id_t>::eof();
+
         return false;
       }
 
-      value_.first = min_++;
+      value_ = min_++;
+
       return true;
     }
 
    private:
-    value_type value_{ INVALID };
+    irs::doc_id_t value_ { irs::type_limits<irs::type_t::doc_id_t>::invalid() };
     doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() };
     doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() };
   }; // column_iterator
@@ -3612,10 +3643,11 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   doc_id_t min_{}; // min key (less than any key in column)
 }; // dense_fixed_length_column
 
-columnstore_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+doc_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
   return empty()
-    ? columnstore_reader::empty_iterator()
-    : columnstore_iterator::make<column_iterator>(*this);
+    ? doc_iterator::empty()
+    : doc_iterator::make<column_iterator>(*this)
+    ;
 }
 
 // ----------------------------------------------------------------------------
@@ -3896,7 +3928,7 @@ irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
 
   auto& pos = freq
     ? docs.attributes().get<position>()
-    : irs::attribute_view::ref<position>::nil;
+    : irs::attribute_view::ref<position>::NIL;
 
   const offset* offs = nullptr;
   const payload* pay = nullptr;

@@ -100,10 +100,10 @@ IRESEARCH_API void init_stats(
 /// @brief visit all tracked keys
 ////////////////////////////////////////////////////////////////////////////////
 IRESEARCH_API bool visit(
-  const std::function<bool(const std::string& key, size_t count, size_t time)>& visitor
+  const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
 );
 
-NS_END // NS_BEGIN(timer_utils)
-NS_END
+NS_END // timer_utils
+NS_END // NS_ROOT
 
 #endif

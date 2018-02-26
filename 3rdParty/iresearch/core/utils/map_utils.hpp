@@ -88,7 +88,7 @@ inline std::pair<typename Container::iterator, bool> try_emplace(
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief helper to update key after insertion of value
-///  Note: use with caution since new hash and key most == old hash and key
+///  Note: use with caution since new hash and key must == old hash and key
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container, typename KeyGenerator, typename... Args>
 inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(
@@ -116,7 +116,7 @@ inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(
 
 ////////////////////////////////////////////////////////////////////////////
 /// @brief helper to update key after insertion of value
-///  Note: use with caution since new hash and key most == old hash and key
+///  Note: use with caution since new hash and key must == old hash and key
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container, typename KeyGenerator, typename... Args>
 inline std::pair<typename Container::iterator, bool>  try_emplace_update_key(

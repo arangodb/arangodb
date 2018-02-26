@@ -29,6 +29,7 @@
 #include "index/field_meta.hpp"
 
 #include "analysis/token_attributes.hpp"
+#include "utils/misc.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -141,9 +142,9 @@ class same_position_query final : public filter::prepared {
     for (auto& term_state : *query_state) {
       auto term = term_state.reader->iterator();
 
-      // use bytes_ref::nil here since we do not need just to "jump"
+      // use bytes_ref::blank here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
-      if (!term->seek(bytes_ref::nil, *term_state.cookie)) {
+      if (!term->seek(bytes_ref::NIL, *term_state.cookie)) {
         return doc_iterator::empty();
       }
 
@@ -193,12 +194,12 @@ by_same_position::by_same_position()
   : filter(by_same_position::type()) {
 }
 
-bool by_same_position::equals(const filter& rhs) const {
+bool by_same_position::equals(const filter& rhs) const NOEXCEPT {
   const auto& trhs = static_cast<const by_same_position&>(rhs);
   return filter::equals(rhs) && terms_ == trhs.terms_;
 }
 
-size_t by_same_position::hash() const {
+size_t by_same_position::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   for (auto& term : terms_) {

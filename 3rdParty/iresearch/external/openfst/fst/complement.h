@@ -1,30 +1,15 @@
-// complement.h
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
+//
+// Class to complement an FST.
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: riley@google.com (Michael Riley)
-//
-// \file
-// Class to complement an Fst.
-
-#ifndef FST_LIB_COMPLEMENT_H__
-#define FST_LIB_COMPLEMENT_H__
+#ifndef FST_COMPLEMENT_H_
+#define FST_COMPLEMENT_H_
 
 #include <algorithm>
 #include <string>
 #include <vector>
-using std::vector;
+#include <fst/log.h>
 
 #include <fst/fst.h>
 #include <fst/test-properties.h>
@@ -32,35 +17,37 @@ using std::vector;
 
 namespace fst {
 
-template <class A> class ComplementFst;
+template <class Arc>
+class ComplementFst;
 
-// Implementation of delayed ComplementFst. The algorithm used
-// completes the (deterministic) FSA and then exchanges final and
-// non-final states.  Completion, i.e. ensuring that all labels can be
-// read from every state, is accomplished by using RHO labels, which
-// match all labels that are otherwise not found leaving a state. The
-// first state in the output is reserved to be a new state that is the
-// destination of all RHO labels. Each remaining output state s
-// corresponds to input state s - 1. The first arc in the output at
-// these states is the rho label, the remaining arcs correspond to the
-// input arcs.
+namespace internal {
+
+// Implementation of delayed ComplementFst. The algorithm used completes the
+// (deterministic) FSA and then exchanges final and non-final states.
+// Completion, i.e. ensuring that all labels can be read from every state, is
+// accomplished by using ρ-labels, which match all labels that are otherwise
+// not found leaving a state. The first state in the output is reserved to be a
+// new state that is the destination of all ρ-labels. Each remaining output
+// state s corresponds to input state s - 1. The first arc in the output at
+// these states is the ρ-label, the remaining arcs correspond to the input
+// arcs.
 template <class A>
 class ComplementFstImpl : public FstImpl<A> {
  public:
+  using Arc = A;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
+
   using FstImpl<A>::SetType;
   using FstImpl<A>::SetProperties;
   using FstImpl<A>::SetInputSymbols;
   using FstImpl<A>::SetOutputSymbols;
 
-  friend class StateIterator< ComplementFst<A> >;
-  friend class ArcIterator< ComplementFst<A> >;
+  friend class StateIterator<ComplementFst<Arc>>;
+  friend class ArcIterator<ComplementFst<Arc>>;
 
-  typedef A Arc;
-  typedef typename A::Label Label;
-  typedef typename A::Weight Weight;
-  typedef typename A::StateId StateId;
-
-  explicit ComplementFstImpl(const Fst<A> &fst) : fst_(fst.Copy()) {
+  explicit ComplementFstImpl(const Fst<Arc> &fst) : fst_(fst.Copy()) {
     SetType("complement");
     uint64 props = fst.Properties(kILabelSorted, false);
     SetProperties(ComplementProperties(props), kCopyProperties);
@@ -68,7 +55,7 @@ class ComplementFstImpl : public FstImpl<A> {
     SetOutputSymbols(fst.OutputSymbols());
   }
 
-  ComplementFstImpl(const ComplementFstImpl<A> &impl)
+  ComplementFstImpl(const ComplementFstImpl<Arc> &impl)
       : fst_(impl.fst_->Copy()) {
     SetType("complement");
     SetProperties(impl.Properties(), kCopyProperties);
@@ -76,32 +63,23 @@ class ComplementFstImpl : public FstImpl<A> {
     SetOutputSymbols(impl.OutputSymbols());
   }
 
-  ~ComplementFstImpl() { delete fst_; }
-
   StateId Start() const {
-    if (Properties(kError))
-      return kNoStateId;
-
-    StateId start = fst_->Start();
-    if (start != kNoStateId)
-      return start + 1;
-    else
-      return 0;
+    if (Properties(kError)) return kNoStateId;
+    auto start = fst_->Start();
+    return start != kNoStateId ? start + 1 : 0;
   }
 
-  // Exchange final and non-final states; make rho destination state final.
+  // Exchange final and non-final states; makes ρ-destination state final.
   Weight Final(StateId s) const {
-    if (s == 0 || fst_->Final(s - 1) == Weight::Zero())
+    if (s == 0 || fst_->Final(s - 1) == Weight::Zero()) {
       return Weight::One();
-    else
+    } else {
       return Weight::Zero();
+    }
   }
 
   size_t NumArcs(StateId s) const {
-    if (s == 0)
-      return 1;
-    else
-      return fst_->NumArcs(s - 1) + 1;
+    return s == 0 ? 1 : fst_->NumArcs(s - 1) + 1;
   }
 
   size_t NumInputEpsilons(StateId s) const {
@@ -112,150 +90,130 @@ class ComplementFstImpl : public FstImpl<A> {
     return s == 0 ? 0 : fst_->NumOutputEpsilons(s - 1);
   }
 
+  uint64 Properties() const override { return Properties(kFstProperties); }
 
-  uint64 Properties() const { return Properties(kFstProperties); }
-
-  // Set error if found; return FST impl properties.
-  uint64 Properties(uint64 mask) const {
-    if ((mask & kError) && fst_->Properties(kError, false))
+  // Sets error if found, and returns other FST impl properties.
+  uint64 Properties(uint64 mask) const override {
+    if ((mask & kError) && fst_->Properties(kError, false)) {
       SetProperties(kError, kError);
+    }
     return FstImpl<Arc>::Properties(mask);
   }
 
-
  private:
-  const Fst<A> *fst_;
-
-  void operator=(const ComplementFstImpl<A> &fst);  // Disallow
+  std::unique_ptr<const Fst<Arc>> fst_;
 };
 
+}  // namespace internal
 
 // Complements an automaton. This is a library-internal operation that
-// introduces a (negative) 'rho' label; use Difference/DifferenceFst in
-// user code, which will not see this label. This version is a delayed Fst.
+// introduces a (negative) ρ-label; use Difference/DifferenceFst in user code,
+// which will not see this label. This version is a delayed FST.
 //
 // This class attaches interface to implementation and handles
 // reference counting, delegating most methods to ImplToFst.
 template <class A>
-class ComplementFst : public ImplToFst< ComplementFstImpl<A> > {
+class ComplementFst : public ImplToFst<internal::ComplementFstImpl<A>> {
  public:
-  friend class StateIterator< ComplementFst<A> >;
-  friend class ArcIterator< ComplementFst<A> >;
+  using Arc = A;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Impl = internal::ComplementFstImpl<Arc>;
 
-  using ImplToFst< ComplementFstImpl<A> >::GetImpl;
+  friend class StateIterator<ComplementFst<Arc>>;
+  friend class ArcIterator<ComplementFst<Arc>>;
 
-  typedef A Arc;
-  typedef typename A::StateId StateId;
-  typedef typename A::Label Label;
-  typedef ComplementFstImpl<A> Impl;
-
-  explicit ComplementFst(const Fst<A> &fst)
-      : ImplToFst<Impl>(new Impl(fst)) {
-    uint64 props = kUnweighted | kNoEpsilons | kIDeterministic | kAcceptor;
+  explicit ComplementFst(const Fst<Arc> &fst)
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst)) {
+    static FST_CONSTEXPR const auto props =
+        kUnweighted | kNoEpsilons | kIDeterministic | kAcceptor;
     if (fst.Properties(props, true) != props) {
-      FSTERROR() << "ComplementFst: argument not an unweighted "
+      FSTERROR() << "ComplementFst: Argument not an unweighted "
                  << "epsilon-free deterministic acceptor";
       GetImpl()->SetProperties(kError, kError);
     }
   }
 
   // See Fst<>::Copy() for doc.
-  ComplementFst(const ComplementFst<A> &fst, bool safe = false)
+  ComplementFst(const ComplementFst<Arc> &fst, bool safe = false)
       : ImplToFst<Impl>(fst, safe) {}
 
-  // Get a copy of this ComplementFst. See Fst<>::Copy() for further doc.
-  virtual ComplementFst<A> *Copy(bool safe = false) const {
-    return new ComplementFst<A>(*this, safe);
+  // Gets a copy of this FST. See Fst<>::Copy() for further doc.
+  ComplementFst<Arc> *Copy(bool safe = false) const override {
+    return new ComplementFst<Arc>(*this, safe);
   }
 
-  virtual inline void InitStateIterator(StateIteratorData<A> *data) const;
+  inline void InitStateIterator(StateIteratorData<Arc> *data) const override;
 
-  virtual inline void InitArcIterator(StateId s,
-                                      ArcIteratorData<A> *data) const;
+  inline void InitArcIterator(StateId s,
+                              ArcIteratorData<Arc> *data) const override;
 
-  // Label that represents the rho transition.
-  // We use a negative value, which is thus private to the library and
-  // which will preserve FST label sort order.
+  // Label that represents the ρ-transition; we use a negative value private to
+  // the library and which will preserve FST label sort order.
   static const Label kRhoLabel = -2;
- private:
-  // Makes visible to friends.
-  Impl *GetImpl() const { return ImplToFst<Impl>::GetImpl(); }
 
-  void operator=(const ComplementFst<A> &fst);  // disallow
+ private:
+  using ImplToFst<Impl>::GetImpl;
+
+  ComplementFst &operator=(const ComplementFst &) = delete;
 };
 
-template <class A> const typename A::Label ComplementFst<A>::kRhoLabel;
-
+template <class Arc>
+const typename Arc::Label ComplementFst<Arc>::kRhoLabel;
 
 // Specialization for ComplementFst.
-template <class A>
-class StateIterator< ComplementFst<A> > : public StateIteratorBase<A> {
+template <class Arc>
+class StateIterator<ComplementFst<Arc>> : public StateIteratorBase<Arc> {
  public:
-  typedef typename A::StateId StateId;
-  typedef typename A::Label Label;
+  using StateId = typename Arc::StateId;
 
-  explicit StateIterator(const ComplementFst<A> &fst)
-      : siter_(*fst.GetImpl()->fst_), s_(0) {
-  }
+  explicit StateIterator(const ComplementFst<Arc> &fst)
+      : siter_(*fst.GetImpl()->fst_), s_(0) {}
 
-  bool Done() const { return s_ > 0 && siter_.Done(); }
+  bool Done() const final { return s_ > 0 && siter_.Done(); }
 
-  StateId Value() const { return s_; }
+  StateId Value() const final { return s_; }
 
-  void Next() {
-    if (s_ != 0)
-      siter_.Next();
+  void Next() final {
+    if (s_ != 0) siter_.Next();
     ++s_;
   }
 
-  void Reset() {
+  void Reset() final {
     siter_.Reset();
     s_ = 0;
   }
 
  private:
-  // This allows base class virtual access to non-virtual derived-
-  // class members of the same name. It makes the derived class more
-  // efficient to use but unsafe to further derive.
-  virtual bool Done_() const { return Done(); }
-  virtual StateId Value_() const { return Value(); }
-  virtual void Next_() { Next(); }
-  virtual void Reset_() { Reset(); }
-
-  StateIterator< Fst<A> > siter_;
+  StateIterator<Fst<Arc>> siter_;
   StateId s_;
-
-  DISALLOW_COPY_AND_ASSIGN(StateIterator);
 };
 
-
 // Specialization for ComplementFst.
-template <class A>
-class ArcIterator< ComplementFst<A> > : public ArcIteratorBase<A> {
+template <class Arc>
+class ArcIterator<ComplementFst<Arc>> : public ArcIteratorBase<Arc> {
  public:
-  typedef typename A::StateId StateId;
-  typedef typename A::Label Label;
-  typedef typename A::Weight Weight;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
 
-  ArcIterator(const ComplementFst<A> &fst, StateId s)
-      : aiter_(0), s_(s), pos_(0) {
-    if (s_ != 0)
-      aiter_ = new ArcIterator< Fst<A> >(*fst.GetImpl()->fst_, s - 1);
+  ArcIterator(const ComplementFst<Arc> &fst, StateId s) : s_(s), pos_(0) {
+    if (s_ != 0) {
+      aiter_.reset(new ArcIterator<Fst<Arc>>(*fst.GetImpl()->fst_, s - 1));
+    }
   }
 
-  virtual ~ArcIterator() { delete aiter_; }
-
-  bool Done() const {
-    if (s_ != 0)
+  bool Done() const final {
+    if (s_ != 0) {
       return pos_ > 0 && aiter_->Done();
-    else
+    } else {
       return pos_ > 0;
+    }
   }
 
-  // Adds the rho label to the rho destination state.
-  const A& Value() const {
+  // Adds the ρ-label to the ρ destination state.
+  const Arc &Value() const final {
     if (pos_ == 0) {
-      arc_.ilabel = arc_.olabel = ComplementFst<A>::kRhoLabel;
+      arc_.ilabel = arc_.olabel = ComplementFst<Arc>::kRhoLabel;
       arc_.weight = Weight::One();
       arc_.nextstate = 0;
     } else {
@@ -265,23 +223,19 @@ class ArcIterator< ComplementFst<A> > : public ArcIteratorBase<A> {
     return arc_;
   }
 
-  void Next() {
-    if (s_ != 0 && pos_ > 0)
-      aiter_->Next();
+  void Next() final {
+    if (s_ != 0 && pos_ > 0) aiter_->Next();
     ++pos_;
   }
 
-  size_t Position() const {
-    return pos_;
-  }
+  size_t Position() const final { return pos_; }
 
-  void Reset() {
-    if (s_ != 0)
-      aiter_->Reset();
+  void Reset() final {
+    if (s_ != 0) aiter_->Reset();
     pos_ = 0;
   }
 
-  void Seek(size_t a) {
+  void Seek(size_t a) final {
     if (s_ != 0) {
       if (a == 0) {
         aiter_->Reset();
@@ -292,47 +246,32 @@ class ArcIterator< ComplementFst<A> > : public ArcIteratorBase<A> {
     pos_ = a;
   }
 
-  uint32 Flags() const {
-    return kArcValueFlags;
-  }
+  uint32 Flags() const final { return kArcValueFlags; }
 
-  void SetFlags(uint32 f, uint32 m) {}
+  void SetFlags(uint32, uint32) final {}
 
  private:
-  // This allows base class virtual access to non-virtual derived-
-  // class members of the same name. It makes the derived class more
-  // efficient to use but unsafe to further derive.
-  virtual bool Done_() const { return Done(); }
-  virtual const A& Value_() const { return Value(); }
-  virtual void Next_() { Next(); }
-  virtual size_t Position_() const { return Position(); }
-  virtual void Reset_() { Reset(); }
-  virtual void Seek_(size_t a) { Seek(a); }
-  uint32 Flags_() const { return Flags(); }
-  void SetFlags_(uint32 f, uint32 m) { SetFlags(f, m); }
-
-  ArcIterator< Fst<A> > *aiter_;
+  std::unique_ptr<ArcIterator<Fst<Arc>>> aiter_;
   StateId s_;
   size_t pos_;
-  mutable A arc_;
-  DISALLOW_COPY_AND_ASSIGN(ArcIterator);
+  mutable Arc arc_;
 };
 
-
-template <class A> inline void
-ComplementFst<A>::InitStateIterator(StateIteratorData<A> *data) const {
-  data->base = new StateIterator< ComplementFst<A> >(*this);
+template <class Arc>
+inline void ComplementFst<Arc>::InitStateIterator(
+    StateIteratorData<Arc> *data) const {
+  data->base = new StateIterator<ComplementFst<Arc>>(*this);
 }
 
-template <class A> inline void
-ComplementFst<A>::InitArcIterator(StateId s, ArcIteratorData<A> *data) const {
-  data->base = new ArcIterator< ComplementFst<A> >(*this, s);
+template <class Arc>
+inline void ComplementFst<Arc>::InitArcIterator(StateId s,
+    ArcIteratorData<Arc> *data) const {
+  data->base = new ArcIterator<ComplementFst<Arc>>(*this, s);
 }
-
 
 // Useful alias when using StdArc.
-typedef ComplementFst<StdArc> StdComplementFst;
+using StdComplementFst = ComplementFst<StdArc>;
 
 }  // namespace fst
 
-#endif  // FST_LIB_COMPLEMENT_H__
+#endif  // FST_COMPLEMENT_H_

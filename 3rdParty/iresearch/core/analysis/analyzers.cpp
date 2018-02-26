@@ -68,8 +68,17 @@ class analyzer_register:
     auto& name = key.name_;
     std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
 
-    std::memcpy(&filename[0], FILENAME_PREFIX.c_str(), FILENAME_PREFIX.size());
-    std::memcpy(&filename[0] + FILENAME_PREFIX.size(), name.c_str(), name.size());
+    std::memcpy(
+      &filename[0],
+      FILENAME_PREFIX.c_str(),
+      FILENAME_PREFIX.size()
+    );
+
+    irs::string_ref::traits_type::copy(
+      &filename[0] + FILENAME_PREFIX.size(),
+      name.c_str(),
+      name.size()
+    );
 
     return filename;
   }
@@ -168,7 +177,7 @@ analyzer_registrar::analyzer_registrar(
       );
     }
 
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 }
 

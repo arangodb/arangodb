@@ -72,6 +72,8 @@ class RocksDBEngine final : public StorageEngine {
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer*);
   ~RocksDBEngine();
+  
+public:
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -253,11 +255,15 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  void addIndexMapping(uint64_t, Index*);
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
+                       TRI_voc_cid_t, TRI_idx_iid_t);
+  void removeIndexMapping(uint64_t);
 
-  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
-      uint64_t) const;
-  Index* mapObjectToIndex(uint64_t) const;
+  // Identifies a collection
+  typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
+  typedef  std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  CollectionPair mapObjectToCollection(uint64_t) const;
+  IndexTriple mapObjectToIndex(uint64_t) const;
 
   std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
@@ -346,12 +352,10 @@ class RocksDBEngine final : public StorageEngine {
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _mapLock;
-  std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
-      _collectionMap;
-  std::unordered_map<uint64_t, Index*> _indexMap;
+  std::unordered_map<uint64_t, CollectionPair> _collectionMap;
+  std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
   mutable basics::ReadWriteLock _walFileLock;
-
   // which WAL files can be pruned when
   std::unordered_map<std::string, double> _prunableWalFiles;
 

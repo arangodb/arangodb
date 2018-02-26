@@ -55,6 +55,16 @@ class IRESEARCH_API busywait_mutex final {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief a read-write mutex implementation
+///        supports recursive read-lock acquisition
+///        supports recursive write-lock acquisition
+///        supports downgrading write-lock to a read lock
+///        does not support upgrading a read-lock to a write-lock
+///        write-locks are given acquisition preference over read-locks
+/// @note the following will cause a deadlock with the current implementation:
+///       read-lock(threadA) -> write-lock(threadB) -> read-lock(threadA)
+//////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API read_write_mutex final {
  public:
   // for use with std::lock_guard/std::unique_lock for read operations

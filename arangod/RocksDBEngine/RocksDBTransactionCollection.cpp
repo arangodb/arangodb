@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -42,7 +43,6 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
       _revision(0),
-      _operationSize(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -263,7 +263,7 @@ void RocksDBTransactionCollection::release() {
 
 /// @brief add an operation for a transaction collection
 void RocksDBTransactionCollection::addOperation(
-    TRI_voc_document_operation_e operationType, uint64_t operationSize,
+    TRI_voc_document_operation_e operationType,
     TRI_voc_rid_t revisionId) {
   switch (operationType) {
     case TRI_VOC_DOCUMENT_OPERATION_UNKNOWN:
@@ -282,7 +282,6 @@ void RocksDBTransactionCollection::addOperation(
       _revision = revisionId;
       break;
   }
-  _operationSize += operationSize;
 }
 
 void RocksDBTransactionCollection::prepareCommit(uint64_t trxId,
@@ -320,8 +319,24 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 
 void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
                                                 uint64_t commitSeq) {
+    TRI_ASSERT(_collection != nullptr);
+  
+  // Update the collection count
+  int64_t const adjustment = _numInserts - _numRemoves;
+  if (commitSeq != 0) {
+    if (_numInserts != 0 || _numRemoves != 0 || _revision != 0) {
+      RocksDBCollection* coll = static_cast<RocksDBCollection*>(_collection->getPhysical());
+      coll->adjustNumberDocuments(adjustment);
+      coll->setRevision(_revision);
+      
+      RocksDBEngine* engine = rocksutils::globalRocksEngine();
+      RocksDBSettingsManager::CounterAdjustment update(commitSeq, _numInserts, _numRemoves,
+                                                       _revision);
+      engine->settingsManager()->updateCounter(coll->objectId(), update);
+    }
+  }
+  
   // Update the index estimates.
-  TRI_ASSERT(_collection != nullptr);
   for (auto& pair : _trackedIndexOperations) {
     auto idx = _collection->lookupIndex(pair.first);
     if (idx == nullptr) {
@@ -337,8 +352,7 @@ void RocksDBTransactionCollection::commitCounts(uint64_t trxId,
     }
   }
 
-  _initialNumberDocuments += _numInserts - _numRemoves;
-  _operationSize = 0;
+  _initialNumberDocuments += adjustment;
   _numInserts = 0;
   _numUpdates = 0;
   _numRemoves = 0;
