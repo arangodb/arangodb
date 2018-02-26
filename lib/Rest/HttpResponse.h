@@ -28,6 +28,7 @@
 #include "Rest/GeneralResponse.h"
 
 #include "Basics/StringBuffer.h"
+#include <velocypack/Buffer.h>
 
 namespace arangodb {
 class RestBatchHandler;
@@ -70,10 +71,14 @@ class HttpResponse : public GeneralResponse {
   // invalidates any previously returned header. You must call header
   // again.
   basics::StringBuffer& body() {
-    TRI_ASSERT(_body);
-    return *_body;
+    TRI_ASSERT(_stringBody);
+    return *_stringBody;
   }
   size_t bodySize() const;
+  
+  velocypack::Buffer<uint8_t> const* vpackBody() const {
+    return _vpackBody;
+  }
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
@@ -94,7 +99,7 @@ class HttpResponse : public GeneralResponse {
     return _generateBody = generateBody;
   }
   
-  int reservePayload(std::size_t size) override { return _body->reserve(size); }
+  int reservePayload(std::size_t size) override { return _stringBody->reserve(size); }
   
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -104,18 +109,20 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);
 
-  std::unique_ptr<basics::StringBuffer> stealBody() {
-    std::unique_ptr<basics::StringBuffer> bb(_body);
-    _body = nullptr;
+  std::unique_ptr<basics::StringBuffer> stealStringBuffer() {
+    std::unique_ptr<basics::StringBuffer> bb(_stringBody);
+    _stringBody = nullptr;
     return bb;
   }
   
  private:
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
-  basics::StringBuffer *_body;
   size_t _bodySize;
-    
+  
+  basics::StringBuffer *_stringBody;
+  velocypack::Buffer<uint8_t>* _vpackBody;
+  
   void addPayloadInternal(velocypack::Slice, size_t,
                           velocypack::Options const*, bool);
 };

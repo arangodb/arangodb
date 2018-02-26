@@ -51,20 +51,22 @@ HttpResponse::HttpResponse(ResponseCode code,
                            basics::StringBuffer* buffer)
     : GeneralResponse(code),
       _isHeadResponse(false),
-      _body(buffer),
-      _bodySize(0) {
+      _bodySize(0),
+      _stringBody(buffer),
+      _vpackBody(nullptr) {
   TRI_ASSERT(buffer);
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
-  if (_body->c_str() == nullptr) {
+  if (_stringBody->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 }
 
 HttpResponse::~HttpResponse() {
-  delete _body;
+  delete _stringBody;
+  delete _vpackBody;
 }
 
 void HttpResponse::reset(ResponseCode code) {
@@ -73,7 +75,10 @@ void HttpResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
-  _body->clear();
+  _stringBody->clear();
+  if (_vpackBody) {
+    _vpackBody->clear();
+  }
   _bodySize = 0;
 }
 
@@ -81,15 +86,14 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              int lifeTimeSeconds, std::string const& path,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
-  std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(false);
+  StringBuffer buffer(false);
 
   std::string tmp = StringUtils::trim(name);
-  buffer->appendText(tmp);
-  buffer->appendChar('=');
+  buffer.appendText(tmp);
+  buffer.appendChar('=');
 
   tmp = StringUtils::urlEncode(value);
-  buffer->appendText(tmp);
+  buffer.appendText(tmp);
 
   if (lifeTimeSeconds != 0) {
     time_t rawtime;
@@ -107,34 +111,37 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 
       timeinfo = gmtime(&rawtime);
       strftime(buffer2, 80, "%a, %d-%b-%Y %H:%M:%S %Z", timeinfo);
-      buffer->appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
-      buffer->appendText(buffer2);
+      buffer.appendText(TRI_CHAR_LENGTH_PAIR("; expires="));
+      buffer.appendText(buffer2);
     }
   }
 
   if (!path.empty()) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; path="));
-    buffer->appendText(path);
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; path="));
+    buffer.appendText(path);
   }
 
   if (!domain.empty()) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
-    buffer->appendText(domain);
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; domain="));
+    buffer.appendText(domain);
   }
 
   if (secure) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; secure"));
   }
 
   if (httpOnly) {
-    buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
+    buffer.appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
-
-  _cookies.emplace_back(buffer->data(), buffer->length());
+  // copies buffer into a std::string
+  _cookies.emplace_back(buffer.data(), buffer.length());
 }
 
 void HttpResponse::headResponse(size_t size) {
-  _body->clear();
+  _stringBody->clear();
+  if (_vpackBody) {
+    _vpackBody->clear();
+  }
   _isHeadResponse = true;
   _bodySize = size;
 }
@@ -143,7 +150,10 @@ size_t HttpResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  return _body->length();
+  if (_vpackBody) {
+    return _vpackBody->size();
+  }
+  return _stringBody->length();
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
@@ -302,7 +312,14 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       // been a GET.
       output->appendInteger(_bodySize);
     } else {
-      output->appendInteger(_body->length());
+      if (_vpackBody != nullptr) {
+        TRI_ASSERT(_stringBody->length() == 0);
+        VPackSlice outSlice(_vpackBody->data());
+        LOG_TOPIC(ERR, Logger::FIXME) << "Content-Length: " << outSlice.byteSize();
+        output->appendInteger(outSlice.byteSize());
+      } else {
+        output->appendInteger(_stringBody->length());
+      }
     }
 
     output->appendText("\r\n\r\n", 4);
@@ -336,8 +353,14 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   }
 
   if (buffer.size() > 0) {
-    addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
-                       options, resolveExternals);
+    if (_contentType == rest::ContentType::VPACK &&
+        _vpackBody == nullptr && !resolveExternals) {
+      _vpackBody = new VPackBuffer<uint8_t>(std::move(buffer));
+      LOG_TOPIC(ERR, Logger::FIXME) << "Fast-Path VPackBody " << _vpackBody->byteSize();
+    } else {
+      addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
+                         options, resolveExternals);
+    }
   }
 }
 
@@ -351,31 +374,42 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
   switch (_contentType) {
     case rest::ContentType::VPACK: {
       
-      // will contain sanitized data
-      VPackBuffer<uint8_t> tmpBuffer;
+      if (!_vpackBody) { // will contain sanitized data
+        LOG_TOPIC(ERR, Logger::FIXME) << "Slow-Path VPackBody " << _vpackBody->byteSize();
+        _vpackBody = new VPackBuffer<uint8_t>(inputLength);// reserve space already
+      }
+      
+      bool done = false;
       if (resolveExternals) {
         bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
         if (resolveExt) {  // resolve
-          tmpBuffer.reserve(inputLength); // reserve space already
-          VPackBuilder builder(tmpBuffer, options);
+          VPackBuilder builder(*_vpackBody, options);
           VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
                                                    builder, options, true, true, true);
-          output = VPackSlice(tmpBuffer.data());
+          if (!_generateBody) {
+            headResponse(_vpackBody->byteSize());
+            _vpackBody->clear();
+          }
+          done = true;
         }
       }
       
-      VPackValueLength length = output.byteSize();
-      if (_generateBody) {
-        _body->appendText(output.startAs<const char>(), length);
-      } else {
-        headResponse(length);
+      if (!done) {
+        if (_generateBody) {
+          _vpackBody->append(output.begin(), inputLength);
+        } else {
+          headResponse(inputLength);
+        }
       }
+      
       break;
     }
     default: {
+      TRI_ASSERT(_vpackBody == nullptr); // not allowed
+      
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(_body, options);
+        arangodb::basics::VelocyPackDumper dumper(_stringBody, options);
         dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?

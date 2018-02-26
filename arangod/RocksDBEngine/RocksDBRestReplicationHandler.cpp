@@ -716,18 +716,26 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   VPackBuilder vpb(buffer, ctx->getVPackOptions());
   
   if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Dumping VPack";
     
     auto cb = [&]() -> bool {
       return buffer.byteSize() < chunkSize;
     };
-    vpb.openArray();
+    
+    LOG_TOPIC(ERR, Logger::FIXME) << "Buffer has size of " << buffer.byteSize();
+    vpb.openArray(true);
     auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);
     vpb.close();
+    
+    //LOG_TOPIC(ERR, Logger::FIXME) << vpb.slice().toJson();
     
     // generate the result
     if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
+      LOG_TOPIC(ERR, Logger::FIXME) << "Dump has size of " << buffer.byteSize();
+      LOG_TOPIC(ERR, Logger::FIXME) << "Slice has size of " << vpb.slice().byteSize();
+
       resetResponse(rest::ResponseCode::OK);      
       _response->setContentType(rest::ContentType::VPACK);
       _response->setPayload(std::move(buffer), true, *(vpb.options),
@@ -742,6 +750,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            StringUtils::itoa((buffer.length() == 0) ? 0 : result.maxTick()));
     
   } else {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Dumping JSON";
     
     // hardcode response to be JSON Lines
     auto response = dynamic_cast<HttpResponse*>(_response.get());

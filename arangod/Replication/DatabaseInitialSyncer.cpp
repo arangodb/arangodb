@@ -225,11 +225,8 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
                                                         LogicalCollection* coll,
                                                         VPackSlice const& marker) {
   
-  std::string const invalidMsg =
-  "received invalid dump data for collection '" + coll->name() + "'";
-
   if (!marker.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
   TRI_replication_operation_e type = REPLICATION_INVALID;
@@ -240,8 +237,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   for (auto const& it : VPackObjectIterator(marker, true)) {
     if (it.key.isEqualString(typeString)) {
       if (it.value.isNumber()) {
-        type = static_cast<TRI_replication_operation_e>(
-                                                        it.value.getNumber<int>());
+        type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
       }
     } else if (it.key.isEqualString(dataString)) {
       if (it.value.isObject()) {
@@ -262,7 +258,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   
   // key must not be empty, but doc can be empty
   if (key == nullptr || keyLength == 0) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
   transaction::BuilderLeaser oldBuilder(&trx);
@@ -315,6 +311,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     for (VPackSlice slice : VPackArrayIterator(dump)) {
       Result r = parseCollectionDumpMarker(trx, coll, slice);
       if (r.fail()) {
+        r.reset(r.errorNumber(), invalidMsg);
         return r;
       }
       ++markersProcessed;
