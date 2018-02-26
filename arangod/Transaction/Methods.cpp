@@ -1464,9 +1464,9 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
-
     if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!result.empty());
+
       StringRef keyString(transaction::helpers::extractKeyFromDocument(
           VPackSlice(result.vpack())));
 
@@ -1804,10 +1804,9 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
-    TRI_ASSERT(!previous.empty());
-
     if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!previous.empty());
+      TRI_ASSERT(!result.empty());
       StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection, resultBuilder, cid, key,
                             TRI_ExtractRevisionId(VPackSlice(result.vpack())),
