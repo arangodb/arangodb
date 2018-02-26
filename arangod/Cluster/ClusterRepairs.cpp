@@ -305,6 +305,7 @@ DistributeShardsLikeRepairer::findFreeServer(
 ) {
   DBServers freeServer = serverSetDifference(availableDbServers, shardDbServers);
 
+  // TODO use random server
   if (!freeServer.empty()) {
     return freeServer[0];
   }
@@ -430,6 +431,7 @@ DistributeShardsLikeRepairer::fixLeader(
   if (collection.replicationFactor == availableDbServers.size()) {
     // TODO maybe check if col.replicationFactor is at least 2 or 3?
     collection.replicationFactor -= 1;
+    // TODO I suppose we have to remove one DB server from the list as well
     collection.repairingDistributeShardsLikeReplicationFactorReduced = true;
     // TODO create transaction. write this code after writing a corresponding test!
   }
@@ -438,8 +440,8 @@ DistributeShardsLikeRepairer::fixLeader(
     boost::optional<std::string const> tmpServer = findFreeServer(availableDbServers, shardDbServers);
 
     if (! tmpServer) {
-      // TODO write a test and throw a meaningful exception
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+      // This happens if all db servers that don't contain the shard are unhealthy
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
     }
 
     AgencyWriteTransaction trx = createMoveShardTransaction(collection, shardId, protoLeader, tmpServer.get());

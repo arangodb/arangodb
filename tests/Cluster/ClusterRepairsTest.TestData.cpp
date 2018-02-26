@@ -29,6 +29,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 )="_vpack;
 
 // Agency output of .[0].arango.Supervision.Health
+// Coordinators are unused in the test, but must be ignored
 std::shared_ptr<VPackBuffer<uint8_t>>
   supervisionHealth3Healthy0Bad = R"=(
 {
@@ -51,6 +52,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 )="_vpack;
 
 // Agency output of .[0].arango.Supervision.Health
+// Coordinators are unused in the test, but must be ignored
 std::shared_ptr<VPackBuffer<uint8_t>>
   supervisionHealth2Healthy1Bad = R"=(
 {

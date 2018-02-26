@@ -64,8 +64,8 @@ operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-SCENARIO("Broken distributeShardsLike collections",
-  "[cluster][shards][repairs][!throws][!shouldfail]") {
+SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
+
   #include "ClusterRepairsTest.TestData.cpp"
 
   // save old manager (may be null)
@@ -155,13 +155,12 @@ SCENARIO("Broken distributeShardsLike collections",
       }
 
       WHEN("The unused DBServer is marked as non-healthy") {
-        // TODO this should fail
-
-        REQUIRE_THROWS(
+        REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
             VPackSlice(supervisionHealth2Healthy1Bad->data())
-          )
+          ),
+          "not enough healthy db servers"
         );
       }
     }

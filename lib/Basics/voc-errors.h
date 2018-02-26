@@ -919,7 +919,7 @@ constexpr int TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     
 /// "conflicting replication factor with distributeShardsLike parameter
 /// "assignment"
 /// Will be raised if intended replication factor does not match that of the
-/// prototype shard given in ditributeShardsLike parameter.
+/// prototype shard given in distributeShardsLike parameter.
 constexpr int TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       = 1493;
 
 /// 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
@@ -938,6 +938,12 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// "not a leader"
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
+
+/// 1497:
+/// "not enough healthy db servers"
+/// Will be raised when, during repairDistributeShardsLike, there should be a
+/// free db server to move a shard, but none of the candidates is healthy.
+constexpr int TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY                              = 1497;
 
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
