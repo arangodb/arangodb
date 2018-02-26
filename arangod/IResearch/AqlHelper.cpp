@@ -172,7 +172,7 @@ bool attributeAccessEqual(
     };
 
     bool read(arangodb::aql::AstNode const* node, QueryContext const* ctx) noexcept {
-      this->strVal = irs::string_ref::nil;
+      this->strVal = irs::string_ref::NIL;
       this->iVal= 0;
       this->type = Type::INVALID;
       this->root = nullptr;
@@ -211,7 +211,7 @@ bool attributeAccessEqual(
 
           aqlValue.reset(*offset);
 
-          if (!ctx && !aqlValue.isConstant()) {
+          if (!ctx) {
             // can't evaluate expression at compile time
             return true;
           }

@@ -46,12 +46,12 @@ by_term::by_term(const type_id& type)
   : filter( type ) {
 }
 
-bool by_term::equals(const filter& rhs) const {
+bool by_term::equals(const filter& rhs) const NOEXCEPT {
   const by_term& trhs = static_cast<const by_term&>(rhs);
   return filter::equals(rhs) && fld_ == trhs.fld_ && term_ == trhs.term_;
 }
 
-size_t by_term::hash() const {
+size_t by_term::hash() const NOEXCEPT {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   ::boost::hash_combine(seed, fld_);

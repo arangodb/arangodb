@@ -1,35 +1,18 @@
-// factor-weight.h
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: allauzen@google.com (Cyril Allauzen)
-//
-// \file
 // Classes to factor weights in an FST.
 
-#ifndef FST_LIB_FACTOR_WEIGHT_H__
-#define FST_LIB_FACTOR_WEIGHT_H__
+#ifndef FST_FACTOR_WEIGHT_H_
+#define FST_FACTOR_WEIGHT_H_
 
 #include <algorithm>
-#include <unordered_map>
-using std::unordered_map;
-using std::unordered_multimap;
 #include <string>
+#include <unordered_map>
 #include <utility>
-using std::pair; using std::make_pair;
 #include <vector>
-using std::vector;
+
+#include <fst/log.h>
 
 #include <fst/cache.h>
 #include <fst/test-properties.h>
@@ -37,188 +20,201 @@ using std::vector;
 
 namespace fst {
 
-const uint32 kFactorFinalWeights = 0x00000001;
-const uint32 kFactorArcWeights   = 0x00000002;
+FST_CONSTEXPR const uint32 kFactorFinalWeights = 0x00000001;
+FST_CONSTEXPR const uint32 kFactorArcWeights = 0x00000002;
 
 template <class Arc>
 struct FactorWeightOptions : CacheOptions {
-  typedef typename Arc::Label Label;
+  using Label = typename Arc::Label;
+
   float delta;
-  uint32 mode;         // factor arc weights and/or final weights
-  Label final_ilabel;  // input label of arc created when factoring final w's
-  Label final_olabel;  // output label of arc created when factoring final w's
-  bool increment_final_ilabel;  // when factoring final w' results in >1 arcs
-  bool increment_final_olabel;  // at state, increment labels to make distinct
+  uint32 mode;         // Factor arc weights and/or final weights.
+  Label final_ilabel;  // Input label of arc when factoring final weights.
+  Label final_olabel;  // Output label of arc when factoring final weights.
+  bool increment_final_ilabel;  // When factoring final w' results in > 1 arcs
+  bool increment_final_olabel;  // at state, increment labels to make distinct?
 
-  FactorWeightOptions(const CacheOptions &opts, float d,
-                      uint32 m = kFactorArcWeights | kFactorFinalWeights,
-                      Label il = 0, Label ol = 0,
-                      bool iil = false, bool iol = false)
-      : CacheOptions(opts), delta(d), mode(m), final_ilabel(il),
-        final_olabel(ol), increment_final_ilabel(iil),
-        increment_final_olabel(iol) {}
+  explicit FactorWeightOptions(const CacheOptions &opts, float delta = kDelta,
+                               uint32 mode = kFactorArcWeights |
+                                             kFactorFinalWeights,
+                               Label final_ilabel = 0, Label final_olabel = 0,
+                               bool increment_final_ilabel = false,
+                               bool increment_final_olabel = false)
+      : CacheOptions(opts),
+        delta(delta),
+        mode(mode),
+        final_ilabel(final_ilabel),
+        final_olabel(final_olabel),
+        increment_final_ilabel(increment_final_ilabel),
+        increment_final_olabel(increment_final_olabel) {}
 
-  explicit FactorWeightOptions(
-      float d, uint32 m = kFactorArcWeights | kFactorFinalWeights,
-      Label il = 0, Label ol = 0, bool iil = false, bool iol = false)
-      : delta(d), mode(m), final_ilabel(il), final_olabel(ol),
-        increment_final_ilabel(iil), increment_final_olabel(iol) {}
-
-  FactorWeightOptions(uint32 m = kFactorArcWeights | kFactorFinalWeights,
-                      Label il = 0, Label ol = 0,
-                      bool iil = false, bool iol = false)
-      : delta(kDelta), mode(m), final_ilabel(il), final_olabel(ol),
-        increment_final_ilabel(iil), increment_final_olabel(iol) {}
+  explicit FactorWeightOptions(float delta = kDelta,
+                               uint32 mode = kFactorArcWeights |
+                                             kFactorFinalWeights,
+                               Label final_ilabel = 0, Label final_olabel = 0,
+                               bool increment_final_ilabel = false,
+                               bool increment_final_olabel = false)
+      : delta(delta),
+        mode(mode),
+        final_ilabel(final_ilabel),
+        final_olabel(final_olabel),
+        increment_final_ilabel(increment_final_ilabel),
+        increment_final_olabel(increment_final_olabel) {}
 };
 
-
-// A factor iterator takes as argument a weight w and returns a
-// sequence of pairs of weights (xi,yi) such that the sum of the
-// products xi times yi is equal to w. If w is fully factored,
-// the iterator should return nothing.
+// A factor iterator takes as argument a weight w and returns a sequence of
+// pairs of weights (xi, yi) such that the sum of the products xi times yi is
+// equal to w. If w is fully factored, the iterator should return nothing.
 //
 // template <class W>
 // class FactorIterator {
 //  public:
 //   explicit FactorIterator(W w);
+//
 //   bool Done() const;
+//
 //   void Next();
-//   pair<W, W> Value() const;
+//
+//   std::pair<W, W> Value() const;
+//
 //   void Reset();
 // }
 
-
-// Factor trivially.
+// Factors trivially.
 template <class W>
 class IdentityFactor {
  public:
-  explicit IdentityFactor(const W &w) {}
+  explicit IdentityFactor(const W &weight) {}
+
   bool Done() const { return true; }
+
   void Next() {}
-  pair<W, W> Value() const { return make_pair(W::One(), W::One()); } // unused
+
+  std::pair<W, W> Value() const { return std::make_pair(W::One(), W::One()); }
+
   void Reset() {}
 };
 
-
-// Factor a StringWeight w as 'ab' where 'a' is a label.
-template <typename L, StringType S = STRING_LEFT>
+// Factors a StringWeight w as 'ab' where 'a' is a label.
+template <typename Label, StringType S = STRING_LEFT>
 class StringFactor {
  public:
-  explicit StringFactor(const StringWeight<L, S> &w)
-      : weight_(w), done_(w.Size() <= 1) {}
+  explicit StringFactor(const StringWeight<Label, S> &weight)
+      : weight_(weight), done_(weight.Size() <= 1) {}
 
   bool Done() const { return done_; }
 
   void Next() { done_ = true; }
 
-  pair< StringWeight<L, S>, StringWeight<L, S> > Value() const {
-    StringWeightIterator<L, S> iter(weight_);
-    StringWeight<L, S> w1(iter.Value());
-    StringWeight<L, S> w2;
-    for (iter.Next(); !iter.Done(); iter.Next())
-      w2.PushBack(iter.Value());
+  std::pair<StringWeight<Label, S>, StringWeight<Label, S>> Value() const {
+    using Weight = StringWeight<Label, S>;
+    typename Weight::Iterator siter(weight_);
+    Weight w1(siter.Value());
+    Weight w2;
+    for (siter.Next(); !siter.Done(); siter.Next()) w2.PushBack(siter.Value());
     return std::make_pair(w1, w2);
   }
 
   void Reset() { done_ = weight_.Size() <= 1; }
 
  private:
-  StringWeight<L, S> weight_;
+  const StringWeight<Label, S> weight_;
   bool done_;
 };
 
-
 // Factor a GallicWeight using StringFactor.
-template <class L, class W, GallicType G = GALLIC_LEFT>
+template <class Label, class W, GallicType G = GALLIC_LEFT>
 class GallicFactor {
  public:
-  typedef GallicWeight<L, W, G> GW;
+  using GW = GallicWeight<Label, W, G>;
 
-  explicit GallicFactor(const GW &w)
-      : weight_(w), done_(w.Value1().Size() <= 1) {}
+  explicit GallicFactor(const GW &weight)
+      : weight_(weight), done_(weight.Value1().Size() <= 1) {}
 
   bool Done() const { return done_; }
+
   void Next() { done_ = true; }
 
-  pair<GW, GW> Value() const {
-    StringFactor<L, GALLIC_STRING_TYPE(G)> iter(weight_.Value1());
-    GW w1(iter.Value().first, weight_.Value2());
-    GW w2(iter.Value().second, W::One());
+  std::pair<GW, GW> Value() const {
+    StringFactor<Label, GALLIC_STRING_TYPE(G)> siter(weight_.Value1());
+    GW w1(siter.Value().first, weight_.Value2());
+    GW w2(siter.Value().second, W::One());
     return std::make_pair(w1, w2);
   }
 
   void Reset() { done_ = weight_.Value1().Size() <= 1; }
 
  private:
-  GW weight_;
+  const GW weight_;
   bool done_;
 };
 
 // Specialization for the (general) GALLIC type GallicWeight.
-template <class L, class W>
-class GallicFactor<L, W, GALLIC> {
+template <class Label, class W>
+class GallicFactor<Label, W, GALLIC> {
  public:
-  typedef GallicWeight<L, W, GALLIC> GW;
-  typedef GallicWeight<L, W, GALLIC_RESTRICT> GRW;
+  using GW = GallicWeight<Label, W, GALLIC>;
+  using GRW = GallicWeight<Label, W, GALLIC_RESTRICT>;
 
-  explicit GallicFactor(const GW &w)
-      : iter_(w),
-        done_(w.Size() == 0 ||
-              (w.Size() == 1 && w.Back().Value1().Size() <= 1)) {}
+  explicit GallicFactor(const GW &weight)
+      : iter_(weight),
+        done_(weight.Size() == 0 ||
+              (weight.Size() == 1 && weight.Back().Value1().Size() <= 1)) {}
 
   bool Done() const { return done_ || iter_.Done(); }
+
   void Next() { iter_.Next(); }
+
   void Reset() { iter_.Reset(); }
 
-  pair<GW, GW> Value() const {
-    const GRW weight = iter_.Value();
-    StringFactor<L, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> iter(weight.Value1());
-    GRW w1(iter.Value().first, weight.Value2());
-    GRW w2(iter.Value().second, W::One());
+  std::pair<GW, GW> Value() const {
+    const auto weight = iter_.Value();
+    StringFactor<Label, GALLIC_STRING_TYPE(GALLIC_RESTRICT)> siter(
+        weight.Value1());
+    GRW w1(siter.Value().first, weight.Value2());
+    GRW w2(siter.Value().second, W::One());
     return std::make_pair(GW(w1), GW(w2));
   }
 
  private:
-  UnionWeightIterator<GRW, GallicUnionWeightOptions<L, W> > iter_;
+  UnionWeightIterator<GRW, GallicUnionWeightOptions<Label, W>> iter_;
   bool done_;
 };
 
+namespace internal {
 
 // Implementation class for FactorWeight
-template <class A, class F>
-class FactorWeightFstImpl
-    : public CacheImpl<A> {
+template <class Arc, class FactorIterator>
+class FactorWeightFstImpl : public CacheImpl<Arc> {
  public:
-  using FstImpl<A>::SetType;
-  using FstImpl<A>::SetProperties;
-  using FstImpl<A>::SetInputSymbols;
-  using FstImpl<A>::SetOutputSymbols;
+  using Label = typename Arc::Label;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
 
-  using CacheBaseImpl< CacheState<A> >::PushArc;
-  using CacheBaseImpl< CacheState<A> >::HasStart;
-  using CacheBaseImpl< CacheState<A> >::HasFinal;
-  using CacheBaseImpl< CacheState<A> >::HasArcs;
-  using CacheBaseImpl< CacheState<A> >::SetArcs;
-  using CacheBaseImpl< CacheState<A> >::SetFinal;
-  using CacheBaseImpl< CacheState<A> >::SetStart;
+  using FstImpl<Arc>::SetType;
+  using FstImpl<Arc>::SetProperties;
+  using FstImpl<Arc>::SetInputSymbols;
+  using FstImpl<Arc>::SetOutputSymbols;
 
-  typedef A Arc;
-  typedef typename A::Label Label;
-  typedef typename A::Weight Weight;
-  typedef typename A::StateId StateId;
-  typedef F FactorIterator;
+  using CacheBaseImpl<CacheState<Arc>>::PushArc;
+  using CacheBaseImpl<CacheState<Arc>>::HasStart;
+  using CacheBaseImpl<CacheState<Arc>>::HasFinal;
+  using CacheBaseImpl<CacheState<Arc>>::HasArcs;
+  using CacheBaseImpl<CacheState<Arc>>::SetArcs;
+  using CacheBaseImpl<CacheState<Arc>>::SetFinal;
+  using CacheBaseImpl<CacheState<Arc>>::SetStart;
 
   struct Element {
     Element() {}
 
-    Element(StateId s, Weight w) : state(s), weight(w) {}
+    Element(StateId s, Weight weight_) : state(s), weight(std::move(weight_)) {}
 
-    StateId state;     // Input state Id
-    Weight weight;     // Residual weight
+    StateId state;  // Input state ID.
+    Weight weight;  // Residual weight.
   };
 
-  FactorWeightFstImpl(const Fst<A> &fst, const FactorWeightOptions<A> &opts)
-      : CacheImpl<A>(opts),
+  FactorWeightFstImpl(const Fst<Arc> &fst, const FactorWeightOptions<Arc> &opts)
+      : CacheImpl<Arc>(opts),
         fst_(fst.Copy()),
         delta_(opts.delta),
         mode_(opts.mode),
@@ -227,19 +223,18 @@ class FactorWeightFstImpl
         increment_final_ilabel_(opts.increment_final_ilabel),
         increment_final_olabel_(opts.increment_final_olabel) {
     SetType("factor_weight");
-    uint64 props = fst.Properties(kFstProperties, false);
+    const auto props = fst.Properties(kFstProperties, false);
     SetProperties(FactorWeightProperties(props), kCopyProperties);
-
     SetInputSymbols(fst.InputSymbols());
     SetOutputSymbols(fst.OutputSymbols());
-
-    if (mode_ == 0)
-      LOG(WARNING) << "FactorWeightFst: factor mode is set to 0: "
-                   << "factoring neither arc weights nor final weights.";
+    if (mode_ == 0) {
+      LOG(WARNING) << "FactorWeightFst: Factor mode is set to 0; "
+                   << "factoring neither arc weights nor final weights";
+    }
   }
 
-  FactorWeightFstImpl(const FactorWeightFstImpl<A, F> &impl)
-      : CacheImpl<A>(impl),
+  FactorWeightFstImpl(const FactorWeightFstImpl<Arc, FactorIterator> &impl)
+      : CacheImpl<Arc>(impl),
         fst_(impl.fst_->Copy(true)),
         delta_(impl.delta_),
         mode_(impl.mode_),
@@ -253,136 +248,122 @@ class FactorWeightFstImpl
     SetOutputSymbols(impl.OutputSymbols());
   }
 
-  ~FactorWeightFstImpl() {
-    delete fst_;
-  }
-
   StateId Start() {
     if (!HasStart()) {
-      StateId s = fst_->Start();
-      if (s == kNoStateId)
-        return kNoStateId;
-      StateId start = FindState(Element(fst_->Start(), Weight::One()));
-      SetStart(start);
+      const auto s = fst_->Start();
+      if (s == kNoStateId) return kNoStateId;
+      SetStart(FindState(Element(fst_->Start(), Weight::One())));
     }
-    return CacheImpl<A>::Start();
+    return CacheImpl<Arc>::Start();
   }
 
   Weight Final(StateId s) {
     if (!HasFinal(s)) {
-      const Element &e = elements_[s];
-      // TODO: fix so cast is unnecessary
-      Weight w = e.state == kNoStateId
-                 ? e.weight
-                 : (Weight) Times(e.weight, fst_->Final(e.state));
-      FactorIterator f(w);
-      if (!(mode_ & kFactorFinalWeights) || f.Done())
-        SetFinal(s, w);
-      else
+      const auto &element = elements_[s];
+      // TODO(sorenj): fix so cast is unnecessary
+      const auto weight =
+          element.state == kNoStateId
+              ? element.weight
+              : (Weight)Times(element.weight, fst_->Final(element.state));
+      FactorIterator siter(weight);
+      if (!(mode_ & kFactorFinalWeights) || siter.Done()) {
+        SetFinal(s, weight);
+      } else {
         SetFinal(s, Weight::Zero());
+      }
     }
-    return CacheImpl<A>::Final(s);
+    return CacheImpl<Arc>::Final(s);
   }
 
   size_t NumArcs(StateId s) {
-    if (!HasArcs(s))
-      Expand(s);
-    return CacheImpl<A>::NumArcs(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumArcs(s);
   }
 
   size_t NumInputEpsilons(StateId s) {
-    if (!HasArcs(s))
-      Expand(s);
-    return CacheImpl<A>::NumInputEpsilons(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumInputEpsilons(s);
   }
 
   size_t NumOutputEpsilons(StateId s) {
-    if (!HasArcs(s))
-      Expand(s);
-    return CacheImpl<A>::NumOutputEpsilons(s);
+    if (!HasArcs(s)) Expand(s);
+    return CacheImpl<Arc>::NumOutputEpsilons(s);
   }
 
-  uint64 Properties() const { return Properties(kFstProperties); }
+  uint64 Properties() const override { return Properties(kFstProperties); }
 
-  // Set error if found; return FST impl properties.
-  uint64 Properties(uint64 mask) const {
-    if ((mask & kError) && fst_->Properties(kError, false))
+  // Sets error if found, and returns other FST impl properties.
+  uint64 Properties(uint64 mask) const override {
+    if ((mask & kError) && fst_->Properties(kError, false)) {
       SetProperties(kError, kError);
+    }
     return FstImpl<Arc>::Properties(mask);
   }
 
-  void InitArcIterator(StateId s, ArcIteratorData<A> *data) {
-    if (!HasArcs(s))
-      Expand(s);
-    CacheImpl<A>::InitArcIterator(s, data);
+  void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) {
+    if (!HasArcs(s)) Expand(s);
+    CacheImpl<Arc>::InitArcIterator(s, data);
   }
 
-
-  // Find state corresponding to an element. Create new state
-  // if element not found.
-  StateId FindState(const Element &e) {
-    if (!(mode_ & kFactorArcWeights) && e.weight == Weight::One() &&
-        e.state != kNoStateId) {
-      while (unfactored_.size() <= e.state)
+  // Finds state corresponding to an element, creating new state if element not
+  // found.
+  StateId FindState(const Element &element) {
+    if (!(mode_ & kFactorArcWeights) && element.weight == Weight::One() &&
+        element.state != kNoStateId) {
+      while (unfactored_.size() <= element.state)
         unfactored_.push_back(kNoStateId);
-      if (unfactored_[e.state] == kNoStateId) {
-        unfactored_[e.state] = elements_.size();
-        elements_.push_back(e);
+      if (unfactored_[element.state] == kNoStateId) {
+        unfactored_[element.state] = elements_.size();
+        elements_.push_back(element);
       }
-      return unfactored_[e.state];
+      return unfactored_[element.state];
     } else {
-      typename ElementMap::iterator eit = element_map_.find(e);
-      if (eit != element_map_.end()) {
-        return (*eit).second;
-      } else {
-        StateId s = elements_.size();
-        elements_.push_back(e);
-        element_map_.insert(pair<const Element, StateId>(e, s));
-        return s;
+      const auto insert_result =
+          element_map_.insert(std::make_pair(element, elements_.size()));
+      if (insert_result.second) {
+        elements_.push_back(element);
       }
+      return insert_result.first->second;
     }
   }
 
   // Computes the outgoing transitions from a state, creating new destination
   // states as needed.
   void Expand(StateId s) {
-    Element e = elements_[s];
-    if (e.state != kNoStateId) {
-      for (ArcIterator< Fst<A> > ait(*fst_, e.state);
-           !ait.Done();
+    const auto element = elements_[s];
+    if (element.state != kNoStateId) {
+      for (ArcIterator<Fst<Arc>> ait(*fst_, element.state); !ait.Done();
            ait.Next()) {
-        const A &arc = ait.Value();
-        Weight w = Times(e.weight, arc.weight);
-        FactorIterator fit(w);
-        if (!(mode_ & kFactorArcWeights) || fit.Done()) {
-          StateId d = FindState(Element(arc.nextstate, Weight::One()));
-          PushArc(s, Arc(arc.ilabel, arc.olabel, w, d));
+        const auto &arc = ait.Value();
+        const auto weight = Times(element.weight, arc.weight);
+        FactorIterator fiter(weight);
+        if (!(mode_ & kFactorArcWeights) || fiter.Done()) {
+          const auto dest = FindState(Element(arc.nextstate, Weight::One()));
+          PushArc(s, Arc(arc.ilabel, arc.olabel, weight, dest));
         } else {
-          for (; !fit.Done(); fit.Next()) {
-            const pair<Weight, Weight> &p = fit.Value();
-            StateId d = FindState(Element(arc.nextstate,
-                                          p.second.Quantize(delta_)));
-            PushArc(s, Arc(arc.ilabel, arc.olabel, p.first, d));
+          for (; !fiter.Done(); fiter.Next()) {
+            const auto &pair = fiter.Value();
+            const auto dest =
+                FindState(Element(arc.nextstate, pair.second.Quantize(delta_)));
+            PushArc(s, Arc(arc.ilabel, arc.olabel, pair.first, dest));
           }
         }
       }
     }
-
     if ((mode_ & kFactorFinalWeights) &&
-        ((e.state == kNoStateId) ||
-         (fst_->Final(e.state) != Weight::Zero()))) {
-      Weight w = e.state == kNoStateId
-                 ? e.weight
-                 : Times(e.weight, fst_->Final(e.state));
-      Label ilabel = final_ilabel_;
-      Label olabel = final_olabel_;
-      for (FactorIterator fit(w);
-           !fit.Done();
-           fit.Next()) {
-        const pair<Weight, Weight> &p = fit.Value();
-        StateId d = FindState(Element(kNoStateId,
-                                      p.second.Quantize(delta_)));
-        PushArc(s, Arc(ilabel, olabel, p.first, d));
+        ((element.state == kNoStateId) ||
+         (fst_->Final(element.state) != Weight::Zero()))) {
+      const auto weight =
+          element.state == kNoStateId
+              ? element.weight
+              : Times(element.weight, fst_->Final(element.state));
+      auto ilabel = final_ilabel_;
+      auto olabel = final_olabel_;
+      for (FactorIterator fiter(weight); !fiter.Done(); fiter.Next()) {
+        const auto &pair = fiter.Value();
+        const auto dest =
+            FindState(Element(kNoStateId, pair.second.Quantize(delta_)));
+        PushArc(s, Arc(ilabel, olabel, pair.first, dest));
         if (increment_final_ilabel_) ++ilabel;
         if (increment_final_olabel_) ++olabel;
       }
@@ -391,8 +372,6 @@ class FactorWeightFstImpl
   }
 
  private:
-  static const size_t kPrime = 7853;
-
   // Equality function for Elements, assume weights have been quantized.
   class ElementEqual {
    public:
@@ -405,120 +384,113 @@ class FactorWeightFstImpl
   class ElementKey {
    public:
     size_t operator()(const Element &x) const {
-      return static_cast<size_t>(x.state * kPrime + x.weight.Hash());
+      static FST_CONSTEXPR const auto prime = 7853;
+      return static_cast<size_t>(x.state * prime + x.weight.Hash());
     }
-   private:
   };
 
-  typedef unordered_map<Element, StateId, ElementKey, ElementEqual> ElementMap;
+  using ElementMap =
+      std::unordered_map<Element, StateId, ElementKey, ElementEqual>;
 
-  const Fst<A> *fst_;
+  std::unique_ptr<const Fst<Arc>> fst_;
   float delta_;
-  uint32 mode_;         // factoring arc and/or final weights
-  Label final_ilabel_;  // ilabel of arc created when factoring final w's
-  Label final_olabel_;  // olabel of arc created when factoring final w's
-  bool increment_final_ilabel_;  // when factoring final w's results >1 arcs,
-  bool increment_final_olabel_;  // increment labels to make them distinct.
-  vector<Element> elements_;  // mapping Fst state to Elements
-  ElementMap element_map_;    // mapping Elements to Fst state
-  // mapping between old/new 'StateId' for states that do not need to
-  // be factored when 'mode_' is '0' or 'kFactorFinalWeights'
-  vector<StateId> unfactored_;
-
-  void operator=(const FactorWeightFstImpl<A, F> &);  // disallow
+  uint32 mode_;         // Factoring arc and/or final weights.
+  Label final_ilabel_;  // ilabel of arc created when factoring final weights.
+  Label final_olabel_;  // olabel of arc created when factoring final weights.
+  bool increment_final_ilabel_;    // When factoring final weights results in
+  bool increment_final_olabel_;    // mutiple arcs, increment labels?
+  std::vector<Element> elements_;  // mapping from FST state to Element.
+  ElementMap element_map_;         // mapping from Element to FST state.
+  // Mapping between old/new StateId for states that do not need to be factored
+  // when mode_ is 0 or kFactorFinalWeights.
+  std::vector<StateId> unfactored_;
 };
 
-template <class A, class F> const size_t FactorWeightFstImpl<A, F>::kPrime;
+}  // namespace internal
 
-
-// FactorWeightFst takes as template parameter a FactorIterator as
-// defined above. The result of weight factoring is a transducer
-// equivalent to the input whose path weights have been factored
-// according to the FactorIterator. States and transitions will be
-// added as necessary. The algorithm is a generalization to arbitrary
-// weights of the second step of the input epsilon-normalization
-// algorithm due to Mohri, "Generic epsilon-removal and input
-// epsilon-normalization algorithms for weighted transducers",
-// International Journal of Computer Science 13(1): 129-143 (2002).
+// FactorWeightFst takes as template parameter a FactorIterator as defined
+// above. The result of weight factoring is a transducer equivalent to the
+// input whose path weights have been factored according to the FactorIterator.
+// States and transitions will be added as necessary. The algorithm is a
+// generalization to arbitrary weights of the second step of the input
+// epsilon-normalization algorithm.
 //
-// This class attaches interface to implementation and handles
-// reference counting, delegating most methods to ImplToFst.
-template <class A, class F>
-class FactorWeightFst : public ImplToFst< FactorWeightFstImpl<A, F> > {
+// This class attaches interface to implementation and handles reference
+// counting, delegating most methods to ImplToFst.
+template <class A, class FactorIterator>
+class FactorWeightFst
+    : public ImplToFst<internal::FactorWeightFstImpl<A, FactorIterator>> {
  public:
-  friend class ArcIterator< FactorWeightFst<A, F> >;
-  friend class StateIterator< FactorWeightFst<A, F> >;
+  using Arc = A;
+  using StateId = typename Arc::StateId;
+  using Weight = typename Arc::Weight;
 
-  typedef A Arc;
-  typedef typename A::Weight Weight;
-  typedef typename A::StateId StateId;
-  typedef DefaultCacheStore<A> Store;
-  typedef typename Store::State State;
-  typedef FactorWeightFstImpl<A, F> Impl;
+  using Store = DefaultCacheStore<Arc>;
+  using State = typename Store::State;
+  using Impl = internal::FactorWeightFstImpl<Arc, FactorIterator>;
 
-  FactorWeightFst(const Fst<A> &fst)
-      : ImplToFst<Impl>(new Impl(fst, FactorWeightOptions<A>())) {}
+  friend class ArcIterator<FactorWeightFst<Arc, FactorIterator>>;
+  friend class StateIterator<FactorWeightFst<Arc, FactorIterator>>;
 
-  FactorWeightFst(const Fst<A> &fst,  const FactorWeightOptions<A> &opts)
-      : ImplToFst<Impl>(new Impl(fst, opts)) {}
+  explicit FactorWeightFst(const Fst<Arc> &fst)
+      : ImplToFst<Impl>(
+            std::make_shared<Impl>(fst, FactorWeightOptions<Arc>())) {}
+
+  FactorWeightFst(const Fst<Arc> &fst, const FactorWeightOptions<Arc> &opts)
+      : ImplToFst<Impl>(std::make_shared<Impl>(fst, opts)) {}
 
   // See Fst<>::Copy() for doc.
-  FactorWeightFst(const FactorWeightFst<A, F> &fst, bool copy)
+  FactorWeightFst(const FactorWeightFst<Arc, FactorIterator> &fst, bool copy)
       : ImplToFst<Impl>(fst, copy) {}
 
   // Get a copy of this FactorWeightFst. See Fst<>::Copy() for further doc.
-  virtual FactorWeightFst<A, F> *Copy(bool copy = false) const {
-    return new FactorWeightFst<A, F>(*this, copy);
+  FactorWeightFst<Arc, FactorIterator> *Copy(bool copy = false) const override {
+    return new FactorWeightFst<Arc, FactorIterator>(*this, copy);
   }
 
-  virtual inline void InitStateIterator(StateIteratorData<A> *data) const;
+  inline void InitStateIterator(StateIteratorData<Arc> *data) const override;
 
-  virtual void InitArcIterator(StateId s, ArcIteratorData<A> *data) const {
-    GetImpl()->InitArcIterator(s, data);
-  }
-
- private:
-  // Makes visible to friends.
-  Impl *GetImpl() const { return ImplToFst<Impl>::GetImpl(); }
-
-  void operator=(const FactorWeightFst<A, F> &fst);  // Disallow
-};
-
-
-// Specialization for FactorWeightFst.
-template<class A, class F>
-class StateIterator< FactorWeightFst<A, F> >
-    : public CacheStateIterator< FactorWeightFst<A, F> > {
- public:
-  explicit StateIterator(const FactorWeightFst<A, F> &fst)
-      : CacheStateIterator< FactorWeightFst<A, F> >(fst, fst.GetImpl()) {}
-};
-
-
-// Specialization for FactorWeightFst.
-template <class A, class F>
-class ArcIterator< FactorWeightFst<A, F> >
-    : public CacheArcIterator< FactorWeightFst<A, F> > {
- public:
-  typedef typename A::StateId StateId;
-
-  ArcIterator(const FactorWeightFst<A, F> &fst, StateId s)
-      : CacheArcIterator< FactorWeightFst<A, F> >(fst.GetImpl(), s) {
-    if (!fst.GetImpl()->HasArcs(s))
-      fst.GetImpl()->Expand(s);
+  void InitArcIterator(StateId s, ArcIteratorData<Arc> *data) const override {
+    GetMutableImpl()->InitArcIterator(s, data);
   }
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(ArcIterator);
+  using ImplToFst<Impl>::GetImpl;
+  using ImplToFst<Impl>::GetMutableImpl;
+
+  FactorWeightFst &operator=(const FactorWeightFst &) = delete;
 };
 
-template <class A, class F> inline
-void FactorWeightFst<A, F>::InitStateIterator(StateIteratorData<A> *data) const
-{
-  data->base = new StateIterator< FactorWeightFst<A, F> >(*this);
+// Specialization for FactorWeightFst.
+template <class Arc, class FactorIterator>
+class StateIterator<FactorWeightFst<Arc, FactorIterator>>
+    : public CacheStateIterator<FactorWeightFst<Arc, FactorIterator>> {
+ public:
+  explicit StateIterator(const FactorWeightFst<Arc, FactorIterator> &fst)
+      : CacheStateIterator<FactorWeightFst<Arc, FactorIterator>>(
+            fst, fst.GetMutableImpl()) {}
+};
+
+// Specialization for FactorWeightFst.
+template <class Arc, class FactorIterator>
+class ArcIterator<FactorWeightFst<Arc, FactorIterator>>
+    : public CacheArcIterator<FactorWeightFst<Arc, FactorIterator>> {
+ public:
+  using StateId = typename Arc::StateId;
+
+  ArcIterator(const FactorWeightFst<Arc, FactorIterator> &fst, StateId s)
+      : CacheArcIterator<FactorWeightFst<Arc, FactorIterator>>(
+            fst.GetMutableImpl(), s) {
+    if (!fst.GetImpl()->HasArcs(s)) fst.GetMutableImpl()->Expand(s);
+  }
+};
+
+template <class Arc, class FactorIterator>
+inline void FactorWeightFst<Arc, FactorIterator>::InitStateIterator(
+    StateIteratorData<Arc> *data) const {
+  data->base = new StateIterator<FactorWeightFst<Arc, FactorIterator>>(*this);
 }
-
 
 }  // namespace fst
 
-#endif // FST_LIB_FACTOR_WEIGHT_H__
+#endif  // FST_FACTOR_WEIGHT_H_

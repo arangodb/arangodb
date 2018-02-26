@@ -3,6 +3,8 @@ devel
 
 * fix issue #4583 - add AQL ASSERT and AQL WARN
 
+* remove long disfunctional admin/long_echo handler
+
 * fixed Foxx API:
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
@@ -10356,4 +10358,3 @@ v1.0.alpha1 (2012-05-28)
 ------------------------
 
 Alpha Release of ArangoDB 1.0
-                                                                                                                                                                                                                                                                                                                                                                                            

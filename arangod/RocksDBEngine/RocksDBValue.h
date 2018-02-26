@@ -28,7 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/vocbase.h"
+#include "VocBase/LocalDocumentId.h"
 
 #include <rocksdb/slice.h>
 
@@ -47,10 +47,10 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId);
   static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
-  static RocksDBValue UniqueVPackIndexValue(TRI_voc_rid_t revisionId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
@@ -62,14 +62,14 @@ class RocksDBValue {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the revisionId from a value
+  /// @brief Extracts the LocalDocumentId from a value
   ///
   /// May be called only on PrimaryIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
 
-  static TRI_voc_rid_t revisionId(RocksDBValue const&);
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);
-  static TRI_voc_rid_t revisionId(std::string const&);
+  static LocalDocumentId documentId(RocksDBValue const&);
+  static LocalDocumentId documentId(rocksdb::Slice const&);
+  static LocalDocumentId documentId(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex _to or _from ID (`_key`) from a value
@@ -125,13 +125,13 @@ class RocksDBValue {
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, uint64_t data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);
-  static TRI_voc_rid_t revisionId(char const* data, uint64_t size);
+  static LocalDocumentId documentId(char const* data, uint64_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
   static uint64_t keyValue(char const* data, size_t size);

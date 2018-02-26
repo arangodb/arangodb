@@ -108,11 +108,21 @@ inline CONSTEXPR T ror( T value ) NOEXCEPT{
   #pragma warning( disable : 4146 )
 #endif
 
-inline uint32_t zig_zag_encode32( int32_t v ) NOEXCEPT { return ( v >> 31 ) ^ ( v << 1 ); }
-inline int32_t zig_zag_decode32( uint32_t v ) NOEXCEPT { return ( v >> 1U ) ^ -( v & 1U ); }
+inline CONSTEXPR uint32_t zig_zag_encode32(int32_t v) NOEXCEPT {
+  return (v >> 31) ^ (uint32_t(v) << 1);
+}
 
-inline uint64_t zig_zag_encode64( int64_t v ) NOEXCEPT { return ( v >> 63 ) ^ ( v << 1 ); }
-inline int64_t zig_zag_decode64( uint64_t v ) NOEXCEPT { return ( v >> 1U ) ^ -( v & 1U ); }
+inline CONSTEXPR int32_t zig_zag_decode32(uint32_t v) NOEXCEPT {
+  return (v >> 1) ^ -(v & 1);
+}
+
+inline CONSTEXPR uint64_t zig_zag_encode64(int64_t v) NOEXCEPT {
+  return (v >> 63) ^ (uint64_t(v) << 1);
+}
+
+inline CONSTEXPR int64_t zig_zag_decode64(uint64_t v) NOEXCEPT {
+  return (v >> 1) ^ -(v & 1);
+}
 
 #if defined(_MSC_VER)
   #pragma warning( default  : 4146 )
