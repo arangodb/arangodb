@@ -410,11 +410,8 @@ DistributeShardsLikeRepairer::fixLeader(
   }
 
   if (collection.replicationFactor == availableDbServers.size()) {
-    // TODO maybe check if col.replicationFactor is at least 2 or 3?
-    collection.replicationFactor -= 1;
-    // TODO I suppose we have to remove one DB server from the list as well
-    collection.repairingDistributeShardsLikeReplicationFactorReduced = true;
-    // TODO create transaction. write this code after writing a corresponding test!
+    // The replicationFactor should have been reduced before calling this method
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
   }
   
   if (std::find(shardDbServers.begin(), shardDbServers.end(), protoLeader) != shardDbServers.end()) {
@@ -445,18 +442,6 @@ DistributeShardsLikeRepairer::fixLeader(
   );
 
   repairOperations.emplace_back(moveShardOperation);
-
-  if (collection.repairingDistributeShardsLikeReplicationFactorReduced
-    && collection.repairingDistributeShardsLikeReplicationFactorReduced.get()) {
-    collection.replicationFactor += 1;
-    collection.repairingDistributeShardsLikeReplicationFactorReduced = boost::none;
-    // TODO write test (see above). Add a transaction. Don't forget to add
-    // replicationFactor to the preconditions.
-//[PSEUDO-TODO]  if (didReduceRepl) {
-//[PSEUDO-TODO]    col.replicationFactor += 1;
-//[PSEUDO-TODO]    waitForSync();
-//[PSEUDO-TODO]  }
-  }
 
   return repairOperations;
 }

@@ -185,11 +185,18 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
           "not enough healthy db servers"
         );
       }
+
+      WHEN("The replicationFactor equals the number of DBServers") {
+        REQUIRE_THROWS_WITH(
+          repairer.repairDistributeShardsLike(
+            VPackSlice(planCollections->data()),
+            VPackSlice(supervisionHealth2Healthy0Bad->data())
+          ),
+          "not enough healthy db servers"
+        );
+      }
     }
 
-    GIVEN("An agency where the replicationFactor equals the number of DBServers") {
-      // TODO this should reduce the replicationFactor for the leader-move
-    }
 
   } catch (...) {
     // restore old manager
