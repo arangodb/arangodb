@@ -138,7 +138,7 @@ DistributeShardsLikeRepairer::readDatabases(
 }
 
 
-std::map<CollectionID, struct Collection>
+std::map<CollectionID, struct cluster_repairs::Collection>
 DistributeShardsLikeRepairer::readCollections(
   const Slice &collectionsByDatabase
 ) {
@@ -360,7 +360,7 @@ DistributeShardsLikeRepairer::createMoveShardOperation(
   ServerID const& toServerId,
   bool isLeader
 ) {
-  return {
+  MoveShardOperation moveShardOperation = {
     collection.database,
     collection.id,
     shardId,
@@ -368,6 +368,15 @@ DistributeShardsLikeRepairer::createMoveShardOperation(
     toServerId,
     isLeader
   };
+
+  // "Move" the shard in `collection`
+  for (auto &it : collection.shardsById.at(shardId)) {
+    if (it == fromServerId) {
+      it = toServerId;
+    }
+  }
+
+  return moveShardOperation;
 }
 
 

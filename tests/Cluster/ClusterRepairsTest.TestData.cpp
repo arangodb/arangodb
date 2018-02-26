@@ -78,60 +78,30 @@ std::vector< RepairOperation >
   expectedOperationsWithTwoSwappedDBServers {
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
-R"=([
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "op": "set",
-              "new": [
-                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
-              ]
-            }
-          },
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "old": [
-                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
-              ]
-            }
-          },
-          "dummy-client-id"
-        ])="_vpack,
+  MoveShardOperation {
+    "someDb",
+    "11111111",
+    "s11",
+    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+    false
+  },
 // move leader to the correct dbserver
-R"=([
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "op": "set",
-              "new": [
-                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
-              ]
-            }
-          },
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "old": [
-                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
-              ]
-            }
-          },
-          "dummy-client-id"
-        ])="_vpack,
+  MoveShardOperation {
+    .database = "someDb",
+    "11111111",
+    "s11",
+    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+    true
+  },
 // fix the remaining shard
-R"=([
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "op": "set",
-              "new": [
-                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
-              ]
-            }
-          },
-          { "testArangoAgencyPrefix/Plan/Collections/someDb/11111111/shards/s11": {
-              "old": [
-                "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"
-              ]
-            }
-          },
-          "dummy-client-id"
-        ])="_vpack,
+  MoveShardOperation {
+    "someDb",
+    "11111111",
+    "s11",
+    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+    false
+  },
 };

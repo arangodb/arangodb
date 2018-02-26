@@ -37,6 +37,7 @@
 
 #include <iostream>
 #include <memory>
+#include <sstream>
 
 
 using namespace arangodb;
@@ -44,6 +45,57 @@ using namespace arangodb::consensus;
 using namespace arangodb::cluster_repairs;
 
 namespace arangodb {
+
+bool operator==(AgencyWriteTransaction const& left, AgencyWriteTransaction const& right) {
+  VPackBuilder leftBuilder;
+  VPackBuilder rightBuilder;
+
+  left.toVelocyPack(leftBuilder);
+  right.toVelocyPack(rightBuilder);
+
+  return velocypack::NormalizedCompare::equals(
+    leftBuilder.slice(),
+    rightBuilder.slice()
+  );
+}
+
+std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& trx) {
+  Options optPretty = VPackOptions::Defaults;
+  optPretty.prettyPrint = true;
+
+  VPackBuilder builder;
+
+  trx.toVelocyPack(builder);
+
+  ostream << builder.slice().toJson(&optPretty);
+
+  return ostream;
+}
+
+namespace cluster_repairs {
+bool operator==(MoveShardOperation const &left, MoveShardOperation const &other) {
+  return
+    left.database == other.database
+    && left.collection == other.collection
+    && left.shard == other.shard
+    && left.from == other.from
+    && left.isLeader == other.isLeader;
+}
+
+std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation) {
+  ostream << "MoveShardOperation" << std::endl
+          << "{ database: " << operation.database << std::endl
+          << ", collection: " << operation.collection << std::endl
+          << ", shard: " << operation.shard << std::endl
+          << ", from: " << operation.from << std::endl
+          << ", to: " << operation.to << std::endl
+          << ", isLeader: " << operation.isLeader << std::endl
+          << "}";
+
+  return ostream;
+}
+}
+
 namespace tests {
 namespace cluster_repairs_test {
 
@@ -62,15 +114,6 @@ vpackFromJsonString(char const *c) {
 std::shared_ptr<VPackBuffer<uint8_t>>
 operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
-}
-
-bool operator==(MoveShardOperation const &left, MoveShardOperation const &right) {
-  return
-    left.database == right.database
-    && left.collection == right.collection
-    && left.shard == right.shard
-    && left.from == right.from
-    && left.isLeader == right.isLeader;
 }
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
@@ -100,66 +143,36 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         // like distributeShardsLike / repairingDistributeShardsLike,
         // waitForSync, or maybe replicationFactor
 
-        std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> const &expectedTransactions
-          = expectedTransactionsWithTwoSwappedDBServers;
+        std::vector<RepairOperation> const &expectedRepairOperations
+          = expectedOperationsWithTwoSwappedDBServers;
 
-        VPackBuilder transactionBuilder;
+        {
 
-        Options optPretty = VPackOptions::Defaults;
-        optPretty.prettyPrint = true;
-
-        INFO("Expected transactions are:" << std::accumulate(
-          expectedTransactions.begin(), expectedTransactions.end(),
-          std::string(),
-          [&optPretty](std::string const &left, std::shared_ptr<VPackBuffer<uint8_t>> const &right) {
-            std::string result = left + "\n"
-                                 + VPackSlice(right->data()).toJson(&optPretty);
-            return result;
+          std::stringstream expectedOperationsStringStream;
+          expectedOperationsStringStream << "[" << std::endl;
+          for(auto const& it : expectedRepairOperations) {
+            expectedOperationsStringStream << it << "," << std::endl;
           }
-        ));
-        INFO("Actual transactions are (clientIds are ignored in the comparison):"
-          << std::accumulate(
-            repairOperations.begin(), repairOperations.end(),
-            std::string(),
-            [&transactionBuilder, &optPretty](std::string const &left, AgencyWriteTransaction const &right) {
-              transactionBuilder.clear();
-              right.toVelocyPack(transactionBuilder);
-              return left + "\n"
-                     + transactionBuilder.slice().toJson(&optPretty);
-            }
-          ));
+          expectedOperationsStringStream << "]";
 
-        REQUIRE(repairOperations.size() == expectedTransactions.size());
-
-        { // Transaction IDs shall be unique.
-          std::set<std::string> transactionClientIds;
-          for (auto &it : repairOperations) {
-            bool inserted;
-            std::tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
-            REQUIRE(inserted);
-
-            // Overwrite the client ID for the following comparisons to work
-            it.clientId = "dummy-client-id";
+          std::stringstream repairOperationsStringStream;
+          repairOperationsStringStream << "[" << std::endl;
+          for(auto const& it : expectedRepairOperations) {
+            repairOperationsStringStream << it << "," << std::endl;
           }
+          repairOperationsStringStream << "]";
+
+          INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
+          INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
+
+          REQUIRE(repairOperations.size() == expectedRepairOperations.size());
         }
 
-        for (auto const &it : boost::combine(repairOperations, expectedTransactions)) {
-          auto const &transactionIt = it.get<0>();
-          auto const &expectedTransactionIt = it.get<1>();
+        for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
+          auto const &repairOpIt = it.get<0>();
+          auto const &expectedRepairOpIt = it.get<1>();
 
-          transactionBuilder.clear();
-          transactionIt.toVelocyPack(transactionBuilder);
-
-          Slice const &transactionSlice = transactionBuilder.slice();
-          Slice const &expectedTransactionSlice = VPackSlice(expectedTransactionIt->data());
-
-          REQUIRE(
-            transactionSlice.toJson() == expectedTransactionSlice.toJson()
-          ); // either, or:
-          REQUIRE(NormalizedCompare::equals(
-            transactionSlice,
-            expectedTransactionSlice
-          ));
+           REQUIRE(repairOpIt == expectedRepairOpIt);
         }
       }
 

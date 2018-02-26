@@ -24,6 +24,7 @@
 #define ARANGODB3_CLUSTERREPAIRS_H
 
 #include <arangod/Agency/AgencyComm.h>
+#include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
