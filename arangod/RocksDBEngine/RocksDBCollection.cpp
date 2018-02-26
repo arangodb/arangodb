@@ -1576,7 +1576,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
     mdr.reset();
-    TRI_ASSERT(false);
   }
   return res;
 }
@@ -1638,7 +1637,6 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
         << "NOT FOUND rev: " << documentId.id() << " trx: " << trx->state()->id()
         << " seq: " << mthd->readOptions().snapshot->GetSequenceNumber()
         << " objectID " << _objectId << " name: " << _logicalCollection->name();
-    TRI_ASSERT(false);
   }
   return res;
 }
