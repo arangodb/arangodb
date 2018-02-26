@@ -722,7 +722,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       return buffer.byteSize() < chunkSize;
     };
     
-    LOG_TOPIC(ERR, Logger::FIXME) << "Buffer has size of " << buffer.byteSize();
     vpb.openArray(true);
     auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);
     vpb.close();
@@ -735,9 +734,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     } else if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Dump has size of " << buffer.byteSize();
-      LOG_TOPIC(ERR, Logger::FIXME) << "Slice has size of " << vpb.slice().byteSize();
-
       resetResponse(rest::ResponseCode::OK);      
       _response->setContentType(rest::ContentType::VPACK);
       _response->setPayload(std::move(buffer), true, *(vpb.options),

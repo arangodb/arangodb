@@ -382,6 +382,10 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
   int batch = 1;
   uint64_t bytesReceived = 0;
   uint64_t markersProcessed = 0;
+  
+  double const nowTotal = TRI_microtime();
+  double sumFetchTime = 0;
+  double sumApplyTime = 0;
 
   while (true) {
     if (isAborted()) {
@@ -426,6 +430,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
     
+    double fetchTimeNow = TRI_microtime();
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::GET, url, nullptr, 0, headers));
 
@@ -492,6 +497,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       // fallthrough here in case everything went well
     }
     
+#warning Remove
+    sumFetchTime += (TRI_microtime() - fetchTimeNow);
+    
     if (hasFailed(response.get())) {
       return buildHttpError(response.get(), url);
     }
@@ -529,6 +537,9 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       }
     }
     
+#warning Remove
+    double applyTimeNow = TRI_microtime();
+    
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
@@ -551,6 +562,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     res = trx.commit();
     
+    sumApplyTime += (TRI_microtime() - applyTimeNow);
+    
     std::string const progress2 =
         "fetched master collection dump for collection '" + coll->name() +
         "', type: " + typeString + ", id " + leaderColl + ", batch " +
@@ -565,6 +578,12 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     }
 
     if (!checkMore || fromTick == 0) {
+      
+#warning Remove
+      LOG_TOPIC(ERR, Logger::FIXME) << "Fetching dump: " << sumFetchTime;
+      LOG_TOPIC(ERR, Logger::FIXME) << "Applying dump: " << sumApplyTime;
+      LOG_TOPIC(ERR, Logger::FIXME) << "Total: " << (TRI_microtime() - nowTotal);
+      
       // done
       return Result();
     }
