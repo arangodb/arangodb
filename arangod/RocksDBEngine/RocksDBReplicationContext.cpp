@@ -242,8 +242,6 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       /*builder.add(VPackValue("data"));
       basics::VelocyPackHelper::sanitizeNonClientTypes(doc, VPackSlice::noneSlice(),
                                                        builder, builder.options, true, true, true);*/
-#warning TODO Attribute Translator, sequential iterator in ObjectIterator
-#warning VPackBuffer wrong size ?
       // Fast object sanitization only on first level (effectively only on _id)
       TRI_ASSERT(doc.isObject());
       builder.add("data", VPackValue(VPackValueType::Object, true));

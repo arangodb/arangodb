@@ -1056,7 +1056,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input,
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
-    for (auto const& it : VPackObjectIterator(input)) {
+    for (auto const& it : VPackObjectIterator(input, true)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
