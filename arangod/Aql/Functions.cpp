@@ -4161,33 +4161,34 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
 }
 
 AqlValue Functions::Assert(arangodb::aql::Query* query, transaction::Methods* trx,
-                                 VPackFunctionParameters const& parameters) {
+                           VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "ASSERT", 2, 2);
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
-  if(!message.isString()){
+
+  if (!message.isString()) {
     RegisterInvalidArgumentWarning(query, "ASSERT");
     return AqlValue(AqlValueHintNull());
   }
-  if(!expr.toBoolean()){
+  if (!expr.toBoolean()) {
     std::string msg = message.slice().copyString();
-    query->registerError(TRI_ERROR_QUERY_USER_ASSERT,msg.data());
+    query->registerError(TRI_ERROR_QUERY_USER_ASSERT, msg.data());
   }
   return AqlValue(AqlValueHintBool(true));
-
 }
 
 AqlValue Functions::Warn(arangodb::aql::Query* query, transaction::Methods* trx,
-                                 VPackFunctionParameters const& parameters) {
-
+                         VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WARN", 2, 2);
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
-  if(!message.isString()){
+
+  if (!message.isString()) {
     RegisterInvalidArgumentWarning(query, "WARN");
     return AqlValue(AqlValueHintNull());
   }
-  if(!expr.toBoolean()){
+
+  if (!expr.toBoolean()) {
     std::string msg = message.slice().copyString();
     query->registerWarning(TRI_ERROR_QUERY_USER_WARN, msg.data());
     return AqlValue(AqlValueHintBool(false));
