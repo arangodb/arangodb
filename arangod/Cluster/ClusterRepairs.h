@@ -92,10 +92,15 @@ struct Collection {
   // deleted
 };
 
+class MoveShardOperation {
+
+};
+
+using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransaction>;
 
 class DistributeShardsLikeRepairer {
  public:
-  std::list<AgencyWriteTransaction> repairDistributeShardsLike(
+  std::list<RepairOperation> repairDistributeShardsLike(
     VPackSlice const& planCollections, VPackSlice const& planDbServers
   );
 
@@ -130,15 +135,15 @@ class DistributeShardsLikeRepairer {
     DBServers setB
   );
 
-  AgencyWriteTransaction
-  createMoveShardTransaction(
+  RepairOperation
+  createMoveShardOperation(
     Collection& collection,
     ShardID const& shardId,
     ServerID const& fromServerId,
     ServerID const& toServerId
   );
 
-  std::list<AgencyWriteTransaction>
+  std::list<RepairOperation>
   fixLeader(
     DBServers const& availableDbServers,
     Collection& collection,
@@ -147,7 +152,7 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  std::list<AgencyWriteTransaction>
+  std::list<RepairOperation>
   fixShard(
     DBServers const& availableDbServers,
     Collection& collection,

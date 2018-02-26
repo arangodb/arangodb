@@ -81,7 +81,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
       WHEN("One unused DBServer is free to exchange the leader") {
 
-        std::list<AgencyWriteTransaction> transactions
+        std::list<RepairOperation> repairOperations
           = repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
             VPackSlice(supervisionHealth3Healthy0Bad->data())
@@ -110,7 +110,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         ));
         INFO("Actual transactions are (clientIds are ignored in the comparison):"
           << std::accumulate(
-            transactions.begin(), transactions.end(),
+            repairOperations.begin(), repairOperations.end(),
             std::string(),
             [&transactionBuilder, &optPretty](std::string const &left, AgencyWriteTransaction const &right) {
               transactionBuilder.clear();
@@ -120,11 +120,11 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
             }
           ));
 
-        REQUIRE(transactions.size() == expectedTransactions.size());
+        REQUIRE(repairOperations.size() == expectedTransactions.size());
 
         { // Transaction IDs shall be unique.
           std::set<std::string> transactionClientIds;
-          for (auto &it : transactions) {
+          for (auto &it : repairOperations) {
             bool inserted;
             std::tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
             REQUIRE(inserted);
@@ -134,7 +134,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
           }
         }
 
-        for (auto const &it : boost::combine(transactions, expectedTransactions)) {
+        for (auto const &it : boost::combine(repairOperations, expectedTransactions)) {
           auto const &transactionIt = it.get<0>();
           auto const &expectedTransactionIt = it.get<1>();
 

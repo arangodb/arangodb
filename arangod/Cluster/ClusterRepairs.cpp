@@ -352,8 +352,8 @@ DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 }
 
 
-AgencyWriteTransaction
-DistributeShardsLikeRepairer::createMoveShardTransaction(
+RepairOperation
+DistributeShardsLikeRepairer::createMoveShardOperation(
   Collection& collection,
   ShardID const& shardId,
   ServerID const& fromServerId,
@@ -363,10 +363,10 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
     = collection.agencyCollectionId() + "/shards/" + shardId;
 
   LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
-  << "DistributeShardsLikeRepairer::createMoveShardTransaction: "
-    << "Creating transaction to move shard " << shardId
-    << " of collection " << collection.fullName()
-    << " from server " << fromServerId << " to " << toServerId;
+  << "DistributeShardsLikeRepairer::createMoveShardOperation: "
+  << "Creating transaction to move shard " << shardId
+  << " of collection " << collection.fullName()
+  << " from server " << fromServerId << " to " << toServerId;
 
   std::shared_ptr<VPackBuffer<uint8_t>>
     vpack = collection.createShardDbServerArray(shardId);
@@ -399,7 +399,7 @@ DistributeShardsLikeRepairer::createMoveShardTransaction(
 }
 
 
-std::list<AgencyWriteTransaction>
+std::list<RepairOperation>
 DistributeShardsLikeRepairer::fixLeader(
   DBServers const& availableDbServers,
   Collection& collection,
@@ -420,7 +420,7 @@ DistributeShardsLikeRepairer::fixLeader(
   ServerID const& protoLeader = protoShardDbServers.front();
   ServerID const& shardLeader = shardDbServers.front();
 
-  std::list<AgencyWriteTransaction> transactions;
+  std::list<RepairOperation> repairOperations;
 
 //[PSEUDO-TODO] didReduceRepl := false
 
@@ -444,14 +444,14 @@ DistributeShardsLikeRepairer::fixLeader(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
     }
 
-    AgencyWriteTransaction trx = createMoveShardTransaction(collection, shardId, protoLeader, tmpServer.get());
+    RepairOperation moveShardOperation = createMoveShardOperation(collection, shardId, protoLeader, tmpServer.get());
 
-    transactions.emplace_back(trx);
+    repairOperations.emplace_back(moveShardOperation);
   }
 
-  AgencyWriteTransaction trx = createMoveShardTransaction(collection, shardId, shardLeader, protoLeader);
+  RepairOperation moveShardOperation = createMoveShardOperation(collection, shardId, shardLeader, protoLeader);
 
-  transactions.emplace_back(trx);
+  repairOperations.emplace_back(moveShardOperation);
 
   if (collection.repairingDistributeShardsLikeReplicationFactorReduced
     && collection.repairingDistributeShardsLikeReplicationFactorReduced.get()) {
@@ -465,11 +465,11 @@ DistributeShardsLikeRepairer::fixLeader(
 //[PSEUDO-TODO]  }
   }
 
-  return transactions;
+  return repairOperations;
 }
 
 
-std::list<AgencyWriteTransaction>
+std::list<RepairOperation>
 DistributeShardsLikeRepairer::fixShard(
   DBServers const& availableDbServers,
   Collection& collection,
@@ -485,8 +485,8 @@ DistributeShardsLikeRepairer::fixShard(
   << " to match shard " << protoShardId
   << " of collection " << proto.fullName();
 
-  std::list<AgencyWriteTransaction> transactions;
-  transactions = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
+  std::list<RepairOperation> repairOperations;
+  repairOperations = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
 
   DBServers const& protoShardDbServers = proto.shardsById.at(protoShardId);
   DBServers& shardDbServers = collection.shardsById.at(shardId);
@@ -507,9 +507,9 @@ DistributeShardsLikeRepairer::fixShard(
     auto const& protoServerIt = zipIt.get<0>();
     auto const& shardServerIt = zipIt.get<1>();
 
-    AgencyWriteTransaction trx =
-      createMoveShardTransaction(collection, shardId, shardServerIt, protoServerIt);
-    transactions.emplace_back(trx);
+    RepairOperation moveShardOperation =
+      createMoveShardOperation(collection, shardId, shardServerIt, protoServerIt);
+    repairOperations.emplace_back(moveShardOperation);
 
 // [PSEUDO-TODO]    if (onProto.length >= col.replicationFactor - 2 && i == 0) {
 // [PSEUDO-TODO]      // Security that we at least keep one insync follower
@@ -518,14 +518,14 @@ DistributeShardsLikeRepairer::fixShard(
   }
 
   if(auto trx = createFixServerOrderTransaction(collection, proto, shardId, protoShardId)) {
-    transactions.emplace_back(trx.get());
+    repairOperations.emplace_back(trx.get());
   }
 
-  return transactions;
+  return repairOperations;
 }
 
 
-std::list<AgencyWriteTransaction>
+std::list<RepairOperation>
 DistributeShardsLikeRepairer::repairDistributeShardsLike(
   Slice const& planCollections,
   Slice const& supervisionHealth
@@ -542,7 +542,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
   std::vector<CollectionID> collectionsToFix = findCollectionsToFix(collectionMap);
 
-  std::list<AgencyWriteTransaction> transactions;
+  std::list<RepairOperation> repairOperations;
 
   for (auto const& collectionIdIterator : collectionsToFix) {
     struct Collection& collection = collectionMap[collectionIdIterator];
@@ -578,9 +578,9 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         << "fixing shard " << collection.fullName() << "/" << shardId;
         // TODO Do we need to check that dbServers and protoDbServers are not empty?
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
-        std::list<AgencyWriteTransaction> newTransactions
+        std::list<RepairOperation> newRepairOperations
           = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
-        transactions.splice(transactions.end(), newTransactions);
+        repairOperations.splice(repairOperations.end(), newRepairOperations);
       }
       else {
         LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
@@ -594,7 +594,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     // TODO collection. Use preconditions to guarantee that everything was fixed.
   }
 
-  return transactions;
+  return repairOperations;
 }
 
 boost::optional<AgencyWriteTransaction>
