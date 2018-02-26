@@ -81,5 +81,6 @@ double geo::QueryParams::minDistanceRad() const noexcept {
 }
 
 double geo::QueryParams::maxDistanceRad() const noexcept {
-  return std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters, M_PI));
+  return std::max(0.0, std::min(maxDistance / kEarthRadiusInMeters,
+                                kMaxRadiansBetweenPoints));
 }
