@@ -3,6 +3,8 @@ devel
 
 * fix issue #4583 - add AQL ASSERT and AQL WARN
 
+* remove _admin/echo handler
+
 * remove long disfunctional admin/long_echo handler
 
 * fixed Foxx API:
