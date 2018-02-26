@@ -77,9 +77,9 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   }
 
   // Add all Edge shards to the transaction
-  for (VPackSlice const shardList : VPackArrayIterator(edgesSlice)) {
+  for (VPackSlice const& shardList : VPackArrayIterator(edgesSlice)) {
     TRI_ASSERT(shardList.isArray());
-    for (VPackSlice const shard : VPackArrayIterator(shardList)) {
+    for (VPackSlice const& shard : VPackArrayIterator(shardList)) {
       TRI_ASSERT(shard.isString());
       _collections.add(shard.copyString(), AccessMode::Type::READ);
     }

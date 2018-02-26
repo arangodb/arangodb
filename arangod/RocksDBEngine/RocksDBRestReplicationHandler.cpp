@@ -725,7 +725,9 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     vpb.close();
     
     // generate the result
-    if (buffer.byteSize() == 0) {
+    if (result.fail()) {
+      generateError(result);
+    } else if (buffer.byteSize() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       resetResponse(rest::ResponseCode::OK);      
