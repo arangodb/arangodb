@@ -883,7 +883,14 @@ def restreplybody(cargo, r=Regexen()):
     if currentReturnCode == 0:
         raise Exception("failed to add text to response body: (have to specify the HTTP-code first) " + parameters(last))
 
-    rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
+    rcBlock = ''
+    if name == '':
+        if ptype == 'object':
+            rcBlock = ptype2
+        elif ptype == 'array':
+            rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
+    else:
+        rcBlock = currentDocuBlock + '_rc_' +  currentReturnCode
     #if currentReturnCode:
     if restReplyBodyParam == None:
         # https://github.com/swagger-api/swagger-ui/issues/1430
@@ -907,58 +914,79 @@ def restreplybody(cargo, r=Regexen()):
             'properties': {},
             }
 
-    swagger['definitions'][rcBlock]['properties'][name] = {
-        'type': ptype,
-        'description': ''
+    if len(name) > 0:
+        swagger['definitions'][rcBlock]['properties'][name] = {
+            'type': ptype,
+            'description': ''
         }
 
     if ptype == 'object' and len(ptype2) > 0:
-        swagger['definitions'][rcBlock]['properties'][name] = {
-            '$ref': '#/definitions/' + ptype2
-            }
-
-        if not ptype2 in swagger['definitions']:
-            swagger['definitions'][ptype2] = {
-                'x-filename': fn,
-                'type': 'object',
-                'properties' : {},
-                'description': ''
-                }
-
-        if required:
-            setRequired(swagger['definitions'][ptype2], name)
-       
-        return generic_handler_desc(cargo, r, "restbodyparam", None,
-                                    swagger['definitions'][ptype2],
-                                    'description')
-
-    if ptype == 'array':
-        if len(ptype2) == 0:
-            swagger['definitions'][rcBlock]['properties'][name]['items'] = {
-            }
-        elif ptype2 not in swaggerBaseTypes:
-            swagger['definitions'][rcBlock]['properties'][name]['items'] = {
+        if len(name) > 0:
+            swagger['definitions'][rcBlock]['properties'][name] = {
                 '$ref': '#/definitions/' + ptype2
             }
-        else:
-            swagger['definitions'][rcBlock]['properties'][name]['items'] = {
-                'type': ptype2
+
+            if not ptype2 in swagger['definitions']:
+                swagger['definitions'][ptype2] = {
+                    'x-filename': fn,
+                    'type': 'object',
+                    'properties' : {},
+                    'description': ''
+                }
+
+                if required:
+                    setRequired(swagger['definitions'][ptype2], name)
+                    
+                return generic_handler_desc(cargo, r, "restbodyparam", None,
+                                            swagger['definitions'][ptype2],
+                                            'description')
+
+    if ptype == 'array':
+        if len(name) == 0:
+            swagger['definitions'][rcBlock] = {
+                'type': ptype,
+                'description': ''
             }
-            if ptype2 == 'object':
-                swagger['definitions'][rcBlock]['properties']\
-                       [name]['items']['additionalProperties']      = {}
+            swagger['definitions'][rcBlock]['items'] = {
+                '$ref': '#/definitions/' + ptype2
+            }
+            return generic_handler_desc(cargo, r, "restreplybody", None,
+                                        swagger['definitions'][rcBlock],
+                                        'description')
+        else:
+            if len(ptype2) == 0:
+                swagger['definitions'][rcBlock]['properties'][name]['items'] = {
+                }
+            elif ptype2 not in swaggerBaseTypes:
+                swagger['definitions'][rcBlock]['properties'][name]['items'] = {
+                    '$ref': '#/definitions/' + ptype2
+                }
+            else:
+                swagger['definitions'][rcBlock]['properties'][name]['items'] = {
+                    'type': ptype2
+                }
+                if ptype2 == 'object':
+                    swagger['definitions'][rcBlock]['properties']\
+                        [name]['items']['additionalProperties']      = {}
     elif ptype == 'object':
+        if len(name) > 0:
             swagger['definitions'][rcBlock]['properties'][name]['additionalProperties'] = {}
     elif ptype != 'string':
         swagger['definitions'][rcBlock]['properties'][name]['format'] = ptype2
 
 
-    if required:
+    if len(name) > 0 & required:
         setRequired(swagger['definitions'][rcBlock], name)
 
-    return generic_handler_desc(cargo, r, "restreplybody", None,
-                                swagger['definitions'][rcBlock]['properties'][name],
-                                'description')
+    if len(name) > 0:
+        return generic_handler_desc(cargo, r, "restreplybody", None,
+                                    swagger['definitions'][rcBlock]['properties'][name],
+                                    'description')
+    else:
+        swagger['definitions'][rcBlock]['description'] = ''
+        return generic_handler_desc(cargo, r, "restreplybody", None,
+                                    swagger['definitions'][rcBlock],
+                                    'description')
 
 ################################################################################
 ### @brief restreturncodes
@@ -1154,51 +1182,60 @@ def unwrapPostJson(reference, layer):
     # print >>sys.stderr, "xx" * layer + reference
     global swagger
     rc = ''
-    for param in swagger['definitions'][reference]['properties'].keys():
-        thisParam = swagger['definitions'][reference]['properties'][param]
-        required = ('required' in swagger['definitions'][reference] and
-                    param in swagger['definitions'][reference]['required'])
-
-        # print >> sys.stderr, thisParam
-        if '$ref' in thisParam:
-            subStructRef = getReference(thisParam, reference, None)
-
-            rc += '  ' * layer + "- **" + param + "**:\n"
-            ####
-            # print >>sys.stderr, "yy" * layer + param
+    if not 'properties' in swagger['definitions'][reference]:
+        if 'items' in swagger['definitions'][reference]:
+            if swagger['definitions'][reference]['type'] == 'array':
+                rc += '[\n'
+            subStructRef = getReference(swagger['definitions'][reference]['items'], reference, None)
             rc += unwrapPostJson(subStructRef, layer + 1)
+            if swagger['definitions'][reference]['type'] == 'array':
+                rc += ']\n'
+    else:
+        for param in swagger['definitions'][reference]['properties'].keys():
+            thisParam = swagger['definitions'][reference]['properties'][param]
+            required = ('required' in swagger['definitions'][reference] and
+                        param in swagger['definitions'][reference]['required'])
     
-        elif thisParam['type'] == 'object':
-            rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
-        elif thisParam['type'] == 'array':
-            rc += '  ' * layer + "- **" + param + "**"
-            trySubStruct = False
-            lf=""
-            ####
-            # print >>sys.stderr, "zz" * layer + param
-            if 'type' in thisParam['items']:
-                rc += " (" + thisParam['items']['type']  + ")"
-                lf="\n"
-            else:
-                if len(thisParam['items']) == 0:
-                    rc += " (anonymous json object)"
+            # print >> sys.stderr, thisParam
+            if '$ref' in thisParam:
+                subStructRef = getReference(thisParam, reference, None)
+    
+                rc += '  ' * layer + "- **" + param + "**:\n"
+                ####
+                # print >>sys.stderr, "yy" * layer + param
+                rc += unwrapPostJson(subStructRef, layer + 1)
+        
+            elif thisParam['type'] == 'object':
+                rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(brTrim(thisParam['description']), layer) + "\n"
+            elif thisParam['type'] == 'array':
+                rc += '  ' * layer + "- **" + param + "**"
+                trySubStruct = False
+                lf=""
+                ####
+                # print >>sys.stderr, "zz" * layer + param
+                if 'type' in thisParam['items']:
+                    rc += " (" + thisParam['items']['type']  + ")"
                     lf="\n"
                 else:
-                    trySubStruct = True
-            rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer) + lf
-            if trySubStruct:
-                try:
-                    subStructRef = getReference(thisParam['items'], reference, None)
-                except:
+                    if len(thisParam['items']) == 0:
+                        rc += " (anonymous json object)"
+                        lf="\n"
+                    else:
+                        trySubStruct = True
+                rc += ": " + TrimThisParam(brTrim(thisParam['description']), layer) + lf
+                if trySubStruct:
+                    try:
+                        subStructRef = getReference(thisParam['items'], reference, None)
+                    except:
+                        print >>sys.stderr, "while analyzing: " + param
+                        print >>sys.stderr, thisParam
+                    rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
+            else:
+                if thisParam['type'] not in swaggerDataTypes:
                     print >>sys.stderr, "while analyzing: " + param
-                    print >>sys.stderr, thisParam
-                rc += "\n" + unwrapPostJson(subStructRef, layer + 1)
-        else:
-            if thisParam['type'] not in swaggerDataTypes:
-                print >>sys.stderr, "while analyzing: " + param
-                print >>sys.stderr, thisParam['type'] + "is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes)
-                raise Exception("invalid swagger type")
-            rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
+                    print >>sys.stderr, thisParam['type'] + " is not a valid swagger datatype; supported ones: " + str(swaggerDataTypes)
+                    raise Exception("invalid swagger type")
+                rc += '  ' * layer + "- **" + param + "**: " + TrimThisParam(thisParam['description'], layer) + '\n'
     return rc
 
 
@@ -1336,7 +1373,7 @@ for route in swagger['paths'].keys():
                 if 'additionalProperties' not in thisVerb['responses'][nRC]['schema']:
                     addText += "\n" + unwrapPostJson(
                         getReference(thisVerb['responses'][nRC]['schema'], route, verb),0) + '\n'
-                #print addText
+                # print addText
                 postText += addText
                 postText += thisVerb['description'][descOffset:]
                 offsetPlus += len(addText)
