@@ -64,7 +64,8 @@ operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
+SCENARIO("Broken distributeShardsLike collections",
+  "[cluster][shards][repairs][!throws][!shouldfail]") {
   #include "ClusterRepairsTest.TestData.cpp"
 
   // save old manager (may be null)
@@ -78,80 +79,90 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
 
       DistributeShardsLikeRepairer repairer;
 
-      std::list<AgencyWriteTransaction> transactions
-        = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth3Healthy0Bad->data())
-        );
+      WHEN("One unused DBServer is free to exchange the leader") {
 
-      // TODO there are more values that might be needed in the preconditions,
-      // like distributeShardsLike / repairingDistributeShardsLike,
-      // waitForSync, or maybe replicationFactor
+        std::list<AgencyWriteTransaction> transactions
+          = repairer.repairDistributeShardsLike(
+            VPackSlice(planCollections->data()),
+            VPackSlice(supervisionHealth3Healthy0Bad->data())
+          );
 
-      std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > const& expectedTransactions
-        = expectedTransactionsWithTwoSwappedDBServers;
+        // TODO there are more values that might be needed in the preconditions,
+        // like distributeShardsLike / repairingDistributeShardsLike,
+        // waitForSync, or maybe replicationFactor
 
-      VPackBuilder transactionBuilder;
+        std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> const &expectedTransactions
+          = expectedTransactionsWithTwoSwappedDBServers;
 
-      Options optPretty = VPackOptions::Defaults;
-      optPretty.prettyPrint = true;
+        VPackBuilder transactionBuilder;
 
-      INFO("Expected transactions are:" << std::accumulate(
-        expectedTransactions.begin(), expectedTransactions.end(),
-        std::string(),
-        [&optPretty](std::string const& left, std::shared_ptr<VPackBuffer<uint8_t>> const& right) {
-          std::string result = left + "\n"
-                               + VPackSlice(right->data()).toJson(&optPretty);
-          return result;
-        }
-      ));
-      INFO("Actual transactions are (clientIds are ignored in the comparison):"
-        << std::accumulate(
-        transactions.begin(), transactions.end(),
-        std::string(),
-        [&transactionBuilder,&optPretty](std::string const& left, AgencyWriteTransaction const& right) {
-          transactionBuilder.clear();
-          right.toVelocyPack(transactionBuilder);
-          return left + "\n"
-                 + transactionBuilder.slice().toJson(&optPretty);
-        }
-      ));
+        Options optPretty = VPackOptions::Defaults;
+        optPretty.prettyPrint = true;
 
-      REQUIRE(transactions.size() == expectedTransactions.size());
-
-      { // Transaction IDs shall be unique.
-        std::set<std::string> transactionClientIds;
-        for (auto& it : transactions) {
-          bool inserted;
-          std::tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
-          REQUIRE(inserted);
-
-          // Overwrite the client ID for the following comparisons to work
-          it.clientId = "dummy-client-id";
-        }
-      }
-
-      for (auto const& it : boost::combine(transactions, expectedTransactions)) {
-        auto const& transactionIt = it.get<0>();
-        auto const& expectedTransactionIt = it.get<1>();
-
-        transactionBuilder.clear();
-        transactionIt.toVelocyPack(transactionBuilder);
-
-        Slice const& transactionSlice = transactionBuilder.slice();
-        Slice const& expectedTransactionSlice = VPackSlice(expectedTransactionIt->data());
-
-        REQUIRE(
-          transactionSlice.toJson() == expectedTransactionSlice.toJson()
-        ); // either, or:
-        REQUIRE(NormalizedCompare::equals(
-          transactionSlice,
-          expectedTransactionSlice
+        INFO("Expected transactions are:" << std::accumulate(
+          expectedTransactions.begin(), expectedTransactions.end(),
+          std::string(),
+          [&optPretty](std::string const &left, std::shared_ptr<VPackBuffer<uint8_t>> const &right) {
+            std::string result = left + "\n"
+                                 + VPackSlice(right->data()).toJson(&optPretty);
+            return result;
+          }
         ));
+        INFO("Actual transactions are (clientIds are ignored in the comparison):"
+          << std::accumulate(
+            transactions.begin(), transactions.end(),
+            std::string(),
+            [&transactionBuilder, &optPretty](std::string const &left, AgencyWriteTransaction const &right) {
+              transactionBuilder.clear();
+              right.toVelocyPack(transactionBuilder);
+              return left + "\n"
+                     + transactionBuilder.slice().toJson(&optPretty);
+            }
+          ));
+
+        REQUIRE(transactions.size() == expectedTransactions.size());
+
+        { // Transaction IDs shall be unique.
+          std::set<std::string> transactionClientIds;
+          for (auto &it : transactions) {
+            bool inserted;
+            std::tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
+            REQUIRE(inserted);
+
+            // Overwrite the client ID for the following comparisons to work
+            it.clientId = "dummy-client-id";
+          }
+        }
+
+        for (auto const &it : boost::combine(transactions, expectedTransactions)) {
+          auto const &transactionIt = it.get<0>();
+          auto const &expectedTransactionIt = it.get<1>();
+
+          transactionBuilder.clear();
+          transactionIt.toVelocyPack(transactionBuilder);
+
+          Slice const &transactionSlice = transactionBuilder.slice();
+          Slice const &expectedTransactionSlice = VPackSlice(expectedTransactionIt->data());
+
+          REQUIRE(
+            transactionSlice.toJson() == expectedTransactionSlice.toJson()
+          ); // either, or:
+          REQUIRE(NormalizedCompare::equals(
+            transactionSlice,
+            expectedTransactionSlice
+          ));
+        }
       }
 
       WHEN("The unused DBServer is marked as non-healthy") {
         // TODO this should fail
+
+        REQUIRE_THROWS(
+          repairer.repairDistributeShardsLike(
+            VPackSlice(planCollections->data()),
+            VPackSlice(supervisionHealth2Healthy1Bad->data())
+          )
+        );
       }
     }
 

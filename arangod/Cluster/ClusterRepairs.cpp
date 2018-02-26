@@ -573,7 +573,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       if (dbServers != protoDbServers) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-        << "fixing shard " << shardId;
+        << "fixing shard " << collection.fullName() << "/" << shardId;
         // TODO Do we need to check that dbServers and protoDbServers are not empty?
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
         std::list<AgencyWriteTransaction> newTransactions
@@ -583,7 +583,8 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       else {
         LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
         << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-        << "shard " << shardId << " doesn't need fixing";
+        << "shard " << collection.fullName() << "/" << shardId
+        << " doesn't need fixing";
       }
     }
 
