@@ -205,6 +205,14 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
   }
   // restore old manager
   AgencyCommManager::MANAGER = std::move(old_manager);
+
+  GIVEN("Different version strings") {
+    REQUIRE(VersionSort()("s2", "s10"));
+    REQUIRE(! VersionSort()("s10", "s2"));
+
+    REQUIRE(VersionSort()("s5", "s7"));
+    REQUIRE(! VersionSort()("s7", "s5"));
+  }
 }
 
 }

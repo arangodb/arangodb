@@ -43,7 +43,6 @@ namespace cluster_repairs {
 
 using DBServers = std::vector<ServerID>;
 
-// TODO add tests
 class VersionSort {
   using CharOrInt = boost::variant<char, uint64_t>;
 
