@@ -426,12 +426,12 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
              std::abs(centroid.longitude) <= 180.0);
 
   for (S2CellId cell : cells) {
-    auto it = _tree.lower_bound(cell);
-    while (it != _tree.end() && it->first == cell) {
+    for (auto it = _tree.lower_bound(cell); it != _tree.end() && it->first == cell;) {
       if (it->second.documentId == documentId) {
-        _tree.erase(it);
+        it = _tree.erase(it);
+      } else {
+        ++it;
       }
-      it++;
     }
   }
   return IndexResult();
