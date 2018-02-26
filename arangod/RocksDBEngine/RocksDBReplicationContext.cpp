@@ -269,12 +269,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       if (!afterDocCb()) {
         break;
       }
-    } catch (std::exception const&) {
-      _hasMore = false;
-      return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     } catch (basics::Exception const& ex) {
       _hasMore = false;
       return RocksDBReplicationResult(ex.code(), ex.what(), 0);
+    } catch (std::exception const&) {
+      _hasMore = false;
+      return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
   }
   

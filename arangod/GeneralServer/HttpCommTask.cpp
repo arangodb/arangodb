@@ -174,7 +174,7 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
     if (buff != nullptr) {
       TRI_ASSERT(response->body().empty());
       LOG_TOPIC(ERR, Logger::FIXME) << "Appending VPackBody " << buff->byteSize();
-      buffer._buffer->appendTextUnsafe((const char*)buff->data(), buff->length());
+      buffer._buffer->appendText((const char*)buff->data(), buff->length());
     } else {
       buffer._buffer->appendText(response->body());
     }
