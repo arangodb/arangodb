@@ -86,6 +86,7 @@ const tests = {
       'ldap.search-filter': 'objectClass=*',
       'ldap.search-attribute': 'uid',
       'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+      'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
       // 'log.level': 'ldap=trace',
       'javascript.allow-admin-execute': 'true',
       'ldap.superuser-role': 'adminrole',
@@ -131,6 +132,7 @@ const tests = {
       'ldap.search-filter': 'objectClass=*',
       'ldap.search-attribute': 'uid',
       'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+      'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
       // Use Simple Login Mode
       'ldap.prefix': 'uid=',
       'ldap.suffix': ',dc=arangodb,dc=com',
