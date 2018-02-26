@@ -726,7 +726,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);
     vpb.close();
     
-    //LOG_TOPIC(ERR, Logger::FIXME) << vpb.slice().toJson();
+    LOG_TOPIC(ERR, Logger::FIXME) << "Dumping " << vpb.slice().length() << " docs";
+    size_t bufferSize = buffer.byteSize(); // std::move(buffer) resets buffer
     
     // generate the result
     if (result.fail()) {
@@ -745,7 +746,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            (context->more() ? "true" : "false"));
     
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                           StringUtils::itoa((buffer.length() == 0) ? 0 : result.maxTick()));
+                           StringUtils::itoa((bufferSize == 0) ? 0 : result.maxTick()));
     
   } else {
     LOG_TOPIC(WARN, Logger::FIXME) << "Dumping JSON";

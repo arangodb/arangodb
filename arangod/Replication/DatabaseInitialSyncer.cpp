@@ -157,6 +157,9 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     if (r.isNot(TRI_ERROR_REPLICATION_NO_RESPONSE)) {
       sendFinishBatch();
     }
+    if (r.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Error during initial sync: " << r.errorMessage();
+    }
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "initial synchronization with master took: "
       << Logger::FIXED(TRI_microtime() - startTime, 6) << " s. status: " << r.errorMessage();
     
@@ -578,7 +581,6 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     }
 
     if (!checkMore || fromTick == 0) {
-      
 #warning Remove
       LOG_TOPIC(ERR, Logger::FIXME) << "Fetching dump: " << sumFetchTime;
       LOG_TOPIC(ERR, Logger::FIXME) << "Applying dump: " << sumApplyTime;

@@ -272,16 +272,16 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     } catch (std::exception const&) {
       _hasMore = false;
       return RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
-    } catch (RocksDBReplicationResult const& ex) {
+    } catch (basics::Exception const& ex) {
       _hasMore = false;
-      return ex;
+      return RocksDBReplicationResult(ex.code(), ex.what(), 0);
     }
   }
   
   if (_hasMore) {
     _currentTick++;
   }
-
+  
   return RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _currentTick);
 }
 
