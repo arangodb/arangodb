@@ -44,7 +44,7 @@ constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // Equatorial radius
 // constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
-constexpr double kEarthRadiusInMeters = (6371.008 * 1000);
+constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
 constexpr double kMaxDistanceBetweenPoints =
     kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 

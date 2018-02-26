@@ -205,12 +205,14 @@ class RDBNearIterator final : public IndexIterator {
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
         } else {  // cursor is positioned below min range key
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
-          int k = 10, cc = -1;  // try to catch the range
-          do {
+          int k = 10;  // try to catch the range
+          while (k > 0 && _iter->Valid() &&
+                 cmp->Compare(_iter->key(), bds.start()) < 0) {
             _iter->Next();
-            cc = cmp->Compare(_iter->key(), bds.start());
-          } while (--k > 0 && _iter->Valid() && cc < 0);
-          seek = !_iter->Valid() || cc < 0;
+            --k;
+          }
+          seek =
+              !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
         }
       }
 
@@ -472,8 +474,8 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
 
   ManagedDocumentResult mmdr;
   LogicalCollection* collection = index.collection();
-  RDBNearIterator<geo_index::DocumentsAscending> iter(collection, trx, &mmdr,
-                                                   &index, std::move(params));
+  RDBNearIterator<geo_index::DocumentsAscending> iter(
+      collection, trx, &mmdr, &index, std::move(params));
   auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
     bool read = collection->readDocument(trx, token, mmdr);
     if (!read) {
