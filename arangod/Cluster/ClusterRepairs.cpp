@@ -352,50 +352,22 @@ DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 }
 
 
-RepairOperation
+MoveShardOperation
 DistributeShardsLikeRepairer::createMoveShardOperation(
   Collection& collection,
   ShardID const& shardId,
   ServerID const& fromServerId,
-  ServerID const& toServerId
+  ServerID const& toServerId,
+  bool isLeader
 ) {
-  std::string const agencyShardId
-    = collection.agencyCollectionId() + "/shards/" + shardId;
-
-  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
-  << "DistributeShardsLikeRepairer::createMoveShardOperation: "
-  << "Creating transaction to move shard " << shardId
-  << " of collection " << collection.fullName()
-  << " from server " << fromServerId << " to " << toServerId;
-
-  std::shared_ptr<VPackBuffer<uint8_t>>
-    vpack = collection.createShardDbServerArray(shardId);
-  VPackSlice oldDbServerSlice = Slice(vpack->data());
-  _vPackBuffers.emplace_back(std::move(vpack));
-
-  AgencyPrecondition agencyPrecondition {
-    agencyShardId,
-    AgencyPrecondition::Type::VALUE,
-    oldDbServerSlice
+  return {
+    collection.database,
+    collection.id,
+    shardId,
+    fromServerId,
+    toServerId,
+    isLeader
   };
-
-  for (auto& it : collection.shardsById.at(shardId)) {
-    if (it == fromServerId) {
-      it = toServerId;
-    }
-  }
-
-  vpack = collection.createShardDbServerArray(shardId);
-  VPackSlice newDbServerSlice = Slice(vpack->data());
-  _vPackBuffers.emplace_back(std::move(vpack));
-
-  AgencyOperation agencyOperation {
-    agencyShardId,
-    AgencyValueOperationType::SET,
-    newDbServerSlice
-  };
-
-  return AgencyWriteTransaction { agencyOperation, agencyPrecondition };
 }
 
 
@@ -444,12 +416,24 @@ DistributeShardsLikeRepairer::fixLeader(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
     }
 
-    RepairOperation moveShardOperation = createMoveShardOperation(collection, shardId, protoLeader, tmpServer.get());
+    RepairOperation moveShardOperation = createMoveShardOperation(
+      collection,
+      shardId,
+      protoLeader,
+      tmpServer.get(),
+      false
+    );
 
     repairOperations.emplace_back(moveShardOperation);
   }
 
-  RepairOperation moveShardOperation = createMoveShardOperation(collection, shardId, shardLeader, protoLeader);
+  RepairOperation moveShardOperation = createMoveShardOperation(
+    collection,
+    shardId,
+    shardLeader,
+    protoLeader,
+    true
+  );
 
   repairOperations.emplace_back(moveShardOperation);
 
@@ -508,7 +492,7 @@ DistributeShardsLikeRepairer::fixShard(
     auto const& shardServerIt = zipIt.get<1>();
 
     RepairOperation moveShardOperation =
-      createMoveShardOperation(collection, shardId, shardServerIt, protoServerIt);
+      createMoveShardOperation(collection, shardId, shardServerIt, protoServerIt, false);
     repairOperations.emplace_back(moveShardOperation);
 
 // [PSEUDO-TODO]    if (onProto.length >= col.replicationFactor - 2 && i == 0) {

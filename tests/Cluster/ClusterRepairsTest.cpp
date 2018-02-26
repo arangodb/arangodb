@@ -64,6 +64,15 @@ operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
+bool operator==(MoveShardOperation const &left, MoveShardOperation const &right) {
+  return
+    left.database == right.database
+    && left.collection == right.collection
+    && left.shard == right.shard
+    && left.from == right.from
+    && left.isLeader == right.isLeader;
+}
+
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
   #include "ClusterRepairsTest.TestData.cpp"

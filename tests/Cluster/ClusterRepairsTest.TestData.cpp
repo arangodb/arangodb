@@ -74,8 +74,8 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::vector< std::shared_ptr< VPackBuffer<uint8_t> > >
-  expectedTransactionsWithTwoSwappedDBServers {
+std::vector< RepairOperation >
+  expectedOperationsWithTwoSwappedDBServers {
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
 R"=([
