@@ -105,6 +105,7 @@ add_executable(
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Maintenance/MaintenanceRestHandlerTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp

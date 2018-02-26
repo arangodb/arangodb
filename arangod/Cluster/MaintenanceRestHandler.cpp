@@ -23,9 +23,6 @@
 
 #include "MaintenanceRestHandler.h"
 
-#include <velocypack/vpack.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
@@ -95,26 +92,12 @@ void MaintenanceRestHandler::putAction() {
 
   // convert vpack into key/value map
   if (good) {
-    VPackObjectIterator it(parameters, true);
-
-    for ( ; it.valid() && good; ++it) {
-      VPackSlice key, value;
-
-      key = it.key();
-      value = it.value();
-
-      good = key.isString() && value.isString();
-
-      // attempt insert into map ... but needs to be unique
-      if (good) {
-        good = param_map.insert(std::pair<std::string,std::string>(key.copyString(), value.copyString())).second;
-      }
-    } // for
+    good = parsePutBody(parameters);
 
     // bad json
     if (!good) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    std::string("unable to parse JSON object into key/value pairs. got: "));
+                    std::string("unable to parse JSON object into key/value pairs."));
     } // if
   } // if
 
@@ -133,6 +116,36 @@ void MaintenanceRestHandler::putAction() {
   } // if
 
 } // MaintenanceRestHandler::putAction
+
+
+bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
+  bool good(true);
+
+  _actionDesc = std::make_shared<maintenance::ActionDescription_t>();
+  _actionProp = std::make_shared<VPackBuilder>();
+
+  VPackObjectIterator it(parameters, true);
+  for ( ; it.valid() && good; ++it) {
+    VPackSlice key, value;
+
+    key = it.key();
+    value = it.value();
+
+    // attempt insert into map ... but needs to be unique
+    if (key.isString() && value.isString()) {
+      good = _actionDesc->insert(std::pair<std::string,std::string>(key.copyString(), value.copyString())).second;
+    } else if (key.isString() && (key.copyString() == "properties")
+               && value.isObject()) {
+      // code here
+      _actionProp.reset(new VPackBuilder(value));
+    } else {
+      good = false;
+    } // else
+  } // for
+
+  return good;
+
+} // MaintenanceRestHandler::parsePutBody
 
 
 #if 0

@@ -24,6 +24,10 @@
 #ifndef ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER
 #define ARANGOD_CLUSTER_MAINTENANCE_REST_HANDLER 1
 
+#include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Cluster/MaintenanceAction.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
@@ -44,9 +48,34 @@ class MaintenanceRestHandler : public RestBaseHandler {
   /// @brief Performs routing of request to appropriate subroutines
   RestStatus execute() override;
 
- protected:
+
+  //
+  // Accessors
+  //
+  /// @brief retrieve parsed action description
+  maintenance::ActionDescription_t const & getActionDesc() const {return *_actionDesc;};
+
+  /// @brief retrieve unparsed action properties
+  VPackBuilder const & getActionProp() const {return *_actionProp;};
+
+protected:
   /// @brief PUT method adds an Action to the worklist (or executes action directly)
   void putAction();
+
+
+  /// @brief internal routine to convert PUT body into _actionDesc and _actionProp
+  bool parsePutBody(VPackSlice const & parameters);
+
+protected:
+  /// @brief internal method to parse PUT body into decription and properties
+
+
+
+
+protected:
+  std::shared_ptr<maintenance::ActionDescription_t> _actionDesc;
+  std::shared_ptr<VPackBuilder> _actionProp;
+
 
 };
 }
