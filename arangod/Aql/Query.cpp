@@ -615,8 +615,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
               val.toVelocyPack(_trx, *resultBuilder, true);
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
 
         // must close result array here because it must be passed as a closed
@@ -646,8 +645,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
               val.toVelocyPack(_trx, *resultBuilder, false);
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
 
         // must close result array
@@ -820,8 +818,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               val.toVelocyPack(_trx, *builder, true);
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
 
         builder->close();
@@ -851,8 +848,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               }
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
       }
     } catch (...) {
