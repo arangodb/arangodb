@@ -10,6 +10,9 @@ fetches all existing tasks on the server
 @RESTRETURNCODE{200}
 The list of tasks
 
+@RESTREPLYBODY{,array,required,api_task_struct}
+a list of all tasks
+
 @EXAMPLES
 
 Fetching all tasks
