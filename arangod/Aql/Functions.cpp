@@ -3753,6 +3753,24 @@ AqlValue Functions::CurrentDatabase(
   return AqlValue(query->vocbase()->name());
 }
 
+/// @brief function CURRENT_USER
+AqlValue Functions::CurrentUser(
+    arangodb::aql::Query* query, transaction::Methods* trx,
+    VPackFunctionParameters const& parameters) {
+
+  if (ExecContext::CURRENT == nullptr) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  std::string const& username = ExecContext::CURRENT->user();
+
+  if (username.size() == 0) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  return AqlValue(username);
+}
+
 /// @brief function COLLECTION_COUNT
 AqlValue Functions::CollectionCount(
     arangodb::aql::Query* query, transaction::Methods* trx,
