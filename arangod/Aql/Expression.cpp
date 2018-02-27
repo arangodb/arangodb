@@ -158,17 +158,6 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
                                  "invalid expression type");
 }
 
-/// @brief execute the expression
-/// TODO DEPRECATED
-AqlValue Expression::execute(transaction::Methods* trx,
-                             AqlItemBlock const* argv, size_t startPos,
-                             std::vector<Variable const*> const& vars,
-                             std::vector<RegisterId> const& regs,
-                             bool& mustDestroy) {
-  BaseExpressionContext ctx(startPos, argv, vars, regs);
-  return execute(trx, &ctx, mustDestroy);
-}
-
 /// @brief replace variables in the expression with other variables
 void Expression::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
