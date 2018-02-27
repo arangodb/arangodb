@@ -455,7 +455,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
 
 
 IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* trx,
-                                                          ManagedDocumentResult* mdr,
+                                                          ManagedDocumentResult*,
                                                           aql::AstNode const* condNode,
                                                           aql::Variable const* var, bool reverse) {
   TRI_ASSERT(condNode != nullptr);
@@ -487,7 +487,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  return new RocksDBFulltextIndexIterator(_collection, trx, mdr, this,
-                                          std::move(results));
+  return new RocksDBFulltextIndexIterator(_collection, trx, this, std::move(results));
 }
 

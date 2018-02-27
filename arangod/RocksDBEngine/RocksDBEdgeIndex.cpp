@@ -88,9 +88,9 @@ void RocksDBEdgeIndexWarmupTask::run() {
 
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
+    arangodb::RocksDBEdgeIndex const* index,
     std::unique_ptr<VPackBuilder>& keys, std::shared_ptr<cache::Cache> cache)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
@@ -549,7 +549,7 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
 
     arangodb::aql::Variable const* reference, bool reverse) {
@@ -573,7 +573,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -582,7 +582,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
       // a.b IN non-array
       return new EmptyIndexIterator(_collection, trx, this);
     }
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -893,7 +893,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -907,13 +907,12 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
 }
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -934,8 +933,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
 }
 
 /// @brief add a single value node to the iterator's keys
