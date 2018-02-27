@@ -10,6 +10,8 @@ fi
 set -e
 # Automatically added by dh_systemd_start
 if [ -d /run/systemd/system ] ; then
-        deb-systemd-invoke stop @CPACK_PACKAGE_NAME@.service >/dev/null
+        if systemctl list-unit-files | grep -q @CPACK_PACKAGE_NAME@.service ; then
+            deb-systemd-invoke stop @CPACK_PACKAGE_NAME@.service
+        fi
 fi
 # End automatically added section
