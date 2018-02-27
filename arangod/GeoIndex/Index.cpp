@@ -214,11 +214,11 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 
       aql::AstNode const* geoJson = args->getMemberUnchecked(0);
       aql::AstNode const* symbol = args->getMemberUnchecked(1);
-      TRI_ASSERT(symbol->isArray() && symbol->numMembers() == 2 &&
-                     symbol->getMember(0)->isAttributeAccessForVariable() &&
-                     symbol->getMember(1)->isAttributeAccessForVariable() ||
-                 symbol->isAttributeAccessForVariable(ref, true));
-      TRI_ASSERT(!geoJson->isAttributeAccessForVariable());
+      // geojson or array with variables
+      TRI_ASSERT(symbol->isAttributeAccessForVariable(ref, true) ||
+                 symbol->isArray() && symbol->numMembers() == 2 &&
+                 symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
+                 symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr);
 
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
