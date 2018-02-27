@@ -46,101 +46,69 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief Shared conf
+// //////////////////////////////////////////////////////////////////////////////
+
+const sharedConf = {
+  'server.authentication': true,
+  'server.authentication-system-only': true,
+  'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
+  'ldap.enabled': true,
+  'ldap.server': '127.0.0.1',
+  'ldap.port': '389',
+  'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
+  'ldap.bindpasswd': 'password',
+  'ldap.basedn': 'dc=arangodb,dc=com',
+  'ldap.superuser-role': 'adminrole',
+  'javascript.allow-admin-execute': 'true',
+  'server.local-authentication': 'true'
+};
+
+const prefixSuffix = {
+  'ldap.prefix': 'uid=',
+  'ldap.suffix': ',dc=arangodb,dc=com',
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Test Configurations
+// //////////////////////////////////////////////////////////////////////////////
+
+const ldapModeRolesConf = Object.assign({}, sharedConf, {
+  // Use Roles Attribute Mode #1
+  'ldap.roles-attribute-name': 'sn'
+});
+
+const ldapModeSearchConf = Object.assign({}, sharedConf, {
+  // Search Mode #2 RoleSearch:
+  'ldap.search-filter': 'objectClass=*',
+  'ldap.search-attribute': 'uid',
+  'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
+  'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/'
+});
+
+const ldapModeRolesSimpleConf = Object.assign({}, ldapModeRolesConf, prefixSuffix);
+const ldapModeSearchSimpleConf = Object.assign({}, ldapModeSearchConf, prefixSuffix);
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: ldap
 // //////////////////////////////////////////////////////////////////////////////
 
 const tests = {
   ldapModeRoles: {
     name: 'ldapModeRoles',
-    conf: {
-      'server.authentication': true,
-      'server.authentication-system-only': true,
-      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
-      'ldap.enabled': true,
-      'ldap.server': '127.0.0.1',
-      'ldap.port': '389',
-      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
-      'ldap.bindpasswd': 'password',
-      'ldap.basedn': 'dc=arangodb,dc=com',
-      'ldap.superuser-role': 'adminrole',
-      // Use Roles Attribute Mode #1
-      'ldap.roles-attribute-name': 'sn',
-      // 'log.level': 'ldap=trace',
-      'javascript.allow-admin-execute': 'true',
-      'server.local-authentication': 'true'
-    }
+    conf: ldapModeRolesConf
   },
   ldapModeSearch: {
     name: 'ldapModeSearch',
-    conf: {
-      'server.authentication': true,
-      'server.authentication-system-only': true,
-      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
-      'ldap.enabled': true,
-      'ldap.port': '389',
-      'ldap.basedn': 'dc=arangodb,dc=com',
-      'ldap.server': '127.0.0.1',
-      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
-      'ldap.bindpasswd': 'password',
-      // Search Mode activate the following for RoleSearch:
-      'ldap.search-filter': 'objectClass=*',
-      'ldap.search-attribute': 'uid',
-      'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
-      'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
-      // 'log.level': 'ldap=trace',
-      'javascript.allow-admin-execute': 'true',
-      'ldap.superuser-role': 'adminrole',
-      'server.local-authentication': 'true'
-    }
+    conf: ldapModeSearchConf
   },
   ldapModeRolesPrefixSuffix: {
     name: 'ldapModeRolesPrefixSuffix',
-    conf: {
-      'server.authentication': true,
-      'server.authentication-system-only': true,
-      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
-      'ldap.enabled': true,
-      'ldap.server': '127.0.0.1',
-      'ldap.port': '389',
-      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
-      'ldap.bindpasswd': 'password',
-      'ldap.basedn': 'dc=arangodb,dc=com',
-      'ldap.superuser-role': 'adminrole',
-      // Use Roles Attribute Mode #3
-      'ldap.roles-attribute-name': 'sn',
-      // Use Simple Login Mode
-      'ldap.prefix': 'uid=',
-      'ldap.suffix': ',dc=arangodb,dc=com',
-      // 'log.level': 'ldap=trace',
-      'javascript.allow-admin-execute': 'true',
-      'server.local-authentication': 'true'
-    }
+    conf: ldapModeRolesSimpleConf
   },
   ldapModeSearchPrefixSuffix: {
     name: 'ldapModeSearchPrefixSuffix',
-    conf: {
-      'server.authentication': true,
-      'server.authentication-system-only': true,
-      'server.jwt-secret': 'haxxmann', // hardcoded in auth.js
-      'ldap.enabled': true,
-      'ldap.port': '389',
-      'ldap.basedn': 'dc=arangodb,dc=com',
-      'ldap.server': '127.0.0.1',
-      'ldap.binddn': 'cn=admin,dc=arangodb,dc=com',
-      'ldap.bindpasswd': 'password',
-      // Search Mode activate the following for RoleSearch:
-      'ldap.search-filter': 'objectClass=*',
-      'ldap.search-attribute': 'uid',
-      'ldap.roles-search': '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))',
-      'ldap.roles-transformation': '/^cn=([^,]*),.*$/$1/',
-      // Use Simple Login Mode
-      'ldap.prefix': 'uid=',
-      'ldap.suffix': ',dc=arangodb,dc=com',
-      // 'log.level': 'ldap=trace',
-      'javascript.allow-admin-execute': 'true',
-      'ldap.superuser-role': 'adminrole',
-      'server.local-authentication': 'true'
-    }
+    conf: ldapModeSearchSimpleConf
   }
 };
 
