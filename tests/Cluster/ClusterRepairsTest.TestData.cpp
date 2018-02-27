@@ -99,29 +99,29 @@ std::vector< RepairOperation >
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
   MoveShardOperation {
-    "someDb",
-    "11111111",
-    "s11",
-    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    false
+    .database = "someDb",
+    .collection = "11111111",
+    .shard = "s11",
+    .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+    .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+    .isLeader = false
   },
 // move leader to the correct dbserver
   MoveShardOperation {
     .database = "someDb",
-    "11111111",
-    "s11",
-    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    true
+    .collection = "11111111",
+    .shard = "s11",
+    .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+    .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+    .isLeader = true
   },
 // fix the remaining shard
   MoveShardOperation {
-    "someDb",
-    "11111111",
-    "s11",
-    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    false
+    .database = "someDb",
+    .collection = "11111111",
+    .shard = "s11",
+    .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+    .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+    .isLeader = false
   },
 };
