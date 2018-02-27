@@ -1,10 +1,8 @@
-LDAP
-====
+# LDAP
 
 __This feature is only available in the Enterprise Edition.__
 
-Basics Concepts
----------------
+## Basics Concepts
 
 The basic idea is that one can keep the user authentication setup for
 an ArangoDB instance (single or cluster) outside of ArangoDB in an LDAP
@@ -48,14 +46,12 @@ for details about method (a) and for the associated configuration
 options.
 
 Method (b) is very similar and only differs from (a) in the way the
-actual list of roles of a user is derived from the LDAP server. Note
-that (b) is only possible with the "search" authentication method above.
+actual list of roles of a user is derived from the LDAP server. 
 See Section "Roles search" below for details about method (b) and for
 the associated configuration options.
 
 
-Fundamental options to find and connect to the LDAP server
-----------------------------------------------------------
+## Fundamental options to find and connect to the LDAP server
 
 The fundamental options for specifying how to access the LDAP server are
 the following:
@@ -66,6 +62,8 @@ the following:
     of the LDAP server
   - `--ldap.port` is an integer specifying the port the LDAP server is
     running on, the default is *389*
+  - `--ldap.basedn` specifies the base distinguished name under which
+    the search takes place (can alternatively be set via `--ldap.url`)
   - `--ldap.binddn` and `--ldap.bindpasswd` are distinguished name and
     password for a read-only LDAP user to which ArangoDB can bind to
     search the LDAP server. Note that it is necessary to configure these
@@ -86,6 +84,90 @@ Note that the `--ldap.server` and `--ldap.port` options can
 alternatively be specified in the `--ldap.url` string together with
 other configuration options. For details see Section "LDAP URLs" below.
 
+Here is an example on how to configure the connection to the LDAP server,
+with anonymous bind:
+
+    --ldap.enabled=true \
+    --ldap.server=ldap.arangodb.com \
+    --ldap.basedn=dc=arangodb,dc=com
+
+With this configuration ArangoDB binds anonymously to the LDAP server
+on host `ldap.arangodb.com` on the default port 389 and executes all searches
+under the base distinguished name `dc=arangodb,dc=com`.
+
+If we need a user to read in LDAP here is the exmaple for it:
+
+    --ldap.enabled=true \
+    --ldap.server=ldap.arangodb.com \
+    --ldap.basedn=dc=arangodb,dc=com \
+    --ldap.binddn=uid=arangoadmin,dc=arangodb,dc=com \
+    --ldap.bindpasswd=supersecretpassword
+
+The connection is identical but the searches will be executed with the
+given distringuished name in `binddn`.
+
+Note here:
+The given user (or the anonymous one) needs at least read access on
+all user objects to find them and in the case of Roles search
+also read access on the objects storing the roles.
+
+Up to this point ArangoDB can now connect to a given LDAP server
+but it is not yet able to authenticate users properly with it.
+For this pick one of the following two authentication methods.
+
+### LDAP URLs
+
+As an alternative one can specify the values of multiple LDAP related configuration
+options by specifying a single LDAP URL. Here is an example:
+
+    --ldap.url ldap://ldap.arangodb.com:1234/dc=arangodb,dc=com?uid?sub
+
+as one option has the combined effect of setting
+
+    --ldap.server=ldap.arangodb.com \
+    --ldap.port=1234 \
+    --ldap.basedn=dc=arangodb,dc=com \
+    --ldap.searchAttribute=uid \
+    --ldap.searchScope=sub
+
+That is, the LDAP URL consists of the ldap *server* and *port*, a *basedn*, a
+*search attribute* and a *scope* which can be one of *base*, *one* or
+*sub*.
+
+### TLS options
+
+To configure the usage of encrypted TLS to communicate with the LDAP server
+the following options are available. Note: *TLS is not supported under Windows*:
+
+  - `--ldap.tls` The main switch to active TLS. can either be 
+      `true` => use tls. or `false` => do not use tls. Is swithed
+      off by default
+  - `--ldap.tls-version` the tls version that should be used.
+    Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. 
+  - `--ldap.tls-cert-check-strategy` strategy to validae the ldap server
+     certificate.  Available strategies are `never`, `hard`,
+      `demand`, `allow` and `try`. The default is `hard`.
+  - `--ldap.tls-cacert-file` A file path to one or more (concatenated)
+      certificate authority certificates in pem format.
+      As default no file path is configured. This certificate
+      is used to validate the server response.
+  - `--ldap.tls-cacert-dir` A directory path to certificate authority certificates in
+      [c_rehash](https://www.openssl.org/docs/man1.0.2/apps/c_rehash.html)
+      format. As default no directory path is configured.
+
+Assuming you have the tls cacert file that is given to the server at `/path/to/certificate.pem`
+Here is an example on how to configure TLS:
+
+
+    --ldap.tls true \
+    --ldap.tls-cacert-file /path/to/certificate.pem
+
+You can use tls with any of the following authentiaction mechanisms.
+
+## Authentication methods
+
+In order to authenticate users in LDAP we have two options available.
+We need to pick exactly one them.
 
 ### Simple authentication method
 
@@ -107,6 +189,16 @@ distinguished name and the password provided by the client. If
 the LDAP server successfully verifies the password then the user is 
 authenticated.
 
+If you want to use this method add the following example to your
+arangodb configuration together with the fundamental configuration:
+
+    --ldap.prefix uid= \
+    --ldap.suffix ,dc=arangodb,dc=com
+
+This method will authenticate an ldap user with the distinguished name
+`{PREFIX}{USERNAME}{SUFFIX}`, in this case for the arango user `alice`
+it will search for: `uid=alice,dv=arangodb,dc=com`.
+This distinguished name will be used as `{{USER}}` for the roles later on.
 
 ### Search authentication method
 
@@ -115,87 +207,96 @@ options `--ldap.prefix` and `--ldap.suffix` is empty or not specified.
 ArangoDB uses the LDAP user credentials given by the `--ldap.binddn` and
 `--ldap.bindpasswd` to perform a search for LDAP users.
 In this case, the values of the options `--ldap.basedn`,
-`--ldap.searchAttribute`, `--ldap.searchFilter` and `--ldap.searchScope`
+`--ldap.search-attribute`, `--ldap.search-filter` and `--ldap.search-scope`
 are used in the following way:
 
-  - `--ldap.basedn` specifies the base distinguished name under which
-    the search takes place (can alternatively be set via `--ldap.url`)
-  - `--ldap.searchScope` is an LDAP search scope with possible values
+  - `--ldap.search-scope` is an LDAP search scope with possible values
     `base` (just search the base distinguished name),
     `sub` (recursive search under the base distinguished name) or
     `one` (search the base's immediate children) (default: `sub`)
-  - `--ldap.searchFilter` is an LDAP filter expression which limits the
+  - `--ldap.search-filter` is an LDAP filter expression which limits the
     set of LDAP users being considered (default: `objectClass=*` which
     means all objects)
-  - `--ldap.searchAttribute` specifies the attribute in the user objects
+  - `--ldap.search-attribute` specifies the attribute in the user objects
     which is used to match the ArangoDB user name (default: `uid`)
 
-Here is an example with an anonymous bind:
+Here is an example on how to configure the search method.
+Assume we have users like the following stored in LDAP:
 
-    --ldap.enabled=true --ldap.server=ldap.arangodb.com \
-    --ldap.basedn=dc=arangodb,dc=com \
-    --ldap.roles-attribute-name=sn
+    dn: uid=alice,dc=arangodb,dc=com
+    uid: alice
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: top
+    objectClass: person 
 
-With this configuration ArangoDB binds anonymously to the LDAP server
-on host `ldap.arangodb.com` on the default port 389 and searches for an
-LDAP user under the base distinghuished name `dc=arangodb,dc=com` whose 
-`uid` attribute is equal to the ArangoDB user name given by the client. 
-If such an LDAP user is found an authentication is
-done with this LDAP user's DN and the password given by the client.
-If authenticated, this LDAP user is used to fetch the authorization
-information by using the roles given in the `sn` attribute (see below).
+Where `uid` is the username used in ArangoDB, and we only search
+for objects of type `person` then we can add the following to our
+fundamental LDAP configuration:
 
-Here is an example with base distinguished name and a read-only admin
-LDAP user and password:
+    --ldap.search-attribute=uid \
+    --ldap.search-filter=objectClass=person
 
-    --ldap.enabled true --ldap.server ldap.arangodb.com \
-    --ldap.basedn dc=arangodb,dc=com \
-    --ldap.searchAttribute=loginname \
-    --ldap.binddn cn=admin,dc=company,dc=com \
-    --ldap.bindpasswd secretpassword \
-    --ldap.roles-attribute-name=roles
+This will use the `sub` search scope by default and will find
+all `person` objects where the `uid` is equal to the given username.
+From these the `dn` will be extracted and used as `{{USER}}` in
+the roles later on.
 
-With this configuration ArangoDB binds with `--ldap.binddn` and
-`--ldap.bindpasswd` to the LDAP server and searches for a user whose
-`loginname` attribute is equal to the ArangoDB user name. If
-the LDAP user is found an authentication is done with the LDAP users DN and
-the password given by the client, and then the list of the user's roles
-is fetched from the `roles` attribute of the user.
 
+## Fetching roles for a user
+
+After authentication, the next step is to derive authorization
+information from the authenticated LDAP user.
+In order to fetch the roles and therby the access rights
+for a user we again have two possible options and need to pick
+one of them. We can combine each authentication method
+with each role method.
+In any case a user can have no role or more than one.
+If a user has no role the user will not get any access
+to ArangoDB at all.
+If a user has multiple roles with different rights
+then the rights will be combined and the `strongest`
+right will win.  Example:
+`alice` has the roles `project-a` and `project-b`.
+`project-a` has no access to collection `BData`.
+`project-b` has `rw` access to collection `BData`,
+hence `alice` will have `rw` on `BData`.
+
+Note that the actual database and collection access rights
+will be configured in ArangoDB itself by roles in the users module.
+The role name is always prefixed with `:role:`, e.g.: `:role:project-a`
+and `:role:project-b` respectively. You can use the normal user
+permissions tools in the UI or the `arangosh` to configure these.
 
 ### Roles attribute
 
-After authentication, the next step is to derive authorization
-information from the authenticated LDAP user. The most important method
-for this is to read off the roles an LDAP user is associated with from
-an attribute in the LDAP user object. If the
-`--ldap.roles-attribute-name` configuration option is set, then the
-value of that option is the name of the attribute being used.
+The most important method for this is to read off the roles an LDAP
+user is associated with from an attribute in the LDAP user object.
+If the configuration option
 
-Here is an example:
+    --ldap.roles-attribute-name
+    
+configuration option is set, then the value of that
+option is the name of the attribute being used.
 
-    --ldap.enabled=true --ldap.server=ldap.arangodb.com \
-    --ldap.basedn=dc=arangodb,dc=com \
+Here is the example to add to the overall configuration:
+
     --ldap.roles-attribute-name=role
 
-If one uses `fermi` as the ArangoDB user name the following LDAP user
-object will match and thus the roles `project-a` and `project-b` will
-be associated with the authenticated user:
+If we have the user stored like the following in LDAP:
 
-    dn: uid=fermi,dc=arangodb,dc=com
-    uid: fermi
+    dn: uid=alice,dc=arangodb,dc=com
+    uid: alice
+    objectClass: inetOrgPerson
+    objectClass: organizationalPerson
+    objectClass: top
+    objectClass: person 
     role: project-a
     role: project-b
 
-ArangoDB tries to authenticate with this LDAP user against the LDAP
-server and searches for the roles in the attribute `role`. This will
-give the user the combined permissions of the roles `project-a` and
-`project-b`. Note that the actual database and collection access rights
-will be configured in ArangoDB itself by documents in the `_users`
-collection whose `name` attribute is `:role:project-a` and
-`:role:project-b` respectively. You can use the normal user
-permissions tools in the UI or the `arangosh` to configure these.
-
+Then the request will grant the roles `project-a` and `project-b`
+for the user `alice` after successful authentication,
+as they are stored within the `role` on the user object.
 
 ### Roles search
 
@@ -212,26 +313,20 @@ LDAP objects representing roles of that user.
 
 Example:
 
-    --ldap.enabled true --ldap.server ldap.arangodb.com \
-    --ldap.basedn dc=arangodb,dc=com \
-    --ldap.binddn cn=admin,dc=arangodb,dc=com \
-    --ldap.bindpasswd admin \
     --ldap.roles-search '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))'
 
-This will first search for an LDAP user as described above in Section
-"Search authentication". Once an LDAP user is found, `{USER}` in the
-search expression is replaced by its distinguished name. For example,
-the DN could be `uid=fermi,dc=arangodb,dc=com` and thus with the above
-search expression the actual search expression would end up being
+Afther a LDAP user was found and authenticated as described in the
+authentication section above the `{USER}` in the search expression
+will be replaced by its distinguised name, e.g. `uid=alice,dc=arangodb,dc=com`,
+and thus with the above search expression the actual search expression
+would end up being:
 
-    (&(objectClass=groupOfUniqueNames)(uniqueMember=uid=fermi,dc=arangodb,dc=com}))
+    (&(objectClass=groupOfUniqueNames)(uniqueMember=uid=alice,dc=arangodb,dc=com}))
 
+This search will find all objectes of `groupOfUniqueNames` where
+at least one `uniqueMember` has the `dn` of `alice`.
 The list of results of that search would be the list of roles given by
 the values of the `dn` attributes of the found role objects.
-The actual permissions in ArangoDB for the user will
-be the combined permissions of these roles. The database and collection
-permissions for the roles are configured directly in ArangoDB as above.
-
 
 ### Role transformations and filters
 
@@ -249,89 +344,104 @@ describe these further options:
 
   - `--ldap.roles-transformation` can be used to sepcify a regular
     expression and replacement text as `/re/text/`. This regular
-    expression is applied to the role name found.
+    expression is applied to the role name found. This is espacially
+    useful in the roles-search variant to extract the real role name
+    out of the `dn` value.
 
   - `--ldap.superuser-role` can be used to specify the role associated
     with the superuser. Any user belonging to this role gains superuser
-    status. This role is checked before applying any regular expression.
+    status. This role is checked after applying the roles-transformation
+    expression.
 
 Example:
 
-    --ldap.enabled true --ldap.server=ldap.arangodb.com \
-    --ldap.roles-attribute-name=role \
-    --ldap.prefix=uid= \
-    --ldap.suffix=,dc=arangodb,dc=com
     --ldap.roles-include "^arangodb" 
 
 will only consider roles that start with `arangodb`.
 
-    --ldap.enabled true --ldap.server=ldap.arangodb.com \
-    --ldap.roles-attribute-name=role \
-    --ldap.prefix=uid= \
-    --ldap.suffix=,dc=arangodb,dc=com
     --ldap.roles-exclude=disabled
 
 will only consider roles that do contain the word `disabled`.
 
-    --ldap.enabled true --ldap.server=ldap.arangodb.com \
-    --ldap.roles-attribute-name=role \
-    --ldap.prefix=uid= \
-    --ldap.suffix=,dc=arangodb,dc=com
     --ldap.superuser-role "arangodb-admin" 
 
 anyone belonging to the group "arangodb-admin" will become a superuser.
 
+The roles-transformation deserves a larger example. Asume we are using
+roles search and have stored roles in the following way:
 
-#### LDAP URLs
+    dn: cn=project-a,dc=arangodb,dc=com
+    objectClass: top
+    objectClass: groupOfUniqueNames
+    uniqueMember: uid=alice,dc=arangodb,dc=com
+    uniqueMember: uid=bob,dc=arangodb,dc=com
+    cn: project-a
+    description: Internal project A
 
-One can specify the values of multiple LDAP related configuration
-options by specifying a single LDAP URL. Here is an example:
+    dn: cn=project-b,dc=arangodb,dc=com
+    objectClass: top
+    objectClass: groupOfUniqueNames
+    uniqueMember: uid=alice,dc=arangodb,dc=com
+    uniqueMember: uid=charly,dc=arangodb,dc=com
+    cn: project-b
+    description: External project B
 
-    --ldap.url ldap://ldap.arangodb.com:1234/dc=arangodb,dc=com?uid?sub
+In this case we will find `cn=project-a,dc=arangodb,dc=com` as one
+role of `alice`. However we actually want to configure a role name:
+`:role:project-a` which is easier to read and maintain for our
+administrators.
 
-as one option has the combined effect of setting
+if we now apply the following transformation:
 
+    --ldap.roles-transformation=/^cn=([^,]*),.*$/$1/
+
+The regex will extract out `project-a` resp. `project-b` of the
+`dn` attribute.
+In combination with the `superuser-role` we could make all
+`project-a` members arangodb admins by using:
+
+    --ldap.roles-transformation=/^cn=([^,]*),.*$/$1/ \
+    --ldap.superuser-role=project-a
+
+
+## Complete configuration examples
+
+In this section we would like to present complete examples
+for a successful LDAP configuration of ArangoDB.
+All of the following are just combinations of the details described above.
+
+### Simple authentication with role-search, using anonymous LDAP user
+
+This example connects to the LDAP server with an anonymous read-only
+user. We use the simple authentaction mode (`prefix` + `suffix`)
+to authenticate userss and apply a role search for `groupOfUniqueNames` objects
+where the user is a `uniqueMember`. Furthermore we extract only the `cn`
+out of the distinguished role name.
+
+    --ldap.enabled=true \
     --ldap.server=ldap.arangodb.com \
-    --ldap.port=1234 \
     --ldap.basedn=dc=arangodb,dc=com \
-    --ldap.searchAttribute=uid \
-    --ldap.searchScope=sub
+    --ldap.prefix uid= \
+    --ldap.suffix ,dc=arangodb,dc=com \
+    --ldap.roles-search '(&(objectClass=groupOfUniqueNames)(uniqueMember={USER}))' \
+    --ldap.roles-transformation=/^cn=([^,]*),.*$/$1/ \
+    --ldap.superuser-role=project-a
 
-That is, the LDAP URL consists of the ldap *server* and *port*, a *basedn*, a
-*search attribute* and a *scope* which can be one of *base*, *one* or
-*sub*.
+### Search authentication with roles attribute using LDAP admin user having TLS enabled
 
+This example connects to the LDAP server with a given distinguished name of an
+admin user + password.
+Furthermore we activate TLS and give the certificate file to validate server responses.
+We use the search authentication searching for the `uid` attribute of `person` objects.
+These `person` objects have `role` attribute(s) containing the role(s) of a user. 
 
-### TLS options
-
-An encrypted connection to the LDAP server can be established with 
-`--ldap.tls true` under UNIX and GNU/Linux platforms.
-
-All following options are not available under Windows.
-
-    --ldap.tls
-
-The default is `false`. With `true` a tls connection is established.
-
-    --ldap.tls-version
-
-The default is `1.2`. Available versions are `1.0`, `1.1` and `1.2`.
-
-    --ldap.tls-cert-check-strategy
-
-The default is `hard`. Available strategies are `never`, `hard`,
-`demand`, `allow` and `try`.
-
-    --ldap.tls-cacert-file
-
-A file path to one or more (concatenated) certificate authority
-certificates in pem format.  As default no file path is configured.
-
-Following option has no effect / does not work under macOS.
-
-    --ldap.tls-cacert-dir
-
-A directory path to certificate authority certificates in
-[c_rehash](https://www.openssl.org/docs/man1.0.2/apps/c_rehash.html)
-format.  As default no directory path is configured.
-
+    --ldap.enabled=true \
+    --ldap.server=ldap.arangodb.com \
+    --ldap.basedn=dc=arangodb,dc=com \
+    --ldap.binddn=uid=arangoadmin,dc=arangodb,dc=com \
+    --ldap.bindpasswd=supersecretpassword \
+    --ldap.tls true \
+    --ldap.tls-cacert-file /path/to/certificate.pem \
+    --ldap.search-attribute=uid \
+    --ldap.search-filter=objectClass=person \
+    --ldap.roles-attribute-name=role
