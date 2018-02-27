@@ -25,6 +25,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Statistics/ConnectionStatistics.h"
+#include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
@@ -117,7 +118,9 @@ StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
 StatisticsFeature::StatisticsFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Statistics"), _statistics(true) {
+    : ApplicationFeature(server, "Statistics"),
+      _statistics(true),
+      _descriptions(new stats::Descriptions()) {
   startsAfter("Logger");
   startsAfter("Aql");
 }

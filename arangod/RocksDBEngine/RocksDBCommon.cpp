@@ -86,15 +86,6 @@ uint64_t latestSequenceNumber() {
   return static_cast<uint64_t>(seq);
 }
 
-void addCollectionMapping(uint64_t objectId, TRI_voc_tick_t did,
-                          TRI_voc_cid_t cid) {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
-  TRI_ASSERT(rocks->db() != nullptr);
-  return rocks->addCollectionMapping(objectId, did, cid);
-}
-
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
     uint64_t objectId) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -102,6 +93,15 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
   RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
   TRI_ASSERT(rocks->db() != nullptr);
   return rocks->mapObjectToCollection(objectId);
+}
+  
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(
+                                                              uint64_t objectId) {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  RocksDBEngine* rocks = static_cast<RocksDBEngine*>(engine);
+  TRI_ASSERT(rocks->db() != nullptr);
+  return rocks->mapObjectToIndex(objectId);
 }
 
 /// @brief count all keys in the given column family

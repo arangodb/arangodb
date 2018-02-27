@@ -363,6 +363,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
+  RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
@@ -374,7 +375,6 @@ SET(ARANGOD_SOURCES
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
-  RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
   RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
@@ -436,6 +436,7 @@ SET(ARANGOD_SOURCES
   Scheduler/SocketTcp.cpp
   Scheduler/Task.cpp
   Statistics/ConnectionStatistics.cpp
+  Statistics/Descriptions.cpp
   Statistics/RequestStatistics.cpp
   Statistics/ServerStatistics.cpp
   Statistics/StatisticsFeature.cpp

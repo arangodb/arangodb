@@ -1790,7 +1790,7 @@ void Ast::validateAndOptimize() {
     if (ctx->filterDepth >= 0) {
       ++ctx->filterDepth;
     }
-
+    
     if (node->type == NODE_TYPE_FILTER) {
       TRI_ASSERT(ctx->filterDepth == -1);
       ctx->filterDepth = 0;
@@ -1802,6 +1802,12 @@ void Ast::validateAndOptimize() {
         // NOOPT will turn all function optimizations off
         ++(ctx->stopOptimizationRequests);
       }
+    } else if (node->type == NODE_TYPE_COLLECTION_LIST) {
+      // a collection list is produced by WITH a, b, c
+      // or by traversal declarations
+      // we do not want to descend further, in order to not track
+      // the collections in collectionsFirstSeen
+      return false;
     } else if (node->type == NODE_TYPE_COLLECTION) {
       // note the level on which we first saw a collection
       ctx->collectionsFirstSeen.emplace(node->getString(), ctx->nestingLevel);

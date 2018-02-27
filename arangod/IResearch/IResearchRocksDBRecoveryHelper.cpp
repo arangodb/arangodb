@@ -321,7 +321,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
       return;
     }
 
-    auto rev = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
     auto doc = RocksDBValue::data(value);
 
     SingleCollectionTransaction trx(
@@ -334,7 +334,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     for (auto link : links) {
       link->insert(
         &trx,
-        LocalDocumentId(rev),
+        docId,
         doc,
         Index::OperationMode::internal
       );
@@ -364,7 +364,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
       return;
     }
 
-    auto rev = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+    auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
 
     SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(vocbase), coll->cid(),
@@ -376,12 +376,12 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     for (auto link : links) {
       link->remove(
         &trx,
-        LocalDocumentId(rev),
+        docId,
         arangodb::velocypack::Slice::emptyObjectSlice(),
         Index::OperationMode::internal
       );
       // LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH) << "recovery helper
-      // removed: " << rev;
+      // removed: " << docId.id();
     }
 
     trx.commit();

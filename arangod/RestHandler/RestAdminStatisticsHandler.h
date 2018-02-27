@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,23 +17,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_ECHO_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_ECHO_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_ADMIN_STATISTICS_HANDLER_H 1
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Basics/Common.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class RestEchoHandler : public arangodb::RestVocbaseBaseHandler {
+class RestAdminStatisticsHandler : public RestBaseHandler {
  public:
-  RestEchoHandler(GeneralRequest*, GeneralResponse*);
+  RestAdminStatisticsHandler(GeneralRequest*, GeneralResponse*);
 
  public:
-  char const* name() const override final { return "RestEchoHandler"; }
-  bool isDirect() const override { return true; }
-  RestStatus execute() override;
+  char const* name() const override final { return "RestAdminStatisticsHandler"; }
+  bool isDirect() const override final { return false; }
+  RestStatus execute() override final;
+
+ private:
+  void getStatistics();
+  void getStatisticsDescription();
 };
 }
 
