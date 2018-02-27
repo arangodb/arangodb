@@ -28,10 +28,25 @@
 // / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var console = require('console');
+const internal = require('internal');
+const console = require('console');
+const actions = require('@arangodb/actions');
 
-var actions = require('@arangodb/actions');
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_get_admin_echo
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/echo',
+  prefix: true,
+
+  callback: function (req, res) {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = 'application/json; charset=utf-8';
+    req.rawRequestBody = internal.rawRequestBody(req);
+    res.body = JSON.stringify(req);
+  }
+});
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_time
