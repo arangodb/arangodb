@@ -72,6 +72,7 @@ function TransactionsInvocationsSuite () {
           collections: {},
           action: function() {
             var err = new Error('test');
+            err.errorNum = 1234;
             Object.defineProperty(err, 'name', {
                 get: function() { throw new Error('Error in getter'); }
             });
@@ -82,8 +83,30 @@ function TransactionsInvocationsSuite () {
       } catch (err) {
         assertTrue(err instanceof ArangoError);
         assertMatch(/test/, err.errorMessage);
+        assertEqual(1234, err.errorNum);
       }
     },
+    
+    testErrorHandlingArangoError : function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: function () {
+            const arangodb = require('@arangodb');
+            var err = new arangodb.ArangoError();
+            err.errorNum = arangodb.ERROR_BAD_PARAMETER;
+            err.errorMessage = "who's bad?";
+            throw err;
+          }
+        });
+        fail();
+      } catch (err) {
+        assertTrue(err instanceof ArangoError);
+        assertMatch(/who's bad?/, err.errorMessage);
+        assertEqual(arangodb.ERROR_BAD_PARAMETER, err.errorNum);
+      }
+    },
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a transaction with a string action
