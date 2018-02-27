@@ -60,17 +60,20 @@ static bool inline IsRole(std::string const& name) {
   return StringUtils::isPrefix(name, ":role:");
 }
 
+#ifndef USE_ENTERPRISE
+auth::UserManager::UserManager()
+    : _outdated(true), _queryRegistry(nullptr) {}
+auth::UserManager::~UserManager() {}
+#else
 auth::UserManager::UserManager()
     : _outdated(true), _queryRegistry(nullptr), _authHandler(nullptr) {}
 
-#ifdef USE_ENTERPRISE
 auth::UserManager::UserManager(std::unique_ptr<auth::Handler>&& handler)
     : _outdated(true),
       _queryRegistry(nullptr),
       _authHandler(handler.release()) {}
-#endif
-
 auth::UserManager::~UserManager() { delete _authHandler; }
+#endif
 
 // Parse the users
 static auth::UserMap ParseUsers(VPackSlice const& slice) {
