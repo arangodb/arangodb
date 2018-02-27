@@ -66,7 +66,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
                                   transaction::Methods* trx,
-                                  ManagedDocumentResult* mmdr,
                                   arangodb::RocksDBVPackIndex const* index,
                                   VPackSlice const& indexValues);
 
@@ -98,7 +97,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackIndexIterator(LogicalCollection* collection,
                             transaction::Methods* trx,
-                            ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
                             bool reverse, RocksDBKeyBounds&& bounds);
 
@@ -166,7 +164,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
-  IndexIterator* lookup(transaction::Methods*, ManagedDocumentResult* mmdr,
+  IndexIterator* lookup(transaction::Methods*,
                         arangodb::velocypack::Slice const, bool reverse) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,

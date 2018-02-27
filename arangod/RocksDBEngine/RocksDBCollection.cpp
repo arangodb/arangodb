@@ -890,9 +890,13 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
-    mdr.setManaged(newSlice.begin(), documentId);
+    if (options.silent) {
+      mdr.reset();
+    } else { 
+      mdr.setManaged(newSlice.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -987,10 +991,13 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      mdr.setManaged(newDoc.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
@@ -1086,10 +1093,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (opResult.ok()) {
     trackWaitForSync(trx, options);
 
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      mdr.setManaged(newDoc.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 

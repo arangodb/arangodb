@@ -46,12 +46,6 @@ struct Function {
   /// @brief destroy the function
   ~Function();
 
-  /// @brief checks if the function has been deprecated
-  inline bool isDeprecated() const {
-    // currently there are no deprecated functions
-    return false;
-  }
-
   inline bool hasImplementation() const {
     return implementation != nullptr;
   }

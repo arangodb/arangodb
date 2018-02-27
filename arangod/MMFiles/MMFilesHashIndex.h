@@ -208,7 +208,6 @@ class MMFilesHashIndexIterator final : public IndexIterator {
   /// @brief Construct an MMFilesHashIndexIterator based on Ast Conditions
   MMFilesHashIndexIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            MMFilesHashIndex const* index,
                            arangodb::aql::AstNode const*,
                            arangodb::aql::Variable const*);
@@ -233,7 +232,7 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   /// @brief Construct an MMFilesHashIndexIterator based on VelocyPack
   MMFilesHashIndexIteratorVPack(
       LogicalCollection* collection, transaction::Methods* trx,
-      ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
+      MMFilesHashIndex const* index,
       std::unique_ptr<arangodb::velocypack::Builder>& searchValues);
 
   ~MMFilesHashIndexIteratorVPack();

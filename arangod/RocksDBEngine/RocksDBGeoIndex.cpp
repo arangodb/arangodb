@@ -41,9 +41,9 @@ using namespace arangodb::rocksdbengine;
 
 RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
+    RocksDBGeoIndex const* index,
     arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
@@ -221,14 +221,13 @@ void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) {
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  return new RocksDBGeoIndexIterator(_collection, trx, this, node, reference);
 }
 
 void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }
