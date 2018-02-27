@@ -1054,7 +1054,7 @@
       });
     },
 
-    checkDatabasePermissions: function (roCallback) {
+    checkDatabasePermissions: function (roCallback, rwCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser) +
         '/database/' + encodeURIComponent(frontendConfig.db));
@@ -1067,7 +1067,13 @@
         success: function (data) {
           // fetching available dbs and permissions
           if (data.result === 'ro') {
-            roCallback();
+            if (roCallback) {
+              roCallback(true);
+            }
+          } else if (data.result === 'rw') {
+            if (rwCallback) {
+              rwCallback(false);
+            }
           }
         },
         error: function (data) {

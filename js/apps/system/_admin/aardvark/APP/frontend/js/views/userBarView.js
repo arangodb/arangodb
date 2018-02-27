@@ -15,12 +15,20 @@
     },
 
     initialize: function (options) {
+      // set user ro/rw mode
+      arangoHelper.checkDatabasePermissions(this.setUserCollectionMode.bind(this));
       this.userCollection = options.userCollection;
       this.userCollection.fetch({
         cache: false,
         async: true
       });
       this.userCollection.bind('change:extra', this.render.bind(this));
+    },
+
+    setUserCollectionMode: function (readOnly) {
+      if (readOnly) {
+        this.userCollection.authOptions.ro = true;
+      }
     },
 
     template: templateEngine.createTemplate('userBarView.ejs'),

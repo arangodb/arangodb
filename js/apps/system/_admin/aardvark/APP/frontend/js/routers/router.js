@@ -197,6 +197,7 @@
 
       var self = this;
 
+      // create user collection
       this.userCollection = new window.ArangoUsers();
 
       this.initOnce = function () {
