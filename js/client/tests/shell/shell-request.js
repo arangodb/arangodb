@@ -57,7 +57,7 @@ function RequestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test http DELETE
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
     testDeleteMethod: function () {
       var path = '/lol';
       var res = request.delete(buildUrl(path), {timeout: 300});
@@ -219,6 +219,7 @@ function RequestSuite () {
       var obj = JSON.parse(res.body);
       expect(obj.url).to.equal(path.pathname);
     },
+    */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test 404
@@ -232,7 +233,7 @@ function RequestSuite () {
       expect(res).to.have.property('statusCode', 404);
       expect(res).to.have.property('status', 404);
     },
-
+/*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test bad json
 ////////////////////////////////////////////////////////////////////////////////
@@ -392,6 +393,7 @@ function RequestSuite () {
       expect(res).to.be.an.instanceof(request.Response);
       expect(res.body).to.be.an.instanceof(Buffer);
     }
+    */
   };
 }
 
