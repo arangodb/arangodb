@@ -1,8 +1,8 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
-* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
-  for two independent UPSERTs 
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
+  for two independent UPSERTs
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
@@ -16,6 +16,7 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* more information from inception, why agent is activated
 
 v3.3.3 (2018-01-26)
 -------------------
