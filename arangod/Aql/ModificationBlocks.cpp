@@ -397,10 +397,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       // Do not send request just increase the row
       dstRow += n;
     }
-    // done with a block
-    // now free it already
+    
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -531,9 +531,10 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                          ep->_options.ignoreErrors);
       }
     }
-    // now free it already
+    
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -731,11 +732,10 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         dstRow += n;
       }
     }
-    // done with a block
 
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -985,9 +985,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     }
 
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -1182,11 +1182,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     }
 
-    // done with a block
-
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
