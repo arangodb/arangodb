@@ -201,8 +201,8 @@ conditions.
 - returns **retVal** (bool): returns true if expression evaluates to true
 
 ```js
-FOR i IN 1..3 RETURN FILTER ASSERT(i>0, "i is not greater 0") RETURN i
-FOR i IN 1..3 RETURN FILTER WARN(i<2, "i is not smaller 2") RETURN i
+FOR i IN 1..3 FILTER ASSERT(i > 0, "i is not greater 0") RETURN i
+FOR i IN 1..3 FILTER WARN(i < 2, "i is not smaller 2") RETURN i
 ```
 ### CALL()
 
