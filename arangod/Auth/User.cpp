@@ -431,7 +431,7 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
   }
   LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << _username << ": Granting " <<
   auth::convertFromAuthLevel(level) << " on " << dbname;
-  
+ 
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     it->second._databaseAuthLevel = level;
@@ -439,7 +439,6 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
     // grantDatabase is not supposed to change any rights on the
     // collection level code which relies on the old behaviour
     // will need to be adjusted
-
     _dbAccess.emplace(dbname, DBAuthContext(level, CollLevelMap()));
   }
 }
@@ -575,15 +574,13 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     } else if (cname == "_frontend") {
       return auth::Level::RW;
     }
+    return databaseAuthLevel(dbname); 
   }
 
   auth::Level lvl = auth::Level::NONE;
   if (dbname != "*") { // skip special rules for wildcard
     auto it = _dbAccess.find(dbname);
     if (it != _dbAccess.end()) {
-      if (isSystem) { // First handle system collections
-        return std::max(it->second._databaseAuthLevel, auth::Level::NONE);
-      }
       // Second try to find a specific grant
       CollLevelMap::const_iterator pair = it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
@@ -609,7 +606,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       }
     }
   }
-  
+ 
   // Fallback step 2. is to look into the "*" database
   auto it = _dbAccess.find("*");
   if (it != _dbAccess.end()) {
