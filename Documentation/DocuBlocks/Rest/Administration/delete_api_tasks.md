@@ -12,8 +12,26 @@ Deletes the task identified by *id* on the server.
 
 @RESTRETURNCODES
 
+@RESTRETURNCODE{200}
+If the task was deleted, *HTTP 200* is returned.
+
+@RESTREPLYBODY{code,number,required,}
+The status code, 200 in this case.
+
+@RESTREPLYBODY{error,boolean,required,}
+*false* in this case
+
 @RESTRETURNCODE{404}
 If the task *id* is unknown, then an *HTTP 404* is returned.
+
+@RESTREPLYBODY{code,number,required,}
+The status code, 404 in this case.
+
+@RESTREPLYBODY{error,boolean,required,}
+*true* in this case
+
+@RESTREPLYBODY{errorMessage,string,required,}
+A plain text message stating what went wrong.
 
 @EXAMPLES
 

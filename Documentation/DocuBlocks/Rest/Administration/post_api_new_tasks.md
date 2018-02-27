@@ -22,7 +22,42 @@ Number of seconds initial delay
 @RESTDESCRIPTION
 creates a new task with a generated id
 
+
 @RESTRETURNCODES
+
+
+@RESTRETURNCODE{200}
+The task was registered
+
+@RESTREPLYBODY{id,string,required,}
+A string identifying the task
+
+@RESTREPLYBODY{created,number,required,float}
+The timestamp when this task was created
+
+@RESTREPLYBODY{type,string,required,}
+What type of task is this [ `periodic`, `timed`]
+ - periodic are tasks that repeat periodically
+ - timed are tasks that execute once at a specific time
+
+@RESTREPLYBODY{period,number,required,}
+this task should run each `period` seconds
+
+@RESTREPLYBODY{offset,number,required,float}
+time offset in seconds from the created timestamp
+
+@RESTREPLYBODY{command,string,required,}
+the javascript function for this dask
+
+@RESTREPLYBODY{database,string,required,}
+the database this task belongs to
+
+@RESTREPLYBODY{code,number,required,}
+The status code, 200 in this case.
+
+@RESTREPLYBODY{error,boolean,required,}
+*false* in this case
+
 
 @RESTRETURNCODE{400}
 If the post body is not accurate, a *HTTP 400* is returned.

@@ -13,5 +13,7 @@ The version is returned in the *version* attribute of the result.
 
 @RESTRETURNCODE{200}
 Is returned in all cases.
+
+
 @endDocuBlock
 
