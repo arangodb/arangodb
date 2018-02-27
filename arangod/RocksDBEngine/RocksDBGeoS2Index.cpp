@@ -205,12 +205,14 @@ class RDBNearIterator final : public IndexIterator {
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.end()) <= 0);
         } else {  // cursor is positioned below min range key
           TRI_ASSERT(cmp->Compare(_iter->key(), bds.start()) < 0);
-          int k = 10, cc = -1;  // try to catch the range
-          do {
+          int k = 10;  // try to catch the range
+          while (k > 0 && _iter->Valid() &&
+                 cmp->Compare(_iter->key(), bds.start()) < 0) {
             _iter->Next();
-            cc = cmp->Compare(_iter->key(), bds.start());
-          } while (--k > 0 && _iter->Valid() && cc < 0);
-          seek = !_iter->Valid() || cc < 0;
+            --k;
+          }
+          seek =
+              !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
         }
       }
 
@@ -278,10 +280,14 @@ void RocksDBGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
-  // geo indexes always ignore null
-  builder.add("ignoreNull", VPackValue(true));
   // geo indexes are always sparse.
   builder.add("sparse", VPackValue(true));
+  if (_typeName == "geo1" || _typeName == "geo2") {
+    // flags for backwards compatibility
+    builder.add("ignoreNull", VPackValue(true));
+    builder.add("constraint", VPackValue(false));
+  }
+
   builder.close();
 }
 
@@ -472,8 +478,8 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
 
   ManagedDocumentResult mmdr;
   LogicalCollection* collection = index.collection();
-  RDBNearIterator<geo_index::DocumentsAscending> iter(collection, trx, &mmdr,
-                                                   &index, std::move(params));
+  RDBNearIterator<geo_index::DocumentsAscending> iter(
+      collection, trx, &mmdr, &index, std::move(params));
   auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
     bool read = collection->readDocument(trx, token, mmdr);
     if (!read) {

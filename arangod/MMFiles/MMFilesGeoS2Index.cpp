@@ -306,10 +306,13 @@ void MMFilesGeoS2Index::toVelocyPack(VPackBuilder& builder, bool withFigures,
               VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
   // geo indexes are always non-unique
   builder.add("unique", VPackValue(false));
-  // geo indexes always ignore null
-  builder.add("ignoreNull", VPackValue(true));
   // geo indexes are always sparse.
   builder.add("sparse", VPackValue(true));
+  if (_typeName == "geo1" || _typeName == "geo2") {
+    // flags for backwards compatibility
+    builder.add("ignoreNull", VPackValue(true));
+    builder.add("constraint", VPackValue(false));
+  }
   builder.close();
 }
 
@@ -423,12 +426,12 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
              std::abs(centroid.longitude) <= 180.0);
 
   for (S2CellId cell : cells) {
-    auto it = _tree.lower_bound(cell);
-    while (it != _tree.end() && it->first == cell) {
+    for (auto it = _tree.lower_bound(cell); it != _tree.end() && it->first == cell;) {
       if (it->second.documentId == documentId) {
-        _tree.erase(it);
+        it = _tree.erase(it);
+      } else {
+        ++it;
       }
-      it++;
     }
   }
   return IndexResult();

@@ -41,7 +41,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 class Slice;
-}
+}  // namespace velocypack
 namespace geo_index {
 
 /// result of a geospatial index query. distance may or may not be set
@@ -86,8 +86,7 @@ class NearUtils {
   typedef std::priority_queue<Document, std::vector<Document>, CMP>
       GeoDocumentsQueue;
 
-  NearUtils(geo::QueryParams&& params,
-            bool deduplicate) noexcept;
+  NearUtils(geo::QueryParams&& params, bool deduplicate) noexcept;
 
  public:
   /// @brief get cell covering target coordinate (at max level)
@@ -100,7 +99,8 @@ class NearUtils {
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
     TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
-    TRI_ASSERT(_outerBound <= _maxBound && _maxBound <= M_PI);
+    TRI_ASSERT(_outerBound <= _maxBound &&
+               _maxBound <= geo::kMaxRadiansBetweenPoints);
     return _buffer.empty() && allIntervalsCovered();
   }
 
@@ -120,7 +120,7 @@ class NearUtils {
   /// @brief closest buffered result
   geo_index::Document const& nearest() const {
     TRI_ASSERT((isAscending() && (isFilterIntersects() ||
-                                _buffer.top().distRad <= _innerBound)) ||
+                                  _buffer.top().distRad <= _innerBound)) ||
                (isDescending() && _buffer.top().distRad >= _outerBound));
     return _buffer.top();
   }
@@ -178,10 +178,10 @@ class NearUtils {
   /// target from which distances are measured
   S2Point const _origin;
 
-  /// min distance on the unit spherer or <M_PI
+  /// min distance in radians on the unit sphere
   double const _minBound = 0;
-  /// max distance on the unit spherer or M_PI
-  double const _maxBound = M_PI;
+  /// max distance in radians on the unit sphere
+  double const _maxBound = geo::kMaxRadiansBetweenPoints;
 
   /// Enable additional deduplication
   bool const _deduplicate;
@@ -207,7 +207,7 @@ class NearUtils {
   S2RegionCoverer _coverer;
 };
 
-}  // namespace geo
+}  // namespace geo_index
 }  // namespace arangodb
 
 #endif

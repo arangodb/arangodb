@@ -278,10 +278,10 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     REQUIRE(result.size() == 5);
 
     std::vector<geo::Coordinate> coords = convert(docs, result);
-    // [40,40], [40,-40], [-40, 40], [-40, -40] in any order
-    for (size_t i = 0; i < 4; i++) {
-      REQUIRE(std::abs(coords[i].latitude) == 40.0);
-      REQUIRE(std::abs(coords[i].longitude) == 40.0);
+    // [0,180], [0,-180] in any order
+    for (size_t i = 0; i < 2; i++) {
+      REQUIRE(coords[i].latitude == 0.0);
+      REQUIRE(std::abs(coords[i].longitude) == 180.0);
     }
   }
 

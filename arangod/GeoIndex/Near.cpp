@@ -52,7 +52,8 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp, bool dedup) noexcept
   TRI_ASSERT(_params.origin.isValid());
   reset();
   TRI_ASSERT(_params.sorted);
-  TRI_ASSERT(_maxBound >= _minBound && _maxBound <= M_PI);
+  TRI_ASSERT(_maxBound >= _minBound &&
+             _maxBound <= geo::kMaxRadiansBetweenPoints);
   static_assert(isAscending() || isDescending(), "Invalid template");
   TRI_ASSERT(!isAscending() || _params.ascending);
   TRI_ASSERT(!isDescending() || !_params.ascending);
@@ -79,8 +80,8 @@ void NearUtils<CMP>::reset() {
   if (_boundDelta <= 0) {  // do not reset everytime
     int level = std::max(1, _params.cover.bestIndexedLevel - 2);
     // Level 15 == 474.142m
-    level = std::min(level,
-                     S2::kMaxDiag.GetClosestLevel(500 / geo::kEarthRadiusInMeters));
+    level = std::min(
+        level, S2::kMaxDiag.GetClosestLevel(500 / geo::kEarthRadiusInMeters));
     _boundDelta = S2::kMaxDiag.GetValue(level);  // in radians
     TRI_ASSERT(_boundDelta * geo::kEarthRadiusInMeters >= 450);
   }

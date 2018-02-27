@@ -35,14 +35,18 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace geo {
-constexpr double kPi = M_PI;//std::acos(-1);
+constexpr double kPi = M_PI;
+// assume up to 16x machine epsilon in precision errors for radian calculations
+constexpr double kRadEps = 16 * std::numeric_limits<double>::epsilon();
+constexpr double kMaxRadiansBetweenPoints = kPi + kRadEps;
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius
 // constexpr double kEarthRadiusInMeters = (6378.137 * 1000);
 // Volumetric mean radius
-constexpr double kEarthRadiusInMeters = (6371.008 * 1000);
-constexpr double kMaxDistanceBetweenPoints = kPi * kEarthRadiusInMeters;
+constexpr double kEarthRadiusInMeters = (6371.000 * 1000);
+constexpr double kMaxDistanceBetweenPoints =
+    kMaxRadiansBetweenPoints * kEarthRadiusInMeters;
 
 enum class FilterType {
   // no filter, only useful on a near query
@@ -103,7 +107,7 @@ struct QueryParams {
   /// entire earth (halfaround in each direction),
   /// may not be larger than half earth circumference or larger
   /// than the bounding cap of the filter region (see _filter)
-  double maxDistance = kEarthRadiusInMeters * M_PI;
+  double maxDistance = kMaxDistanceBetweenPoints;
   bool maxInclusive = false;
 
   /// @brief results need to be sorted by distance to centroid
