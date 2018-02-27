@@ -35,6 +35,7 @@
 #include "index/index_writer.hpp"
 #include "index/directory_reader.hpp"
 #include "utils/async_utils.hpp"
+#include "utils/utf8_path.hpp"
 
 NS_BEGIN(arangodb)
 
@@ -304,6 +305,11 @@ class IResearchView final: public arangodb::ViewImplementation,
     MemoryStore(); // initialize _directory and _writer during allocation
   };
 
+  struct PersistedStore: public DataStore {
+    const irs::utf8_path _path;
+    PersistedStore(irs::utf8_path&& path);
+  };
+
   struct TidStore {
     mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
     std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
@@ -329,7 +335,8 @@ class IResearchView final: public arangodb::ViewImplementation,
 
   IResearchView(
     arangodb::LogicalView*,
-    arangodb::velocypack::Slice const& info
+    arangodb::velocypack::Slice const& info,
+    irs::utf8_path&& persistedPath
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -361,7 +368,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   MemoryStoreNode* _memoryNode; // points to the current memory store
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
-  DataStore _storePersisted;
+  PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
   std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
