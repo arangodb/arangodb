@@ -23,8 +23,10 @@
 #include <list>
 #include <valarray>
 #include <arangod/GeneralServer/AsyncJobManager.h>
+#include <arangod/Cluster/ServerState.h>
 #include "RestRepairHandler.h"
 #include "Cluster/ClusterRepairs.h"
+#include <velocypack/velocypack-aliases.h>
 
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -33,6 +35,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::cluster_repairs;
+
+// TODO Fix logging for production (remove [tg], reduce loglevels, rewrite messages etc)
 
 
 RestRepairHandler::RestRepairHandler(
@@ -80,8 +84,7 @@ RestStatus RestRepairHandler::execute() {
     return RestStatus::FAIL;
   }
 
-  //scheduler->
-// TODO Instantiate job?
+  // TODO Instantiate job: Use SchedulerFeature::SCHEDULER->post(lambda)
 
   return repairDistributeShardsLike();
 }
@@ -91,6 +94,17 @@ RestStatus
 RestRepairHandler::repairDistributeShardsLike() {
   LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) // TODO for debugging only
   << "[tg] RestRepairHandler::repairDistributeShardsLike()";
+
+  if (ServerState::instance()->isSingleServer()) {
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    << "RestRepairHandler::repairDistributeShardsLike: "
+    << "No ClusterInfo instance";
+
+    generateError(rest::ResponseCode::BAD,
+      TRI_ERROR_HTTP_BAD_PARAMETER, "Only useful in cluster mode.");
+
+    return RestStatus::FAIL;
+  }
 
   try {
     ClusterInfo* clusterInfo = ClusterInfo::instance();
@@ -106,40 +120,71 @@ RestRepairHandler::repairDistributeShardsLike() {
 
     VPackSlice plan = clusterInfo->getPlan()->slice();
 
-//    VPackSlice planCollections = plan.get("Collections");
-//
-//    AgencyComm agency;
-//
-//    AgencyCommResult result = agency.getValues("Supervision/Health");
-//    if (!result.successful()) {
-//      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-//      << "RestRepairHandler::repairDistributeShardsLike: "
-//      << "Getting cluster health info failed with: " << result.errorMessage();
-//      generateError(rest::ResponseCode::SERVER_ERROR,
-//        TRI_ERROR_HTTP_SERVER_ERROR);
-//
-//      return RestStatus::FAIL;
-//    }
-//
-//    VPackSlice supervisionHealth = result.slice();
-//
-//    // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
-//
-//    DistributeShardsLikeRepairer repairer;
-//    std::list<RepairOperation> repairOperations
-//      = repairer.repairDistributeShardsLike(
-//        planCollections,
-//        supervisionHealth
-//      );
-//
-//
-//    // TODO execute operations
-//    for (auto const& op : repairOperations) {
-//      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
-//      << "[tg] op type = " << op.which();
-//    }
+    VPackSlice planCollections = plan.get("Collections");
 
-    resetResponse(rest::ResponseCode::OK);
+    std::shared_ptr<VPackBuffer<uint8_t>> vpack
+      = getFromAgency("Supervision/Health");
+
+    VPackSlice supervisionHealth(vpack->data());
+
+    // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
+
+    DistributeShardsLikeRepairer repairer;
+    std::list<RepairOperation> repairOperations
+      = repairer.repairDistributeShardsLike(
+        planCollections,
+        supervisionHealth
+      );
+
+    VPackBuilder response;
+    response.add(VPackValue(VPackValueType::Object));
+
+
+    if (repairOperations.empty()) {
+      response.add("message", VPackValue("Nothing to do."));
+    }
+    else {
+      std::stringstream message;
+      message
+        << "Executing "
+        << repairOperations.size()
+        << " operations";
+      response.add("message", VPackValue(message.str()));
+
+      // TODO this is only for debugging:
+      response.add("Operations", VPackValue(VPackValueType::Array));
+
+      // TODO execute operations
+      for (auto const& op : repairOperations) {
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
+        << "[tg] op type = " << op.which();
+
+        switch(op.which()) {
+          case 0: {
+            MoveShardOperation msop = boost::get<MoveShardOperation>(op);
+            response.add(VPackValue(msop.collection));
+          }
+            break;
+          case 1: {
+            AgencyWriteTransaction wtrx = boost::get<AgencyWriteTransaction>(op);
+            response.add(VPackValue(wtrx.toJson()));
+          }
+            break;
+          default:
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+        }
+      }
+
+      // TODO this is only for debugging
+      response.close();
+
+      executeRepairOperations(repairOperations);
+    }
+
+    response.close();
+
+    generateOk(rest::ResponseCode::OK, response);
+
 
     return RestStatus::DONE;
   }
@@ -153,4 +198,90 @@ RestRepairHandler::repairDistributeShardsLike() {
     return RestStatus::FAIL;
   }
 
+}
+
+class ExecuteRepairOperationVisitor
+  : boost::static_visitor<AgencyWriteTransaction> {
+  AgencyWriteTransaction operator()(MoveShardOperation& op) {
+    uint64_t jobId = ClusterInfo::instance()->uniqid();
+    std::shared_ptr<VPackBuffer<uint8_t>> vpackTodo = op.toVpackTodo(jobId);
+
+    std::string const agencyKey = "Target/ToDo/" + jobId;
+
+    return AgencyWriteTransaction {
+      AgencyOperation {
+        agencyKey,
+        AgencyValueOperationType::SET,
+        VPackSlice(vpackTodo->data())
+      },
+      AgencyPrecondition {}
+    };
+  }
+
+  AgencyWriteTransaction operator()(AgencyWriteTransaction& wtrx) {
+    return wtrx;
+  }
+};
+
+void RestRepairHandler::executeRepairOperations(
+  std::list<RepairOperation> repairOperations
+) {
+  // TODO Maybe wait if there are *any* jobs that were created from repairDistributeShardsLike?
+  AgencyComm comm;
+  for (auto const& op : repairOperations) {
+    AgencyWriteTransaction wtrx
+      = boost::apply_visitor(ExecuteRepairOperationVisitor(), op);
+
+    AgencyCommResult result
+      = comm.sendTransactionWithFailover(wtrx);
+    if (! result.successful()) {
+      // TODO return error
+      return;
+    }
+
+//    // TODO on move shard operations we have to wait for the job to finish.
+//    // It probably doesn't make sense for fixServerOrderTransactions
+//    std::shared_ptr<VPackBuffer<uint8_t>> vpack
+//      = getFromAgency("Target/Finished/" + jobId);
+//
+//    VPackSlice finished(vpack->data());
+
+
+  }
+}
+
+std::shared_ptr<VPackBuffer<uint8_t>>
+RestRepairHandler::getFromAgency(std::string const &agencyKey) {
+  AgencyComm agency;
+
+  AgencyCommResult result = agency.getValues(agencyKey);
+
+  if (!result.successful()) {
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    << "RestRepairHandler::getFromAgency: "
+    << "Getting value from agency failed with: " << result.errorMessage();
+    generateError(rest::ResponseCode::SERVER_ERROR,
+      TRI_ERROR_HTTP_SERVER_ERROR);
+
+    return nullptr;
+  }
+
+  std::vector<std::string> agencyPath =
+    basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+
+  agencyPath.erase(
+    std::remove(
+      agencyPath.begin(),
+      agencyPath.end(),
+      ""
+    ),
+    agencyPath.end()
+  );
+
+
+  VPackBuilder builder;
+
+  builder.add(result.slice()[0].get(agencyPath));
+
+  return builder.steal();
 }

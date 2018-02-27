@@ -26,6 +26,7 @@
 #include <arangod/Agency/AgencyComm.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
+// TODO do not use aliases in the header!
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
@@ -101,7 +102,13 @@ struct MoveShardOperation {
   bool isLeader;
 
   MoveShardOperation() = delete;
+
+  std::shared_ptr<VPackBuffer<uint8_t>>
+  toVpackTodo(uint64_t jobId) const;
 };
+
+bool operator==(MoveShardOperation const &left, MoveShardOperation const &other);
+std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation);
 
 using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransaction>;
 

@@ -24,10 +24,12 @@
 
 #include "Logger/Logger.h"
 #include "velocypack/Iterator.h"
+#include "ServerState.h"
 
 #include <boost/optional.hpp>
 #include <boost/range/combine.hpp>
 #include <boost/variant.hpp>
+#include <boost/date_time.hpp>
 
 #include <algorithm>
 
@@ -35,6 +37,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
+
+// TODO Don't throw exceptions, use Result objects
 
 bool VersionSort::operator()(std::string const &a, std::string const &b) const {
   std::vector<CharOrInt> va = splitVersion(a);
@@ -78,6 +82,29 @@ VersionSort::splitVersion(std::string const &str) {
   }
 
   return result;
+}
+
+
+bool operator==(MoveShardOperation const &left, MoveShardOperation const &other) {
+  return
+    left.database == other.database
+    && left.collection == other.collection
+    && left.shard == other.shard
+    && left.from == other.from
+    && left.isLeader == other.isLeader;
+}
+
+std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation) {
+  ostream << "MoveShardOperation" << std::endl
+          << "{ database: " << operation.database << std::endl
+          << ", collection: " << operation.collection << std::endl
+          << ", shard: " << operation.shard << std::endl
+          << ", from: " << operation.from << std::endl
+          << ", to: " << operation.to << std::endl
+          << ", isLeader: " << operation.isLeader << std::endl
+          << "}";
+
+  return ostream;
 }
 
 
@@ -160,7 +187,7 @@ DistributeShardsLikeRepairer::readCollections(
 
       // attributes
       std::string collectionName;
-      uint64_t replicationFactor;
+      uint64_t replicationFactor = 0;
       boost::optional<CollectionID const> distributeShardsLike;
       boost::optional<CollectionID const> repairingDistributeShardsLike;
       Slice shardsSlice;
@@ -229,8 +256,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
 
   std::vector<CollectionID> collectionsToFix;
 
-  // TODO Are there additional criteria when a collection shouldn't be fixed?
-  // e.g. deleted: true, some status, isSystem, ...?
+  // TODO Ignore collections with deleted: true
 
   for (auto const &collectionIterator : collections) {
     CollectionID const& collectionId = collectionIterator.first;
@@ -593,25 +619,31 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   DBServers& dbServers = collection.shardsById.at(shardId);
   DBServers const& protoDbServers = proto.shardsById.at(protoShardId);
 
-  // TODO This test may not be necessary, as the symmetric set difference
-  // TODO should catch this case. Keep it or remove it?
+  TRI_ASSERT(dbServers.size() != protoDbServers.size());
   if (dbServers.size() != protoDbServers.size()) {
-    // TODO this should never happen. throw a meaningful exception.
+    // this should never happen.
+    // TODO Use a fail-Result instead of an exception
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
   }
 
+  TRI_ASSERT(dbServers.size() == 0);
   if (dbServers.size() == 0) {
-    // TODO this should never happen. return an empty transaction or throw a meaningful exception?
+    // this should never happen.
+    // TODO Use a fail-Result instead of an exception
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
   }
 
+  TRI_ASSERT(dbServers[0] != protoDbServers[0]);
   if (dbServers[0] != protoDbServers[0]) {
-    // TODO this should never happen. throw a meaningful exception.
+    // this should never happen.
+    // TODO Use a fail-Result instead of an exception
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
   }
 
+  TRI_ASSERT(!serverSetSymmetricDifference(dbServers, protoDbServers).empty());
   if (!serverSetSymmetricDifference(dbServers, protoDbServers).empty()) {
-    // TODO this should never happen. throw a meaningful exception.
+    // this should never happen.
+    // TODO Use a fail-Result instead of an exception
     THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
   }
 
@@ -647,4 +679,30 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   };
 
   return AgencyWriteTransaction { agencyOperation, agencyPrecondition };
+}
+
+std::shared_ptr<VPackBuffer<uint8_t>>
+MoveShardOperation::toVpackTodo(uint64_t jobId) const {
+  std::string const serverId = ServerState::instance()->getId();
+
+  boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
+
+  VPackBuilder builder;
+
+  builder.add(VPackValue(VPackValueType::Object));
+
+  builder.add("type", VPackValue("moveShard"));
+  builder.add("database", VPackValue(database));
+  builder.add("collection", VPackValue(collection));
+  builder.add("shard", VPackValue(shard));
+  builder.add("fromServer", VPackValue(from));
+  builder.add("toServer", VPackValue(to));
+  builder.add("jobId", VPackValue(jobId));
+  builder.add("timeCreated", VPackValue(boost::posix_time::to_iso_extended_string(now)));
+  builder.add("creator", VPackValue(serverId));
+  builder.add("isLeader", VPackValue(isLeader));
+
+  builder.close();
+
+  return builder.steal();
 }

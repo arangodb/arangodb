@@ -25,6 +25,8 @@
 
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
+#include "Cluster/ClusterRepairs.h"
+#include "Agency/AgencyComm.h"
 
 namespace arangodb {
 namespace rest {
@@ -55,6 +57,13 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   void handlePost();
 
   RestStatus repairDistributeShardsLike();
+
+  void executeRepairOperations(
+    std::list<cluster_repairs::RepairOperation> list
+  );
+
+  std::shared_ptr<VPackBuffer<uint8_t>>
+    getFromAgency(std::string const& agencyKey);
 };
 
 }

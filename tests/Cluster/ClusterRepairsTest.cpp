@@ -39,6 +39,7 @@
 #include <memory>
 #include <sstream>
 
+// TODO add a where the server order is fixed with a transaction
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -72,30 +73,6 @@ std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& tr
   return ostream;
 }
 
-namespace cluster_repairs {
-bool operator==(MoveShardOperation const &left, MoveShardOperation const &other) {
-  return
-    left.database == other.database
-    && left.collection == other.collection
-    && left.shard == other.shard
-    && left.from == other.from
-    && left.isLeader == other.isLeader;
-}
-
-std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation) {
-  ostream << "MoveShardOperation" << std::endl
-          << "{ database: " << operation.database << std::endl
-          << ", collection: " << operation.collection << std::endl
-          << ", shard: " << operation.shard << std::endl
-          << ", from: " << operation.from << std::endl
-          << ", to: " << operation.to << std::endl
-          << ", isLeader: " << operation.isLeader << std::endl
-          << "}";
-
-  return ostream;
-}
-}
-
 namespace tests {
 namespace cluster_repairs_test {
 
@@ -118,6 +95,7 @@ operator "" _vpack(const char* json, size_t) {
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
+  // TODO split in one file per test case
   #include "ClusterRepairsTest.TestData.cpp"
 
   // save old manager (may be null)
@@ -176,6 +154,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         }
       }
 
+      // TODO This should not throw, but return a fail-Result
       WHEN("The unused DBServer is marked as non-healthy") {
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
@@ -186,6 +165,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         );
       }
 
+      // TODO This should not throw, but return a fail-Result
       WHEN("The replicationFactor equals the number of DBServers") {
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
