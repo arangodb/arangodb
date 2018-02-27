@@ -249,8 +249,18 @@ int TransactionState::lockCollections() {
 /// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(
     TRI_voc_cid_t cid) const {
-  size_t unused = 0;
-  return findCollection(cid, unused);
+  for (auto* trxCollection : _collections) {
+    if (cid == trxCollection->id()) {
+      // found
+      return trxCollection;
+    }
+    if (cid < trxCollection->id()) {
+      // collection not found
+      break;
+    }
+  }
+
+  return nullptr;
 }
 
 /// @brief find a collection in the transaction's list of collections
@@ -267,16 +277,16 @@ TransactionCollection* TransactionState::findCollection(
   size_t i;
 
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections.at(i);
+    auto trxCollection = _collections[i];
+    
+    if (cid == trxCollection->id()) {
+      // found
+      return trxCollection;
+    }
 
     if (cid < trxCollection->id()) {
       // collection not found
       break;
-    }
-
-    if (cid == trxCollection->id()) {
-      // found
-      return trxCollection;
     }
     // next
   }
@@ -415,7 +425,3 @@ void TransactionState::updateStatus(transaction::Status status) {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

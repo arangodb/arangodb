@@ -35,10 +35,9 @@
 using namespace arangodb;
 
 MMFilesGeoIndexIterator::MMFilesGeoIndexIterator(
-    LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesGeoIndex const* index,
+    LogicalCollection* collection, transaction::Methods* trx, MMFilesGeoIndex const* index,
     arangodb::aql::AstNode const* cond, arangodb::aql::Variable const* var)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
@@ -221,14 +220,13 @@ LocalDocumentId MMFilesGeoIndex::toLocalDocumentId(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) {
   TRI_IF_FAILURE("GeoIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new MMFilesGeoIndexIterator(_collection, trx, mmdr, this, node,
-                                     reference);
+  return new MMFilesGeoIndexIterator(_collection, trx, this, node, reference);
 }
 
 void MMFilesGeoIndexIterator::reset() { replaceCursor(nullptr); }
