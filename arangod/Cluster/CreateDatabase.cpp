@@ -33,39 +33,35 @@ using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
 using namespace arangodb::methods;
 
-CreateDatabase::CreateDatabase(ActionDescription const& d) :
-  ActionBase(d, arangodb::maintenance::FOREGROUND) {
-  TRI_ASSERT(d.has("database"));
+CreateDatabase::CreateDatabase(arangodb::MaintenanceFeature & feature,
+                 std::shared_ptr<ActionDescription_t> const & description,
+                 std::shared_ptr<VPackBuilder> const & properties)
+  : MaintenanceAction(feature, description, properties) {
+  TRI_ASSERT(description->end()!=description->find(DATABASE));
 }
 
 CreateDatabase::~CreateDatabase() {};
 
-arangodb::Result CreateDatabase::run(
-  std::chrono::duration<double> const&, bool& finished) {
+bool CreateDatabase::first() {
 
   VPackSlice users;
-  auto const& database = _description.get(DATABASE);
-  auto const& options = _description.properties();
-  auto* systemVocbase =
-    ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+  auto db_it = _description->find(DATABASE);
 
-  if (systemVocbase == nullptr) {
-    LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
-    FATAL_ERROR_EXIT();
-  }
+  if (_description->end() != db_it) {
+    auto* systemVocbase =
+      ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
-  return Databases::create(database, users, options);
+    if (systemVocbase == nullptr) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "could not determine _system database";
+      FATAL_ERROR_EXIT();
+    }
+
+    _result = Databases::create(db_it->second, users, _properties->slice());
+  } else {
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "CreateDatabase called without required \"database\" field.");
+  } // else
+
+  // false means no more processing
+  return false;
 
 }
-
-arangodb::Result CreateDatabase::kill(Signal const& signal) {
-  arangodb::Result res;
-  return res;
-}
-
-arangodb::Result CreateDatabase::progress(double& progress) {
-  arangodb::Result res;
-  return res;
-}
-
-

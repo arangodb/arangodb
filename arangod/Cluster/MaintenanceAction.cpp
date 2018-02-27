@@ -32,15 +32,17 @@ namespace maintenance {
 
 
 MaintenanceAction::MaintenanceAction(arangodb::MaintenanceFeature & feature,
-                                     ActionDescription_t & description)
-  : _feature(feature), _description(description), _state(READY),
+                                     std::shared_ptr<ActionDescription_t> const & description,
+                                     std::shared_ptr<VPackBuilder> const & properties)
+  : _feature(feature), _description(description), _properties(properties),
+    _state(READY),
     _actionCreated(std::chrono::system_clock::now()),
     _actionStarted(std::chrono::system_clock::now()),
     _actionLastStat(std::chrono::system_clock::now()),
     _actionDone(std::chrono::system_clock::now()),
     _progress(0) {
 
-  _hash = ActionDescription::hash(description);
+  _hash = ActionDescription::hash(*description);
   _id = feature.nextActionId();
   return;
 

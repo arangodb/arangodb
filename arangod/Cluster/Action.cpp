@@ -36,7 +36,7 @@ Action::Action(ActionDescription const& d) : _action(nullptr) {
   TRI_ASSERT(d.has("name"));
   std::string name = d.name();
   if (name == "CreateDatabase") {
-    _action = new CreateDatabase(d);
+//    _action = new CreateDatabase(d);
   } else if (name == "DropDatabase") {
     _action = new DropDatabase(d);
   } else {
@@ -56,12 +56,12 @@ arangodb::Result Action::run(
   TRI_ASSERT(_action != nullptr);
   return _action->run(d, f);
 }
-  
+
 arangodb::Result Action::kill(Signal const& signal) {
   TRI_ASSERT(_action != nullptr);
   return _action->kill(signal);
 }
-  
+
 arangodb::Result Action::progress(double& p) {
   TRI_ASSERT(_action != nullptr);
   return _action->progress(p);
@@ -71,5 +71,3 @@ Action::~Action() {
   if(_action != nullptr)
     delete _action;
 }
-
-

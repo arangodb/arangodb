@@ -68,7 +68,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
   ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  Result addAction(maintenance::ActionDescription_t & description, bool executeNow=false);
+  Result addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                   std::shared_ptr<VPackBuilder> const & properties,
+                   bool executeNow=false);
 
   /// @brief This is the API for MaintenanceAction objects to call to create and
   ///  start a preprocess Action.  The Action executes on the caller's thread AFTER
@@ -77,7 +79,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   Result addPreprocess(maintenance::ActionDescription_t & description, std::shared_ptr<class maintenance::MaintenanceAction> existingAction);
 
 
-  maintenance::MaintenanceActionPtr_t createAction(maintenance::ActionDescription_t & description,
+  maintenance::MaintenanceActionPtr_t createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                   std::shared_ptr<VPackBuilder> const & properties,
                                                    bool executeNow);
 
   /// @brief This API will attempt to fail an existing Action that is waiting

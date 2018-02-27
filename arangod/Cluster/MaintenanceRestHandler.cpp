@@ -106,7 +106,7 @@ void MaintenanceRestHandler::putAction() {
 
     // build the action
     auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
-    result = maintenance->addAction(param_map);
+    result = maintenance->addAction(_actionDesc, _actionProp);
 
     if (!result.ok()) {
       // possible errors? TRI_ERROR_BAD_PARAMETER    TRI_ERROR_TASK_DUPLICATE_ID  TRI_ERROR_SHUTTING_DOWN

@@ -25,29 +25,22 @@
 #ifndef ARANGODB_MAINTENANCE_CREATE_DATABASE_H
 #define ARANGODB_MAINTENANCE_CREATE_DATABASE_H
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-
-#include <chrono>
+#include "MaintenanceAction.h"
 
 namespace arangodb {
 namespace maintenance {
 
-class CreateDatabase : public ActionBase {
+class CreateDatabase : public MaintenanceAction {
 
 public:
 
-  CreateDatabase(ActionDescription const& d);
+  CreateDatabase(arangodb::MaintenanceFeature & feature,
+                 std::shared_ptr<ActionDescription_t> const & description,
+                 std::shared_ptr<VPackBuilder> const & properties);
 
   virtual ~CreateDatabase();
 
-  virtual arangodb::Result run(
-    std::chrono::duration<double> const&, bool& finished) override final;
-  
-  virtual arangodb::Result kill(Signal const& signal) override final;
-  
-  virtual arangodb::Result progress(double& progress) override final;
-
+  virtual bool first() override;
 
 };
 

@@ -27,6 +27,8 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ActionDescription.h"
+#include "Cluster/CreateDatabase.h"
+#include "Cluster/MaintenanceAction.h"
 #include "Cluster/MaintenanceWorker.h"
 
 using namespace arangodb::options;
@@ -121,7 +123,9 @@ void MaintenanceFeature::stop() {
   /// @brief This is the  API for creating an Action and executing it.
   ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
   ///  not yet:  ActionDescription parameter will be MOVED to new object.
-Result MaintenanceFeature::addAction(maintenance::ActionDescription_t & description, bool executeNow) {
+  Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                       std::shared_ptr<VPackBuilder> const & properties,
+                                       bool executeNow) {
   Result result;
 
   // the underlying routines are believed to be safe and throw free,
@@ -130,16 +134,16 @@ Result MaintenanceFeature::addAction(maintenance::ActionDescription_t & descript
     maintenance::MaintenanceActionPtr_t newAction;
 
     // is there a known name field
-    auto find_it = description.find("name");
-    if (description.end()!=find_it) {
-      size_t action_hash = maintenance::ActionDescription::hash(description);
+    auto find_it = description->find("name");
+    if (description->end()!=find_it) {
+      size_t action_hash = maintenance::ActionDescription::hash(*description);
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
       maintenance::MaintenanceActionPtr_t curAction = findActionHash(action_hash);
 
       // similar action not in the queue (or at least no longer viable)
       if (!curAction || curAction->done()) {
-        newAction = createAction(description, executeNow);
+        newAction = createAction(description, properties, executeNow);
 
         if (!newAction) {
           /// something failed in action creation ... go check logs
@@ -180,23 +184,21 @@ Result MaintenanceFeature::addPreprocess(maintenance::ActionDescription_t & desc
 } // MaintenanceFeature::addAction
 
 
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(maintenance::ActionDescription_t & description,
-                                    bool executeNow) {
+maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                                     std::shared_ptr<VPackBuilder> const & properties,
+                                                                     bool executeNow) {
   // write lock via _actionRegistryLock is assumed held
   maintenance::MaintenanceActionPtr_t newAction;
 
   // name should already be verified as existing ... but trust no one
-  auto find_it = description.find("name");
-  if (description.end()!=find_it) {
+  auto find_it = description->find("name");
+  if (description->end()!=find_it) {
     std::string name = find_it->second;
 
     // walk list until we find the object of our desire
-    if (name == "bubba") {
-//      newAction.reset(new BubbaAction(description));
-    } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
-        << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
-    } // else
+    if (name == "CreateDatabase") {
+      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
+    }
 
     // if a new action created
     if (newAction) {
@@ -216,7 +218,10 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(maintenance
           _actionRegistryCond.signal();
         } // if
       } // lock
-    } // if
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER)
+        << "createAction:  unknown action name given, \"" << name.c_str() << "\".";
+    } // else
   } // if
 
   return newAction;

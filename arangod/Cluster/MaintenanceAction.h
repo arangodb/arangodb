@@ -28,6 +28,9 @@
 #include <map>
 #include <memory>
 
+#include <velocypack/vpack.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
@@ -44,7 +47,9 @@ typedef std::shared_ptr<class MaintenanceAction> MaintenanceActionPtr_t;
 
 class MaintenanceAction {
  public:
-  MaintenanceAction(arangodb::MaintenanceFeature & feature, ActionDescription_t & description);
+  MaintenanceAction(arangodb::MaintenanceFeature & feature,
+                    std::shared_ptr<ActionDescription_t> const & description,
+                    std::shared_ptr<VPackBuilder> const & properties);
 
   MaintenanceAction() = delete;
 
@@ -64,6 +69,25 @@ class MaintenanceAction {
   /// @brief iterative call to perform a unit of work
   /// @return true to continue processing, false done (result() set)
   virtual bool next() {return false;};
+
+  //
+  // common property or decription names
+  //
+  static constexpr char KEY[]="key";
+  static constexpr char FIELDS[]="fields";
+  static constexpr char TYPE[]="type";
+  static constexpr char INDEXES[]="indexes";
+  static constexpr char SHARDS[]="shards";
+  static constexpr char DATABASE[]="database";
+  static constexpr char COLLECTION[]="collection";
+  static constexpr char EDGE[]="edge";
+  static constexpr char NAME[]="name";
+  static constexpr char ID[]="id";
+  static constexpr char LEADER[]="leader";
+  static constexpr char LOCAL_LEADER[]="localLeader";
+  static constexpr char GLOB_UID[]="globallyUniqueId";
+  static constexpr char OBJECT_ID[]="objectId";
+
 
 
   //
@@ -90,9 +114,6 @@ class MaintenanceAction {
 
   /// @brief adjust state of object, assumes WRITE lock on _actionRegistryLock
   void setState(ActionState state) {_state = state;};
-
-  /// @brief return object related Result value
-  Result result() const;
 
   /// @brief update incremental statistics
   void startStats();
@@ -128,12 +149,19 @@ class MaintenanceAction {
 //  virtual Result toJson(/* builder */) {return Result;};
 
   /// @brief Return Result object contain action specific status
-  Result result() {return _result;}
+  Result result() const {return _result;}
+
+  /// @brief access action description object
+  ActionDescription_t const * getDescription() const {return _description.get();};
+
+  /// @brief access properties builder / slice
+  VPackBuilder const * getProperties() const {return _properties.get();};
 
 protected:
   arangodb::MaintenanceFeature & _feature;
 
-  ActionDescription_t & _description;
+  std::shared_ptr<ActionDescription_t> const _description;
+  std::shared_ptr<VPackBuilder> const _properties;
 
   uint64_t _hash;
 
