@@ -36,6 +36,11 @@ class ExecutionNode;
 } // aql
 } // arangodb
 
+void prepareMockNode(arangodb::aql::ExecutionNode& node) {
+  node.setVarUsageValid();
+  node.planRegisters();
+}
+
 class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
  public:
   explicit ExecutionNodeMock(size_t id = 0);

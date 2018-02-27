@@ -61,6 +61,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BasicBlocks.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "ExecutionBlockMock.h"
@@ -188,9 +189,14 @@ TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
     arangodb::aql::ResourceMonitor resMon;
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
+    arangodb::aql::SingletonNode rootNode(query.plan(), 1);
+    prepareMockNode(rootNode);
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
     ExecutionNodeMock node;
     ExecutionBlockMock block(data, *query.engine(), node);
+    block.addDependency(&rootBlock);
 
-    auto rs = block.getSome(0, 10);
+    CHECK(nullptr != block.getSome(0, 10));
   }
 }

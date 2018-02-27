@@ -32,6 +32,7 @@
 
 ExecutionNodeMock::ExecutionNodeMock(size_t id /*= 0*/)
   : ExecutionNode(nullptr, id) {
+  prepareMockNode(*this);
 }
 
 arangodb::aql::ExecutionNode::NodeType ExecutionNodeMock::getType() const {
@@ -54,6 +55,10 @@ void ExecutionNodeMock::toVelocyPackHelper(
   nodes.close();
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ExecutionBlockMock
+// -----------------------------------------------------------------------------
+
 ExecutionBlockMock::ExecutionBlockMock(
     arangodb::aql::AqlItemBlock const& data,
     arangodb::aql::ExecutionEngine& engine,
@@ -61,10 +66,6 @@ ExecutionBlockMock::ExecutionBlockMock(
 ) : arangodb::aql::ExecutionBlock(&engine, &node),
     _data(&data) {
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                ExecutionBlockMock
-// -----------------------------------------------------------------------------
 
 int ExecutionBlockMock::initializeCursor(
     arangodb::aql::AqlItemBlock* items, size_t pos
