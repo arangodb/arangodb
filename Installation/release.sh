@@ -54,7 +54,45 @@ else
     echo "gitbook missing from your system"
     exit 1
 fi
+if markdown --version; then
+    echo "discount / markdown found."
+else
+    echo "markdown utility that should be shipped via the discount package is missing on your system"
+    exit 1
+fi
+                           
+if html2text -version; then
+    echo "html2text found."
+else
+    echo "html2text missing from your system"
+fi
 
+if awk; then
+    echo "awk found."
+else
+    echo "awk missing from your system."
+    exit
+fi
+
+if fgrep --version; then
+    echo "fgrep found"
+else
+    echo "fgrep missing from your system"
+    exit 1
+fi
+
+if sed --version; then
+    echo "sed found"
+else
+    echo "sed missing from your system"
+fi
+
+if python --version; then
+    echo "python found."
+else
+    echo "python missing from your system"
+    exit 1
+fi
 if [ "$#" -lt 1 ];  then
     echo "usage: $0 <major>.<minor>.<revision>"
     exit 1
