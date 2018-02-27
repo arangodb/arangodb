@@ -109,8 +109,8 @@ void OptimizerRulesFeature::addRules() {
                      OptimizerRule::specializeCollectRule_pass1, CreatesAdditionalPlans, CanNotBeDisabled);
 
   // inline subqueries one level higher
-  registerRule("inline-subqueries", inlineSubqueriesRule,
-               OptimizerRule::inlineSubqueriesRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  //registerRule("inline-subqueries", inlineSubqueriesRule,
+  //             OptimizerRule::inlineSubqueriesRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)
@@ -127,6 +127,7 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::removeRedundantCalculationsRule_pass1, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 2": try to remove redundant or unnecessary nodes
+  
   // remove filters from the query that are not necessary at all
   // filters that are always true will be removed entirely
   // filters that are always false will be replaced with a NoResults node
@@ -141,6 +142,10 @@ void OptimizerRulesFeature::addRules() {
   // remove redundant sort blocks
   registerRule("remove-redundant-sorts", removeRedundantSortsRule,
                OptimizerRule::removeRedundantSortsRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
+  
+  // inline subqueries one level higher, after removing unecessary calculations
+  registerRule("inline-subqueries", inlineSubqueriesRule,
+               OptimizerRule::inlineSubqueriesRule_pass2, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
   /// "Pass 3": interchange EnumerateCollection nodes in all possible ways
   ///           this is level 500, please never let new plans from higher

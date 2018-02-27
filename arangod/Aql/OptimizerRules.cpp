@@ -50,6 +50,7 @@
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
 #include "Geo/GeoParams.h"
+#include "GeoIndex/Index.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
@@ -5022,7 +5023,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   }
 
   AstNode* arg = fargs->getMemberUnchecked(1);
-  if (geoFuncArgCheck(plan, arg, /*legacy*/false, info)) {
+  if (geoFuncArgCheck(plan, arg, /*legacy*/true, info)) {
     TRI_ASSERT(contains || intersect);
     info.filterMode = contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
     info.filterMask = fargs->getMemberUnchecked(0);
@@ -5047,7 +5048,7 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
       return true;
     } else if (isValueOrReference(first) && // no attribute access
                info.minDistance == nullptr && // min distance is not yet set
-               checkDistanceFunc(plan, second, /*legacy*/false, info)) {
+               checkDistanceFunc(plan, second, /*legacy*/true, info)) {
       info.minDistance = first;
       info.minInclusive = info.minInclusive && lessequal;
       info.nodesToRemove.insert(node);
@@ -5450,30 +5451,43 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
         AstNode* forNode = ast->createNodeFor(collVar, coll);
         
         // Create GET_CONTAINS function
-        AstNode* coords = ast->createNodeArray(5);
+        AstNode* loop = ast->createNodeArray(5);
         auto fn = [&](AstNode const* lat, AstNode const* lon) {
           AstNode* arr = ast->createNodeArray(2);
           arr->addMember(lon);
           arr->addMember(lat);
-          coords->addMember(arr);
+          loop->addMember(arr);
         };
         fn(lat1, lng1); fn(lat1, lng2); fn(lat2, lng2); fn(lat2, lng1);
         fn(lat1, lng1);
         AstNode* polygon = ast->createNodeObject();
         polygon->addMember(ast->createNodeObjectElement("type", 4, ast->createNodeValueString("Polygon", 7)));
-        polygon->addMember(ast->createNodeObjectElement("coordinates", 11, coords));
+        AstNode* coords = ast->createNodeArray(1);
+        coords->addMember(loop);
+        polygon->addMember(ast->createNodeObjectElement("coordinates", 11,  coords));
         
         fargs = ast->createNodeArray(2);
         fargs->addMember(polygon);
-        
-        TRI_ASSERT(index->fields().size() <= 2);
-        AstNode* tt = fargs;
-        if (index->fields().size() >= 2) {
-          tt = ast->createNodeArray(2);
-          fargs->addMember(tt);
-        }
-        for (std::vector<arangodb::basics::AttributeName> const& field : index->fields()) {
-          tt->addMember(ast->createNodeAccess(collVar, field));
+
+        // GEO_CONTAINS, needs GeoJson [Lon, Lat] ordering
+        if (index->fields().size() == 2) {
+          AstNode* arr = ast->createNodeArray(2);
+          arr->addMember(ast->createNodeAccess(collVar, index->fields()[1]));
+          arr->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
+          fargs->addMember(arr);
+        } else {
+          VPackBuilder builder;
+          index->toVelocyPack(builder,true,false);
+          bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(), "geoJson", false);
+          if (geoJson) {
+            fargs->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
+          } else { // combined [lat, lon] field
+            AstNode* arr = ast->createNodeArray(2);
+            AstNode* access = ast->createNodeAccess(collVar, index->fields()[0]);
+            arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(1)));
+            arr->addMember(ast->createNodeIndexedAccess(access, ast->createNodeValueInt(0)));
+            fargs->addMember(arr);
+          }
         }
         AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
         
@@ -5502,35 +5516,6 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
         
         modified = true;
         return ast->createNodeReference(v);
-        /*
-        // Make calculation node
-        Variable* calcOutVar = ast->variables()->createTemporaryVariable();
-        std::unique_ptr<Expression> geoExpr(new Expression(plan.get(), ast, fcall));
-        std::unique_ptr<CalculationNode> calcNode(new CalculationNode(plan.get(), plan->nextId(),
-                                                                    geoExpr.get(), calcOutVar));
-        ExecutionNode* calc = plan->registerNode(calcNode.release());
-        geoExpr.release();
-        
-        std::unique_ptr<FilterNode> filterNode(new FilterNode(plan.get(), plan->nextId(), calcOutVar));
-        ExecutionNode* filter = plan->registerNode(filterNode.release());
-        
-        std::unique_ptr<ReturnNode> returnNode(new ReturnNode(plan.get(), plan->nextId(), ecOut));
-        ExecutionNode* ret = plan->registerNode(returnNode.release());
-        
-        en->addParent(calc);
-        calc->addParent(filter);
-        filter->addParent(ret);
-         
-        // FILTER part
-        AstNode* filterNode = ast->createNodeFilter()
-        // RETURN part
-        AstNode* returnNode = ast->createNodeReturn(ast->createNodeReference(v));
-        
-        // add both nodes to subquery
-        rootNode->addMember(forNode);
-        rootNode->addMember(filterNode);
-        rootNode->addMember(returnNode);*/
-        
       }
       return node;
     };
