@@ -46,14 +46,13 @@
 #define ARANGOD_INDEXES_INDEX_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/IndexLookupContext.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 class Index;
 class LogicalCollection;
-class ManagedDocumentResult;
+
 namespace transaction {
 class Methods;
 }
@@ -73,10 +72,9 @@ class IndexIterator {
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
 
-  IndexIterator(LogicalCollection*, transaction::Methods*, ManagedDocumentResult*, arangodb::Index const*);
   IndexIterator(LogicalCollection*, transaction::Methods*, arangodb::Index const*);
 
-  virtual ~IndexIterator();
+  virtual ~IndexIterator() {}
 
   virtual char const* typeName() const = 0;
 
@@ -99,9 +97,6 @@ class IndexIterator {
  protected:
   LogicalCollection* _collection;
   transaction::Methods* _trx;
-  ManagedDocumentResult* _mmdr;
-  IndexLookupContext _context;
-  bool _responsible;
 };
 
 /// @brief Special iterator if the condition cannot have any result
@@ -134,12 +129,11 @@ class MultiIndexIterator final : public IndexIterator {
 
   public:
    MultiIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
-                      ManagedDocumentResult* mmdr,
                       arangodb::Index const* index,
                       std::vector<IndexIterator*> const& iterators)
-     : IndexIterator(collection, trx, mmdr, index), _iterators(iterators), _currentIdx(0), _current(nullptr) {
+     : IndexIterator(collection, trx, index), _iterators(iterators), _currentIdx(0), _current(nullptr) {
        if (!_iterators.empty()) {
-         _current = _iterators.at(0);
+         _current = _iterators[0];
        }
      }
 

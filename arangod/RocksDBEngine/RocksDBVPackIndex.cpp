@@ -80,9 +80,9 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute{
 
 RocksDBVPackUniqueIndexIterator::RocksDBVPackUniqueIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
+    arangodb::RocksDBVPackIndex const* index,
     VPackSlice const& indexValues)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _cmp(index->comparator()),
       _key(trx),
@@ -124,9 +124,9 @@ bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb,
 
 RocksDBVPackIndexIterator::RocksDBVPackIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::RocksDBVPackIndex const* index,
+    arangodb::RocksDBVPackIndex const* index,
     bool reverse, RocksDBKeyBounds&& bounds)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _cmp(index->comparator()),
       _reverse(reverse),
@@ -750,7 +750,6 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
 /// Warning: who ever calls this function is responsible for destroying
 /// the RocksDBVPackIndexIterator* results
 IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
-                                         ManagedDocumentResult* mmdr,
                                          VPackSlice const searchValues,
                                          bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
@@ -774,8 +773,7 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
       searchValues.length() == _fields.size()) {
     leftSearch.close();
 
-    return new RocksDBVPackUniqueIndexIterator(_collection, trx, mmdr, this,
-                                               leftSearch.slice());
+    return new RocksDBVPackUniqueIndexIterator(_collection, trx, this, leftSearch.slice());
   }
 
   VPackSlice leftBorder;
@@ -857,8 +855,7 @@ IndexIterator* RocksDBVPackIndex::lookup(transaction::Methods* trx,
                                     : RocksDBKeyBounds::VPackIndex(
                                           _objectId, leftBorder, rightBorder);
 
-  return new RocksDBVPackIndexIterator(_collection, trx, mmdr, this, reverse,
-                                       std::move(bounds));
+  return new RocksDBVPackIndexIterator(_collection, trx, this, reverse, std::move(bounds));
 }
 
 bool RocksDBVPackIndex::accessFitsIndex(
@@ -1186,7 +1183,7 @@ bool RocksDBVPackIndex::supportsSortCondition(
 }
 
 IndexIterator* RocksDBVPackIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) {
   VPackBuilder searchValues;
@@ -1375,7 +1372,7 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
     std::vector<IndexIterator*> iterators;
     try {
       for (auto const& val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, mmdr, val, reverse);
+        auto iterator = lookup(trx, val, reverse);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1393,13 +1390,13 @@ IndexIterator* RocksDBVPackIndex::iteratorForCondition(
       }
       throw;
     }
-    return new MultiIndexIterator(_collection, trx, mmdr, this, iterators);
+    return new MultiIndexIterator(_collection, trx, this, iterators);
   }
 
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, mmdr, searchSlice, reverse);
+  return lookup(trx, searchSlice, reverse);
 }
 
 /// @brief specializes the condition for use with the index

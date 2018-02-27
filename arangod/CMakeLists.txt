@@ -418,7 +418,6 @@ SET(ARANGOD_SOURCES
   RestServer/ServerIdFeature.cpp
   RestServer/TransactionManagerFeature.cpp
   RestServer/TraverserEngineRegistryFeature.cpp
-  RestServer/UnitTestsFeature.cpp
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
