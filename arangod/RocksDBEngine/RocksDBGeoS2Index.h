@@ -63,13 +63,13 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
                                       arangodb::aql::Variable const*,
                                       IndexIteratorOptions const&) override;
 
-  constexpr bool allowExpansion() const override { return false; }
+  bool allowExpansion() const override { return false; }
 
-  constexpr bool canBeDropped() const override { return true; }
+  bool canBeDropped() const override { return true; }
 
-  constexpr bool isSorted() const override { return false; }
+  bool isSorted() const override { return false; }
 
-  constexpr bool hasSelectivityEstimate() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
 
   void toVelocyPack(velocypack::Builder&, bool, bool) const override;
   // Uses default toVelocyPackFigures

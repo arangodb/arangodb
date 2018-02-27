@@ -190,6 +190,12 @@ class Index {
   static IndexType type(char const* type);
 
   static IndexType type(std::string const& type);
+  
+  static bool isGeoIndex(IndexType type) {
+    return type == TRI_IDX_TYPE_GEO1_INDEX ||
+           type == TRI_IDX_TYPE_GEO2_INDEX ||
+           type == TRI_IDX_TYPE_S2_INDEX;
+  }
 
   virtual char const* typeName() const = 0;
 

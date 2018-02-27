@@ -245,6 +245,10 @@ void OptimizerRulesFeature::addRules() {
   registerRule("handle-views", arangodb::iresearch::handleViewsRule,
                OptimizerRule::handleViewsRule_pass6, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 #endif
+  
+  // @brief replace WITHIN_RECTANGLE(...), NEAR(...), WITHIN(...)
+  OptimizerRulesFeature::registerRule("replace-legacy-geo-functions", replaceLegacyGeoFunctionsRule,
+                OptimizerRule::removeLegacyGeoFunctions_pass1, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
 
   // remove FILTER DISTANCE(...) and SORT DISTANCE(...)
   OptimizerRulesFeature::registerRule("geo-index-optimizer", geoIndexRule,

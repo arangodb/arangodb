@@ -694,6 +694,12 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   return node;
 }
 
+SubqueryNode* ExecutionPlan::registerSubquery(SubqueryNode* node) {
+  node = static_cast<SubqueryNode*>(registerNode(node));
+  _subqueries[node->outVariable()->id] = node;
+  return node;
+}
+
 /// @brief creates a anonymous calculation node for an arbitrary expression
 ExecutionNode* ExecutionPlan::createTemporaryCalculation(
     AstNode const* expression, ExecutionNode* previous) {

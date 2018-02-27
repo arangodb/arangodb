@@ -66,13 +66,13 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  constexpr bool allowExpansion() const override { return false; }
+  bool allowExpansion() const override { return false; }
 
-  constexpr bool canBeDropped() const override { return true; }
+  bool canBeDropped() const override { return true; }
 
-  constexpr bool isSorted() const override { return false; }
+  bool isSorted() const override { return false; }
 
-  constexpr bool hasSelectivityEstimate() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; }
 
   size_t memory() const override;
 

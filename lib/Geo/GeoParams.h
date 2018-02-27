@@ -35,7 +35,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace geo {
-constexpr double kPi = std::acos(-1);
+constexpr double kPi = M_PI;//std::acos(-1);
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 // Equatorial radius

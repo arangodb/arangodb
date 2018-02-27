@@ -57,6 +57,8 @@ struct OptimizerRule {
     // determine the "right" type of CollectNode and
     // add a sort node for each COLLECT (may be removed later)
     specializeCollectRule_pass1,
+    
+    removeLegacyGeoFunctions_pass1,
 
     inlineSubqueriesRule_pass1,
 

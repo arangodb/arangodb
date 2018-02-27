@@ -4501,6 +4501,23 @@ static bool isValueTypeCollection(AstNode const* node) {
   return node->type == NODE_TYPE_COLLECTION || node->isStringValue();
 }
 
+// TODO cleanup this f-ing aql::Collection(s) mess
+static aql::Collection* addCollectionToQuery(Query* query, std::string const& cname) {
+  aql::Collections* colls = query->collections();
+  aql::Collection* coll = colls->get(cname);
+  if (coll == nullptr) { // TODO: cleanup this mess
+    coll = colls->add(cname, AccessMode::Type::READ);
+    if (!ServerState::instance()->isCoordinator()) {
+      TRI_ASSERT(coll != nullptr);
+      coll->setCollection(query->trx()->vocbase()->lookupCollection(cname));
+      // FIXME: does this need to happen in the coordinator?
+      query->trx()->addCollectionAtRuntime(cname);
+    }
+  }
+  TRI_ASSERT(coll != nullptr);
+  return coll;
+}
+
 static bool applyFulltextOptimization(EnumerateListNode* elnode,
                                       LimitNode* ln, ExecutionPlan* plan) {
   std::vector<Variable const*> varsUsedHere = elnode->getVariablesUsedHere();
@@ -4544,7 +4561,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     return false;
   }
 
-  std::string name = collArg->getString();
+  std::string cname = collArg->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(attrArg->getString(), field, /*allowExpansion*/false);
@@ -4554,8 +4571,9 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
 
   // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
+  Ast* ast = plan->getAst();
   try {
-    auto indexes = plan->getAst()->query()->trx()->indexesForCollection(name);
+    auto indexes = ast->query()->trx()->indexesForCollection(cname);
     for (auto& idx : indexes) {
       if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX) {
         TRI_ASSERT(idx->fields().size() == 1);
@@ -4572,7 +4590,6 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     return false;
   }
 
-  Ast* ast = plan->getAst();
   AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
@@ -4587,17 +4604,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   condition->normalize(plan);
 
   // we assume by now that collection `name` exists
-  aql::Collections* colls = plan->getAst()->query()->collections();
-  aql::Collection* coll = colls->get(name);
-  if (coll == nullptr) { // TODO: cleanup this mess
-    coll = colls->add(name, AccessMode::Type::READ);
-    if (!ServerState::instance()->isCoordinator()) {
-      TRI_ASSERT(coll != nullptr);
-      coll->setCollection(vocbase->lookupCollection(name));
-      // FIXME: does this need to happen in the coordinator?
-      plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
-    }
-  }
+  aql::Collection* coll = addCollectionToQuery(ast->query(), cname);
   auto inode = new IndexNode(plan, plan->nextId(), vocbase,
                              coll, elnode->outVariable(),
                              std::vector<transaction::Methods::IndexHandle>{
@@ -4928,11 +4935,11 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
       !lngArg->isNumericValue()) {
     return false;
   }
-
+  Query* query = plan->getAst()->query();
+  std::string cname = collArg->getString();
+  
   // NEAR and WITHIN just use the first geoindex found
-  aql::Collections* colls = plan->getAst()->query()->collections();
-  info.collection = colls->add(collArg->getString(), AccessMode::Type::READ);
-  for (auto const& idx : info.collection->getCollection()->getIndexes()) {
+  for (auto const& idx : query->trx()->indexesForCollection(cname)) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
@@ -4945,6 +4952,7 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   }
 
   if (info.index && info.distanceCenter == nullptr) {
+    info.collection = addCollectionToQuery(query, cname);
     info.sorted = true; // legacy functions are alwasy sorted
     info.ascending = true; // always ascending
     info.distanceCenterLat = latArg;
@@ -5376,4 +5384,158 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, mod);
+}
+
+/// @brief replace WITHIN_RECTANGLE, NEAR, WITHIN (under certain conditions)
+void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
+                                                  std::unique_ptr<ExecutionPlan> plan,
+                                                  OptimizerRule const* rule) {
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  bool modified = false;
+  // inspect all calculation nodes
+  plan->findNodesOfType(nodes, EN::CALCULATION, true);
+  
+  Ast* ast = plan->getAst();
+  
+  for (ExecutionNode* en : nodes) {
+    TRI_ASSERT(en->getType() == EN::CALCULATION);
+    CalculationNode* cn = static_cast<CalculationNode*>(en);
+    AstNode* root = cn->expression()->nodeForModification();
+    
+    auto visitor = [&](AstNode* node, void*) -> AstNode* {
+      if (node->type == NODE_TYPE_FCALL) {
+        Function* func = static_cast<Function*>(node->getData());
+        AstNode* fargs = node->getMemberUnchecked(0);
+        if (func->name != "WITHIN_RECTANGLE" || fargs->numMembers() != 5) {
+          return node; // skip
+        }
+        
+        AstNode const* coll = fargs->getMemberUnchecked(0);
+        AstNode const* lat1 = fargs->getMemberUnchecked(1);
+        AstNode const* lng1 = fargs->getMemberUnchecked(2);
+        AstNode const* lat2 = fargs->getMemberUnchecked(3);
+        AstNode const* lng2 = fargs->getMemberUnchecked(4);
+        if (!isValueTypeCollection(coll) || !lat1->isNumericValue() ||
+            !lng1->isNumericValue() || !lat2->isNumericValue() || !
+            lng2->isNumericValue()) {
+          return node; // skip, invalid arguments
+        }
+        
+        // check for suitable indexes
+        std::string cname = coll->getString();
+        std::shared_ptr<arangodb::Index> index;
+        for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
+          if (Index::isGeoIndex(idx->type())) {
+            index = idx;
+            break;
+          }
+        }
+        if (!index) { // no index found
+          return node;
+        }
+        
+        
+        // create an on-the-fly subquery for a full collection access
+        Ast* ast = plan->getAst();
+        AstNode* rootNode = ast->createNodeSubquery();
+        
+        // FOR part
+        Variable* collVar = ast->variables()->createTemporaryVariable();
+        AstNode* forNode = ast->createNodeFor(collVar, node);
+        
+        // Create GET_CONTAINS function
+        AstNode* coords = ast->createNodeArray(5);
+        auto fn = [&](AstNode const* lat, AstNode const* lon) {
+          AstNode* arr = ast->createNodeArray(2);
+          arr->addMember(lon);
+          arr->addMember(lat);
+          coords->addMember(arr);
+        };
+        fn(lat1, lng1); fn(lat1, lng2); fn(lat2, lng2); fn(lat2, lng1);
+        fn(lat1, lng1);
+        AstNode* polygon = ast->createNodeObject();
+        polygon->addMember(ast->createNodeObjectElement("type", 4, ast->createNodeValueString("Polygon", 7)));
+        polygon->addMember(ast->createNodeObjectElement("coordinates", 11, coords));
+        
+        fargs = ast->createNodeArray(2);
+        fargs->addMember(polygon);
+        
+        TRI_ASSERT(index->fields().size() <= 2);
+        AstNode* tt = fargs;
+        if (index->fields().size() >= 2) {
+          tt = ast->createNodeArray(2);
+        }
+        for (std::vector<arangodb::basics::AttributeName> const& field : index->fields()) {
+          tt->addMember(ast->createNodeAccess(collVar, field));
+        }
+        fargs->addMember(tt);
+        AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
+        
+        // FILTER part
+        AstNode* filterNode = ast->createNodeFilter(fcall);
+        
+        // RETURN part
+        AstNode* returnNode = ast->createNodeReturn(ast->createNodeReference(collVar));
+        
+        // add both nodes to subquery
+        rootNode->addMember(forNode);
+        rootNode->addMember(filterNode);
+        rootNode->addMember(returnNode);
+        
+        // produce the proper ExecutionNodes from the subquery AST
+        ExecutionNode* subquery = plan->fromNode(rootNode);
+        if (subquery == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+        
+        // and register a reference to the subquery result in the expression
+        Variable* v = ast->variables()->createTemporaryVariable();
+        plan->registerSubquery(new SubqueryNode(plan.get(), plan->nextId(), subquery, v));
+        modified = true;
+        return ast->createNodeReference(v);
+        
+        
+        
+        
+        /*
+        // Make calculation node
+        Variable* calcOutVar = ast->variables()->createTemporaryVariable();
+        std::unique_ptr<Expression> geoExpr(new Expression(plan.get(), ast, fcall));
+        std::unique_ptr<CalculationNode> calcNode(new CalculationNode(plan.get(), plan->nextId(),
+                                                                    geoExpr.get(), calcOutVar));
+        ExecutionNode* calc = plan->registerNode(calcNode.release());
+        geoExpr.release();
+        
+        std::unique_ptr<FilterNode> filterNode(new FilterNode(plan.get(), plan->nextId(), calcOutVar));
+        ExecutionNode* filter = plan->registerNode(filterNode.release());
+        
+        std::unique_ptr<ReturnNode> returnNode(new ReturnNode(plan.get(), plan->nextId(), ecOut));
+        ExecutionNode* ret = plan->registerNode(returnNode.release());
+        
+        en->addParent(calc);
+        calc->addParent(filter);
+        filter->addParent(ret);
+         
+        // FILTER part
+        AstNode* filterNode = ast->createNodeFilter()
+        // RETURN part
+        AstNode* returnNode = ast->createNodeReturn(ast->createNodeReference(v));
+        
+        // add both nodes to subquery
+        rootNode->addMember(forNode);
+        rootNode->addMember(filterNode);
+        rootNode->addMember(returnNode);*/
+        
+      }
+      return node;
+    };
+    
+    AstNode* newNode = Ast::traverseAndModify(root, visitor ,nullptr);
+    if (newNode != root) {
+      cn->expression()->replaceNode(newNode);
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
 }

@@ -63,7 +63,7 @@ class RDBNearIterator final : public IndexIterator {
     estimateDensity();
   }
 
-  constexpr char const* typeName() const override {
+  char const* typeName() const override {
     return "s2-index-iterator";
   }
 

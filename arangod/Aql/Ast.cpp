@@ -681,7 +681,7 @@ AstNode* Ast::createNodeReference(Variable const* variable) {
 
 /// @brief create an AST variable access
 AstNode* Ast::createNodeAccess(Variable const* variable,
-                          std::vector<basics::AttributeName> const& field) {
+                               std::vector<basics::AttributeName> const& field) {
   TRI_ASSERT(!field.empty());
   AstNode* node = createNodeReference(variable);
   for (size_t i = field.size(); i != 0; i--) {

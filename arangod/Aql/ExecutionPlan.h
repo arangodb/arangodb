@@ -198,6 +198,9 @@ class ExecutionPlan {
   /// throw an exception, in addition, the pointer is set to nullptr such
   /// that another delete does not hurt
   ExecutionNode* registerNode(ExecutionNode*);
+  
+  /// @brief add a subquery to the plan, will call registerNode internally
+  SubqueryNode* registerSubquery(SubqueryNode*);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old
@@ -221,7 +224,13 @@ class ExecutionPlan {
 
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
-
+  
+  /// @brief create an execution plan from an abstract syntax tree node
+  ExecutionNode* fromNode(AstNode const*);
+  
+  /// @brief create an execution plan from VPack
+  ExecutionNode* fromSlice(velocypack::Slice const& slice);
+  
  private:
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*,
@@ -294,12 +303,6 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan from an abstract syntax tree node
-  ExecutionNode* fromNode(AstNode const*);
-
-  /// @brief create an execution plan from VPack
-  ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
