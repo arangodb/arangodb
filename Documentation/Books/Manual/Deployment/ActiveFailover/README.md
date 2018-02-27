@@ -9,7 +9,8 @@ As usual there are two main ways to start an Active-Failover setup:
 Either [manually](README.md#starting-manually) or using the [_ArangoDB Starter_](README.md#using-the-arangodb-starter) 
 (possibly in conjunction with docker).
 
-## Starting Manually
+Starting Manually
+-----------------
 
 We are going to start two single server instances and one _Agency_.
 First we need to start the 
@@ -62,8 +63,8 @@ with basically the same startup parameters (except for their address and databas
       | tee cluster/8531.stdout 2>&1 &
 ```
 
-
-## Using the ArangoDB Starter
+Using the ArangoDB Starter
+--------------------------
 
 If you want to start a resilient single database server, use `--starter.mode=resilientsingle`.
 In this mode a 3 machine _Agency is started as well as 2 single servers that perform
