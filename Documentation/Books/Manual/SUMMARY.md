@@ -140,9 +140,9 @@
     * [Architecture](Scalability/ActiveFailover/Architecture.md)
     * [Limitations](Scalability/ActiveFailover/Limitations.md)
   * [Cluster](Scalability/Cluster/README.md)
-    * [Architecture](Scalability/Architecture.md)
-    * [Data models](Scalability/DataModels.md)
-    * [Limitations](Scalability/Limitations.md)
+    * [Architecture](Scalability/Cluster/Architecture.md)
+    * [Data models](Scalability/Cluster/DataModels.md)
+    * [Limitations](Scalability/Cluster/Limitations.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
     * [Introduction](Scalability/DC2DC/Introduction.md)
