@@ -4741,10 +4741,12 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
   info.collectionNodeToReplace = collNode;
   info.collectionNodeOutVar = collNode->outVariable();
   info.collection = collNode->collection();
-  std::shared_ptr<LogicalCollection> coll = collNode->collection()->getCollection();
-
+  
+  // we should not access the LogicalCollection directly
+  Query* query = plan->getAst()->query();
+  auto indexes = query->trx()->indexesForCollection(info.collection->getName());
   //check for suitiable indexes
-  for (std::shared_ptr<Index> idx : coll->getIndexes()) {
+  for (std::shared_ptr<Index> idx : indexes) {
     // check if current index is a geo-index
     std::size_t fieldNum = idx->fields().size();
     bool isGeo1 = idx->type() == Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX && supportLegacy;
@@ -4939,10 +4941,9 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
   std::string cname = collArg->getString();
   
   // NEAR and WITHIN just use the first geoindex found
+  // we should not access the LogicalCollection directly
   for (auto const& idx : query->trx()->indexesForCollection(cname)) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
+    if (Index::isGeoIndex(idx->type())) {
         if (info.index != nullptr && info.index != idx) {
           return false;
         }
@@ -4974,7 +4975,7 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
   TRI_ASSERT(varsUsedHere.size() == 1);
   // now check who introduced our variable
   ExecutionNode* node = plan->getVarSetBy(varsUsedHere[0]->id);
-  if (node->getType() != EN::CALCULATION) {
+  if (node == nullptr || node->getType() != EN::CALCULATION) {
     return false;
   }
 
@@ -5397,11 +5398,10 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
   
   Ast* ast = plan->getAst();
-  
   for (ExecutionNode* en : nodes) {
     TRI_ASSERT(en->getType() == EN::CALCULATION);
-    CalculationNode* cn = static_cast<CalculationNode*>(en);
-    AstNode* root = cn->expression()->nodeForModification();
+    CalculationNode* originalCN = static_cast<CalculationNode*>(en);
+    AstNode* root = originalCN->expression()->nodeForModification();
     
     auto visitor = [&](AstNode* node, void*) -> AstNode* {
       if (node->type == NODE_TYPE_FCALL) {
@@ -5425,6 +5425,7 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
         // check for suitable indexes
         std::string cname = coll->getString();
         std::shared_ptr<arangodb::Index> index;
+        // we should not access the LogicalCollection directly
         for (auto& idx : ast->query()->trx()->indexesForCollection(cname)) {
           if (Index::isGeoIndex(idx->type())) {
             index = idx;
@@ -5435,14 +5436,18 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
           return node;
         }
         
+        if (coll->type != NODE_TYPE_COLLECTION) { // TODO does this work?
+          addCollectionToQuery(ast->query(), cname);
+          coll = ast->createNodeCollection(coll->getStringValue(),
+                                           AccessMode::Type::READ);
+        }
         
         // create an on-the-fly subquery for a full collection access
-        Ast* ast = plan->getAst();
         AstNode* rootNode = ast->createNodeSubquery();
         
         // FOR part
         Variable* collVar = ast->variables()->createTemporaryVariable();
-        AstNode* forNode = ast->createNodeFor(collVar, node);
+        AstNode* forNode = ast->createNodeFor(collVar, coll);
         
         // Create GET_CONTAINS function
         AstNode* coords = ast->createNodeArray(5);
@@ -5465,11 +5470,11 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
         AstNode* tt = fargs;
         if (index->fields().size() >= 2) {
           tt = ast->createNodeArray(2);
+          fargs->addMember(tt);
         }
         for (std::vector<arangodb::basics::AttributeName> const& field : index->fields()) {
           tt->addMember(ast->createNodeAccess(collVar, field));
         }
-        fargs->addMember(tt);
         AstNode* fcall = ast->createNodeFunctionCall("GEO_CONTAINS", fargs);
         
         // FILTER part
@@ -5491,13 +5496,12 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
         
         // and register a reference to the subquery result in the expression
         Variable* v = ast->variables()->createTemporaryVariable();
-        plan->registerSubquery(new SubqueryNode(plan.get(), plan->nextId(), subquery, v));
+        SubqueryNode* sqn = plan->registerSubquery(
+                new SubqueryNode(plan.get(), plan->nextId(), subquery, v));
+        plan->insertDependency(originalCN, sqn);
+        
         modified = true;
         return ast->createNodeReference(v);
-        
-        
-        
-        
         /*
         // Make calculation node
         Variable* calcOutVar = ast->variables()->createTemporaryVariable();
@@ -5533,7 +5537,7 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
     
     AstNode* newNode = Ast::traverseAndModify(root, visitor ,nullptr);
     if (newNode != root) {
-      cn->expression()->replaceNode(newNode);
+      originalCN->expression()->replaceNode(newNode);
     }
   }
 
