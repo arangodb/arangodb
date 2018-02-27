@@ -73,6 +73,10 @@ class ModificationBlock : public ExecutionBlock {
 
   /// @brief whether or not the collection uses the default sharding attributes
   bool _usesDefaultSharding;
+ 
+ protected:
+  /// @brief a Builder object, reused for various tasks to save a few memory allocations
+  velocypack::Builder _tempBuilder;
 };
 
 class RemoveBlock : public ModificationBlock {
