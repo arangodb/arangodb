@@ -40,6 +40,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
@@ -546,15 +547,17 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase()), coll->cid(),
         AccessMode::Type::EXCLUSIVE);
-
-    trx.addHint(
-        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+    // to turn off waitForSync!
+    trx.addHint(transaction::Hints::Hint::RECOVERY);
+    // smaller batch sizes should work better here
+    trx.state()->options().intermediateCommitCount = 256;
 
     Result res = trx.begin();
 
     if (!res.ok()) {
       return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
+    
 
     trx.pinData(coll->cid());  // will throw when it fails
 
@@ -585,6 +588,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       LOG_TOPIC(ERR, Logger::FIXME) << "Fetching dump: " << sumFetchTime;
       LOG_TOPIC(ERR, Logger::FIXME) << "Applying dump: " << sumApplyTime;
       LOG_TOPIC(ERR, Logger::FIXME) << "Total: " << (TRI_microtime() - nowTotal);
+      LOG_TOPIC(ERR, Logger::FIXME) << "Markers processed: " << markersProcessed;
       
       // done
       return Result();
