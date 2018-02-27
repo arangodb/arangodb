@@ -108,7 +108,8 @@ using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransactio
 class DistributeShardsLikeRepairer {
  public:
   std::list<RepairOperation> repairDistributeShardsLike(
-    VPackSlice const& planCollections, VPackSlice const& planDbServers
+    VPackSlice const& planCollections,
+    VPackSlice const& supervisionHealth
   );
 
  private:

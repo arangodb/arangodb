@@ -20,9 +20,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <list>
 #include <valarray>
 #include <arangod/GeneralServer/AsyncJobManager.h>
 #include "RestRepairHandler.h"
+#include "Cluster/ClusterRepairs.h"
 
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -30,6 +32,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::cluster_repairs;
 
 
 RestRepairHandler::RestRepairHandler(
@@ -40,7 +43,7 @@ RestRepairHandler::RestRepairHandler(
 
 
 RestStatus RestRepairHandler::execute() {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) // TODO for debugging only
   << "[tg] RestRepairHandler::execute()";
 
   if (SchedulerFeature::SCHEDULER->isStopping()) {
@@ -80,16 +83,74 @@ RestStatus RestRepairHandler::execute() {
   //scheduler->
 // TODO Instantiate job?
 
-  repairDistributeShardsLike();
-
-  resetResponse(rest::ResponseCode::OK);
-
-  return RestStatus::DONE;
+  return repairDistributeShardsLike();
 }
 
 
-void RestRepairHandler::repairDistributeShardsLike() {
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+RestStatus
+RestRepairHandler::repairDistributeShardsLike() {
+  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) // TODO for debugging only
   << "[tg] RestRepairHandler::repairDistributeShardsLike()";
+
+  try {
+    ClusterInfo* clusterInfo = ClusterInfo::instance();
+    if (clusterInfo == nullptr) {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "RestRepairHandler::repairDistributeShardsLike: "
+      << "No ClusterInfo instance";
+      generateError(rest::ResponseCode::SERVER_ERROR,
+        TRI_ERROR_HTTP_SERVER_ERROR);
+
+      return RestStatus::FAIL;
+    }
+
+    VPackSlice plan = clusterInfo->getPlan()->slice();
+
+//    VPackSlice planCollections = plan.get("Collections");
+//
+//    AgencyComm agency;
+//
+//    AgencyCommResult result = agency.getValues("Supervision/Health");
+//    if (!result.successful()) {
+//      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+//      << "RestRepairHandler::repairDistributeShardsLike: "
+//      << "Getting cluster health info failed with: " << result.errorMessage();
+//      generateError(rest::ResponseCode::SERVER_ERROR,
+//        TRI_ERROR_HTTP_SERVER_ERROR);
+//
+//      return RestStatus::FAIL;
+//    }
+//
+//    VPackSlice supervisionHealth = result.slice();
+//
+//    // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
+//
+//    DistributeShardsLikeRepairer repairer;
+//    std::list<RepairOperation> repairOperations
+//      = repairer.repairDistributeShardsLike(
+//        planCollections,
+//        supervisionHealth
+//      );
+//
+//
+//    // TODO execute operations
+//    for (auto const& op : repairOperations) {
+//      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
+//      << "[tg] op type = " << op.which();
+//    }
+
+    resetResponse(rest::ResponseCode::OK);
+
+    return RestStatus::DONE;
+  }
+  catch (Exception &e) {
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    << "RestRepairHandler::repairDistributeShardsLike: "
+    << "Caught exception: " << e.message();
+    generateError(rest::ResponseCode::SERVER_ERROR,
+      TRI_ERROR_HTTP_SERVER_ERROR);
+
+    return RestStatus::FAIL;
+  }
 
 }

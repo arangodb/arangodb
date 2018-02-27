@@ -54,7 +54,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
  private:
   void handlePost();
 
-  void repairDistributeShardsLike();
+  RestStatus repairDistributeShardsLike();
 };
 
 }
