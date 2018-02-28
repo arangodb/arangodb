@@ -8,7 +8,7 @@ of SQL (Structured Query Language).
 ArangoDB's query language is called AQL. There are some similarities between both
 languages despite the different data models of the database systems. The most
 notable difference is probably the concept of loops in AQL, which makes it feel
-more like a programming language. It suites the schema-less model more natural
+more like a programming language. It suits the schema-less model more natural
 and makes the query language very powerful while remaining easy to read and write.
 
 To get started with AQL, have a look at our detailed
