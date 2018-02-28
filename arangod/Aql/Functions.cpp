@@ -68,6 +68,8 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace std::chrono;
+using namespace date;
 
 /// @brief convert a number value into an AqlValue
 static inline AqlValue NumberValue(transaction::Methods* trx, int value) {
@@ -1609,14 +1611,12 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(dur));
 }
 
-bool Functions::ParameterToTimePoint(arangodb::aql::Query *const query,
-                                 transaction::Methods *const trx,
-                                 VPackFunctionParameters const& parameters,
-                                 tp_sys_clock_ms& tp,
-                                 std::string const& functionName,
-                                 size_t parameterIndex) {
-  using namespace std::chrono;
-
+bool Functions::ParameterToTimePoint(Query const* query,
+                                     transaction::Methods const* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     tp_sys_clock_ms& tp,
+                                     std::string const& functionName,
+                                     size_t parameterIndex) {
   AqlValue value = ExtractFunctionParameterValue(parameters, parameterIndex);
 
   if (!value.isString() && !value.isNumber() ) {
@@ -1627,7 +1627,8 @@ bool Functions::ParameterToTimePoint(arangodb::aql::Query *const query,
   if (value.isNumber()) {
     tp = tp_sys_clock_ms(milliseconds(value.toInt64(trx)));
   } else {
-    if (!basics::parse_dateTime(value.slice().copyString(), tp)) {
+    std::string const dateVal = value.slice().copyString();
+    if (!basics::parse_dateTime(dateVal, tp)) {
       RegisterWarning(query, functionName.c_str(), TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return false;
     }

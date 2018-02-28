@@ -92,8 +92,8 @@ struct Functions {
                                    VPackFunctionParameters const& parameters,
                                    char const* funcName, bool recursive);
 
-    static bool ParameterToTimePoint(arangodb::aql::Query *const query,
-                                 transaction::Methods *const trx,
+    static bool ParameterToTimePoint(arangodb::aql::Query const* query,
+                                 transaction::Methods const* trx,
                                  VPackFunctionParameters const& parameters,
                                  tp_sys_clock_ms& tp,
                                  std::string const& functionName,
