@@ -48,7 +48,10 @@
           //  enable db select and login button
           $('#loginDatabase').html('');
           // fill select with allowed dbs
-          _.each(permissions.result, function (rule, db) {
+          var sortedArr = _.pairs(permissions.result);
+          sortedArr.sort();
+          sortedArr = _.object(sortedArr);
+          _.each(sortedArr, function (rule, db) {
             if (frontendConfig.authenticationEnabled) {
               $('#loginDatabase').append(
                 '<option>' + db + '</option>'
@@ -188,7 +191,10 @@
         // enable db select and login button
         $('#loginDatabase').html('');
 
-        _.each(permissions.result, function (rule, db) {
+        var sortedArr = _.pairs(permissions.result);
+        sortedArr.sort();
+        sortedArr = _.object(sortedArr);
+        _.each(sortedArr, function (rule, db) {
           if (frontendConfig.authenticationEnabled) {
             $('#loginDatabase').append(
               '<option>' + db + '</option>'

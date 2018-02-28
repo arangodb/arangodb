@@ -257,9 +257,16 @@
     },
 
     finishRender: function (permissions, open, error) {
+      // sort permission databases
+      var sortedArr = _.pairs(permissions);
+      sortedArr.sort();
+      sortedArr = _.object(sortedArr);
+
       $(this.el).html(this.template.render({
-        permissions: permissions
+        permissions: sortedArr
       }));
+      // * wildcard at the end
+      $('.noAction').first().appendTo('.pure-table-body');
       $('.pure-table-body').height(window.innerHeight - 200);
       if (open) {
         $('#' + open).click();
