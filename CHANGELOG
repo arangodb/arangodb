@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix issue #4657: fixed incomplete content type header
+
 * fix issue #4583 - add AQL ASSERT and AQL WARN
 
 * remove _admin/echo handler
