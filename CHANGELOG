@@ -1,8 +1,6 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
-* fix issue #4698: databases within the UI are now displayed in a sorted order. 
-
 * remove unused startup option `--ldap.permissions-attribute-name`
 
 * fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
@@ -20,6 +18,8 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
 * Behaviour of permissions for databases and collections changed:
   The new fallback rule for databases for which an access level is not explicitly specified:
   Choose the higher access level of:
@@ -30,7 +30,6 @@ v3.3.4 (XXXX-XX-XX)
     * Any wildcard access grant in the same database, or on "*/*"
     * The access level for the current database
     * The access level for the `_system` database
-
 
 v3.3.3 (2018-01-26)
 -------------------
