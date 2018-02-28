@@ -1,5 +1,5 @@
 
-@startDocuBlock delete_api_initiate
+@startDocuBlock delete_api_shutdown
 @brief initiates the shutdown sequence
 
 @RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence}
