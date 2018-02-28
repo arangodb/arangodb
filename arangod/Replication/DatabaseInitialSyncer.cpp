@@ -584,6 +584,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     if (!checkMore || fromTick == 0) {
 #warning Remove
+      LOG_TOPIC(ERR, Logger::FIXME) << "Collection " << leaderColl << ", local: " << coll->name();
       LOG_TOPIC(ERR, Logger::FIXME) << "Fetching dump: " << sumFetchTime;
       LOG_TOPIC(ERR, Logger::FIXME) << "Applying dump: " << sumApplyTime;
       LOG_TOPIC(ERR, Logger::FIXME) << "Total: " << (TRI_microtime() - nowTotal);
