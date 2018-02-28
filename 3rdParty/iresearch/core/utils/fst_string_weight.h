@@ -27,6 +27,7 @@
 #include "shared.hpp"
 #include "utils/string.hpp"
 #include "utils/std.hpp"
+#include "utils/bytes_utils.hpp"
 
 #include <string>
 #include <fst/string-weight.h>

@@ -22,20 +22,33 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "WalAccess.h"
+#include "Replication/common-defines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 
+/// @brief check if db should be handled, might already be deleted
 bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) const {
   return _filter.vocbase == 0 || _filter.vocbase == dbid;
 }
 
-/// @brief Check if collection is in filter
+/// @brief Check if collection is in filter, will load collection
 bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
-                                              TRI_voc_cid_t cid) const {
-  return _filter.vocbase == 0 || (_filter.vocbase == dbid &&
-         (_filter.collection == 0 || _filter.collection == cid));
+                                              TRI_voc_cid_t cid) {
+  if (dbid == 0 || cid == 0 || !shouldHandleDB(dbid)) {
+    return false;
+  }
+  if (_filter.vocbase == 0 || (_filter.vocbase == dbid &&
+                               (_filter.collection == 0 || _filter.collection == cid))) {
+    LogicalCollection* collection = loadCollection(dbid, cid);
+    if (collection == nullptr) {
+      return false;
+    }
+    return !TRI_ExcludeCollectionReplication(collection->name(),
+                                             _filter.includeSystem);
+  }
+  return false;
 }
 
 /// @brief try to get collection, may return null

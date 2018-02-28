@@ -140,7 +140,7 @@ class PhysicalCollection {
                         OperationOptions& options) = 0;
 
   virtual LocalDocumentId lookupKey(
-      transaction::Methods*, arangodb::velocypack::Slice const&) = 0;
+      transaction::Methods*, arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*,
                       arangodb::StringRef const& key,
@@ -221,7 +221,6 @@ class PhysicalCollection {
                          velocypack::Slice const& value,
                          velocypack::Slice const& fromSlice,
                          velocypack::Slice const& toSlice,
-                         LocalDocumentId const& documentId,
                          bool isEdgeCollection, velocypack::Builder& builder,
                          bool isRestore,
                          TRI_voc_rid_t& revisionId) const;
@@ -229,7 +228,6 @@ class PhysicalCollection {
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
-                          LocalDocumentId const& documentId,
                           velocypack::Builder& builder,
                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
@@ -237,7 +235,7 @@ class PhysicalCollection {
   void mergeObjectsForUpdate(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
-                             bool isEdgeCollection, LocalDocumentId const& documentId,
+                             bool isEdgeCollection,
                              bool mergeObjects, bool keepNull,
                              velocypack::Builder& builder,
                              bool isRestore, TRI_voc_rid_t& revisionId) const;
@@ -248,7 +246,7 @@ class PhysicalCollection {
                            velocypack::Slice const& newValue,
                            velocypack::Slice const& fromSlice,
                            velocypack::Slice const& toSlice,
-                           bool isEdgeCollection, LocalDocumentId const& documentId,
+                           bool isEdgeCollection,
                            velocypack::Builder& builder,
                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 

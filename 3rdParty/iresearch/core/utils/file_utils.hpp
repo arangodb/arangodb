@@ -52,6 +52,7 @@
   #define IR_FADVICE_NOREUSE 5
 #else
   #include <unistd.h> // close
+  #include <sys/types.h>
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*

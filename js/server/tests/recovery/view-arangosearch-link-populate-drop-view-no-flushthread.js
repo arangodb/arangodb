@@ -48,10 +48,10 @@ function runSetup () {
 
   if (db._path().indexOf("databases") !== -1) {
     // mmfiles
-    path = fs.join(db._path(), '..', v.properties().dataPath);
+    path = fs.join(db._path(), '..', 'arangosearch-' + v._id);
   } else {
     // rocksdb
-    path = fs.join(db._path(), 'databases', v.properties().dataPath);
+    path = fs.join(db._path(), 'databases', 'arangosearch-' + v._id);
   }
 
   for (let i = 0; i < 10000; i++) {

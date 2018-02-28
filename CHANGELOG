@@ -1,17 +1,19 @@
 devel
 -----
 
+* fix issue #4583 - add AQL ASSERT and AQL WARN
+
+* remove _admin/echo handler
+
 * remove long disfunctional admin/long_echo handler
 
 * fixed Foxx API:
-
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
 
 * renamed startup option `--replication.automatic-failover` to
-  `--replication.active-failover`
-  using the old option name will still work in ArangoDB 3.4, but the old option
-  will be removed afterwards
+  `--replication.active-failover` using the old option name will still work in
+  ArangoDB 3.4, but the old option will be removed afterwards
 
 * Index selectivity estimates for RocksDB engine are now eventually consistent.
   This change addresses a previous issue where some index updates could be
@@ -130,8 +132,11 @@ devel
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
 
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #4651: Simple query taking forever until a request timeout error
 
 * fix timeout issues in replication client expiration
 
@@ -10358,4 +10363,3 @@ v1.0.alpha1 (2012-05-28)
 ------------------------
 
 Alpha Release of ArangoDB 1.0
-                                                                                                                                                                                                                                                                                                                                                                                            

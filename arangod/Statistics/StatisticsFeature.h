@@ -45,6 +45,9 @@ extern StatisticsVector TRI_ConnectionTimeDistributionVectorStatistics;
 extern StatisticsVector TRI_RequestTimeDistributionVectorStatistics;
 extern std::vector<StatisticsCounter> TRI_MethodRequestsStatistics;
 }
+namespace stats{
+  class Descriptions;
+}
 
 class StatisticsThread;
 class StatisticsWorker;
@@ -70,12 +73,20 @@ class StatisticsFeature final
   void start() override final;
   void unprepare() override final;
 
+  static stats::Descriptions const* descriptions() {
+    if (STATISTICS != nullptr) {
+      return STATISTICS->_descriptions.get();
+    }
+    return nullptr;
+  }
+      
  public:
   void disableStatistics() { _statistics = false; }
 
  private:
   bool _statistics;
 
+  std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<StatisticsThread> _statisticsThread;
   std::unique_ptr<StatisticsWorker> _statisticsWorker;
 };

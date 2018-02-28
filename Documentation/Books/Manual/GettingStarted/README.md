@@ -56,7 +56,7 @@ execute
 shell> arango-secure-installation
 ```
 
-This will asked for a root password and sets this password.
+This will ask for a root password and sets this password.
 
 Web interface
 -------------
@@ -579,31 +579,3 @@ If you want to write more AQL queries right now, have a look here:
 - [High-level operations](../../AQL/Operations/index.html): detailed descriptions
   of `FOR`, `FILTER` and more operations not shown in this introduction
 - [Functions](../../AQL/Functions/index.html): a reference of all provided functions
-
-ArangoDB programs
------------------
-
-The ArangoDB package comes with the following programs:
-
-- `arangod`: The [ArangoDB database daemon](../Administration/Configuration/GeneralArangod.md).
-  This server program is intended to run as a daemon process and to serve the
-  various clients connection to the server via TCP / HTTP.
-
-- `arangosh`: The [ArangoDB shell](../Administration/Arangosh/README.md).
-  A client that implements a read-eval-print loop (REPL) and provides functions
-  to access and administrate the ArangoDB server.
-
-- `arangoimport`: A [bulk importer](../Administration/Arangoimport.md) for the
-  ArangoDB server. It supports JSON and CSV.
-
-- `arangodump`: A tool to [create backups](../Administration/Arangodump.md)
-  of an ArangoDB database in JSON format.
-
-- `arangorestore`: A tool to [load data of a backup](../Administration/Arangorestore.md)
-  back into an ArangoDB database.
-
-- `arango-dfdb`: A [datafile debugger](../Troubleshooting/DatafileDebugger.md) for
-  ArangoDB. It is primarily intended to be used during development of ArangoDB.
-
-- `arangobench`: A [benchmark and test tool](../Troubleshooting/Arangobench.md).
-  It can be used for performance and server function testing.

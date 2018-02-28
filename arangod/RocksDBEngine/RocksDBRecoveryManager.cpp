@@ -211,15 +211,31 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
   }
 
-  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(
-      uint64_t objectId) {
+  RocksDBCuckooIndexEstimator<uint64_t>* findEstimator(uint64_t objectId) {
     RocksDBEngine* engine =
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-    Index* index = engine->mapObjectToIndex(objectId);
+    RocksDBEngine::IndexTriple triple = engine->mapObjectToIndex(objectId);
+    if (std::get<0>(triple) == 0 && std::get<1>(triple) == 0) {
+      return nullptr;
+    }
+    
+    DatabaseFeature* df = DatabaseFeature::DATABASE;
+    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
+    if (vb == nullptr) {
+      return nullptr;
+    }
+    TRI_DEFER(vb->release());
+    
+    LogicalCollection* coll = vb->lookupCollection(std::get<1>(triple));
+    if (coll == nullptr) {
+      return nullptr;
+    }
+    
+    std::shared_ptr<Index> index = coll->lookupIndex(std::get<2>(triple));
     if (index == nullptr) {
       return nullptr;
     }
-    return static_cast<RocksDBIndex*>(index)->estimator();
+    return static_cast<RocksDBIndex*>(index.get())->estimator();
   }
 
   void updateMaxTick(uint32_t column_family_id, const rocksdb::Slice& key,
@@ -235,7 +251,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     //          - databases
 
     if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
-      storeMaxHLC(RocksDBKey::revisionId(RocksDBEntryType::Document, key));
+      storeMaxHLC(RocksDBKey::documentId(RocksDBEntryType::Document, key).id());
       storeLastKeyValue(RocksDBKey::objectId(key),
                         RocksDBValue::keyValue(value));
     } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
@@ -285,14 +301,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     updateMaxTick(column_family_id, key, value);
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      LocalDocumentId docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._added++;
-        it->second._revisionId = revisionId;
+        it->second._revisionId = docId.id();
       }
     } else {
       // We have to adjust the estimate with an insert
@@ -326,14 +341,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
                            const rocksdb::Slice& key) override {
     if (shouldHandleDocument(column_family_id, key)) {
       uint64_t objectId = RocksDBKey::objectId(key);
-      uint64_t revisionId =
-          RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+      LocalDocumentId docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
 
       auto const& it = deltas.find(objectId);
       if (it != deltas.end()) {
         it->second._sequenceNum = currentSeqNum;
         it->second._removed++;
-        it->second._revisionId = revisionId;
+        it->second._revisionId = docId.id();
       }
     } else {
       // We have to adjust the estimate with an insert
