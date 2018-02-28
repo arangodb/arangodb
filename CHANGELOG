@@ -1,10 +1,16 @@
-v3.3.4 (XXXX-XX-XX)
+v3.3.4 (2018-02-28)
 -------------------
 
 * fix issue #4651: Simple query taking forever until a request timeout error
 
-* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
-  for two independent UPSERTs 
+* fix issue #4657: fixed incomplete content type header
+
+* Vastly improved the Foxx Store UI
+
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
+  for two independent UPSERTs
+
+* remove unused startup option `--ldap.permissions-attribute-name`
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
@@ -17,6 +23,21 @@ v3.3.4 (XXXX-XX-XX)
 
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
+
+* more information from inception, why agent is activated
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
+* Behaviour of permissions for databases and collections changed:
+  The new fallback rule for databases for which an access level is not explicitly specified:
+  Choose the higher access level of:
+    * A wildcard database grant
+    * A database grant on the `_system` database
+  The new fallback rule for collections for which an access level is not explicitly specified:
+  Choose the higher access level of:
+    * Any wildcard access grant in the same database, or on "*/*"
+    * The access level for the current database
+    * The access level for the `_system` database
 
 
 v3.3.3 (2018-01-26)
@@ -59,9 +80,6 @@ v3.3.3 (2018-01-26)
 
 * fixed issue #4395: If your foxx app includes an `APP` folder it got
          accidently removed by selfhealing this is not the case anymore.
-
-v3.3.3 (2018-01-16)
--------------------
 
 * fix issue #4272: VERSION file keeps disappearing
 
@@ -311,9 +329,6 @@ v3.3.beta1 (2017-11-07)
       arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
                                      // in shell2, so the insert will fail
 
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
-
 * incremental transfer of initial collection data now can handle partial
   responses for a chunk, allowing the leader/master to send smaller chunks
   (in terms of HTTP response size) and limit memory usage
@@ -414,6 +429,9 @@ v3.2.7 (2017-11-13)
 * Fixed issue #3597: AQL with path filters returns unexpected results
   In some cases breadth first search in combination with vertex filters
   yields wrong result, the filter was not applied correctly.
+
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
 
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
   and SortNodes, which could have led to sorted results being effectively not

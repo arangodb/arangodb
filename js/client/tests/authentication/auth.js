@@ -136,6 +136,25 @@ function AuthSuite () {
       }
     },
 
+    testPasswordChange : function () {
+      users.save("hackers@arangodb.com", "");
+      users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+      users.reload();
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
+      // this will issue a request using the new user
+      assertTrue(db._collections().length > 0);
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "root", "");
+      users.replace("hackers@arangodb.com", "foo"); // replace deletes grants
+      users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
+
+      arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foo");
+      assertTrue(db._collections().length > 0);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test creating a new user with case sensitive password
 ////////////////////////////////////////////////////////////////////////////////
@@ -436,7 +455,8 @@ function AuthSuite () {
     },
     
     testExpOptional: function() {
-      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", "iss": "arangodb" }, 'HS256');
+      var jwt = crypto.jwtEncode(jwtSecret, {"preferred_username": "root", 
+                                             "iss": "arangodb" }, 'HS256');
       // not supported
       var res = request.get({
         url: baseUrl() + "/_api/version",

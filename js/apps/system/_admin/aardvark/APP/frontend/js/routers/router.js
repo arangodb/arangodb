@@ -28,7 +28,13 @@
       'databases': 'databases',
       'settings': 'databases',
       'services': 'applications',
+      'services/install': 'installService',
+      'services/install/new': 'installNewService',
+      'services/install/github': 'installGitHubService',
+      'services/install/upload': 'installUploadService',
+      'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
+      'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
       'users': 'userManagement',
@@ -58,6 +64,22 @@
       }
 
       if (this.lastRoute) {
+        // service replace logic
+        var replaceUrlFirst = this.lastRoute.split('/')[0];
+        var replaceUrlSecond = this.lastRoute.split('/')[1];
+        var replaceUrlThird = this.lastRoute.split('/')[2];
+        if (replaceUrlFirst !== '#service') {
+          if (window.App.replaceApp) {
+            if (replaceUrlSecond !== 'install' && replaceUrlThird) {
+              window.App.replaceApp = false;
+              // console.log('set replace to false!');
+            }
+          } else {
+            // console.log('set replace to false!');
+            window.App.replaceApp = false;
+          }
+        }
+
         if (this.lastRoute.substr(0, 11) === '#collection' && this.lastRoute.split('/').length === 3) {
           this.documentView.cleanupEditor();
         }
@@ -85,6 +107,11 @@
       $('#content').show();
       if (callback) {
         callback.apply(this, args);
+      }
+
+      if (this.lastRoute === '#services') {
+        window.App.replaceApp = false;
+        // console.log('set replace to false!');
       }
 
       if (this.graphViewer) {
@@ -189,14 +216,27 @@
       // This should be the only global object
       window.modalView = new window.ModalView();
 
+      // foxxes
       this.foxxList = new window.FoxxCollection();
       window.foxxInstallView = new window.FoxxInstallView({
         collection: this.foxxList
       });
+
+      // foxx repository
+      this.foxxRepo = new window.FoxxRepository();
+      this.foxxRepo.fetch({
+        success: function () {
+          if (self.serviceInstallView) {
+            self.serviceInstallView.collection = self.foxxRepo;
+          }
+        }
+      });
+
       window.progressView = new window.ProgressView();
 
       var self = this;
 
+      // create user collection
       this.userCollection = new window.ArangoUsers();
 
       this.initOnce = function () {
@@ -266,7 +306,9 @@
 
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig();
+        this.userConfig = new window.UserConfig({
+          ldapEnabled: frontendConfig.ldapEnabled
+        });
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({
@@ -525,6 +567,37 @@
 
       if (this.foxxList.length === 0) {
         this.foxxList.fetch({
+          cache: false,
+          success: function () {
+            callback();
+          }
+        });
+      } else {
+        callback();
+      }
+    },
+
+    storeDetail: function (mount, initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.storeDetail.bind(this), mount);
+        return;
+      }
+      var callback = function () {
+        if (this.hasOwnProperty('storeDetailView')) {
+          this.storeDetailView.remove();
+        }
+        this.storeDetailView = new window.StoreDetailView({
+          model: this.foxxRepo.get(decodeURIComponent(mount)),
+          collection: this.foxxList
+        });
+
+        this.storeDetailView.model = this.foxxRepo.get(decodeURIComponent(mount));
+        this.storeDetailView.render();
+      }.bind(this);
+
+      if (this.foxxRepo.length === 0) {
+        this.foxxRepo.fetch({
           cache: false,
           success: function () {
             callback();
@@ -911,6 +984,82 @@
       this.applicationsView.reload();
     },
 
+    installService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installService.bind(this));
+        return;
+      }
+      if (this.serviceInstallView) {
+        this.serviceInstallView.remove();
+      }
+      this.serviceInstallView = new window.ServiceInstallView({
+        collection: this.foxxRepo,
+        functionsCollection: this.foxxList
+      });
+      this.serviceInstallView.render();
+    },
+
+    installNewService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installNewService.bind(this));
+        return;
+      }
+      if (this.serviceNewView) {
+        this.serviceNewView.remove();
+      }
+      this.serviceNewView = new window.ServiceInstallNewView({
+        collection: this.foxxList
+      });
+      this.serviceNewView.render();
+    },
+
+    installGitHubService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installGitHubService.bind(this));
+        return;
+      }
+      if (this.serviceGitHubView) {
+        this.serviceGitHubView.remove();
+      }
+      this.serviceGitHubView = new window.ServiceInstallGitHubView({
+        collection: this.foxxList
+      });
+      this.serviceGitHubView.render();
+    },
+
+    installUrlService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUrlService.bind(this));
+        return;
+      }
+      if (this.serviceUrlView) {
+        this.serviceUrlView.remove();
+      }
+      this.serviceUrlView = new window.ServiceInstallUrlView({
+        collection: this.foxxList
+      });
+      this.serviceUrlView.render();
+    },
+
+    installUploadService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUploadService.bind(this));
+        return;
+      }
+      if (this.serviceUploadView) {
+        this.serviceUploadView.remove();
+      }
+      this.serviceUploadView = new window.ServiceInstallUploadView({
+        collection: this.foxxList
+      });
+      this.serviceUploadView.render();
+    },
+
     handleSelectDatabase: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -960,7 +1109,6 @@
         this.userPermissionView.render();
       } else if (initialized === false) {
         this.waitForInit(this.userPermissionView.bind(this), name);
-        return;
       }
     },
 
