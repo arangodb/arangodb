@@ -2394,7 +2394,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
     rangeEnd = std::abs(rangeStart - 6);
   }
 
-  if (rangeStart == 6 && rangeEnd >= 0 ) { // compare year
+  if (rangeStart == 6) { // compare year
     auto ymd1 = year_month_day{floor<days>(tp1)};
     auto ymd2 = year_month_day{floor<days>(tp2)};
 
