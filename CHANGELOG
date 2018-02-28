@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix issue #4698: databases within the UI are now displayed in a sorted order.
+
 * fix issue #4583 - add AQL ASSERT and AQL WARN
 
 * remove _admin/echo handler
