@@ -322,9 +322,6 @@ v3.3.beta1 (2017-11-07)
       arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
                                      // in shell2, so the insert will fail
 
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
-
 * incremental transfer of initial collection data now can handle partial
   responses for a chunk, allowing the leader/master to send smaller chunks
   (in terms of HTTP response size) and limit memory usage
@@ -425,6 +422,9 @@ v3.2.7 (2017-11-13)
 * Fixed issue #3597: AQL with path filters returns unexpected results
   In some cases breadth first search in combination with vertex filters
   yields wrong result, the filter was not applied correctly.
+
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
 
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
   and SortNodes, which could have led to sorted results being effectively not
