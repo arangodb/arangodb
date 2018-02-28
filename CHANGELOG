@@ -1,6 +1,8 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4698: databases within the UI are now displayed in a sorted order. 
+
 * fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
   for two independent UPSERTs 
 
