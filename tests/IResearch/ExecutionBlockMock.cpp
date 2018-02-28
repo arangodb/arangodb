@@ -32,7 +32,8 @@
 
 ExecutionNodeMock::ExecutionNodeMock(size_t id /*= 0*/)
   : ExecutionNode(nullptr, id) {
-  prepareMockNode(*this);
+  setVarUsageValid();
+  planRegisters();
 }
 
 arangodb::aql::ExecutionNode::NodeType ExecutionNodeMock::getType() const {

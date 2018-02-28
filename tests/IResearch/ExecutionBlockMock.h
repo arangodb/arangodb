@@ -36,10 +36,15 @@ class ExecutionNode;
 } // aql
 } // arangodb
 
-void prepareMockNode(arangodb::aql::ExecutionNode& node) {
-  node.setVarUsageValid();
-  node.planRegisters();
-}
+template<typename Node>
+class MockNode : public Node {
+ public:
+  MockNode(size_t id = 0)
+    : Node(nullptr, id) {
+    Node::setVarUsageValid();
+    Node::planRegisters();
+  }
+};
 
 class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
  public:
