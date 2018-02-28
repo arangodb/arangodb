@@ -413,6 +413,10 @@ while [ $# -gt 0 ];  do
             RETRY_N_TIMES=$1
             shift
             ;;
+        --forceVersionNightly)
+            shift
+            CONFIGURE_OPTIONS+=(-DARANGODB_VERSION_REVISION=nightly)
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
