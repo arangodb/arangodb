@@ -472,15 +472,7 @@ function unitTest (cases, options) {
       } else if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
-        let line = 'Unknown test "' + which + '"\nKnown tests are: ';
-        let sep = '';
-
-        Object.keys(testFuncs).map(function (key) {
-          line += sep + key;
-          sep = ', ';
-        });
-
-        print(line);
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
 
         return {
           status: false
@@ -492,6 +484,21 @@ function unitTest (cases, options) {
   let globalStatus = true;
   let results = {};
   let cleanup = true;
+    
+  // real ugly hack. there are some suites which are just placeholders
+  // for other suites
+  caselist = (function() { 
+    let flattened = [];
+    for (let n = 0; n < caselist.length; ++n) {
+      let w = testFuncs[caselist[n]];
+      if (Array.isArray(w)) {
+        w.forEach(function(sub) { flattened.push(sub); });
+      } else {
+        flattened.push(caselist[n]);
+      }
+    }
+    return flattened;
+  })();
 
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
