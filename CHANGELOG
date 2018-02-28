@@ -132,8 +132,11 @@ devel
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
 
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #4651: Simple query taking forever until a request timeout error
 
 * fix timeout issues in replication client expiration
 
