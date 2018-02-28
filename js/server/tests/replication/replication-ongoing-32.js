@@ -100,7 +100,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
     password: "",
     verbose: true,
     includeSystem: false,
-    keepBarrier: false
+    keepBarrier: true
   });
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));
@@ -124,7 +124,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   connectToSlave();
 
   replication.applier.properties(applierConfiguration);
-  replication.applier.start(syncResult.lastLogTick);
+  replication.applier.start(syncResult.lastLogTick, syncResult.barrierId);
 
   var printed = false, handled = false;
 
@@ -353,6 +353,73 @@ function BaseTestConfig() {
 
         function(state) {
           assertTrue(db._collection(cn).properties().waitForSync);
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test insert
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testInsert: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._create(cn);
+        },
+
+        function(state) {
+          for (let i = 0; i < 1000; ++i) {
+            db[cn].insert({ _key: "test" + i, value: i });
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1000, state.count);
+        },
+
+        function(state) {
+        },
+
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        }
+      );
+    },
+    
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test remove
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testRemove: function() {
+      connectToMaster();
+
+      compare(
+        function(state) {
+          db._create(cn);
+        },
+
+        function(state) {
+          for (let i = 0; i < 1000; ++i) {
+            db[cn].insert({ _key: "test" + i, value: i });
+          }
+          for (let i = 0; i < 100; ++i) {
+            db[cn].remove("test" + i);
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(900, state.count);
+        },
+
+        function(state) {
+        },
+
+        function(state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
         }
       );
     },

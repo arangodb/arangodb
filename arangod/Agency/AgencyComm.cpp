@@ -48,7 +48,6 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -278,7 +277,7 @@ bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
-
+/*
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
   for (auto const& trx : transactions) {
     auto opers = std::get<0>(trx);
@@ -323,7 +322,7 @@ void AgencyGeneralTransaction::push_back(
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
   return (result.slice().isArray() &&
           result.slice().length() >= 1); // >= transactions.size()
-}
+}*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
@@ -988,7 +987,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   while (tries++ < maxTries) {
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1024,7 +1023,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1171,9 +1170,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
-
   while (true) {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
@@ -1189,7 +1185,7 @@ bool AgencyComm::ensureStructureInitialized() {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
           << "Initializing agency failed. We'll try again soon";
       // We should really have exclusive access, here, this is strange!
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     AgencyCommResult result = getValues("InitDone");
@@ -1207,7 +1203,7 @@ bool AgencyComm::ensureStructureInitialized() {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
 
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   return true;
@@ -1248,7 +1244,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
       return true;
     }
 
-    usleep((TRI_usleep_t) sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
@@ -1289,7 +1285,7 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
       return true;
     }
 
-    usleep((TRI_usleep_t)sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
@@ -1385,11 +1381,10 @@ AgencyCommResult AgencyComm::sendWithFailover(
     return false;
   };
 
-  static std::string const writeURL {"/_api/agency/write"};
-  bool isWriteTrans = (initialUrl == writeURL);
-
   bool isInquiry = false;   // Set to true whilst we investigate a potentially
                             // failed transaction.
+  static std::string const writeURL {"/_api/agency/write"};
+  bool isWriteTrans = (initialUrl == writeURL);
 
   while (true) {  // will be left by timeout eventually
     // If for some reason we did not find an agency endpoint, we bail out:
@@ -1603,8 +1598,9 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
-  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  params.setJwt(af->tokenCache()->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1689,11 +1685,7 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add("Leader", VPackValue(""));
-      }
+      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1799,7 +1791,11 @@ bool AgencyComm::tryInitializeStructure() {
     AgencyWriteTransaction initTransaction;
     initTransaction.operations.push_back(initOperation);
 
-    auto result = sendTransactionWithFailover(initTransaction);
+    AgencyCommResult result = sendTransactionWithFailover(initTransaction);
+    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Cannot authenticate with agency,"
+      << " check value of --server.jwt-secret";
+    }
 
     return result.successful();
   } catch (std::exception const& e) {

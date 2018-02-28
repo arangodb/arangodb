@@ -33,7 +33,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -224,12 +223,13 @@ ClusterComm::ClusterComm()
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(auth != nullptr);
-  if (auth->isActive()) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  if (af->isActive()) {
+    std::string token = af->tokenCache()->jwtToken();
+    TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
-
-    _jwtAuthorization = "bearer " + auth->jwtToken();
+    _jwtAuthorization = "bearer " + token;
   }
 
   _communicator = std::make_shared<communicator::Communicator>();
@@ -991,7 +991,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         if (res.status == CL_COMM_RECEIVED &&
             res.answer_code == rest::ResponseCode::NOT_FOUND) {
           VPackSlice payload = res.answer->payload();
-          VPackSlice errorNum = payload.get("errorNum");
+          VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
               errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;

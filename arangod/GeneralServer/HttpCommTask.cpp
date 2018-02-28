@@ -26,6 +26,7 @@
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -33,10 +34,10 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "GeneralServer/VstCommTask.h"
 #include "Meta/conversion.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -588,21 +589,21 @@ bool HttpCommTask::processRead(double startTime) {
     } else {
       processRequest(std::move(_incompleteRequest));
     }
-  }
-  // not found
-  else if (authResult == rest::ResponseCode::NOT_FOUND) {
+  } else if (authResult == rest::ResponseCode::NOT_FOUND) { // not found
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
-  }
-  // forbidden
-  else if (authResult == rest::ResponseCode::FORBIDDEN) {
-    handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_USER_CHANGE_PASSWORD,
-                      "change password", 1);
-  } else {  // not authenticated
-    std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
-    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    addResponse(&resp, nullptr);
+  } else {  // not authenticated, might be because _users is out of sync
+    ServerState::Mode mode = ServerState::serverMode();
+    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
+      HttpResponse resp(rest::ResponseCode::SERVICE_UNAVAILABLE, leaseStringBuffer(0));
+      ReplicationFeature::prepareFollowerResponse(&resp, mode);
+      addResponse(&resp, nullptr);
+    } else {
+      std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+      HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
+      resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+      addResponse(&resp, nullptr);
+    }
   }
 
   _incompleteRequest.reset(nullptr);
@@ -808,8 +809,7 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
       GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
       if (!res) {
         return rest::ResponseCode::NOT_FOUND;
-      }
-      if (request->requestContext() == nullptr) {
+      } else if (request->requestContext() == nullptr) {
         return rest::ResponseCode::SERVER_ERROR;
       }
     }
@@ -853,16 +853,15 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
-        if (_authentication->isActive()) {
-          AuthResult result = _authentication->authInfo()->
-            checkAuthentication(authMethod, auth);
-          request->setAuthorized(result._authorized);
-          request->setUser(std::move(result._username));
+        if (_auth->isActive()) {
+          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+          request->setAuthenticated(entry.authenticated());
+          request->setUser(std::move(entry._username));
         } else {
-          request->setAuthorized(true);
+          request->setAuthenticated(true);
         }
         
-        if (request->authorized()) {
+        if (request->authenticated()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }

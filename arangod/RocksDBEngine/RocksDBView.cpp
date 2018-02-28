@@ -84,7 +84,7 @@ void RocksDBView::drop() {
   auto status = rocksutils::convertStatus(
       db->Delete(options, RocksDBColumnFamily::definitions(), key.string()));
   if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status.errorNumber());
+    THROW_ARANGO_EXCEPTION(status);
   }
 }
 

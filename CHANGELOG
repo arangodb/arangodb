@@ -1,7 +1,148 @@
+v3.3.4 (XXXX-XX-XX)
+-------------------
+
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
+  for two independent UPSERTs
+
+* remove unused startup option `--ldap.permissions-attribute-name`
+
+* fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
+
+* remove long disfunctional admin/long_echo handler
+
+* fixed Foxx API:
+
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
+
+* internal issue #1726: supervision failed to remove multiple servers
+  from health monitoring at once.
+
+* more information from inception, why agent is activated
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
+* Behaviour of permissions for databases and collections changed:
+  The new fallback rule for databases for which an access level is not explicitly specified:
+  Choose the higher access level of:
+    * A wildcard database grant
+    * A database grant on the `_system` database
+  The new fallback rule for collections for which an access level is not explicitly specified:
+  Choose the higher access level of:
+    * Any wildcard access grant in the same database, or on "*/*"
+    * The access level for the current database
+    * The access level for the `_system` database
+
+
+v3.3.3 (2018-01-26)
+-------------------
+
+* fix internal issue 1770: collection creation using distributeShardsLike yields
+  errors and did not distribute shards correctly in the following cases:
+  1. If numberOfShards * replicationFactor % nrDBServers != 0
+     (shards * replication is not divisible by DBServers).
+  2. If there was failover / move shard case on the leading collection
+     and creating the follower collection afterwards.
+
+* fix timeout issues in replication client expiration
+
+* added missing edge filter to neighbors-only traversals
+  in case a filter condition was moved into the traverser and the traversal was
+  executed in breadth-first mode and was returning each visited vertex exactly
+  once, and there was a filter on the edges of the path and the resulting vertices
+  and edges were not used later, the edge filter was not applied
+
+* fixed issue #4160: Run arangod with "--database.auto-upgrade" option always crash silently without error log
+
+* fix internal issue #1848: AQL optimizer was trying to resolve attribute accesses
+  to attributes of constant object values at query compile time, but only did so far
+  the very first attribute in each object
+
+  this fixes https://stackoverflow.com/questions/48648737/beginner-bug-in-for-loops-from-objects
+
+* fix inconvenience: If we want to start server with a non-existing
+  --javascript.app-path it will now be created (if possible)
+
+* fixed: REST API `POST _api/foxx` now returns HTTP code 201 on success, as documented.
+         returned 200 before.
+
+* fixed: REST API `PATCH _api/foxx/dependencies` now updates the existing dependencies
+         instead of replacing them.
+
+* fixed: Foxx upload of single javascript file. You now can upload via http-url pointing
+         to a javascript file.
+
+* fixed issue #4395: If your foxx app includes an `APP` folder it got
+         accidently removed by selfhealing this is not the case anymore.
+
+v3.3.3 (2018-01-16)
+-------------------
+
+* fix issue #4272: VERSION file keeps disappearing
+
+* fix internal issue #81: quotation marks disappeared when switching table/json
+  editor in the query editor ui
+
+* added option `--rocksdb.throttle` to control whether write-throttling is enabled
+  Write-throttling is turned on by default, to reduce chances of compactions getting
+  too far behind and blocking incoming writes.
+
+* fixed issue #4308: Crash when getter for error.name throws an error (on Windows)
+
+* UI: fixed a query editor caching and parsing issue
+
+* Fixed internal issue #1683: fixes an UI issue where a collection name gets wrongly cached
+  within the documents overview of a collection.
+
+* Fixed an issue with the index estimates in RocksDB in the case a transaction is aborted.
+  Former the index estimates were modified if the transaction commited or not.
+  Now they will only be modified if the transaction commited successfully.
+
+* UI: optimized login view for very small screen sizes
+
+* UI: optimized error messages for invalid query bind parameter
+
+* Truncate in RocksDB will now do intermediate commits every 10.000 documents
+  if truncate fails or the server crashes during this operation all deletes
+  that have been commited so far are persisted.
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* UI: optimized login view for very small screen sizes
+
+* issue #4222: Permission error preventing AQL query import / export on webui
+
+* UI: optimized error messages for invalid query bind parameter
+
+* UI: upgraded swagger ui to version 3.9.0
+
+* issue #3504: added option `--force-same-database` for arangorestore
+
+  with this option set to true, it is possible to make any arangorestore attempt
+  fail if the specified target database does not match the database name
+  specified in the source dump's "dump.json" file. it can thus be used to
+  prevent restoring data into the "wrong" database
+
+  The option is set to `false` by default to ensure backwards-compatibility
+
+* make the default value of `--rocksdb.block-cache-shard-bits` use the RocksDB
+  default value. This will mostly mean the default number block cache shard
+  bits is lower than before, allowing each shard to store more data and cause
+  less evictions from block cache
+
+* fixed issue #4255: AQL SORT consuming too much memory
+
+* fixed incorrect persistence of RAFT vote and term
+
+
 v3.3.2 (2018-01-04)
 -------------------
 
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' at 98,7: ArangoError 4: Expecting type String
+* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js'
+  at 98,7: ArangoError 4: Expecting type String
 
 * fixed issue in agency supervision with a good server being left in
   failedServers
@@ -10,17 +151,18 @@ v3.3.2 (2018-01-04)
 
 * fixed issue #4197: AQL statement not working in 3.3.1 when upgraded from 3.2.10
 
-* do not reuse collection ids when restoring collections from a dump, but assign new collection ids, this should prevent collection id conflicts
+* do not reuse collection ids when restoring collections from a dump, but assign
+  new collection ids, this should prevent collection id conflicts
 
+* fix issue #4393: broken handling of unix domain sockets in
+  JS_Download
+  
 
 v3.3.1 (2017-12-28)
 -------------------
 
-* UI: displayed wrong wfs property for a collection when using rocksdb as 
+* UI: displayed wrong wfs property for a collection when using RocksDB as
   storage engine
-
-* fixed issue #4199: Internal failure: JavaScript exception in file 'arangosh.js' 
-  at 98,7: ArangoError 4: Expecting type String 
 
 * added `--ignore-missing` option to arangoimp
   this option allows importing lines with less fields than specified in the CSV
@@ -30,10 +172,10 @@ v3.3.1 (2017-12-28)
 
 * optimize usage of AQL FULLTEXT index function to a FOR loop with index
   usage in some cases
-  When the optimization is applied, this especially speeds up fulltext index 
+  When the optimization is applied, this especially speeds up fulltext index
   queries in the cluster
 
-* UI: improved the behavior during collection creation in a cluster environment 
+* UI: improved the behavior during collection creation in a cluster environment
 
 * Agency lockup fixes for very small machines.
 
@@ -60,8 +202,10 @@ v3.3.rc8 (2017-12-12)
 * UI: fixed broken foxx configuration keys. Some valid configuration values
   could not be edited via the ui.
 
-* UI: pressing the return key inside a select2 box no longer triggers the modal's
-  success function
+* UI: Shard distribution view now has an accordion view instead of displaying
+  all shards of all collections at once.
+
+* UI: pressing the return key inside a select2 box no longer triggers the modals
 
 * UI: coordinators and db servers are now in sorted order (ascending)
 
@@ -69,7 +213,7 @@ v3.3.rc8 (2017-12-12)
 v3.3.rc7 (2017-12-07)
 ---------------------
 
-* fixed issue #3741: fix terminal color output in Windows 
+* fixed issue #3741: fix terminal color output in Windows
 
 * UI: fixed issue #3822: disabled name input field for system collections
 
@@ -92,7 +236,7 @@ v3.3.rc7 (2017-12-07)
 * UI: the graph viewer now displays updated label values correctly.
   Additionally the included node/edge editor now closes automatically
 	after a successful node/edge update.
-  
+
 * fixed issue #3917: traversals with high maximal depth take extremely long
   in planning phase.
 
@@ -181,9 +325,6 @@ v3.3.beta1 (2017-11-07)
       arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
       arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
                                      // in shell2, so the insert will fail
-
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
 
 * incremental transfer of initial collection data now can handle partial
   responses for a chunk, allowing the leader/master to send smaller chunks
@@ -285,6 +426,9 @@ v3.2.7 (2017-11-13)
 * Fixed issue #3597: AQL with path filters returns unexpected results
   In some cases breadth first search in combination with vertex filters
   yields wrong result, the filter was not applied correctly.
+
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
 
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
   and SortNodes, which could have led to sorted results being effectively not

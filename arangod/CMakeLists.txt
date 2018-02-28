@@ -174,6 +174,10 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Auth/Common.cpp
+  Auth/TokenCache.cpp
+  Auth/User.cpp
+  Auth/UserManager.cpp
   Cache/BucketState.cpp
   Cache/Cache.cpp
   Cache/CacheManagerFeature.cpp
@@ -286,6 +290,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
+  Replication/common-defines.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
@@ -331,7 +336,6 @@ SET(ARANGOD_SOURCES
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
-  RestServer/FeatureCacheFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
@@ -375,7 +379,6 @@ SET(ARANGOD_SOURCES
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
   Transaction/V8Context.cpp
-  Utils/Authentication.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
@@ -408,14 +411,11 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Transactions.cpp
-  VocBase/AuthInfo.cpp
-  VocBase/AuthUserEntry.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
   ${ADDITIONAL_BIN_ARANGOD_SOURCES}
@@ -454,6 +454,7 @@ if (USE_ENTERPRISE)
     target_link_libraries(arangoserver
       ldap
       lber
+      ${OPENSSL_LIBRARIES}
     )
   endif()
 endif()

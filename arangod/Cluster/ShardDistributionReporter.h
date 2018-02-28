@@ -25,6 +25,8 @@
 
 #include "Basics/Common.h"
 
+#include <queue>
+
 namespace arangodb {
 
 class ClusterComm;
@@ -59,9 +61,10 @@ class ShardDistributionReporter {
   void getDistributionForDatabase(std::string const& dbName,
                                   arangodb::velocypack::Builder& result);
 
-  void getDistributionForCollection(std::string const& dbName,
-                                    std::string const& colName,
-                                    arangodb::velocypack::Builder& result);
+  void getCollectionDistributionForDatabase(
+      std::string const& dbName,
+      std::string const& colName,
+      arangodb::velocypack::Builder& result);
 
  private:
   bool testAllShardsInSync(
@@ -69,11 +72,13 @@ class ShardDistributionReporter {
       std::unordered_map<std::string, std::vector<std::string>> const*
           allShards);
 
-  void reportOffSync(
-      std::string const& dbName, LogicalCollection const* col,
-      std::unordered_map<std::string, std::vector<std::string>> const* shardIds,
-      std::unordered_map<std::string, std::string> const& aliases,
-      arangodb::velocypack::Builder& result) const;
+  void helperDistributionForDatabase(
+      std::string const& dbName,
+      arangodb::velocypack::Builder& result,
+      std::queue<std::shared_ptr<LogicalCollection>>& todoSyncStateCheck,
+      double endtime,
+      std::unordered_map<std::string, std::string>& aliases,
+      bool progress);
 
  private:
   std::shared_ptr<ClusterComm> _cc;

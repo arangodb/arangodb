@@ -306,7 +306,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
-  std::unordered_set<AqlValue> cache;
+  std::vector<std::unordered_map<AqlValue, AqlValue>> cache;
+  cache.resize(_gatherBlockBuffer.size());
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
@@ -341,9 +342,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       TRI_ASSERT(!_gatherBlockBuffer[val.first].empty());
       AqlValue const& x(_gatherBlockBuffer[val.first].front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
-        auto it = cache.find(x);
+        auto it = cache[val.first].find(x);
 
-        if (it == cache.end()) {
+        if (it == cache[val.first].end()) {
           AqlValue y = x.clone();
           try {
             res->setValue(i, col, y);
@@ -351,9 +352,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
             y.destroy();
             throw;
           }
-          cache.emplace(y);
+          cache[val.first].emplace(x, y);
         } else {
-          res->setValue(i, col, (*it));
+          res->setValue(i, col, (*it).second);
         }
       }
     }
@@ -382,6 +383,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
         // more data for the shard for which we have no more local
         // values. 
         getBlock(val.first, atLeast, atMost);
+        cache[val.first].clear();
         // note that if getBlock() returns false here, this is not
         // a problem, because the sort function used takes care of
         // this
@@ -1214,12 +1216,12 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
           responseBodyBuf.c_str(), responseBodyBuf.length());
       VPackSlice slice = builder->slice();
 
-      if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+      if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
         errorNum = TRI_ERROR_INTERNAL;
       }
 
       if (slice.isObject()) {
-        VPackSlice v = slice.get("errorNum");
+        VPackSlice v = slice.get(StaticStrings::ErrorNum);
         if (v.isNumber()) {
           if (v.getNumericValue<int>() != TRI_ERROR_NO_ERROR) {
             /* if we've got an error num, error has to be true. */
@@ -1228,7 +1230,7 @@ static bool throwExceptionAfterBadSyncRequest(ClusterCommResult* res,
           }
         }
 
-        v = slice.get("errorMessage");
+        v = slice.get(StaticStrings::ErrorMessage);
         if (v.isString()) {
           errorMessage += v.copyString();
         } else {
@@ -1528,7 +1530,7 @@ size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
         responseBodyBuf.c_str(), responseBodyBuf.length());
     VPackSlice slice = builder->slice();
 
-    if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+    if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
     }
     size_t skipped = 0;
@@ -1557,7 +1559,7 @@ bool RemoteBlock::hasMore() {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
   bool hasMore = true;
@@ -1585,7 +1587,7 @@ int64_t RemoteBlock::count() const {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 
@@ -1614,7 +1616,7 @@ int64_t RemoteBlock::remaining() {
       VPackParser::fromJson(responseBodyBuf.c_str(), responseBodyBuf.length());
   VPackSlice slice = builder->slice();
 
-  if (!slice.hasKey("error") || slice.get("error").getBoolean()) {
+  if (!slice.hasKey(StaticStrings::Error) || slice.get(StaticStrings::Error).getBoolean()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
   }
 

@@ -42,6 +42,7 @@
   const currentVersion = require('@arangodb/database-version').CURRENT_VERSION;
   const db = internal.db;
   const shallowCopy = require('@arangodb/util').shallowCopy;
+  const errors = internal.errors;
 
   function upgrade () {
     // default replication factor for system collections
@@ -645,17 +646,25 @@
 
         // add redirections to new location
         ['/', '/_admin/html', '/_admin/html/index.html'].forEach(function (src) {
-          routing.save({
-            url: src,
-            action: {
-              'do': '@arangodb/actions/redirectRequest',
-              options: {
-                permanently: true,
-                destination: '/_db/' + db._name() + '/_admin/aardvark/index.html'
-              }
-            },
-            priority: -1000000
-          });
+          try {
+            routing.save({
+              url: src,
+              action: {
+                'do': '@arangodb/actions/redirectRequest',
+                options: {
+                  permanently: true,
+                  destination: '/_db/' + db._name() + '/_admin/aardvark/index.html'
+                }
+              },
+              priority: -1000000
+            });
+          } catch (err) {
+            // ignore unique constraint violations here
+            if (err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+              // rethrow all other types of errors
+              throw err;
+            }
+          }
         });
 
         return true;

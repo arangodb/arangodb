@@ -4,12 +4,21 @@ UPSERT
 The *UPSERT* keyword can be used for checking whether certain documents exist,
 and to update/replace them in case they exist, or create them in case they do not exist.
 On a single server, upserts are executed transactionally in an all-or-nothing fashion. 
-For sharded collections, the entire update operation is not transactional.
+
+If the RocksDB engine is used and intermediate commits are enabled, a query may 
+execute intermediate transaction commits in case the running transaction (AQL
+query) hits the specified size thresholds. In this case, the query's operations 
+carried out so far will be committed and not rolled back in case of a later abort/rollback. 
+That behavior can be controlled by adjusting the intermediate commit settings for 
+the RocksDB engine. 
+
+For sharded collections, the entire query and/or upsert operation may not be transactional,
+especially if it involves different shards and/or database servers.
 
 Each *UPSERT* operation is restricted to a single collection, and the 
 [collection name](../../Manual/Appendix/Glossary.html#collection-name) must not be dynamic.
 Only a single *UPSERT* statement per collection is allowed per AQL query, and 
-it cannot be followed by read operations that access the same collection, by
+it cannot be followed by read or write operations that access the same collection, by
 traversal operations, or AQL functions that can read documents.
 
 The syntax for an upsert operation is:

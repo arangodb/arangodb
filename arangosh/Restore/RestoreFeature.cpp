@@ -30,6 +30,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
+#include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -62,7 +63,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _chunkSize(1024 * 1024 * 8),
       _includeSystemCollections(false),
       _createDatabase(false),
-      _inputDirectory(),
+      _forceSameDatabase(false),
       _importData(true),
       _importStructure(true),
       _progress(true),
@@ -109,6 +110,10 @@ void RestoreFeature::collectOptions(
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
+  
+  options->addOption("--force-same-database",
+                     "force usage of the same database name as in the source dump.json file",
+                     new BooleanParameter(&_forceSameDatabase));
 
   options->addOption("--input-directory", "input directory",
                      new StringParameter(&_inputDirectory));
@@ -385,7 +390,7 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-int RestoreFeature::processInputDirectory(std::string& errorMsg) {
+Result RestoreFeature::readEncryptionInfo() {
   std::string encryptionType;
   try {
     std::string const encryptionFilename = FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
@@ -395,11 +400,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
       encryptionType = "none";
     }
   } catch (basics::Exception const& ex) {
-    errorMsg = ex.what();
-    return ex.code();
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    errorMsg = ex.what();
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     // file not found etc.
   }
@@ -415,6 +418,46 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 #endif
   }
 
+  return Result();
+}
+
+Result RestoreFeature::readDumpInfo() {
+  std::string databaseName;
+
+  try {
+    std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
+#ifdef USE_ENTERPRISE
+    VPackBuilder fileContentBuilder =
+        (_encryption != nullptr)
+            ? _encryption->velocyPackFromFile(fqn)
+            : basics::VelocyPackHelper::velocyPackFromFile(fqn);
+#else
+    VPackBuilder fileContentBuilder =
+        basics::VelocyPackHelper::velocyPackFromFile(fqn);
+#endif
+    VPackSlice const fileContent = fileContentBuilder.slice();
+
+    databaseName = fileContent.get("database").copyString();
+  } catch (...) {
+    // the above may go wrong for several reasons
+  }
+  
+  if (!databaseName.empty()) {
+    std::cout << "Database name in source dump is '" << databaseName << "'" << std::endl;
+  }
+
+
+  ClientFeature* client =
+      application_features::ApplicationServer::getFeature<ClientFeature>(
+          "Client");
+  if (_forceSameDatabase && databaseName != client->databaseName()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, std::string("database name in dump.json ('") + databaseName + "') does not match specified database name ('" + client->databaseName() + "')");
+  }
+
+  return Result();
+}
+
+int RestoreFeature::processInputDirectory(std::string& errorMsg) {
   // create a lookup table for collections
   std::map<std::string, bool> restrictList;
   for (size_t i = 0; i < _collections.size(); ++i) {
@@ -733,6 +776,26 @@ void RestoreFeature::start() {
   _httpClient->params().setUserNamePassword("/", client->username(),
                                             client->password());
 
+  // read encryption info
+  {
+    Result r = readEncryptionInfo();
+
+    if (r.fail()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << r.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
+
+  // read dump info
+  {
+    Result r = readDumpInfo();
+
+    if (r.fail()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << r.errorMessage();
+      FATAL_ERROR_EXIT();
+    }
+  }
+
   int err = TRI_ERROR_NO_ERROR;
   std::string versionString = _httpClient->getServerVersion(&err);
 
@@ -793,9 +856,8 @@ void RestoreFeature::start() {
               << _httpClient->getEndpointSpecification() << "'" << std::endl;
   }
 
-  std::string errorMsg = "";
-
   int res;
+  std::string errorMsg;
   try {
     res = processInputDirectory(errorMsg);
   } catch (std::exception const& ex) {

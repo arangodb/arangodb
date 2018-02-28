@@ -152,11 +152,11 @@ class PhysicalCollection {
 
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
-                            ManagedDocumentResult& result) = 0;
+                            ManagedDocumentResult& result) const = 0;
   
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
-                                        IndexIterator::DocumentCallback const& cb) = 0;
+                                        IndexIterator::DocumentCallback const& cb) const = 0;
 
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const newSlice,

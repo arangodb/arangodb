@@ -31,9 +31,11 @@ using namespace arangodb::aql;
 
 SortBlock::SortBlock(ExecutionEngine* engine, SortNode const* en)
     : ExecutionBlock(engine, en), _sortRegisters(), _stable(en->_stable), _mustFetchAll(true) {
+  
+  auto regPlan = en->getRegisterPlan();
   for (auto const& p : en->_elements) {
-    auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
-    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+    auto it = regPlan->varInfo.find(p.var->id);
+    TRI_ASSERT(it != regPlan->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
     _sortRegisters.emplace_back(
         std::make_pair(it->second.registerId, p.ascending));
@@ -126,7 +128,7 @@ void SortBlock::doSorting() {
     count = 0;
     RegisterId const nrRegs = _buffer.front()->getNrRegs();
 
-    std::unordered_set<AqlValue> cache;
+    std::unordered_map<AqlValue, AqlValue> cache;
 
     // install the rearranged values from _buffer into newbuffer
 
@@ -144,7 +146,6 @@ void SortBlock::doSorting() {
         throw;
       }
 
-      cache.clear();
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrRegs; j++) {
@@ -160,7 +161,7 @@ void SortBlock::doSorting() {
               // the new block already has either a copy or stolen
               // the AqlValue:
               _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, (*it));
+              next->setValue(i, j, (*it).second);
             } else {
               // We need to copy a, if it has already been stolen from
               // its original buffer, which we know by looking at the
@@ -174,7 +175,7 @@ void SortBlock::doSorting() {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
-                  cache.emplace(b);
+                  cache.emplace(a, b);
                 } catch (...) {
                   b.destroy();
                   throw;
@@ -186,15 +187,14 @@ void SortBlock::doSorting() {
                   }
                   next->setValue(i, j, b);
                 } catch (...) {
-                  cache.erase(b);
+                  cache.erase(a);
                   b.destroy();
                   throw;
                 }
                 // It does not matter whether the following works or not,
                 // since the original block keeps its responsibility
                 // for a:
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
               } else {
                 TRI_IF_FAILURE("SortBlock::doSortingNext2") {
                   THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -203,13 +203,12 @@ void SortBlock::doSorting() {
                 // steal it:
                 next->setValue(i, j, a);
                 _buffer[coords[count].first]->steal(a);
-                _buffer[coords[count].first]->eraseValue(coords[count].second,
-                                                         j);
-                // If this has worked, responsibility is now with the
-                // new block or indeed with us!
+                _buffer[coords[count].first]->eraseValue(coords[count].second, j);
+                // This might throw as well, however, the responsibility
+                // is already with the new block.
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(a);
+                cache.emplace(a, a);
               }
             }
           }

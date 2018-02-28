@@ -182,8 +182,8 @@ arangodb::Result RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
   rocksdb::ReadOptions const& ro = _state->_rocksReadOptions;
   TRI_ASSERT(ro.snapshot != nullptr);
   rocksdb::Status s = _state->_rocksTransaction->Get(ro, cf, key, val);
-  if(!s.ok()){
-   rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
+  if (!s.ok()) {
+    rv = rocksutils::convertStatus(s, rocksutils::StatusHint::document, "", "Get - in RocksDBTrxMethods");
   }
   return rv;
 }

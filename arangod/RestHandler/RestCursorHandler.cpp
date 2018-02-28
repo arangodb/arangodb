@@ -193,8 +193,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         } else {
           result.add("extra", extra->slice());
         }
-        result.add("error", VPackValue(false));
-        result.add("code", VPackValue((int)_response->responseCode()));
+        result.add(StaticStrings::Error, VPackValue(false));
+        result.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
@@ -222,8 +222,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       VPackBuffer<uint8_t> buffer;
       VPackBuilder result(buffer);
       result.openObject();
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
+      result.add(StaticStrings::Error, VPackValue(false));
+      result.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
       cursor->dump(result);
       result.close();
 
@@ -469,8 +469,8 @@ void RestCursorHandler::modifyCursor() {
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
     cursor->dump(builder);
     builder.close();
 
@@ -515,8 +515,8 @@ void RestCursorHandler::deleteCursor() {
   VPackBuilder builder;
   builder.openObject();
   builder.add("id", VPackValue(id));
-  builder.add("error", VPackValue(false));
-  builder.add("code",
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code,
               VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   builder.close();
 

@@ -34,7 +34,6 @@ const errors = require("@arangodb").errors;
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
-const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -152,9 +151,10 @@ function ahuacatlFulltextTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNonIndexed : function () {
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
+      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'bang', 'search')"); 
+      assertQueryError(errors.ERROR_QUERY_FULLTEXT_INDEX_MISSING.code, "RETURN FULLTEXT(" + fulltext.name() + ", 'texts', 'foo')"); 
       assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT(NotExistingFooCollection, 'text', 'foo')"); 
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN FULLTEXT('NotExistingFooCollection', 'text', 'foo')"); 
     }
 
   };

@@ -27,7 +27,7 @@ function signature: *(config, vertex, path) -> mixed*
 can return four different string values:
 - *"exclude"* -> this vertex will not be visited.
 - *"prune"* -> the edges of this vertex will not be followed.
-- *""* or *undefined* -> visit the vertex and follow it's edges.
+- *""* or *undefined* -> visit the vertex and follow its edges.
 - *Array* -> containing any combination of the above.
   If there is at least one *"exclude"* or *"prune"* respectivly
   is contained, it's effect will occur.

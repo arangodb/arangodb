@@ -364,6 +364,24 @@ void handleOnStatus(
 
 }
 
+// Build transaction for removing unattended servers from health monitoring
+query_t arangodb::consensus::removeTransactionBuilder(
+  std::vector<std::string> const& todelete) {
+  
+  query_t del = std::make_shared<Builder>();
+  { VPackArrayBuilder trxs(del.get());
+    { VPackArrayBuilder trx(del.get());
+      { VPackObjectBuilder server(del.get());
+        for (auto const& srv : todelete) {
+          del->add(
+            VPackValue(Supervision::agencyPrefix() +
+                       arangodb::consensus::healthPrefix + srv));
+          { VPackObjectBuilder oper(del.get());
+            del->add("op", VPackValue("delete")); }}}}}
+  return del;
+  
+}
+
 // Check all DB servers, guarded above doChecks
 std::vector<check_t> Supervision::check(std::string const& type) {
 
@@ -390,15 +408,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
         todelete.begin(), todelete.end(), machine.first), todelete.end());
   }
   if (!todelete.empty()) {
-    query_t del = std::make_shared<Builder>();
-      { VPackArrayBuilder trxs(del.get());
-        { VPackArrayBuilder trx(del.get());
-          for (auto const& srv : todelete) {
-            { VPackObjectBuilder server(del.get());
-              del->add(VPackValue(_agencyPrefix + healthPrefix + srv));
-              { VPackObjectBuilder oper(del.get());
-                del->add("op", VPackValue("delete")); }}}}}
-    _agent->write(del);
+    _agent->write(removeTransactionBuilder(todelete));
   }
 
   // Do actual monitoring
@@ -629,8 +639,6 @@ void Supervision::run() {
           // Do nothing unless leader for over 10 seconds
           auto secondsSinceLeader = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - _agent->leaderSince()).count();
-          // 10 seconds should be plenty of time for all servers to send
-          //  heartbeat status to new leader (heartbeat is once per second)
           if (secondsSinceLeader > 10.0) {
             try {
               doChecks();

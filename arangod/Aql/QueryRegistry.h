@@ -85,6 +85,9 @@ class QueryRegistry {
  private:
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo {
+    QueryInfo(QueryId id, Query* query, double ttl);
+    ~QueryInfo();
+
     TRI_vocbase_t* _vocbase;  // the vocbase
     QueryId _id;              // id of the query
     Query* _query;            // the actual query pointer

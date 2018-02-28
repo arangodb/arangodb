@@ -250,7 +250,7 @@ class AgencyCommResult {
   void clear();
 
   VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> vpack) { _vpack = vpack; }
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) { _vpack = vpack; }
 
  public:
   std::string _location;
@@ -292,7 +292,7 @@ public:
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
 
-struct AgencyGeneralTransaction : public AgencyTransaction {
+/*struct AgencyGeneralTransaction : public AgencyTransaction {
 
   typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
@@ -337,7 +337,7 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   char const* typeName() const override { return "AgencyGeneralTransaction"; }
   std::string clientId;
 
-};
+};*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            AgencyWriteTransaction

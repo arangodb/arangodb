@@ -41,7 +41,6 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -90,7 +89,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
       auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
       // check authentication after ensuring the collection exists
       if (exec != nullptr &&
-          !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+          !exec->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
         return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
       }
       func(coll.get());
@@ -109,7 +108,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
     if (exec != nullptr &&
-        !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+        !exec->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
       return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
     }
     try {
@@ -141,7 +140,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+    if (!exec->canUseDatabase(vocbase->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "cannot create collection in " + vocbase->name());
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
@@ -175,7 +174,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   try {
     ExecContext const* exe = ExecContext::CURRENT;
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+    AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
       std::unique_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
@@ -189,9 +188,10 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       // in case of success we grant the creating user RW access
       if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
         // this should not fail, we can not get here without database RW access
-        auth->authInfo()->updateUser(
-            ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-              entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
+        af->userManager()->updateUser(
+            ExecContext::CURRENT->user(), [&](auth::User& entry) {
+              entry.grantCollection(vocbase->name(), name, auth::Level::RW);
+              return TRI_ERROR_NO_ERROR;
             });
       }
       
@@ -206,10 +206,11 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
           ServerState::instance()->isSingleServerOrCoordinator()) {
         // this should not fail, we can not get here without database RW access
-        auth->authInfo()->updateUser(
-            ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-              entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
-            });
+        af->userManager()->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& u) {
+            u.grantCollection(vocbase->name(), name, auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          });
       }
       func(col);
     }
@@ -266,8 +267,8 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
   TRI_ASSERT(coll != nullptr);
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    bool canRead = exec->canUseCollection(coll->name(), AuthLevel::RO);
-    if (exec->databaseAuthLevel() == AuthLevel::NONE || !canRead) {
+    bool canRead = exec->canUseCollection(coll->name(), auth::Level::RO);
+    if (exec->databaseAuthLevel() == auth::Level::NONE || !canRead) {
       return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
     }
   }
@@ -276,22 +277,32 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
+  // this transaction is held longer than the following if...
   std::unique_ptr<SingleCollectionTransaction> trx;
+
   if (!ServerState::instance()->isCoordinator()) {
-    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
-    trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
-                                              AccessMode::Type::READ));
-    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    Result res = trx->begin();
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
     
+    auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
+    // populate the transaction object (which is used outside this if too)
+    trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
+                                              AccessMode::Type::READ));
+  
+    // we actually need this hint here, so that the collection is not
+    // loaded if it has status unloaded.
+    trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
+
+    Result res = trx->begin();
+
     if (res.fail()) {
       return res;
     }
   }
 
+  // note that we have an ongoing transaction here if we are in single-server
+  // case
   VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
@@ -303,8 +314,8 @@ Result Collections::updateProperties(LogicalCollection* coll,
                                      VPackSlice const& props) {
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(coll->name(), AuthLevel::RW);
-    if ((exec->databaseAuthLevel() != AuthLevel::RW || !canModify)) {
+    bool canModify = exec->canUseCollection(coll->name(), auth::Level::RW);
+    if ((exec->databaseAuthLevel() != auth::Level::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
@@ -383,8 +394,8 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (!exec->canUseDatabase(AuthLevel::RW) ||
-        !exec->canUseCollection(coll->name(), AuthLevel::RW)) {
+    if (!exec->canUseDatabase(auth::Level::RW) ||
+        !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -432,8 +443,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if  (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW) ||
-         !exec->canUseCollection(coll->name(), AuthLevel::RW)) {
+    if  (!exec->canUseDatabase(vocbase->name(), auth::Level::RW) ||
+         !exec->canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN,
                     "Insufficient rights to drop "
                     "collection " +
@@ -463,9 +474,9 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
   }
 
   if (res.ok() && ServerState::instance()->isSingleServerOrCoordinator()) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
-      entry.removeCollection(dbname, collName);
+    AuthenticationFeature* af = AuthenticationFeature::instance();
+    af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeCollection(dbname, collName);
     });
   }
   return res;

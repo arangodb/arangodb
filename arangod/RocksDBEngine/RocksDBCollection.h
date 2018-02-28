@@ -139,11 +139,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
-                    ManagedDocumentResult& result) override;
+                    ManagedDocumentResult& result) const override;
 
   bool readDocumentWithCallback(
       transaction::Methods* trx, LocalDocumentId const& token,
-      IndexIterator::DocumentCallback const& cb) override;
+      IndexIterator::DocumentCallback const& cb) const override;
 
   Result insert(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -229,13 +229,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool isUpdate, bool& waitForSync) const;
+      bool isUpdate) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -245,8 +244,7 @@ class RocksDBCollection final : public PhysicalCollection {
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
       arangodb::velocypack::Slice const& oldDoc,
       LocalDocumentId const& newDocumentId,
-      arangodb::velocypack::Slice const& newDoc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& newDoc, OperationOptions& options) const;
 
   arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
                                        transaction::Methods*,

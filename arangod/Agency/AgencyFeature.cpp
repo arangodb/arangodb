@@ -315,7 +315,7 @@ void AgencyFeature::stop() {
   if (_agent->inception() != nullptr) { // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for inception thread to finish";
@@ -326,7 +326,7 @@ void AgencyFeature::stop() {
   if (_agent != nullptr) {
     int counter = 0;
     while (_agent->isRunning()) {
-      usleep(100000);
+      std::this_thread::sleep_for(std::chrono::microseconds(100000));
       // emit warning after 5 seconds
       if (++counter == 10 * 5) {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";

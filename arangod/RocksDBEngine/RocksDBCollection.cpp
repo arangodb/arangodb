@@ -697,10 +697,8 @@ void RocksDBCollection::invokeOnAllElements(
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
   TRI_ASSERT(_objectId != 0);
-  TRI_voc_cid_t cid = _logicalCollection->cid();
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthd = state->rocksdbMethods();
-
   // delete documents
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(this->objectId());
@@ -715,48 +713,50 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
   iter->Seek(documentBounds.start());
 
   uint64_t found = 0;
+
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    LocalDocumentId docId(RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key()));
+    VPackSlice doc = VPackSlice(iter->value().data());
+    TRI_ASSERT(doc.isObject());
 
-    TRI_voc_rid_t revId =
-        RocksDBKey::revisionId(RocksDBEntryType::Document, iter->key());
-    VPackSlice key =
-        VPackSlice(iter->value().data()).get(StaticStrings::KeyString);
+    VPackSlice key = doc.get(StaticStrings::KeyString);
     TRI_ASSERT(key.isString());
 
     blackListKey(iter->key().data(), static_cast<uint32_t>(iter->key().size()));
 
-    // add possible log statement
-    state->prepareOperation(cid, revId, StringRef(key),
-                            TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-    Result r =
-        mthd->Delete(RocksDBColumnFamily::documents(), RocksDBKey(iter->key()));
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
+    state->prepareOperation(_logicalCollection->cid(), docId.id(),
+                            StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    auto res = removeDocument(trx, docId, doc, options, false);
+    if (res.fail()) {
+      // Failed to remove document in truncate.
+      // Throw
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
     }
-    // report size of key
-    RocksDBOperationResult result = state->addOperation(
-        cid, revId, TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0, iter->key().size());
+    res = state->addOperation(_logicalCollection->cid(), docId.id(),
+                              TRI_VOC_DOCUMENT_OPERATION_REMOVE, 0,
+                              res.keySize());
 
-    // transaction size limit reached -- fail
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
+    // transaction size limit reached
+    if (res.fail()) {
+      // This should never happen...
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+    }
+
+    if (found % 10000 == 0) {
+      state->triggerIntermediateCommit();
     }
     iter->Next();
   }
 
-  // delete index items
-  READ_LOCKER(guard, _indexesLock);
-  for (std::shared_ptr<Index> const& index : _indexes) {
-    RocksDBIndex* rindex = static_cast<RocksDBIndex*>(index.get());
-    rindex->truncate(trx);
+  if (found > 0) {
+    _needToPersistIndexEstimates = true;
   }
-  _needToPersistIndexEstimates = true;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  if (state->numIntermediateCommits() == 0 &&
+  if (state->numCommits() == 0 &&
       mthd->countInBounds(documentBounds, true)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "deletion check in collection truncate "
@@ -764,6 +764,13 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                    "deleted");
   }
 #endif
+
+  TRI_IF_FAILURE("FailAfterAllCommits") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  TRI_IF_FAILURE("SegfaultAfterAllCommits") {
+    TRI_SegfaultDebugging("SegfaultAfterAllCommits");
+  }
 
   if (found > 64 * 1024) {
     // also compact the ranges in order to speed up all further accesses
@@ -792,7 +799,7 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) {
+                                     ManagedDocumentResult& result) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, result, true);
     return res.ok();
@@ -803,7 +810,7 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
 // read using a token!
 bool RocksDBCollection::readDocumentWithCallback(
     transaction::Methods* trx, LocalDocumentId const& documentId,
-    IndexIterator::DocumentCallback const& cb) {
+    IndexIterator::DocumentCallback const& cb) const {
   if (documentId.isSet()) {
     auto res = lookupDocumentVPack(documentId, trx, cb, true);
     return res.ok();
@@ -870,7 +877,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  res = insertDocument(trx, documentId, newSlice, options, options.waitForSync);
+  res = insertDocument(trx, documentId, newSlice, options);
   if (res.ok()) {
     Result lookupResult = lookupDocumentVPack(documentId, trx, mdr, false);
 
@@ -941,7 +948,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
     TRI_ASSERT(!mdr.empty());
 
-    if (_logicalCollection->waitForSync()) {
+    if (_logicalCollection->waitForSync() && !options.isRestore) {
       trx->state()->waitForSync(true);
       options.waitForSync = true;
     }
@@ -974,8 +981,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc,
-                       options, options.waitForSync);
+  res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc, options);
 
   if (res.ok()) {
     mdr.setManaged(newDoc.begin(), documentId);
@@ -1072,8 +1078,7 @@ Result RocksDBCollection::replace(
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult = updateDocument(
-      trx, oldDocumentId, oldDoc, documentId, newDoc, options,
-      options.waitForSync);
+      trx, oldDocumentId, oldDoc, documentId, newDoc, options);
   if (opResult.ok()) {
     mdr.setManaged(newDoc.begin(), documentId);
     TRI_ASSERT(!mdr.empty());
@@ -1153,8 +1158,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), documentId.id(),
                           StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  res = removeDocument(trx, oldDocumentId, oldDoc, options, false,
-                       options.waitForSync);
+  res = removeDocument(trx, oldDocumentId, oldDoc, options, false);
   if (res.ok()) {
     // report key size
     res = state->addOperation(_logicalCollection->cid(), documentId.id(),
@@ -1376,7 +1380,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
 
 RocksDBOperationResult RocksDBCollection::insertDocument(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, OperationOptions& options, bool& waitForSync) const {
+    VPackSlice const& doc, OperationOptions& options) const {
   RocksDBOperationResult res;
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1415,11 +1419,11 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   }
 
   if (res.ok()) {
-    if (_logicalCollection->waitForSync()) {
-      waitForSync = true;  // output parameter (by ref)
+    if (_logicalCollection->waitForSync() && !options.isRestore) {
+      options.waitForSync = true;  // output parameter (by ref)
     }
 
-    if (waitForSync) {
+    if (options.waitForSync) {
       trx->state()->waitForSync(true);
     }
     _needToPersistIndexEstimates = true;
@@ -1430,8 +1434,7 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
 RocksDBOperationResult RocksDBCollection::removeDocument(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, OperationOptions& options, bool isUpdate,
-    bool& waitForSync) const {
+    VPackSlice const& doc, OperationOptions& options, bool isUpdate) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1475,11 +1478,11 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   }
 
   if (res.ok()) {
-    if (_logicalCollection->waitForSync()) {
-      waitForSync = true;
+    if (_logicalCollection->waitForSync() && !options.isRestore) {
+      options.waitForSync = true;
     }
 
-    if (waitForSync) {
+    if (options.waitForSync) {
       trx->state()->waitForSync(true);
     }
     _needToPersistIndexEstimates = true;
@@ -1508,8 +1511,7 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
 RocksDBOperationResult RocksDBCollection::updateDocument(
     transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
     VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
-    VPackSlice const& newDoc, OperationOptions& options,
-    bool& waitForSync) const {
+    VPackSlice const& newDoc, OperationOptions& options) const {
   // keysize in return value is set by insertDocument
 
   // Coordinator doesn't know index internals
@@ -1562,11 +1564,11 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   }
 
   if (res.ok()) {
-    if (_logicalCollection->waitForSync()) {
-      waitForSync = true;
+    if (_logicalCollection->waitForSync() && !options.isRestore) {
+      options.waitForSync = true;
     }
 
-    if (waitForSync) {
+    if (options.waitForSync) {
       trx->state()->waitForSync(true);
     }
     _needToPersistIndexEstimates = true;

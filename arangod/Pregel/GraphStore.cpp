@@ -246,7 +246,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   Result res = trx->documentFastPathLocal(vertexShard, StringRef(_key),
                                           mmdr, true);
   if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res.errorNumber());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   VPackSlice doc(mmdr.vpack());

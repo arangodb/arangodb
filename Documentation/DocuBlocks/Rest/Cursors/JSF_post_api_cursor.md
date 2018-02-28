@@ -35,7 +35,7 @@ for the query. If set to *true*, it will lead to the query cache being checked
 for the query if the query cache mode is either *on* or *demand*.
 
 @RESTBODYPARAM{memoryLimit,integer,optional,int64}
-the maximum number of memory (measured in bytes) that the query is allowed to 
+the maximum number of memory (measured in bytes) that the query is allowed to
 use. If set, then the query will fail with error "resource limit exceeded" in
 case it allocates too much memory. A value of *0* indicates that there is no
 memory limit.
@@ -70,7 +70,7 @@ or decreased by setting this attribute.
 @RESTSTRUCT{failOnWarning,JSF_post_api_cursor_opts,boolean,optional,}
 When set to *true*, the query will throw an exception and abort instead of producing
 a warning. This option should be used during development to catch potential issues
-early. When the attribute is set to *false*, warnings will not be propagated to 
+early. When the attribute is set to *false*, warnings will not be propagated to
 exceptions and will be returned with the query result.
 There is also a server configuration option `--query.fail-on-warning` for setting the
 default value for *failOnWarning* so it does not need to be set on a per-query level.
@@ -96,13 +96,15 @@ will be stopped.
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
 @RESTSTRUCT{intermediateCommitSize,JSF_post_api_cursor_opts,integer,optional,int64}
-Maximum total size of operations after which an intermediate commit is performed 
+Maximum total size of operations after which an intermediate commit is performed
 automatically. Honored by the RocksDB storage engine only.
 
 @RESTSTRUCT{intermediateCommitCount,JSF_post_api_cursor_opts,integer,optional,int64}
-Maximum number of operations after which an intermediate commit is performed 
+Maximum number of operations after which an intermediate commit is performed
 automatically. Honored by the RocksDB storage engine only.
 
+@RESTSTRUCT{skipInaccessibleCollections,JSF_post_api_cursor_opts,boolean,optional,}
+AQL queries (especially graph traversals) will treat collection to which a user has no access rights as if these collections were empty. Instead of returning a forbidden access error, your queries will execute normally. This is intended to help with certain use-cases: A graph contains several collections and different users execute AQL queries on that graph. You can now naturally limit the accessible results by changing the access rights of users on collections. This feature is only available in the Enterprise Edition.
 
 @RESTDESCRIPTION
 The query details include the query string plus optional query options and
@@ -136,13 +138,13 @@ id of temporary cursor created on the server (optional, see above)
 
 @RESTREPLYBODY{extra,object,optional,}
 an optional JSON object with extra information about the query result
-contained in its *stats* sub-attribute. For data-modification queries, the 
-*extra.stats* sub-attribute will contain the number of modified documents and 
+contained in its *stats* sub-attribute. For data-modification queries, the
+*extra.stats* sub-attribute will contain the number of modified documents and
 the number of documents that could not be modified
 due to an error (if *ignoreErrors* query option is specified)
 
 @RESTREPLYBODY{cached,boolean,required,}
-a boolean flag indicating whether the query result was served 
+a boolean flag indicating whether the query result was served
 from the query cache or not. If the query result is served from the query
 cache, the *extra* return attribute will not contain any *stats* sub-attribute
 and no *profile* sub-attribute.

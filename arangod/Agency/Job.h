@@ -42,21 +42,21 @@ namespace consensus {
 enum JOB_STATUS { TODO, PENDING, FINISHED, FAILED, NOTFOUND };
 const std::vector<std::string> pos({"/Target/ToDo/", "/Target/Pending/",
                                     "/Target/Finished/", "/Target/Failed/"});
-static std::string const mapUniqueToShortID = "/Target/MapUniqueToShortID/";
-static std::string const pendingPrefix = "/Target/Pending/";
-static std::string const failedPrefix = "/Target/Failed/";
-static std::string const finishedPrefix = "/Target/Finished/";
-static std::string const toDoPrefix = "/Target/ToDo/";
-static std::string const cleanedPrefix = "/Target/CleanedServers";
-static std::string const failedServersPrefix = "/Target/FailedServers";
-static std::string const planColPrefix = "/Plan/Collections/";
-static std::string const curColPrefix = "/Current/Collections/";
-static std::string const blockedServersPrefix = "/Supervision/DBServers/";
-static std::string const blockedShardsPrefix = "/Supervision/Shards/";
-static std::string const serverStatePrefix = "/Sync/ServerStates/";
-static std::string const planVersion = "/Plan/Version";
-static std::string const plannedServers = "/Plan/DBServers";
-static std::string const healthPrefix = "/Supervision/Health/";
+extern std::string const mapUniqueToShortID;
+extern std::string const pendingPrefix;
+extern std::string const failedPrefix;
+extern std::string const finishedPrefix;
+extern std::string const toDoPrefix;
+extern std::string const cleanedPrefix;
+extern std::string const failedServersPrefix;
+extern std::string const planColPrefix;
+extern std::string const curColPrefix;
+extern std::string const blockedServersPrefix;
+extern std::string const blockedShardsPrefix;
+extern std::string const serverStatePrefix;
+extern std::string const planVersion;
+extern std::string const plannedServers;
+extern std::string const healthPrefix;
 
 struct JobResult {
   JobResult() {}

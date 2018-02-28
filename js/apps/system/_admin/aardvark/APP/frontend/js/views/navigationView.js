@@ -64,11 +64,16 @@
     templateSub: templateEngine.createTemplate('subNavigationView.ejs'),
 
     render: function () {
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+    },
+
+    continueRender: function (readOnly) {
       var self = this;
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
-        isCluster: this.isCluster
+        isCluster: this.isCluster,
+        readOnly: readOnly
       }));
 
       if (this.currentDB.get('name') !== '_system') {
@@ -190,11 +195,6 @@
           name: 'Dashboard',
           view: undefined,
           active: true
-        },
-        {
-          name: 'Logs',
-          view: undefined,
-          disabled: true
         }
       ],
       collections: [
