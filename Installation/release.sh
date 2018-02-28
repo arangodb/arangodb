@@ -65,13 +65,14 @@ if html2text -version; then
     echo "html2text found."
 else
     echo "html2text missing from your system"
+    exit 1
 fi
 
 if awk; then
     echo "awk found."
 else
     echo "awk missing from your system."
-    exit
+    exit 1
 fi
 
 if fgrep --version; then
@@ -81,10 +82,11 @@ else
     exit 1
 fi
 
-if sed --version; then
+if ${SED} --version; then
     echo "sed found"
 else
     echo "sed missing from your system"
+    exit 1
 fi
 
 if python --version; then
