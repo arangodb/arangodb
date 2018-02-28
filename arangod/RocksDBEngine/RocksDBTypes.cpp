@@ -29,7 +29,8 @@ namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
 static rocksdb::Slice Placeholder(
-    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&placeholder),
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &placeholder),
     1);
 
 static RocksDBEntryType database = arangodb::RocksDBEntryType::Database;
@@ -192,16 +193,22 @@ char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
 #endif
     case arangodb::RocksDBLogType::BeginTransaction:
       return "BeginTransaction";
+    case arangodb::RocksDBLogType::CommitTransaction:
+      return "CommitTransaction";
     case arangodb::RocksDBLogType::DocumentOperationsPrologue:
       return "DocumentOperationsPrologue";
     case arangodb::RocksDBLogType::DocumentRemove:
       return "DocumentRemove";
+    case arangodb::RocksDBLogType::DocumentRemoveV2:
+      return "DocumentRemoveV2";
     case arangodb::RocksDBLogType::DocumentRemoveAsPartOfUpdate:
       return "IgnoreRemoveAsPartOfUpdate";
     case arangodb::RocksDBLogType::SinglePut:
       return "SinglePut";
     case arangodb::RocksDBLogType::SingleRemove:
       return "SingleRemove";
+    case arangodb::RocksDBLogType::SingleRemoveV2:
+      return "SingleRemoveV2";
     case arangodb::RocksDBLogType::Invalid:
       return "Invalid";
   }
@@ -247,7 +254,4 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
   return Placeholder;  // avoids warning - errorslice instead ?!
 }
 
-
-char arangodb::rocksDBFormatVersion() {
-  return '0';
-}
+char arangodb::rocksDBFormatVersion() { return '0'; }

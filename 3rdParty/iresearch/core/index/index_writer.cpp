@@ -651,6 +651,10 @@ void index_writer::remove(const filter& filter) {
 }
 
 void index_writer::remove(const std::shared_ptr<filter>& filter) {
+  if (!filter) {
+    return; // skip empty filters
+  }
+
   auto ctx = get_flush_context();
   SCOPED_LOCK(ctx->mutex_); // lock due to context modification
   ctx->modification_queries_.emplace_back(filter, ctx->generation_++, false);

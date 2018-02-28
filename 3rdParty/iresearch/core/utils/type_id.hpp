@@ -25,27 +25,36 @@
 #define IRESEARCH_TYPE_ID_H
 
 #include "shared.hpp"
+#include "string.hpp"
+
 #include <functional>
 
 NS_ROOT
 
 struct IRESEARCH_API type_id {
-  type_id() : hash(std::hash<const type_id*>()(this)) { }
+  type_id() : hash(compute_hash(this)) { }
 
-  bool operator==( const type_id& rhs ) const {
+  bool operator==(const type_id& rhs) const NOEXCEPT {
     return this == &rhs;
   }
 
-  bool operator!=( const type_id& rhs ) const {
-    return !( *this == rhs );
+  bool operator!=(const type_id& rhs) const NOEXCEPT {
+    return !(*this == rhs);
   }
 
   /* boost::hash_combile support */
-  friend size_t hash_value( const type_id& type ) { return type.hash; }
+  friend size_t hash_value(const type_id& type) { return type.hash; }
     
   operator const type_id*() const { return this; }
 
   size_t hash;
+
+ private:
+  static size_t compute_hash(const type_id* ptr) {
+    return irs::hash_utils::hash(
+      irs::string_ref(reinterpret_cast<const char*>(ptr), sizeof(ptr))
+    );
+  }
 }; // type_id
 
 #define DECLARE_TYPE_ID( type_id_name ) static const type_id_name& type()

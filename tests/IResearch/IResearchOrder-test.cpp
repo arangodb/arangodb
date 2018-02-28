@@ -299,7 +299,7 @@ SECTION("test_FCall_tfidf") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(false, scorer); // SortCondition is by default ascending
     assertOrderSuccess(query, expected);
@@ -309,7 +309,7 @@ SECTION("test_FCall_tfidf") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) ASC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(false, scorer);
     assertOrderSuccess(query, expected);
@@ -319,7 +319,7 @@ SECTION("test_FCall_tfidf") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT tfidf(d) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(true, scorer);
     assertOrderSuccess(query, expected);
@@ -411,7 +411,7 @@ SECTION("test_FCall_bm25") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(false, scorer); // SortCondition is by default ascending
     assertOrderSuccess(query, expected);
@@ -421,7 +421,7 @@ SECTION("test_FCall_bm25") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) ASC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(false, scorer);
     assertOrderSuccess(query, expected);
@@ -431,7 +431,7 @@ SECTION("test_FCall_bm25") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT bm25(d) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
     expected.add(true, scorer);
     assertOrderSuccess(query, expected);
@@ -534,25 +534,25 @@ SECTION("test_FCall_bm25") {
     assertOrderFail(query, &ctx);
   }
 
-  // bm25 with k coefficient, b coefficient, with norms
+  // bm25 with k coefficient, b coefficient
   {
-    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2, true) DESC RETURN d";
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.99, 1.2) DESC RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.99, 1.2, true ]");
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.99, 1.2 ]");
 
     expected.add(true, scorer);
     assertOrderSuccess(query, expected);
   }
 
-  // reference as k,b coefficients, with norms
+  // reference as k,b coefficients
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("k", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
     ctx.vars.emplace("b", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{1.2}));
     ctx.vars.emplace("withNorms", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{true}));
 
-    std::string query = "LET k=0.97 LET b=1.2 LET withNorms=true FOR d IN collection FILTER '1' SORT bm25(d, k, b, withNorms) DESC RETURN d";
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.97, 1.2, true ]");
+    std::string query = "LET k=0.97 LET b=1.2 FOR d IN collection FILTER '1' SORT bm25(d, k, b) DESC RETURN d";
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.97, 1.2 ]");
     irs::order expected;
 
     expected.add(true, scorer);
@@ -560,14 +560,14 @@ SECTION("test_FCall_bm25") {
     assertOrderSuccess(query, expected, &ctx);
   }
 
-  // deterministic expressions as k,b coefficients, with norms (do not accept non-constant arguments)
+  // deterministic expressions as k,b coefficients
   {
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.97}));
     ctx.vars.emplace("y", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{0.1}));
 
-    std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y, x>y) DESC RETURN d";
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.99, 1.1, true ]");
+    std::string query = "LET x=0.97 LET y=0.1 FOR d IN collection FILTER '1' SORT bm25(d, x+0.02, 1+y) DESC RETURN d";
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 0.99, 1.1 ]");
     irs::order expected;
 
     expected.add(true, scorer);
@@ -586,7 +586,7 @@ SECTION("test_FCall_bm25") {
 
   // invalid number of arguments function
   {
-    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.97, 0.07, false, 1) RETURN d";
+    std::string query = "FOR d IN collection FILTER '1' SORT bm25(d, 0.97, 0.07, false) RETURN d";
 
     assertOrderParseFail(query, TRI_ERROR_NO_ERROR);
   }
@@ -624,7 +624,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     assertOrderSuccess(query, expected);
   }
 
@@ -635,7 +635,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     dummy_scorer::validateArgs = [](irs::string_ref const& args)->bool {
       CHECK((irs::string_ref("[\"abc\"]") == args));
       return true;
@@ -651,7 +651,7 @@ SECTION("test_FCallUser") {
     irs::order expected;
     bool valid = true;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
 
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&valid, &attempt](irs::string_ref const& args)->bool {
@@ -670,7 +670,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"{\\\"abc\\\": \\\"def\\\"}\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
 
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
@@ -690,7 +690,7 @@ SECTION("test_FCallUser") {
     irs::order expected;
     bool valid = true;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&valid, &attempt](irs::string_ref const& args)->bool {
       attempt++;
@@ -709,7 +709,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, {\"abc\": \"def\"}) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
       ++attempt;
@@ -727,7 +727,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"def\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
       ++attempt;
@@ -745,7 +745,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", \"{\\\"def\\\": \\\"ghi\\\"}\") RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
       ++attempt;
@@ -763,7 +763,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d, \"abc\", {\"def\": \"ghi\"}) RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     size_t attempt = 0;
     dummy_scorer::validateArgs = [&attempt](irs::string_ref const& args)->bool {
       ++attempt;
@@ -779,7 +779,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) ASC RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(false, irs::string_ref::nil);
+    expected.add<dummy_scorer>(false, irs::string_ref::NIL);
     assertOrderSuccess(query, expected);
   }
 
@@ -788,7 +788,7 @@ SECTION("test_FCallUser") {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC RETURN d";
     irs::order expected;
 
-    expected.add<dummy_scorer>(true, irs::string_ref::nil);
+    expected.add<dummy_scorer>(true, irs::string_ref::NIL);
     assertOrderSuccess(query, expected);
   }
 
@@ -850,9 +850,9 @@ SECTION("test_order") {
   {
     std::string query = "FOR d IN collection FILTER '1' SORT test::tfidf(d) DESC, tfidf(d) RETURN d";
     irs::order expected;
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
-    expected.add<dummy_scorer>(true, irs::string_ref::nil);
+    expected.add<dummy_scorer>(true, irs::string_ref::NIL);
     expected.add(false, scorer);
     assertOrderSuccess(query, expected);
   }

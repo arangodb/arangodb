@@ -276,7 +276,7 @@ class compound_iterator {
       return true;
     }
 
-    current_key_ = irs::string_ref::nil;
+    current_key_ = irs::string_ref::NIL;
 
     return false;
   }
@@ -323,7 +323,7 @@ class compound_term_iterator : public irs::term_iterator {
     meta_ = &meta;
     term_iterator_mask_.clear();
     term_iterators_.clear();
-    current_term_ = irs::bytes_ref::nil;
+    current_term_ = irs::bytes_ref::NIL;
   }
 
   compound_term_iterator& operator=(const compound_term_iterator&) = delete; // due to references
@@ -396,7 +396,7 @@ bool compound_term_iterator::next() {
     return true;
   }
 
-  current_term_ = irs::bytes_ref::nil;
+  current_term_ = irs::bytes_ref::NIL;
 
   return false;
 }
@@ -483,8 +483,8 @@ class compound_field_iterator : public irs::basic_term_reader {
   };
   irs::string_ref current_field_;
   const irs::field_meta* current_meta_{ &irs::field_meta::EMPTY };
-  const irs::bytes_ref* min_{ &irs::bytes_ref::nil };
-  const irs::bytes_ref* max_{ &irs::bytes_ref::nil };
+  const irs::bytes_ref* min_{ &irs::bytes_ref::NIL };
+  const irs::bytes_ref* max_{ &irs::bytes_ref::NIL };
   std::vector<term_iterator_t> field_iterator_mask_; // valid iterators for current field
   std::vector<field_iterator_t> field_iterators_; // all segment iterators
   mutable compound_term_iterator term_itr_;
@@ -519,7 +519,7 @@ bool compound_field_iterator::next() {
 
   // reset for next pass
   field_iterator_mask_.clear();
-  max_ = min_ = &irs::bytes_ref::nil;
+  max_ = min_ = &irs::bytes_ref::NIL;
 
   for (size_t i = 0, count = field_iterators_.size(); i < count; ++i) {
     auto& field_itr = field_iterators_[i];
@@ -556,7 +556,7 @@ bool compound_field_iterator::next() {
     return true;
   }
 
-  current_field_ = irs::string_ref::nil;
+  current_field_ = irs::string_ref::NIL;
 
   return false;
 }

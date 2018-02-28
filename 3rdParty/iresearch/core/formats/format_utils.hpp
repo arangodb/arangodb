@@ -24,10 +24,7 @@
 #ifndef IRESEARCH_FORMATS_UTILS_H
 #define IRESEARCH_FORMATS_UTILS_H
 
-#include "store/data_output.hpp"
-#include "store/data_input.hpp"
-#include "store/checksum_io.hpp"
-
+#include "store/store_utils.hpp"
 #include "index/field_meta.hpp"
 
 NS_ROOT
@@ -70,36 +67,39 @@ void IRESEARCH_API write_header(index_output& out, const string_ref& format, int
 
 void IRESEARCH_API write_footer(index_output& out);
 
-int64_t IRESEARCH_API read_checksum(index_input& in);
-
 int32_t IRESEARCH_API check_header(
   index_input& in, const string_ref& format, int32_t min_ver, int32_t max_ver
 );
 
-template< typename Checksum >
-int64_t check_footer( checksum_index_input< Checksum >& in ) {
-  validate_footer( in );
+inline int64_t read_checksum(index_input& in) {
+  in.seek(in.length() - FOOTER_LEN);
+  validate_footer(in);
+  return in.read_long();
+}
 
-  const int64_t req_checksum = in.checksum();
-  const int64_t checksum = in.read_long();
+inline int64_t check_footer(index_input& in, int64_t checksum) {
+  validate_footer(in);
 
-  if ( checksum != req_checksum ) {
+  if (checksum != in.read_long()) {
     // invalid checksum
     throw index_error();
   }
 
-  return req_checksum;
+  return checksum;
 }
 
-template< typename Checksum >
-int64_t check_checksum(const index_input& in) {
-  auto clone = in.dup();
+inline int64_t checksum(const index_input& in) {
+  auto* stream = &in;
 
-  clone->seek(0);
+  index_input::ptr dup;
+  if (0 != in.file_pointer()) {
+    dup = in.dup();
+    dup->seek(0);
+    stream = dup.get();
+  }
 
-  checksum_index_input<Checksum> check_in(std::move(clone));
-  check_in.seek(check_in.length() - FOOTER_LEN);
-  return check_footer(check_in);
+  assert(0 == stream->file_pointer());
+  return stream->checksum(stream->length() - sizeof(uint64_t));
 }
 
 NS_END

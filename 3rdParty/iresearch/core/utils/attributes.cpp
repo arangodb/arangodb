@@ -140,7 +140,7 @@ attribute_registrar::attribute_registrar(
       );
     }
 
-    IR_STACK_TRACE();
+    IR_LOG_STACK_TRACE();
   }
 }
 

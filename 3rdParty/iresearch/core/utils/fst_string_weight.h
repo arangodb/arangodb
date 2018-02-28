@@ -26,6 +26,8 @@
 
 #include "shared.hpp"
 #include "utils/string.hpp"
+#include "utils/std.hpp"
+#include "utils/bytes_utils.hpp"
 
 #include <string>
 #include <fst/string-weight.h>
@@ -105,8 +107,12 @@ class StringLeftWeight {
 
   std::istream& Read(std::istream& strm) {
     // read size
+    // use varlen encoding since weights are usually small
     uint32 size;
-    ReadType(strm, &size);
+    {
+      auto it = irs::irstd::make_istream_iterator(strm);
+      size = irs::vread<uint32_t>(it);
+    }
 
     // read content
     str_.resize(size);
@@ -120,8 +126,12 @@ class StringLeftWeight {
 
   std::ostream& Write(std::ostream &strm) const {
     // write size
+    // use varlen encoding since weights are usually small
     const uint32 size =  static_cast<uint32_t>(Size());
-    WriteType(strm, size);
+    {
+      auto it = irs::irstd::make_ostream_iterator(strm);
+      irs::vwrite(it, size);
+    }
 
     // write content
     strm.write(

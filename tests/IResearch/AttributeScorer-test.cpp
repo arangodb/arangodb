@@ -45,7 +45,6 @@
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -238,7 +237,6 @@ struct IResearchAttributeScorerSetup {
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
@@ -290,7 +288,6 @@ struct IResearchAttributeScorerSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // IResearchAttributeScorerSetup

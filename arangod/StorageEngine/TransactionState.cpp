@@ -25,7 +25,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -249,8 +248,18 @@ int TransactionState::lockCollections() {
 /// @brief find a collection in the transaction's list of collections
 TransactionCollection* TransactionState::findCollection(
     TRI_voc_cid_t cid) const {
-  size_t unused = 0;
-  return findCollection(cid, unused);
+  for (auto* trxCollection : _collections) {
+    if (cid == trxCollection->id()) {
+      // found
+      return trxCollection;
+    }
+    if (cid < trxCollection->id()) {
+      // collection not found
+      break;
+    }
+  }
+
+  return nullptr;
 }
 
 /// @brief find a collection in the transaction's list of collections
@@ -267,16 +276,16 @@ TransactionCollection* TransactionState::findCollection(
   size_t i;
 
   for (i = 0; i < n; ++i) {
-    auto trxCollection = _collections.at(i);
+    auto trxCollection = _collections[i];
+    
+    if (cid == trxCollection->id()) {
+      // found
+      return trxCollection;
+    }
 
     if (cid < trxCollection->id()) {
       // collection not found
       break;
-    }
-
-    if (cid == trxCollection->id()) {
-      // found
-      return trxCollection;
     }
     // next
   }
@@ -324,15 +333,15 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
     }
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     
-    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
-    
-    if (level == AuthLevel::NONE) {
+    auth::Level level = exec->collectionAuthLevel(_vocbase->name(), colName);
+    TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
+    if (level == auth::Level::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-      << " has collection AuthLevel::NONE";
+      << " has collection auth::Level::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-    if (level == AuthLevel::RO && collectionWillWrite) {
+    if (level == auth::Level::RO && collectionWillWrite) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
       << " has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
@@ -415,7 +424,3 @@ void TransactionState::updateStatus(transaction::Status status) {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

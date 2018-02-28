@@ -158,7 +158,7 @@ template<
     ref_type(nullptr, rhs.size_), rep_(rhs.rep_) {
     if (capacity()) {
       this->data_ = allocator().allocate(capacity());
-      std::memcpy(data(), rhs.data_, sizeof(char_type) * rhs.size_);
+      traits_type::copy(data(), rhs.data_, rhs.size_);
     }
   }
 
@@ -167,9 +167,7 @@ template<
       oversize(rhs.capacity());
 
       if (capacity()) {
-        std::memcpy(
-          data(), rhs.data_, sizeof(char_type) * (this->size_ = rhs.size_)
-        );
+        traits_type::copy(data(), rhs.data_, this->size_ = rhs.size_);
       }
     }
 
@@ -220,7 +218,7 @@ template<
     const char_type* b, size_t size, size_t align = DEF_ALIGN
   ) {
     oversize(this->size() + size, align);
-    std::memcpy(data() + this->size(), b, sizeof(char_type) * size);
+    traits_type::copy(data() + this->size(), b, size);
     this->size_ += size;
     return *this;
   }
@@ -269,7 +267,7 @@ template<
 
     if (size > capacity()) {
       char_type* newdata = allocator().allocate(size);
-      std::memcpy(newdata, this->data_, sizeof(char_type) * this->size());
+      traits_type::copy(newdata, this->data_, this->size());
       destroy();
       this->data_ = newdata;
       capacity(size);

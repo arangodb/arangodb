@@ -2,4 +2,4 @@ Modifying a View
 ========================================
 
 <!-- js/actions/api-view.js -->
-@startDocuBlock JSF_put_api_view_rename
+@startDocuBlock put_api_view_rename

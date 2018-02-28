@@ -2,7 +2,7 @@ Working with Documents using REST
 =================================
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_READ
+@startDocuBlock get_read_document
 
 #### Changes in 3.0 from 2.8:
 
@@ -10,7 +10,7 @@ The *rev* query parameter has been withdrawn. The same effect can be
 achieved with the *If-Match* HTTP header.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_READ_HEAD
+@startDocuBlock head_read_document_header
 
 #### Changes in 3.0 from 2.8:
 
@@ -18,7 +18,7 @@ The *rev* query parameter has been withdrawn. The same effect can be
 achieved with the *If-Match* HTTP header.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_READ_ALL
+@startDocuBlock put_read_all_documents
 
 #### Changes in 3.0 from 2.8:
 
@@ -27,7 +27,7 @@ way with the URL path */_api/document* and the required query parameter
 *collection* still works.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_CREATE
+@startDocuBlock post_create_document
 
 #### Changes in 3.0 from 2.8:
 
@@ -38,7 +38,7 @@ with one operation is new and the query parameter *returnNew* has been added.
 
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_REPLACE
+@startDocuBlock put_replace_document
 
 #### Changes in 3.0 from 2.8:
 
@@ -62,14 +62,14 @@ way with the URL path */_api/document* and the required query parameter
 *collection* still works.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_REPLACE_MULTI
+@startDocuBlock put_replace_document_MULTI
 
 #### Changes in 3.0 from 2.8:
 
 The multi document version is new in 3.0.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_UPDATE
+@startDocuBlock patch_update_document
 
 #### Changes in 3.0 from 2.8:
 
@@ -93,14 +93,14 @@ way with the URL path */_api/document* and the required query parameter
 *collection* still works.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_UPDATE_MULTI
+@startDocuBlock patch_update_document_MULTI
 
 #### Changes in 3.0 from 2.8:
 
 The multi document version is new in 3.0.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_DELETE
+@startDocuBlock delete_remove_document
 
 #### Changes in 3.0 from 2.8:
 
@@ -117,7 +117,7 @@ combination of *If-Match* given and *policy=last* no longer works, but can
 easily be achieved by leaving out the *If-Match* header.
 
 <!-- arangod/RestHandler/RestDocumentHandler.cpp -->
-@startDocuBlock REST_DOCUMENT_DELETE_MULTI
+@startDocuBlock delete_remove_document_MULTI
 
 #### Changes in 3.0 from 2.8:
 

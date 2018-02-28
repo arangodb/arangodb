@@ -186,7 +186,7 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
   // size_t const count = words.size();
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(trx);
-    key->constructFulltextIndexValue(_objectId, StringRef(word), documentId.id());
+    key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
     Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
     if (!r.ok()) {
@@ -212,7 +212,7 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
   int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
     RocksDBKeyLeaser key(trx);
-    key->constructFulltextIndexValue(_objectId, StringRef(word), documentId.id());
+    key->constructFulltextIndexValue(_objectId, StringRef(word), documentId);
 
     Result r = mthd->Delete(_cf, key.ref());
     if (!r.ok()) {
@@ -428,8 +428,8 @@ Result RocksDBFulltextIndex::applyQueryToken(
       return rocksutils::convertStatus(s);
     }
 
-    LocalDocumentId documentId(RocksDBKey::revisionId(
-        RocksDBEntryType::FulltextIndexValue, iter->key()));
+    LocalDocumentId documentId = RocksDBKey::documentId(
+        RocksDBEntryType::FulltextIndexValue, iter->key());
     if (token.operation == FulltextQueryToken::AND) {
       intersect.insert(documentId);
     } else if (token.operation == FulltextQueryToken::OR) {
@@ -455,7 +455,7 @@ Result RocksDBFulltextIndex::applyQueryToken(
 
 
 IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* trx,
-                                                          ManagedDocumentResult* mdr,
+                                                          ManagedDocumentResult*,
                                                           aql::AstNode const* condNode,
                                                           aql::Variable const* var, bool reverse) {
   TRI_ASSERT(condNode != nullptr);
@@ -487,7 +487,6 @@ IndexIterator* RocksDBFulltextIndex::iteratorForCondition(transaction::Methods* 
     THROW_ARANGO_EXCEPTION(res);
   }
   
-  return new RocksDBFulltextIndexIterator(_collection, trx, mdr, this,
-                                          std::move(results));
+  return new RocksDBFulltextIndexIterator(_collection, trx, this, std::move(results));
 }
 

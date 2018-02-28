@@ -87,8 +87,8 @@ int main(int argc, char* argv[]) {
   // init timers
   irs::timer_utils::init_stats(true);
   auto output_stats = irs::make_finally([]()->void {
-    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time)->bool {
-      std::cout << key << " calls:" << count << ", time: " << time/1000 << " us, avg call: " << time/1000/(double)count << " us"<< std::endl;
+    irs::timer_utils::visit([](const std::string& key, size_t count, size_t time_us)->bool {
+      std::cout << key << " calls:" << count << ", time: " << time_us << " us, avg call: " << time_us/double(count) << " us"<< std::endl;
       return true;
     });
   });
@@ -117,3 +117,7 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

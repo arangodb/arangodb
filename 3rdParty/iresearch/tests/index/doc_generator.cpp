@@ -105,7 +105,7 @@ class break_iterator : public std::iterator<std::forward_iterator_tag, std::stri
 } // unchecked
 } // utf8
 
-namespace tests {
+NS_BEGIN(tests)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           document implementation
@@ -140,13 +140,13 @@ field_base::~field_base() { }
 // --SECTION--                                         long_field implementation
 // -----------------------------------------------------------------------------
 
-ir::token_stream& long_field::get_tokens() const {
+irs::token_stream& long_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
 }
 
-bool long_field::write(ir::data_output& out) const {
-  ir::write_zvlong(out, value_);
+bool long_field::write(irs::data_output& out) const {
+  irs::write_zvlong(out, value_);
   return true;
 }
 
@@ -154,63 +154,62 @@ bool long_field::write(ir::data_output& out) const {
 // --SECTION--                                         int_field implementation
 // -----------------------------------------------------------------------------
 
-bool int_field::write(ir::data_output& out) const {
-  ir::write_zvint(out, value_);
-  return true;
-}
-
-ir::token_stream& int_field::get_tokens() const {
+irs::token_stream& int_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
+}
+
+bool int_field::write(irs::data_output& out) const {
+  irs::write_zvint(out, value_);
+  return true;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       double_field implementation
 // -----------------------------------------------------------------------------
 
-bool double_field::write(ir::data_output& out) const {
-  ir::write_zvdouble(out, value_);
-  return true;
-}
-
-
-ir::token_stream& double_field::get_tokens() const {
+irs::token_stream& double_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
+}
+
+bool double_field::write(irs::data_output& out) const {
+  irs::write_zvdouble(out, value_);
+  return true;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        float_field implementation
 // -----------------------------------------------------------------------------
 
-bool float_field::write(ir::data_output& out) const {
-  ir::write_zvfloat(out, value_);
-  return true;
-}
-
-ir::token_stream& float_field::get_tokens() const {
+irs::token_stream& float_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
+}
+
+bool float_field::write(irs::data_output& out) const {
+  irs::write_zvfloat(out, value_);
+  return true;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                       binary_field implementation
 // -----------------------------------------------------------------------------
 
-bool binary_field::write(ir::data_output& out) const {
-  ir::write_string(out, value_);
-  return true;
-}
-
-ir::token_stream& binary_field::get_tokens() const {
+irs::token_stream& binary_field::get_tokens() const {
   stream_.reset(value_);
   return stream_;
+}
+
+bool binary_field::write(irs::data_output& out) const {
+  irs::write_string(out, value_);
+  return true;
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
-  
+
 particle::particle(particle&& rhs) NOEXCEPT
   : fields_(std::move(rhs.fields_)) {
 }
@@ -225,16 +224,7 @@ particle& particle::operator=(particle&& rhs) NOEXCEPT {
 
 particle::~particle() { }
 
-void particle::remove(const ir::string_ref& name) {
-  fields_.erase(
-    std::remove_if(fields_.begin(), fields_.end(),
-      [&name] (const ifield::ptr& fld) {
-        return name == fld->name(); 
-    })
-  );
-}
-
-bool particle::contains(const ir::string_ref& name) const {
+bool particle::contains(const irs::string_ref& name) const {
   return fields_.end() != std::find_if(
     fields_.begin(), fields_.end(),
     [&name] (const ifield::ptr& fld) {
@@ -242,7 +232,7 @@ bool particle::contains(const ir::string_ref& name) const {
   });
 }
 
-std::vector<const ifield*> particle::find(const ir::string_ref& name) const {
+std::vector<const ifield*> particle::find(const irs::string_ref& name) const {
   std::vector<const ifield*> fields;
   std::for_each(
     fields_.begin(), fields_.end(),
@@ -255,7 +245,7 @@ std::vector<const ifield*> particle::find(const ir::string_ref& name) const {
   return fields;
 }
 
-ifield* particle::get(const ir::string_ref& name) const {
+ifield* particle::get(const irs::string_ref& name) const {
   auto it = std::find_if(
     fields_.begin(), fields_.end(),
     [&name] (const ifield::ptr& fld) {
@@ -263,6 +253,15 @@ ifield* particle::get(const ir::string_ref& name) const {
   });
 
   return fields_.end() == it ? nullptr : it->get();
+}
+
+void particle::remove(const irs::string_ref& name) {
+  fields_.erase(
+    std::remove_if(fields_.begin(), fields_.end(),
+      [&name] (const ifield::ptr& fld) {
+        return name == fld->name();
+    })
+  );
 }
 
 // -----------------------------------------------------------------------------
@@ -505,7 +504,7 @@ void json_doc_generator::reset() {
   next_ = docs_.begin();
 }
 
-} // tests
+NS_END // tests
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
