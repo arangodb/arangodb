@@ -6,13 +6,13 @@ may be removed in later versions of ArangoDB:
 
 * there is no feedback from the slaves to the master. If a slave cannot apply an event
   it got from the master, the master will have a different state of data. In this 
-  case, the replication applier on the slave will stop and report an error. Administrators
+  case, the _replication applier_ on the slave will stop and report an error. Administrators
   can then either "fix" the problem or re-sync the data from the master to the slave
   and start the applier again.
-* at the moment it is assumed that only the replication applier executes write 
+* at the moment it is assumed that only the _replication applier_ executes write 
   operations on a slave. ArangoDB currently does not prevent users from carrying out
   their own write operations on slaves, though this might lead to undefined behavior
-  and the replication applier stopping.
+  and the _replication applier_ stopping.
 * when a replication slave asks a master for log events, the replication master will 
   return all write operations for user-defined collections, but it will exclude write
   operations for certain system collections. The following collections are excluded
@@ -29,13 +29,10 @@ may be removed in later versions of ArangoDB:
   in a replication setup are currently only loosely coupled. There currently is no way 
   for a client to query which servers are present in a replication.
 * failover must be handled by clients or client APIs.
-* there currently is one replication applier per ArangoDB database. It is thus not 
-  possible to have a slave apply operations from multiple masters into the same target
-  database.
-* the replication applier is single-threaded, but write operations on the master may
-  be executed in parallel if they affect different collections. Thus the replication
-  applier might not be able to catch up with a very powerful and loaded master.
+* the _replication applier_ is single-threaded, but write operations on the master may
+  be executed in parallel if they affect different collections. Thus the _replication
+  applier_ might not be able to catch up with a very powerful and loaded master.
 * replication is only supported between the two ArangoDB servers running the same
   ArangoDB version. It is currently not possible to replicate between different ArangoDB 
   versions.
-* a replication applier cannot apply data from itself.
+* a _replication applier_ cannot apply data from itself.

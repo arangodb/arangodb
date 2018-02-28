@@ -1,4 +1,5 @@
-# Active Failover Limitations
+Active Failover Limitations
+===========================
 
 The _Active Failover_ setup in ArangoDB has a few limitations. Some of these limitations 
 may be removed in later versions of ArangoDB:

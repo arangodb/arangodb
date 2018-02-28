@@ -12,7 +12,6 @@ locking mechanisms (which means the Agency needs to be available at server start
 You can control which server will become Leader by starting it earlier than
 other server instances in the beginning.
 
-
 The _Follower_ will automatically start
 replication from the master for all available databases, using the server-level
 replication introduced in 3.3.
@@ -42,6 +41,6 @@ on leaders and followers alike.
 The ArangoDB starter supports starting two servers with asynchronous
 replication and failover out of the box.
 
-The arangojs driver for JavaScript, the Go driver, the Java driver, ArangoJS and the PHP driver
-support active failover in case the currently accessed server endpoint 
+The arangojs driver for JavaScript, the Go driver, the Java driver, ArangoJS and
+the PHP driver support active failover in case the currently accessed server endpoint 
 responds with `HTTP 503`.

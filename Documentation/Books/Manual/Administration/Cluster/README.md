@@ -1,4 +1,4 @@
-Cluster administration
+Cluster Administration
 ======================
 
 This _Section_ includes information related to the administration of an ArangoDB Cluster.
