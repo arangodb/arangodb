@@ -26,7 +26,9 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-class AuthInfo;
+namespace auth {
+  class UserManager;
+}
 
 class RestUsersHandler : public arangodb::RestBaseHandler {
  public:
@@ -44,14 +46,14 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   /// helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code, VPackBuilder const& doc);
 
-  void generateDatabaseResult(AuthInfo* authInfo, std::string const& user,
+  void generateDatabaseResult(auth::UserManager*, std::string const& user,
                               bool full);
 
-  RestStatus getRequest(AuthInfo*);
-  RestStatus postRequest(AuthInfo*);
-  RestStatus putRequest(AuthInfo*);
-  RestStatus patchRequest(AuthInfo*);
-  RestStatus deleteRequest(AuthInfo*);
+  RestStatus getRequest(auth::UserManager*);
+  RestStatus postRequest(auth::UserManager*);
+  RestStatus putRequest(auth::UserManager*);
+  RestStatus patchRequest(auth::UserManager*);
+  RestStatus deleteRequest(auth::UserManager*);
 };
 }
 
