@@ -429,7 +429,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     }
     int vv = _masterInfo._majorVersion * 100000 + _masterInfo._minorVersion * 1000 +
             _masterInfo._patchVersion;
-    if (vv >= 3003004) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Master version " << vv;
+    if (vv >= 3003003) {
       LOG_TOPIC(INFO, Logger::REPLICATION) << "Accepting VPack over Http";
       headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
     }
