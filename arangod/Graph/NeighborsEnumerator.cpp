@@ -59,7 +59,6 @@ bool NeighborsEnumerator::next() {
         // We are finished.
         return false;
       }
-      TRI_ASSERT(!_opts->vertexHasFilter(_searchDepth));
 
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
@@ -94,8 +93,10 @@ bool NeighborsEnumerator::next() {
           }
 
           if (_allFound.find(v) == _allFound.end()) {
-            _currentDepth.emplace(v);
-            _allFound.emplace(v);
+            if (_traverser->vertexMatchesConditions(v, _searchDepth + 1)) {
+              _currentDepth.emplace(v);
+              _allFound.emplace(v);
+            }
           } else {
             _opts->cache()->increaseFilterCounter();
           }
