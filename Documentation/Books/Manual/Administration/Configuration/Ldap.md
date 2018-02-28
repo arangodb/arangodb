@@ -140,11 +140,11 @@ To configure the usage of encrypted TLS to communicate with the LDAP server
 the following options are available. Note: *TLS is not supported under Windows*:
 
   - `--ldap.tls` The main switch to active TLS. can either be 
-      `true` => use tls. or `false` => do not use tls. Is swithed
+      `true` => use tls. or `false` => do not use tls. Is switched
       off by default
   - `--ldap.tls-version` the tls version that should be used.
     Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. 
-  - `--ldap.tls-cert-check-strategy` strategy to validae the ldap server
+  - `--ldap.tls-cert-check-strategy` strategy to validate the ldap server
      certificate.  Available strategies are `never`, `hard`,
       `demand`, `allow` and `try`. The default is `hard`.
   - `--ldap.tls-cacert-file` A file path to one or more (concatenated)
@@ -247,7 +247,7 @@ the roles later on.
 
 After authentication, the next step is to derive authorization
 information from the authenticated LDAP user.
-In order to fetch the roles and therby the access rights
+In order to fetch the roles and thereby the access rights
 for a user we again have two possible options and need to pick
 one of them. We can combine each authentication method
 with each role method.
@@ -344,7 +344,7 @@ describe these further options:
 
   - `--ldap.roles-transformation` can be used to sepcify a regular
     expression and replacement text as `/re/text/`. This regular
-    expression is applied to the role name found. This is espacially
+    expression is applied to the role name found. This is especially
     useful in the roles-search variant to extract the real role name
     out of the `dn` value.
 
@@ -367,7 +367,7 @@ will only consider roles that do contain the word `disabled`.
 
 anyone belonging to the group "arangodb-admin" will become a superuser.
 
-The roles-transformation deserves a larger example. Asume we are using
+The roles-transformation deserves a larger example. Assume we are using
 roles search and have stored roles in the following way:
 
     dn: cn=project-a,dc=arangodb,dc=com
