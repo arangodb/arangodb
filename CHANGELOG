@@ -1,4 +1,4 @@
-v3.3.4 (XXXX-XX-XX)
+v3.3.4 (2018-02-28)
 -------------------
 
 * fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
