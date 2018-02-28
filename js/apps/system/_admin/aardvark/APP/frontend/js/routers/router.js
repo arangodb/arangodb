@@ -197,6 +197,7 @@
 
       var self = this;
 
+      // create user collection
       this.userCollection = new window.ArangoUsers();
 
       this.initOnce = function () {
@@ -266,7 +267,9 @@
 
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig();
+        this.userConfig = new window.UserConfig({
+          ldapEnabled: frontendConfig.ldapEnabled
+        });
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({

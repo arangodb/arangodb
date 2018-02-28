@@ -38,7 +38,6 @@
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -854,16 +853,15 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       
       if (authMethod != AuthenticationMethod::NONE) {
         request->setAuthenticationMethod(authMethod);
-        if (_authentication->isActive()) {
-          AuthResult result = _authentication->authInfo()->
-            checkAuthentication(authMethod, auth);
-          request->setAuthorized(result._authorized);
-          request->setUser(std::move(result._username));
+        if (_auth->isActive()) {
+          auto entry = _auth->tokenCache()->checkAuthentication(authMethod, auth);
+          request->setAuthenticated(entry.authenticated());
+          request->setUser(std::move(entry._username));
         } else {
-          request->setAuthorized(true);
+          request->setAuthenticated(true);
         }
         
-        if (request->authorized()) {
+        if (request->authenticated()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }

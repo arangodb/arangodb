@@ -304,7 +304,7 @@ V8Task::callbackFunction() {
     if (!_user.empty()) { // not superuser
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
-      allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
+      allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
       allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
     ExecContextScope scope(_user.empty() ?
@@ -540,11 +540,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
   }
@@ -691,11 +691,11 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
   }
@@ -755,11 +755,12 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string runAsUser;
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+    if (exec->databaseAuthLevel() != auth::Level::RW) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
     runAsUser = exec->user();
+    TRI_ASSERT(exec->isAdminUser() || !runAsUser.empty());
   }
   
   std::string key = TRI_ObjectToString(args[0]);
@@ -814,8 +815,8 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
   
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+  if (exec != nullptr && exec->databaseAuthLevel() != auth::Level::RW) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
   
