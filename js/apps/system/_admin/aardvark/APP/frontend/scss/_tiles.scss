@@ -345,11 +345,12 @@ $iconsize: 50px;
   }
 
   .tileBadge {
-    bottom: 29px;
+    bottom: 2px;
     font-size: 11px;
     font-weight: 300;
     position: absolute;
     right: 0;
+    z-index: 1;
 
     button {
       margin: {
@@ -373,6 +374,7 @@ $iconsize: 50px;
         border-radius: 2px;
         color: $c-white;
         height: 0;
+        line-height: 17px;
         margin-bottom: 4px;
         margin-right: 10px;
         padding-left: 1px;
@@ -400,6 +402,10 @@ $iconsize: 50px;
 
         &.development {
           border-bottom-color: $c-unloaded;
+        }
+
+        &.production {
+          border-bottom-color: $c-positive;
         }
       }
     }
@@ -461,6 +467,61 @@ div {
         margin-top: -99px;
         padding: 0;
       }
+    }
+  }
+}
+
+.foxxTile {
+  .paddingBox {
+    .foxxActions {
+      float: right;
+      margin-right: 5px;
+      margin-top: 67px;
+      position: relative;
+      z-index: 3;
+    }
+
+    .foxxDesc {
+      margin-left: 70px;
+      margin-top: 7px;
+      position: absolute;
+      z-index: 10;
+
+      p {
+        color: $c-dark-grey;
+        font-size: 12px;
+        font-weight: 100;
+        margin: 0;
+        margin-bottom: -2px;
+        text-align: left;
+
+        i {
+          margin-right: 5px;
+        }
+      }
+
+      p:first-child {
+        span {
+          color: $c-black;
+          font-size: 14px;
+          font-weight: 500;
+        }
+      }
+    }
+
+    .borderBox {
+      border-bottom: 1px solid rgba(64, 74, 83, .2);
+      height: 100px;
+    }
+
+    img.icon {
+      float: left;
+      height: 50px;
+      image-rendering: -webkit-optimize-contrast;
+      margin-left: 10px;
+      margin-top: -90px;
+      padding: 0;
+      width: 50px;
     }
   }
 }
