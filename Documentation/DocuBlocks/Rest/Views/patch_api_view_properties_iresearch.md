@@ -90,9 +90,6 @@ memory usage would continue to grow.
 For the case where there are a few inserts/updates, a higher value will impact performance and waste disk space for each
 commit call without any added benefits.
 
-@RESTBODYPARAM{dataPath,string,optional,string}
-The filesystem path where to store persisted index data (default: *"<ArangoDB database path>/iresearch-<index id>"*).
-
 @RESTBODYPARAM{locale,string,optional,string}
 The default locale used for queries on analyzed string values (default: *C*).
 

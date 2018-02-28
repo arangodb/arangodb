@@ -72,6 +72,28 @@
 
 using namespace arangodb;
 
+// helper class that optionally disables indexing inside the
+// RocksDB transaction if possible, and that will turn indexing
+// back on later in its dtor 
+// this is just a performance optimization for small transactions
+struct IndexingDisabler {
+  IndexingDisabler(RocksDBMethods* mthd, bool disableIndexing) 
+      : mthd(mthd), disableIndexing(disableIndexing) {
+    if (disableIndexing) {
+      mthd->DisableIndexing();
+    }
+  }
+
+  ~IndexingDisabler() {
+    if (disableIndexing) {
+      mthd->EnableIndexing();
+    }
+  }
+
+  RocksDBMethods* mthd;
+  bool const disableIndexing;
+};
+
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
                                      VPackSlice const& info)
     : PhysicalCollection(collection, info),
@@ -886,13 +908,20 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), revisionId,
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
+  // disable indexing in this transaction if we are allowed to
+  IndexingDisabler disabler(mthds, !hasGeoIndex() && trx->isSingleOperationTransaction());
+
   res = insertDocument(trx, documentId, newSlice, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
-    mdr.setManaged(newSlice.begin(), documentId);
+    if (options.silent) {
+      mdr.reset();
+    } else { 
+      mdr.setManaged(newSlice.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -987,10 +1016,13 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (res.ok()) {
     trackWaitForSync(trx, options);
 
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      mdr.setManaged(newDoc.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
@@ -1086,10 +1118,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (opResult.ok()) {
     trackWaitForSync(trx, options);
 
-    mdr.setManaged(newDoc.begin(), documentId);
-    TRI_ASSERT(!mdr.empty());
+    if (options.silent) {
+      mdr.reset();
+    } else {
+      mdr.setManaged(newDoc.begin(), documentId);
+      TRI_ASSERT(!mdr.empty());
+    }
 
-    // report document and key size
     Result result = state->addOperation(_logicalCollection->cid(), revisionId,
                                         TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
@@ -1431,6 +1466,10 @@ Result RocksDBCollection::removeDocument(
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
+
+  // disable indexing in this transaction if we are allowed to
+  IndexingDisabler disabler(mthd, !hasGeoIndex() && trx->isSingleOperationTransaction());
+
   Result res = mthd->Delete(RocksDBColumnFamily::documents(), key.ref());
   if (!res.ok()) {
     return res;
@@ -1496,6 +1535,10 @@ Result RocksDBCollection::updateDocument(
                static_cast<uint32_t>(newKey->string().size()));
   rocksdb::Slice docSlice(reinterpret_cast<char const*>(newDoc.begin()),
                           static_cast<size_t>(newDoc.byteSize()));
+
+  // disable indexing in this transaction if we are allowed to
+  IndexingDisabler disabler(mthd, !hasGeoIndex() && trx->isSingleOperationTransaction());
+
   Result res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(), docSlice);
   if (!res.ok()) {
     return res;
