@@ -9,12 +9,12 @@ various ArangoDB processes on different machines, either directly
 or using Docker containers.
 
 - [Single instance](Single.md)
-- [Cluster: DC/OS, Apache Mesos and Marathon](Mesos.md)
-- [Cluster: Generic & Docker](ArangoDBStarter.md)
+- [Cluster](Cluster.md)
+  - [DC/OS, Apache Mesos and Marathon](Mesos.md)
+  - [Generic & Docker](ArangoDBStarter.md)
+  - [Advanced Topics](Advanced.md)
+    - [Standalone Agency](Agency.md)
+    - [Test setup on a local machine](Local.md)
+    - [Starting processes on different machines](Distributed.md)
+    - [Launching an ArangoDB cluster using Docker containers](Docker.md)
 - [Multiple Datacenters](DC2DC.md)
-- [Advanced Topics](Advanced.md)
-  - [Cluster: Test setup on a local machine](Local.md)
-  - [Cluster: Starting processes on different machines](Distributed.md)
-  - [Cluster: Launching an ArangoDB cluster using Docker containers](Docker.md)
-  - [Agency](Agency.md)
-

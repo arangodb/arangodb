@@ -546,16 +546,26 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   // resolve collection by uuid, name, cid (in that order of preference)
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col != nullptr && col->type() == type) {
+
+  if (col != nullptr && 
+      col->type() == type && 
+      (!simulate32Client() || col->name() == name)) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
+   
+  bool forceRemoveCid = false;
+  if (col != nullptr && simulate32Client()) {
+    forceRemoveCid = true;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "would have got a wrong collection!";
+    // go on now and truncate or drop/re-create the collection
+  }
+  
   // conflicting collections need to be dropped from 3.3 onwards
   col = vocbase->lookupCollection(name);
   if (col != nullptr) {
-    TRI_ASSERT(!simulate32Client()); // < 3.3 should never get here
     if (col->isSystem()) {
-      TRI_ASSERT(col->globallyUniqueId() == col->name());
+      TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
       
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       col->cid(), AccessMode::Type::WRITE);
@@ -581,7 +591,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   s.openObject();
   s.add("isSystem", VPackValue(true));
   s.add("objectId", VPackSlice::nullSlice());
-  if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
+  if ((uuid.isString() && !simulate32Client()) || forceRemoveCid) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
@@ -650,6 +660,13 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection for index");
   }
+  
+  VPackBuilder s;
+  s.openObject();
+  s.add("objectId", VPackSlice::nullSlice());
+  s.close();
+  VPackBuilder merged = VPackCollection::merge(indexSlice, s.slice(),
+                                               /*mergeValues*/true, /*nullMeansRemove*/true);
 
   try {
     SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
@@ -664,7 +681,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
     auto physical = trx.documentCollection()->getPhysical();
     TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
-    res = physical->restoreIndex(&trx, indexSlice, idx);
+    res = physical->restoreIndex(&trx, merged.slice(), idx);
     res = trx.finish(res);
 
     return res;
