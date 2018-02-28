@@ -39,6 +39,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
  public:
   explicit MaintenanceFeature(application_features::ApplicationServer*);
 
+  MaintenanceFeature();
+
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
@@ -83,6 +85,12 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
                                                    std::shared_ptr<VPackBuilder> const & properties,
                                                    bool executeNow);
 
+  /// @brief actionFactory is a subroutine of createAction().  Its functionality is isolated
+  ///   to allow unit tests to quietly add "test actions" via a virtual function
+  virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string name,
+                                                            std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                            std::shared_ptr<VPackBuilder> const & properties);
+
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
@@ -102,6 +110,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   uint32_t getSecondsActionsBlock() const {return _secondsActionsBlock;};
 
 protected:
+  /// @brief common code used by multiple constructors
+  void init();
+
   /// @brief Search for action by hash
   /// @return shared pointer to action object if exists, _actionRegistry.end() if not
   maintenance::MaintenanceActionPtr_t findActionHash(size_t hash);

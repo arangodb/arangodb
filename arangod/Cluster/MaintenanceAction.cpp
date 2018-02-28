@@ -30,6 +30,20 @@ namespace arangodb {
 
 namespace maintenance {
 
+const char MaintenanceAction::KEY[]="key";
+const char MaintenanceAction::FIELDS[]="fields";
+const char MaintenanceAction::TYPE[]="type";
+const char MaintenanceAction::INDEXES[]="indexes";
+const char MaintenanceAction::SHARDS[]="shards";
+const char MaintenanceAction::DATABASE[]="database";
+const char MaintenanceAction::COLLECTION[]="collection";
+const char MaintenanceAction::EDGE[]="edge";
+const char MaintenanceAction::NAME[]="name";
+const char MaintenanceAction::ID[]="id";
+const char MaintenanceAction::LEADER[]="leader";
+const char MaintenanceAction::LOCAL_LEADER[]="localLeader";
+const char MaintenanceAction::GLOB_UID[]="globallyUniqueId";
+const char MaintenanceAction::OBJECT_ID[]="objectId";
 
 MaintenanceAction::MaintenanceAction(arangodb::MaintenanceFeature & feature,
                                      std::shared_ptr<ActionDescription_t> const & description,

@@ -36,20 +36,43 @@ using namespace arangodb::options;
 namespace arangodb {
 
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
-  : ApplicationFeature(server, "Maintenance"),
-    _isShuttingDown(false), _nextActionId(1) {
+  : ApplicationFeature(server, "Maintenance") {
+
+
+  startsAfter("EngineSelector");    // ??? what should this be
+//  startsBefore("StorageEngine");
+
+  init();
+
+} // MaintenanceFeature::MaintenanceFeature
+
+
+MaintenanceFeature::MaintenanceFeature()
+  : ApplicationFeature(nullptr, "Maintenance") {
+
+  // must not use startsAfter/Before since nullptr given to ApplicationFeature
+  init();
+
+  return;
+
+} // MaintenanceFeature::MaintenanceFeature
+
+
+void MaintenanceFeature::init() {
+  _isShuttingDown=false;
+  _nextActionId=1;
 
   setOptional(true);
   requiresElevatedPrivileges(false); // ??? this mean admin priv?
-  startsAfter("EngineSelector");    // ??? what should this be
-//  startsBefore("StorageEngine");
 
   // these parameters might be updated by config and/or command line options
   _maintenanceThreadsMax = static_cast<int32_t>(TRI_numberProcessors()/4 +1);
   _secondsActionsBlock = 30;
   _secondsActionsLinger = 300;
 
-} // MaintenanceFeature::MaintenanceFeature
+  return;
+
+} // MaintenanceFeature::init
 
 
 void MaintenanceFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -195,10 +218,8 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared
   if (description->end()!=find_it) {
     std::string name = find_it->second;
 
-    // walk list until we find the object of our desire
-    if (name == "CreateDatabase") {
-      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
-    }
+    // call factory
+    newAction = actionFactory(name, description, properties);
 
     // if a new action created
     if (newAction) {
@@ -227,6 +248,24 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared
   return newAction;
 
 } // MaintenanceFeature::createAction
+
+
+// All action creators should go here.
+//  (actionFactory is a virtual function to allow unit tests to
+//   quietly create specialty actions for testing)
+maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::string name,
+                                                                      std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                                      std::shared_ptr<VPackBuilder> const & properties) {
+  maintenance::MaintenanceActionPtr_t newAction;
+
+    // walk list until we find the object of our desire
+    if (name == "CreateDatabase") {
+      newAction.reset(new maintenance::CreateDatabase(*this, description, properties));
+    }
+
+  return newAction;
+
+} // MaintenanceFeature::actionFactory
 
 
 maintenance::MaintenanceActionPtr_t MaintenanceFeature::findActionHash(size_t hash) {

@@ -73,21 +73,21 @@ class MaintenanceAction {
   //
   // common property or decription names
   //
-  static constexpr char KEY[]="key";
-  static constexpr char FIELDS[]="fields";
-  static constexpr char TYPE[]="type";
-  static constexpr char INDEXES[]="indexes";
-  static constexpr char SHARDS[]="shards";
-  static constexpr char DATABASE[]="database";
-  static constexpr char COLLECTION[]="collection";
-  static constexpr char EDGE[]="edge";
-  static constexpr char NAME[]="name";
-  static constexpr char ID[]="id";
-  static constexpr char LEADER[]="leader";
-  static constexpr char LOCAL_LEADER[]="localLeader";
-  static constexpr char GLOB_UID[]="globallyUniqueId";
-  static constexpr char OBJECT_ID[]="objectId";
 
+  static const char KEY[];
+  static const char FIELDS[];
+  static const char TYPE[];
+  static const char INDEXES[];
+  static const char SHARDS[];
+  static const char DATABASE[];
+  static const char COLLECTION[];
+  static const char EDGE[];
+  static const char NAME[];
+  static const char ID[];
+  static const char LEADER[];
+  static const char LOCAL_LEADER[];
+  static const char GLOB_UID[];
+  static const char OBJECT_ID[];
 
 
   //

@@ -104,8 +104,9 @@ add_executable(
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp
-  Maintenance/MaintenanceTest.cpp
+  Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
+  Maintenance/MaintenanceTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp

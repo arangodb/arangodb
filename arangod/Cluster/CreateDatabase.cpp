@@ -37,7 +37,7 @@ CreateDatabase::CreateDatabase(arangodb::MaintenanceFeature & feature,
                  std::shared_ptr<ActionDescription_t> const & description,
                  std::shared_ptr<VPackBuilder> const & properties)
   : MaintenanceAction(feature, description, properties) {
-  TRI_ASSERT(description->end()!=description->find(DATABASE));
+  TRI_ASSERT(description->end()!=description->find(MaintenanceAction::DATABASE));
 }
 
 CreateDatabase::~CreateDatabase() {};
@@ -45,7 +45,7 @@ CreateDatabase::~CreateDatabase() {};
 bool CreateDatabase::first() {
 
   VPackSlice users;
-  auto db_it = _description->find(DATABASE);
+  auto db_it = _description->find(MaintenanceAction::DATABASE);
 
   if (_description->end() != db_it) {
     auto* systemVocbase =
