@@ -1660,32 +1660,62 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
       }
     }
 
-    year_month_day ymd = year{static_cast<int>(ExtractFunctionParameterValue(parameters, 0).toInt64(trx))}/
-      static_cast<int>(ExtractFunctionParameterValue(parameters, 1).toInt64(trx))/
-      static_cast<int>(ExtractFunctionParameterValue(parameters, 2).toInt64(trx));
+    years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
+    months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
+    days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
+    if (y < years{0}) {
+      RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (m < months{0}) {
+      RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (d < days{0}) {
+      RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    year_month_day ymd = year{y.count()}/m.count()/d.count();
 
     hours h(0);
-    minutes m(0);
+    minutes min(0);
     seconds s(0);
     milliseconds ms(0);
 
     if (parameters.size() >= 4) {
       h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
+      if (h < hours{0}) {
+        RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() >= 5) {
-      m = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+      if (min < minutes{0}) {
+        RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() >= 6) {
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
+      if (s < seconds{0}) {
+        RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() == 7) {
       ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
+      if (ms < milliseconds{0}) {
+        RegisterWarning(query, "DATE_ISO8601", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
-    tp = sys_days(ymd) + h + m + s + ms;
+    tp = sys_days(ymd) + h + min + s + ms;
   } else {
     return AqlValue(AqlValueHintNull());
     RegisterInvalidArgumentWarning(query, "DATE_ISO8601");
@@ -1720,32 +1750,62 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
       }
     }
 
-    year_month_day ymd = year{static_cast<int>(ExtractFunctionParameterValue(parameters, 0).toInt64(trx))}/
-      static_cast<int>(ExtractFunctionParameterValue(parameters, 1).toInt64(trx))/
-      static_cast<int>(ExtractFunctionParameterValue(parameters, 2).toInt64(trx));
+    years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
+    months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
+    days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
+    if (y < years{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (m < months{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (d < days{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    year_month_day ymd = year{y.count()}/m.count()/d.count();
 
     hours h(0);
-    minutes m(0);
+    minutes min(0);
     seconds s(0);
     milliseconds ms(0);
 
     if (parameters.size() >= 4) {
       h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
+      if (h < hours{0}) {
+        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() >= 5) {
-      m = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+      if (min < minutes{0}) {
+        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() >= 6) {
       s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
+      if (s < seconds{0}) {
+        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
     if (parameters.size() == 7) {
       ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
+      if (ms < milliseconds{0}) {
+        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+      }
     }
 
-    auto time = sys_days(ymd) + h + m + s + ms;
+    auto time = sys_days(ymd) + h + min + s + ms;
 
     return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(time.time_since_epoch()).count() ));
   }

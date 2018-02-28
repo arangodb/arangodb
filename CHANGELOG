@@ -132,6 +132,12 @@ devel
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
 
+* added C++ implementation for AQL functions `DATE_NOW()`, `DATE_ISO8601()`,
+  `DATE_TIMESTAMP()`, `IS_DATESTRING()`, `DATE_DAYOFWEEK()`, `DATE_YEAR()`,
+  `DATE_MONTH()`, `DATE_DAY()`, `DATE_HOUR()`, `DATE_MINUTE()`, `DATE_SECOND()`,
+  `DATE_MILLISECOND()`, `DATE_DAYOFYEAR()`, `DATE_ISOWEEK()`, `DATE_LEAPYEAR()`,
+  `DATE_QUARTER()`, `DATE_DAYS_IN_MONTH()`, `DATE_ADD()`, `DATE_SUBTRACT()`,
+  `DATE_DIFF()` and `DATE_COMPARE()`
 
 v3.3.4 (XXXX-XX-XX)
 -------------------
