@@ -23,7 +23,6 @@
 
 #include "shared.hpp"
 #include "memory_directory.hpp"
-#include "checksum_io.hpp"
 
 #include "error/error.hpp"
 #include "utils/log.hpp"
@@ -31,6 +30,8 @@
 #include "utils/thread_utils.hpp"
 #include "utils/std.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/bytes_utils.hpp"
+#include "utils/numeric_utils.hpp"
 
 #include <cassert>
 #include <cstring>
@@ -79,7 +80,7 @@ class single_instance_lock : public index_lock {
 
       return true;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -91,7 +92,7 @@ class single_instance_lock : public index_lock {
 
       return parent->locks_.erase(name) > 0;
     } catch (...) {
-      IR_EXCEPTION();
+      IR_LOG_EXCEPTION();
     }
 
     return false;
@@ -115,10 +116,49 @@ index_input::ptr memory_index_input::dup() const NOEXCEPT {
     PTR_NAMED(memory_index_input, ptr, *this);
     return ptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
+}
+
+int64_t memory_index_input::checksum(size_t offset) const {
+  boost::crc_32_type crc;
+
+  auto buffer_idx = file_->buffer_offset(file_pointer());
+  size_t to_process;
+
+  // process current buffer if exists
+  if (begin_) {
+    to_process = std::min(offset, remain());
+    crc.process_bytes(begin_, to_process);
+    offset -= to_process;
+    ++buffer_idx;
+  }
+
+  // process intermediate buffers
+  auto last_buffer_idx = file_->buffer_count();
+
+  if (last_buffer_idx) {
+    --last_buffer_idx;
+  }
+
+  for (; offset && buffer_idx < last_buffer_idx; ++buffer_idx) {
+    auto& buf = file_->get_buffer(buffer_idx);
+    to_process = std::min(offset, buf.size);
+    crc.process_bytes(buf.data, to_process);
+    offset -= to_process;
+  }
+
+  // process the last buffer
+  if (offset && buffer_idx == last_buffer_idx) {
+    auto& buf = file_->get_buffer(last_buffer_idx);
+    to_process = std::min(offset, file_->length() - buf.offset);
+    crc.process_bytes(buf.data, to_process);
+    offset -= to_process;
+  }
+
+  return crc.checksum();
 }
 
 bool memory_index_input::eof() const {
@@ -132,7 +172,7 @@ index_input::ptr memory_index_input::reopen() const NOEXCEPT {
 void memory_index_input::switch_buffer(size_t pos) {
   auto idx = file_->buffer_offset(pos);
   assert(idx < file_->buffer_count());
-  auto buf = file_->get_buffer(idx);
+  auto& buf = file_->get_buffer(idx);
 
   if (buf.data != buf_) {
     buf_ = buf.data;
@@ -193,9 +233,64 @@ size_t memory_index_input::read_bytes(byte_type* b, size_t left) {
   return length - left;
 }
 
+int32_t memory_index_input::read_int() {
+  return remain() < sizeof(uint32_t)
+    ? data_input::read_int()
+    : irs::read<uint32_t>(begin_);
+}
+
+int64_t memory_index_input::read_long() {
+  return remain() < sizeof(uint64_t)
+    ? data_input::read_long()
+    : irs::read<uint64_t>(begin_);
+}
+
+uint32_t memory_index_input::read_vint() {
+  return remain() < bytes_io<uint32_t>::const_max_vsize
+    ? data_input::read_vint()
+    : irs::vread<uint32_t>(begin_);
+}
+
+uint64_t memory_index_input::read_vlong() {
+  return remain() < bytes_io<uint64_t>::const_max_vsize
+    ? data_input::read_vlong()
+    : irs::vread<uint64_t>(begin_);
+}
+
 /* -------------------------------------------------------------------
  * memory_index_output
  * ------------------------------------------------------------------*/
+
+class checksum_memory_index_output final : public memory_index_output {
+ public:
+  explicit checksum_memory_index_output(memory_file& file) NOEXCEPT
+    : memory_index_output(file) {
+    crc_begin_ = pos_;
+  }
+
+  virtual void flush() override {
+    crc_.process_block(crc_begin_, pos_);
+    crc_begin_ = pos_;
+    memory_index_output::flush();
+  }
+
+  virtual int64_t checksum() const NOEXCEPT override {
+    crc_.process_block(crc_begin_, pos_);
+    crc_begin_ = pos_;
+    return crc_.checksum();
+  }
+
+ protected:
+  void switch_buffer() override {
+    crc_.process_block(crc_begin_, pos_);
+    memory_index_output::switch_buffer();
+    crc_begin_ = pos_;
+  }
+
+ private:
+  mutable byte_type* crc_begin_;
+  mutable boost::crc_32_type crc_;
+}; // checksum_memory_index_output
 
 memory_index_output::memory_index_output(memory_file& file) NOEXCEPT
   : file_(file) {
@@ -206,34 +301,68 @@ void memory_index_output::reset() {
   buf_.data = nullptr;
   buf_.offset = 0;
   buf_.size = 0;
-  pos_ = 0;
+  pos_ = nullptr;
+  end_ = nullptr;
 }
 
 void memory_index_output::switch_buffer() {
   auto idx = file_.buffer_offset(file_pointer());
 
   buf_ = idx < file_.buffer_count() ? file_.get_buffer(idx) : file_.push_buffer();
-  pos_ = 0;
+  pos_ = buf_.data;
+  end_ = buf_.data + buf_.size;
 }
 
-void memory_index_output::write_byte( byte_type byte ) {
-  if (pos_ >= buf_.size) {
+void memory_index_output::write_long(int64_t value) {
+  if (remain() < sizeof(uint64_t)) {
+    index_output::write_long(value);
+  } else {
+    irs::write<uint64_t>(pos_, value);
+  }
+}
+
+void memory_index_output::write_int(int32_t value) {
+  if (remain() < sizeof(uint32_t)) {
+    index_output::write_int(value);
+  } else {
+    irs::write<uint32_t>(pos_, value);
+  }
+}
+
+void memory_index_output::write_vlong(uint64_t v) {
+  if (remain() < bytes_io<uint64_t>::const_max_vsize) {
+    index_output::write_vlong(v);
+  } else {
+    irs::vwrite<uint64_t>(pos_, v);
+  }
+}
+
+void memory_index_output::write_vint(uint32_t v) {
+  if (remain() < bytes_io<uint32_t>::const_max_vsize) {
+    index_output::write_vint(v);
+  } else {
+    irs::vwrite<uint32_t>(pos_, v);
+  }
+}
+
+void memory_index_output::write_byte(byte_type byte) {
+  if (pos_ >= end_) {
     switch_buffer();
   }
 
-  buf_.data[pos_++] = byte;
+  *pos_++ = byte;
 }
 
 void memory_index_output::write_bytes( const byte_type* b, size_t len ) {
   assert(b || !len);
 
   for (size_t to_copy = 0; len; len -= to_copy) {
-    if (pos_ >= buf_.size) {
+    if (pos_ >= end_) {
       switch_buffer();
     }
 
-    to_copy = std::min(buf_.size - pos_, len);
-    std::memcpy(buf_.data + pos_, b, sizeof(byte_type) * to_copy);
+    to_copy = std::min(size_t(std::distance(pos_, end_)), len);
+    std::memcpy(pos_, b, sizeof(byte_type) * to_copy);
     b += to_copy;
     pos_ += to_copy;
   }
@@ -248,7 +377,7 @@ void memory_index_output::flush() {
 }
 
 size_t memory_index_output::file_pointer() const {
-  return buf_.offset + pos_;
+  return buf_.offset + std::distance(buf_.data, pos_);
 }
 
 int64_t memory_index_output::checksum() const {
@@ -288,8 +417,6 @@ bool memory_directory::exists(
 }
 
 index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
-  typedef checksum_index_output<boost::crc_32_type> checksum_output_t;
-
   try {
     async_utils::read_write_mutex::write_mutex mutex(flock_);
     SCOPED_LOCK(mutex);
@@ -308,11 +435,9 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
       file = memory::make_unique<memory_file>();
     }
 
-    PTR_NAMED(memory_index_output, out, *file);
-
-    return index_output::make<checksum_output_t>(std::move(out));
+    return index_output::make<checksum_memory_index_output>(*file);
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -341,7 +466,7 @@ index_lock::ptr memory_directory::make_lock(
   try {
     return index_lock::make<single_instance_lock>(name, this);
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   assert(false);
@@ -384,7 +509,7 @@ index_input::ptr memory_directory::open(
 
     return nullptr;
   } catch(...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -397,7 +522,7 @@ bool memory_directory::remove(const std::string& name) NOEXCEPT {
 
     return files_.erase(name) > 0;
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -422,7 +547,7 @@ bool memory_directory::rename(
 
     return true;
   } catch (...) {
-    IR_EXCEPTION();
+    IR_LOG_EXCEPTION();
   }
 
   return false;
@@ -450,3 +575,7 @@ bool memory_directory::visit(const directory::visitor_f& visitor) const {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

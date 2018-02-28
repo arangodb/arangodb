@@ -119,7 +119,7 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
     }
 
     _term.value(_data);
-    _data = irs::bytes_ref::nil;
+    _data = irs::bytes_ref::NIL;
     return true;
   }
 
@@ -508,15 +508,15 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
       insertedDocs[35].slice(),
       insertedDocs[24].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS does not match
       insertedDocs[29].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS does not match
-      insertedDocs[36].slice(), // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
-      insertedDocs[37].slice(), // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
-      insertedDocs[26].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
-      insertedDocs[31].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
       insertedDocs[7].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS matches
       insertedDocs[8].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS matches
       insertedDocs[13].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS matches
       insertedDocs[19].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS matches
       insertedDocs[22].slice(), // STARTS_WITH does not match, PHRASE matches, EXISTS matches
+      insertedDocs[36].slice(), // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
+      insertedDocs[37].slice(), // STARTS_WITH matches (duplicate term), PHRASE does not match, EXISTS does not match
+      insertedDocs[26].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
+      insertedDocs[31].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS does not match
       insertedDocs[6].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
       insertedDocs[9].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
     };

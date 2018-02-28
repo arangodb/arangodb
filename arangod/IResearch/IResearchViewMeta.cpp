@@ -407,15 +407,13 @@ bool IResearchViewMeta::CommitMeta::operator!=(
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _collections(mask),
     _commit(mask),
-    _dataPath(mask),
     _locale(mask),
     _threadsMaxIdle(mask),
     _threadsMaxTotal(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
-  : _dataPath(""),
-    _locale(std::locale::classic()),
+  : _locale(std::locale::classic()),
     _threadsMaxIdle(5),
     _threadsMaxTotal(5) {
   _commit._cleanupIntervalStep = 10;
@@ -439,7 +437,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
   if (this != &other) {
     _collections = std::move(other._collections);
     _commit = std::move(other._commit);
-    _dataPath = std::move(other._dataPath);
     _locale = std::move(other._locale);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
     _threadsMaxTotal = std::move(other._threadsMaxTotal);
@@ -452,7 +449,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
   if (this != &other) {
     _collections = other._collections;
     _commit = other._commit;
-    _dataPath = other._dataPath;
     _locale = other._locale;
     _threadsMaxIdle = other._threadsMaxIdle;
     _threadsMaxTotal = other._threadsMaxTotal;
@@ -467,10 +463,6 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_commit != other._commit) {
-    return false; // values do not match
-  }
-
-  if (_dataPath != other._dataPath) {
     return false; // values do not match
   }
 
@@ -506,7 +498,6 @@ bool IResearchViewMeta::operator!=(
 bool IResearchViewMeta::init(
   arangodb::velocypack::Slice const& slice,
   std::string& errorField,
-  arangodb::LogicalView const& viewDefaults,
   IResearchViewMeta const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
 ) noexcept {
@@ -578,23 +569,6 @@ bool IResearchViewMeta::init(
 
         return false;
       }
-    }
-  }
-
-  {
-    // optional string
-    static const std::string fieldName("dataPath");
-
-    if (!getString(_dataPath, slice, fieldName, mask->_dataPath, defaults._dataPath)) {
-      errorField = fieldName;
-
-      return false;
-    }
-
-    // empty data path always means path relative to the ArangoDB data directory
-    // with a constant prefix and a view id suffix
-    if (_dataPath.empty()) {
-      _dataPath = viewDefaults.type() + "-" + std::to_string(viewDefaults.id());
     }
   }
 
@@ -692,10 +666,6 @@ bool IResearchViewMeta::json(
     builder.add("commit", subBuilder.slice());
   }
 
-  if ((!ignoreEqual || _dataPath != ignoreEqual->_dataPath) && (!mask || mask->_dataPath) && !_dataPath.empty()) {
-    builder.add("dataPath", arangodb::velocypack::Value(_dataPath));
-  }
-
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
@@ -723,7 +693,6 @@ size_t IResearchViewMeta::memory() const {
   auto size = sizeof(IResearchViewMeta);
 
   size += sizeof(TRI_voc_cid_t) * _collections.size();
-  size += _dataPath.size();
 
   return size;
 }

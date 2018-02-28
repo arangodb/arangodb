@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/slice.h>
@@ -71,7 +72,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
   //////////////////////////////////////////////////////////////////////////////
-  void constructDocument(uint64_t objectId, TRI_voc_rid_t revisionId);
+  void constructDocument(uint64_t objectId, LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a primary index
@@ -92,7 +93,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructEdgeIndexValue(uint64_t indexId,
                                arangodb::StringRef const& vertexId,
-                               TRI_voc_rid_t revisionId);
+                               LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a user-defined,
@@ -103,7 +104,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructVPackIndexValue(uint64_t indexId,
                                 VPackSlice const& indexValues,
-                                TRI_voc_rid_t revisionId);
+                                LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for an entry in a unique user-defined
@@ -120,7 +121,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructFulltextIndexValue(uint64_t indexId,
                                    arangodb::StringRef const& word,
-                                   TRI_voc_rid_t revisionId);
+                                   LocalDocumentId docId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a geoIndexValue
@@ -213,12 +214,12 @@ class RocksDBKey {
   static uint64_t objectId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the revisionId from a key
+  /// @brief Extracts the LocalDocumentId from a key
   ///
   /// May be called only on Document keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBKey const&);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType type, rocksdb::Slice const&);
+  static LocalDocumentId documentId(RocksDBKey const&);
+  static LocalDocumentId documentId(RocksDBEntryType type, rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the primary key (`_key`) from a key
@@ -299,7 +300,7 @@ class RocksDBKey {
 
   // valid on data entries like document, edge, vpack
   static TRI_voc_cid_t objectId(char const* data, size_t size);
-  static TRI_voc_rid_t revisionId(RocksDBEntryType, char const*, size_t);
+  static LocalDocumentId documentId(RocksDBEntryType, char const*, size_t);
   static StringRef primaryKey(char const* data, size_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);

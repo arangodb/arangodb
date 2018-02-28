@@ -90,7 +90,7 @@ struct IRESEARCH_API eof_error: io_error {
 class IRESEARCH_API detailed_io_error: public io_error {
  public:
   DECLARE_ERROR_CODE(io_error);
-  explicit detailed_io_error(const irs::string_ref& error = irs::string_ref::nil);
+  explicit detailed_io_error(const irs::string_ref& error = irs::string_ref::NIL);
   explicit detailed_io_error(std::string&& error);
   explicit detailed_io_error(const char* error);
   detailed_io_error& operator<<(const irs::string_ref& error);
@@ -110,7 +110,7 @@ class IRESEARCH_API detailed_io_error: public io_error {
 class IRESEARCH_API lock_obtain_failed: public error_base {
  public:
   DECLARE_ERROR_CODE( lock_obtain_failed );
-  explicit lock_obtain_failed(const irs::string_ref& filename = irs::string_ref::nil);
+  explicit lock_obtain_failed(const irs::string_ref& filename = irs::string_ref::NIL);
   virtual ErrorCode code() const NOEXCEPT override;
   virtual const char* what() const NOEXCEPT override;
  private:
@@ -125,7 +125,7 @@ class IRESEARCH_API lock_obtain_failed: public error_base {
 class IRESEARCH_API file_not_found: public error_base {
  public:
   DECLARE_ERROR_CODE( file_not_found );
-  explicit file_not_found(const irs::string_ref& filename = irs::string_ref::nil);
+  explicit file_not_found(const irs::string_ref& filename = irs::string_ref::NIL);
   virtual ErrorCode code() const NOEXCEPT override;
   virtual const char* what() const NOEXCEPT override;
  private:

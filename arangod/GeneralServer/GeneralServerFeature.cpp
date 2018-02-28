@@ -45,6 +45,7 @@
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
+#include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
@@ -55,7 +56,6 @@
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -523,9 +523,6 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/work-monitor",
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
-  _handlerFactory->addHandler(
-      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
@@ -545,6 +542,14 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics-description",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
   // ...........................................................................
   // actions defined in v8

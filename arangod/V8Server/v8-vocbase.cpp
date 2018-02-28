@@ -140,18 +140,18 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
   // do not rethrow if already canceled
-  if(isContextCanceled(isolate)){
+  if (isContextCanceled(isolate)){
     TRI_V8_RETURN(result);
   }
 
   // has caught and could not be converted to arangoError
   // otherwise it would have been reseted
-  if(tryCatch.HasCaught()){
+  if (tryCatch.HasCaught()) {
     tryCatch.ReThrow();
     return;
   }
 
-  if (rv.fail()){
+  if (rv.fail()) {
     THROW_ARANGO_EXCEPTION(rv);
   }
 

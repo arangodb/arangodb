@@ -270,8 +270,6 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
-  VPackBuilder keyBuilder;
-
   OperationOptions options;
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
@@ -288,10 +286,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     size_t const n = res->size();
     bool isMultiple = (n > 1);
-    keyBuilder.clear();
+    _tempBuilder.clear();
     if (isMultiple) {
       // If we use multiple API we send an array
-      keyBuilder.openArray();
+      _tempBuilder.openArray();
     }
 
     std::string key;
@@ -322,9 +320,9 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
         if (errorCode == TRI_ERROR_NO_ERROR) {
           // no error. we expect to have a key
           // create a slice for the key
-          keyBuilder.openObject();
-          keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-          keyBuilder.close();
+          _tempBuilder.openObject();
+          _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+          _tempBuilder.close();
         } else {
           // We have an error, handle it
           handleResult(errorCode, ep->_options.ignoreErrors, nullptr);
@@ -334,9 +332,9 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
     if (isMultiple) {
       // We have to close the array
-      keyBuilder.close();
+      _tempBuilder.close();
     }
-    VPackSlice toRemove = keyBuilder.slice();
+    VPackSlice toRemove = _tempBuilder.slice();
 
     if (!toRemove.isNone() &&
         !(toRemove.isArray() && toRemove.length() == 0)) {
@@ -399,10 +397,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
       // Do not send request just increase the row
       dstRow += n;
     }
-    // done with a block
-    // now free it already
+    
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -432,12 +430,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   result.reset(requestBlock(count, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
   OperationOptions options;
+  // use "silent" mode if we do not access the results later on
   options.silent = !producesOutput;
   options.waitForSync = ep->_options.waitForSync;
   options.returnNew = producesOutput;
   options.isRestore = ep->getOptions().useIsRestore;
-
-  VPackBuilder babyBuilder;
+    
   // loop over all blocks
   size_t dstRow = 0;
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -484,8 +482,8 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
       // done with a block
     } else {
-      babyBuilder.clear();
-      babyBuilder.openArray();
+      _tempBuilder.clear();
+      _tempBuilder.openArray();
       for (size_t i = 0; i < n; ++i) {
         AqlValue const& a = res->getValueReference(i, registerId);
 
@@ -494,12 +492,12 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         // TODO This may be optimized with externals
         if (!ep->_options.consultAqlWriteFilter ||
             !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
-          babyBuilder.add(a.slice());
+          _tempBuilder.add(a.slice());
         }
         ++dstRow;
       }
-      babyBuilder.close();
-      VPackSlice toSend = babyBuilder.slice();
+      _tempBuilder.close();
+      VPackSlice toSend = _tempBuilder.slice();
       OperationResult opRes;
       if (toSend.length() > 0) {
         opRes = _trx->insert(_collection->name, toSend, options);
@@ -533,9 +531,10 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                          ep->_options.ignoreErrors);
       }
     }
-    // now free it already
+    
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -565,7 +564,6 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
-  VPackBuilder keyBuilder;
   VPackBuilder object;
 
   if (hasKeyVariable) {
@@ -635,13 +633,13 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
             !_collection->getCollection()->skipForAqlWrite(a.slice(), key)) {
           wasTaken.push_back(true);
           if (hasKeyVariable) {
-            keyBuilder.clear();
-            keyBuilder.openObject();
-            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-            keyBuilder.close();
+            _tempBuilder.clear();
+            _tempBuilder.openObject();
+            _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            _tempBuilder.close();
 
             VPackBuilder tmp = VPackCollection::merge(
-                a.slice(), keyBuilder.slice(), false, false);
+                a.slice(), _tempBuilder.slice(), false, false);
             if (isMultiple) {
               object.add(tmp.slice());
             } else {
@@ -734,11 +732,10 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
         dstRow += n;
       }
     }
-    // done with a block
 
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -786,7 +783,6 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
   options.ignoreRevs = true;
   options.isRestore = ep->getOptions().useIsRestore;
   
-  VPackBuilder keyBuilder;
   VPackBuilder insertBuilder;
   VPackBuilder updateBuilder;
 
@@ -844,16 +840,16 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
               tookThis = true;
               VPackSlice toUpdate = updateDoc.slice();
            
-              keyBuilder.clear();
-              keyBuilder.openObject();
-              keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-              keyBuilder.close();
+              _tempBuilder.clear();
+              _tempBuilder.openObject();
+              _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+              _tempBuilder.close();
               if (isMultiple) {
-                VPackBuilder tmp = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+                VPackBuilder tmp = VPackCollection::merge(toUpdate, _tempBuilder.slice(), false, false);
                 updateBuilder.add(tmp.slice());
                 upRows.emplace_back(dstRow);
               } else {
-                updateBuilder = VPackCollection::merge(toUpdate, keyBuilder.slice(), false, false);
+                updateBuilder = VPackCollection::merge(toUpdate, _tempBuilder.slice(), false, false);
               }
             } else {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
@@ -989,9 +985,9 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     }
 
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();
@@ -1021,7 +1017,6 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
-  VPackBuilder keyBuilder;
   VPackBuilder object;
 
   if (hasKeyVariable) {
@@ -1091,12 +1086,12 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
             !_collection->getCollection()->skipForAqlWrite(a.slice(), key)) {
           wasTaken.push_back(true);
           if (hasKeyVariable) {
-            keyBuilder.clear();
-            keyBuilder.openObject();
-            keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
-            keyBuilder.close();
+            _tempBuilder.clear();
+            _tempBuilder.openObject();
+            _tempBuilder.add(StaticStrings::KeyString, VPackValue(key));
+            _tempBuilder.close();
             VPackBuilder tmp = VPackCollection::merge(
-                a.slice(), keyBuilder.slice(), false, false);
+                a.slice(), _tempBuilder.slice(), false, false);
             if (isMultiple) {
               object.add(tmp.slice());
             } else {
@@ -1187,11 +1182,9 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       }
     }
 
-    // done with a block
-
-    // now free it already
+    // done with block. now unlink it and return it to block manager
     (*it) = nullptr;
-    delete res;
+    returnBlock(res);
   }
 
   return result.release();

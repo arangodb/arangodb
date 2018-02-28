@@ -109,9 +109,9 @@ doc_iterator::ptr term_query::execute(
   // find term using cached state
   auto terms = state->reader->iterator();
 
-  // use bytes_ref::nil here since we need just to "jump" to the cached state,
+  // use bytes_ref::blank here since we need just to "jump" to the cached state,
   // and we are not interested in term value itself
-  if (!terms->seek(bytes_ref::nil, *state->cookie)) {
+  if (!terms->seek(bytes_ref::NIL, *state->cookie)) {
     return doc_iterator::empty();
   }
 

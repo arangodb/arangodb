@@ -80,14 +80,14 @@ class block_pool_test : public test_base {
   void write_read(uint32_t max, uint32_t step) {
     inserter_t w( pool_.begin() );
 
-    for ( int i = 0; max; i += step, --max ) {
-      bytes_io<int>::vwrite( w, i );
+    for ( uint32_t i = 0; max; i += step, --max ) {
+      irs::vwrite<uint32_t>( w, i );
     }
 
     auto it = pool_.begin();
 
-    for ( int i = 0; max; i += step, --max ) {
-      ASSERT_EQ( i, bytes_io<int>::vread( it ) );
+    for ( uint32_t i = 0; max; i += step, --max ) {
+      ASSERT_EQ( i, irs::vread<uint32_t>( it ) );
     }
   }
 
@@ -102,8 +102,8 @@ class block_pool_test : public test_base {
     std::string slice_data("test_data");
 
     int count = max;
-    for ( int i = 0; count; i += step, --count ) {
-      bytes_io<int>::vwrite( w, i );
+    for ( uint32_t i = 0; count; i += step, --count ) {
+      irs::vwrite<uint32_t>( w, i );
 
       if (i % 3 == 0) { // write data within slice
         w.write(reinterpret_cast<const byte_type*>(slice_data.c_str()), slice_data.size());
@@ -117,8 +117,9 @@ class block_pool_test : public test_base {
     sliced_reader_t r( pool_.begin(), w.pool_offset() );
 
     count = max;
-    for ( int i = 0; count; i += step, --count ) {
-      int res = bytes_io<int>::vread( r );
+    for ( uint32_t i = 0; count; i += step, --count ) {
+      int res = irs::vread<uint32_t>( r );
+
       EXPECT_EQ( i, res );
 
       if (i % 3 == 0) { // read data within slice

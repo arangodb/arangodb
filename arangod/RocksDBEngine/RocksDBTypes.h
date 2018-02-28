@@ -70,15 +70,18 @@ enum class RocksDBLogType : char {
   ViewDrop = ':',
   ViewChange = ';',
   BeginTransaction = '<',
-  DocumentOperationsPrologue = '=',
-  DocumentRemove = '>',
+  DocumentOperationsPrologue = '=',  // <- deprecated
+  DocumentRemove = '>',              // <- deprecated
   SinglePut = '?',
-  SingleRemove = '@',
-  DocumentRemoveAsPartOfUpdate = 'A',
+  SingleRemove = '@',                  // <- deprecated
+  DocumentRemoveAsPartOfUpdate = 'A',  // <- deprecated
   ViewRename = 'B',
 #ifdef USE_IRESEARCH
-  IResearchLinkDrop = 'C'
+  IResearchLinkDrop = 'C',
 #endif
+  CommitTransaction = 'D',
+  DocumentRemoveV2 = 'E',
+  SingleRemoveV2 = 'F'
 };
 
 enum class RocksDBSettingsType : char {

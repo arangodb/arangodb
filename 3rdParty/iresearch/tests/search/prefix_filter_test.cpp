@@ -27,9 +27,7 @@
 #include "store/memory_directory.hpp"
 #include "formats/formats_10.hpp"
 
-namespace ir = iresearch;
-
-namespace tests {
+NS_BEGIN(tests)
 
 class prefix_filter_test_case : public filter_test_case_base {
  protected:
@@ -45,7 +43,7 @@ class prefix_filter_test_case : public filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_prefix(), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
     // empty prefix test collector call count for field/term/finish
     {
@@ -74,10 +72,10 @@ class prefix_filter_test_case : public filter_test_case_base {
     {
       docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
       costs_t costs{ docs.size() };
-      ir::order order;
+      irs::order order;
 
       order.add<sort::frequency_sort>(false);
-      check_query(ir::by_prefix().field("prefix"), order, docs, rdr);
+      check_query(irs::by_prefix().field("prefix"), order, docs, rdr);
     }
 
     //FIXME
@@ -85,20 +83,20 @@ class prefix_filter_test_case : public filter_test_case_base {
 //    {
 //      docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
 //      costs_t costs{ docs.size() };
-//      ir::order order;
+//      irs::order order;
 //
 //      order.add<sort::frequency_sort>(false);
-//      check_query(ir::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
+//      check_query(irs::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
 //    }
 //
     // prefix
     {
       docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };
       costs_t costs{ docs.size() };
-      ir::order order;
+      irs::order order;
 
       order.add<sort::frequency_sort>(false);
-      check_query(ir::by_prefix().field("prefix").term("a"), order, docs, rdr);
+      check_query(irs::by_prefix().field("prefix").term("a"), order, docs, rdr);
     }
   }
 
@@ -114,27 +112,27 @@ class prefix_filter_test_case : public filter_test_case_base {
     auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_prefix(), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_prefix(), docs_t{}, costs_t{0}, rdr);
 
     // empty field
-    check_query(ir::by_prefix().term("xyz"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_prefix().term("xyz"), docs_t{}, costs_t{0}, rdr);
 
     // invalid field
-    check_query(ir::by_prefix().field("same1").term("xyz"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_prefix().field("same1").term("xyz"), docs_t{}, costs_t{0}, rdr);
 
     // invalid prefix
-    check_query(ir::by_prefix().field("same").term("xyz_invalid"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_prefix().field("same").term("xyz_invalid"), docs_t{}, costs_t{0}, rdr);
 
     // valid prefix
     {
       docs_t result;
       for(size_t i = 0; i < 32; ++i) {
-        result.push_back(ir::doc_id_t((ir::type_limits<ir::type_t::doc_id_t>::min)() + i));
+        result.push_back(irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i));
       }
 
       costs_t costs{ result.size() };
 
-      check_query(ir::by_prefix().field("same").term("xyz"), result, costs, rdr);
+      check_query(irs::by_prefix().field("same").term("xyz"), result, costs, rdr);
     }
 
     // empty prefix : get all fields
@@ -142,7 +140,7 @@ class prefix_filter_test_case : public filter_test_case_base {
       docs_t docs{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(ir::by_prefix().field("duplicated"), docs, costs, rdr);
+      check_query(irs::by_prefix().field("duplicated"), docs, costs, rdr);
     }
 
     // single digit prefix
@@ -150,35 +148,35 @@ class prefix_filter_test_case : public filter_test_case_base {
       docs_t docs{ 1, 5, 11, 21, 27, 31 };
       costs_t costs{ docs.size() };
 
-      check_query(ir::by_prefix().field("duplicated").term("a"), docs, costs, rdr);
+      check_query(irs::by_prefix().field("duplicated").term("a"), docs, costs, rdr);
     }
 
-    check_query(ir::by_prefix().field("name").term("!"), docs_t{28}, costs_t{1}, rdr);
-    check_query(ir::by_prefix().field("prefix").term("b"), docs_t{9, 24}, costs_t{2}, rdr);
+    check_query(irs::by_prefix().field("name").term("!"), docs_t{28}, costs_t{1}, rdr);
+    check_query(irs::by_prefix().field("prefix").term("b"), docs_t{9, 24}, costs_t{2}, rdr);
 
     // multiple digit prefix
     {
       docs_t docs{ 2, 3, 8, 14, 17, 19, 24 };
       costs_t costs{ docs.size() };
 
-      check_query(ir::by_prefix().field("duplicated").term("vcz"), docs, costs, rdr);
+      check_query(irs::by_prefix().field("duplicated").term("vcz"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
-      check_query(ir::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
+      check_query(irs::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
     }
 
     {
       docs_t docs{ 1, 4, 21, 26, 31, 32 };
       costs_t costs{ docs.size() };
 
-      check_query(ir::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
+      check_query(irs::by_prefix().field("prefix").term("abc"), docs, costs, rdr);
     }
 
     // whole word
-    check_query(ir::by_prefix().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
+    check_query(irs::by_prefix().field("prefix").term("bateradsfsfasdf"), docs_t{24}, costs_t{1}, rdr);
   }
 
   void by_prefix_schemas() { 
@@ -208,68 +206,68 @@ class prefix_filter_test_case : public filter_test_case_base {
 
     auto rdr = open_reader();
 
-    check_query(ir::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
+    check_query(irs::by_prefix().field("Name").term("Addr"), docs_t{1, 2, 77, 78}, rdr);
   }
 }; // filter_test_case_base
 
-} // tests
+NS_END // tests
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             by_prefix base tests
 // ----------------------------------------------------------------------------
 
 TEST(by_prefix_test, ctor) {
-  ir::by_prefix q;
-  ASSERT_EQ(ir::by_prefix::type(), q.type());
+  irs::by_prefix q;
+  ASSERT_EQ(irs::by_prefix::type(), q.type());
   ASSERT_EQ("", q.field());
   ASSERT_TRUE(q.term().empty());
-  ASSERT_EQ(ir::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::boost::no_boost(), q.boost());
   ASSERT_EQ(1024, q.scored_terms_limit());
 }
 
 TEST(by_prefix_test, equal) {
   {
-    ir::by_prefix q;
+    irs::by_prefix q;
     q.field("field").term("term");
 
-    ASSERT_EQ(q, ir::by_prefix().field("field").term("term"));
-    ASSERT_EQ(q.hash(), ir::by_prefix().field("field").term("term").hash());
-    ASSERT_NE(q, ir::by_prefix().field("field1").term("term"));
-    ASSERT_NE(q, ir::by_prefix().scored_terms_limit(100).field("field").term("term"));
-    ASSERT_NE(q, ir::by_term().field("field").term("term"));
+    ASSERT_EQ(q, irs::by_prefix().field("field").term("term"));
+    ASSERT_EQ(q.hash(), irs::by_prefix().field("field").term("term").hash());
+    ASSERT_NE(q, irs::by_prefix().field("field1").term("term"));
+    ASSERT_NE(q, irs::by_prefix().scored_terms_limit(100).field("field").term("term"));
+    ASSERT_NE(q, irs::by_term().field("field").term("term"));
   }
 
   {
-    ir::by_prefix q;
+    irs::by_prefix q;
     q.scored_terms_limit(100).field("field").term("term");
 
-    ASSERT_EQ(q, ir::by_prefix().scored_terms_limit(100).field("field").term("term"));
-    ASSERT_EQ(q.hash(), ir::by_prefix().scored_terms_limit(100).field("field").term("term").hash());
-    ASSERT_NE(q, ir::by_prefix().scored_terms_limit(100).field("field1").term("term"));
-    ASSERT_NE(q, ir::by_prefix().field("field").term("term"));
-    ASSERT_NE(q, ir::by_term().field("field").term("term"));
+    ASSERT_EQ(q, irs::by_prefix().scored_terms_limit(100).field("field").term("term"));
+    ASSERT_EQ(q.hash(), irs::by_prefix().scored_terms_limit(100).field("field").term("term").hash());
+    ASSERT_NE(q, irs::by_prefix().scored_terms_limit(100).field("field1").term("term"));
+    ASSERT_NE(q, irs::by_prefix().field("field").term("term"));
+    ASSERT_NE(q, irs::by_term().field("field").term("term"));
   }
 }
 
 TEST(by_prefix_test, boost) {
   // no boost
   {
-    ir::by_prefix q;
+    irs::by_prefix q;
     q.field("field").term("term");
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 
   // with boost
   {
     iresearch::boost::boost_t boost = 1.5f;
-    ir::by_prefix q;
+    irs::by_prefix q;
     q.field("field").term("term");
     q.boost(boost);
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
   }
 }
 
@@ -279,13 +277,13 @@ TEST(by_prefix_test, boost) {
 
 class memory_prefix_filter_test_case : public tests::prefix_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    return new ir::memory_directory();
+  virtual irs::directory* get_directory() override {
+    return new irs::memory_directory();
   }
 
-  virtual ir::format::ptr get_codec() override {
-    static ir::version10::format FORMAT;
-    return ir::format::ptr(&FORMAT, [](ir::format*)->void{});
+  virtual irs::format::ptr get_codec() override {
+    static irs::version10::format FORMAT;
+    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
   }
 };
 
@@ -294,3 +292,7 @@ TEST_F(memory_prefix_filter_test_case, by_prefix) {
   by_prefix_sequential();
   by_prefix_schemas();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

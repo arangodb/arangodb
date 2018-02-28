@@ -1390,7 +1390,7 @@ SECTION("FieldIterator_nullptr_analyzer") {
     REQUIRE(!it.valid());
     REQUIRE(arangodb::iresearch::FieldIterator::END == it);
 
-    analyzer->reset(irs::string_ref::nil); // ensure that acquired 'analyzer' will not be optimized out
+    analyzer->reset(irs::string_ref::NIL); // ensure that acquired 'analyzer' will not be optimized out
   }
 
   // first analyzer is invalid
@@ -1422,7 +1422,7 @@ SECTION("FieldIterator_nullptr_analyzer") {
     REQUIRE(!it.valid());
     REQUIRE(arangodb::iresearch::FieldIterator::END == it);
 
-    analyzer->reset(irs::string_ref::nil); // ensure that acquired 'analyzer' will not be optimized out
+    analyzer->reset(irs::string_ref::NIL); // ensure that acquired 'analyzer' will not be optimized out
   }
 }
 
@@ -1437,7 +1437,7 @@ SECTION("DocumentPrimaryKey_encode_decode") {
   CHECK((42 == dst));
 
   // check failure on null
-  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::bytes_ref::nil)));
+  CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::bytes_ref::NIL)));
 
   // check failure on incorrect size
   CHECK((!arangodb::iresearch::DocumentPrimaryKey::decode(dst, irs::ref_cast<irs::byte_type>(irs::string_ref("abcdefghijklmnopqrstuvwxyz")))));

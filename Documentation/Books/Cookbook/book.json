@@ -15,7 +15,7 @@
     "ga",
     "callouts@git+https://github.com/Simran-B/gitbook-plugin-callouts.git",
     "edit-link",
-    "page-toc",
+    "page-toc@git+https://github.com/Simran-B/gitbook-plugin-page-toc.git",
     "localized-footer"
   ],
   "pdf": {

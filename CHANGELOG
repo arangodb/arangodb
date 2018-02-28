@@ -1,11 +1,6 @@
 devel
 -----
 
-* fixed Foxx API:
-
-  * PUT /_api/foxx/service: Respect force flag
-  * PATCH /_api/foxx/service: Check whether a service under given mount exists
-
 * Behaviour of permissions for databases and collections changed:
   The new fallback rule for databases for which an access level is not explicitly specified:
   Choose the higher access level of::
@@ -16,6 +11,16 @@ devel
     * Any wildcard access grant in the same database, or on "*/*"
     * The access level for the current database
     * The access level for the `_system` database
+
+* fix issue #4583 - add AQL ASSERT and AQL WARN
+
+* remove _admin/echo handler
+
+* remove long disfunctional admin/long_echo handler
+
+* fixed Foxx API:
+  * PUT /_api/foxx/service: Respect force flag
+  * PATCH /_api/foxx/service: Check whether a service under given mount exists
 
 * renamed startup option `--replication.automatic-failover` to 
   `--replication.active-failover`
@@ -10367,4 +10372,3 @@ v1.0.alpha1 (2012-05-28)
 ------------------------
 
 Alpha Release of ArangoDB 1.0
-                                                                                                                                                                                                                                                                                                                                                                                            
