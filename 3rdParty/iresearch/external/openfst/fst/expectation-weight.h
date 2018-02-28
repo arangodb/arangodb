@@ -1,20 +1,6 @@
-
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// See www.openfst.org for extensive documentation on this weighted
+// finite-state transducer library.
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright 2005-2010 Google, Inc.
-// Author: krr@google.com (Kasturi Rangan Raghavan)
-// Inspiration: shumash@google.com (Masha Maria Shugrina)
-// \file
 // Expectation semiring as described by Jason Eisner:
 // See: doi=10.1.1.22.9398
 // Multiplex semiring operations and identities:
@@ -25,26 +11,29 @@
 //    Division: Undefined (currently)
 //
 // Usually used to store the pair <probability, random_variable> so that
-// ShortestDistance[Fst<ArcTpl<ExpectationWeight<P, V> > >]
+// ShortestDistance[Fst<ArcTpl<ExpectationWeight<P, V>>>]
 //    == < PosteriorProbability, Expected_Value[V] >
 
-#ifndef FST_LIB_EXPECTATION_WEIGHT_H_
-#define FST_LIB_EXPECTATION_WEIGHT_H_
+#ifndef FST_EXPECTATION_WEIGHT_H_
+#define FST_EXPECTATION_WEIGHT_H_
 
-#include<string>
+#include <string>
+
+#include <fst/log.h>
 
 #include <fst/pair-weight.h>
+#include <fst/product-weight.h>
 
 
 namespace fst {
 
-// X1 is usually a probability weight like LogWeight
-// X2 is usually a random variable or vector
-//    see SignedLogWeight or SparsePowerWeight
+// X1 is usually a probability weight like LogWeight.
+// X2 is usually a random variable or vector (see SignedLogWeight or
+// SparsePowerWeight).
 //
-// If X1 is distinct from X2, it is required that there is an external
-// product between X1 and X2 and if both semriring are commutative, or
-// left or right semirings, then result must have those properties.
+// If X1 is distinct from X2, it is required that there is an external product
+// between X1 and X2 and if both semriring are commutative, or left or right
+// semirings, then result must have those properties.
 template <class X1, class X2>
 class ExpectationWeight : public PairWeight<X1, X2> {
  public:
@@ -55,88 +44,94 @@ class ExpectationWeight : public PairWeight<X1, X2> {
   using PairWeight<X1, X2>::Quantize;
   using PairWeight<X1, X2>::Member;
 
-  typedef X1 W1;
-  typedef X2 W2;
+  using ReverseWeight =
+      ExpectationWeight<typename X1::ReverseWeight, typename X2::ReverseWeight>;
 
-  typedef ExpectationWeight<typename X1::ReverseWeight,
-                            typename X2::ReverseWeight> ReverseWeight;
+  ExpectationWeight() : PairWeight<X1, X2>(Zero()) {}
 
-  ExpectationWeight() : PairWeight<X1, X2>(Zero()) { }
+  ExpectationWeight(const ExpectationWeight &weight)
+      : PairWeight<X1, X2>(weight) {}
 
-  ExpectationWeight(const ExpectationWeight<X1, X2>& w)
-      : PairWeight<X1, X2> (w) { }
+  explicit ExpectationWeight(const PairWeight<X1, X2> &weight)
+      : PairWeight<X1, X2>(weight) {}
 
-  ExpectationWeight(const PairWeight<X1, X2>& w)
-      : PairWeight<X1, X2> (w) { }
+  ExpectationWeight(const X1 &x1, const X2 &x2) : PairWeight<X1, X2>(x1, x2) {}
 
-  ExpectationWeight(const X1& x1, const X2& x2)
-      : PairWeight<X1, X2>(x1, x2) { }
-
-  static const ExpectationWeight<X1, X2> &Zero() {
-    static const ExpectationWeight<X1, X2> zero(X1::Zero(), X2::Zero());
+  static const ExpectationWeight &Zero() {
+    static const ExpectationWeight zero(X1::Zero(), X2::Zero());
     return zero;
   }
 
-  static const ExpectationWeight<X1, X2> &One() {
-    static const ExpectationWeight<X1, X2> one(X1::One(), X2::Zero());
+  static const ExpectationWeight &One() {
+    static const ExpectationWeight one(X1::One(), X2::Zero());
     return one;
   }
 
-  static const ExpectationWeight<X1, X2> &NoWeight() {
-    static const ExpectationWeight<X1, X2> no_weight(X1::NoWeight(),
-                                                     X2::NoWeight());
+  static const ExpectationWeight &NoWeight() {
+    static const ExpectationWeight no_weight(X1::NoWeight(), X2::NoWeight());
     return no_weight;
   }
 
   static const string &Type() {
-    static const string type = "expectation_" + X1::Type() + "_" + X2::Type();
-    return type;
+    static const string *const type =
+        new string("expectation_" + X1::Type() + "_" + X2::Type());
+    return *type;
   }
 
   PairWeight<X1, X2> Quantize(float delta = kDelta) const {
-    return PairWeight<X1, X2>::Quantize();
+    return ExpectationWeight(PairWeight<X1, X2>::Quantize());
   }
 
   ReverseWeight Reverse() const {
-    return PairWeight<X1, X2>::Reverse();
+    return ReverseWeight(PairWeight<X1, X2>::Reverse());
   }
 
-  bool Member() const {
-    return PairWeight<X1, X2>::Member();
-  }
+  bool Member() const { return PairWeight<X1, X2>::Member(); }
 
-  static uint64 Properties() {
-    uint64 props1 = W1::Properties();
-    uint64 props2 = W2::Properties();
-    return props1 & props2 & (kLeftSemiring | kRightSemiring |
-                              kCommutative | kIdempotent);
+  static FST_CONSTEXPR uint64 Properties() {
+    return X1::Properties() & X2::Properties() &
+           (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }
 };
 
 template <class X1, class X2>
-inline ExpectationWeight<X1, X2> Plus(const ExpectationWeight<X1, X2> &w,
-                                      const ExpectationWeight<X1, X2> &v) {
-  return ExpectationWeight<X1, X2>(Plus(w.Value1(), v.Value1()),
-                                   Plus(w.Value2(), v.Value2()));
-}
-
-
-template <class X1, class X2>
-inline ExpectationWeight<X1, X2> Times(const ExpectationWeight<X1, X2> &w,
-                                       const ExpectationWeight<X1, X2> &v) {
-  return ExpectationWeight<X1, X2>(Times(w.Value1(), v.Value1()),
-                                   Plus(Times(w.Value1(), v.Value2()),
-                                        Times(w.Value2(), v.Value1())));
+inline ExpectationWeight<X1, X2> Plus(const ExpectationWeight<X1, X2> &w1,
+                                      const ExpectationWeight<X1, X2> &w2) {
+  return ExpectationWeight<X1, X2>(Plus(w1.Value1(), w2.Value1()),
+                                   Plus(w1.Value2(), w2.Value2()));
 }
 
 template <class X1, class X2>
-inline ExpectationWeight<X1, X2> Divide(const ExpectationWeight<X1, X2> &w,
-                                        const ExpectationWeight<X1, X2> &v,
+inline ExpectationWeight<X1, X2> Times(const ExpectationWeight<X1, X2> &w1,
+                                       const ExpectationWeight<X1, X2> &w2) {
+  return ExpectationWeight<X1, X2>(
+      Times(w1.Value1(), w2.Value1()),
+      Plus(Times(w1.Value1(), w2.Value2()), Times(w1.Value2(), w2.Value1())));
+}
+
+template <class X1, class X2>
+inline ExpectationWeight<X1, X2> Divide(const ExpectationWeight<X1, X2> &w1,
+                                        const ExpectationWeight<X1, X2> &w2,
                                         DivideType typ = DIVIDE_ANY) {
-  FSTERROR() << "ExpectationWeight::Divide: not implemented";
+  FSTERROR() << "ExpectationWeight::Divide: Not implemented";
   return ExpectationWeight<X1, X2>::NoWeight();
 }
 
+// This function object generates weights by calling the underlying generators
+// for the template weight types, like all other pair weight types. This is
+// intended primarily for testing.
+template <class X1, class X2>
+class WeightGenerate<ExpectationWeight<X1, X2>>
+    : public WeightGenerate<PairWeight<X1, X2>> {
+ public:
+  using Weight = ExpectationWeight<X1, X2>;
+  using Generate = WeightGenerate<PairWeight<X1, X2>>;
+
+  explicit WeightGenerate(bool allow_zero = true) : Generate(allow_zero) {}
+
+  Weight operator()() const { return Weight(Generate::operator()()); }
+};
+
 }  // namespace fst
 
-#endif  // FST_LIB_EXPECTATION_WEIGHT_H_
+#endif  // FST_EXPECTATION_WEIGHT_H_

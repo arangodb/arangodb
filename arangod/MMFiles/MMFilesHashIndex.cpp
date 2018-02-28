@@ -213,10 +213,10 @@ void MMFilesHashIndexLookupBuilder::buildNextSearchValue() {
 
 MMFilesHashIndexIterator::MMFilesHashIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
+    MMFilesHashIndex const* index,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _lookups(trx, node, reference, index->fields()),
       _buffer(),
@@ -258,9 +258,9 @@ void MMFilesHashIndexIterator::reset() {
 
 MMFilesHashIndexIteratorVPack::MMFilesHashIndexIteratorVPack(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
+    MMFilesHashIndex const* index,
     std::unique_ptr<arangodb::velocypack::Builder>& searchValues)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _searchValues(searchValues.get()),
       _iterator(_searchValues->slice()),
@@ -887,14 +887,13 @@ bool MMFilesHashIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesHashIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool) {
   TRI_IF_FAILURE("HashIndex::noIterator") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  return new MMFilesHashIndexIterator(_collection, trx, mmdr, this, node,
-                                      reference);
+  return new MMFilesHashIndexIterator(_collection, trx, this, node, reference);
 }
 
 /// @brief specializes the condition for use with the index

@@ -32,8 +32,6 @@ class RestHandlerFactory;
 class AsyncJobManager;
 }
 
-class FeatureCacheFeature;
-
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static std::string operationModeString(OperationMode mode);
@@ -56,7 +54,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
   }
 
   std::vector<std::string> const& scripts() const { return _scripts; }
-  std::vector<std::string> const& unitTests() const { return _unitTests; }
   uint32_t const& vstMaxSize() const { return _vstMaxSize; }
   
   bool isConsoleMode() const {
@@ -69,7 +66,6 @@ class ServerFeature final : public application_features::ApplicationFeature {
  private:
   bool _console = false;
   bool _restServer = true;
-  std::vector<std::string> _unitTests;
   std::vector<std::string> _scripts;
   uint32_t _vstMaxSize;
   int* _result;

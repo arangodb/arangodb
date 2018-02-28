@@ -29,9 +29,7 @@
 #include "store/fs_directory.hpp"
 #include "formats/formats_10.hpp"
 
-namespace ir = iresearch;
-
-namespace tests {
+NS_BEGIN(tests)
 
 class term_filter_test_case : public filter_test_case_base {
 protected:
@@ -47,22 +45,22 @@ protected:
     // read segment
     auto rdr = open_reader();
 
-    check_query(ir::by_term(), docs_t{ }, costs_t{0}, rdr);
+    check_query(irs::by_term(), docs_t{ }, costs_t{0}, rdr);
 
     // empty term
-    check_query(ir::by_term().field("name"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_term().field("name"), docs_t{}, costs_t{0}, rdr);
 
     // empty field
-    check_query(ir::by_term().term("xyz"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_term().term("xyz"), docs_t{}, costs_t{0}, rdr);
 
     // search : invalid field
-    check_query(ir::by_term().field("invalid_field").term("A"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_term().field("invalid_field").term("A"), docs_t{}, costs_t{0}, rdr);
 
     // search : single term
-    check_query(ir::by_term().field("name").term("A"), docs_t{1}, costs_t{1}, rdr);
+    check_query(irs::by_term().field("name").term("A"), docs_t{1}, costs_t{1}, rdr);
 
     { 
-      ir::by_term q;
+      irs::by_term q;
       q.field("name").term("A");
 
       auto prepared = q.prepare(rdr);
@@ -75,14 +73,14 @@ protected:
 
     // search : all terms
     check_query(
-      ir::by_term().field( "same" ).term( "xyz" ),
+      irs::by_term().field( "same" ).term( "xyz" ),
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       costs_t{ 32 },
       rdr
     );
 
     // search : empty result
-    check_query(ir::by_term().field("same").term("invalid_term"), docs_t{}, costs_t{0}, rdr);
+    check_query(irs::by_term().field("same").term("invalid_term"), docs_t{}, costs_t{0}, rdr);
   }
 
   void by_term_sequential_boost() {
@@ -98,7 +96,7 @@ protected:
     auto rdr = open_reader();
 
     // create filter
-    ir::by_term filter;
+    irs::by_term filter;
     filter.field( "name" ).term( "A" );
 
     // create order
@@ -159,24 +157,24 @@ protected:
            const tests::json_doc_generator::json_value& data) {
           if (data.is_string()) {
             doc.insert(std::make_shared<templates::string_field>(
-              ir::string_ref(name),
+              irs::string_ref(name),
               data.str
             ));
           } else if (data.is_null()) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
-            field.value(ir::null_token_stream::value_null());
+            field.value(irs::null_token_stream::value_null());
           } else if (data.is_bool() && data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
-            field.value(ir::boolean_token_stream::value_true());
+            field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_bool() && !data.b) {
             doc.insert(std::make_shared<tests::binary_field>());
             auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
             field.name(iresearch::string_ref(name));
-            field.value(ir::boolean_token_stream::value_true());
+            field.value(irs::boolean_token_stream::value_true());
           } else if (data.is_number()) {
             const double dValue = data.as_number<double_t>();
             {
@@ -219,18 +217,18 @@ protected:
 
     // long (20)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset(INT64_C(20));
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("seq").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 21 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 21 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -243,18 +241,18 @@ protected:
 
     // int (21)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset(INT32_C(21));
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("seq").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 22 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 22 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -267,18 +265,18 @@ protected:
 
     // double (90.564) 
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset((double_t)90.564);
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 13 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 13 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -291,18 +289,18 @@ protected:
 
     // float (90.564) 
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset((float_t)90.564f);
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 13 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 13 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -315,18 +313,18 @@ protected:
 
     // double (100)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset((double_t)100.);
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -339,18 +337,18 @@ protected:
 
     // float_t(100)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset((float_t)100.f);
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -363,18 +361,18 @@ protected:
 
     // int(100)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset(100);
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -387,18 +385,18 @@ protected:
 
     // long(100)
     {
-      ir::numeric_token_stream stream;
+      irs::numeric_token_stream stream;
       stream.reset(INT64_C(100));
-      auto& term = stream.attributes().get<ir::term_attribute>();
+      auto& term = stream.attributes().get<irs::term_attribute>();
       ASSERT_TRUE(stream.next());
 
-      ir::by_term query;
+      irs::by_term query;
       query.field("value").term(term->value());
 
       auto prepared = query.prepare(rdr);
 
-      std::vector<ir::doc_id_t> expected { 1, 5, 7, 9, 10 };
-      std::vector<ir::doc_id_t> actual;
+      std::vector<irs::doc_id_t> expected { 1, 5, 7, 9, 10 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -473,29 +471,29 @@ protected:
     auto rdr = open_reader();
 
     // empty query
-    check_query(ir::by_term(), docs_t{ }, rdr);
+    check_query(irs::by_term(), docs_t{ }, rdr);
 
     // empty term
-    check_query(ir::by_term().field("name"), docs_t{ }, rdr);
+    check_query(irs::by_term().field("name"), docs_t{ }, rdr);
 
     // empty field
-    check_query(ir::by_term().term("xyz"), docs_t{ }, rdr);
+    check_query(irs::by_term().term("xyz"), docs_t{ }, rdr);
 
     // search : invalid field
-    check_query(ir::by_term().field("invalid_field").term( "A"), docs_t{ }, rdr );
+    check_query(irs::by_term().field("invalid_field").term( "A"), docs_t{ }, rdr );
 
     // search : single term
-    check_query(ir::by_term().field("name").term("A"), docs_t{ 1 }, rdr);
+    check_query(irs::by_term().field("name").term("A"), docs_t{ 1 }, rdr);
 
     // search : all terms
     check_query(
-      ir::by_term().field( "same" ).term( "xyz" ),
+      irs::by_term().field( "same" ).term( "xyz" ),
       docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
       rdr
     );
 
     // search : empty result
-    check_query(ir::by_term().field("same").term("invalid_term"), docs_t{}, rdr);
+    check_query(irs::by_term().field("same").term("invalid_term"), docs_t{}, rdr);
   }
 
   void by_term_schemas() {
@@ -532,53 +530,53 @@ protected:
     }
 
     auto rdr = open_reader();
-    check_query(ir::by_term().field("Fields").term("FirstName"), docs_t{ 28, 167, 194 }, rdr);
+    check_query(irs::by_term().field("Fields").term("FirstName"), docs_t{ 28, 167, 194 }, rdr);
 
     // address to the [SDD-179]
-    check_query(ir::by_term().field("Name").term("Product"), docs_t{ 32 }, rdr);
+    check_query(irs::by_term().field("Name").term("Product"), docs_t{ 32 }, rdr);
   }
 };
 
-} // tests
+NS_END // tests
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               by_term base tests 
 // ----------------------------------------------------------------------------
 
 TEST(by_term_test, ctor) {
-  ir::by_term q;
-  ASSERT_EQ(ir::by_term::type(), q.type());
+  irs::by_term q;
+  ASSERT_EQ(irs::by_term::type(), q.type());
   ASSERT_TRUE(q.term().empty());
   ASSERT_EQ("", q.field());
-  ASSERT_EQ(ir::boost::no_boost(), q.boost());
+  ASSERT_EQ(irs::boost::no_boost(), q.boost());
 }
 
 TEST(by_term_test, equal) { 
-  ir::by_term q;
+  irs::by_term q;
   q.field("field").term("term");
-  ASSERT_EQ(q, ir::by_term().field("field").term("term"));
-  ASSERT_NE(q, ir::by_term().field("field1").term("term"));
+  ASSERT_EQ(q, irs::by_term().field("field").term("term"));
+  ASSERT_NE(q, irs::by_term().field("field1").term("term"));
 }
 
 TEST(by_term_test, boost) {
   // no boost
   {
-    ir::by_term q;
+    irs::by_term q;
     q.field("field").term("term");
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::boost::no_boost(), irs::boost::extract(prepared->attributes()));
   }
 
   // with boost
   {
     iresearch::boost::boost_t boost = 1.5f;
-    ir::by_term q;
+    irs::by_term q;
     q.field("field").term("term");
     q.boost(boost);
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(boost, irs::boost::extract(prepared->attributes()));
   }
 }
 
@@ -588,13 +586,13 @@ TEST(by_term_test, boost) {
 
 class memory_term_filter_test_case : public tests::term_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    return new ir::memory_directory();
+  virtual irs::directory* get_directory() override {
+    return new irs::memory_directory();
   }
 
-  virtual ir::format::ptr get_codec() override {
-    static ir::version10::format FORMAT;
-    return ir::format::ptr(&FORMAT, [](ir::format*)->void{});
+  virtual irs::format::ptr get_codec() override {
+    static irs::version10::format FORMAT;
+    return irs::format::ptr(&FORMAT, [](irs::format*)->void{});
   }
 };
 
@@ -625,13 +623,16 @@ TEST_F(memory_term_filter_test_case, by_term_cost) {
 
 class fs_term_filter_test_case : public tests::term_filter_test_case {
 protected:
-  virtual ir::directory* get_directory() override {
-    const fs::path dir = fs::path( test_dir() ).append( "index" );
-    return new iresearch::fs_directory(dir.string());
+  virtual irs::directory* get_directory() override {
+    auto dir = test_dir();
+
+    dir /= "index";
+
+    return new iresearch::fs_directory(dir.utf8());
   }
 
-  virtual ir::format::ptr get_codec() override {
-    return ir::formats::get("1_0");
+  virtual irs::format::ptr get_codec() override {
+    return irs::formats::get("1_0");
   }
 };
 
@@ -655,3 +656,7 @@ TEST_F(fs_term_filter_test_case, by_term_order) {
 TEST_F(fs_term_filter_test_case, by_term_cost) {
   by_term_sequential_cost();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

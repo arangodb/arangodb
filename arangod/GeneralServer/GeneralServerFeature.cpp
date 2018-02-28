@@ -45,6 +45,7 @@
 #include "RestHandler/RestAdminLogHandler.h"
 #include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAdminServerHandler.h"
+#include "RestHandler/RestAdminStatisticsHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
@@ -55,7 +56,6 @@
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
 #include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
@@ -80,7 +80,6 @@
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
@@ -192,7 +191,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 static TRI_vocbase_t* LookupDatabaseFromRequest(GeneralRequest* request) {
-  auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
 
   // get database name from request
   std::string const& dbName = request->databaseName();
@@ -261,12 +260,10 @@ void GeneralServerFeature::start() {
 
   // populate the authentication cache. otherwise no one can access the new
   // database
-  auto authentication =
-      FeatureCacheFeature::instance()->authenticationFeature();
+  auto authentication = AuthenticationFeature::instance();
   TRI_ASSERT(authentication != nullptr);
   if (authentication->isActive()) {
-    authentication->authInfo()->outdate();
-    authentication->authInfo()->reloadAllUsers();
+    authentication->userManager()->outdate();
   }
 }
 
@@ -526,9 +523,6 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/work-monitor",
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
-  _handlerFactory->addHandler(
-      "/_admin/json-echo", RestHandlerCreator<RestEchoHandler>::createNoData);
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // This handler is to activate SYS_DEBUG_FAILAT on DB servers
   _handlerFactory->addPrefixHandler(
@@ -548,6 +542,14 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+    "/_admin/statistics-description",
+    RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
 
   // ...........................................................................
   // actions defined in v8

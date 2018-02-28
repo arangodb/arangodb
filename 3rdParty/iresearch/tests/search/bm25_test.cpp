@@ -42,7 +42,7 @@ class bm25_test: public index_test_base {
    }
 
   virtual iresearch::format::ptr get_codec() {
-    return ir::formats::get("1_0");
+    return irs::formats::get("1_0");
   }
 };
 
@@ -79,7 +79,7 @@ using namespace tests;
 
 TEST_F(bm25_test, test_load) {
   irs::order order;
-  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+  auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
 
   ASSERT_NE(nullptr, scorer);
   ASSERT_EQ(1, order.add(true, scorer).size());
@@ -90,12 +90,11 @@ TEST_F(bm25_test, test_load) {
 TEST_F(bm25_test, make_from_array) {
   // default args
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
   }
 
   // default args
@@ -105,7 +104,6 @@ TEST_F(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(irs::bm25_sort::K(), bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
   }
 
   // `k` argument
@@ -115,7 +113,6 @@ TEST_F(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(irs::bm25_sort::B(), bm25.b());
-    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
   }
 
   // invalid `k` argument
@@ -134,7 +131,6 @@ TEST_F(bm25_test, make_from_array) {
     auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(1.5f, bm25.k());
     ASSERT_EQ(1.7f, bm25.b());
-    ASSERT_EQ(irs::bm25_sort::WITH_NORMS(), bm25.normalize());
   }
 
   // invalid `b` argument
@@ -145,23 +141,6 @@ TEST_F(bm25_test, make_from_array) {
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, false ]"));
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, {} ]"));
   ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, [] ]"));
-
-  // `with-norms` argument
-  {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, false ]");
-    ASSERT_NE(nullptr, scorer);
-    auto& bm25 = dynamic_cast<irs::bm25_sort&>(*scorer);
-    ASSERT_EQ(1.5f, bm25.k());
-    ASSERT_EQ(1.7f, bm25.b());
-    ASSERT_EQ(false, bm25.normalize());
-  }
-
-  // invalid `with-norms` argument
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, \"false\" ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, null]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, 1 ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, {} ]"));
-  ASSERT_EQ(nullptr, irs::scorers::get("bm25", irs::text_format::json, "[ 1.5, 1.7, [] ]"));
 }
 
 #endif // IRESEARCH_DLL
@@ -169,29 +148,132 @@ TEST_F(bm25_test, make_from_array) {
 TEST_F(bm25_test, test_normalize_features) {
   // default norms
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
   }
 
-  // with norms
+  // without norms (bm15)
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"with-norms\": true}");
-    ASSERT_NE(nullptr, scorer);
-    auto prepared = scorer->prepare();
-    ASSERT_NE(nullptr, prepared);
-    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
-  }
-
-  // without norms
-  {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"with-norms\": false}");
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
     ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+
+  // without norms (bm15), integer argument
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+}
+
+TEST_F(bm25_test, test_phrase) {
+  auto analyzed_json_field_factory = [](
+      tests::document& doc,
+      const std::string& name,
+      const tests::json_doc_generator::json_value& data) {
+    typedef templates::text_field<std::string> text_field;
+
+    class string_field : public templates::string_field {
+     public:
+      string_field(const irs::string_ref& name, const irs::string_ref& value)
+        : templates::string_field(name, value) {
+      }
+
+      const irs::flags& features() const {
+        static irs::flags features{ irs::frequency::type() };
+        return features;
+      }
+    }; // string_field
+
+    if (data.is_string()) {
+      // analyzed field
+      doc.indexed.push_back(std::make_shared<text_field>(
+        std::string(name.c_str()) + "_anl",
+        data.str
+      ));
+
+      // not analyzed field
+      doc.insert(std::make_shared<string_field>(
+        irs::string_ref(name),
+        data.str
+      ));
+    }
+  };
+
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("phrase_sequential.json"),
+      analyzed_json_field_factory);
+    add_segment(gen);
+  }
+
+  irs::order order;
+  order.add(true, irs::scorers::get("bm25", irs::text_format::json, "{ \"b\" : 0 }"));
+  auto prepared_order = order.prepare();
+
+  auto comparer = [&prepared_order] (const iresearch::bstring& lhs, const iresearch::bstring& rhs) {
+    return prepared_order.less(lhs.c_str(), rhs.c_str());
+  };
+
+  // read segment
+  auto index = open_reader();
+  ASSERT(1, index->size());
+  auto& segment = *(index.begin());
+
+  // "jumps high" with order
+  {
+    irs::by_phrase filter;
+    filter.field("phrase_anl")
+          .push_back("jumps")
+          .push_back("high");
+
+    std::multimap<irs::bstring, std::string, decltype(comparer)> sorted(comparer);
+
+    std::vector<std::string> expected{
+      "P", // jumps high jumps left jumps right jumps down jumps back
+      "O", // jumps high jumps high hotdog
+      "Q", // jumps high jumps left jumps right jumps down walks back
+      "R"  // jumps high jumps left jumps right walks down walks back
+    };
+
+    auto prepared_filter = filter.prepare(*index, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+    ASSERT_TRUE(bool(score));
+
+    auto column = segment.column_reader("name");
+    ASSERT_NE(nullptr, column);
+    auto values = column->values();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+    irs::bytes_ref key_value;
+
+    while (docs->next()) {
+      score->evaluate();
+      ASSERT_TRUE(values(docs->value(), key_value));
+
+      sorted.emplace(
+        score_value,
+        irs::to_string<std::string>(key_value.c_str())
+      );
+    }
+
+    ASSERT_EQ(expected.size(), sorted.size());
+    size_t i = 0;
+
+    for (auto& entry: sorted) {
+      ASSERT_EQ(expected[i++], entry.second);
+    }
   }
 }
 
@@ -212,7 +294,7 @@ TEST_F(bm25_test, test_query) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -389,6 +471,7 @@ TEST_F(bm25_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
       7, // 3.45083 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
       3, // 1.98083 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(0) + 1.2)
       0, // 1.91043 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
@@ -433,12 +516,13 @@ TEST_F(bm25_test, test_query) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
-      0, // 3.60357 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
+      // FIXME the following calculation is based on old formula
       7, // 3.45083 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
+      0, // 3.60357 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
       5, // 3.16315 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
       3, // 1.98082 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1) + 1.2)
-      1, // 1.74950 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
       2, // 1.69314 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
+      1, // 1.74950 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2) + (log(8/(4+1))+1)*(1.2+1)*sqrt(2)/(sqrt(2)+1.2) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0) + 1.2)
     };
 
     irs::bytes_ref actual_value;
@@ -535,7 +619,7 @@ TEST_F(bm25_test, test_query_norms) {
 
   irs::order order;
 
-  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil));
+  order.add(true, irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL));
 
   auto prepared_order = order.prepare();
   auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
@@ -558,6 +642,7 @@ TEST_F(bm25_test, test_query_norms) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
       7, // 5.62794 = (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
       3, // 3.22245 = (log(8/(4+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(7))/(52/8)))
       0, // 2.68195 = (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
@@ -603,6 +688,7 @@ TEST_F(bm25_test, test_query_norms) {
 
     std::multimap<irs::bstring, uint64_t, decltype(comparer)> sorted(comparer);
     std::vector<uint64_t> expected{
+      // FIXME the following calculation is based on old formula
       7, // 5.62794 = (log(8/(3+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
       0, // 5.42788 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(3)/(sqrt(3)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(6))/(52/8)))
       5, // 5.15876 = (log(8/(3+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(4+1))+1)*(1.2+1)*sqrt(1)/(sqrt(1)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8))) + (log(8/(2+1))+1)*(1.2+1)*sqrt(0)/(sqrt(0)+1.2*(1-0.75+0.75*(1/sqrt(8))/(52/8)))
@@ -644,22 +730,79 @@ TEST_F(bm25_test, test_query_norms) {
 TEST_F(bm25_test, test_make) {
   // default values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::nil);
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, irs::string_ref::NIL);
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(0.75f, scr.b());
     ASSERT_EQ(1.2f, scr.k());
-    ASSERT_EQ(true, scr.normalize());
+    ASSERT_FALSE(scr.bm11());
+    ASSERT_FALSE(scr.bm15());
   }
 
   // custom values
   {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": false}");
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78.9 }");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
     ASSERT_EQ(123.456f, scr.b());
     ASSERT_EQ(78.9f, scr.k());
-    ASSERT_EQ(false, scr.normalize());
+    ASSERT_FALSE(scr.bm11());
+    ASSERT_FALSE(scr.bm15());
+  }
+
+  // custom values (integer argument)
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78 }");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(123.456f, scr.b());
+    ASSERT_EQ(78.0f, scr.k());
+    ASSERT_FALSE(scr.bm11());
+    ASSERT_FALSE(scr.bm15());
+  }
+
+  // bm11
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1.0, \"k\": 78.9 }");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(1.f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+    ASSERT_TRUE(scr.bm11());
+    ASSERT_FALSE(scr.bm15());
+  }
+
+  // bm11 (integer argument)
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 1, \"k\": 78.9 }");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(1.f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+    ASSERT_TRUE(scr.bm11());
+    ASSERT_FALSE(scr.bm15());
+  }
+
+  // bm15
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0.0, \"k\": 78.9 }");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(0.f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+    ASSERT_FALSE(scr.bm11());
+    ASSERT_TRUE(scr.bm15());
+  }
+
+  // bm15 (integer argument)
+  {
+    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 0, \"k\": 78.9 }");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(0.f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+    ASSERT_FALSE(scr.bm11());
+    ASSERT_TRUE(scr.bm15());
   }
 
   // invalid args
@@ -677,12 +820,6 @@ TEST_F(bm25_test, test_make) {
   // invalid values (k)
   {
     auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": true}");
-    ASSERT_EQ(nullptr, scorer);
-  }
-
-  // invalid values (with-norms)
-  {
-    auto scorer = irs::scorers::get("bm25", irs::text_format::json, "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }

@@ -101,7 +101,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   
   
   IndexIterator* iteratorForCondition(transaction::Methods* trx,
-                                      ManagedDocumentResult* mdr,
+                                      ManagedDocumentResult*,
                                       aql::AstNode const* condNode,
                                       aql::Variable const* var, bool) override;
 
@@ -142,10 +142,9 @@ class RocksDBFulltextIndexIterator : public IndexIterator {
 public:
   RocksDBFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               ManagedDocumentResult* mmdr,
                                RocksDBFulltextIndex const* index,
                                std::set<LocalDocumentId>&& docs)
-  : IndexIterator(collection, trx, mmdr, index),
+  : IndexIterator(collection, trx, index),
   _docs(std::move(docs)),
   _pos(_docs.begin()) {}
   

@@ -122,6 +122,10 @@ struct Functions {
                            VPackFunctionParameters const&);
    static AqlValue Length(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue FindFirst(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+   static AqlValue FindLast(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
    static AqlValue First(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Last(arangodb::aql::Query*, transaction::Methods*,
@@ -342,6 +346,10 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue Assert(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+   static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
 };
   
 }

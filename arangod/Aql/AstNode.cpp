@@ -800,7 +800,7 @@ bool AstNode::isOnlyEqualityMatch() const {
 }
 
 /// @brief computes a hash value for a value node
-uint64_t AstNode::hashValue(uint64_t hash) const {
+uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -839,7 +839,8 @@ uint64_t AstNode::hashValue(uint64_t hash) const {
       if (sub != nullptr) {
         hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
                           sub->getStringLength(), hash);
-        hash = sub->getMember(0)->hashValue(hash);
+        TRI_ASSERT(sub->numMembers() > 0);
+        hash = sub->getMemberUnchecked(0)->hashValue(hash);
       }
     }
     return hash;

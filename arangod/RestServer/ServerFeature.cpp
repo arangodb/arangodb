@@ -56,7 +56,6 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Authentication");
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("FeatureCache");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");
@@ -80,9 +79,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",
-                           new VectorParameter<StringParameter>(&_unitTests));
-
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
 
@@ -98,11 +94,6 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_console) {
     _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_unitTests.empty()) {
-    _operationMode = OperationMode::MODE_UNITTESTS;
     ++count;
   }
 
@@ -144,8 +135,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   V8DealerFeature* v8dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  if (_operationMode == OperationMode::MODE_SCRIPT ||
-      _operationMode == OperationMode::MODE_UNITTESTS) {
+  if (_operationMode == OperationMode::MODE_SCRIPT) {
     v8dealer->setMinimumContexts(2);
   } else {
     v8dealer->setMinimumContexts(1);
@@ -168,7 +158,6 @@ void ServerFeature::start() {
   *_result = EXIT_SUCCESS;
 
   switch (_operationMode) {
-    case OperationMode::MODE_UNITTESTS:
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;
@@ -217,8 +206,6 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
   switch (mode) {
     case OperationMode::MODE_CONSOLE:
       return "console";
-    case OperationMode::MODE_UNITTESTS:
-      return "unittests";
     case OperationMode::MODE_SCRIPT:
       return "script";
     case OperationMode::MODE_SERVER:
