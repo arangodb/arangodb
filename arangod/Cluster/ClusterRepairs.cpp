@@ -685,6 +685,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 MoveShardOperation::toVpackTodo(uint64_t jobId) const {
   std::string const serverId = ServerState::instance()->getId();
 
+  // TODO This needs the lib boost_date_time. Maybe use strftime from <ctime> instead
   boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
 
   VPackBuilder builder;

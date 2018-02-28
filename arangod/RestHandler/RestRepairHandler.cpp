@@ -34,6 +34,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
 // TODO Fix logging for production (remove [tg], reduce loglevels, rewrite messages etc)
@@ -122,8 +123,9 @@ RestRepairHandler::repairDistributeShardsLike() {
 
     VPackSlice planCollections = plan.get("Collections");
 
-    std::shared_ptr<VPackBuffer<uint8_t>> vpack
-      = getFromAgency("Supervision/Health");
+
+    //auto returnArray = getFromAgency({"Supervision/Health"});
+    VPackBufferPtr vpack ;//= returnArray[0];
 
     VPackSlice supervisionHealth(vpack->data());
 
@@ -200,26 +202,34 @@ RestRepairHandler::repairDistributeShardsLike() {
 
 }
 
+
 class ExecuteRepairOperationVisitor
-  : boost::static_visitor<AgencyWriteTransaction> {
-  AgencyWriteTransaction operator()(MoveShardOperation& op) {
+  : public boost::static_visitor<
+    std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>
+  > {
+  using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
+
+ public:
+  ReturnValueT
+  operator()(MoveShardOperation& op) const {
     uint64_t jobId = ClusterInfo::instance()->uniqid();
-    std::shared_ptr<VPackBuffer<uint8_t>> vpackTodo = op.toVpackTodo(jobId);
+    VPackBufferPtr vpackTodo = op.toVpackTodo(jobId);
 
     std::string const agencyKey = "Target/ToDo/" + jobId;
 
-    return AgencyWriteTransaction {
+    return std::make_pair(AgencyWriteTransaction {
       AgencyOperation {
         agencyKey,
         AgencyValueOperationType::SET,
         VPackSlice(vpackTodo->data())
       },
       AgencyPrecondition {}
-    };
+    }, jobId);
   }
 
-  AgencyWriteTransaction operator()(AgencyWriteTransaction& wtrx) {
-    return wtrx;
+  ReturnValueT
+  operator()(AgencyWriteTransaction& wtrx) const {
+    return std::make_pair(wtrx, boost::none);
   }
 };
 
@@ -228,9 +238,13 @@ void RestRepairHandler::executeRepairOperations(
 ) {
   // TODO Maybe wait if there are *any* jobs that were created from repairDistributeShardsLike?
   AgencyComm comm;
-  for (auto const& op : repairOperations) {
-    AgencyWriteTransaction wtrx
-      = boost::apply_visitor(ExecuteRepairOperationVisitor(), op);
+  for (auto& op : repairOperations) {
+    auto pair =
+      boost::apply_visitor(ExecuteRepairOperationVisitor(), op);
+
+    AgencyWriteTransaction &wtrx = pair.first;
+    boost::optional<uint64_t> waitForJobId = pair.second;
+
 
     AgencyCommResult result
       = comm.sendTransactionWithFailover(wtrx);
@@ -239,49 +253,151 @@ void RestRepairHandler::executeRepairOperations(
       return;
     }
 
-//    // TODO on move shard operations we have to wait for the job to finish.
-//    // It probably doesn't make sense for fixServerOrderTransactions
-//    std::shared_ptr<VPackBuffer<uint8_t>> vpack
-//      = getFromAgency("Target/Finished/" + jobId);
-//
-//    VPackSlice finished(vpack->data());
+    // If the transaction posted a job, we wait for it to finish.
+    if(waitForJobId) {
+      bool previousJobFinished = false;
+      std::string jobId = std::to_string(waitForJobId.get());
+
+      while(! previousJobFinished) {
+        TResult<JobStatus> jobStatus
+          = getJobStatusFromAgency(jobId);
+
+        if (jobStatus.ok()) {
+          switch (jobStatus.get()) {
+            case JobStatus::todo:
+            case JobStatus::pending:
+              break;
+            case JobStatus::finished:
+              previousJobFinished = true;
+              break;
+            case JobStatus::failed:
+            case JobStatus::missing:
+              // TODO return error
+              return;
+          }
+
+          sleep(1);
+        } else
+        {
+          // TODO count errors in a row, give up eventually. Or maybe give up directly, as AgencyComm did enough retries already.
+        }
+      }
+    }
 
 
   }
 }
 
-std::shared_ptr<VPackBuffer<uint8_t>>
-RestRepairHandler::getFromAgency(std::string const &agencyKey) {
+template <std::size_t N>
+TResult<std::array<VPackBufferPtr, N>>
+RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyKeyArray) {
+  std::array<VPackBufferPtr, N> resultArray;
+
   AgencyComm agency;
 
-  AgencyCommResult result = agency.getValues(agencyKey);
+  for(size_t i = 0; i < N; i++) {
+    std::string const& agencyKey = agencyKeyArray[i];
 
-  if (!result.successful()) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::getFromAgency: "
-    << "Getting value from agency failed with: " << result.errorMessage();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-      TRI_ERROR_HTTP_SERVER_ERROR);
+    // TODO It should be possible to get all values in one request to the agency.
+    // However, there is no getValues()-like method allowing multiple keys.
+    // We probably need to either implement one or use sendWithFailover() directly.
+    AgencyCommResult result = agency.getValues(agencyKey);
 
-    return nullptr;
+    if (!result.successful()) {
+      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      << "RestRepairHandler::getFromAgency: "
+      << "Getting value from agency failed with: " << result.errorMessage();
+      generateError(rest::ResponseCode::SERVER_ERROR,
+        TRI_ERROR_HTTP_SERVER_ERROR);
+
+      // TODO return better error#
+      return TResult<
+        std::array<VPackBufferPtr, N>
+      >::error(
+        TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+        result.errorMessage()
+      );
+    }
+
+    std::vector<std::string> agencyPath =
+      basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+
+    agencyPath.erase(
+      std::remove(
+        agencyPath.begin(),
+        agencyPath.end(),
+        ""
+      ),
+      agencyPath.end()
+    );
+
+
+    VPackBuilder builder;
+
+    builder.add(result.slice()[0].get(agencyPath));
+
+    resultArray[i] = builder.steal();
   }
 
-  std::vector<std::string> agencyPath =
-    basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+  return TResult<
+    std::array<VPackBufferPtr, N>
+  >::success(resultArray);
+}
 
-  agencyPath.erase(
-    std::remove(
-      agencyPath.begin(),
-      agencyPath.end(),
-      ""
-    ),
-    agencyPath.end()
-  );
+TResult<VPackBufferPtr>
+RestRepairHandler::getFromAgency(std::string const &agencyKey) {
+  auto rv = getFromAgency<1>({agencyKey});
+
+  if (rv.ok()) {
+    return TResult<VPackBufferPtr>::success(rv.get()[0]);
+  }
+  else {
+    return TResult<VPackBufferPtr>(rv);
+  }
+}
+
+TResult<JobStatus>
+RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
+  // As long as getFromAgency doesn't get all values at once, the order here
+  // matters: if e.g. finished was checked before pending, this would
+  // introduce a race condition which would result in JobStatus::missing
+  // despite it being finished.
+  auto rv
+    = getFromAgency<4>({
+      "Target/ToDo/" + jobId,
+      "Target/Pending/" + jobId,
+      "Target/Finished/" + jobId,
+      "Target/Failed/" + jobId,
+    });
+
+  if (rv.fail()) {
+    return TResult<JobStatus>(rv);
+  }
+
+  VPackSlice todo(rv.get()[0]->data());
+  VPackSlice pending(rv.get()[1]->data());
+  VPackSlice finished(rv.get()[2]->data());
+  VPackSlice failed(rv.get()[3]->data());
+
+  auto isSet = [&jobId](VPackSlice slice) {
+    return slice.isObject()
+      && slice.hasKey("jobId")
+      && slice.get("jobId").copyString() == jobId;
+  };
+
+  if (isSet(todo)) {
+    return TResult<JobStatus>::success(JobStatus::todo);
+  }
+  if (isSet(pending)) {
+    return TResult<JobStatus>::success(JobStatus::pending);
+  }
+  if (isSet(finished)) {
+    return TResult<JobStatus>::success(JobStatus::finished);
+  }
+  if (isSet(failed)) {
+    return TResult<JobStatus>::success(JobStatus::failed);
+  }
 
 
-  VPackBuilder builder;
-
-  builder.add(result.slice()[0].get(agencyPath));
-
-  return builder.steal();
+  return TResult<JobStatus>::success(JobStatus::missing);
 }

@@ -522,6 +522,7 @@ target_link_libraries(arangoserver
   ${LIB_ARANGO_IRESEARCH}
   boost_boost
   boost_system
+  boost_date_time
   ${SYSTEM_LIBRARIES}
 )
 
