@@ -1,10 +1,10 @@
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
-* remove unused startup option `--ldap.permissions-attribute-name`
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
+  for two independent UPSERTs
 
-* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
-  for two independent UPSERTs 
+* remove unused startup option `--ldap.permissions-attribute-name`
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
@@ -18,6 +18,8 @@ v3.3.4 (XXXX-XX-XX)
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
 
+* more information from inception, why agent is activated
+
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
 * Behaviour of permissions for databases and collections changed:
@@ -30,6 +32,7 @@ v3.3.4 (XXXX-XX-XX)
     * Any wildcard access grant in the same database, or on "*/*"
     * The access level for the current database
     * The access level for the `_system` database
+
 
 v3.3.3 (2018-01-26)
 -------------------
