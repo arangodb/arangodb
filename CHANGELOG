@@ -3,6 +3,9 @@ v3.3.4 (XXXX-XX-XX)
 
 * fix issue #4651: Simple query taking forever until a request timeout error
 
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
+  for two independent UPSERTs 
+
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
 * remove long disfunctional admin/long_echo handler

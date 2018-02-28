@@ -120,6 +120,52 @@ function ahuacatlMultiModifySuite () {
       assertTrue(found);
     },
     
+    testWithDeclarationAndModification : function () {
+      var q = "WITH @@cn RETURN (INSERT {} INTO @@cn)";
+      var actual = AQL_EXECUTE(q, { "@cn": cn1 });
+      assertEqual([ [ ] ], actual.json);
+      assertEqual(1, actual.stats.writesExecuted);
+      assertEqual(1, c1.count());
+      assertEqual(0, c2.count());
+    },
+    
+    testWithDeclarationsAndSingleModificationMultipleCollections : function () {
+      var q = "WITH @@cn1, @@cn2 RETURN (INSERT {} INTO @@cn1)";
+      var actual = AQL_EXECUTE(q, { "@cn1": cn1, "@cn2" : cn2 });
+      assertEqual([ [ ] ], actual.json);
+      assertEqual(1, actual.stats.writesExecuted);
+      assertEqual(1, c1.count());
+      assertEqual(0, c2.count());
+    },
+    
+    testWithDeclarationsAndMultiModificationMultipleCollections : function () {
+      var q = "WITH @@cn1, @@cn2 RETURN [(INSERT {} INTO @@cn1), (INSERT {} INTO @@cn2)]";
+      var actual = AQL_EXECUTE(q, { "@cn1": cn1, "@cn2" : cn2 });
+      assertEqual([ [ [ ], [ ] ] ], actual.json);
+      assertEqual(2, actual.stats.writesExecuted);
+      assertEqual(1, c1.count());
+      assertEqual(1, c2.count());
+    },
+    
+    testWithDeclarationsAndModificationWriteRead : function () {
+      var q = "WITH @@cn1, @@cn2 RETURN [(INSERT {} INTO @@cn1), (FOR doc IN @@cn2 RETURN doc)]";
+      var actual = AQL_EXECUTE(q, { "@cn1": cn1, "@cn2" : cn2 });
+      assertEqual([ [ [ ], [ ] ] ], actual.json);
+      assertEqual(1, actual.stats.writesExecuted);
+      assertEqual(1, c1.count());
+      assertEqual(0, c2.count());
+    },
+    
+    testWithDeclarationSameCollectionWriteThenRead : function () {
+      var q = "WITH @@cn1 RETURN [(INSERT {} INTO @@cn1), (FOR doc IN @@cn1 RETURN doc)]";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn1": cn1 });
+    },
+    
+    testWithDeclarationAndModificationMultipleCollectionsThenRead : function () {
+      var q = "WITH @@cn1 LET x = (INSERT {} INTO @@cn1) FOR doc IN @@cn1 RETURN doc";
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn1": cn1 });
+    },
+    
     testTraversalAfterModification : function () {
       var q = "INSERT { _key: '1', foo: 'bar' } INTO @@cn FOR doc IN OUTBOUND 'v/1' @@e RETURN doc";
       assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, q, { "@cn": cn1, "@e": cn3 });
