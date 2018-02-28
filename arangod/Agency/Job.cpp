@@ -300,7 +300,7 @@ std::vector<Job::shard_t> Job::clones(
           ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
         } else {
           LOG_TOPIC(ERR, Logger::SUPERVISION)
-            << "Shard distribution of clone(" << othercollection
+            << "Shard distribution of clone(" << otherCollection
             << ") does not match ours (" << collection << ")";
         } 
       }
