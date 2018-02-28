@@ -1,11 +1,15 @@
-<script id="applicationDetailView.ejs" type="text/template">
+<script id="serviceDetailView.ejs" type="text/template">
   <div class="application-detail-view">
-    <div class="headerBar" style="width: 100%">
+    <% var visible = " visibility: hidden; ";%>
+    <% if (installed) { %>
+    <%   visible = " visibility: visible; ";%>
+    <% } %>
 
-      <ul class="subMenuEntries subViewNavbar pull-left">
+    <div class="headerBar" style="width: 100%">
+      <ul class="subMenuEntries subViewNavbar pull-left" style="<%=visible%>">
         <li id="service-info" class="subMenuEntry active"><a>Info</a></li>
         <li id="service-api" class="subMenuEntry "><a>API</a></li>
-        <li id="service-readme" class="subMenuEntry "><a>Readme</a></li>
+        <!--<li id="service-readme" class="subMenuEntry "><a>Readme</a></li>-->
         <li id="service-settings" class="subMenuEntry "><a>Settings</a></li>
       </ul>
 
@@ -41,54 +45,83 @@
         </ul>
       </div>
     </div>
-    <section class="info" id="information">
+
+    <section class="info" id="informationfunctions" style="display: none">
       <div class="header">
-        <div class="header-icon-container">
-          <img src="<%= app.thumbnailUrl %>" alt="Icon for Service" class="icon" />
-        </div>
         <div id="hidden_buttons" style="display: none">
           <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
           <button id="app-replace" class="app-replace upgrade button-warning" <%=app.isSystem()?"disabled":"" %>>Replace</button>
           <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning"><%=app.get('development')?'Set Production':'Set Development'%></button>
         </div>
-        <div class="header_left">
-          <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+      </div>
+    </section>
+
+    <section class="info" id="information" style="width: 100%;">
+      <div class="pure-g">
+
+        <div class="pure-u-1 pure-u-sm-4-4 pure-u-md-3-4 foxx-left">
+          <div class="foxx-icon-container pull-left">
+            <img src="<%= app.thumbnailUrl %>" alt="Icon for Service" class="icon" />
+          </div>
+          <div class="pull-left" style="margin-left: 15px">
+            <h3>
+              <%= app.attributes.name %>
+            </h3>
+            <p class="description"><%= app.attributes.description %></p>
+          </div>
+          <div id="app-warning" class="app-warning" style="clear: both; display:<%=app.needsAttention()?'block':'none' %>;">
             <h4>Out of order</h4>
             <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This service has failed to mount due to an error.</p>
             <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This service has not yet been configured properly.</p>
             <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
           </div>
-          <div class="header_line">
-            <h3>
-              <%= app.attributes.name %>
-            </h3>
-          </div>
-          <div class="header_line header_line_bottom">
-            <p class="description"><%= app.attributes.description %></p>
-            <div>
-              <div class="inner">
-                <h3>
-                  <% if (app.attributes.license) { %>
-                    <span class="license"><%= app.attributes.license %></span>
-                  <% } %>
-                </h3>
-                <h3>
-                  <span class="version"><%= app.attributes.version %></span>
-                </h3>
-                <h3>
-                  <span class="mode <%=app.get('development')?'development':'production'%>"><%=app.get('development')?'Development':'Production'%></span>
-                </h3>
-              </div>
-            </div>
+           <div class="categoryBar">
+             <h4>Readme</h4>
+           </div>
+          <div id="readme" class="readme">
+            <% if (app.get('readme')) { %>
+              <%= marked(app.get('readme')) %>
+            <% } else { %>
+              <p>No README data found.</p>
+            <% } %>
           </div>
         </div>
-        <div class="header_right">
-          <input type="button" class="open button-success" disabled="true" value="Show Interface" />
+
+        <div class="pure-u-1 pure-u-sm-4-4 pure-u-md-1-4 foxx-right">
+          <div class="foxx-label-container">
+            <p>
+              <span>Author: </span><span><%= app.attributes.author %></span>
+            </p>
+            <p>
+              <span>Mount: </span><span><%= app.attributes.mount %></span>
+            </p>
+            <p>
+              <span>Mode: </span><span class="mode <%=app.get('development')?'development':'production'%>"><%=app.get('development')?'Development':'Production'%></span>
+            </p>
+            <p>
+              <span>Version: </span><span class="version"><%= app.attributes.version %></span>
+            </p>
+            <p>
+              <% if (app.attributes.license) { %>
+                <span>License: </span><span><%= app.attributes.license %></span>
+              <% } %>
+            </p>
+            <p>
+              <% if (app.get('development') === true) { %>
+                <span>Path: </span><span class="developmentSpan"><%= app.attributes.path %></span>
+              <% } else { %>
+                <span></span>
+              <% } %>
+            </p>
+          </div>
+          <div class="header_right">
+            <input type="button" class="open button-success" disabled="true" value="Show Interface" />
+          </div>
         </div>
-        <div class="information">
-        </div>
+
       </div>
     </section>
+
     <main>
       <div id="app-info" class="app-info" style="display: none;">
         <h4>Info</h4>
@@ -100,18 +133,11 @@
           <div id="swaggerJsonEditor" style="height: 100%;"></div>
         </div>
       </div>
-      <div id="settings" class="readme" style="display: none;">
+      <div id="settings" class="readme" style="display: none; padding: 15px;">
         <% if (_.isEmpty(app.get('config'))) { %>
           <p>No configurable settings available.</p>
         <% } %>
-        <div class="buttons"></div>
-      </div>
-      <div id="readme" class="readme" style="display: none;">
-        <% if (app.get('readme')) { %>
-        <%= marker(app.get('readme')) %>
-        <% } else { %>
-        <p>No README data found.</p>
-        <% } %>
+        <div class="buttons" style="margin-left: -10px; margin-top: 20px;"></div>
       </div>
     </main>
     <!--<aside class="meta" id="sideinformation">
