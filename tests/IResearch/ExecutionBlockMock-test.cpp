@@ -169,12 +169,14 @@ struct IResearchQuerySetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
+TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
   IResearchQuerySetup s;
   UNUSED(s);
 
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::aql::ResourceMonitor resMon;
 
+  // getSome
   {
     std::string const queryString = "RETURN 1";
     arangodb::aql::Query query(
@@ -184,9 +186,10 @@ TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
     );
     query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
 
-    arangodb::aql::ResourceMonitor resMon;
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
+    // build simple chain
+    // Singleton <- MockBlock
     MockNode<arangodb::aql::SingletonNode> rootNode;
     arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
 
@@ -196,7 +199,7 @@ TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
 
     // retrieve first 10 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(0, 10));
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10, 10));
       CHECK(nullptr != res);
       CHECK(10 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -204,7 +207,7 @@ TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
 
     // retrieve last 90 items
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(0, 100));
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(100, 100));
       CHECK(nullptr != res);
       CHECK(90 == res->size());
       CHECK(4 == res->getNrRegs());
@@ -212,7 +215,251 @@ TEST_CASE("ExecutionBlockMockTest", "[iresearch]") {
 
     // exhausted
     {
-      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(0, 1));
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1, 1));
+      CHECK(nullptr == res);
+    }
+  }
+
+  // getSome + skipSome
+  {
+    std::string const queryString = "RETURN 1";
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+
+    arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
+
+    // build simple chain
+    // Singleton <- MockBlock
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    ExecutionNodeMock node;
+    ExecutionBlockMock block(data, *query.engine(), node);
+    block.addDependency(&rootBlock);
+
+    // retrieve first 10 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10, 10));
+      CHECK(nullptr != res);
+      CHECK(10 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // skip last 90 items
+    CHECK(90 == block.skipSome(90, 90));
+
+    // exhausted
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1, 1));
+      CHECK(nullptr == res);
+    }
+  }
+
+  // skipSome + getSome
+  {
+    std::string const queryString = "RETURN 1";
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+
+    arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
+
+    // build simple chain
+    // Singleton <- MockBlock
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    ExecutionNodeMock node;
+    ExecutionBlockMock block(data, *query.engine(), node);
+    block.addDependency(&rootBlock);
+
+    // skip last 90 items
+    CHECK(90 == block.skipSome(90, 90));
+
+    // retrieve first 10 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(10, 10));
+      CHECK(nullptr != res);
+      CHECK(10 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // exhausted
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block.getSome(1, 1));
+      CHECK(nullptr == res);
+    }
+  }
+}
+
+TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
+  IResearchQuerySetup s;
+  UNUSED(s);
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::aql::ResourceMonitor resMon;
+
+  // getSome
+  {
+    std::string const queryString = "RETURN 1";
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+
+    // build chain:
+    // Singleton <- MockBlock0 <- MockBlock1
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    ExecutionNodeMock node0;
+    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    block0.addDependency(&rootBlock);
+
+    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    ExecutionNodeMock node1;
+    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    block1.addDependency(&block0);
+
+    // retrieve first 10 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10, 10));
+      CHECK(nullptr != res);
+      CHECK(10 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // retrieve 90 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100, 100));
+      CHECK(nullptr != res);
+      CHECK(90 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // retrieve last 100 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100, 100));
+      CHECK(nullptr != res);
+      CHECK(100 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // exhausted
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1, 1));
+      CHECK(nullptr == res);
+    }
+  }
+
+  // getSome + skip
+  {
+    std::string const queryString = "RETURN 1";
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+
+    // build chain:
+    // Singleton <- MockBlock0 <- MockBlock1
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    ExecutionNodeMock node0;
+    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    block0.addDependency(&rootBlock);
+
+    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    ExecutionNodeMock node1;
+    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    block1.addDependency(&block0);
+
+    // retrieve first 10 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10, 10));
+      CHECK(nullptr != res);
+      CHECK(10 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // skip 90 items
+    CHECK(90 == block1.skipSome(90, 90));
+
+    // retrieve last 100 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100, 100));
+      CHECK(nullptr != res);
+      CHECK(100 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // exhausted
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1, 1));
+      CHECK(nullptr == res);
+    }
+  }
+
+  // skip + getSome
+  {
+    std::string const queryString = "RETURN 1";
+    arangodb::aql::Query query(
+      false, &vocbase, arangodb::aql::QueryString(queryString),
+      nullptr, std::make_shared<arangodb::velocypack::Builder>(),
+      arangodb::aql::PART_MAIN
+    );
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+
+    // build chain:
+    // Singleton <- MockBlock0 <- MockBlock1
+    MockNode<arangodb::aql::SingletonNode> rootNode;
+    arangodb::aql::SingletonBlock rootBlock(query.engine(), &rootNode);
+
+    arangodb::aql::AqlItemBlock data0(&resMon, 2, 2);
+    ExecutionNodeMock node0;
+    ExecutionBlockMock block0(data0, *query.engine(), node0);
+    block0.addDependency(&rootBlock);
+
+    arangodb::aql::AqlItemBlock data1(&resMon, 100, 4);
+    ExecutionNodeMock node1;
+    ExecutionBlockMock block1(data1, *query.engine(), node1);
+    block1.addDependency(&block0);
+
+    // skip 90 items
+    CHECK(90 == block1.skipSome(90, 90));
+
+    // retrieve 10 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(10, 10));
+      CHECK(nullptr != res);
+      CHECK(10 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // retrieve last 100 items
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(100, 100));
+      CHECK(nullptr != res);
+      CHECK(100 == res->size());
+      CHECK(4 == res->getNrRegs());
+    }
+
+    // exhausted
+    {
+      std::unique_ptr<arangodb::aql::AqlItemBlock> res(block1.getSome(1, 1));
       CHECK(nullptr == res);
     }
   }

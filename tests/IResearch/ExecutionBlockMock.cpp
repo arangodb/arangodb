@@ -97,63 +97,56 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
 
   bool needMore;
   arangodb::aql::AqlItemBlock* cur = nullptr;
-  size_t send = 0;
   std::unique_ptr<arangodb::aql::AqlItemBlock> res;
 
   do {
-    do {
-      needMore = false;
+    needMore = false;
 
-      if (_buffer.empty()) {
-        size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-          _done = true;
-          return nullptr;
-        }
-        _pos = 0;  // this is in the first block
+    if (_buffer.empty()) {
+      size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        _done = true;
+        return nullptr;
       }
-
-      TRI_ASSERT(!_buffer.empty());
-      cur = _buffer.front();
-
-      if (_pos_in_data == _data->size()) {
-        needMore = true;
-        _pos_in_data = 0;
-
-        if (++_pos >= cur->size()) {
-          _buffer.pop_front();  // does not throw
-          returnBlock(cur);
-          _pos = 0;
-        }
-      }
-    } while (needMore);
-
-    TRI_ASSERT(cur);
-
-    auto const from = std::min(_pos_in_data, _data->size());
-    auto const to = std::min(_pos_in_data + atMost, _data->size());
-    res.reset(_data->slice(from, to));
-
-    // only copy 1st row of registers inherited from previous frame(s)
-    inheritRegisters(cur, res.get(), _pos);
-
-    throwIfKilled(); // check if we were aborted
-
-    TRI_IF_FAILURE("ExecutionBlockMock::moreDocuments") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      _pos = 0;  // this is in the first block
     }
 
-    send = to - from;
-    _pos_in_data = to;
+    TRI_ASSERT(!_buffer.empty());
+    cur = _buffer.front();
 
-    // If the collection is actually empty we cannot forward an empty block
-  } while (send == 0);
+    if (_pos_in_data == _data->size()) {
+      needMore = true;
+      _pos_in_data = 0;
 
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        returnBlock(cur);
+        _pos = 0;
+      }
+    }
+  } while (needMore);
+
+  TRI_ASSERT(cur);
+
+  auto const from = std::min(_pos_in_data, _data->size());
+  auto const to = std::min(_pos_in_data + atMost, _data->size());
+  res.reset(_data->slice(from, to));
+
+  // only copy 1st row of registers inherited from previous frame(s)
+  inheritRegisters(cur, res.get(), _pos);
+
+  throwIfKilled(); // check if we were aborted
+
+  TRI_IF_FAILURE("ExecutionBlockMock::moreDocuments") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  _pos_in_data = to;
   TRI_ASSERT(res);
 
-  if (send < atMost) {
+  if (res->size() < atMost) {
     // The collection did not have enough results
-    res->shrink(send);
+    res->shrink(res->size());
   }
 
   // Clear out registers no longer needed later:
@@ -191,6 +184,7 @@ size_t ExecutionBlockMock::skipSome(size_t atLeast, size_t atMost) {
 
     TRI_ASSERT(_data->size() >= _pos_in_data);
     skipped += std::min(_data->size() - _pos_in_data, atMost - skipped);
+    _pos_in_data += skipped;
 
     if (skipped < atLeast) {
       // not skipped enough re-initialize fetching of documents
