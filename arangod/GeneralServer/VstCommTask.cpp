@@ -251,11 +251,11 @@ bool VstCommTask::isChunkComplete(char* start) {
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                    uint64_t messageId) {
-  _authorized = false;
-  
   std::string authString;
-  std::string user = "";
+  std::string user = StaticStrings::Empty;
 
+  _authorized = false;
+  _authMethod = AuthenticationMethod::NONE;
   std::string encryption = header.at(2).copyString();
   if (encryption == "jwt") {// doing JWT
     authString = header.at(3).copyString();
@@ -270,7 +270,7 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
   }
   
   if (_auth->isActive()) { // will just fail if method is NONE
-    auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
+    auto entry = _auth->tokenCache()->checkAuthentication(_authMethod, authString);
     _authorized = entry.authenticated();
     if (_authorized) {
       _authenticatedUser = std::move(entry._username);
