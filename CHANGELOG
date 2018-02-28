@@ -3,10 +3,10 @@ v3.3.4 (XXXX-XX-XX)
 
 * Vastly improved the Foxx Store UI
 
-* remove unused startup option `--ldap.permissions-attribute-name`
+* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification"
+  for two independent UPSERTs
 
-* fix issue #4677: AQL WITH with bind parameters results in "access after data-modification" 
-  for two independent UPSERTs 
+* remove unused startup option `--ldap.permissions-attribute-name`
 
 * fix issue #4457: create /var/tmp/arangod with correct user in supervisor mode
 
@@ -19,6 +19,10 @@ v3.3.4 (XXXX-XX-XX)
 
 * internal issue #1726: supervision failed to remove multiple servers
   from health monitoring at once.
+
+* more information from inception, why agent is activated
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
 
 * Behaviour of permissions for databases and collections changed:
   The new fallback rule for databases for which an access level is not explicitly specified:
@@ -72,9 +76,6 @@ v3.3.3 (2018-01-26)
 
 * fixed issue #4395: If your foxx app includes an `APP` folder it got
          accidently removed by selfhealing this is not the case anymore.
-
-v3.3.3 (2018-01-16)
--------------------
 
 * fix issue #4272: VERSION file keeps disappearing
 
