@@ -774,8 +774,7 @@
             callback(d.enabled, modalView);
           }
           self.updateCharts();
-        }).error(function (e) {
-          console.log('stat fetch req error:' + e);
+        }).error(function (ignore) {
         });
 
       this.getReplicationStatistics();

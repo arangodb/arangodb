@@ -99,9 +99,7 @@ Datacenter to datacenter replication requires the `rocksdb` storage engine. In t
 example setup will have `rocksdb` enabled. If you choose to deploy with a different strategy keep
 in mind to set the storage engine.
 
-For the other possibilities to deploy an ArangoDB cluster please refer to the Deployment chapter:
-
-**TODO ONCE WE MERGE WITH THE STANDARD DOCUMENTATION: INLINE LINK**
+Also see other possibilities to [deploy an ArangoDB cluster](Cluster.md).
 
 The starter simplifies things for the operator and will coordinate a distributed cluster startup
 across several machines and assign cluster roles automatically.
