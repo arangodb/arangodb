@@ -127,6 +127,7 @@ returned:
 ```
 FOR u IN users
   REPLACE u WITH { value: "test" } 
+  IN users
   LET previous = OLD 
   RETURN previous._key
 ```
@@ -136,7 +137,7 @@ documents (without some of their system attributes):
 
 ```
 FOR u IN users
-  REPLACE u WITH { value: "test" } 
+  REPLACE u WITH { value: "test" } IN users
   LET replaced = NEW 
   RETURN UNSET(replaced, '_key', '_id', '_rev')
 ```
