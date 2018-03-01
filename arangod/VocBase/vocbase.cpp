@@ -59,12 +59,14 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/ticks.h"
+#include "VocBase/AuthInfo.h"
 
 #include <thread>
 
@@ -487,6 +489,13 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
+    ExecContext const* exec = ExecContext::CURRENT;
+    if (exec != nullptr &&
+        !exec->canUseCollection(_name, collection->name(), AuthLevel::RO)) {
+      return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    }
+
+
     READ_LOCKER_EVENTUAL(locker, collection->_lock);
 
     // return original status to the caller
@@ -903,6 +912,7 @@ void TRI_vocbase_t::inventory(
     });
   }
   
+  ExecContext const* exec = ExecContext::CURRENT;
   result.openArray();
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
@@ -924,7 +934,12 @@ void TRI_vocbase_t::inventory(
     if (!nameFilter(collection)) {
       continue;
     }
-   
+
+    if (exec != nullptr &&
+        !exec->canUseCollection(_name, collection->name(), AuthLevel::RO)) {
+      continue;
+    }
+
     if (collection->cid() <= maxTick) { 
       result.openObject();
       
