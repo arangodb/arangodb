@@ -23,8 +23,10 @@
 #include "ClusterRepairs.h"
 
 #include "Logger/Logger.h"
-#include "velocypack/Iterator.h"
 #include "ServerState.h"
+
+#include <velocypack/velocypack-aliases.h>
+#include <velocypack/Iterator.h>
 
 #include <boost/optional.hpp>
 #include <boost/range/combine.hpp>

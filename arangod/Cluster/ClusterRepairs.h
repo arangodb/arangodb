@@ -26,8 +26,6 @@
 #include <arangod/Agency/AgencyComm.h>
 #include <velocypack/Compare.h>
 #include <velocypack/Slice.h>
-// TODO do not use aliases in the header!
-#include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
 
 #include <boost/optional.hpp>
@@ -95,7 +93,7 @@ class VersionSort {
 struct Collection {
   // corresponding slice
   // TODO remove this, it should not be needed
-  VPackSlice const slice;
+  velocypack::Slice const slice;
 
   DatabaseID database;
   std::string name;
@@ -108,7 +106,7 @@ struct Collection {
   std::map<ShardID, DBServers, VersionSort> shardsById;
 
   // TODO this shouldn't be needed anymore and can be removed
-  std::map<std::string, VPackSlice> residualAttributes;
+  std::map<std::string, velocypack::Slice> residualAttributes;
 
   std::string inline fullName() const {
     return this->database + "/" + this->name;
@@ -151,21 +149,21 @@ using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransactio
 class DistributeShardsLikeRepairer {
  public:
   std::list<RepairOperation> repairDistributeShardsLike(
-    VPackSlice const& planCollections,
-    VPackSlice const& supervisionHealth
+    velocypack::Slice const& planCollections,
+    velocypack::Slice const& supervisionHealth
   );
 
  private:
   std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _vPackBuffers;
 
   std::map<ShardID, DBServers, VersionSort> static
-  readShards(VPackSlice const& shards);
+  readShards(velocypack::Slice const& shards);
 
   DBServers static
-  readDatabases(VPackSlice const& planDbServers);
+  readDatabases(velocypack::Slice const& planDbServers);
 
   std::map<CollectionID, struct Collection> static
-  readCollections(VPackSlice const& collectionsByDatabase);
+  readCollections(velocypack::Slice const& collectionsByDatabase);
 
   boost::optional<ServerID const> static
   findFreeServer(
@@ -224,7 +222,7 @@ class DistributeShardsLikeRepairer {
   AgencyWriteTransaction
   createRenameAttributeTransaction(
     Collection const& collection,
-    VPackSlice const& value,
+    velocypack::Slice const& value,
     std::string const& from,
     std::string const& to
   );
