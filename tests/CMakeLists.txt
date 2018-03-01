@@ -60,6 +60,7 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/DateFunctions.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
