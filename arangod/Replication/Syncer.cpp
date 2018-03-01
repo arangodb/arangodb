@@ -401,14 +401,14 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
 
 Result Syncer::applyCollectionDumpMarker(
     transaction::Methods& trx, LogicalCollection* coll,
-    TRI_replication_operation_e type, VPackSlice const& old, 
+    TRI_replication_operation_e type,
     VPackSlice const& slice) {
 
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
+      Result res = applyCollectionDumpMarkerInternal(trx, coll, type, slice);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -424,14 +424,14 @@ Result Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, coll, type, old, slice);
+    return applyCollectionDumpMarkerInternal(trx, coll, type, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
 Result Syncer::applyCollectionDumpMarkerInternal(
       transaction::Methods& trx, LogicalCollection* coll,
-      TRI_replication_operation_e type, VPackSlice const& old, 
+      TRI_replication_operation_e type,
       VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
@@ -503,7 +503,7 @@ Result Syncer::applyCollectionDumpMarkerInternal(
       if (!_leaderId.empty()) {
         options.isSynchronousReplicationFrom = _leaderId;
       }
-      OperationResult opRes = trx.remove(coll->name(), old, options);
+      OperationResult opRes = trx.remove(coll->name(), slice, options);
 
       if (opRes.ok() ||
           opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {

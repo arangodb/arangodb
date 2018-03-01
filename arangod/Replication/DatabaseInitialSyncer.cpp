@@ -265,14 +265,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  transaction::BuilderLeaser oldBuilder(&trx);
-  oldBuilder->openObject(true);
-  oldBuilder->add(StaticStrings::KeyString, VPackValuePair(key, keyLength, VPackValueType::String));
-  oldBuilder->close();
-  
-  VPackSlice const old = oldBuilder->slice();
-  
-  return applyCollectionDumpMarker(trx, coll, type, old, doc);
+  return applyCollectionDumpMarker(trx, coll, type, doc);
 }
 
 /// @brief apply the data from a collection dump
