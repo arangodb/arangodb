@@ -78,6 +78,8 @@ v3.3.4 (2018-02-28)
 * fixed issue #4395: If your foxx app includes an `APP` folder it got
          accidently removed by selfhealing this is not the case anymore.
 
+* fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
+
 
 v3.3.3 (2018-01-26)
 -------------------
