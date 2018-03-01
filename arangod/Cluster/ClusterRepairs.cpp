@@ -190,6 +190,7 @@ DistributeShardsLikeRepairer::readCollections(
       // attributes
       std::string collectionName;
       uint64_t replicationFactor = 0;
+      bool deleted = false;
       boost::optional<CollectionID> distributeShardsLike;
       boost::optional<CollectionID> repairingDistributeShardsLike;
       Slice shardsSlice;
@@ -219,8 +220,8 @@ DistributeShardsLikeRepairer::readCollections(
         else if(key == "shards") {
           shardsSlice = it.value;
         }
-        else {
-          residualAttributes.emplace(std::make_pair(key, it.value));
+        else if(key == "deleted") {
+          deleted = it.value.getBool();
         }
       }
 
@@ -228,16 +229,14 @@ DistributeShardsLikeRepairer::readCollections(
         = readShards(shardsSlice);
 
       struct Collection collection {
-        collectionSlice,
-        databaseId,
-        collectionName,
-        collectionId,
-        replicationFactor,
-        distributeShardsLike,
-        repairingDistributeShardsLike,
-        boost::none,
-        std::move(shardsById),
-        std::move(residualAttributes)
+        .database = databaseId,
+        .name = collectionName,
+        .id = collectionId,
+        .replicationFactor = replicationFactor,
+        .deleted = deleted,
+        .distributeShardsLike = distributeShardsLike,
+        .repairingDistributeShardsLike = repairingDistributeShardsLike,
+        .shardsById = std::move(shardsById),
       };
 
       collections.emplace(std::make_pair(collectionId, std::move(collection)));
@@ -258,14 +257,19 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
 
   std::vector<CollectionID> collectionsToFix;
 
-  // TODO Ignore collections with deleted: true
-
   for (auto const &collectionIterator : collections) {
     CollectionID const& collectionId = collectionIterator.first;
     struct Collection const& collection = collectionIterator.second;
 
     LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
     << "findCollectionsToFix: checking collection " << collection.fullName();
+
+    if (collection.deleted) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      << "findCollectionsToFix: collection " << collection.fullName()
+      << " has `deleted: true` and will be ignored.";
+      continue;
+    }
 
     if (collection.repairingDistributeShardsLike) {
       LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)

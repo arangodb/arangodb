@@ -91,22 +91,14 @@ class VersionSort {
 
 
 struct Collection {
-  // corresponding slice
-  // TODO remove this, it should not be needed
-  velocypack::Slice const slice;
-
   DatabaseID database;
   std::string name;
   CollectionID id;
   uint64_t replicationFactor;
+  bool deleted;
   boost::optional<CollectionID> distributeShardsLike;
   boost::optional<CollectionID> repairingDistributeShardsLike;
-  // TODO we don't plan to do this anymore, so this can be removed
-  boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
   std::map<ShardID, DBServers, VersionSort> shardsById;
-
-  // TODO this shouldn't be needed anymore and can be removed
-  std::map<std::string, velocypack::Slice> residualAttributes;
 
   std::string inline fullName() const {
     return this->database + "/" + this->name;
