@@ -39,8 +39,6 @@
 #include <memory>
 #include <sstream>
 
-// TODO add a where the server order is fixed with a transaction
-
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::cluster_repairs;
@@ -95,8 +93,6 @@ operator "" _vpack(const char* json, size_t) {
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
-  // TODO add a test with an existing repairingDistributeShardsLike attribute
-
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
 
@@ -105,12 +101,11 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
     AgencyCommManager::initialize("testArangoAgencyPrefix");
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
-      // TODO split in one file per test case
-#include "ClusterRepairsTest.TestData.cpp"
 
       DistributeShardsLikeRepairer repairer;
 
       WHEN("One unused DBServer is free to exchange the leader") {
+#include "ClusterRepairsTest.swapWithLeader.cpp"
 
         std::list<RepairOperation> repairOperations
           = repairer.repairDistributeShardsLike(
@@ -183,6 +178,8 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
       // TODO This should not throw, but return a fail-Result
       WHEN("The unused DBServer is marked as non-healthy") {
+#include "ClusterRepairsTest.unusedServerUnhealthy.cpp"
+
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
@@ -194,6 +191,8 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
       // TODO This should not throw, but return a fail-Result
       WHEN("The replicationFactor equals the number of DBServers") {
+#include "ClusterRepairsTest.replicationFactorTooHigh.cpp"
+
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
@@ -203,6 +202,9 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         );
       }
     }
+
+// TODO add a test where the server order is fixed with a transaction
+// TODO add a test with an existing repairingDistributeShardsLike attribute
 
 
   } catch (...) {

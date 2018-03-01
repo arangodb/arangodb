@@ -166,7 +166,6 @@ RestRepairHandler::repairDistributeShardsLike() {
       // TODO this is only for debugging:
       response.add("Operations", VPackValue(VPackValueType::Array));
 
-      // TODO execute operations
       for (auto const& op : repairOperations) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
         << "[tg] op type = "
