@@ -15,7 +15,6 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/AccessMode.h"
-#include <iostream>
 %}
 
 %union {
@@ -119,6 +118,36 @@ static bool ValidateAggregates(Parser* parser, AstNode const* aggregates) {
   }
 
   return true;
+}
+
+static void DestructureArray(Parser* parser, std::string const& sourceVariable, 
+                             std::vector<size_t>& depths, AstNode const* array) {
+  depths.push_back(0);
+
+  size_t const n = array->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = array->getMember(i);
+    
+    if (member->type == NODE_TYPE_ARRAY) {
+      // array value => recurse
+      DestructureArray(parser, sourceVariable, depths, member);
+    } else if (member->type == NODE_TYPE_VALUE) {
+      // null value => skip over unnamed element
+    } else if (member->type == NODE_TYPE_VARIABLE) {
+      // an actual variable assignment. we need to do something!
+      auto accessor = parser->ast()->createNodeReference(sourceVariable.c_str(), sourceVariable.size());
+      for (auto const& it : depths) {
+        accessor = parser->ast()->createNodeIndexedAccess(accessor, parser->ast()->createNodeValueInt(it));
+      }
+      auto node = parser->ast()->createNodeLet(member, accessor);
+      parser->ast()->addOperation(node);
+    }
+
+    ++(depths.back());
+  }
+
+  depths.pop_back();
 }
 
 /// @brief start a new scope for the collect
@@ -285,6 +314,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER;
 %type <strval> T_DATA_SOURCE_PARAMETER;
+%type <node> array_destructuring;
 %type <node> with_collection;
 %type <node> sort_list;
 %type <node> sort_element;
@@ -529,6 +559,36 @@ let_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeLet($1.value, $1.length, $3, true);
       parser->ast()->addOperation(node);
+    }
+  | array_destructuring T_ASSIGN expression {
+      std::string const nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      std::vector<size_t> depths;
+      DestructureArray(parser, nextName, depths, $1);
+    }
+  ;
+
+array_destructuring:
+    T_ARRAY_OPEN {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } array_destructuring_element T_ARRAY_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+
+array_destructuring_element:
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeVariable($1.value, $1.length, true));
+    }
+  | array_destructuring {
+      parser->pushArrayElement($1);
+    }
+  | array_destructuring_element T_COMMA array_destructuring_element {
     }
   ;
 

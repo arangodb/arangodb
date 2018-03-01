@@ -3216,6 +3216,22 @@ AstNode* Ast::optimizeIndexedAccess(AstNode* node) {
                                        index->getStringLength());
     }
   }
+  
+  auto accessed = node->getMember(0);
+  
+  if (accessed->isConstant() && accessed->type == NODE_TYPE_ARRAY &&
+      index->isConstant() && index->type == NODE_TYPE_VALUE && 
+      index->value.type == VALUE_TYPE_INT) {
+    // [...][offset]
+    int64_t offset = index->getIntValue();
+    if (offset >= 0) {
+      size_t const n = accessed->numMembers();
+      if (offset < static_cast<int64_t>(n)) {
+        return accessed->getMemberUnchecked(static_cast<size_t>(offset));
+      }
+      return createNodeValueNull();
+    }
+  }
 
   // can't optimize when we get here
   return node;
