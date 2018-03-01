@@ -184,6 +184,14 @@ class DistributeShardsLikeRepairer {
     ShardID const& shardId,
     ShardID const& protoShardId
   );
+
+  AgencyWriteTransaction
+  createRenameAttributeTransaction(
+    Collection& collection,
+    VPackSlice const& value,
+    std::string const& from,
+    std::string const& to
+  );
 };
 
 

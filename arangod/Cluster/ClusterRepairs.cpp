@@ -681,6 +681,53 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   return AgencyWriteTransaction { agencyOperation, agencyPrecondition };
 }
 
+
+// In `collection`, change $from: $value to $to: $value.
+AgencyWriteTransaction
+DistributeShardsLikeRepairer::createRenameAttributeTransaction(
+  Collection &collection,
+  VPackSlice const &value,
+  std::string const &from,
+  std::string const &to
+) {
+  std::string const oldAttrPath
+    = collection.agencyCollectionId() + from;
+  std::string const newAttrPath
+    = collection.agencyCollectionId() + to;
+
+  LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+  << "DistributeShardsLikeRepairer::createRenameAttributeTransaction: "
+  << "In collection " << collection.fullName() << ", rename attribute "
+  << "`" << oldAttrPath << "' to `" << newAttrPath << "'. "
+  << "Value is ```" << value << "'''.";
+
+  std::vector<AgencyPrecondition> preconditions{
+    AgencyPrecondition {
+      oldAttrPath,
+      AgencyPrecondition::Type::VALUE,
+      value,
+    },
+    AgencyPrecondition {
+      newAttrPath,
+      AgencyPrecondition::Type::EMPTY,
+      true,
+    },
+  };
+  std::vector<AgencyOperation> operations{
+    AgencyOperation {
+      newAttrPath,
+      AgencyValueOperationType::SET,
+      value
+    },
+    AgencyOperation {
+      oldAttrPath,
+      AgencySimpleOperationType::DELETE_OP,
+    },
+  };
+
+  return AgencyWriteTransaction {operations, preconditions};
+}
+
 std::shared_ptr<VPackBuffer<uint8_t>>
 MoveShardOperation::toVpackTodo(uint64_t jobId) const {
   std::string const serverId = ServerState::instance()->getId();
