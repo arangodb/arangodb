@@ -23,9 +23,9 @@
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
+#include "Auth/Common.h"
 #include "Basics/Common.h"
 #include "Rest/RequestContext.h"
-#include "Auth/Common.h"
 
 namespace arangodb {
 namespace transaction {
