@@ -66,8 +66,9 @@ struct Collection {
   std::string name;
   CollectionID id;
   uint64_t replicationFactor;
-  boost::optional<CollectionID const> distributeShardsLike;
-  boost::optional<CollectionID const> repairingDistributeShardsLike;
+  boost::optional<CollectionID> distributeShardsLike;
+  boost::optional<CollectionID> repairingDistributeShardsLike;
+  // TODO we don't plan to do this anymore, so this can be removed
   boost::optional<bool> repairingDistributeShardsLikeReplicationFactorReduced;
   std::map<ShardID, DBServers, VersionSort> shardsById;
 
@@ -187,10 +188,20 @@ class DistributeShardsLikeRepairer {
 
   AgencyWriteTransaction
   createRenameAttributeTransaction(
-    Collection& collection,
+    Collection const& collection,
     VPackSlice const& value,
     std::string const& from,
     std::string const& to
+  );
+
+  AgencyWriteTransaction
+  createRenameDistributeShardsLikeAttributeTransaction(
+    Collection &collection
+  );
+
+  AgencyWriteTransaction
+  createRestoreDistributeShardsLikeAttributeTransaction(
+    Collection &collection
   );
 };
 

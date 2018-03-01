@@ -101,7 +101,7 @@ Slice
 
 std::vector< RepairOperation >
   expectedOperationsWithTwoSwappedDBServers {
-  // rename distributeShardsLike to repairDistributeShardsLike
+  // rename distributeShardsLike to repairingDistributeShardsLike
   AgencyWriteTransaction {
     std::vector<AgencyOperation> {
       AgencyOperation {
@@ -109,7 +109,7 @@ std::vector< RepairOperation >
         AgencySimpleOperationType::DELETE_OP,
       },
       AgencyOperation {
-        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
         AgencyValueOperationType::SET,
         collName22222222slice,
       },
@@ -121,7 +121,7 @@ std::vector< RepairOperation >
         collName22222222slice,
       },
       AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
         AgencyPrecondition::Type::EMPTY,
         true,
       },
@@ -155,11 +155,11 @@ std::vector< RepairOperation >
     .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
     .isLeader = false
   },
-// rename repairDistributeShardsLike to distributeShardsLike
+// rename repairingDistributeShardsLike to distributeShardsLike
   AgencyWriteTransaction {
     std::vector<AgencyOperation> {
       AgencyOperation {
-        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
         AgencySimpleOperationType::DELETE_OP,
       },
       AgencyOperation {
@@ -175,7 +175,7 @@ std::vector< RepairOperation >
         true,
       },
       AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
         AgencyPrecondition::Type::VALUE,
         collName22222222slice,
       },

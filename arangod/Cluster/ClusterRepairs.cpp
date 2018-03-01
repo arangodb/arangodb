@@ -188,8 +188,8 @@ DistributeShardsLikeRepairer::readCollections(
       // attributes
       std::string collectionName;
       uint64_t replicationFactor = 0;
-      boost::optional<CollectionID const> distributeShardsLike;
-      boost::optional<CollectionID const> repairingDistributeShardsLike;
+      boost::optional<CollectionID> distributeShardsLike;
+      boost::optional<CollectionID> repairingDistributeShardsLike;
       Slice shardsSlice;
       std::map<std::string, Slice> residualAttributes;
 
@@ -554,8 +554,10 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing collection "
     << collection.fullName();
 
-    // TODO rename distributeShardsLike to repairingDistributeShardsLike in
-    // collection
+    repairOperations.push_back(
+      createRenameDistributeShardsLikeAttributeTransaction(collection)
+    );
+
     ShardID protoId;
     if (collection.distributeShardsLike) {
       protoId = collection.distributeShardsLike.get();
@@ -594,8 +596,9 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       }
     }
 
-    // TODO rename repairingDistributeShardsLike to distributeShardsLike in
-    // TODO collection. Use preconditions to guarantee that everything was fixed.
+    repairOperations.push_back(
+      createRestoreDistributeShardsLikeAttributeTransaction(collection)
+    );
   }
 
   return repairOperations;
@@ -685,15 +688,15 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
 // In `collection`, change $from: $value to $to: $value.
 AgencyWriteTransaction
 DistributeShardsLikeRepairer::createRenameAttributeTransaction(
-  Collection &collection,
+  Collection const& collection,
   VPackSlice const &value,
   std::string const &from,
   std::string const &to
 ) {
   std::string const oldAttrPath
-    = collection.agencyCollectionId() + from;
+    = collection.agencyCollectionId() + "/" + from;
   std::string const newAttrPath
-    = collection.agencyCollectionId() + to;
+    = collection.agencyCollectionId() + "/" + to;
 
   LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::createRenameAttributeTransaction: "
@@ -726,6 +729,68 @@ DistributeShardsLikeRepairer::createRenameAttributeTransaction(
   };
 
   return AgencyWriteTransaction {operations, preconditions};
+}
+
+AgencyWriteTransaction
+DistributeShardsLikeRepairer::createRenameDistributeShardsLikeAttributeTransaction(
+  Collection &collection
+) {
+  TRI_ASSERT(! collection.distributeShardsLike || collection.repairingDistributeShardsLike);
+  if (! collection.distributeShardsLike || collection.repairingDistributeShardsLike) {
+      // this should never happen.
+      // TODO Use a fail-Result instead of an exception
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  VPackBuilder builder;
+
+  builder.add(VPackValue(collection.distributeShardsLike.get()));
+
+  Slice value = builder.slice();
+
+  _vPackBuffers.emplace_back(std::move(builder.steal()));
+
+  collection.repairingDistributeShardsLike.swap(
+    collection.distributeShardsLike
+  );
+
+  return createRenameAttributeTransaction(
+    collection,
+    value,
+    "distributeShardsLike",
+    "repairingDistributeShardsLike"
+  );
+}
+
+AgencyWriteTransaction
+DistributeShardsLikeRepairer::createRestoreDistributeShardsLikeAttributeTransaction(
+  Collection &collection
+) {
+  TRI_ASSERT(! collection.repairingDistributeShardsLike || collection.distributeShardsLike);
+  if (! collection.repairingDistributeShardsLike || collection.distributeShardsLike) {
+    // this should never happen.
+    // TODO Use a fail-Result instead of an exception
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+  }
+
+  VPackBuilder builder;
+
+  builder.add(VPackValue(collection.repairingDistributeShardsLike.get()));
+
+  Slice value = builder.slice();
+
+  _vPackBuffers.emplace_back(std::move(builder.steal()));
+
+  collection.distributeShardsLike.swap(
+    collection.repairingDistributeShardsLike
+  );
+
+  return createRenameAttributeTransaction(
+    collection,
+    value,
+    "repairingDistributeShardsLike",
+    "distributeShardsLike"
+  );
 }
 
 std::shared_ptr<VPackBuffer<uint8_t>>

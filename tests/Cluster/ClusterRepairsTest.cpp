@@ -95,7 +95,7 @@ operator "" _vpack(const char* json, size_t) {
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
-  // TODO add a test with an existing repairDistributeShardsLike attribute
+  // TODO add a test with an existing repairingDistributeShardsLike attribute
 
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
@@ -122,7 +122,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         // like distributeShardsLike / repairingDistributeShardsLike,
         // waitForSync, or maybe replicationFactor
 
-        std::vector<RepairOperation> const &expectedRepairOperations
+        std::vector<RepairOperation>& expectedRepairOperations
           = expectedOperationsWithTwoSwappedDBServers;
 
         {
@@ -144,6 +144,33 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
           INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
 
           REQUIRE(repairOperations.size() == expectedRepairOperations.size());
+        }
+
+        { // Transaction IDs shall be unique.
+          std::set<std::string> transactionClientIds;
+          for (auto &it : repairOperations) {
+            if (it.type() != typeid(AgencyWriteTransaction)) {
+              continue;
+            }
+
+            bool inserted;
+            AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+            std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
+            REQUIRE(inserted);
+
+            // Overwrite the client ID for the following comparisons to work
+            transaction.clientId = "dummy-client-id";
+          }
+
+          // Overwrite expected client IDs as well
+          for (auto &it : expectedRepairOperations) {
+            if (it.type() != typeid(AgencyWriteTransaction)) {
+              continue;
+            }
+            AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+
+            transaction.clientId = "dummy-client-id";
+          }
         }
 
         for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
