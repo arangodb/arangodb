@@ -29,6 +29,12 @@ add_executable(${BIN_ARANGOBENCH}
   Shell/ConsoleFeature.cpp
 )
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGOBENCH} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGOBENCH} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 target_link_libraries(${BIN_ARANGOBENCH}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
@@ -80,6 +86,12 @@ add_executable(${BIN_ARANGODUMP}
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGODUMP} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGODUMP} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 target_link_libraries(${BIN_ARANGODUMP}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
@@ -129,6 +141,12 @@ add_executable(${BIN_ARANGOEXPORT}
   Shell/ConsoleFeature.cpp
   V8Client/ArangoClientHelper.cpp
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGOEXPORT} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGOEXPORT} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 target_link_libraries(${BIN_ARANGOEXPORT}
   ${LIB_ARANGO}
@@ -182,6 +200,12 @@ add_executable(${BIN_ARANGOIMP}
   V8Client/ArangoClientHelper.cpp
 )
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGOIMP} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGOIMP} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 target_link_libraries(${BIN_ARANGOIMP}
   ${LIB_ARANGO}
   ${MSVC_LIBS}
@@ -232,6 +256,12 @@ add_executable(${BIN_ARANGORESTORE}
   V8Client/ArangoClientHelper.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGORESTORE} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGORESTORE} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 target_link_libraries(${BIN_ARANGORESTORE}
   ${LIB_ARANGO}
@@ -287,6 +317,12 @@ add_executable(${BIN_ARANGOSH}
   V8Client/ArangoClientHelper.cpp
 )
 
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGOSH} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGOSH} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
+
 target_link_libraries(${BIN_ARANGOSH}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
@@ -338,6 +374,12 @@ add_executable(${BIN_ARANGOVPACK}
   VPack/VPackFeature.cpp
   VPack/arangovpack.cpp
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${BIN_ARANGOVPACK} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${BIN_ARANGOVPACK} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()
 
 target_link_libraries(${BIN_ARANGOVPACK}
   ${LIB_ARANGO}

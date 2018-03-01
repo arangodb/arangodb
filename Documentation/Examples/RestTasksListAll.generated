@@ -8,17 +8,17 @@ x-content-type-options: nosniff
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-gc"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-gc"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1516907609.406109</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1519838667.7272308</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">450</span>, 
-    <span class="hljs-string">"offset"</span> : <span class="hljs-number">406.020662</span>, 
+    <span class="hljs-string">"offset"</span> : <span class="hljs-number">5.737454</span>, 
     <span class="hljs-string">"command"</span> : <span class="hljs-string">"(function (params) { require('@arangodb/statistics').garbageCollector(); } )(params);"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-average-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1516907609.4059584</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1519838667.7270062</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">900</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">20</span>, 
@@ -28,7 +28,7 @@ x-content-type-options: nosniff
   { 
     <span class="hljs-string">"id"</span> : <span class="hljs-string">"statistics-collector"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"statistics-collector"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1516907609.4056144</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1519838667.7267976</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">10</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">1</span>, 
@@ -36,9 +36,9 @@ x-content-type-options: nosniff
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 
   }, 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"84"</span>, 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"86"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"user-defined task"</span>, 
-    <span class="hljs-string">"created"</span> : <span class="hljs-number">1516907599.4534233</span>, 
+    <span class="hljs-string">"created"</span> : <span class="hljs-number">1519838657.799498</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"periodic"</span>, 
     <span class="hljs-string">"period"</span> : <span class="hljs-number">1</span>, 
     <span class="hljs-string">"offset"</span> : <span class="hljs-number">0.000001</span>, 

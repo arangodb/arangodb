@@ -108,7 +108,13 @@ void Inception::gossip() {
           std::make_unique<std::unordered_map<std::string, std::string>>();
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
             << out->toJson() << " to peer " << clientid;
-        if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
+        if (this->isStopping() || _agent->isStopping()) {
+          LOG_TOPIC(INFO, Logger::AGENCY)
+            << "Ending inception thread as we are stopping";
+          return;
+        } else if (cc == nullptr) {
+          LOG_TOPIC(INFO, Logger::AGENCY)
+            << "Ending inception process, ClusterComm instance is null! Controlled shutdown?";
           return;
         }
         cc->asyncRequest(
@@ -414,7 +420,7 @@ void Inception::run() {
   // Are we starting from persisted pool?
   if (config.startup() == "persistence") {
     if (restartingActiveAgent()) {
-      LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent with pool " << _agent->config().pool();
       _agent->ready(true);
     } else {
       if (!this->isStopping()) {
@@ -439,7 +445,7 @@ void Inception::run() {
     }
   }
 
-  LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent.";
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Activating agent with pool " << _agent->config().pool();
   _agent->ready(true);
 
 }
