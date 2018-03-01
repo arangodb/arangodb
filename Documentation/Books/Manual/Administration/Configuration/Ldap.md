@@ -132,7 +132,15 @@ as one option has the combined effect of setting
 
 That is, the LDAP URL consists of the ldap *server* and *port*, a *basedn*, a
 *search attribute* and a *scope* which can be one of *base*, *one* or
-*sub*.
+*sub*. There is also the possibility to use the `ldaps` protocol as in:
+
+    --ldap.url ldaps://ldap.arangodb.com:636/dc=arangodb,dc=com?uid?sub
+
+This does exactly the same as the one above, except that it uses the
+LDAP over TLS protocol. This is a non-standard method which does not
+involve using the STARTTLS protocol. Note that this does not work in the
+Windows version! We suggest to use the `ldap` protocol and STARTTLS
+as described in the next section.
 
 ### TLS options
 
@@ -140,8 +148,11 @@ To configure the usage of encrypted TLS to communicate with the LDAP server
 the following options are available. Note: *TLS is not supported under Windows*:
 
   - `--ldap.tls` The main switch to active TLS. can either be 
-      `true` => use tls. or `false` => do not use tls. Is switched
-      off by default
+      `true` => use tls. or `false` => do not use tls. It is switched
+      off by default. If you switch this on and do not use the `ldaps`
+      protocol via the LDAP url (see previous section), then ArangoDB
+      will use the `STARTTLS` protocol to initiate TLS. This is the
+      recommended approach.
   - `--ldap.tls-version` the tls version that should be used.
     Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. 
   - `--ldap.tls-cert-check-strategy` strategy to validate the ldap server
