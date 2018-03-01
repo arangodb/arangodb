@@ -75,13 +75,13 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   );
 
   template <std::size_t N>
-  cluster_repairs::TResult<std::array<cluster_repairs::VPackBufferPtr, N>>
+  cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
   getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
 
-  cluster_repairs::TResult<cluster_repairs::VPackBufferPtr>
+  cluster_repairs::ResultT<cluster_repairs::VPackBufferPtr>
   getFromAgency(std::string const& agencyKey);
 
-  cluster_repairs::TResult<rest_repair::JobStatus>
+  cluster_repairs::ResultT<rest_repair::JobStatus>
   getJobStatusFromAgency(std::string const &jobId);
 };
 

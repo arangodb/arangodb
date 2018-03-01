@@ -125,7 +125,7 @@ RestRepairHandler::repairDistributeShardsLike() {
 
 
     //auto returnArray = getFromAgency({"Supervision/Health"});
-    TResult<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
+    ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
 
     if (healthResult.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
@@ -328,7 +328,7 @@ void RestRepairHandler::executeRepairOperations(
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
         << "RestRepairHandler::executeRepairOperations: "
         << "Fetching job info of " << jobId;
-        TResult<JobStatus> jobStatus
+        ResultT<JobStatus> jobStatus
           = getJobStatusFromAgency(jobId);
 
         if (jobStatus.ok()) {
@@ -395,7 +395,7 @@ void RestRepairHandler::executeRepairOperations(
 }
 
 template <std::size_t N>
-TResult<std::array<VPackBufferPtr, N>>
+ResultT<std::array<VPackBufferPtr, N>>
 RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
@@ -417,7 +417,7 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
         TRI_ERROR_HTTP_SERVER_ERROR);
 
       // TODO return better error#
-      return TResult<
+      return ResultT<
         std::array<VPackBufferPtr, N>
       >::error(
         TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
@@ -445,25 +445,25 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
     resultArray[i] = builder.steal();
   }
 
-  return TResult<
+  return ResultT<
     std::array<VPackBufferPtr, N>
   >::success(resultArray);
 }
 
-TResult<VPackBufferPtr>
+ResultT<VPackBufferPtr>
 RestRepairHandler::getFromAgency(std::string const &agencyKey) {
-  TResult<std::array<VPackBufferPtr, 1>> rv
+  ResultT<std::array<VPackBufferPtr, 1>> rv
     = getFromAgency<1>({agencyKey});
 
   if (rv.ok()) {
-    return TResult<VPackBufferPtr>::success(rv.get()[0]);
+    return ResultT<VPackBufferPtr>::success(rv.get()[0]);
   }
   else {
-    return TResult<VPackBufferPtr>(rv);
+    return ResultT<VPackBufferPtr>(rv);
   }
 }
 
-TResult<JobStatus>
+ResultT<JobStatus>
 RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
   // As long as getFromAgency doesn't get all values at once, the order here
   // matters: if e.g. finished was checked before pending, this would
@@ -478,7 +478,7 @@ RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
     });
 
   if (rv.fail()) {
-    return TResult<JobStatus>(rv);
+    return ResultT<JobStatus>(rv);
   }
 
   VPackSlice todo(rv.get()[0]->data());
@@ -493,18 +493,18 @@ RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
   };
 
   if (isSet(todo)) {
-    return TResult<JobStatus>::success(JobStatus::todo);
+    return ResultT<JobStatus>::success(JobStatus::todo);
   }
   if (isSet(pending)) {
-    return TResult<JobStatus>::success(JobStatus::pending);
+    return ResultT<JobStatus>::success(JobStatus::pending);
   }
   if (isSet(finished)) {
-    return TResult<JobStatus>::success(JobStatus::finished);
+    return ResultT<JobStatus>::success(JobStatus::finished);
   }
   if (isSet(failed)) {
-    return TResult<JobStatus>::success(JobStatus::failed);
+    return ResultT<JobStatus>::success(JobStatus::failed);
   }
 
 
-  return TResult<JobStatus>::success(JobStatus::missing);
+  return ResultT<JobStatus>::success(JobStatus::missing);
 }

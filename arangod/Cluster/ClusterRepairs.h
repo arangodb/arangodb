@@ -44,23 +44,31 @@ using DBServers = std::vector<ServerID>;
 using VPackBufferPtr = std::shared_ptr<VPackBuffer<uint8_t>>;
 
 template<typename T>
-class TResult : public arangodb::Result {
+class ResultT : public arangodb::Result {
  public:
 
-  TResult static success(T val) {
-    return TResult(val, 0);
+  ResultT static success(T val) {
+    return ResultT(val, 0);
   }
 
-  TResult static error(int errorNumber) {
-    return TResult(boost::none, errorNumber);
+  ResultT static error(int errorNumber) {
+    return ResultT(boost::none, errorNumber);
   }
 
-  TResult static error(int errorNumber, std::__cxx11::string const &errorMessage) {
-    return TResult(boost::none, errorNumber, errorMessage);
+  ResultT static error(int errorNumber, std::__cxx11::string const &errorMessage) {
+    return ResultT(boost::none, errorNumber, errorMessage);
   }
 
-  explicit TResult(Result const &other)
-    : Result(other) {}
+  explicit ResultT(Result const &other)
+    : Result(other) {
+    // .ok() is not allowed here, as _val should be expected to be initialized
+    // iff .ok() is true.
+    TRI_ASSERT(other.fail());
+    // TODO Maybe we should explicitly set a dedicated errorNumber if that happens,
+    // to avoid exceptions when someone tries to access _val
+  }
+
+  ResultT() = delete;
 
   T get() {
     return _val.get();
@@ -69,10 +77,10 @@ class TResult : public arangodb::Result {
  protected:
   boost::optional<T> _val;
 
-  TResult(boost::optional<T> val_, int errorNumber)
+  ResultT(boost::optional<T> val_, int errorNumber)
     : Result(errorNumber), _val(val_) {}
 
-  TResult(boost::optional<T> val_, int errorNumber, std::__cxx11::string const &errorMessage)
+  ResultT(boost::optional<T> val_, int errorNumber, std::__cxx11::string const &errorMessage)
     : Result(errorNumber, errorMessage), _val(val_) {}
 };
 
