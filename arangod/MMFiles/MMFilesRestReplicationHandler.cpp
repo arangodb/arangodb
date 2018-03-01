@@ -41,7 +41,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "Auth/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

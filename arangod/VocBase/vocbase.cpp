@@ -66,7 +66,6 @@
 #include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/ticks.h"
-#include "Auth/Common.h"
 
 #include <thread>
 
