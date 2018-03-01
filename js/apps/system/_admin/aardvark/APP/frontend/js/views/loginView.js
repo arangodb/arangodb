@@ -55,7 +55,10 @@
             $('.fa-database').show();
             $('#databaseInputName').remove();
 
-            _.each(permissions.result, function (rule, db) {
+            var sortedArr = _.pairs(permissions.result);
+            sortedArr.sort();
+            sortedArr = _.object(sortedArr);
+            _.each(sortedArr, function (rule, db) {
               if (frontendConfig.authenticationEnabled) {
                 $('#loginDatabase').append(
                   '<option>' + db + '</option>'
@@ -208,7 +211,10 @@
           $('.fa-database').show();
           $('#databaseInputName').remove();
 
-          _.each(permissions.result, function (rule, db) {
+          var sortedArr = _.pairs(permissions.result);
+          sortedArr.sort();
+          sortedArr = _.object(sortedArr);
+          _.each(sortedArr, function (rule, db) {
             if (frontendConfig.authenticationEnabled) {
               $('#loginDatabase').append(
                 '<option>' + db + '</option>'
