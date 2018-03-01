@@ -150,6 +150,33 @@ static void DestructureArray(Parser* parser, std::string const& sourceVariable,
   depths.pop_back();
 }
 
+static void DestructureObject(Parser* parser, std::string const& sourceVariable, 
+                              std::vector<std::pair<char const*, size_t>>& paths, AstNode const* array) {
+  size_t const n = array->numMembers();
+
+  for (size_t i = 0; i < n; i += 2) {
+    auto member = array->getMember(i);
+    
+    if (member->type == NODE_TYPE_VALUE && member->value.type == VALUE_TYPE_STRING) {
+      auto assigned = array->getMember(i + 1);
+      
+      paths.emplace_back(member->getStringValue(), member->getStringLength());
+      if (assigned->type == NODE_TYPE_ARRAY) {
+        // need to recurse
+        DestructureObject(parser, sourceVariable, paths, assigned);
+      } else if (assigned->type == NODE_TYPE_VARIABLE) {
+        auto accessor = parser->ast()->createNodeReference(sourceVariable.c_str(), sourceVariable.size());
+        for (auto const& it : paths) {
+          accessor = parser->ast()->createNodeAttributeAccess(accessor, it.first, it.second);
+        }
+        auto node = parser->ast()->createNodeLet(assigned, accessor);
+        parser->ast()->addOperation(node);
+      }
+      paths.pop_back();
+    }
+  }
+}
+
 /// @brief start a new scope for the collect
 static bool StartCollectScope(arangodb::aql::Scopes* scopes) { 
   // check if we are in the main scope
@@ -315,6 +342,7 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <strval> T_PARAMETER;
 %type <strval> T_DATA_SOURCE_PARAMETER;
 %type <node> array_destructuring;
+%type <node> object_destructuring;
 %type <node> with_collection;
 %type <node> sort_list;
 %type <node> sort_element;
@@ -568,6 +596,14 @@ let_element:
       std::vector<size_t> depths;
       DestructureArray(parser, nextName, depths, $1);
     }
+  | object_destructuring T_ASSIGN expression {
+      std::string const nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      std::vector<std::pair<char const*, size_t>> paths;
+      DestructureObject(parser, nextName, paths, $1);
+    }
   ;
 
 array_destructuring:
@@ -592,9 +628,34 @@ array_destructuring_element:
     }
   ;
 
+object_destructuring:
+    T_OBJECT_OPEN {
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } object_destructuring_element T_OBJECT_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+
+object_destructuring_element:
+    variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable($1.value, $1.length, true));
+    }
+  | variable_name T_COLON variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable($3.value, $3.length, true));
+    }
+  | variable_name T_COLON object_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | object_destructuring_element T_COMMA object_destructuring_element {
+    }
+  ;
+
 count_into:
     T_WITH T_STRING T_INTO variable_name {
-      if (! TRI_CaseEqualString($2.value, "COUNT")) {
+      if (!TRI_CaseEqualString($2.value, "COUNT")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
       }
 
