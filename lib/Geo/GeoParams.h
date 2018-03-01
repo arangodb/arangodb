@@ -118,6 +118,15 @@ struct QueryParams {
   /// @brief Centroid from which to sort by distance
   geo::Coordinate origin;
 
+  // =================== Hints ===================
+
+  /// @brief Index only contains points; no need to consider larger polygons
+  bool pointsOnly = false;
+  /// @brief The full radius bound range will eventually be scanned, be eager
+  bool scanWholeRange = false;
+  /// @brief If non-zero, we will use a LIMIT clause later with this value
+  size_t limit = 0;
+
   // ============= Filtered Params ===============
 
   FilterType filterType = FilterType::NONE;

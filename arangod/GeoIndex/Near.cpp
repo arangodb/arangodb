@@ -164,8 +164,7 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     }
 
     if (!cover.empty()) {
-      geo::GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
-                                   intervals);
+      geo::GeoUtils::scanIntervals(_params, cover, intervals);
       _scannedCells.Add(cover);
     }
   }
@@ -229,7 +228,8 @@ template <typename CMP>
 void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
-  double delta = _origin.Angle(cords.ToPoint()) * 4;
+  double multiplier = (_params.limit > 0) ? std::sqrt(_params.limit) : 4;
+  double delta = _origin.Angle(cords.ToPoint()) * multiplier;
   if (minBound < delta && delta < M_PI) {
     _boundDelta = delta;
     // only call after reset

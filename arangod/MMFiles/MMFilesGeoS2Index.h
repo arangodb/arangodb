@@ -55,14 +55,18 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
   typedef btree::btree_multimap<S2CellId, IndexValue> IndexTree;
 
  public:
-   IndexType type() const override {
-     if ("geo1" == _typeName) {
-       return TRI_IDX_TYPE_GEO1_INDEX;
-     } else if ("geo2" == _typeName) {
-       return TRI_IDX_TYPE_GEO2_INDEX;
-     }
-     return TRI_IDX_TYPE_S2_INDEX;
-   }
+  IndexType type() const override {
+    if ("geo1" == _typeName) {
+      return TRI_IDX_TYPE_GEO1_INDEX;
+    } else if ("geo2" == _typeName) {
+      return TRI_IDX_TYPE_GEO2_INDEX;
+    }
+    return TRI_IDX_TYPE_S2_INDEX;
+  }
+
+  bool pointsOnly() const {
+    return (_typeName != "s2index");
+  }
 
   char const* typeName() const override { return _typeName.c_str(); }
 

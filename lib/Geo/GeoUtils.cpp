@@ -67,21 +67,23 @@ Result GeoUtils::indexCells(geo::Coordinate const& c,
 }
 
 /// generate intervalls of list of intervals to scan
-void GeoUtils::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
+void GeoUtils::scanIntervals(QueryParams const& params,
+                             S2RegionCoverer* coverer, S2Region const& region,
                              std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
-  scanIntervals(coverer->options().min_level(), cover, sortedIntervals);
+  TRI_ASSERT(params.cover.worstIndexedLevel == coverer->options().min_level());
+  scanIntervals(params, cover, sortedIntervals);
 }
 
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void GeoUtils::scanIntervals(int worstIndexedLevel,
+void GeoUtils::scanIntervals(QueryParams const& params,
                              std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
-  TRI_ASSERT(worstIndexedLevel > 0);
+  TRI_ASSERT(params.cover.worstIndexedLevel > 0);
   if (cover.empty()) {
     return;
   }
@@ -95,27 +97,31 @@ void GeoUtils::scanIntervals(int worstIndexedLevel,
     }
   }
 
-  // we need to find larger cells that may still contain (parts of) the cover,
-  // these are parent cells, up to the minimum allowed cell level allowed in
-  // the index. In that case we do not need to look at all sub-cells only
-  // at the exact parent cell id. E.g. we got cover cell id [47|11|50]; we do
-  // not need
-  // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
-  // but polygons indexed with exact cell id [47|11] still might.
-  std::set<S2CellId> parentSet;
-  for (const S2CellId& interval : cover) {
-    S2CellId cell = interval;
+  if (!params.pointsOnly) {
+    // we need to find larger cells that may still contain (parts of) the cover,
+    // these are parent cells, up to the minimum allowed cell level allowed in
+    // the index. In that case we do not need to look at all sub-cells only
+    // at the exact parent cell id. E.g. we got cover cell id [47|11|50]; we do
+    // not need
+    // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
+    // but polygons indexed with exact cell id [47|11] still might.
+    std::set<S2CellId> parentSet;
+    for (const S2CellId& interval : cover) {
+      S2CellId cell = interval;
 
-    // add all parent cells of our "exact" cover
-    while (worstIndexedLevel < cell.level()) {  // don't use level < 0
-      cell = cell.parent();
-      parentSet.insert(cell);
+      // add all parent cells of our "exact" cover
+      while (params.cover.worstIndexedLevel < cell.level()) {  // don't use
+                                                               // level < 0
+        cell = cell.parent();
+        parentSet.insert(cell);
+      }
+    }
+    // just add them, sort them later
+    for (S2CellId const& exact : parentSet) {
+      sortedIntervals.emplace_back(exact, exact);
     }
   }
-  // just add them, sort them later
-  for (S2CellId const& exact : parentSet) {
-    sortedIntervals.emplace_back(exact, exact);
-  }
+
   // sort these disjunct intervals
   std::sort(sortedIntervals.begin(), sortedIntervals.end(), Interval::compare);
 

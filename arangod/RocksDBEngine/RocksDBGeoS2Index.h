@@ -55,6 +55,10 @@ class RocksDBGeoS2Index final : public RocksDBIndex, public geo_index::Index {
     return TRI_IDX_TYPE_S2_INDEX;
   }
 
+  bool pointsOnly() const {
+    return (_typeName != "s2index");
+  }
+
   char const* typeName() const override { return _typeName.c_str(); }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,

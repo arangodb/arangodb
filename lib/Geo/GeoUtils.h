@@ -31,6 +31,7 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
+#include "Geo/GeoParams.h"
 #include "Geo/Shapes.h"
 
 class S2Region;
@@ -70,13 +71,14 @@ class GeoUtils {
                            std::vector<S2CellId>& cells);
 
   /// generate intervalls of list of intervals to scan
-  static void scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
+  static void scanIntervals(QueryParams const& params,
+                            S2RegionCoverer* coverer, S2Region const& region,
                             std::vector<geo::Interval>& sortedIntervals);
 
   /// will return all the intervals including the cells containing them
   /// in the less detailed levels. Should allow us to scan all intervals
   /// which may contain intersecting geometries
-  static void scanIntervals(int worstIndexedLevel,
+  static void scanIntervals(QueryParams const& params,
                             std::vector<S2CellId> const& cover,
                             std::vector<geo::Interval>& sortedIntervals);
 };

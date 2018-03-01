@@ -468,11 +468,14 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
+  params.pointsOnly = index.pointsOnly();
   params.origin = {lat, lon};
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
+    params.scanWholeRange = true;
   }
+  params.limit = count;
   size_t limit = (count > 0) ? count : SIZE_MAX;
 
   ManagedDocumentResult mmdr;
