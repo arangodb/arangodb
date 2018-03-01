@@ -514,11 +514,6 @@ DistributeShardsLikeRepairer::fixShard(
     RepairOperation moveShardOperation =
       createMoveShardOperation(collection, shardId, shardServerIt, protoServerIt, false);
     repairOperations.emplace_back(moveShardOperation);
-
-// [PSEUDO-TODO]    if (onProto.length >= col.replicationFactor - 2 && i == 0) {
-// [PSEUDO-TODO]      // Security that we at least keep one insync follower
-// [PSEUDO-TODO]      waitForSync();
-// [PSEUDO-TODO]    }
   }
 
   if(auto trx = createFixServerOrderTransaction(collection, proto, shardId, protoShardId)) {
