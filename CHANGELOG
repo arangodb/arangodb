@@ -3,6 +3,19 @@ devel
 
 * fix issue #4698: databases within the UI are now displayed in a sorted order.
 
+* fix issue #4657: fixed incomplete content type header
+
+* Behaviour of permissions for databases and collections changed:
+  The new fallback rule for databases for which an access level is not explicitly specified:
+  Choose the higher access level of::
+    * A wildcard database grant
+    * A database grant on the `_system` database
+  The new fallback rule for collections for which an access level is not explicitly specified:
+  Choose the higher access level of::
+    * Any wildcard access grant in the same database, or on "*/*"
+    * The access level for the current database
+    * The access level for the `_system` database
+
 * fix issue #4583 - add AQL ASSERT and AQL WARN
 
 * remove _admin/echo handler
@@ -13,9 +26,10 @@ devel
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
 
-* renamed startup option `--replication.automatic-failover` to
-  `--replication.active-failover` using the old option name will still work in
-  ArangoDB 3.4, but the old option will be removed afterwards
+* renamed startup option `--replication.automatic-failover` to 
+  `--replication.active-failover`
+  using the old option name will still work in ArangoDB 3.4, but the old option
+  will be removed afterwards
 
 * Index selectivity estimates for RocksDB engine are now eventually consistent.
   This change addresses a previous issue where some index updates could be
@@ -134,8 +148,11 @@ devel
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
 
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
+
+* fixed issue #4651: Simple query taking forever until a request timeout error
 
 * fix timeout issues in replication client expiration
 

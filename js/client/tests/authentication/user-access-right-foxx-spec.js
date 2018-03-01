@@ -56,19 +56,14 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const switchUser = (user, dbname) => {
-  arango.reconnect(arango.getEndpoint(), dbname, user, '');
-};
-
-switchUser('root', '_system');
+helper.switchUser('root', '_system');
 helper.removeAllUsers();
+helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  before(helper.generateAllUsers);
-  after(helper.removeAllUsers);
-
   it('should check if all users are created', () => {
-    switchUser('root', '_system');
+    helper.switchUser('root', '_system');
+    expect(userSet.size).to.be.greaterThan(0); 
     expect(userSet.size).to.equal(helper.userCount);
     for (let name of userSet) {
       expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
@@ -76,10 +71,11 @@ describe('User Rights Management', () => {
   });
 
   it('should test rights for', () => {
+    expect(userSet.size).to.be.greaterThan(0); 
     for (let name of userSet) {
       let canUse = false;
       try {
-        switchUser(name, dbName);
+        helper.switchUser(name, dbName);
         canUse = true;
       } catch (e) {
         canUse = false;
@@ -89,12 +85,12 @@ describe('User Rights Management', () => {
         describe(`user ${name}`, () => {
           const mount = `/${name}_mount`;
           before(() => {
-            switchUser(name, dbName);
+            helper.switchUser(name, dbName);
             db._useDatabase(dbName);
           });
 
           after(() => {
-            switchUser('root', dbName);
+            helper.switchUser('root', dbName);
             try {
               foxxManager.uninstall(mount, {force: true});
             } catch (e) {}

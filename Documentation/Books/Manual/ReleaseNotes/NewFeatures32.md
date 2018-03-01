@@ -116,7 +116,7 @@ executes the query, locally. With this approach, network hops during join
 operations on sharded collections can be avoided and response times can be close to
 that of a single instance.
 
-[Satellite collections](../Administration/Replication/Synchronous/Satellites.md)
+[Satellite collections](../Administration/Satellites.md)
 are available in the *Enterprise* edition.
 
 

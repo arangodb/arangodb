@@ -75,14 +75,24 @@ function agencyTestSuite () {
   var request = require("@arangodb/request");
 
   function findAgencyCompactionIntervals() {
-    let res = request({url: agencyLeader + "/_api/agency/config",
-                       method: "GET", followRedirect: true});
-    assertEqual(res.statusCode, 200);
-    res.bodyParsed = JSON.parse(res.body);
-    return {
-      compactionStepSize: res.bodyParsed.configuration["compaction step size"],
-      compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
-    };
+    for (let count = 0; count < 60; ++count) {
+      let res = request({url: agencyLeader + "/_api/agency/config",
+                         method: "GET", followRedirect: true});
+      if (res.statusCode === 200) {
+        res.bodyParsed = JSON.parse(res.body);
+        return {
+          compactionStepSize: res.bodyParsed.configuration["compaction step size"],
+          compactionKeepSize: res.bodyParsed.configuration["compaction keep size"]
+        };
+      }
+      require('console').topic("agency=warn", "Got status " + res.statusCode +
+        " from agency.");
+      require("internal").wait(1.0);   // give the server another second
+    }
+    require('console').topic("agency=error",
+      "Giving up, agency did not boot successfully.");
+    assertEqual("apple", "orange");
+    // all is lost because agency did not get up and running in time
   }
 
   var compactionConfig = findAgencyCompactionIntervals();
