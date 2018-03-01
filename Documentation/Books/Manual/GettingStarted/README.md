@@ -579,3 +579,6 @@ If you want to write more AQL queries right now, have a look here:
 - [High-level operations](../../AQL/Operations/index.html): detailed descriptions
   of `FOR`, `FILTER` and more operations not shown in this introduction
 - [Functions](../../AQL/Functions/index.html): a reference of all provided functions
+
+Visit the [ArangoDB Training Center](https://www.arangodb.com/arangodb-training-center/)
+for courses, tutorials and more.
