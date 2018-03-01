@@ -151,6 +151,8 @@ devel
   `DATE_QUARTER()`, `DATE_DAYS_IN_MONTH()`, `DATE_ADD()`, `DATE_SUBTRACT()`,
   `DATE_DIFF()` and `DATE_COMPARE()`
 
+* added AQL function `DATE_TRUNC()`
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
