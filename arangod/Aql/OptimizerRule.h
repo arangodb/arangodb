@@ -61,7 +61,7 @@ struct OptimizerRule {
     // remove legacy geo functions
     removeLegacyGeoFunctions_pass1,
 
-    //inlineSubqueriesRule_pass1,
+    inlineSubqueriesRule_pass1,
 
     // split and-combined filters into multiple smaller filters
     splitFiltersRule_pass1,
@@ -92,7 +92,7 @@ struct OptimizerRule {
     removeRedundantSortsRule_pass2,
     
     // try to inline subqueries after removing unecessary calculations
-    inlineSubqueriesRule_pass2,
+    //inlineSubqueriesRule_pass2,
 
     // "Pass 3": interchange EnumerateCollection nodes in all possible ways
     //           this is level 500, please never let new plans from higher
