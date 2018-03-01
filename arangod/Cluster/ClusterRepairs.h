@@ -116,7 +116,7 @@ struct Collection {
     return "Plan/Collections/" + this->database + "/" + this->id;
   }
 
-  std::shared_ptr<VPackBuffer<uint8_t>>
+  VPackBufferPtr
   createShardDbServerArray(
     ShardID const &shardId
   ) const;
@@ -137,7 +137,7 @@ struct MoveShardOperation {
 
   MoveShardOperation() = delete;
 
-  std::shared_ptr<VPackBuffer<uint8_t>>
+  VPackBufferPtr
   toVpackTodo(uint64_t jobId) const;
 };
 
@@ -154,7 +154,7 @@ class DistributeShardsLikeRepairer {
   );
 
  private:
-  std::vector< std::shared_ptr<VPackBuffer<uint8_t>> > _vPackBuffers;
+  std::vector< VPackBufferPtr > _vPackBuffers;
 
   std::map<ShardID, DBServers, VersionSort> static
   readShards(velocypack::Slice const& shards);

@@ -74,7 +74,7 @@ std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& tr
 namespace tests {
 namespace cluster_repairs_test {
 
-std::shared_ptr<VPackBuffer<uint8_t>>
+VPackBufferPtr
 vpackFromJsonString(char const *c) {
   Options options;
   options.checkAttributeUniqueness = true;
@@ -86,14 +86,14 @@ vpackFromJsonString(char const *c) {
   return builder->steal();
 }
 
-std::shared_ptr<VPackBuffer<uint8_t>>
+VPackBufferPtr
 operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
 void checkAgainstExpectedOperations(
-  std::shared_ptr<VPackBuffer<uint8_t>> const& planCollections,
-  std::shared_ptr<VPackBuffer<uint8_t>> const& supervisionHealth,
+  VPackBufferPtr const& planCollections,
+  VPackBufferPtr const& supervisionHealth,
   std::vector<RepairOperation> expectedRepairOperations
 ) {
   DistributeShardsLikeRepairer repairer;

@@ -110,7 +110,7 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, MoveShardOperat
 }
 
 
-std::shared_ptr<VPackBuffer<uint8_t>>
+VPackBufferPtr
 cluster_repairs::Collection::createShardDbServerArray(
   ShardID const &shardId
 ) const {
@@ -658,7 +658,7 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     return boost::none;
   }
 
-  std::shared_ptr<VPackBuffer<uint8_t>>
+  VPackBufferPtr
     vpack = collection.createShardDbServerArray(shardId);
   VPackSlice oldDbServerSlice = Slice(vpack->data());
   _vPackBuffers.emplace_back(std::move(vpack));
@@ -793,7 +793,7 @@ DistributeShardsLikeRepairer::createRestoreDistributeShardsLikeAttributeTransact
   );
 }
 
-std::shared_ptr<VPackBuffer<uint8_t>>
+VPackBufferPtr
 MoveShardOperation::toVpackTodo(uint64_t jobId) const {
   std::string const serverId = ServerState::instance()->getId();
 
