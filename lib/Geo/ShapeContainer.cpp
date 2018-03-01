@@ -97,6 +97,11 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
       return Coordinate(S2LatLng::Latitude(c).degrees(),
                         S2LatLng::Longitude(c).degrees());
     }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2Point const& c = static_cast<S2LatLngRect const*>(_data)->GetCentroid();
+      return Coordinate(S2LatLng::Latitude(c).degrees(),
+                        S2LatLng::Longitude(c).degrees());
+    }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Point c = (static_cast<S2Polygon const*>(_data))->GetCentroid();
       return Coordinate(S2LatLng::Latitude(c).degrees(),
@@ -142,6 +147,7 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
       return {S2CellId(c)};
     }
     case ShapeContainer::Type::S2_POLYLINE:
+    case ShapeContainer::Type::S2_LATLNGRECT:
     case ShapeContainer::Type::S2_POLYGON: {
       coverer->GetCovering(*_data, &cover);
       break;
@@ -213,16 +219,6 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   qp.maxDistance = std::max(std::max(a1.radians(), a2.radians()),
                             std::max(a3.radians(), a4.radians())) *
                    kEarthRadiusInMeters;
-}
-
-static bool PolylineContains(S2Polyline const* ll, S2Point const& pp) {
-  // containment is only numerically defined on the endpoints
-  for (int k = 0; k < ll->num_vertices(); k++) {
-    if (ll->vertex(k) == pp) {
-      return true;
-    }
-  }
-  return false;
 }
 
 bool ShapeContainer::contains(Coordinate const* cc) const {
