@@ -85,7 +85,7 @@ VersionSort::splitVersion(std::string const &str) {
 }
 
 
-bool operator==(MoveShardOperation const &left, MoveShardOperation const &other) {
+bool cluster_repairs::operator==(MoveShardOperation const &left, MoveShardOperation const &other) {
   return
     left.database == other.database
     && left.collection == other.collection
@@ -94,7 +94,7 @@ bool operator==(MoveShardOperation const &left, MoveShardOperation const &other)
     && left.isLeader == other.isLeader;
 }
 
-std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation) {
+std::ostream& cluster_repairs::operator<<(std::ostream& ostream, MoveShardOperation const& operation) {
   ostream << "MoveShardOperation" << std::endl
           << "{ database: " << operation.database << std::endl
           << ", collection: " << operation.collection << std::endl
@@ -698,7 +698,7 @@ MoveShardOperation::toVpackTodo(uint64_t jobId) const {
   builder.add("shard", VPackValue(shard));
   builder.add("fromServer", VPackValue(from));
   builder.add("toServer", VPackValue(to));
-  builder.add("jobId", VPackValue(jobId));
+  builder.add("jobId", VPackValue(std::to_string(jobId)));
   builder.add("timeCreated", VPackValue(boost::posix_time::to_iso_extended_string(now)));
   builder.add("creator", VPackValue(serverId));
   builder.add("isLeader", VPackValue(isLeader));

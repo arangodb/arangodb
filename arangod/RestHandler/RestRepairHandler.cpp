@@ -125,9 +125,19 @@ RestRepairHandler::repairDistributeShardsLike() {
 
 
     //auto returnArray = getFromAgency({"Supervision/Health"});
-    VPackBufferPtr vpack ;//= returnArray[0];
+    TResult<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
 
-    VPackSlice supervisionHealth(vpack->data());
+    if (healthResult.fail()) {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "RestRepairHandler::repairDistributeShardsLike: "
+      << "Failed to fetch server health result";
+      generateError(rest::ResponseCode::SERVER_ERROR,
+        TRI_ERROR_HTTP_SERVER_ERROR);
+
+      return RestStatus::FAIL;
+    }
+
+    VPackSlice supervisionHealth(healthResult.get()->data());
 
     // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
 
@@ -210,12 +220,30 @@ class ExecuteRepairOperationVisitor
   using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
 
  public:
+  std::vector<VPackBufferPtr> vpackBufferArray;
+
   ReturnValueT
-  operator()(MoveShardOperation& op) const {
+  operator()(MoveShardOperation& op) {
     uint64_t jobId = ClusterInfo::instance()->uniqid();
     VPackBufferPtr vpackTodo = op.toVpackTodo(jobId);
 
-    std::string const agencyKey = "Target/ToDo/" + jobId;
+    vpackBufferArray.push_back(vpackTodo);
+
+    std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO remove
+    << "RestRepairHandler::repairDistributeShardsLike: "
+    << "vpackTodo = " << VPackSlice(vpackTodo->data()).toJson();
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO remove
+    << "RestRepairHandler::repairDistributeShardsLike: "
+    << "wtrx = " << AgencyWriteTransaction {
+      AgencyOperation {
+        agencyKey,
+        AgencyValueOperationType::SET,
+        VPackSlice(vpackTodo->data())
+      },
+      AgencyPrecondition {}
+    }.toJson();
 
     return std::make_pair(AgencyWriteTransaction {
       AgencyOperation {
@@ -228,10 +256,24 @@ class ExecuteRepairOperationVisitor
   }
 
   ReturnValueT
-  operator()(AgencyWriteTransaction& wtrx) const {
+  operator()(AgencyWriteTransaction& wtrx) {
     return std::make_pair(wtrx, boost::none);
   }
 };
+
+// TODO For debugging, remove later. At least, this shouldn't stay here.
+std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& trx) {
+  VPackOptions optPretty = VPackOptions::Defaults;
+  optPretty.prettyPrint = true;
+
+  VPackBuilder builder;
+
+  trx.toVelocyPack(builder);
+
+  ostream << builder.slice().toJson(&optPretty);
+
+  return ostream;
+}
 
 void RestRepairHandler::executeRepairOperations(
   std::list<RepairOperation> repairOperations
@@ -239,48 +281,107 @@ void RestRepairHandler::executeRepairOperations(
   // TODO Maybe wait if there are *any* jobs that were created from repairDistributeShardsLike?
   AgencyComm comm;
   for (auto& op : repairOperations) {
+    auto visitor = ExecuteRepairOperationVisitor();
     auto pair =
-      boost::apply_visitor(ExecuteRepairOperationVisitor(), op);
+      boost::apply_visitor(visitor, op);
 
     AgencyWriteTransaction &wtrx = pair.first;
     boost::optional<uint64_t> waitForJobId = pair.second;
 
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
+    << "RestRepairHandler::executeRepairOperations: "
+    << "Sending transaction to the agency";
+
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
+    << "RestRepairHandler::executeRepairOperations: "
+    << "Transaction is: "
+    << wtrx;
 
     AgencyCommResult result
       = comm.sendTransactionWithFailover(wtrx);
     if (! result.successful()) {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "RestRepairHandler::executeRepairOperations: "
+      << "Failed to send transaction to the agency. Error was: "
+      << "[" << result.errorCode() << "] "
+      << result.errorMessage();
+
       // TODO return error
       return;
     }
 
     // If the transaction posted a job, we wait for it to finish.
     if(waitForJobId) {
+      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
+      << "RestRepairHandler::executeRepairOperations: "
+      << "Waiting for job " << waitForJobId.get();
       bool previousJobFinished = false;
       std::string jobId = std::to_string(waitForJobId.get());
 
+      // TODO the loop is too long, try to refactor it
       while(! previousJobFinished) {
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Fetching job info of " << jobId;
         TResult<JobStatus> jobStatus
           = getJobStatusFromAgency(jobId);
 
         if (jobStatus.ok()) {
+          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
+          << "RestRepairHandler::executeRepairOperations: "
+          << "Job status is: "
+          << (
+            jobStatus.get() == JobStatus::todo ? "todo" :
+            jobStatus.get() == JobStatus::pending ? "pending" :
+            jobStatus.get() == JobStatus::finished ? "finished" :
+            jobStatus.get() == JobStatus::failed ? "failed" :
+            jobStatus.get() == JobStatus::missing ? "missing" :
+            "n/a"
+          );
+
           switch (jobStatus.get()) {
             case JobStatus::todo:
             case JobStatus::pending:
               break;
+
             case JobStatus::finished:
               previousJobFinished = true;
               break;
+
             case JobStatus::failed:
+              LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+              << "RestRepairHandler::executeRepairOperations: "
+              << "Job " << jobId << " failed, aborting";
+
+              // TODO return error
+              return;
+
             case JobStatus::missing:
+              LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+              << "RestRepairHandler::executeRepairOperations: "
+              << "Job " << jobId << " went missing, aborting";
+
               // TODO return error
               return;
           }
 
-          sleep(1);
         } else
         {
           // TODO count errors in a row, give up eventually. Or maybe give up directly, as AgencyComm did enough retries already.
+
+          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+          << "RestRepairHandler::executeRepairOperations: "
+          << "Failed to get job status: "
+          << "[" << jobStatus.errorNumber() << "] "
+          << jobStatus.errorMessage();
+
+          return;
         }
+
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Sleeping for 1s";
+        sleep(1);
       }
     }
 
@@ -346,7 +447,8 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
 
 TResult<VPackBufferPtr>
 RestRepairHandler::getFromAgency(std::string const &agencyKey) {
-  auto rv = getFromAgency<1>({agencyKey});
+  TResult<std::array<VPackBufferPtr, 1>> rv
+    = getFromAgency<1>({agencyKey});
 
   if (rv.ok()) {
     return TResult<VPackBufferPtr>::success(rv.get()[0]);
