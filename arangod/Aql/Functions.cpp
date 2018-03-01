@@ -2309,33 +2309,28 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
 AqlValue Functions::DateCompare(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp1;
-  tp_sys_clock_ms tp2;
-
   if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_COMPARE", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
+  tp_sys_clock_ms tp2;
   if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_COMPARE", 1)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  uint8_t rangeStart;
-  uint8_t rangeEnd;
 
   AqlValue rangeStartValue = ExtractFunctionParameterValue(parameters, 2);
 
   if (!rangeStartValue.isString()) {
-    RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+    RegisterInvalidArgumentWarning(query, "DATE_COMPARE");
     return AqlValue(AqlValueHintNull());
   }
 
   std::string rangeStartStr = rangeStartValue.slice().copyString();
   std::transform(rangeStartStr.begin(), rangeStartStr.end(), rangeStartStr.begin(), ::tolower);
 
+  uint8_t rangeStart;
   if (rangeStartStr == "years" || rangeStartStr == "year" || rangeStartStr == "y") {
     rangeStart = 6;
   } else if (rangeStartStr == "months" || rangeStartStr == "month" || rangeStartStr == "m") {
@@ -2351,15 +2346,16 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
   } else if (rangeStartStr == "milliseconds" || rangeStartStr == "millisecond" || rangeStartStr == "f") {
     rangeStart = 0;
   } else {
-    RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    RegisterWarning(query, "DATE_COMPARE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
+  uint8_t rangeEnd;
   if (parameters.size() == 4) {
     AqlValue rangeEndValue = ExtractFunctionParameterValue(parameters, 3);
 
     if (!rangeEndValue.isString()) {
-      RegisterInvalidArgumentWarning(query, "DATE_DIFF");
+      RegisterInvalidArgumentWarning(query, "DATE_COMPARE");
       return AqlValue(AqlValueHintNull());
     }
 
@@ -2381,7 +2377,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
     } else if (rangeEndStr == "milliseconds" || rangeEndStr == "millisecond" || rangeEndStr == "f") {
       rangeEnd = 6;
     } else {
-      RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      RegisterWarning(query, "DATE_COMPARE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
       return AqlValue(AqlValueHintNull());
     }
   } else {
