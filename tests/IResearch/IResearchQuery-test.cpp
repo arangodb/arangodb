@@ -60,6 +60,10 @@
 #include "tests/Basics/icu-helper.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
@@ -157,6 +161,9 @@ struct IResearchQuerySetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
+#ifdef USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(&server), false);
+#endif
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);

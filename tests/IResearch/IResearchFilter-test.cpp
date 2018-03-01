@@ -51,6 +51,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Ldap/LdapFeature.h"
+#endif
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
@@ -143,6 +147,9 @@ struct IResearchFilterSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
+#ifdef USE_ENTERPRISE
+    features.emplace_back(new arangodb::LdapFeature(&server), false);
+#endif
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
