@@ -94,8 +94,39 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
+std::shared_ptr<VPackBuffer<uint8_t>>
+  collName22222222vpack = R"=("22222222")="_vpack;
+Slice
+  collName22222222slice = Slice(collName22222222vpack->data());
+
 std::vector< RepairOperation >
   expectedOperationsWithTwoSwappedDBServers {
+  // rename distributeShardsLike to repairDistributeShardsLike
+  AgencyWriteTransaction {
+    std::vector<AgencyOperation> {
+      AgencyOperation {
+        "Plan/Collections/someDb/11111111/distributeShardsLike",
+        AgencySimpleOperationType::DELETE_OP,
+      },
+      AgencyOperation {
+        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        AgencyValueOperationType::SET,
+        collName22222222slice,
+      },
+    },
+    std::vector<AgencyPrecondition> {
+      AgencyPrecondition {
+        "Plan/Collections/someDb/11111111/distributeShardsLike",
+        AgencyPrecondition::Type::VALUE,
+        collName22222222slice,
+      },
+      AgencyPrecondition {
+        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        AgencyPrecondition::Type::EMPTY,
+        true,
+      },
+    },
+  },
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
   MoveShardOperation {
@@ -123,5 +154,31 @@ std::vector< RepairOperation >
     .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
     .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
     .isLeader = false
+  },
+// rename repairDistributeShardsLike to distributeShardsLike
+  AgencyWriteTransaction {
+    std::vector<AgencyOperation> {
+      AgencyOperation {
+        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        AgencySimpleOperationType::DELETE_OP,
+      },
+      AgencyOperation {
+        "Plan/Collections/someDb/11111111/distributeShardsLike",
+        AgencyValueOperationType::SET,
+        collName22222222slice,
+      },
+    },
+    std::vector<AgencyPrecondition> {
+      AgencyPrecondition {
+        "Plan/Collections/someDb/11111111/distributeShardsLike",
+        AgencyPrecondition::Type::EMPTY,
+        true,
+      },
+      AgencyPrecondition {
+        "Plan/Collections/someDb/11111111/repairDistributeShardsLike",
+        AgencyPrecondition::Type::VALUE,
+        collName22222222slice,
+      },
+    },
   },
 };

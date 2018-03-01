@@ -95,8 +95,7 @@ operator "" _vpack(const char* json, size_t) {
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
-  // TODO split in one file per test case
-  #include "ClusterRepairsTest.TestData.cpp"
+  // TODO add a test with an existing repairDistributeShardsLike attribute
 
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
@@ -106,6 +105,8 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
     AgencyCommManager::initialize("testArangoAgencyPrefix");
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
+      // TODO split in one file per test case
+#include "ClusterRepairsTest.TestData.cpp"
 
       DistributeShardsLikeRepairer repairer;
 
@@ -125,7 +126,6 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
           = expectedOperationsWithTwoSwappedDBServers;
 
         {
-
           std::stringstream expectedOperationsStringStream;
           expectedOperationsStringStream << "[" << std::endl;
           for(auto const& it : expectedRepairOperations) {
@@ -135,7 +135,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
           std::stringstream repairOperationsStringStream;
           repairOperationsStringStream << "[" << std::endl;
-          for(auto const& it : expectedRepairOperations) {
+          for(auto const& it : repairOperations) {
             repairOperationsStringStream << it << "," << std::endl;
           }
           repairOperationsStringStream << "]";
