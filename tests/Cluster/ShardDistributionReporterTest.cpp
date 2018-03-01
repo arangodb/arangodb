@@ -166,7 +166,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         return cic;
       });
 
-  fakeit::When(Method(colMock, name)).AlwaysReturn(colName);
+  const_cast<std::string&>(col.name()).assign(colName);
   fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
@@ -1916,3 +1916,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
