@@ -39,7 +39,6 @@ v3.3.4 (2018-02-28)
     * The access level for the current database
     * The access level for the `_system` database
 
-
 * fix internal issue 1770: collection creation using distributeShardsLike yields
   errors and did not distribute shards correctly in the following cases:
   1. If numberOfShards * replicationFactor % nrDBServers != 0
