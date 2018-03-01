@@ -616,7 +616,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  uint64_t since = std::max(tickStart - 1, (uint64_t)0);
+  uint64_t since = 0;
+  if (tickStart > 0) {
+    since = tickStart - 1;
+  }
   s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
   
   if (!s.ok()) {

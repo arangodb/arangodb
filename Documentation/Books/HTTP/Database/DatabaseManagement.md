@@ -15,16 +15,16 @@ Managing Databases using HTTP
 -----------------------------
 
 <!-- js/actions/api-database.js -->
-@startDocuBlock JSF_get_api_database_current
+@startDocuBlock get_api_database_current
 
 <!-- js/actions/api-database.js -->
-@startDocuBlock JSF_get_api_database_user
+@startDocuBlock get_api_database_user
 
 <!-- js/actions/api-database.js -->
-@startDocuBlock JSF_get_api_database_list
+@startDocuBlock get_api_database_list
 
 <!-- js/actions/api-database.js -->
-@startDocuBlock JSF_get_api_database_new
+@startDocuBlock get_api_database_new
 
 <!-- js/actions/api-database.js -->
-@startDocuBlock JSF_get_api_database_delete
+@startDocuBlock get_api_database_delete

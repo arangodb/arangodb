@@ -68,10 +68,10 @@ GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
       SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
       _server(server),
-      _authentication(nullptr) {
-  _authentication = application_features::ApplicationServer::getFeature<
+      _auth(nullptr) {
+  _auth = application_features::ApplicationServer::getFeature<
       AuthenticationFeature>("Authentication");
-  TRI_ASSERT(_authentication != nullptr);
+  TRI_ASSERT(_auth != nullptr);
 }
 
 GeneralCommTask::~GeneralCommTask() {
@@ -341,23 +341,24 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
 rest::ResponseCode GeneralCommTask::canAccessPath(
     GeneralRequest* request) const {
-  if (!_authentication->isActive()) {
+  if (!_auth->isActive()) {
     // no authentication required at all
     return rest::ResponseCode::OK;
   }
 
   std::string const& path = request->requestPath();
   std::string const& username = request->user();
-  rest::ResponseCode result = request->authorized()
+  rest::ResponseCode result = request->authenticated()
                                   ? rest::ResponseCode::OK
                                   : rest::ResponseCode::UNAUTHORIZED;
 
   VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
   TRI_ASSERT(vc != nullptr);
-  if (vc->databaseAuthLevel() == AuthLevel::NONE &&
+  if (vc->databaseAuthLevel() == auth::Level::NONE &&
       !StringUtils::isPrefix(path, ApiUser)) {
     events::NotAuthorized(request);
     result = rest::ResponseCode::UNAUTHORIZED;
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Access forbidden to " << path;
   }
 
   // mop: inside the authenticateRequest() request->user will be populated
@@ -365,21 +366,21 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
 
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
-  if (!request->authorized()) {
+  if (!request->authenticated()) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
     // check if we need to run authentication for this type of
     // endpoint
     ConnectionInfo const& ci = request->connectionInfo();
 
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
-        !_authentication->authenticationUnixSockets()) {
+        !_auth->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
       result = rest::ResponseCode::OK;
     }
 #endif
 
     if (result != rest::ResponseCode::OK &&
-        _authentication->authenticationSystemOnly()) {
+        _auth->authenticationSystemOnly()) {
       // authentication required, but only for /_api, /_admin etc.
 
       if (!path.empty()) {
@@ -389,6 +390,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(
           // simon: upgrade rights for Foxx apps. FIXME
           result = rest::ResponseCode::OK;
           vc->forceSuperuser();
+          LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Upgrading rights for " << path;
         }
       }
     }
