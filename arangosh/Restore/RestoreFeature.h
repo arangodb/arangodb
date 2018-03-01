@@ -34,7 +34,9 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
+#ifdef USE_ENTERPRISE
 class EncryptionFeature;
+#endif
 
 class RestoreFeature final : public application_features::ApplicationFeature,
                              public ArangoClientHelper {
@@ -81,7 +83,9 @@ class RestoreFeature final : public application_features::ApplicationFeature,
 
  private:
   int* _result;
+#ifdef USE_ENTERPRISE
   EncryptionFeature* _encryption;
+#endif
 
   // statistics
   struct {
