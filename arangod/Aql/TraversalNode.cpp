@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TraversalBlock.h"
 #include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
@@ -381,6 +382,15 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<TraversalBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
