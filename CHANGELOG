@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix issue #4657: fixed incomplete content type header
+
 * Behaviour of permissions for databases and collections changed:
   The new fallback rule for databases for which an access level is not explicitly specified:
   Choose the higher access level of::
