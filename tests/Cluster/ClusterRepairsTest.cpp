@@ -91,6 +91,81 @@ operator "" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
+void checkAgainstExpectedOperations(
+  std::shared_ptr<VPackBuffer<uint8_t>> const& planCollections,
+  std::shared_ptr<VPackBuffer<uint8_t>> const& supervisionHealth,
+  std::vector<RepairOperation> expectedRepairOperations
+) {
+  DistributeShardsLikeRepairer repairer;
+
+  // TODO there are more values that might be needed in the preconditions,
+  // like distributeShardsLike / repairingDistributeShardsLike,
+  // or maybe replicationFactor
+
+  std::list<RepairOperation> repairOperations
+    = repairer.repairDistributeShardsLike(
+      VPackSlice(planCollections->data()),
+      VPackSlice(supervisionHealth->data())
+    );
+
+  {
+    std::stringstream expectedOperationsStringStream;
+    expectedOperationsStringStream << "[" << std::endl;
+    for(auto const& it : expectedRepairOperations) {
+      expectedOperationsStringStream << it << "," << std::endl;
+    }
+    expectedOperationsStringStream << "]";
+
+    std::stringstream repairOperationsStringStream;
+    repairOperationsStringStream << "[" << std::endl;
+    for(auto const& it : repairOperations) {
+      repairOperationsStringStream << it << "," << std::endl;
+    }
+    repairOperationsStringStream << "]";
+
+    INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
+    INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
+
+    REQUIRE(repairOperations.size() == expectedRepairOperations.size());
+  }
+
+  { // Transaction IDs shall be unique.
+    std::set<std::string> transactionClientIds;
+    for (auto &it : repairOperations) {
+      if (it.type() != typeid(AgencyWriteTransaction)) {
+        continue;
+      }
+
+      bool inserted;
+      AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+      std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
+      REQUIRE(inserted);
+
+      // Overwrite the client ID for the following comparisons to work
+      transaction.clientId = "dummy-client-id";
+    }
+
+    // Overwrite expected client IDs as well
+    for (auto &it : expectedRepairOperations) {
+      if (it.type() != typeid(AgencyWriteTransaction)) {
+        continue;
+      }
+      AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+
+      transaction.clientId = "dummy-client-id";
+    }
+  }
+
+  for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
+    auto const &repairOpIt = it.get<0>();
+    auto const &expectedRepairOpIt = it.get<1>();
+
+    REQUIRE(repairOpIt == expectedRepairOpIt);
+  }
+}
+
+// TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
+
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 
   // save old manager (may be null)
@@ -102,84 +177,20 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
 
-      DistributeShardsLikeRepairer repairer;
-
       WHEN("One unused DBServer is free to exchange the leader") {
 #include "ClusterRepairsTest.swapWithLeader.cpp"
-
-        std::list<RepairOperation> repairOperations
-          = repairer.repairDistributeShardsLike(
-            VPackSlice(planCollections->data()),
-            VPackSlice(supervisionHealth3Healthy0Bad->data())
-          );
-
-        // TODO there are more values that might be needed in the preconditions,
-        // like distributeShardsLike / repairingDistributeShardsLike,
-        // or maybe replicationFactor
-
-        std::vector<RepairOperation>& expectedRepairOperations
-          = expectedOperationsWithTwoSwappedDBServers;
-
-        {
-          std::stringstream expectedOperationsStringStream;
-          expectedOperationsStringStream << "[" << std::endl;
-          for(auto const& it : expectedRepairOperations) {
-            expectedOperationsStringStream << it << "," << std::endl;
-          }
-          expectedOperationsStringStream << "]";
-
-          std::stringstream repairOperationsStringStream;
-          repairOperationsStringStream << "[" << std::endl;
-          for(auto const& it : repairOperations) {
-            repairOperationsStringStream << it << "," << std::endl;
-          }
-          repairOperationsStringStream << "]";
-
-          INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
-          INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
-
-          REQUIRE(repairOperations.size() == expectedRepairOperations.size());
-        }
-
-        { // Transaction IDs shall be unique.
-          std::set<std::string> transactionClientIds;
-          for (auto &it : repairOperations) {
-            if (it.type() != typeid(AgencyWriteTransaction)) {
-              continue;
-            }
-
-            bool inserted;
-            AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-            std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
-            REQUIRE(inserted);
-
-            // Overwrite the client ID for the following comparisons to work
-            transaction.clientId = "dummy-client-id";
-          }
-
-          // Overwrite expected client IDs as well
-          for (auto &it : expectedRepairOperations) {
-            if (it.type() != typeid(AgencyWriteTransaction)) {
-              continue;
-            }
-            AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-
-            transaction.clientId = "dummy-client-id";
-          }
-        }
-
-        for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
-          auto const &repairOpIt = it.get<0>();
-          auto const &expectedRepairOpIt = it.get<1>();
-
-           REQUIRE(repairOpIt == expectedRepairOpIt);
-        }
+        checkAgainstExpectedOperations(
+          planCollections,
+          supervisionHealth3Healthy0Bad,
+          expectedOperationsWithTwoSwappedDBServers
+        );
       }
 
       // TODO This should not throw, but return a fail-Result
       WHEN("The unused DBServer is marked as non-healthy") {
 #include "ClusterRepairsTest.unusedServerUnhealthy.cpp"
 
+        DistributeShardsLikeRepairer repairer;
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
@@ -193,6 +204,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
       WHEN("The replicationFactor equals the number of DBServers") {
 #include "ClusterRepairsTest.replicationFactorTooHigh.cpp"
 
+        DistributeShardsLikeRepairer repairer;
         REQUIRE_THROWS_WITH(
           repairer.repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
@@ -205,142 +217,20 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
     GIVEN("An agency where a follower-shard has erroneously ordered DBServers") {
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
-      DistributeShardsLikeRepairer repairer;
-
-      // TODO the following code is nearly identical to the code for the first GIVEN block - can we reuse it?
-      std::list<RepairOperation> repairOperations
-        = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth4Healthy0Bad->data())
-        );
-
-      std::vector<RepairOperation>& expectedRepairOperations
-        = expectedOperationsWithWronglyOrderedFollowers;
-
-      {
-        std::stringstream expectedOperationsStringStream;
-        expectedOperationsStringStream << "[" << std::endl;
-        for(auto const& it : expectedRepairOperations) {
-          expectedOperationsStringStream << it << "," << std::endl;
-        }
-        expectedOperationsStringStream << "]";
-
-        std::stringstream repairOperationsStringStream;
-        repairOperationsStringStream << "[" << std::endl;
-        for(auto const& it : repairOperations) {
-          repairOperationsStringStream << it << "," << std::endl;
-        }
-        repairOperationsStringStream << "]";
-
-        INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
-        INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
-
-        REQUIRE(repairOperations.size() == expectedRepairOperations.size());
-      }
-
-      { // Transaction IDs shall be unique.
-        std::set<std::string> transactionClientIds;
-        for (auto &it : repairOperations) {
-          if (it.type() != typeid(AgencyWriteTransaction)) {
-            continue;
-          }
-
-          bool inserted;
-          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-          std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
-          REQUIRE(inserted);
-
-          // Overwrite the client ID for the following comparisons to work
-          transaction.clientId = "dummy-client-id";
-        }
-
-        // Overwrite expected client IDs as well
-        for (auto &it : expectedRepairOperations) {
-          if (it.type() != typeid(AgencyWriteTransaction)) {
-            continue;
-          }
-          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-
-          transaction.clientId = "dummy-client-id";
-        }
-      }
-
-      for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
-        auto const &repairOpIt = it.get<0>();
-        auto const &expectedRepairOpIt = it.get<1>();
-
-        REQUIRE(repairOpIt == expectedRepairOpIt);
-      }
+      checkAgainstExpectedOperations(
+        planCollections,
+        supervisionHealth4Healthy0Bad,
+        expectedOperationsWithWronglyOrderedFollowers
+      );
     }
 
     GIVEN("An agency where a collection has repairingDistributeShardsLike, but nothing else is broken") {
 #include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
-      DistributeShardsLikeRepairer repairer;
-
-      // TODO the following code is nearly identical to the code for the first GIVEN block - can we reuse it?
-      std::list<RepairOperation> repairOperations
-        = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth4Healthy0Bad->data())
-        );
-
-      std::vector<RepairOperation>& expectedRepairOperations
-        = expectedOperationsWithRepairingDistributeShardsLike;
-
-      {
-        std::stringstream expectedOperationsStringStream;
-        expectedOperationsStringStream << "[" << std::endl;
-        for(auto const& it : expectedRepairOperations) {
-          expectedOperationsStringStream << it << "," << std::endl;
-        }
-        expectedOperationsStringStream << "]";
-
-        std::stringstream repairOperationsStringStream;
-        repairOperationsStringStream << "[" << std::endl;
-        for(auto const& it : repairOperations) {
-          repairOperationsStringStream << it << "," << std::endl;
-        }
-        repairOperationsStringStream << "]";
-
-        INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
-        INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
-
-        REQUIRE(repairOperations.size() == expectedRepairOperations.size());
-      }
-
-      { // Transaction IDs shall be unique.
-        std::set<std::string> transactionClientIds;
-        for (auto &it : repairOperations) {
-          if (it.type() != typeid(AgencyWriteTransaction)) {
-            continue;
-          }
-
-          bool inserted;
-          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-          std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
-          REQUIRE(inserted);
-
-          // Overwrite the client ID for the following comparisons to work
-          transaction.clientId = "dummy-client-id";
-        }
-
-        // Overwrite expected client IDs as well
-        for (auto &it : expectedRepairOperations) {
-          if (it.type() != typeid(AgencyWriteTransaction)) {
-            continue;
-          }
-          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
-
-          transaction.clientId = "dummy-client-id";
-        }
-      }
-
-      for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
-        auto const &repairOpIt = it.get<0>();
-        auto const &expectedRepairOpIt = it.get<1>();
-
-        REQUIRE(repairOpIt == expectedRepairOpIt);
-      }
+      checkAgainstExpectedOperations(
+        planCollections,
+        supervisionHealth4Healthy0Bad,
+        expectedOperationsWithRepairingDistributeShardsLike
+      );
     }
 
   } catch (...) {
