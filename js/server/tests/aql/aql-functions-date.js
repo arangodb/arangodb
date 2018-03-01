@@ -1272,6 +1272,65 @@ testDateDaysInMonth() {
   });
 },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_trunc function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateTruncInvalid() {
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, 1, 1))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(false, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, true))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(null, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC([], 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, []))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC({}, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_TRUNC(1, {}))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TRUNC(DATE_NOW(), 'sugar'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TRUNC(DATE_NOW(), ''))");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_trunc function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateTrunc() {
+      const values = [
+        [ ["2000-04-29", "years"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29 20:49:59.123", "year"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56", "y"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "months"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "month"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29 23:59:59.999", "m"], "2000-04-01T00:00:00.000Z" ],
+        [ ["2000-04-29", "days"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 19:20:30.405", "day"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 03:04:05.067", "d"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "hours"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "hour"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "h"], "2000-04-29T12:00:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "minutes"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "minute"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "i"], "2000-04-29T12:34:00.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "seconds"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "second"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "s"], "2000-04-29T12:34:56.000Z" ],
+        [ ["2000-04-29 12:34:56.789", "milliseconds"], "2000-04-29T12:34:56.789Z" ],
+        [ ["2000-04-29 12:34:56.789", "millisecond"], "2000-04-29T12:34:56.789Z" ],
+        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ],
+      ];
+
+      values.forEach(function (value) {
+        let actual = getQueryResults(`RETURN NOOPT(DATE_TRUNC(@val[0], @val[1]))`, {val:value[0]});
+        assertEqual( [ value[1] ], actual);
+
+      });
+    },
+
 // TODO: additional ISO duration tests for DATE_ADD() / DATE_SUBTRACT()
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_add function
@@ -1423,473 +1482,473 @@ testDateDaysInMonth() {
 /// @brief test date_subtract function
 ////////////////////////////////////////////////////////////////////////////////
 
-testDateSubtractInvalid() {
+    testDateSubtractInvalid() {
 
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT())");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT()))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT()))");
 
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1, 1, 1))");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1, 1, 1)))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1, 1, 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1, 1))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1, 1)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 1, 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 'P1Y', 1))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 'P1Y', 1)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(1, 'P1Y', 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(1, 'P1Y', 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(null, 1, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(null, 1, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(null, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(null, 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(false, 1, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(false, 1, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(false, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(false, 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT([], 1, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT([], 1, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT([], 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT([], 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT({}, 1, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT({}, 1, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT({}, 1, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT({}, 1, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 1, 'sugar'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 1, 'sugar')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 1, 'sugar'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 1, 'sugar')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 1, ''))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 1, '')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 1, ''))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 1, '')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), '', 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), '', 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), '', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), '', 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), '1', 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), '1', 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), '1', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), '1', 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 'one', 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 'one', 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), 'one', 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), 'one', 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), null, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), null, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), null, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), null, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), false, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), false, 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), false, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), false, 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), [], 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), [], 'year')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), [], 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), [], 'year')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), {}, 'year'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), {}, 'year')))");
-},
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test date_subtract function
-////////////////////////////////////////////////////////////////////////////////
-
-testDateSubtract() {
-  const values = [
-    [ ["2000-05-01", 2, "days"], "2000-04-29T00:00:00.000Z" ],
-    [ ["2000-05-01Z", "P2D"], "2000-04-29T00:00:00.000Z" ],
-    [ ["2000-05-01Z", 2, "days"], "2000-04-29T00:00:00.000Z" ],
-    [ ["2001-01-01", 1, "day"], "2000-12-31T00:00:00.000Z" ],
-    [ ["2001-01-01Z", 1, "day"], "2000-12-31T00:00:00.000Z" ],
-    [ ["2001-01-01Z", 1, "d"], "2000-12-31T00:00:00.000Z" ],
-    [ ["2001-01-01Z", "P1D"], "2000-12-31T00:00:00.000Z" ],
-    [ ["2101-03-31", "P3M"], "2100-12-31T00:00:00.000Z" ],
-    [ ["2101-03-31", 3, "months"], "2100-12-31T00:00:00.000Z" ],
-    [ ["2101-03-31Z", 3, "month"], "2100-12-31T00:00:00.000Z" ],
-    [ ["2101-03-31", 3, "m"], "2100-12-31T00:00:00.000Z" ],
-    [ ["2100-10-01Z", -3, "m"], "2101-01-01T00:00:00.000Z" ],
-    [ ["2012-02-12 13:34:12", 10, "minutes"], "2012-02-12T13:24:12.000Z" ],
-    [ ["2012-02-12 13:34:12Z", 10, "i"], "2012-02-12T13:24:12.000Z" ],
-    [ ["2012-02-12 13:34:12Z", "PT10M"], "2012-02-12T13:24:12.000Z" ],
-    [ ["2012-02-13 00:00:00.000", 9, "milliseconds"], "2012-02-12T23:59:59.991Z" ],
-    [ ["2012-02-13 00:00:00.000", 9, "f"], "2012-02-12T23:59:59.991Z" ],
-    [ ["2012-02-13 00:00:00.000Z", 9, "f"], "2012-02-12T23:59:59.991Z" ],
-    [ ["2012-02-13 00:00:00.000Z", "PT0.009S"], "2012-02-12T23:59:59.991Z" ],
-    [ ["2013-02-12", "P1Y"], "2012-02-12T00:00:00.000Z" ],
-    [ ["2020-02-12", 8, "years"], "2012-02-12T00:00:00.000Z" ],
-    [ ["2020-02-12Z", 8, "year"], "2012-02-12T00:00:00.000Z" ],
-    [ ["2020-02-12T13:24:12Z", 8, "y"], "2012-02-12T13:24:12.000Z" ],
-    [ ["2112-02-12Z", "P100Y"], "2012-02-12T00:00:00.000Z" ],
-    [ ["1912-02-12Z", -100, "years"], "2012-02-12T00:00:00.000Z" ],
-    [ ["1912-2-12Z", -100, "years"], "2012-02-12T00:00:00.000Z" ],
-    [ ["1910-01-02T08:04:05Z", 5, "hours"], "1910-01-02T03:04:05.000Z" ],
-    [ ["1910-01-02 08:04:05Z", 5, "hour"], "1910-01-02T03:04:05.000Z" ],
-    [ ["1910-01-02 08:04:05Z", "PT5H"], "1910-01-02T03:04:05.000Z" ],
-    [ ["1910-01-02 05:00:00", 5, "hours"], "1910-01-02T00:00:00.000Z" ],
-    [ ["1910-01-02 05:00:00Z", 5, "hours"], "1910-01-02T00:00:00.000Z" ],
-    [ ["1910-01-02 05:00:00Z", "PT5H"], "1910-01-02T00:00:00.000Z" ],
-    [ ["2015-03-01Z", 1, "w"], "2015-02-22T00:00:00.000Z" ],
-    [ ["2015-03-01Z", 1, "weeks"], "2015-02-22T00:00:00.000Z" ],
-    [ ["2015-03-01Z", 1, "week"], "2015-02-22T00:00:00.000Z" ],
-    [ ["2015-03-01Z", "P1W"], "2015-02-22T00:00:00.000Z" ],
-    [ ["2016-02-29Z", 1, "week"], "2016-02-22T00:00:00.000Z" ],
-    [ ["2016-02-29Z", "P1W"], "2016-02-22T00:00:00.000Z" ],
-    [ ["2021-02-28T23:59:59Z", 800*12, "months"], "1221-02-28T23:59:59.000Z" ],
-    [ ["2021-02-28 23:59:59Z", 800, "years"], "1221-02-28T23:59:59.000Z" ],
-    [ ["1221-02-28 23:59:59Z", 1000*(60*60*24-1), "f"], "1221-02-28T00:00:00.000Z" ],
-    [ ["1221-3-01Z", 1, "day"], "1221-02-28T00:00:00.000Z" ],
-    [ ["1221-3-01Z", "P1D"], "1221-02-28T00:00:00.000Z" ],
-    [ ["2001-03-26 05:06:07.890", "P1Y2M3W4DT5H6M7.890S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2001-03-26 05:06:07.890", "P1Y2M3W4DT5H6M7.89S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.100", "PT0.1S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.100", "PT0.10S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.100", "PT0.100S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.010", "PT0.01S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.010", "PT0.010S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.001", "PT0.001S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2000-01-01 00:00:00.000", "PT0.000S"], "2000-01-01T00:00:00.000Z" ],
-    [ ["2015-12-31 00:00:00.000", -1, "day"], "2016-01-01T00:00:00.000Z" ],
-    [ ["2015-12-31 00:00:00.000z", -1, "day"], "2016-01-01T00:00:00.000Z" ],
-    [ ["2015-12-31T00:00:00.000Z", -1, "day"], "2016-01-01T00:00:00.000Z" ],
-    [ ["2016-1Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ ["2016-1z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ ["2016-1-1z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ ["2016-01-01Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ ["  2016-01-01Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ ["  2016-01-01z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
-    [ [1399395674000, 365, "days"], "2013-05-06T17:01:14.000Z" ],
-    [ [1430931674000, 365, "days"], "2014-05-06T17:01:14.000Z" ], /* leap year */
-    [ [60123, 7, "days"], "1969-12-25T00:01:00.123Z" ],
-    [ [1, -1, "f"], "1970-01-01T00:00:00.002Z" ],
-    [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
-  ];
-
-  values.forEach(function (value) {
-    let actual = getQueryResults(`RETURN NOOPT(DATE_SUBTRACT(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
-
-    actual = getQueryResults(`RETURN NOOPT(V8(DATE_SUBTRACT(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
-  });
-},
-
-testDateDiffInvalid() {
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF())");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF()))");
-
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 1, 1, 1))");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 1, 1, 1)))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(null, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(null, 1, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, null, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, null, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, null))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, null)))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'y', null))");
-  // assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'y', []])))"); // js version accepts non bool values
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'yo'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'yo')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(false, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(false, 1, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, true, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, true, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF([], 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF([], 1, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, [], 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, [], 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF({}, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF({}, 1, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, {}, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, {}, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF('', 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF('', 1, 'y')))");
-
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, '', 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, '', 'y')))");
-},
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_SUBTRACT(DATE_NOW(), {}, 'year'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_SUBTRACT(DATE_NOW(), {}, 'year')))");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_subtract function
 ////////////////////////////////////////////////////////////////////////////////
 
-testDateDiff() {
-  const values = [
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "milliseconds", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "millisecond", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "f", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "seconds", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "second", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "s", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minutes", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minute", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "i", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hours", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hour", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "h", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "days", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "day", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "d", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "weeks", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "week", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "w", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "months", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "month", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "m", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "years", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "year", true], 0 ],
-    [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "y", true], 0 ],
+    testDateSubtract() {
+      const values = [
+        [ ["2000-05-01", 2, "days"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-05-01Z", "P2D"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2000-05-01Z", 2, "days"], "2000-04-29T00:00:00.000Z" ],
+        [ ["2001-01-01", 1, "day"], "2000-12-31T00:00:00.000Z" ],
+        [ ["2001-01-01Z", 1, "day"], "2000-12-31T00:00:00.000Z" ],
+        [ ["2001-01-01Z", 1, "d"], "2000-12-31T00:00:00.000Z" ],
+        [ ["2001-01-01Z", "P1D"], "2000-12-31T00:00:00.000Z" ],
+        [ ["2101-03-31", "P3M"], "2100-12-31T00:00:00.000Z" ],
+        [ ["2101-03-31", 3, "months"], "2100-12-31T00:00:00.000Z" ],
+        [ ["2101-03-31Z", 3, "month"], "2100-12-31T00:00:00.000Z" ],
+        [ ["2101-03-31", 3, "m"], "2100-12-31T00:00:00.000Z" ],
+        [ ["2100-10-01Z", -3, "m"], "2101-01-01T00:00:00.000Z" ],
+        [ ["2012-02-12 13:34:12", 10, "minutes"], "2012-02-12T13:24:12.000Z" ],
+        [ ["2012-02-12 13:34:12Z", 10, "i"], "2012-02-12T13:24:12.000Z" ],
+        [ ["2012-02-12 13:34:12Z", "PT10M"], "2012-02-12T13:24:12.000Z" ],
+        [ ["2012-02-13 00:00:00.000", 9, "milliseconds"], "2012-02-12T23:59:59.991Z" ],
+        [ ["2012-02-13 00:00:00.000", 9, "f"], "2012-02-12T23:59:59.991Z" ],
+        [ ["2012-02-13 00:00:00.000Z", 9, "f"], "2012-02-12T23:59:59.991Z" ],
+        [ ["2012-02-13 00:00:00.000Z", "PT0.009S"], "2012-02-12T23:59:59.991Z" ],
+        [ ["2013-02-12", "P1Y"], "2012-02-12T00:00:00.000Z" ],
+        [ ["2020-02-12", 8, "years"], "2012-02-12T00:00:00.000Z" ],
+        [ ["2020-02-12Z", 8, "year"], "2012-02-12T00:00:00.000Z" ],
+        [ ["2020-02-12T13:24:12Z", 8, "y"], "2012-02-12T13:24:12.000Z" ],
+        [ ["2112-02-12Z", "P100Y"], "2012-02-12T00:00:00.000Z" ],
+        [ ["1912-02-12Z", -100, "years"], "2012-02-12T00:00:00.000Z" ],
+        [ ["1912-2-12Z", -100, "years"], "2012-02-12T00:00:00.000Z" ],
+        [ ["1910-01-02T08:04:05Z", 5, "hours"], "1910-01-02T03:04:05.000Z" ],
+        [ ["1910-01-02 08:04:05Z", 5, "hour"], "1910-01-02T03:04:05.000Z" ],
+        [ ["1910-01-02 08:04:05Z", "PT5H"], "1910-01-02T03:04:05.000Z" ],
+        [ ["1910-01-02 05:00:00", 5, "hours"], "1910-01-02T00:00:00.000Z" ],
+        [ ["1910-01-02 05:00:00Z", 5, "hours"], "1910-01-02T00:00:00.000Z" ],
+        [ ["1910-01-02 05:00:00Z", "PT5H"], "1910-01-02T00:00:00.000Z" ],
+        [ ["2015-03-01Z", 1, "w"], "2015-02-22T00:00:00.000Z" ],
+        [ ["2015-03-01Z", 1, "weeks"], "2015-02-22T00:00:00.000Z" ],
+        [ ["2015-03-01Z", 1, "week"], "2015-02-22T00:00:00.000Z" ],
+        [ ["2015-03-01Z", "P1W"], "2015-02-22T00:00:00.000Z" ],
+        [ ["2016-02-29Z", 1, "week"], "2016-02-22T00:00:00.000Z" ],
+        [ ["2016-02-29Z", "P1W"], "2016-02-22T00:00:00.000Z" ],
+        [ ["2021-02-28T23:59:59Z", 800*12, "months"], "1221-02-28T23:59:59.000Z" ],
+        [ ["2021-02-28 23:59:59Z", 800, "years"], "1221-02-28T23:59:59.000Z" ],
+        [ ["1221-02-28 23:59:59Z", 1000*(60*60*24-1), "f"], "1221-02-28T00:00:00.000Z" ],
+        [ ["1221-3-01Z", 1, "day"], "1221-02-28T00:00:00.000Z" ],
+        [ ["1221-3-01Z", "P1D"], "1221-02-28T00:00:00.000Z" ],
+        [ ["2001-03-26 05:06:07.890", "P1Y2M3W4DT5H6M7.890S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2001-03-26 05:06:07.890", "P1Y2M3W4DT5H6M7.89S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.100", "PT0.1S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.100", "PT0.10S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.100", "PT0.100S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.010", "PT0.01S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.010", "PT0.010S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.001", "PT0.001S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2000-01-01 00:00:00.000", "PT0.000S"], "2000-01-01T00:00:00.000Z" ],
+        [ ["2015-12-31 00:00:00.000", -1, "day"], "2016-01-01T00:00:00.000Z" ],
+        [ ["2015-12-31 00:00:00.000z", -1, "day"], "2016-01-01T00:00:00.000Z" ],
+        [ ["2015-12-31T00:00:00.000Z", -1, "day"], "2016-01-01T00:00:00.000Z" ],
+        [ ["2016-1Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ ["2016-1z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ ["2016-1-1z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ ["2016-01-01Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ ["  2016-01-01Z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ ["  2016-01-01z", -1, "day"], "2016-01-02T00:00:00.000Z" ],
+        [ [1399395674000, 365, "days"], "2013-05-06T17:01:14.000Z" ],
+        [ [1430931674000, 365, "days"], "2014-05-06T17:01:14.000Z" ], /* leap year */
+        [ [60123, 7, "days"], "1969-12-25T00:01:00.123Z" ],
+        [ [1, -1, "f"], "1970-01-01T00:00:00.002Z" ],
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
+      ];
 
-    [ ["2000-05-01", "2000-05-01 00:00:00.500", "milliseconds", true], 500 ],
-    [ ["2000-05-01", "2000-05-01 00:00:00.500", "millisecond", true], 500 ],
-    [ ["2000-05-01", "2000-05-01 00:00:00.500", "f", true], 500 ],
-    [ ["2000-05-01", "2000-05-01 00:00:59.500", "seconds", true], 59.5 ],
-    [ ["2000-05-01", "2000-05-01 00:00:59.500", "second", true], 59.5 ],
-    [ ["2000-05-01", "2000-05-01 00:01:59.500", "s", true], 119.5 ],
-    [ ["2000-05-01", "2000-05-01 00:00:30.000", "minutes", true], 0.5 ],
-    [ ["2000-05-01", "2000-05-01 00:00:30.000", "minute", true], 0.5 ],
-    [ ["2000-05-01", "2000-05-01 00:00:30.000", "i", true], 0.5 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "minutes", true], 1440 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "minute", true], 1440 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "i", true], 1440 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "hours", true], 24 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "hour", true], 24 ],
-    [ ["2000-05-01", "2000-05-02 00:00:00.000", "h", true], 24 ],
-    [ ["2000-05-01", "2000-05-01 02:30:00.000", "hours", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-01 02:30:00.000", "hour", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-01 02:30:00.000", "h", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-03 12:00:00.000", "days", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-03 12:00:00.000", "day", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-03 12:00:00.000", "d", true], 2.5 ],
-    [ ["2000-05-01", "2000-05-08 00:00:00.000", "weeks", true], 1 ],
-    [ ["2000-05-01", "2000-05-08 00:00:00.000", "week", true], 1 ],
-    [ ["2000-05-01", "2000-05-08 00:00:00.000", "w", true], 1 ],
-    [ ["2000-05-01", "2000-06-01 00:00:00.000", "months", false], 1 ],
-    [ ["2000-05-01", "2000-06-01 00:00:00.000", "month", false], 1 ],
-    [ ["2000-05-01", "2000-06-01 00:00:00.000", "m", false], 1 ],
-    [ ["2000-05-01", "2050-05-01 00:00:00.000", "years", false], 50 ],
-    [ ["2000-05-01", "2050-05-01 00:00:00.000", "year", false], 50 ],
-    [ ["2000-05-01", "2050-05-01 00:00:00.000", "y", false], 50 ],
-    [ ["2000-05-01", "2400-05-01 00:00:00.000", "years", true], 400 ],
-    [ ["2000-05-01", "2400-05-01 00:00:00.000", "year", true], 400 ],
-    [ ["2000-05-01", "2400-05-01 00:00:00.000", "y", true], 400 ],
-    [ ["2000-05-01", "2000-04-30 00:00:00.000", "days", true], -1 ],
-    [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ]
-  ];
+      values.forEach(function (value) {
+        let actual = getQueryResults(`RETURN NOOPT(DATE_SUBTRACT(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
 
-  values.forEach(function (value) {
-    let actual = getQueryResults(`RETURN NOOPT(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
+        actual = getQueryResults(`RETURN NOOPT(V8(DATE_SUBTRACT(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
+      });
+    },
 
-    actual = getQueryResults(`RETURN NOOPT(V8(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
-  });
-},
+    testDateDiffInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF()))");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(null, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(null, 1, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, null, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, null, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, null)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'y', null))");
+      // assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'y', []])))"); // js version accepts non bool values
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, 1, 'yo'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, 1, 'yo')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(false, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(false, 1, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, true, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, true, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF([], 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF([], 1, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, [], 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, [], 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF({}, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF({}, 1, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_DIFF(1, {}, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_DIFF(1, {}, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF('', 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF('', 1, 'y')))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_DIFF(1, '', 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_DIFF(1, '', 'y')))");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test date_subtract function
+////////////////////////////////////////////////////////////////////////////////
+
+    testDateDiff() {
+      const values = [
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "milliseconds", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "millisecond", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "f", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "seconds", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "second", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "s", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minutes", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "minute", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "i", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hours", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "hour", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "h", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "days", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "day", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "d", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "weeks", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "week", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "w", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "months", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "month", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "m", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "years", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "year", true], 0 ],
+        [ ["2000-05-01T23:48:42.123", "2000-05-01T23:48:42.123Z", "y", true], 0 ],
+
+        [ ["2000-05-01", "2000-05-01 00:00:00.500", "milliseconds", true], 500 ],
+        [ ["2000-05-01", "2000-05-01 00:00:00.500", "millisecond", true], 500 ],
+        [ ["2000-05-01", "2000-05-01 00:00:00.500", "f", true], 500 ],
+        [ ["2000-05-01", "2000-05-01 00:00:59.500", "seconds", true], 59.5 ],
+        [ ["2000-05-01", "2000-05-01 00:00:59.500", "second", true], 59.5 ],
+        [ ["2000-05-01", "2000-05-01 00:01:59.500", "s", true], 119.5 ],
+        [ ["2000-05-01", "2000-05-01 00:00:30.000", "minutes", true], 0.5 ],
+        [ ["2000-05-01", "2000-05-01 00:00:30.000", "minute", true], 0.5 ],
+        [ ["2000-05-01", "2000-05-01 00:00:30.000", "i", true], 0.5 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "minutes", true], 1440 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "minute", true], 1440 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "i", true], 1440 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "hours", true], 24 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "hour", true], 24 ],
+        [ ["2000-05-01", "2000-05-02 00:00:00.000", "h", true], 24 ],
+        [ ["2000-05-01", "2000-05-01 02:30:00.000", "hours", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-01 02:30:00.000", "hour", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-01 02:30:00.000", "h", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-03 12:00:00.000", "days", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-03 12:00:00.000", "day", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-03 12:00:00.000", "d", true], 2.5 ],
+        [ ["2000-05-01", "2000-05-08 00:00:00.000", "weeks", true], 1 ],
+        [ ["2000-05-01", "2000-05-08 00:00:00.000", "week", true], 1 ],
+        [ ["2000-05-01", "2000-05-08 00:00:00.000", "w", true], 1 ],
+        [ ["2000-05-01", "2000-06-01 00:00:00.000", "months", false], 1 ],
+        [ ["2000-05-01", "2000-06-01 00:00:00.000", "month", false], 1 ],
+        [ ["2000-05-01", "2000-06-01 00:00:00.000", "m", false], 1 ],
+        [ ["2000-05-01", "2050-05-01 00:00:00.000", "years", false], 50 ],
+        [ ["2000-05-01", "2050-05-01 00:00:00.000", "year", false], 50 ],
+        [ ["2000-05-01", "2050-05-01 00:00:00.000", "y", false], 50 ],
+        [ ["2000-05-01", "2400-05-01 00:00:00.000", "years", true], 400 ],
+        [ ["2000-05-01", "2400-05-01 00:00:00.000", "year", true], 400 ],
+        [ ["2000-05-01", "2400-05-01 00:00:00.000", "y", true], 400 ],
+        [ ["2000-05-01", "2000-04-30 00:00:00.000", "days", true], -1 ],
+        [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ]
+      ];
+
+      values.forEach(function (value) {
+        let actual = getQueryResults(`RETURN NOOPT(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
+
+        actual = getQueryResults(`RETURN NOOPT(V8(DATE_DIFF(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
+      });
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_compare function
 ////////////////////////////////////////////////////////////////////////////////
 
-testDateCompareInvalid() {
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE())");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE()))");
+    testDateCompareInvalid() {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE())");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE()))");
 
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 1, 1, 1))");
-  assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 1, 1, 1)))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 1, 1, 1))");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 1, 1, 1)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(null, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(null, 1, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(null, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(null, 1, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, null, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, null, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, null, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, null, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, null))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, null)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, null)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', null))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', null)))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', null)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'yo'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'yo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'yo'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'yo')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', 'yo')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', 'yo')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(false, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(false, 1, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(false, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(false, 1, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, true, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, true, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, true, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, true, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE([], 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE([], 1, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE([], 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE([], 1, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, [], 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, [], 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, [], 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, [], 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE({}, 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE({}, 1, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE({}, 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE({}, 1, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, {}, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, {}, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, {}, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(V8(DATE_COMPARE(1, {}, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE('', 1, 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE('', 1, 'y')))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE('', 1, 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE('', 1, 'y')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, '', 'y'))");
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, '', 'y')))");
-},
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, '', 'y'))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, '', 'y')))");
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test date_compare function
 ////////////////////////////////////////////////////////////////////////////////
 
-testDateCompare() {
-  const values = [
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "years"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "year"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "year"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "y"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "y"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "months"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "month"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "month"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "m"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "m"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "days"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "day"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "day"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "d"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "d"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hour"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "hour"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "h"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "h"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minute"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "minute"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "i"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "i"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "second"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "second"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "s"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "s"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "millisecond"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "millisecond"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "f"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "f"], false ],
+    testDateCompare() {
+      const values = [
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "years"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "year"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "year"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "y"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "y"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "months"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "month"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "month"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "m"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.156", "m"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "days"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "day"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "day"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "d"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-26T12:13:14.156", "d"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hour"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "hour"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "h"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T13:13:14.156", "h"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minute"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "minute"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "i"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:14:14.156", "i"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "second"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "second"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "s"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:15.156", "s"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "millisecond"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "millisecond"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "f"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-05-25T12:13:14.157", "f"], false ],
 
 
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T13:14:15.157", "years", "months"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "months"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T13:14:15.157", "months", "days"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "days"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-25T12:14:15.157", "days", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:15.157", "hours", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.157", "minutes", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:14.156", "seconds", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "seconds", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T13:14:15.157", "years", "days"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "days"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:14:15.157", "months", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:15.157", "days", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:14.157", "hours", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:13:14.156", "minutes", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:14:15.157", "years", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:15.157", "months", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.157", "days", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:14.156", "hours", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:15.157", "years", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.157", "months", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.156", "days", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.157", "years", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "months", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T13:14:15.157", "years", "months"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "months"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T13:14:15.157", "months", "days"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "days"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-25T12:14:15.157", "days", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:15.157", "hours", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.157", "minutes", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:14.156", "seconds", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "seconds", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T13:14:15.157", "years", "days"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "days"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:14:15.157", "months", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:15.157", "days", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:14.157", "hours", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:13:14.156", "minutes", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:14:15.157", "years", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:15.157", "months", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.157", "days", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T12:13:14.156", "hours", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:15.157", "years", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.157", "months", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-25T12:13:14.156", "days", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.157", "years", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2011-06-25T12:13:14.156", "months", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
 
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "months"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "months"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "days"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "days"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "days"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "days"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "hours"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "hours"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "minutes"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "minutes"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "seconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "seconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
-    [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
-    [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
-  ];
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "months"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "months"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "days"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "days"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "days"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "days"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "minutes", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "minutes", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "hours"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "hours"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "hours", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "hours", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "minutes"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "minutes"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "days", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "days", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "seconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "seconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
+      ];
 
-  values.forEach(function (value) {
-    let actual = getQueryResults(`RETURN NOOPT(DATE_COMPARE(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
+      values.forEach(function (value) {
+        let actual = getQueryResults(`RETURN NOOPT(DATE_COMPARE(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
 
-    actual = getQueryResults(`RETURN NOOPT(V8(DATE_COMPARE(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
-        value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-    assertEqual( [ value[1] ], actual);
-  });
-},
+        actual = getQueryResults(`RETURN NOOPT(V8(DATE_COMPARE(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
+            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
+        assertEqual( [ value[1] ], actual);
+      });
+    },
 
 // TODO: DATE_FORMAT()
 

@@ -450,6 +450,7 @@ void AqlFunctionFeature::addDateFunctions() {
        true, &Functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", true, false,
        true, true, &Functions::DateDaysInMonth});
+  add({"DATE_TRUNC", ".,.", true, false, true, true, &Functions::DateTrunc});
   add({"DATE_ADD", ".,.|.", true, false, true, true, &Functions::DateAdd});
   add({"DATE_SUBTRACT", ".,.|.", true, false, true,
        true, &Functions::DateSubtract});
