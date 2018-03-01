@@ -169,12 +169,18 @@ RestRepairHandler::repairDistributeShardsLike() {
       // TODO execute operations
       for (auto const& op : repairOperations) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
-        << "[tg] op type = " << op.which();
+        << "[tg] op type = "
+        << (op.which() == 0 ? "MoveShardOperation" :
+            op.which() == 1 ? "AgencyWriteTransaction" :
+            "(unknown)"
+        );
 
         switch(op.which()) {
           case 0: {
             MoveShardOperation msop = boost::get<MoveShardOperation>(op);
-            response.add(VPackValue(msop.collection));
+            std::stringstream msopStringstream;
+            msopStringstream << msop;
+            response.add(VPackValue(msopStringstream.str()));
           }
             break;
           case 1: {
