@@ -374,7 +374,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
   switch (_contentType) {
     case rest::ContentType::VPACK: {
       
-      if (!_vpackBody) { // will contain sanitized data
+      if (_vpackBody == nullptr) { // will contain sanitized data
         LOG_TOPIC(ERR, Logger::FIXME) << "Slow-Path VPackBody " << _vpackBody->byteSize();
         _vpackBody = new VPackBuffer<uint8_t>(inputLength);// reserve space already
       }

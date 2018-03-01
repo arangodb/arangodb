@@ -542,7 +542,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
     // smaller batch sizes should work better here
-    trx.state()->options().intermediateCommitCount = 256;
+    trx.state()->options().intermediateCommitCount = 128;
 
     Result res = trx.begin();
 
