@@ -165,6 +165,7 @@ void checkAgainstExpectedOperations(
 }
 
 // TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
+// TODO Add a test with a deleted collection
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 

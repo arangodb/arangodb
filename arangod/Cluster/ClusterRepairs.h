@@ -113,10 +113,7 @@ struct Collection {
     ShardID const &shardId
   ) const;
 
-  // maybe more?
-  // isSystem
-  // numberOfShards
-  // deleted
+  Collection() = delete;
 };
 
 struct MoveShardOperation {

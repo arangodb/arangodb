@@ -287,7 +287,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
       continue;
     }
 
-    struct Collection& proto = collections[collection.distributeShardsLike.get()];
+    struct Collection& proto = collections.at(collection.distributeShardsLike.get());
 
     LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
     << "findCollectionsToFix: comparing against distributeShardsLike collection "
@@ -551,7 +551,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   std::list<RepairOperation> repairOperations;
 
   for (auto const& collectionIdIterator : collectionsToFix) {
-    struct Collection& collection = collectionMap[collectionIdIterator];
+    struct Collection& collection = collectionMap.at(collectionIdIterator);
     LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
     << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing collection "
     << collection.fullName();
@@ -570,7 +570,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       protoId = collection.repairingDistributeShardsLike.get();
     }
 
-    struct Collection& proto = collectionMap[protoId];
+    struct Collection& proto = collectionMap.at(protoId);
 
     for (auto const& zippedShardsIterator : boost::combine(collection.shardsById, proto.shardsById)) {
       auto const &shardIterator = zippedShardsIterator.get<0>();
