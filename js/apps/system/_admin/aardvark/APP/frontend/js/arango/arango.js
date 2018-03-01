@@ -1093,6 +1093,12 @@
             if (rwCallback) {
               rwCallback(false);
             }
+          } else if (data.result === 'none') {
+            if (!frontendConfig.authenticationEnabled) {
+              if (rwCallback) {
+                rwCallback(false);
+              }
+            }
           }
         },
         error: function (data) {
