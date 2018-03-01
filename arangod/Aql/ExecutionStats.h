@@ -60,6 +60,9 @@ struct ExecutionStats {
     httpRequests += summand.httpRequests;
     if (summand.fullCount > 0) {
       // fullCount may be negative, don't add it then
+      if (fullCount == -1) {
+        fullCount = 0;
+      }
       fullCount += summand.fullCount;
     }
     // intentionally no modification of executionTime
