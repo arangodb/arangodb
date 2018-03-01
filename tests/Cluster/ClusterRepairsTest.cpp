@@ -203,7 +203,6 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
       }
     }
 
-// TODO add a test with an existing repairingDistributeShardsLike attribute
     GIVEN("An agency where a follower-shard has erroneously ordered DBServers") {
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
       DistributeShardsLikeRepairer repairer;
@@ -274,6 +273,75 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
       }
     }
 
+    GIVEN("An agency where a collection has repairingDistributeShardsLike, but nothing else is broken") {
+#include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
+      DistributeShardsLikeRepairer repairer;
+
+      // TODO the following code is nearly identical to the code for the first GIVEN block - can we reuse it?
+      std::list<RepairOperation> repairOperations
+        = repairer.repairDistributeShardsLike(
+          VPackSlice(planCollections->data()),
+          VPackSlice(supervisionHealth4Healthy0Bad->data())
+        );
+
+      std::vector<RepairOperation>& expectedRepairOperations
+        = expectedOperationsWithRepairingDistributeShardsLike;
+
+      {
+        std::stringstream expectedOperationsStringStream;
+        expectedOperationsStringStream << "[" << std::endl;
+        for(auto const& it : expectedRepairOperations) {
+          expectedOperationsStringStream << it << "," << std::endl;
+        }
+        expectedOperationsStringStream << "]";
+
+        std::stringstream repairOperationsStringStream;
+        repairOperationsStringStream << "[" << std::endl;
+        for(auto const& it : repairOperations) {
+          repairOperationsStringStream << it << "," << std::endl;
+        }
+        repairOperationsStringStream << "]";
+
+        INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
+        INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
+
+        REQUIRE(repairOperations.size() == expectedRepairOperations.size());
+      }
+
+      { // Transaction IDs shall be unique.
+        std::set<std::string> transactionClientIds;
+        for (auto &it : repairOperations) {
+          if (it.type() != typeid(AgencyWriteTransaction)) {
+            continue;
+          }
+
+          bool inserted;
+          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+          std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
+          REQUIRE(inserted);
+
+          // Overwrite the client ID for the following comparisons to work
+          transaction.clientId = "dummy-client-id";
+        }
+
+        // Overwrite expected client IDs as well
+        for (auto &it : expectedRepairOperations) {
+          if (it.type() != typeid(AgencyWriteTransaction)) {
+            continue;
+          }
+          AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+
+          transaction.clientId = "dummy-client-id";
+        }
+      }
+
+      for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
+        auto const &repairOpIt = it.get<0>();
+        auto const &expectedRepairOpIt = it.get<1>();
+
+        REQUIRE(repairOpIt == expectedRepairOpIt);
+      }
+    }
 
   } catch (...) {
     // restore old manager

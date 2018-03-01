@@ -266,10 +266,11 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
     << "findCollectionsToFix: checking collection " << collection.fullName();
 
     if (collection.repairingDistributeShardsLike) {
-      // TODO Reduce loglevel and rewrite message as soon as this is tested
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "findCollectionsToFix: repairingDistributeShardsLike exists, adding "
-      << collection.fullName();
+      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      << "findCollectionsToFix: repairs on collection " << collection.fullName()
+      << " were already started earlier, but are unfinished "
+      << "(attribute repairingDistributeShardsLike exists). "
+      << "Adding it to the list of collections to fix.";
       collectionsToFix.emplace_back(collectionId);
       continue;
     }
@@ -549,9 +550,11 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing collection "
     << collection.fullName();
 
-    repairOperations.push_back(
-      createRenameDistributeShardsLikeAttributeTransaction(collection)
-    );
+    if (! collection.repairingDistributeShardsLike) {
+      repairOperations.push_back(
+        createRenameDistributeShardsLikeAttributeTransaction(collection)
+      );
+    }
 
     ShardID protoId;
     if (collection.distributeShardsLike) {
