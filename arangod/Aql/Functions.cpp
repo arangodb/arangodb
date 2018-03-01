@@ -1611,8 +1611,8 @@ AqlValue Functions::DateNow(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintUInt(dur));
 }
 
-bool Functions::ParameterToTimePoint(Query const* query,
-                                     transaction::Methods const* trx,
+bool Functions::ParameterToTimePoint(Query* query,
+                                     transaction::Methods* trx,
                                      VPackFunctionParameters const& parameters,
                                      tp_sys_clock_ms& tp,
                                      std::string const& functionName,
@@ -1756,23 +1756,19 @@ AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
 }
 
 /// @brief function IS_DATESTRING
-AqlValue Functions::IsDatestring(arangodb::aql::Query* query,
-                                 transaction::Methods* trx,
+AqlValue Functions::IsDatestring(arangodb::aql::Query*,
+                                 transaction::Methods*,
                                  VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
-  if (!value.isString()) {
-    return AqlValue(AqlValueHintBool(false));
+  bool isValid = false;
+
+  if (value.isString()) {
+    tp_sys_clock_ms tp; // unused
+    isValid = basics::parse_dateTime(value.slice().copyString(), tp);
   }
 
-  tp_sys_clock_ms tp;
-
-  return AqlValue(AqlValueHintBool(
-    basics::parse_dateTime(value.slice().copyString(), tp)
-  ));
+  return AqlValue(AqlValueHintBool(isValid));
 }
 
 /// @brief function DATE_DAYOFWEEK
@@ -2043,16 +2039,13 @@ AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
 AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
                                     transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYS_IN_MONTH", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-   auto yearMonthDay = year_month_day(floor<days>(tp));
+  auto yearMonthDay = year_month_day(floor<days>(tp));
 
   return AqlValue(AqlValueHintUInt(
     static_cast<uint64_t>(unsigned(

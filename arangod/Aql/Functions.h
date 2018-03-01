@@ -92,12 +92,12 @@ struct Functions {
                                    VPackFunctionParameters const& parameters,
                                    char const* funcName, bool recursive);
 
-    static bool ParameterToTimePoint(arangodb::aql::Query const* query,
-                                 transaction::Methods const* trx,
-                                 VPackFunctionParameters const& parameters,
-                                 tp_sys_clock_ms& tp,
-                                 std::string const& functionName,
-                                 size_t parameterIndex);
+    static bool ParameterToTimePoint(arangodb::aql::Query* query,
+                                     transaction::Methods* trx,
+                                     VPackFunctionParameters const& parameters,
+                                     tp_sys_clock_ms& tp,
+                                     std::string const& functionName,
+                                     size_t parameterIndex);
 
   public:
    /// @brief helper function. not callable as a "normal" AQL function
@@ -188,8 +188,21 @@ struct Functions {
                                VPackFunctionParameters const&);
    static AqlValue DateTimestamp(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
-   static AqlValue IsDatestring(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+   /**
+    * @brief Tests is the first given parameter is a valid date string
+    * format.
+    *
+    * @param query The AQL Query
+    * @param trx The ongoing transaction
+    * @param params List of input parameters
+    *
+    * @return AQLValue(true) iff the first input parameter is a string,r
+    *         and is of valid date format. (May return true on invalid dates
+    *         like 2018-02-31)
+    */
+   static AqlValue IsDatestring(arangodb::aql::Query* query,
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& params);
    static AqlValue DateDayOfWeek(arangodb::aql::Query*, transaction::Methods*,
                                  VPackFunctionParameters const&);
    static AqlValue DateYear(arangodb::aql::Query*, transaction::Methods*,
