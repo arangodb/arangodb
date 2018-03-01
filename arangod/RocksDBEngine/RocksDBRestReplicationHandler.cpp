@@ -729,7 +729,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase->name(), collection, AuthLevel::RO)) {
+      !exec->canUseCollection(_vocbase->name(), collection, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_FORBIDDEN);
     return;

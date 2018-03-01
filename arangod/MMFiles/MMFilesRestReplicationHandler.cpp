@@ -41,7 +41,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-#include "VocBase/AuthInfo.h"
+#include "Auth/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -996,7 +996,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
 
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase->name(), c->name(), AuthLevel::RO)) {
+      !exec->canUseCollection(_vocbase->name(), c->name(), auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN,
                   TRI_ERROR_FORBIDDEN);
     return;
