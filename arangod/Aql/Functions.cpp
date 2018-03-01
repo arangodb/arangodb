@@ -71,6 +71,31 @@ using namespace arangodb::aql;
 using namespace std::chrono;
 using namespace date;
 
+enum DateSelectionModifier {
+  INVALID = 0,
+  MILLI,
+  SECOND,
+  MINUTE,
+  HOUR,
+  DAY,
+  MONTH,
+  YEAR
+};
+static_assert(DateSelectionModifier::INVALID < DateSelectionModifier::MILLI,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::MILLI < DateSelectionModifier::SECOND,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::SECOND < DateSelectionModifier::MINUTE,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::MINUTE < DateSelectionModifier::HOUR,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::HOUR < DateSelectionModifier::DAY,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::DAY < DateSelectionModifier::MONTH,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
+              "incorrect date selection order");
+
 /// @brief convert a number value into an AqlValue
 static inline AqlValue NumberValue(transaction::Methods* trx, int value) {
   return AqlValue(AqlValueHintInt(value));
@@ -88,6 +113,67 @@ static AqlValue NumberValue(transaction::Methods* trx, double value, bool nullif
   }
   
   return AqlValue(AqlValueHintDouble(value));
+}
+
+static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
+  if (!flag.isString()) {
+    return INVALID;
+  }
+
+  std::string flagStr = flag.copyString();
+  if (flagStr.empty()) {
+    return INVALID;
+  }
+  TRI_ASSERT(flagStr.size() >= 1);
+
+  std::transform(flagStr.begin(), flagStr.end(), flagStr.begin(), ::tolower);
+  switch (flagStr.front()) {
+    case 'y':
+      if (flagStr == "years" || flagStr == "year" || flagStr == "y") {
+        return YEAR;
+      }
+      break;
+    case 'm':
+      if (flagStr == "months" || flagStr == "month" || flagStr == "m") {
+        return MONTH;
+      }
+      // Can be minute as well
+      if (flagStr == "minutes" || flagStr == "minute") {
+        return MINUTE;
+      }
+      // Can be millisecond as well
+      if (flagStr == "milliseconds" || flagStr == "millisecond") {
+        return MILLI;
+      }
+      break;
+    case 'd':
+      if (flagStr == "days" || flagStr == "day" || flagStr == "d") {
+        return DAY;
+      }
+      break;
+    case 'h':
+      if (flagStr == "hours" || flagStr == "hour" || flagStr == "h") {
+        return HOUR;
+      }
+      break;
+    case 's':
+      if (flagStr == "seconds" || flagStr == "second" || flagStr == "s") {
+        return SECOND;
+      }
+      break;
+    case 'i':
+      if (flagStr == "i") {
+        return MINUTE;
+      }
+      break;
+      case 'f':
+      if (flagStr == "f") {
+        return MILLI;
+      }
+      break;
+  }
+  // If we get here the flag is invalid
+  return INVALID;
 }
 
 /// @brief validate the number of parameters
@@ -2319,134 +2405,100 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-
   AqlValue rangeStartValue = ExtractFunctionParameterValue(parameters, 2);
 
-  if (!rangeStartValue.isString()) {
-    RegisterInvalidArgumentWarning(query, "DATE_COMPARE");
+  DateSelectionModifier rangeStart =
+      ParseDateModifierFlag(rangeStartValue.slice());
+
+  if (rangeStart == INVALID) {
+    RegisterWarning(query, "DATE_COMPARE",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
   }
 
-  std::string rangeStartStr = rangeStartValue.slice().copyString();
-  std::transform(rangeStartStr.begin(), rangeStartStr.end(), rangeStartStr.begin(), ::tolower);
-
-  uint8_t rangeStart;
-  if (rangeStartStr == "years" || rangeStartStr == "year" || rangeStartStr == "y") {
-    rangeStart = 6;
-  } else if (rangeStartStr == "months" || rangeStartStr == "month" || rangeStartStr == "m") {
-    rangeStart = 5;
-  } else if (rangeStartStr == "days" || rangeStartStr == "day" || rangeStartStr == "d") {
-    rangeStart = 4;
-  } else if (rangeStartStr == "hours" || rangeStartStr == "hour" || rangeStartStr == "h") {
-    rangeStart = 3;
-  } else if (rangeStartStr == "minutes" || rangeStartStr == "minute" || rangeStartStr == "i") {
-    rangeStart = 2;
-  } else if (rangeStartStr == "seconds" || rangeStartStr == "second" || rangeStartStr == "s") {
-    rangeStart = 1;
-  } else if (rangeStartStr == "milliseconds" || rangeStartStr == "millisecond" || rangeStartStr == "f") {
-    rangeStart = 0;
-  } else {
-    RegisterWarning(query, "DATE_COMPARE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    return AqlValue(AqlValueHintNull());
-  }
-
-  uint8_t rangeEnd;
+  DateSelectionModifier rangeEnd = rangeStart;
   if (parameters.size() == 4) {
     AqlValue rangeEndValue = ExtractFunctionParameterValue(parameters, 3);
+    rangeEnd = ParseDateModifierFlag(rangeEndValue.slice());
 
-    if (!rangeEndValue.isString()) {
-      RegisterInvalidArgumentWarning(query, "DATE_COMPARE");
+    if (rangeEnd == INVALID) {
+      RegisterWarning(query, "DATE_COMPARE",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
+  }
+  auto ymd1 = year_month_day{floor<days>(tp1)};
+  auto ymd2 = year_month_day{floor<days>(tp2)};
+  auto time1 = make_time(tp1 - floor<days>(tp1));
+  auto time2 = make_time(tp2 - floor<days>(tp2));
 
-    std::string rangeEndStr = rangeEndValue.slice().copyString();
-    std::transform(rangeEndStr.begin(), rangeEndStr.end(), rangeEndStr.begin(), ::tolower);
-
-    if (rangeEndStr == "years" || rangeEndStr == "year" || rangeEndStr == "y") {
-      rangeEnd = 0;
-    } else if (rangeEndStr == "months" || rangeEndStr == "month" || rangeEndStr == "m") {
-      rangeEnd = 1;
-    } else if (rangeEndStr == "days" || rangeEndStr == "day" || rangeEndStr == "d") {
-      rangeEnd = 2;
-    } else if (rangeEndStr == "hours" || rangeEndStr == "hour" || rangeEndStr == "h") {
-      rangeEnd = 3;
-    } else if (rangeEndStr == "minutes" || rangeEndStr == "minute" || rangeEndStr == "i") {
-      rangeEnd = 4;
-    } else if (rangeEndStr == "seconds" || rangeEndStr == "second" || rangeEndStr == "s") {
-      rangeEnd = 5;
-    } else if (rangeEndStr == "milliseconds" || rangeEndStr == "millisecond" || rangeEndStr == "f") {
-      rangeEnd = 6;
-    } else {
-      RegisterWarning(query, "DATE_COMPARE", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-  } else {
-    rangeEnd = std::abs(rangeStart - 6);
+  // This switch has the following feature:
+  // It is ordered by the Highest value of
+  // the Modifier (YEAR) and flows down to
+  // lower values.
+  // In each case if the value is significant
+  // (above or equal the endRange) we compare it.
+  // If this part is not equal we return false.
+  // Otherwise we fall down to the next part.
+  // As soon as we are below the endRange
+  // we bail out.
+  // So all Fall throughs here are intentional
+  switch (rangeStart) {
+    case YEAR:
+      // Always check for the year
+      if (ymd1.year() != ymd2.year()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case MONTH:
+      if (rangeEnd > MONTH) {
+        break;
+      }
+      if (ymd1.month() != ymd2.month()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case DAY:
+      if (rangeEnd > DAY) {
+        break;
+      }
+      if (ymd1.day() != ymd2.day()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case HOUR:
+      if (rangeEnd > HOUR) {
+        break;
+      }
+      if (time1.hours() != time2.hours()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case MINUTE:
+      if (rangeEnd > MINUTE) {
+        break;
+      }
+      if (time1.minutes() != time2.minutes()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case SECOND:
+      if (rangeEnd > SECOND) {
+        break;
+      }
+      if (time1.seconds() != time2.seconds()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+    case MILLI:
+      if (rangeEnd > MILLI) {
+        break;
+      }
+      if (time1.subseconds() != time2.subseconds()) {
+        return AqlValue(AqlValueHintBool(false));
+      }
+      break;
+    case INVALID:
+      // Was handled before
+      TRI_ASSERT(false);
   }
 
-  if (rangeStart == 6) { // compare year
-    auto ymd1 = year_month_day{floor<days>(tp1)};
-    auto ymd2 = year_month_day{floor<days>(tp2)};
-
-    if (ymd1.year() != ymd2.year()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart >= 5 && rangeEnd >= 1) { // compare month
-    auto ymd1 = year_month_day{floor<days>(tp1)};
-    auto ymd2 = year_month_day{floor<days>(tp2)};
-
-    if (ymd1.month() != ymd2.month()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart >= 4 && rangeEnd >= 2) { // compare day
-    auto ymd1 = year_month_day{floor<days>(tp1)};
-    auto ymd2 = year_month_day{floor<days>(tp2)};
-
-    if (ymd1.day() != ymd2.day()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart >= 3 && rangeEnd >= 3) { // compare hour
-    auto time1 = make_time(tp1 - floor<days>(tp1));
-    auto time2 = make_time(tp2 - floor<days>(tp2));
-
-    if (time1.hours() != time2.hours()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart >= 2 && rangeEnd >= 4) { // compare minute
-    auto time1 = make_time(tp1 - floor<days>(tp1));
-    auto time2 = make_time(tp2 - floor<days>(tp2));
-
-    if (time1.minutes() != time2.minutes()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart >= 1 && rangeEnd >= 5) { // compare second
-    auto time1 = make_time(tp1 - floor<days>(tp1));
-    auto time2 = make_time(tp2 - floor<days>(tp2));
-
-    if (time1.seconds() != time2.seconds()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
-  if (rangeStart == 0 && rangeEnd == 6) { // compare millisecond
-    auto time1 = make_time(tp1 - floor<days>(tp1));
-    auto time2 = make_time(tp2 - floor<days>(tp2));
-
-    if (time1.subseconds() != time2.subseconds()) {
-      return AqlValue(AqlValueHintBool(false));
-    }
-  }
-
+  // If we get here all significant places are equal
+  // Name these two dates as equal
   return AqlValue(AqlValueHintBool(true));
 }
 
