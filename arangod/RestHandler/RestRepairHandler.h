@@ -34,7 +34,6 @@ class AsyncJobManager;
 }
 
 namespace rest_repair {
-using VPackBufferPtr = std::shared_ptr<VPackBuffer<uint8_t>>;
 
 enum class JobStatus {
   todo,
@@ -44,38 +43,6 @@ enum class JobStatus {
   missing
 };
 
-template<typename T>
-class TResult : public Result {
- public:
-
-  TResult static success(T val) {
-    return TResult(val, 0);
-  }
-
-  TResult static error(int errorNumber) {
-    return TResult(boost::none, errorNumber);
-  }
-
-  TResult static error(int errorNumber, std::string const &errorMessage) {
-    return TResult(boost::none, errorNumber, errorMessage);
-  }
-
-  explicit TResult(Result const &other)
-    : Result(other) {}
-
-  T get() {
-    return _val.get();
-  }
-
- protected:
-  boost::optional<T> _val;
-
-  TResult(boost::optional<T> val_, int errorNumber)
-    : Result(errorNumber), _val(val_) {}
-
-  TResult(boost::optional<T> val_, int errorNumber, std::string const &errorMessage)
-    : Result(errorNumber, errorMessage), _val(val_) {}
-};
 }
 
 class RestRepairHandler : public arangodb::RestBaseHandler {
@@ -108,14 +75,14 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   );
 
   template <std::size_t N>
-  rest_repair::TResult<std::array<rest_repair::VPackBufferPtr, N>>
-    getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
+  cluster_repairs::TResult<std::array<cluster_repairs::VPackBufferPtr, N>>
+  getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
 
-  rest_repair::TResult<rest_repair::VPackBufferPtr>
-    getFromAgency(std::string const& agencyKey);
+  cluster_repairs::TResult<cluster_repairs::VPackBufferPtr>
+  getFromAgency(std::string const& agencyKey);
 
-  rest_repair::TResult<rest_repair::JobStatus>
-    getJobStatusFromAgency(std::string const &jobId);
+  cluster_repairs::TResult<rest_repair::JobStatus>
+  getJobStatusFromAgency(std::string const &jobId);
 };
 
 }

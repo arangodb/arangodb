@@ -43,6 +43,41 @@ class Slice;
 namespace cluster_repairs {
 
 using DBServers = std::vector<ServerID>;
+using VPackBufferPtr = std::shared_ptr<VPackBuffer<uint8_t>>;
+
+template<typename T>
+class TResult : public arangodb::Result {
+ public:
+
+  TResult static success(T val) {
+    return TResult(val, 0);
+  }
+
+  TResult static error(int errorNumber) {
+    return TResult(boost::none, errorNumber);
+  }
+
+  TResult static error(int errorNumber, std::__cxx11::string const &errorMessage) {
+    return TResult(boost::none, errorNumber, errorMessage);
+  }
+
+  explicit TResult(Result const &other)
+    : Result(other) {}
+
+  T get() {
+    return _val.get();
+  }
+
+ protected:
+  boost::optional<T> _val;
+
+  TResult(boost::optional<T> val_, int errorNumber)
+    : Result(errorNumber), _val(val_) {}
+
+  TResult(boost::optional<T> val_, int errorNumber, std::__cxx11::string const &errorMessage)
+    : Result(errorNumber, errorMessage), _val(val_) {}
+};
+
 
 class VersionSort {
   using CharOrInt = boost::variant<char, uint64_t>;
