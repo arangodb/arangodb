@@ -124,9 +124,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      static const std::unordered_set<std::string> EMPTY;
-      auto eb = en->createBlock(*engine, cache, EMPTY);
-
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
@@ -137,14 +134,13 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      engine->addBlock(eb.get());
+      static const std::unordered_set<std::string> EMPTY;
+      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
 
       if (!en->hasParent()) {
         // yes. found a new root!
-        root = eb.get();
+        root = block;
       }
-
-      block = eb.release();
     }
 
     TRI_ASSERT(block != nullptr);
@@ -662,18 +658,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           continue;
         }
 
-        // FIXME refactor API to use smart pointers
-
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb{};
-        {
-          // may throw
-          auto block = node->createBlock(*engine, cache, _includedShards);
-          engine->addBlock(block.get());
-
-          // noexcept
-          eb = block.release();
-        }
+        auto* eb = engine->addBlock(
+          node->createBlock(*engine, cache, _includedShards)
+        );
         TRI_ASSERT(eb);
 
         for (auto const& dep : node->getDependencies()) {
@@ -1423,4 +1411,12 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 
   _blocks.emplace_back(block);
+}
+
+/// @brief add a block to the engine
+ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock>&& block) {
+  TRI_ASSERT(block != nullptr);
+
+  _blocks.emplace_back(block.get());
+  return block.release();
 }
