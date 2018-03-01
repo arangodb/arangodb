@@ -109,7 +109,7 @@ S2Polygon::S2Polygon()
       unindexed_contains_calls_(0) {
 }
 
-S2Polygon::S2Polygon(vector<unique_ptr<S2Loop>> loops, S2Debug override)
+S2Polygon::S2Polygon(vector<unique_ptr<S2Loop>>&& loops, S2Debug override)
     : s2debug_override_(override) {
   InitNested(std::move(loops));
 }

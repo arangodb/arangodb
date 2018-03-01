@@ -54,6 +54,7 @@ class ShapeContainer final {
     EMPTY = 0,
     S2_POINT,
     S2_POLYLINE,
+    S2_LATLNGRECT,
     S2_POLYGON,
     S2_MULTIPOINT,
     S2_MULTIPOLYLINE
@@ -97,11 +98,13 @@ class ShapeContainer final {
   /// contains this region the coordinate
   bool contains(Coordinate const*) const;
   bool contains(S2Polyline const*) const;
+  bool contains(S2LatLngRect const*) const;
   bool contains(S2Polygon const*) const;
   bool contains(ShapeContainer const*) const;
 
   bool intersects(Coordinate const*) const;
   bool intersects(S2Polyline const*) const;
+  bool intersects(S2LatLngRect const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;
 

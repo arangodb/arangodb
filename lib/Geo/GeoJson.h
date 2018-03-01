@@ -36,7 +36,6 @@
 class S2LatLng;
 class S2Loop;
 class S2Polyline;
-class S2Polygon;
 
 namespace arangodb {
 namespace geo {
@@ -74,7 +73,7 @@ Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng);
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
-Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
+Result parsePolygon(velocypack::Slice const& geoJSON, ShapeContainer& region);
 
 Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
 /// @brief parse GeoJson multi linestring

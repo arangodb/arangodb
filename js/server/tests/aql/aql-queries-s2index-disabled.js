@@ -602,7 +602,7 @@ function geoJsonTestSuite() {
   ];
   let emeaKeys = [];
   let rectEmea1 = {"type":"Polygon","coordinates":[[[2,4],[26,4],[26,49],[2,49],[2,4]]]};
-
+  let rectEmea2 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,51],[35,42]]]};
   let rectEmea3 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,50],[35,42]]]};
 
   return {
@@ -650,7 +650,7 @@ function geoJsonTestSuite() {
 
     testContainsCircle2: function () {
       runQuery({
-        string: "FOR x IN @@cc FILTER GEO_DISTANCE([101, 0], x.geometry) < 283489.5838873064 RETURN x._key",
+        string: "FOR x IN @@cc FILTER GEO_DISTANCE([101, 0], x.geometry) < 283439.318405 RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
         },
@@ -710,7 +710,7 @@ function geoJsonTestSuite() {
         string: "FOR x IN @@cc FILTER GEO_CONTAINS(@poly, x.geometry) RETURN x._key",
         bindVars: {
           "@cc": locations.name(),
-          "poly": rectEmea1
+          "poly": rectEmea2
         },
         expected: [emeaKeys[1]]
       });
@@ -728,6 +728,21 @@ function geoJsonTestSuite() {
           "poly": rectEmea1
         },
         expected: emeaKeys
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon2: function () {
+      runQuery({
+        string: "FOR x IN @@cc FILTER GEO_INTERSECTS(@poly, x.geometry) RETURN x._key",
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea2
+        },
+        expected: emeaKeys.slice(0,1)
       });
     },
 

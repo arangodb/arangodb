@@ -79,12 +79,14 @@ arangodb::Result verifyClosedLoop(std::vector<S2Point> const& vertices) {
 
 namespace {
 void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
+  TRI_ASSERT(!vertices.empty());
   for (size_t i = 0; i < vertices.size() - 1; i++) {
     if (vertices[i] == vertices[i + 1]) {
       vertices.erase(vertices.begin() + i + 1);
       i--;
     }
   }
+  TRI_ASSERT(!vertices.empty());
 }
 }  // namespace
 
@@ -166,12 +168,7 @@ Result parseRegion(VPackSlice const& geoJSON, ShapeContainer& region) {
       return res;
     }
     case Type::POLYGON: {
-      auto poly = std::make_unique<S2Polygon>();
-      Result res = parsePolygon(geoJSON, *poly.get());
-      if (res.ok()) {
-        region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
-      }
-      return res;
+      return parsePolygon(geoJSON, region);
     }
     case Type::MULTI_POLYGON:
     case Type::GEOMETRY_COLLECTION:
@@ -205,7 +202,7 @@ Result parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) {
 ///    [ [100.2, 0.2], [100.8, 0.2], [100.8, 0.8], [100.2, 0.8], [100.2, 0.2] ]
 ///   ]
 /// }
-Result parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
+Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
   VPackSlice coordinates = geoJSON;
   if (geoJSON.isObject()) {
     coordinates = geoJSON.get(Fields::kCoordinates);
@@ -214,7 +211,8 @@ Result parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
-
+  size_t n = coordinates.length();
+  
   // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
   // The first element in the array represents the exterior ring. Any subsequent
   // elements
@@ -223,20 +221,43 @@ Result parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
   // -  The first and last positions are equivalent, and they MUST contain
   //    identical values; their representation SHOULD also be identical.
   std::vector<std::unique_ptr<S2Loop>> loops;
-  for (VPackSlice loopPts : VPackArrayIterator(coordinates)) {
-    std::vector<S2Point> vertices;
-    Result res = parsePoints(loopPts, /*geoJson*/ true, vertices);
+  for (VPackSlice loopVertices : VPackArrayIterator(coordinates)) {
+    std::vector<S2Point> vtx;
+    Result res = parsePoints(loopVertices, /*geoJson*/ true, vtx);
     if (res.fail()) {
       return res;
     }
-    res = ::verifyClosedLoop(vertices);  // check last vertices are same
+    res = ::verifyClosedLoop(vtx);  // check last vertices are same
     if (res.fail()) {
       return res;
     }
 
-    ::removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
-    vertices.resize(vertices.size() - 1);  // remove redundant last vertex
-    loops.push_back(std::make_unique<S2Loop>(vertices));
+    ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
+    vtx.resize(vtx.size() - 1);  // remove redundant last vertex
+    
+    if (n == 1) { // rectangle detection
+      if (vtx.size() == 1) {
+        S2LatLng v0(vtx[0]);
+        region.reset(std::make_unique<S2LatLngRect>(v0, v0),
+                     ShapeContainer::Type::S2_LATLNGRECT);
+        return TRI_ERROR_NO_ERROR;
+      } else if (vtx.size() == 4) {
+        S2LatLng v0(vtx[0]), v1(vtx[1]), v2(vtx[2]), v3(vtx[3]);
+        if (v0.lat() == v1.lat() && v1.lng() == v2.lng() &&
+            v2.lat() == v3.lat() && v3.lng() == v0.lng()) {
+          region.reset(std::make_unique<S2LatLngRect>(v0, v3),
+                       ShapeContainer::Type::S2_LATLNGRECT);
+          return TRI_ERROR_NO_ERROR;
+        }
+      }
+    }
+    
+    if (vtx.size() < 3) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon, "
+                    "must have at least 3 distinct vertices");
+    }
+    
+    loops.push_back(std::make_unique<S2Loop>(vtx));
     if (!loops.back()->IsValid()) {  // will check first and last for us
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
     }
@@ -250,16 +271,18 @@ Result parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) {
     }
   }
 
-  /*if (!S2Polygon::IsValid(ptrs)) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid polygon");
-  }*/
+  std::unique_ptr<S2Polygon> poly;
   if (loops.size() == 1) {
-    poly.Init(std::move(loops[0]));
+    poly = std::make_unique<S2Polygon>(std::move(loops[0]));
   } else if (loops.size() > 1) {
-    poly.InitNested(std::move(loops));
+    poly = std::make_unique<S2Polygon>(std::move(loops));
   }
-  TRI_ASSERT(poly.IsValid());
-  return TRI_ERROR_NO_ERROR;
+  if (poly) {
+    TRI_ASSERT(poly->IsValid());
+    region.reset(std::move(poly), ShapeContainer::Type::S2_POLYGON);
+    return TRI_ERROR_NO_ERROR;
+  }
+  return Result(TRI_ERROR_BAD_PARAMETER, "Empty polygons are not allowed");
 }
 
 /// https://tools.ietf.org/html/rfc7946#section-3.1.4

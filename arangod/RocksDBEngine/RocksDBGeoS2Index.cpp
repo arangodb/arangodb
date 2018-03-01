@@ -211,8 +211,7 @@ class RDBNearIterator final : public IndexIterator {
             _iter->Next();
             --k;
           }
-          seek =
-              !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
+          seek = !_iter->Valid() || (cmp->Compare(_iter->key(), bds.start()) < 0);
         }
       }
 

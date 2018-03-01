@@ -70,8 +70,7 @@ ShapeContainer::~ShapeContainer() { delete _data; }
 void ShapeContainer::reset(std::unique_ptr<S2Region>&& ptr, Type tt) noexcept {
   delete _data;
   _type = tt;
-  _data = ptr.get();
-  ptr.release();
+  _data = ptr.release();
 }
 
 void ShapeContainer::reset(S2Region* ptr, Type tt) noexcept {
@@ -228,31 +227,10 @@ static bool PolylineContains(S2Polyline const* ll, S2Point const& pp) {
 
 bool ShapeContainer::contains(Coordinate const* cc) const {
   S2Point pp = S2LatLng::FromDegrees(cc->latitude, cc->longitude).ToPoint();
-  switch (_type) {
-    case ShapeContainer::Type::S2_POINT: {
-      return (static_cast<S2PointRegion const*>(_data))->Contains(pp);
-    }
-    case ShapeContainer::Type::S2_POLYLINE: {
-      return PolylineContains(static_cast<S2Polyline const*>(_data), pp);
-    }
-    case ShapeContainer::Type::S2_POLYGON: {
-      return (static_cast<S2Polygon const*>(_data))->Contains(pp);
-    }
-    case ShapeContainer::Type::S2_MULTIPOINT: {
-      return (static_cast<S2MultiPointRegion const*>(_data))->Contains(pp);
-    }
-    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      S2MultiPolyline const* mpl = static_cast<S2MultiPolyline const*>(_data);
-      for (size_t k = 0; k < mpl->num_lines(); k++) {
-        if (PolylineContains(&mpl->line(k), pp)) {
-          return true;
-        }
-      }
-      // intentional fallthrough
-    }
-    case ShapeContainer::Type::EMPTY:
-      return false;
+  if (_type == ShapeContainer::Type::EMPTY) {
+    return false;
   }
+  return _data->Contains(pp);
 }
 
 bool ShapeContainer::contains(S2Polyline const* other) const {
@@ -265,6 +243,16 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       return ll->ApproxEquals(*other, S1Angle::Radians(1e-6));
+    }
+      
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < other->num_vertices(); k++) {
+        if (!rect->Contains(other->vertex(k))) {
+          return false;
+        }
+      }
+      return true;
     }
 
     case ShapeContainer::Type::S2_POLYGON: {
@@ -294,6 +282,78 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
   }
 }
 
+bool ShapeContainer::contains(S2LatLngRect const* other) const {
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT:
+      if (other->is_point()) {
+        return static_cast<S2PointRegion*>(_data)->point() == other->lo().ToPoint();
+      }
+      return false;
+      
+    case ShapeContainer::Type::S2_POLYLINE: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2Polyline* pl = static_cast<S2Polyline*>(_data);
+        for (int k = 0; k < pl->num_vertices(); k++) {
+          if (pl->vertex(k) == pp) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      return self->Contains(*other);
+    }
+      
+    case ShapeContainer::Type::S2_POLYGON: {
+      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
+      for (int k = 0; k < 4; k++) {
+        if (!poly->Contains(other->GetVertex(k).ToPoint())) {
+          return false;
+        }
+      }
+      return true;
+    }
+      
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2MultiPointRegion* mpr =  static_cast<S2MultiPointRegion*>(_data);
+        for (int k = 0; mpr->num_points() < k; k++) {
+          if (mpr->point(k) == pp)  {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      if (other->is_point()) {
+        S2Point pp = other->lo().ToPoint();
+        S2MultiPolyline* mpl = static_cast<S2MultiPolyline*>(_data);
+        for (size_t k = 0; k < mpl->num_lines(); k++) {
+          S2Polyline const& pl = mpl->line(k);
+          for (int n = 0; n < pl.num_vertices(); n++) {
+            if (pl.vertex(n) == pp) {
+              return true;
+            }
+          }
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::EMPTY:
+      TRI_ASSERT(false);
+      return false;
+  }
+}
+
+
 bool ShapeContainer::contains(S2Polygon const* poly) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
@@ -303,6 +363,18 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
     case ShapeContainer::Type::S2_POLYLINE:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       return false;  // numerically not well defined
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < poly->num_loops(); k++) {
+        S2Loop const* loop = poly->loop(k);
+        for (int n = 0; n < loop->num_vertices(); n++) {
+          if (!rect->Contains(loop->vertex(n))) {
+            return false;
+          }
+        }
+      }
+      return true;
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return (static_cast<S2Polygon const*>(_data))->Contains(poly);
@@ -321,6 +393,9 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return contains(static_cast<S2Polyline const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      return contains(static_cast<S2LatLngRect const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_POLYGON: {
       return contains(static_cast<S2Polygon const*>(cc->_data));
@@ -354,13 +429,13 @@ bool ShapeContainer::intersects(geo::Coordinate const* cc) const {
   return contains(cc);  // same
 }
 
-bool ShapeContainer::intersects(S2Polyline const* otherLine) const {
+bool ShapeContainer::intersects(S2Polyline const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
       // containment is only numerically defined on the endpoints
-      for (int k = 0; k < otherLine->num_vertices(); k++) {
-        if (otherLine->vertex(k) == p) {
+      for (int k = 0; k < other->num_vertices(); k++) {
+        if (other->vertex(k) == p) {
           return true;
         }
       }
@@ -368,14 +443,22 @@ bool ShapeContainer::intersects(S2Polyline const* otherLine) const {
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
-      return ll->Intersects(otherLine);
+      return ll->Intersects(other);
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < other->num_vertices(); k++) {
+        if (rect->Contains(other->vertex(k))) {
+          return true;
+        }
+      }
+      return false;
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      auto cuts = poly->IntersectWithPolyline(*otherLine);
+      auto cuts = poly->IntersectWithPolyline(*other);
       return !cuts.empty();
     }
-
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE:
     case ShapeContainer::Type::EMPTY:
@@ -384,20 +467,62 @@ bool ShapeContainer::intersects(S2Polyline const* otherLine) const {
   }
 }
 
-bool ShapeContainer::intersects(S2Polygon const* otherPoly) const {
+bool ShapeContainer::intersects(S2LatLngRect const* other) const {
+  switch (_type) {
+    case ShapeContainer::Type::S2_POINT:
+    case ShapeContainer::Type::S2_POLYLINE:
+      return contains(other); // same
+      
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      return self->Intersects(*other);
+    }
+      
+    case ShapeContainer::Type::S2_POLYGON: {
+      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
+      for (int k = 0; k < 4; k++) {
+        if (poly->Contains(other->GetVertex(k).ToPoint())) {
+          return true;
+        }
+      }
+      return false;
+    }
+      
+    case ShapeContainer::Type::S2_MULTIPOINT:
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      contains(other); // same
+    }
+      
+    case ShapeContainer::Type::EMPTY:
+      TRI_ASSERT(false);
+      return false;
+  }
+}
+
+
+bool ShapeContainer::intersects(S2Polygon const* poly) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
-      return otherPoly->Contains(p);
+      return poly->Contains(p);
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       LOG_TOPIC(ERR, Logger::FIXME)
           << "intersection with polyline is not well defined";
       return false;  // numerically not well defined
     }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
+      for (int k = 0; k < 4; k++) {
+        if (poly->Contains(rect->GetVertex(k).ToPoint())) {
+          return true;
+        }
+      }
+      return false;
+    }
     case ShapeContainer::Type::S2_POLYGON: {
-      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      return poly->Intersects(otherPoly);
+      S2Polygon const* self = static_cast<S2Polygon const*>(_data);
+      return self->Intersects(poly);
     }
     case ShapeContainer::Type::EMPTY:
     case ShapeContainer::Type::S2_MULTIPOINT:
@@ -416,11 +541,12 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     case ShapeContainer::Type::S2_POLYLINE: {
       return intersects(static_cast<S2Polyline const*>(cc->_data));
     }
-
     case ShapeContainer::Type::S2_POLYGON: {
       return intersects(static_cast<S2Polygon const*>(cc->_data));
     }
-
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      return intersects(static_cast<S2LatLngRect const*>(cc->_data));
+    }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
       for (int k = 0; k < pts->num_points(); k++) {
@@ -430,7 +556,6 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       }
       return false;
     }
-
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
       for (size_t k = 0; k < lines->num_lines(); k++) {
@@ -440,10 +565,8 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       }
       return false;
     }
-
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
       return false;
-      ;
   }
 }

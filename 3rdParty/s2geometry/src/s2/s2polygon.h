@@ -133,7 +133,7 @@ class S2Polygon final : public S2Region {
   //   S2Polygon* polygon = new S2Polygon;
   //   polygon->set_s2debug_override(S2Debug::DISABLE);
   //   polygon->InitNested(loops);
-  explicit S2Polygon(std::vector<std::unique_ptr<S2Loop> > loops,
+  explicit S2Polygon(std::vector<std::unique_ptr<S2Loop>>&& loops,
                      S2Debug override = S2Debug::ALLOW);
 #endif
 
