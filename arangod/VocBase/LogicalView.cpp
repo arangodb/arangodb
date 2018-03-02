@@ -81,14 +81,14 @@ static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   return vid;
 }
 
-static std::string const ReadStringValue(VPackSlice info,
-                                         std::string const& name,
-                                         std::string const& def) {
-  if (!info.isObject()) {
-    return def;
-  }
-  return Helper::getStringValue(info, name, def);
+std::string ReadStringValue(
+    arangodb::velocypack::Slice info,
+    std::string const& name,
+    std::string const& def
+) {
+  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
 }
+
 }  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
@@ -96,12 +96,7 @@ static std::string const ReadStringValue(VPackSlice info,
 ///        modifications and can be freed
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalView::LogicalView(LogicalView const& other)
-    : _id(other.id()),
-      _planId(other.planId()),
-      _type(other.type()),
-      _name(other.name()),
-      _isDeleted(other._isDeleted),
-      _vocbase(other.vocbase()),
+    : LogicalDataSource(other),
       _physical(other.getPhysical()->clone(this, other.getPhysical())) {
   TRI_ASSERT(_physical != nullptr);
 }
@@ -110,12 +105,14 @@ LogicalView::LogicalView(LogicalView const& other)
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
-    : _id(ReadId(info)),
-      _planId(ReadPlanId(info, _id)),
-      _type(ReadStringValue(info, "type", "")),
-      _name(ReadStringValue(info, "name", "")),
-      _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
-      _vocbase(vocbase),
+    : LogicalDataSource(
+        LogicalDataSource::Type::emplace(ReadStringValue(info, "type", "")),
+        vocbase,
+        ReadId(info),
+        ReadPlanId(info, ReadId(info)),
+        ReadStringValue(info, "name", ""),
+        Helper::readBooleanValue(info, "deleted", false)
+      ),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
   TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
@@ -123,7 +120,7 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
   }
 
   // update server's tick value
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_id));
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 }
 
 LogicalView::~LogicalView() {}
@@ -164,42 +161,33 @@ bool LogicalView::IsAllowedName(std::string const& name) {
   return true;
 }
 
-TRI_voc_cid_t LogicalView::planId() const { return _planId; }
+Result LogicalView::rename(std::string&& newName, bool doSync) {
+  auto oldName = name();
 
-std::string LogicalView::name() const {
-  // TODO Activate this lock. Right now we have some locks outside.
-  // READ_LOCKER(readLocker, _lock);
-  return _name;
-}
-
-std::string LogicalView::dbName() const {
-  TRI_ASSERT(_vocbase != nullptr);
-  return _vocbase->name();
-}
-
-bool LogicalView::deleted() const { return _isDeleted; }
-
-void LogicalView::setDeleted(bool newValue) { _isDeleted = newValue; }
-
-void LogicalView::rename(std::string const& newName, bool doSync) {
-  std::string oldName = _name;
   try {
-    _name = newName;
-      
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine != nullptr);
 
+    name(std::move(newName));
+
     if (!engine->inRecovery()) {
-      engine->changeView(_vocbase, _id, this, doSync);
+      engine->changeView(vocbase(), id(), this, doSync);
     }
+  } catch (basics::Exception const& ex) {
+    name(std::move(oldName));
+
+    return ex.code();
   } catch (...) {
-    _name = oldName;
-    throw;
+    name(std::move(oldName));
+
+    return TRI_ERROR_INTERNAL;
   }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 void LogicalView::drop() {
-  _isDeleted = true;
+  deleted(true);
 
   if (getImplementation() != nullptr) {
     getImplementation()->drop();
@@ -226,13 +214,15 @@ void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
   // Meta Information
-  result.add("id", VPackValue(std::to_string(_id)));
-  result.add("name", VPackValue(_name));
-  result.add("type", VPackValue(_type));
+  result.add("id", VPackValue(std::to_string(id())));
+  result.add("name", VPackValue(name()));
+  result.add("type", VPackValue(type().name()));
+
   if (includeSystem) {
-    result.add("deleted", VPackValue(_isDeleted));
+    result.add("deleted", VPackValue(deleted()));
     // Cluster Specific
-    result.add("planId", VPackValue(std::to_string(_planId)));
+    result.add("planId", VPackValue(std::to_string(planId())));
+
     if (getPhysical() != nullptr) {
       // Physical Information
       getPhysical()->getPropertiesVPack(result, includeSystem);
@@ -272,7 +262,7 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
       getPhysical()->persistProperties();
     }
 
-    engine->changeView(_vocbase, _id, this, doSync);
+    engine->changeView(vocbase(), id(), this, doSync);
   }
 
   return implResult;
@@ -288,7 +278,7 @@ void LogicalView::persistPhysicalView() {
   // We have not yet persisted this view
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createView(_vocbase, _id, this);
+  engine->createView(vocbase(), id(), this);
 }
 
 void LogicalView::spawnImplementation(
@@ -296,3 +286,7 @@ void LogicalView::spawnImplementation(
     bool isNew) {
   _implementation = creator(this, parameters.get("properties"), isNew);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

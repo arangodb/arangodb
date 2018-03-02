@@ -52,7 +52,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
 #include "Utils/OperationOptions.h"
-#include "Views/ViewIterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
