@@ -118,8 +118,6 @@ RestRepairHandler::repairDistributeShardsLike() {
 
     VPackSlice planCollections = plan.get("Collections");
 
-
-    //auto returnArray = getFromAgency({"Supervision/Health"});
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
 
     if (healthResult.fail()) {
@@ -136,6 +134,7 @@ RestRepairHandler::repairDistributeShardsLike() {
     VPackSlice supervisionHealth(healthResult.get()->data());
 
     // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
+    // This has to be done per collection...
 
     DistributeShardsLikeRepairer repairer;
     ResultT<std::list<RepairOperation>> repairOperationsResult
@@ -294,7 +293,8 @@ std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& tr
   return ostream;
 }
 
-void RestRepairHandler::executeRepairOperations(
+Result
+RestRepairHandler::executeRepairOperations(
   std::list<RepairOperation> repairOperations
 ) {
   // TODO Maybe wait if there are *any* jobs that were created from repairDistributeShardsLike?
@@ -325,8 +325,7 @@ void RestRepairHandler::executeRepairOperations(
       << "[" << result.errorCode() << "] "
       << result.errorMessage();
 
-      // TODO return error
-      return;
+      return Result(result.errorCode(), result.errorMessage());
     }
 
     // If the transaction posted a job, we wait for it to finish.
@@ -372,29 +371,25 @@ void RestRepairHandler::executeRepairOperations(
               << "RestRepairHandler::executeRepairOperations: "
               << "Job " << jobId << " failed, aborting";
 
-              // TODO return error
-              return;
+              return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
             case JobStatus::missing:
               LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
               << "RestRepairHandler::executeRepairOperations: "
               << "Job " << jobId << " went missing, aborting";
 
-              // TODO return error
-              return;
+              return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
           }
 
         } else
         {
-          // TODO count errors in a row, give up eventually. Or maybe give up directly, as AgencyComm did enough retries already.
-
           LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: "
           << "Failed to get job status: "
           << "[" << jobStatus.errorNumber() << "] "
           << jobStatus.errorMessage();
 
-          return;
+          return jobStatus;
         }
 
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
@@ -434,7 +429,7 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
       return ResultT<
         std::array<VPackBufferPtr, N>
       >::error(
-        TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,
+        result.errorCode(),
         result.errorMessage()
       );
     }

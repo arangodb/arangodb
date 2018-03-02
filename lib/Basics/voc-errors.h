@@ -1677,6 +1677,17 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 
 /// collection some shard and its prototype have an unequal number of DB Servers
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = 5007;
 
+/// 5008:
+/// "move shard job failed during cluster repairs"
+/// Will be raised if a move shard job in the agency failed during cluster repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              = 5008;
+
+/// 5009:
+/// "move shard job disappeared during cluster repairs"
+/// Will be raised if a move shard job in the agency cannot be found anymore
+/// before it finished
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = 5009;
+
 /// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
 /// "Illegal inquiry syntax"
 /// Inquiry handles a list of string clientIds: [<clientId>,...].

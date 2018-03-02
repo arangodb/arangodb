@@ -651,7 +651,7 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
 
   LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::createFixServerOrderTransaction: "
-  << "Fix DBServer order on " << collection.fullName() << "/"  << shardId
+  << "Fixing DBServer order on " << collection.fullName() << "/"  << shardId
   << " to match " << proto.fullName() << "/"  << protoShardId;
 
   DBServers& dbServers = collection.shardsById.at(shardId);

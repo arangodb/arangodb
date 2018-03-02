@@ -68,7 +68,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
  private:
   RestStatus repairDistributeShardsLike();
 
-  void executeRepairOperations(
+  Result executeRepairOperations(
     std::list<cluster_repairs::RepairOperation> list
   );
 
