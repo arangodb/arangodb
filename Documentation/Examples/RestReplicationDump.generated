@@ -4,6 +4,6 @@ HTTP/1.1 200 OK
 x-content-type-options: nosniff
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
-x-arango-replication-lastincluded: 11093
+x-arango-replication-lastincluded: 11075
 
-"{\"tick\":\"11087\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_Wbzvy26--D\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11091\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_Wbzvy26--H\"}}\n{\"tick\":\"11093\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_Wbzvy3---_\"}}\n"
+"{\"tick\":\"11069\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_WcJRaPm--B\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11073\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_WcJRaPm--F\"}}\n{\"tick\":\"11075\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_WcJRaPq--_\"}}\n"
