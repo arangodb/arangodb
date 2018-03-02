@@ -1,7 +1,17 @@
 Active Failover Administration
 ==============================
 
+This _Section_ includes information related to the administration of an _Active Failover_
+setup.
+
+For a general introduction to the ArangoDB _Active Failover_ setup, please refer
+to the _Active Failover_ [chapter](../../Scalability/ActiveFailover/README.md).
+
+Introduction
+------------
+
 The _Active Failover_ setup requires almost no manual administration.
+
 You may still need to replace, upgrade or remove individual nodes
 in an _Active Failover_ setup.
 
