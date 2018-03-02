@@ -728,15 +728,15 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       if (!collection->deleted()) {
-        collection->setDeleted(true);
+        collection->deleted(true);
         try {
           engine->changeCollection(this, collection->cid(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
-          collection->setDeleted(false);
+          collection->deleted(false);
           events::DropCollection(colName, ex.code());
           return ex.code();
         } catch (std::exception const&) {
-          collection->setDeleted(false);
+          collection->deleted(false);
           events::DropCollection(colName, TRI_ERROR_INTERNAL);
           return TRI_ERROR_INTERNAL;
         }
@@ -758,7 +758,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     case TRI_VOC_COL_STATUS_LOADED:
     case TRI_VOC_COL_STATUS_UNLOADING: {
       // collection is loaded
-      collection->setDeleted(true);
+      collection->deleted(true);
 
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync =
@@ -1289,18 +1289,22 @@ int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
 
   _viewsByName.emplace(newName, view);
   _viewsByName.erase(oldName);
-  
+
   // stores the parameters on disk
-  bool const doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-         "Database")
-          ->forceSyncProperties();
-  view->rename(newName, doSync);
+  auto* databaseFeature =
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(databaseFeature);
+  auto doSync = databaseFeature->forceSyncProperties();
+  auto res = view->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
 
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res = engine->renameView(this, view, oldName);
+  res = engine->renameView(this, view, oldName);
 
   return res.errorNumber();
 }
@@ -1383,11 +1387,14 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
-  int res = collection->rename(newName);
+  auto* databaseFeature =
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(databaseFeature);
+  auto doSync = databaseFeature->forceSyncProperties();
+  auto res = collection->rename(std::string(newName), doSync);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // Renaming failed
-    return res;
+  if (!res.ok()) {
+    res.errorNumber(); // rename failed
   }
 
   // The collection is renamed. Now swap cache entries.

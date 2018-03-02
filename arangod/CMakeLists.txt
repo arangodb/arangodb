@@ -493,6 +493,7 @@ SET(ARANGOD_SOURCES
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
+  VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
   VocBase/ticks.cpp
