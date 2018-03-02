@@ -222,6 +222,11 @@ class Query {
   /// @brief exits a V8 context
   void exitContext();
 
+  /// @brief check if the query has a V8 context ready for use
+  bool hasEnteredContext() const {
+    return (_contextOwnedByExterior || _context != nullptr);
+  }
+
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
 

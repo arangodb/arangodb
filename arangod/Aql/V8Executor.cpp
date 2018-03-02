@@ -25,7 +25,6 @@
 #include "Aql/AstNode.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Functions.h"
-#include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Exceptions.h"
@@ -48,64 +47,6 @@ V8Executor::V8Executor(int64_t literalSizeThreshold)
                                 : defaultLiteralSizeThreshold) {}
 
 V8Executor::~V8Executor() {}
-
-/// @brief generates an expression execution object
-V8Expression* V8Executor::generateExpression(AstNode const* node) {
-  ISOLATE;
-  v8::HandleScope scope(isolate);
-
-  v8::TryCatch tryCatch;
-  _constantRegisters.clear();
-  detectConstantValues(node, node->type);
-
-  _userFunctions.clear();
-  detectUserFunctions(node);
-
-  generateCodeExpression(node);
-
-  // std::cout << "V8Executor::generateExpression: " <<
-  // std::string(_buffer->c_str(), _buffer->length()) << "\n";
-  v8::Handle<v8::Object> constantValues = v8::Object::New(isolate);
-  for (auto const& it : _constantRegisters) {
-    std::string name = "r";
-    name.append(std::to_string(it.second));
-
-    constantValues->ForceSet(TRI_V8_STD_STRING(isolate, name), toV8(isolate, it.first));
-  }
-
-  TRI_ASSERT(_buffer != nullptr);
-
-  v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
-
-  if (!compiled.IsEmpty()) {
-    v8::Handle<v8::Value> func(compiled->Run());
-
-    // exit early if an error occurred
-    HandleV8Error(tryCatch, func, _buffer.get(), false);
-
-    // a "simple" expression here is any expression that will only return
-    // non-cyclic
-    // data and will not return any special JavaScript types such as Date, RegExp
-    // or
-    // Function
-    // as we know that all built-in AQL functions are simple but do not know
-    // anything
-    // about user-defined functions, so we expect them to be non-simple
-    bool const isSimple = (!node->callsUserDefinedFunction());
-
-    return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func),
-                            constantValues, isSimple);
-  }
-  else {
-    v8::Handle<v8::Value> empty;
-    TRI_ASSERT(_buffer != nullptr);
-    HandleV8Error(tryCatch, empty, _buffer.get(), true);
-
-    // well we're almost sure we never reach this since the above call should throw:
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
-  }
-}
 
 /// @brief executes an expression directly
 /// this method is called during AST optimization and will be used to calculate

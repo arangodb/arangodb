@@ -53,9 +53,6 @@ class V8Executor {
   ~V8Executor();
 
  public:
-  /// @brief generates an expression execution object
-  V8Expression* generateExpression(AstNode const*);
-
   /// @brief executes an expression directly
   int executeExpression(Query*, AstNode const*, arangodb::velocypack::Builder&);
 

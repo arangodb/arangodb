@@ -54,7 +54,6 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       _cursor(nullptr),
       _cursors(_indexes.size()),
       _condition(en->_condition->root()),
-      _hasV8Expression(false),
       _indexesExhausted(false),
       _isLastIndex(false),
       _returned(0) {
@@ -179,8 +178,6 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
-
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
@@ -281,37 +278,28 @@ bool IndexBlock::initIndexes() {
 
   if (!_nonConstExpressions.empty()) {
     TRI_ASSERT(_condition != nullptr);
-
-    if (_hasV8Expression) {
-      // must have a V8 context here to protect Expression::execute()
-      auto cleanup = [this]() {
-        if (arangodb::ServerState::instance()->isRunningInCluster()) {
-          // must invalidate the expression now as we might be called from
-          // different threads
-          for (auto const& e : _nonConstExpressions) {
-            e->expression->invalidate();
-          }
-
-          _engine->getQuery()->exitContext();
+      
+    // must have a V8 context here to protect Expression::execute()
+    auto cleanup = [this]() {
+      if (arangodb::ServerState::instance()->isRunningInCluster()) {
+        // must invalidate the expression now as we might be called from
+        // different threads
+        for (auto const& e : _nonConstExpressions) {
+          e->expression->invalidate();
         }
-      };
 
-      _engine->getQuery()->enterContext();
-      TRI_DEFER(cleanup());
-
-      ISOLATE;
-      v8::HandleScope scope(isolate);  // do not delete this!
-
-      executeExpressions();
-      TRI_IF_FAILURE("IndexBlock::executeV8") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        _engine->getQuery()->exitContext();
       }
-    } else {
-      // no V8 context required!
-      executeExpressions();
-      TRI_IF_FAILURE("IndexBlock::executeExpression") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
+    };
+
+    TRI_DEFER(cleanup());
+
+    ISOLATE;
+    v8::HandleScope scope(isolate);  // do not delete this!
+
+    executeExpressions();
+    TRI_IF_FAILURE("IndexBlock::executeExpression") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
   IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());

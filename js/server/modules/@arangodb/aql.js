@@ -5639,7 +5639,6 @@ function AQL_WARN (expression, message) {
   return true;
 }
 
-
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;

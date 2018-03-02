@@ -1542,14 +1542,6 @@ bool AstNode::isSimple() const {
     auto func = static_cast<Function*>(getData());
     TRI_ASSERT(func != nullptr);
 
-    if (func->implementation == nullptr) {
-      // no C++ handler available for function
-      setFlag(DETERMINED_SIMPLE);
-      return false;
-    }
-
-    TRI_ASSERT(func->implementation != nullptr);
-
     TRI_ASSERT(numMembers() == 1);
 
     // check if there is a C++ function handler condition
@@ -1581,6 +1573,11 @@ bool AstNode::isSimple() const {
       }
     }
 
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    return true;
+  }
+  
+  if (type == NODE_TYPE_FCALL_USER) {
     setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }

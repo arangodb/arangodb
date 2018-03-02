@@ -32,6 +32,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-globals.h"
@@ -90,28 +91,30 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   binds->add("@col", VPackValue(collectionName));
   binds->close();  // obj
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
-                             binds, nullptr, arangodb::aql::PART_MAIN);
+  {
+    arangodb::aql::Query query(true, vocbase, arangodb::aql::QueryString(aql),
+                               binds, nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto queryResult = query.execute(queryRegistry);
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryResult = query.execute(queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      return Result(TRI_ERROR_REQUEST_CANCELED);
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+          (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+        return Result(TRI_ERROR_REQUEST_CANCELED);
+      }
+      return Result(queryResult.code, "error group-deleting user defined AQL");
     }
-    return Result(queryResult.code, "error group-deleting user defined AQL");
-  }
 
-  VPackSlice countSlice = queryResult.result->slice();
-  if (!countSlice.isArray() || (countSlice.length() != 1)) {
-    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
-  }
+    VPackSlice countSlice = queryResult.result->slice();
+    if (!countSlice.isArray() || (countSlice.length() != 1)) {
+      return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
+    }
 
-  if (countSlice[0].getNumericValue<int>() != 1) {
-    return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
-                  std::string("no AQL user function with name '") + functionName + "' found");
+    if (countSlice[0].getNumericValue<int>() != 1) {
+      return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
+                    std::string("no AQL user function with name '") + functionName + "' found");
+    }
   }
 
   reloadAqlUserFunctions();
@@ -152,27 +155,30 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
                   "  FILTER UPPER(LEFT(fn.name, @fnLength)) == @ucName"
                   "  REMOVE { _key: fn._key} in @@col RETURN 1)");
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
-                             binds, nullptr, arangodb::aql::PART_MAIN);
+  {
+    arangodb::aql::Query query(true, vocbase, arangodb::aql::QueryString(aql),
+                               binds, nullptr, arangodb::aql::PART_MAIN);
 
-  auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
-  auto queryResult = query.execute(queryRegistry);
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    auto queryResult = query.execute(queryRegistry);
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
-        (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
-      return Result(TRI_ERROR_REQUEST_CANCELED);
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+          (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
+        return Result(TRI_ERROR_REQUEST_CANCELED);
+      }
+      return Result(queryResult.code,
+                    std::string("Error group-deleting AQL user functions"));
     }
-    return Result(queryResult.code,
-                  std::string("Error group-deleting AQL user functions"));
+
+    VPackSlice countSlice = queryResult.result->slice();
+    if (!countSlice.isArray() || (countSlice.length() != 1)) {
+      return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
+    }
+
+    deleteCount = countSlice[0].getNumericValue<int>();
   }
 
-  VPackSlice countSlice = queryResult.result->slice();
-  if (!countSlice.isArray() || (countSlice.length() != 1)) {
-    return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
-  }
-
-  deleteCount = countSlice[0].getNumericValue<int>();
   reloadAqlUserFunctions();
   return Result();
 }
@@ -287,31 +293,33 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
   oneFunctionDocument.add("isDeterministic", VPackValue(isDeterministic));
   oneFunctionDocument.close();
 
-  arangodb::OperationOptions opOptions;
-  opOptions.isRestore = false;
-  opOptions.waitForSync = true;
-  opOptions.silent = false;
+  {
+    arangodb::OperationOptions opOptions;
+    opOptions.isRestore = false;
+    opOptions.waitForSync = true;
+    opOptions.silent = false;
 
-  // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(vocbase);
-  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
+    // find and load collection given by name or identifier
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
-  res = trx.begin();
-  if (!res.ok()) {
-    return res;
+    res = trx.begin();
+    if (!res.ok()) {
+      return res;
+    }
+
+    arangodb::OperationResult result;
+    result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
+
+    if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+      replacedExisting = true;
+      result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
+    }
+    // Will commit if no error occured.
+    // or abort if an error occured.
+    // result stays valid!
+    res = trx.finish(result.result);
   }
-
-  arangodb::OperationResult result;
-  result = trx.insert(collectionName, oneFunctionDocument.slice(), opOptions);
-
-  if (result.result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    replacedExisting = true;
-    result = trx.replace(collectionName, oneFunctionDocument.slice(), opOptions);
-  }
-  // Will commit if no error occured.
-  // or abort if an error occured.
-  // result stays valid!
-  res = trx.finish(result.result);
 
   if (res.ok()) {
     reloadAqlUserFunctions();
