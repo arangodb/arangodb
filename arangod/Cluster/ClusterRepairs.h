@@ -48,7 +48,7 @@ class ResultT : public arangodb::Result {
  public:
 
   ResultT static success(T val) {
-    return ResultT(val, 0);
+    return ResultT(val, TRI_ERROR_NO_ERROR);
   }
 
   ResultT static error(int errorNumber) {
@@ -59,7 +59,7 @@ class ResultT : public arangodb::Result {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
-  explicit ResultT(Result const &other)
+  ResultT(Result const& other)
     : Result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
@@ -68,9 +68,42 @@ class ResultT : public arangodb::Result {
     // to avoid exceptions when someone tries to access _val
   }
 
+  ResultT(T const& val)
+    : ResultT(val, TRI_ERROR_NO_ERROR) { }
+
   ResultT() = delete;
 
-  T get() {
+  ResultT &operator=(T const &val_) {
+    _val = val_;
+    return get();
+  }
+
+  ResultT &operator=(T&& val_) {
+    _val = std::move(val_);
+    return get();
+  }
+
+  operator T() const { return get(); }
+
+  operator T &() { return get(); }
+
+  T *operator->() { return &get(); }
+  T const *operator->() const { return &get(); }
+
+  T &operator*() &{ return get(); }
+  T const &operator*() const &{ return get(); }
+
+  T&& operator*() && { return get(); }
+  T const&& operator*() const && { return get(); }
+
+  explicit operator bool() const {
+    return ok();
+  }
+
+  T const& get() const {
+    return _val.get();
+  }
+  T& get() {
     return _val.get();
   }
 
@@ -145,7 +178,7 @@ using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransactio
 
 class DistributeShardsLikeRepairer {
  public:
-  std::list<RepairOperation> repairDistributeShardsLike(
+  ResultT<std::list<RepairOperation>> repairDistributeShardsLike(
     velocypack::Slice const& planCollections,
     velocypack::Slice const& supervisionHealth
   );

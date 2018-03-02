@@ -531,7 +531,7 @@ DistributeShardsLikeRepairer::fixShard(
 }
 
 
-std::list<RepairOperation>
+ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::repairDistributeShardsLike(
   Slice const& planCollections,
   Slice const& supervisionHealth
@@ -557,7 +557,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     << collection.fullName();
 
     if (! collection.repairingDistributeShardsLike) {
-      repairOperations.push_back(
+      repairOperations.emplace_back(
         createRenameDistributeShardsLikeAttributeTransaction(collection)
       );
     }

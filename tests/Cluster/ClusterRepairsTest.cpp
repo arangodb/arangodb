@@ -102,11 +102,14 @@ void checkAgainstExpectedOperations(
   // like distributeShardsLike / repairingDistributeShardsLike,
   // or maybe replicationFactor
 
-  std::list<RepairOperation> repairOperations
+  ResultT<std::list<RepairOperation>> repairOperationsResult
     = repairer.repairDistributeShardsLike(
       VPackSlice(planCollections->data()),
       VPackSlice(supervisionHealth->data())
     );
+
+  REQUIRE(repairOperationsResult);
+  std::list<RepairOperation> &repairOperations = repairOperationsResult.get();
 
   {
     std::stringstream expectedOperationsStringStream;

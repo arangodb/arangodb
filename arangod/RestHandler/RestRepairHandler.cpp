@@ -132,7 +132,8 @@ RestRepairHandler::repairDistributeShardsLike() {
       << "RestRepairHandler::repairDistributeShardsLike: "
       << "Failed to fetch server health result";
       generateError(rest::ResponseCode::SERVER_ERROR,
-        TRI_ERROR_HTTP_SERVER_ERROR);
+        TRI_ERROR_HTTP_SERVER_ERROR,
+        healthResult.errorMessage());
 
       return RestStatus::FAIL;
     }
@@ -142,11 +143,26 @@ RestRepairHandler::repairDistributeShardsLike() {
     // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
 
     DistributeShardsLikeRepairer repairer;
-    std::list<RepairOperation> repairOperations
+    ResultT<std::list<RepairOperation>> repairOperationsResult
       = repairer.repairDistributeShardsLike(
         planCollections,
         supervisionHealth
       );
+
+    if (repairOperationsResult.fail()) {
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "RestRepairHandler::repairDistributeShardsLike: "
+      << "Error during preprocessing: "
+      << "[" << repairOperationsResult.errorNumber() << "] "
+      << repairOperationsResult.errorMessage();
+      generateError(rest::ResponseCode::SERVER_ERROR,
+        TRI_ERROR_HTTP_SERVER_ERROR,
+        repairOperationsResult.errorMessage()
+      );
+
+      return RestStatus::FAIL;
+    }
+    std::list<RepairOperation>& repairOperations = repairOperationsResult.get();
 
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
