@@ -6,11 +6,6 @@
 ## GETTING FAMILIAR 
 
 * [Getting Started](GettingStarted/README.md)
-  * [Installing](GettingStarted/Installing/README.md)
-    * [Linux](GettingStarted/Installing/Linux.md)
-    * [Mac OS X](GettingStarted/Installing/MacOSX.md)
-    * [Windows](GettingStarted/Installing/Windows.md)
-    * [Compiling](GettingStarted/Installing/Compiling.md)
   * [Authentication](GettingStarted/Authentication.md)
   * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
@@ -150,6 +145,11 @@
 
 ## OPERATIONS		
 
+* [Installation](Installation/README.md)
+    * [Linux](Installation/Linux.md)
+    * [Mac OS X](Installation/MacOSX.md)
+    * [Windows](Installation/Windows.md)
+    * [Compiling](Installation/Compiling.md)
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/SingleInstance/README.md)
   * [Master/Slave](Deployment/MasterSlave/README.md)
