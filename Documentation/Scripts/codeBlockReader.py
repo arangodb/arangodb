@@ -213,6 +213,8 @@ def fetch_comments(dirpath):
               elif ("@END_EXAMPLE_ARANGOSH_OUTPUT" in _text or \
                 "@END_EXAMPLE_ARANGOSH_RUN" in _text):
                 shouldIgnoreLine = False
+            else:
+              fh.write("\n")
   fh.close()
 
 if __name__ == "__main__":
