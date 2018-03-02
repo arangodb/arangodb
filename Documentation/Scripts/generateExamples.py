@@ -1,8 +1,4 @@
 ################################################################################
-### @brief creates examples from documentation files
-###
-### @file
-###
 ### DISCLAIMER
 ###
 ### Copyright by triAGENS GmbH - All rights reserved.
@@ -128,14 +124,13 @@ OPTION_OUTPUT_DIR = 2
 OPTION_FILTER = 3
 OPTION_OUTPUT_FILE = 4
 
-fstate = OPTION_NORMAL
-
 escapeBS = re.compile("\\\\")
 doubleBS = "\\\\\\\\"
 
 ################################################################################
 ### @brief generate arangosh example headers with functions etc. needed later
 ################################################################################
+
 def generateArangoshHeader():
     headerF = open("./Documentation/Scripts/exampleHeader.js", "r")
     print headerF.read()
@@ -144,6 +139,7 @@ def generateArangoshHeader():
 ################################################################################
 ### @brief Try to match the start of a command section
 ################################################################################
+
 regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
     
@@ -160,6 +156,7 @@ def matchStartLine(line, filename):
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
+
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             filterTestList.append(name)
@@ -184,6 +181,7 @@ def matchStartLine(line, filename):
 
         ArangoshFiles[name] = True
         return (name, STATE_ARANGOSH_RUN)
+
     # Not found, remain in STATE_BEGIN
     return ("", STATE_BEGIN)
 
@@ -194,9 +192,11 @@ TESTLINES="testlines"
 TYPE="type"
 LINE_NO="lineNo"
 STRING="string"
+
 ################################################################################
 ### @brief loop over the lines of one input file
 ################################################################################
+
 def analyzeFile(f, filename): 
     global RunTests, TESTLINES, TYPE, LINE_NO, STRING
     strip = None
@@ -294,7 +294,6 @@ def generateSetupFunction():
     print "(function () {\n%s}());" % ArangoshSetup
     print
 
-
 ################################################################################
 ### @brief generate arangosh example
 ################################################################################
@@ -302,14 +301,15 @@ def generateSetupFunction():
 loopDetectRE = re.compile(r'^[ \n]*(while|if|var|throw|for) ')
 expectErrorRE = re.compile(r'.*// *xpError\((.*)\).*')
 #expectErrorRE = re.compile(r'.*//\s*xpError\(([^)]*)\)/')
+
 def generateArangoshOutput(testName):
     value = RunTests[testName]
     #print value
     #print value[TESTLINES][0][2]
     #print type(value[TESTLINES][0][2])
     if (len(value[TESTLINES]) == 0) or (len(value[TESTLINES][0]) < 3):
-        print "blarg in " + testName
-        raise
+        print >> sys.stderr, "syntax error in %s - its empty! Maybe you've used to many pipes?" %(testName)
+        raise Exception
     try:
         print '''
 %s
@@ -342,7 +342,7 @@ def generateArangoshOutput(testName):
         expectError = 'undefined'
         m = expectErrorRE.match(l[0])
         if m:
-            expectError = "'" + m.group(1) + "'"
+            expectError = "'" + m.group(1).strip().strip('\\n') + "'"
             l[0] = l[0][0:l[0].find('//')].rstrip(' ')
 
         m = loopDetectRE.match(l[0])
@@ -369,7 +369,6 @@ def generateArangoshOutput(testName):
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 '''
-
 
 ################################################################################
 ### @brief generate arangosh run
@@ -429,6 +428,7 @@ def generateArangoshRun(testName):
 ################################################################################
 ### @brief generate arangosh run
 ################################################################################
+
 def generateArangoshShutdown():
     print '''
 if (allErrors.length > 0) {
@@ -437,42 +437,49 @@ if (allErrors.length > 0) {
 }
 '''
 
-
 ################################################################################
 ### @brief get file names
 ################################################################################
+
 def loopDirectories():
     global ArangoshSetup, OutputDir, FilterForTestcase
+
     argv = sys.argv
     argv.pop(0)
     filenames = []
+    fstate = OPTION_NORMAL
     
     for filename in argv:
         if filename == "--arangoshSetup":
             fstate = OPTION_ARANGOSH_SETUP
             continue
+
         if filename == "--onlyThisOne": 
             fstate = OPTION_FILTER
             continue
+
         if filename == "--outputDir":
             fstate = OPTION_OUTPUT_DIR
             continue
+
         if filename == "--outputFile":
             fstate = OPTION_OUTPUT_FILE
             continue
+
         if fstate == OPTION_NORMAL:
             if os.path.isdir(filename):
                 for root, dirs, files in os.walk(filename):
                     for file in files:
-                        if (file.endswith(".mdpp") or file.endswith(".js") or file.endswith(".cpp")):
+                        if (file.endswith(".md") or file.endswith(".js") or file.endswith(".cpp")):
                             filenames.append(os.path.join(root, file))
             else:
                 filenames.append(filename)
+
         elif fstate == OPTION_FILTER:
             fstate = OPTION_NORMAL
             if (len(filename) > 0): 
                 FilterForTestcase = re.compile(filename);
-            
+
         elif fstate == OPTION_ARANGOSH_SETUP:
             fstate = OPTION_NORMAL
             f = open(filename, "r")
@@ -486,6 +493,7 @@ def loopDirectories():
         elif fstate == OPTION_OUTPUT_DIR:
             fstate = OPTION_NORMAL
             OutputDir = filename
+
         elif fstate == OPTION_OUTPUT_FILE:
             fstate = OPTION_NORMAL
             sys.stdout = open(filename, 'w')
@@ -511,12 +519,12 @@ def generateTestCases():
         elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:
             generateArangoshRun(thisTest)
 
-
 ################################################################################
 ### @brief main
 ################################################################################
+
 loopDirectories()
-print >> sys.stderr, "filtering test cases %s" %(filterTestList)
+print >> sys.stderr, "filtering test %d cases" %(len(filterTestList))
 
 generateArangoshHeader()
 generateSetupFunction()

@@ -331,24 +331,6 @@ Dependencies to build documentation:
 
 - [swagger 2](http://swagger.io/) for the API-Documentation inside aardvark (no installation required)
 
-- Python Setuptools
-
-    https://pypi.python.org/pypi/setuptools
-
-    Download setuptools zip file, extract to any folder, use bundled python 2.6 to install:
-
-        python ez_install.py
-
-  This will place the required files in python's Lib/site-packages folder.
-
-- MarkdownPP
-
-    https://github.com/triAGENS/markdown-pp/
-
-    Checkout the code with Git, use bundled python 2.6 to install:
-
-        python setup.py install
-
 - [Node.js](https://nodejs.org/)
 
     Make sure the option to *Add to PATH* is enabled.
@@ -403,7 +385,7 @@ restrictions.
 
 To only regereneate one file (faster) you may specify a filter:
 
-    make FILTER=Users/Aql/Invoke.mdpp
+    make FILTER=Users/Aql/Invoke.md
 
 (regular expressions allowed)
 
@@ -451,7 +433,7 @@ generate
 
 write markdown
 --------------
-*mdpp* files are used for the structure. To join it with parts extracted from the program documentation
+*md* files are used for the structure. To join it with parts extracted from the program documentation
 you need to place hooks:
   - `@startDocuBlock <tdocuBlockName>` is replaced by a Docublock extracted from source.
   - `@startDocuBlockInline <docuBlockName>` till `@endDocuBlock <docuBlockName>`
@@ -469,8 +451,8 @@ arangod Example tool
 *Hint: Windows users may use ./scripts/generateExamples for this purpose*
 
 Here is how its details work:
-  - all ending with *.cpp*, *.js* and *.mdpp* are searched.
-  - all lines inside of source code starting with '///' are matched, all lines in .mdpp files.
+  - all ending with *.cpp*, *.js* and *.md* are searched.
+  - all lines inside of source code starting with '///' are matched, all lines in .md files.
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`
