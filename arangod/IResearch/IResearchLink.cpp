@@ -240,7 +240,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
       // NOTE: this will cause a deadlock if registering a link while view is being created
       auto logicalView = vocbase->lookupView(viewId);
 
-      if (!logicalView || IResearchView::type() != logicalView->type()) {
+      if (!logicalView || IResearchView::type() != logicalView->type().name()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
         return false; // no such view
       }

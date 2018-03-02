@@ -10,7 +10,8 @@ It is used to run data recovery after a server crash, and can also be used in
 a replication setup when slaves need to replay the same sequence of operations as
 on the master.
 
-### MMFiles WAL Details
+MMFiles WAL Details
+-------------------
 
 By default, each write-ahead logfile is 32 MiB in size. This size is configurable via the
 option *--wal.logfile-size*.
@@ -39,7 +40,8 @@ configurable via the option *--wal.historic-logfiles*.
 For all write-ahead log configuration options, please refer to the page [Write-ahead log options](../Administration/Configuration/Wal.md).
 
 
-### RocksDB WAL Details
+RocksDB WAL Details
+-------------------
 
 The options mentioned above only apply for MMFiles. The WAL in the rocksdb storage engine
 works slightly differently. 
