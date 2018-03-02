@@ -72,6 +72,7 @@ void MMFilesRestReplicationHandler::insertClient(
   }
 }
 
+// prevents datafiles from beeing removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -105,6 +106,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(id)));
+    b.add("lastTick", VPackValue("0")); // not known yet
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
     return;

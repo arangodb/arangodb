@@ -380,24 +380,18 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   }
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-
   // include system collections?
-  bool includeSystem = true;
-  {
-    std::string const& value = _request->value("includeSystem", found);
-    if (found) {
-      includeSystem = StringUtils::boolean(value);
-    }
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
   
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
+  VPackBuilder inventoryBuilder;
+  Result res = ctx->getInventory(this->_vocbase, includeSystem,
+                                 isGlobal, inventoryBuilder);
+  if (res.fail()) {
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
     return;
   }
@@ -405,7 +399,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  VPackSlice const inventory = inventoryBuilder.slice();
   if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
