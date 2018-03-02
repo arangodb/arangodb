@@ -41,6 +41,8 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
 
   MaintenanceFeature();
 
+  virtual ~MaintenanceFeature() {};
+
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
 
@@ -74,23 +76,18 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
                    std::shared_ptr<VPackBuilder> const & properties,
                    bool executeNow=false);
 
-  /// @brief This is the API for MaintenanceAction objects to call to create and
-  ///  start a preprocess Action.  The Action executes on the caller's thread AFTER
-  ///  returning to the MaintenanceWorker object.
-  ///  ActionDescription parameter will be COPIED to new object.
-  Result addPreprocess(maintenance::ActionDescription_t & description, std::shared_ptr<class maintenance::MaintenanceAction> existingAction);
 
-
+protected:
   maintenance::MaintenanceActionPtr_t createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                    std::shared_ptr<VPackBuilder> const & properties,
                                                    bool executeNow);
 
   /// @brief actionFactory is a subroutine of createAction().  Its functionality is isolated
   ///   to allow unit tests to quietly add "test actions" via a virtual function
-  virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string name,
+  virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                             std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties);
-
+public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);

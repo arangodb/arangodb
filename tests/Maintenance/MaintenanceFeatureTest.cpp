@@ -33,39 +33,73 @@
 #include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Basics/Result.h"
 #include "Cluster/MaintenanceAction.h"
 #include "Cluster/MaintenanceFeature.h"
 
 
+//
+// TestFeature wraps MaintenanceFeature to all test specific action objects
+//  by overriding the actionFactory() virtual function
+//
 class TestFeature : public arangodb::MaintenanceFeature {
 public:
-  TestFeature() {};
+  TestFeature() {
+//    prepare();
+//    start();  ... threads die due to lack of ApplicationServer instance
+  };
 
-  virtual ~TestFeature() {};
-
+  virtual ~TestFeature() {
+//    beginShutdown();
+//    stop();
+//    unprepare();
+};
+#if 0
   virtual arangodb::maintenance::MaintenanceActionPtr_t actionFactory(std::string name,
                                                                       std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties) override;
 
-
+#endif
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
 
 };// TestFeature
 
 
+//
+// TestActionBasic simulates a multistep action by counting down
+//  on each call to first() and next() until iteration counter is zero.
+//  Returns false upon reaching zero
+//
 class TestActionBasic : public arangodb::maintenance::MaintenanceAction {
 public:
     TestActionBasic(arangodb::MaintenanceFeature & feature,
                     std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
-                    std::shared_ptr<VPackBuilder> const & properties) : MaintenanceAction(feature, description, properties) {};
+                    std::shared_ptr<VPackBuilder> const & properties)
+      : MaintenanceAction(feature, description, properties), _iteration(1)
+  {
+    auto des_it = description->find("iterate_count");
+
+    if (description->end() != des_it) {
+      _iteration = atol(des_it->second.c_str());
+      // safety check
+      if (_iteration < 1) {
+        _iteration = 1;
+      } // if
+    } // if
+  };
 
   virtual ~TestActionBasic() {};
 
-  bool first() {return false;};
+  bool first() override {return(0 < --_iteration);};
+
+  bool next() override {return(0 < --_iteration);};
+
+  int _iteration;
+
 };// TestActionBasic
 
-
-arangodb::maintenance::MaintenanceActionPtr_t TestFeature::actionFactory(std::string name,
+#if 0
+arangodb::maintenance::MaintenanceActionPtr_t TestFeature::actionFactory(std::string & name,
                                                                          std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                                std::shared_ptr<VPackBuilder> const & properties) {
   arangodb::maintenance::MaintenanceActionPtr_t newAction;
@@ -81,14 +115,19 @@ arangodb::maintenance::MaintenanceActionPtr_t TestFeature::actionFactory(std::st
   return newAction;
 
 } // TestFeature::actionFactory
-
+#endif
 
 TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
 
   SECTION("Basic action test") {
     TestFeature tf;
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","2"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
 
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
 
+    REQUIRE(result.ok());
   }
 
 

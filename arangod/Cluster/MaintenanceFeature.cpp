@@ -162,7 +162,7 @@ void MaintenanceFeature::stop() {
       size_t action_hash = maintenance::ActionDescription::hash(*description);
       WRITE_LOCKER(wLock, _actionRegistryLock);
 
-      maintenance::MaintenanceActionPtr_t curAction = findActionHash(action_hash);
+      maintenance::MaintenanceActionPtr_t curAction = findActionHashNoLock(action_hash);
 
       // similar action not in the queue (or at least no longer viable)
       if (!curAction || curAction->done()) {
@@ -190,17 +190,6 @@ void MaintenanceFeature::stop() {
   } catch (...) {
     result.reset(TRI_ERROR_INTERNAL, "addAction experience an unexpected throw.");
   } // catch
-
-  return result;
-
-} // MaintenanceFeature::addAction
-
-  /// @brief This is the API for MaintenanceAction objects to call to create and
-  ///  start a preprocess Action.  The Action executes on the caller's thread AFTER
-  ///  returning to the MaintenanceWorker object.
-  ///  ActionDescription parameter will be COPIED to new object.
-Result MaintenanceFeature::addPreprocess(maintenance::ActionDescription_t & description, maintenance::MaintenanceActionPtr_t existingAction) {
-  Result result;
 
   return result;
 
@@ -253,7 +242,7 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared
 // All action creators should go here.
 //  (actionFactory is a virtual function to allow unit tests to
 //   quietly create specialty actions for testing)
-maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::string name,
+maintenance::MaintenanceActionPtr_t MaintenanceFeature::actionFactory(std::string & name,
                                                                       std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                                       std::shared_ptr<VPackBuilder> const & properties) {
   maintenance::MaintenanceActionPtr_t newAction;
