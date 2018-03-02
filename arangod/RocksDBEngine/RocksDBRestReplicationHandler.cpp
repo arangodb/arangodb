@@ -73,7 +73,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
     
     bool found;
     std::string const& value = _request->value("serverId", found);
@@ -85,7 +85,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       }
     }
 
-    // create transaction+snapshot
+    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
     RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
@@ -124,7 +124,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    // extract ttl
+    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;

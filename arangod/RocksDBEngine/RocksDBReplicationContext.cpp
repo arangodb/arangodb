@@ -62,7 +62,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, dou
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _ttl(ttl),
+      _ttl(ttl > 0.0 ? ttl : InitialSyncer::defaultBatchTimeout),
       _expires(TRI_microtime() + _ttl),
       _isDeleted(false),
       _isUsed(true),
@@ -516,10 +516,8 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  if (_ttl > 0.0) {
+  if (ttl <= 0.0) {
     ttl = _ttl;
-  } else {
-    ttl = InitialSyncer::defaultBatchTimeout;
   }
   _expires = TRI_microtime() + ttl;
   if (_serverId != 0) {
