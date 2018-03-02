@@ -296,7 +296,11 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
         resp.setContentType(fakeRequest.contentTypeResponse());
         ReplicationFeature::prepareFollowerResponse(&resp, mode);
         addResponse(&resp, nullptr);
+      } catch (basics::Exception const& ex) {
+        LOG_TOPIC(ERR, Logger::FIXME) << "Error while preparing follower response " << ex.message();
+        closeStream(); // same as in handleSimpleError
       } catch (...) {
+        LOG_TOPIC(ERR, Logger::COMMUNICATION) << "Error while preparing follower response";
         closeStream(); // same as in handleSimpleError
       }
     } else {
