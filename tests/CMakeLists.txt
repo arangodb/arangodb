@@ -17,6 +17,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchView-test.cpp
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
+    IResearch/IResearchFilter-test.cpp
     IResearch/IResearchFilterFunction-test.cpp
     IResearch/IResearchFilterBoolean-test.cpp
     IResearch/IResearchFilterCompare-test.cpp
@@ -24,6 +25,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchIndex-test.cpp
     IResearch/IResearchLink-test.cpp
     IResearch/IResearchLinkMeta-test.cpp
+    IResearch/IResearchQuery-test.cpp
     IResearch/IResearchQueryAnd-test.cpp
     IResearch/IResearchQueryBooleanTerm-test.cpp
     IResearch/IResearchQueryComplexBoolean-test.cpp

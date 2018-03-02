@@ -211,7 +211,7 @@ void dropCollectionFromAllViews(
   if (vocbase) {
     // iterate over vocbase views
     for (auto logicalView : vocbase->views()) {
-      if (arangodb::iresearch::IResearchView::type() != logicalView->type()) {
+      if (arangodb::iresearch::IResearchView::type() != logicalView->type().name()) {
         continue;
       }
 
@@ -267,7 +267,7 @@ void dropCollectionFromView(
 
     auto logicalView = vocbase->lookupView(viewId);
 
-    if (!logicalView || arangodb::iresearch::IResearchView::type() != logicalView->type()) {
+    if (!logicalView || arangodb::iresearch::IResearchView::type() != logicalView->type().name()) {
       LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "error looking up view '" << viewId << "': no such view";
       return;
@@ -428,3 +428,7 @@ void IResearchRocksDBRecoveryHelper::LogData(const rocksdb::Slice& blob) {
 
 } // iresearch
 } // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

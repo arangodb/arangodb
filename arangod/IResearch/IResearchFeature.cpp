@@ -177,7 +177,7 @@ arangodb::Result transactionStateRegistrationCallback(
 
   auto view = vocbase->lookupView(cid);
 
-  if (!view || arangodb::iresearch::IResearchView::type() != view->type()) {
+  if (!view || arangodb::iresearch::IResearchView::type() != view->type().name()) {
     return arangodb::Result(); // not an IResearchView (noop)
   }
 

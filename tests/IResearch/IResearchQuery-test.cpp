@@ -23,57 +23,55 @@
 
 #include "catch.hpp"
 #include "common.h"
-#include "ExpressionContextMock.h"
+
 #include "StorageEngineMock.h"
 
+#include "V8/v8-globals.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
+#include "Transaction/UserTransaction.h"
+#include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
+#include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchFeature.h"
-#include "IResearch/IResearchLinkMeta.h"
-#include "IResearch/IResearchViewMeta.h"
+#include "IResearch/IResearchView.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
-#include "IResearch/IResearchKludge.h"
-#include "IResearch/ExpressionFilter.h"
 #include "IResearch/SystemDatabaseFeature.h"
-#include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "ApplicationFeatures/JemallocFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/UserTransaction.h"
+#include "tests/Basics/icu-helper.h"
+#include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "IResearch/VelocyPackHelper.h"
 #include "analysis/analyzers.hpp"
-#include "analysis/token_streams.hpp"
 #include "analysis/token_attributes.hpp"
-#include "search/term_filter.hpp"
-#include "search/all_filter.hpp"
-#include "search/prefix_filter.hpp"
-#include "search/range_filter.hpp"
-#include "search/granular_range_filter.hpp"
-#include "search/column_existence_filter.hpp"
-#include "search/boolean_filter.hpp"
-#include "search/phrase_filter.hpp"
+#include "utils/utf8_path.hpp"
+
+#include <velocypack/Iterator.h>
 
 NS_LOCAL
-
-struct TestAttribute: public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-};
-
-DEFINE_ATTRIBUTE_TYPE(TestAttribute);
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -82,20 +80,21 @@ struct TestTermAttribute: public irs::term_attribute {
   }
 };
 
-class TestAnalyzer: public irs::analysis::analyzer {
+class TestDelimAnalyzer: public irs::analysis::analyzer {
  public:
   DECLARE_ANALYZER_TYPE();
 
   static ptr make(irs::string_ref const& args) {
     if (args.null()) throw std::exception();
     if (args.empty()) return nullptr;
-    PTR_NAMED(TestAnalyzer, ptr);
+    PTR_NAMED(TestDelimAnalyzer, ptr, args);
     return ptr;
   }
 
-  TestAnalyzer() : irs::analysis::analyzer(TestAnalyzer::type()) {
+  TestDelimAnalyzer(irs::string_ref const& delim)
+    : irs::analysis::analyzer(TestDelimAnalyzer::type()),
+      _delim(irs::ref_cast<irs::byte_type>(delim)) {
     _attrs.emplace(_term);
-    _attrs.emplace(_attr);
   }
 
   virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
@@ -105,8 +104,21 @@ class TestAnalyzer: public irs::analysis::analyzer {
       return false;
     }
 
-    _term.value(irs::bytes_ref(_data.c_str(), 1));
-    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
+    size_t i = 0;
+
+    for (size_t count = _data.size(); i < count; ++i) {
+      auto data = irs::ref_cast<char>(_data);
+      auto delim = irs::ref_cast<char>(_delim);
+
+      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
+        _term.value(irs::bytes_ref(_data.c_str(), i));
+        _data = irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()), _data.size() - i - (std::max)(size_t(1), _delim.size()));
+        return true;
+      }
+    }
+
+    _term.value(_data);
+    _data = irs::bytes_ref::NIL;
     return true;
   }
 
@@ -117,13 +129,13 @@ class TestAnalyzer: public irs::analysis::analyzer {
 
  private:
   irs::attribute_view _attrs;
+  irs::bytes_ref _delim;
   irs::bytes_ref _data;
   TestTermAttribute _term;
-  TestAttribute _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
+DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
+REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 NS_END
 
@@ -131,17 +143,19 @@ NS_END
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct IResearchFilterSetup {
+extern const char* ARGV0; // defined in main.cpp
+
+struct IResearchQuerySetup {
   StorageEngineMock engine;
   arangodb::application_features::ApplicationServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
-  IResearchFilterSetup(): server(nullptr, nullptr) {
+  IResearchQuerySetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
-    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
+    IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
@@ -150,14 +164,18 @@ struct IResearchFilterSetup {
 #ifdef USE_ENTERPRISE
     features.emplace_back(new arangodb::LdapFeature(&server), false);
 #endif
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
+    features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
+    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
@@ -176,42 +194,17 @@ struct IResearchFilterSetup {
       }
     }
 
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-      "_NONDETERM_",
-      ".",
-      false, // fake non-deterministic
-      false, // fake can throw
-      true,
-      false,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
-        TRI_ASSERT(!params.empty());
-        return params[0];
-    }});
-
-    // register fake non-deterministic function in order to suppress optimizations
-    functions->add(arangodb::aql::Function{
-      "_FORWARD_",
-      ".",
-      true, // fake deterministic
-      false, // fake can throw
-      true,
-      false,
-      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
-        TRI_ASSERT(!params.empty());
-        return params[0];
-    }});
-
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-    analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
-  ~IResearchFilterSetup() {
+  ~IResearchQuerySetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::AqlFeature(&server).stop(); // unset singleton instance
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
@@ -231,7 +224,7 @@ struct IResearchFilterSetup {
 
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
-}; // IResearchFilterSetup
+}; // IResearchQuerySetup
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -241,8 +234,8 @@ struct IResearchFilterSetup {
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_CASE("IResearchFilterTest", "[iresearch][iresearch-filter]") {
-  IResearchFilterSetup s;
+TEST_CASE("IResearchQueryTest", "[iresearch][iresearch-query]") {
+  IResearchQuerySetup s;
   UNUSED(s);
 
 }
