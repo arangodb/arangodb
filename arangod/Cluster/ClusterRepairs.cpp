@@ -197,7 +197,7 @@ DistributeShardsLikeRepairer::readCollections(
         }
         else if (key == "id") {
           std::string const id = it.value.copyString();
-          TRI_ASSERT(id != collectionId);
+          TRI_ASSERT(id == collectionId);
         }
         else if (key == "replicationFactor") {
           replicationFactor = it.value.getUInt();
@@ -644,7 +644,7 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   DBServers& dbServers = collection.shardsById.at(shardId);
   DBServers const& protoDbServers = proto.shardsById.at(protoShardId);
 
-  TRI_ASSERT(dbServers.size() != protoDbServers.size());
+  TRI_ASSERT(dbServers.size() == protoDbServers.size());
   if (dbServers.size() != protoDbServers.size()) {
     std::stringstream errorMessage;
     errorMessage
@@ -660,19 +660,19 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, errorMessage.str());
   }
 
-  TRI_ASSERT(dbServers.size() == 0);
+  TRI_ASSERT(dbServers.size() > 0);
   if (dbServers.size() == 0) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
   }
 
-  TRI_ASSERT(dbServers[0] != protoDbServers[0]);
+  TRI_ASSERT(dbServers[0] == protoDbServers[0]);
   if (dbServers[0] != protoDbServers[0]) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
   }
 
-  TRI_ASSERT(!serverSetSymmetricDifference(dbServers, protoDbServers).empty());
+  TRI_ASSERT(serverSetSymmetricDifference(dbServers, protoDbServers).empty());
   if (!serverSetSymmetricDifference(dbServers, protoDbServers).empty()) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
@@ -763,7 +763,7 @@ ResultT<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::createRenameDistributeShardsLikeAttributeTransaction(
   Collection &collection
 ) {
-  TRI_ASSERT(! collection.distributeShardsLike || collection.repairingDistributeShardsLike);
+  TRI_ASSERT(collection.distributeShardsLike && ! collection.repairingDistributeShardsLike);
   if (! collection.distributeShardsLike || collection.repairingDistributeShardsLike) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
@@ -793,7 +793,7 @@ ResultT<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::createRestoreDistributeShardsLikeAttributeTransaction(
   Collection &collection
 ) {
-  TRI_ASSERT(! collection.repairingDistributeShardsLike || collection.distributeShardsLike);
+  TRI_ASSERT(collection.repairingDistributeShardsLike && ! collection.distributeShardsLike);
   if (! collection.repairingDistributeShardsLike || collection.distributeShardsLike) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
