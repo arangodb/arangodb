@@ -401,6 +401,8 @@ RestRepairHandler::executeRepairOperations(
 
 
   }
+
+  return Result();
 }
 
 template <std::size_t N>
@@ -410,13 +412,11 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
 
   AgencyComm agency;
 
+  // TODO The new code with the new getValues method is untested!
+  AgencyCommResult result = agency.getValues(agencyKeyArray);
+
   for(size_t i = 0; i < N; i++) {
     std::string const& agencyKey = agencyKeyArray[i];
-
-    // TODO It should be possible to get all values in one request to the agency.
-    // However, there is no getValues()-like method allowing multiple keys.
-    // We probably need to either implement one or use sendWithFailover() directly.
-    AgencyCommResult result = agency.getValues(agencyKey);
 
     if (!result.successful()) {
       LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
@@ -425,7 +425,6 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
       generateError(rest::ResponseCode::SERVER_ERROR,
         TRI_ERROR_HTTP_SERVER_ERROR);
 
-      // TODO return better error#
       return ResultT<
         std::array<VPackBufferPtr, N>
       >::error(
