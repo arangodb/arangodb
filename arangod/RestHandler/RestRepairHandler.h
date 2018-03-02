@@ -63,11 +63,9 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   RestStatus execute() override;
 
-  // TODO [tobias] maybe implement cancel()
+  // TODO [tobias] maybe implement cancel() ?
 
  private:
-  void handlePost();
-
   RestStatus repairDistributeShardsLike();
 
   void executeRepairOperations(

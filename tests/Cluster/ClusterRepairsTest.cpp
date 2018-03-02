@@ -28,16 +28,10 @@
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
 #include "lib/Random/RandomGenerator.h"
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/Compare.h>
 
 #include <boost/range/combine.hpp>
 
 #include <iostream>
-#include <memory>
-#include <sstream>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -140,7 +134,7 @@ void checkAgainstExpectedOperations(
       }
 
       bool inserted;
-      AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+      auto& transaction = boost::get<AgencyWriteTransaction>(it);
       std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
       REQUIRE(inserted);
 
@@ -153,7 +147,7 @@ void checkAgainstExpectedOperations(
       if (it.type() != typeid(AgencyWriteTransaction)) {
         continue;
       }
-      AgencyWriteTransaction& transaction = boost::get<AgencyWriteTransaction>(it);
+      auto& transaction = boost::get<AgencyWriteTransaction>(it);
 
       transaction.clientId = "dummy-client-id";
     }
@@ -183,6 +177,7 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
 
       WHEN("One unused DBServer is free to exchange the leader") {
 #include "ClusterRepairsTest.swapWithLeader.cpp"
+
         checkAgainstExpectedOperations(
           planCollections,
           supervisionHealth3Healthy0Bad,
@@ -190,32 +185,34 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
         );
       }
 
-      // TODO This should not throw, but return a fail-Result
       WHEN("The unused DBServer is marked as non-healthy") {
 #include "ClusterRepairsTest.unusedServerUnhealthy.cpp"
 
         DistributeShardsLikeRepairer repairer;
-        REQUIRE_THROWS_WITH(
-          repairer.repairDistributeShardsLike(
-            VPackSlice(planCollections->data()),
-            VPackSlice(supervisionHealth2Healthy1Bad->data())
-          ),
-          "not enough healthy db servers"
+
+        auto result = repairer.repairDistributeShardsLike(
+          VPackSlice(planCollections->data()),
+          VPackSlice(supervisionHealth2Healthy1Bad->data())
         );
+
+        REQUIRE(result.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(result.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(result.fail());
       }
 
-      // TODO This should not throw, but return a fail-Result
       WHEN("The replicationFactor equals the number of DBServers") {
 #include "ClusterRepairsTest.replicationFactorTooHigh.cpp"
 
         DistributeShardsLikeRepairer repairer;
-        REQUIRE_THROWS_WITH(
-          repairer.repairDistributeShardsLike(
-            VPackSlice(planCollections->data()),
-            VPackSlice(supervisionHealth2Healthy0Bad->data())
-          ),
-          "not enough healthy db servers"
+
+        auto result = repairer.repairDistributeShardsLike(
+          VPackSlice(planCollections->data()),
+          VPackSlice(supervisionHealth2Healthy0Bad->data())
         );
+
+        REQUIRE(result.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(result.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(result.fail());
       }
     }
 

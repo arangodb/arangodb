@@ -81,9 +81,11 @@ class ResultT : public arangodb::Result {
     return *this;
   }
 
-  operator T() const { return get(); }
-
-  operator T &() { return get(); }
+// These are very convenient, but also make it very easy to accidentally use
+// the value of an error-result...
+//
+//  operator T() const { return get(); }
+//  operator T &() { return get(); }
 
   T *operator->() { return &get(); }
   T const *operator->() const { return &get(); }

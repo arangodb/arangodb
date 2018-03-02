@@ -22,18 +22,10 @@
 
 #include "ClusterRepairs.h"
 
-#include "Logger/Logger.h"
 #include "ServerState.h"
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/Iterator.h>
-
-#include <boost/optional.hpp>
 #include <boost/range/combine.hpp>
-#include <boost/variant.hpp>
 #include <boost/date_time.hpp>
-
-#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -289,7 +281,7 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
     << proto.fullName();
 
     if (collection.shardsById.size() != proto.shardsById.size()) {
-      if (collection.isSmart && collection.shardsById.size() == 0) {
+      if (collection.isSmart && collection.shardsById.empty()) {
         // This case is expected: smart edge collections have no shards.
         continue;
       }
@@ -440,7 +432,7 @@ DistributeShardsLikeRepairer::fixLeader(
     // The replicationFactor should have been reduced before calling this method
     return Result(TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   }
-  
+
   if (std::find(shardDbServers.begin(), shardDbServers.end(), protoLeader) != shardDbServers.end()) {
     boost::optional<ServerID const> tmpServer = findFreeServer(availableDbServers, shardDbServers);
 
@@ -561,10 +553,18 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   // Needed to build agency transactions
   TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
-  std::map<CollectionID, struct Collection> collectionMap = readCollections(planCollections);
+  auto collectionMapResult = readCollections(planCollections);
+  if (collectionMapResult.fail()) {
+    return collectionMapResult;
+  }
+  std::map<CollectionID, struct Collection> collectionMap = collectionMapResult.get();
   DBServers const availableDbServers = readDatabases(supervisionHealth);
 
-  std::vector<CollectionID> collectionsToFix = findCollectionsToFix(collectionMap);
+  auto collectionsToFixResult = findCollectionsToFix(collectionMap);
+  if (collectionsToFixResult.fail()) {
+    return collectionsToFixResult;
+  }
+  std::vector<CollectionID> collectionsToFix = collectionsToFixResult.get();
 
   std::list<RepairOperation> repairOperations;
 
@@ -574,9 +574,14 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     << "DistributeShardsLikeRepairer::repairDistributeShardsLike: fixing collection "
     << collection.fullName();
 
-    if (! collection.repairingDistributeShardsLike) {
+    if (collection.distributeShardsLike) {
+      auto renameTrxResult = createRenameDistributeShardsLikeAttributeTransaction(collection);
+      if (renameTrxResult.fail()) {
+        return renameTrxResult;
+      }
+
       repairOperations.emplace_back(
-        createRenameDistributeShardsLikeAttributeTransaction(collection)
+        std::move(renameTrxResult.get())
       );
     }
 
@@ -606,8 +611,12 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         << "fixing shard " << collection.fullName() << "/" << shardId;
         // TODO Do we need to check that dbServers and protoDbServers are not empty?
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
+        auto newRepairOperationsResult = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
+        if (newRepairOperationsResult.fail()) {
+          return newRepairOperationsResult;
+        }
         std::list<RepairOperation> newRepairOperations
-          = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
+          = newRepairOperationsResult.get();
         repairOperations.splice(repairOperations.end(), newRepairOperations);
       }
       else {
@@ -618,8 +627,12 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       }
     }
 
+    auto renameTrxResult = createRestoreDistributeShardsLikeAttributeTransaction(collection);
+    if (renameTrxResult.fail()) {
+      return renameTrxResult;
+    }
     repairOperations.emplace_back(
-      createRestoreDistributeShardsLikeAttributeTransaction(collection)
+      std::move(renameTrxResult.get())
     );
   }
 
@@ -660,8 +673,8 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, errorMessage.str());
   }
 
-  TRI_ASSERT(dbServers.size() > 0);
-  if (dbServers.size() == 0) {
+  TRI_ASSERT(! dbServers.empty());
+  if (dbServers.empty()) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
   }

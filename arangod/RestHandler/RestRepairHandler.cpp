@@ -25,11 +25,6 @@
 #include <arangod/GeneralServer/AsyncJobManager.h>
 #include <arangod/Cluster/ServerState.h>
 #include "RestRepairHandler.h"
-#include "Cluster/ClusterRepairs.h"
-#include <velocypack/velocypack-aliases.h>
-
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -204,7 +199,10 @@ RestRepairHandler::repairDistributeShardsLike() {
           }
             break;
           default:
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+            generateError(rest::ResponseCode::SERVER_ERROR,
+              TRI_ERROR_HTTP_SERVER_ERROR);
+
+            return RestStatus::FAIL;
         }
       }
 
