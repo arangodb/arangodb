@@ -83,7 +83,6 @@
 ## ADVANCED TOPICS	
 
 * [Architecture](Architecture/README.md)
-  * [Modes](Architecture/ServerModes.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
