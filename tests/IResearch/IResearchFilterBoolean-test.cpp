@@ -69,62 +69,6 @@
 
 NS_LOCAL
 
-struct TestAttribute: public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
-};
-
-DEFINE_ATTRIBUTE_TYPE(TestAttribute);
-
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestAnalyzer, ptr);
-    return ptr;
-  }
-
-  TestAnalyzer() : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_term);
-    _attrs.emplace(_attr);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    _term.value(irs::bytes_ref(_data.c_str(), 1));
-    _data = irs::bytes_ref(_data.c_str() + 1, _data.size() - 1);
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-  TestAttribute _attr;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
-REGISTER_ANALYZER_JSON(TestAnalyzer, TestAnalyzer::make);
-
 std::string mangleBool(std::string name) {
   arangodb::iresearch::kludge::mangleBool(name);
   return name;
