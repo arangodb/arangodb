@@ -228,8 +228,9 @@ template <typename CMP>
 void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
-  double multiplier = (_params.limit > 0) ? 1.2 * std::sqrt(static_cast<double>(_params.limit) / M_PI) : 4;
-  double delta = _params.scanWholeRange
+  double multiplier =
+      std::max(2.0 * std::sqrt(static_cast<double>(_params.limit) / M_PI), 4.0);
+  double delta = _params.fullRange
                      ? _params.maxDistanceRad()
                      : _origin.Angle(cords.ToPoint()) * multiplier;
   if (minBound < delta && delta < M_PI) {

@@ -473,7 +473,7 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
-    params.scanWholeRange = true;
+    params.fullRange = true;
   }
   params.limit = count;
   size_t limit = (count > 0) ? count : SIZE_MAX;

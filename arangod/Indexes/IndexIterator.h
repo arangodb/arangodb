@@ -107,7 +107,7 @@ class IndexIterator {
 /// @brief Special iterator if the condition cannot have any result
 class EmptyIndexIterator final : public IndexIterator {
  public:
-  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index) 
+  EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx, arangodb::Index const* index)
       : IndexIterator(collection, trx, index) {}
 
   ~EmptyIndexIterator() {}
@@ -149,7 +149,7 @@ class MultiIndexIterator final : public IndexIterator {
         delete it;
       }
     }
-    
+
     char const* typeName() const override { return "multi-index-iterator"; }
 
     /// @brief Get the next elements
@@ -177,6 +177,10 @@ struct IndexIteratorOptions {
   /// @brief Whether FCalls will be evaluated entirely or just it's arguments
   /// Used when creating the condition required to build an iterator
   bool evaluateFCalls = true;
+  /// @brief Whether to eagerly scan the full range of a condition
+  bool fullRange = false;
+  /// @brief A limit that will be imposed later (if non-zero)
+  size_t limit = 0;
 };
 }
 #endif

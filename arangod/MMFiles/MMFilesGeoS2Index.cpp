@@ -100,8 +100,14 @@ struct NearIterator final : public IndexIterator {
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
         _near(std::move(params),
-              index->variant() == geo_index::Index::Variant::GEOJSON) {
+              index->variant() == geo_index::Index::Variant::GEOJSON),
+        _scans{0} {
     estimateDensity();
+  }
+
+  ~NearIterator() {
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+        << "near iterator performed " << _scans << " scans";
   }
 
   char const* typeName() const override { return "s2-index-iterator"; }
@@ -214,6 +220,7 @@ struct NearIterator final : public IndexIterator {
   void reset() override { _near.reset(); }
 
  private:
+  size_t _scans;
   // we need to get intervals representing areas in a ring (annulus)
   // around our target point. We need to fetch them ALL and then sort
   // found results in a priority list according to their distance
@@ -222,8 +229,12 @@ struct NearIterator final : public IndexIterator {
 
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    //size_t seeks = 0;
+    if (!_near.isDone()) {
+      // TODO TRI_ASSERT(scan.size() > 0);
+      ++_scans;
+    };
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
+    // size_t seeks = 0;
 
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
@@ -246,7 +257,7 @@ struct NearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min);  //seeks++;
+        it = tree.lower_bound(interval.min);  // seeks++;
       }
 
       while (it != tree.end() && it->first <= interval.max) {
@@ -254,7 +265,7 @@ struct NearIterator final : public IndexIterator {
         it++;
       }
     }
-    //LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -426,7 +437,8 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
              std::abs(centroid.longitude) <= 180.0);
 
   for (S2CellId cell : cells) {
-    for (auto it = _tree.lower_bound(cell); it != _tree.end() && it->first == cell;) {
+    for (auto it = _tree.lower_bound(cell);
+         it != _tree.end() && it->first == cell;) {
       if (it->second.documentId == documentId) {
         it = _tree.erase(it);
       } else {
@@ -450,6 +462,8 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
+  params.fullRange = opts.fullRange;
+  params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
   // FIXME: <Optimize away>
@@ -491,7 +505,7 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
-    params.scanWholeRange = true;
+    params.fullRange = true;
   }
   params.limit = count;
   size_t limit = (count > 0) ? count : SIZE_MAX;
