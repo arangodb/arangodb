@@ -939,12 +939,6 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 
-/// 1497:
-/// "not enough healthy db servers"
-/// Will be raised when, during repairDistributeShardsLike, there should be a
-/// free db server to move a shard, but none of the candidates is healthy.
-constexpr int TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY                              = 1497;
-
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1632,6 +1626,56 @@ constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         
 /// The given smartGraph attribute is illegal and connot be used for sharding.
 /// All system attributes are forbidden.
 constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           = 4004;
+
+/// 5000:
+/// "error during cluster repairs"
+/// General error during cluster repairs
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = 5000;
+
+/// 5001:
+/// "not enough healthy db servers"
+/// Will be raised when, during repairDistributeShardsLike, there should be a
+/// free db server to move a shard, but none of the candidates is healthy.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = 5001;
+
+/// 5002:
+/// "replication factor violated during cluster repairs"
+/// Will be raised on various inconsistencies regarding the
+/// replication factor
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED             = 5002;
+
+/// 5003:
+/// "no dbservers during cluster repairs"
+/// Will be raised if a collection that is fixed has some shard without DB
+/// Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS                            = 5003;
+
+/// 5004:
+/// "mismatching leaders during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the
+/// corresponding distributeShardsLike collection have mismatching leaders (when
+/// they should already have been fixed)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS                     = 5004;
+
+/// 5005:
+/// "mismatching followers during cluster repairs"
+/// Will be raised if a shard in collection and its prototype in the corresponding
+/// distributeShardsLike collection don't have the same followers
+/// (when they should already have been adjusted)
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS                   = 5005;
+
+/// 5006:
+/// "inconsistent attributes during cluster repairs"
+/// Will be raised if a collection that is fixed does (not) have
+/// distributeShardsLike when it is expected, or does (not) have
+/// repairingDistributeShardsLike when it is expected
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES                 = 5006;
+
+/// 5007:
+/// "mismatching shards during cluster repairs"
+/// Will be raised if in a collection and its distributeShardsLike prototype
+/// collection some shard and its prototype have an unequal number of DB Servers
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS                      = 5007;
 
 /// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
 /// "Illegal inquiry syntax"

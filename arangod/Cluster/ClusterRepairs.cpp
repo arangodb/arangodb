@@ -40,8 +40,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
-// TODO Don't throw exceptions, use Result objects
-
 bool VersionSort::operator()(std::string const &a, std::string const &b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
@@ -167,16 +165,11 @@ DistributeShardsLikeRepairer::readDatabases(
 }
 
 
-std::map<CollectionID, struct cluster_repairs::Collection>
+ResultT<std::map<CollectionID, struct cluster_repairs::Collection>>
 DistributeShardsLikeRepairer::readCollections(
   const Slice &collectionsByDatabase
 ) {
   std::map<CollectionID, struct Collection> collections;
-
-  // maybe extract more fields, like
-  // "Lock": "..."
-  // "DBServers": {...}
-  // ?
 
   for (auto const &databaseIterator : ObjectIterator(collectionsByDatabase)) {
     DatabaseID const databaseId = databaseIterator.key.copyString();
@@ -191,6 +184,7 @@ DistributeShardsLikeRepairer::readCollections(
       std::string collectionName;
       uint64_t replicationFactor = 0;
       bool deleted = false;
+      bool isSmart = false;
       boost::optional<CollectionID> distributeShardsLike;
       boost::optional<CollectionID> repairingDistributeShardsLike;
       Slice shardsSlice;
@@ -203,10 +197,7 @@ DistributeShardsLikeRepairer::readCollections(
         }
         else if (key == "id") {
           std::string const id = it.value.copyString();
-          if (id != collectionId) {
-            // TODO throw a meaningful exception
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
-          }
+          TRI_ASSERT(id != collectionId);
         }
         else if (key == "replicationFactor") {
           replicationFactor = it.value.getUInt();
@@ -223,6 +214,9 @@ DistributeShardsLikeRepairer::readCollections(
         else if(key == "deleted") {
           deleted = it.value.getBool();
         }
+        else if(key == "isSmart") {
+          isSmart = it.value.getBool();
+        }
       }
 
       std::map<ShardID, DBServers, VersionSort> shardsById
@@ -234,6 +228,7 @@ DistributeShardsLikeRepairer::readCollections(
         .id = collectionId,
         .replicationFactor = replicationFactor,
         .deleted = deleted,
+        .isSmart = isSmart,
         .distributeShardsLike = distributeShardsLike,
         .repairingDistributeShardsLike = repairingDistributeShardsLike,
         .shardsById = std::move(shardsById),
@@ -248,7 +243,7 @@ DistributeShardsLikeRepairer::readCollections(
 }
 
 
-std::vector<CollectionID>
+ResultT<std::vector<CollectionID>>
 DistributeShardsLikeRepairer::findCollectionsToFix(
   std::map<CollectionID, struct Collection> collections
 ) {
@@ -294,16 +289,17 @@ DistributeShardsLikeRepairer::findCollectionsToFix(
     << proto.fullName();
 
     if (collection.shardsById.size() != proto.shardsById.size()) {
-      // TODO This should maybe not be a warning.
-      // TODO Is there anything we can do in this case? Why does this happen anyway?
+      if (collection.isSmart && collection.shardsById.size() == 0) {
+        // This case is expected: smart edge collections have no shards.
+        continue;
+      }
 
-      // answer: This should only happen if collection has "isSmart": true. In
-      // that case, the number of shards should be 0.
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "DistributeShardsLikeRepairer::findCollectionsToFix: "
       << "Unequal number of shards in collection " << collection.fullName()
       << " and its distributeShardsLike collection " << proto.fullName();
 
-      continue;
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS);
     }
 
     for (auto const& zippedShardsIt : boost::combine(collection.shardsById, proto.shardsById)) {
@@ -338,7 +334,7 @@ DistributeShardsLikeRepairer::findFreeServer(
 ) {
   DBServers freeServer = serverSetDifference(availableDbServers, shardDbServers);
 
-  // TODO use random server
+  // TODO maybe use a random server instead?
   if (!freeServer.empty()) {
     return freeServer[0];
   }
@@ -413,7 +409,7 @@ DistributeShardsLikeRepairer::createMoveShardOperation(
 }
 
 
-std::list<RepairOperation>
+ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::fixLeader(
   DBServers const& availableDbServers,
   Collection& collection,
@@ -436,15 +432,13 @@ DistributeShardsLikeRepairer::fixLeader(
 
   std::list<RepairOperation> repairOperations;
 
-//[PSEUDO-TODO] didReduceRepl := false
-
   if (protoLeader == shardLeader) {
-    return {};
+    return repairOperations;
   }
 
   if (collection.replicationFactor == availableDbServers.size()) {
     // The replicationFactor should have been reduced before calling this method
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   }
   
   if (std::find(shardDbServers.begin(), shardDbServers.end(), protoLeader) != shardDbServers.end()) {
@@ -452,7 +446,7 @@ DistributeShardsLikeRepairer::fixLeader(
 
     if (! tmpServer) {
       // This happens if all db servers that don't contain the shard are unhealthy
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_NOT_ENOUGH_HEALTHY);
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
     }
 
     RepairOperation moveShardOperation = createMoveShardOperation(
@@ -480,7 +474,7 @@ DistributeShardsLikeRepairer::fixLeader(
 }
 
 
-std::list<RepairOperation>
+ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::fixShard(
   DBServers const& availableDbServers,
   Collection& collection,
@@ -496,8 +490,13 @@ DistributeShardsLikeRepairer::fixShard(
   << " to match shard " << protoShardId
   << " of collection " << proto.fullName();
 
-  std::list<RepairOperation> repairOperations;
-  repairOperations = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
+  auto fixLeaderRepairOperationsResult = fixLeader(availableDbServers, collection, proto, shardId, protoShardId);
+  if (fixLeaderRepairOperationsResult.fail()) {
+    return fixLeaderRepairOperationsResult;
+  }
+
+  std::list<RepairOperation> repairOperations
+    = fixLeaderRepairOperationsResult.get();
 
   DBServers const& protoShardDbServers = proto.shardsById.at(protoShardId);
   DBServers& shardDbServers = collection.shardsById.at(shardId);
@@ -509,9 +508,21 @@ DistributeShardsLikeRepairer::fixShard(
     = serverSetDifference(shardDbServers, protoShardDbServers);
 
   if (serversOnlyOnProto.size() != serversOnlyOnShard.size()) {
-// [PSEUDO]  If (onProto.length != onFollower.length) { fail(); } // Here the replicationFactor is violated. Will not fix
-    // TODO write a test and throw a meaningful exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    // TODO write a test
+    std::stringstream errorMessage;
+    errorMessage
+      << "replicationFactor is violated: "
+      << "Collection " << collection.fullName()
+      << " and its distributeShardsLike prototype " << proto.fullName()
+      << " have " << serversOnlyOnShard.size() << " and "
+      << serversOnlyOnProto.size() << " different(mismatching) "
+      << " DBServers, respectively.";
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    << "DistributeShardsLikeRepairer::fixShard: "
+    << errorMessage.str();
+
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,
+      errorMessage.str());
   }
 
   for (auto const& zipIt : boost::combine(serversOnlyOnProto, serversOnlyOnShard)) {
@@ -523,8 +534,15 @@ DistributeShardsLikeRepairer::fixShard(
     repairOperations.emplace_back(moveShardOperation);
   }
 
-  if(auto trx = createFixServerOrderTransaction(collection, proto, shardId, protoShardId)) {
-    repairOperations.emplace_back(trx.get());
+  ResultT<boost::optional<AgencyWriteTransaction>> maybeTrxResult
+    = createFixServerOrderTransaction(collection, proto, shardId, protoShardId);
+
+  if (maybeTrxResult.fail()) {
+    return maybeTrxResult;
+  }
+
+  if(auto maybeTrx = maybeTrxResult.get()) {
+    repairOperations.emplace_back(std::move(maybeTrx.get()));
   }
 
   return repairOperations;
@@ -600,7 +618,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       }
     }
 
-    repairOperations.push_back(
+    repairOperations.emplace_back(
       createRestoreDistributeShardsLikeAttributeTransaction(collection)
     );
   }
@@ -608,7 +626,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   return repairOperations;
 }
 
-boost::optional<AgencyWriteTransaction>
+ResultT<boost::optional<AgencyWriteTransaction>>
 DistributeShardsLikeRepairer::createFixServerOrderTransaction(
   Collection& collection,
   Collection const& proto,
@@ -628,30 +646,36 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
 
   TRI_ASSERT(dbServers.size() != protoDbServers.size());
   if (dbServers.size() != protoDbServers.size()) {
-    // this should never happen.
-    // TODO Use a fail-Result instead of an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    std::stringstream errorMessage;
+    errorMessage
+      << "replicationFactor violated: Collection "
+      << collection.fullName() << " and its distributeShardsLike "
+      << " prototype have mismatching numbers of DBServers; "
+      << dbServers.size() << " (on shard " << shardId << ") "
+      << "and " << protoDbServers.size() << " (on shard " << protoShardId << ")"
+      << ", respectively.";
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    << "DistributeShardsLikeRepairer::createFixServerOrderTransaction: "
+    << errorMessage.str();
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, errorMessage.str());
   }
 
   TRI_ASSERT(dbServers.size() == 0);
   if (dbServers.size() == 0) {
     // this should never happen.
-    // TODO Use a fail-Result instead of an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
   }
 
   TRI_ASSERT(dbServers[0] != protoDbServers[0]);
   if (dbServers[0] != protoDbServers[0]) {
     // this should never happen.
-    // TODO Use a fail-Result instead of an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
   }
 
   TRI_ASSERT(!serverSetSymmetricDifference(dbServers, protoDbServers).empty());
   if (!serverSetSymmetricDifference(dbServers, protoDbServers).empty()) {
     // this should never happen.
-    // TODO Use a fail-Result instead of an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
   }
 
   if (dbServers == protoDbServers) {
@@ -659,7 +683,7 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     << "DistributeShardsLikeRepairer::createFixServerOrderTransaction: "
     << "Order is already equal, doing nothing";
 
-    return boost::none;
+    return { boost::none };
   }
 
   VPackBufferPtr
@@ -685,7 +709,7 @@ DistributeShardsLikeRepairer::createFixServerOrderTransaction(
     newDbServerSlice
   };
 
-  return AgencyWriteTransaction { agencyOperation, agencyPrecondition };
+  return { AgencyWriteTransaction { agencyOperation, agencyPrecondition } };
 }
 
 
@@ -735,15 +759,14 @@ DistributeShardsLikeRepairer::createRenameAttributeTransaction(
   return AgencyWriteTransaction {operations, preconditions};
 }
 
-AgencyWriteTransaction
+ResultT<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::createRenameDistributeShardsLikeAttributeTransaction(
   Collection &collection
 ) {
   TRI_ASSERT(! collection.distributeShardsLike || collection.repairingDistributeShardsLike);
   if (! collection.distributeShardsLike || collection.repairingDistributeShardsLike) {
-      // this should never happen.
-      // TODO Use a fail-Result instead of an exception
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    // this should never happen.
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
 
   VPackBuilder builder;
@@ -766,15 +789,14 @@ DistributeShardsLikeRepairer::createRenameDistributeShardsLikeAttributeTransacti
   );
 }
 
-AgencyWriteTransaction
+ResultT<AgencyWriteTransaction>
 DistributeShardsLikeRepairer::createRestoreDistributeShardsLikeAttributeTransaction(
   Collection &collection
 ) {
   TRI_ASSERT(! collection.repairingDistributeShardsLike || collection.distributeShardsLike);
   if (! collection.repairingDistributeShardsLike || collection.distributeShardsLike) {
     // this should never happen.
-    // TODO Use a fail-Result instead of an exception
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_FAILED);
+    return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
 
   VPackBuilder builder;

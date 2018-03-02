@@ -64,8 +64,6 @@ class ResultT : public arangodb::Result {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
-    // TODO Maybe we should explicitly set a dedicated errorNumber if that happens,
-    // to avoid exceptions when someone tries to access _val
   }
 
   ResultT(T const& val)
@@ -75,12 +73,12 @@ class ResultT : public arangodb::Result {
 
   ResultT &operator=(T const &val_) {
     _val = val_;
-    return get();
+    return *this;
   }
 
   ResultT &operator=(T&& val_) {
     _val = std::move(val_);
-    return get();
+    return *this;
   }
 
   operator T() const { return get(); }
@@ -137,6 +135,7 @@ struct Collection {
   CollectionID id;
   uint64_t replicationFactor;
   bool deleted;
+  bool isSmart;
   boost::optional<CollectionID> distributeShardsLike;
   boost::optional<CollectionID> repairingDistributeShardsLike;
   std::map<ShardID, DBServers, VersionSort> shardsById;
@@ -192,7 +191,7 @@ class DistributeShardsLikeRepairer {
   DBServers static
   readDatabases(velocypack::Slice const& planDbServers);
 
-  std::map<CollectionID, struct Collection> static
+  ResultT<std::map<CollectionID, struct Collection>> static
   readCollections(velocypack::Slice const& collectionsByDatabase);
 
   boost::optional<ServerID const> static
@@ -201,7 +200,7 @@ class DistributeShardsLikeRepairer {
     DBServers const& shardDbServers
   );
 
-  std::vector<CollectionID> static
+  ResultT<std::vector<CollectionID>> static
   findCollectionsToFix(std::map<CollectionID, struct Collection> collections);
 
   DBServers static serverSetDifference(
@@ -223,7 +222,7 @@ class DistributeShardsLikeRepairer {
     bool isLeader
   );
 
-  std::list<RepairOperation>
+  ResultT<std::list<RepairOperation>>
   fixLeader(
     DBServers const& availableDbServers,
     Collection& collection,
@@ -232,7 +231,7 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  std::list<RepairOperation>
+  ResultT<std::list<RepairOperation>>
   fixShard(
     DBServers const& availableDbServers,
     Collection& collection,
@@ -241,7 +240,7 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  boost::optional<AgencyWriteTransaction>
+  ResultT<boost::optional<AgencyWriteTransaction>>
   createFixServerOrderTransaction(
     Collection& collection,
     Collection const& proto,
@@ -257,12 +256,12 @@ class DistributeShardsLikeRepairer {
     std::string const& to
   );
 
-  AgencyWriteTransaction
+  ResultT<AgencyWriteTransaction>
   createRenameDistributeShardsLikeAttributeTransaction(
     Collection &collection
   );
 
-  AgencyWriteTransaction
+  ResultT<AgencyWriteTransaction>
   createRestoreDistributeShardsLikeAttributeTransaction(
     Collection &collection
   );
