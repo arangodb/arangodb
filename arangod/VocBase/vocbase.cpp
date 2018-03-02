@@ -1072,9 +1072,56 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const {
   return (*it).second;
 }
 
+/// @brief looks up a data-source by identifier
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    TRI_voc_cid_t id
+) const noexcept {
+  // FIXME TODO use a common map for collection and view
+  auto* collection = lookupCollection(id);
+
+  if (collection) {
+    return std::shared_ptr<arangodb::LogicalDataSource>(
+      collection, [](arangodb::LogicalDataSource*)->void{}
+    );
+  }
+
+  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(id));
+}
+
+/// @brief looks up a data-source by name
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    std::string const& nameOrId
+) const noexcept {
+  // FIXME TODO use a common map for collection and view
+  auto* collection = lookupCollection(nameOrId);
+
+  if (collection) {
+    return std::shared_ptr<arangodb::LogicalDataSource>(
+      collection, [](arangodb::LogicalDataSource*)->void{}
+    );
+  }
+
+  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(nameOrId));
+}
+
+/// @brief looks up a view by identifier
+std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
+    TRI_voc_cid_t id
+) const noexcept {
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+
+  auto it = _viewsById.find(id);
+
+  if (it == _viewsById.end()) {
+    return std::shared_ptr<LogicalView>();
+  }
+  return (*it).second;
+}
+
 /// @brief looks up a view by name
 std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
-    std::string const& name) {
+    std::string const& name
+) const noexcept {
   if (name.empty()) {
     return std::shared_ptr<LogicalView>();
   }
@@ -1092,18 +1139,6 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   auto it = _viewsByName.find(name);
 
   if (it == _viewsByName.end()) {
-    return std::shared_ptr<LogicalView>();
-  }
-  return (*it).second;
-}
-
-/// @brief looks up a view by identifier
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) {
-  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
-
-  auto it = _viewsById.find(id);
-
-  if (it == _viewsById.end()) {
     return std::shared_ptr<LogicalView>();
   }
   return (*it).second;
@@ -1529,8 +1564,24 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
       application_features::ApplicationServer::getFeature<ViewTypesFeature>(
           "ViewTypes");
 
-  // will throw if type is invalid
-  ViewCreator& creator = viewTypesFeature->creator(type);
+  if (!viewTypesFeature) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'"
+    );
+  }
+
+  auto& dataSourceType =
+    arangodb::LogicalDataSource::Type::emplace(std::move(type));
+  auto& creator = viewTypesFeature->factory(dataSourceType);
+
+  if (!creator) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "no handler found for view type"
+    );
+  }
+
   // Try to create a new view. This is not registered yet
   std::shared_ptr<arangodb::LogicalView> view =
       std::make_shared<arangodb::LogicalView>(this, parameters);

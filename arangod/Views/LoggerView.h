@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
@@ -38,7 +39,6 @@ class Result;
 
 class LoggerView final : public ViewImplementation {
  public:
-  static std::string type;
   static std::unique_ptr<ViewImplementation> creator(
       LogicalView*, arangodb::velocypack::Slice const& info, bool isNew);
 
@@ -54,6 +54,11 @@ class LoggerView final : public ViewImplementation {
              arangodb::velocypack::Slice const& info, bool isNew);
 
   ~LoggerView() = default;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the view type as used when selecting which view to instantiate
+  //////////////////////////////////////////////////////////////////////////////
+  static LogicalDataSource::Type const& type() noexcept;
 
   arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice,
                                     bool partialUpdate, bool doSync) override;

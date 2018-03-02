@@ -84,12 +84,12 @@ std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
 arangodb::Result applyStateRegistrationCallbacks(
-    TRI_voc_cid_t cid,
+    LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
   for (auto& callback: getStateRegistrationCallbacks()) {
     try {
-      auto res = callback(cid, state);
+      auto res = callback(dataSource, state);
 
       if (!res.ok()) {
         return res;
@@ -910,7 +910,19 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = applyStateRegistrationCallbacks(cid, *_state);
+    auto* vocbase = _state->vocbase();
+
+    if (!vocbase) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    auto dataSource = vocbase->lookupDataSource(cid);
+
+    if (!dataSource) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
 
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION(result.errorNumber());
@@ -2869,32 +2881,54 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     throwCollectionNotFound(name);
   }
 
+  auto* vocbase = _state->vocbase();
+
+  if (!vocbase) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
   Result res;
   bool visited = false;
   auto visitor = _state->isEmbeddedTransaction()
     ? std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
+        [this, vocbase, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
           res = addCollectionEmbedded(ccid, name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
+          auto dataSource = vocbase->lookupDataSource(ccid);
+
+          if (!dataSource) {
+            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+
+            return false; // break on error
+          }
+
+          res = applyStateRegistrationCallbacks(*dataSource, *_state);
           visited |= cid == ccid;
 
           return res.ok(); // add the remaining collections (or break on error)
         }
       )
     : std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
+        [this, vocbase, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
           res = addCollectionToplevel(ccid, name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
+          auto dataSource = vocbase->lookupDataSource(ccid);
+
+          if (!dataSource) {
+            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+
+            return false; // break on error
+          }
+
+          res = applyStateRegistrationCallbacks(*dataSource, *_state);
           visited |= cid == ccid;
 
           return res.ok(); // add the remaining collections (or break on error)
@@ -2907,11 +2941,17 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   }
 
   // skip provided 'cid' if it was already done by the visitor
-  if (!visited) {
-    res = applyStateRegistrationCallbacks(cid, *_state);
+  if (visited) {
+    return res;
   }
 
-  return res;
+  auto dataSource = vocbase->lookupDataSource(cid);
+
+  if (!dataSource) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  return applyStateRegistrationCallbacks(*dataSource, *_state);
 }
 
 /// @brief add a collection by id, with the name supplied

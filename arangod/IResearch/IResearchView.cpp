@@ -85,11 +85,6 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the view type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& VIEW_TYPE = arangodb::iresearch::IResearchFeature::type();
-
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -231,9 +226,11 @@ struct ViewState: public arangodb::TransactionState::Cookie {
 /// @brief generates user-friendly description of the specified view
 ////////////////////////////////////////////////////////////////////////////////
 std::string toString(arangodb::iresearch::IResearchView const& view) {
-  std::string str(arangodb::iresearch::IResearchView::type());
+  std::string str(arangodb::iresearch::IResearchView::type().name());
+
   str += ":";
   str += std::to_string(view.id());
+
   return str;
 }
 
@@ -1619,7 +1616,7 @@ arangodb::Result IResearchView::link(
   static std::string subPath("databases");
 
   dataPath /= subPath;
-  dataPath /= arangodb::iresearch::IResearchView::type();
+  dataPath /= arangodb::iresearch::IResearchView::type().name();
   dataPath += "-";
   dataPath += std::to_string(view->id());
 
@@ -1928,8 +1925,12 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   return false;
 }
 
-/*static*/ std::string const& IResearchView::type() noexcept {
-  return VIEW_TYPE;
+/*static*/ arangodb::LogicalDataSource::Type const& IResearchView::type() noexcept {
+  static auto& type = arangodb::LogicalDataSource::Type::emplace(
+    std::string(IResearchFeature::type())
+  );
+
+  return type;
 }
 
 arangodb::Result IResearchView::updateLogicalProperties(
