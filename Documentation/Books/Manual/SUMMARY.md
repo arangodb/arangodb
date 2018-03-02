@@ -8,6 +8,7 @@
 * [Getting Started](GettingStarted/README.md)
   * [Authentication](GettingStarted/Authentication.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
+* [Tutorials](Tutorials/README.md)  
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
