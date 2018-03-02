@@ -45,8 +45,61 @@ using namespace arangodb::aql;
 namespace arangodb {
 namespace tests {
 namespace date_functions_aql {
-namespace is_datestring {
 
+struct TestDateModifierFlagFactory {
+ public:
+  enum FLAGS { INVALID, MILLI, SECOND, MINUTE, HOUR, DAY, WEEK, MONTH, YEAR };
+
+  static std::vector<std::string> createAllFlags(FLAGS const& e) {
+    switch (e) {
+      case INVALID:
+        return {"abc"};
+      case MILLI:
+        return {"f" ,"millisecond", "milliseconds", "MiLLiSeCOnd"};
+      case SECOND:
+        return {"s" ,"second", "seconds", "SeCoNd"};
+      case MINUTE:
+        return {"i" ,"minute", "minutes", "MiNutEs"};
+      case HOUR:
+        return {"h" ,"hour", "hours", "HoUr"};
+      case DAY:
+        return {"d" ,"day", "days", "daYs"};
+      case WEEK:
+        return {"w" ,"week", "weeks", "WeEkS"};
+      case MONTH:
+        return {"m" ,"month", "months", "mOnTHs"};
+      case YEAR:
+        return {"y" ,"year", "years", "yeArS"};
+    }
+    return {"abc"};
+  }
+
+  static std::string createFlag(FLAGS const&e) {
+    switch (e) {
+      case INVALID:
+        return "abc";
+      case MILLI:
+        return "f";
+      case SECOND:
+        return "s";
+      case MINUTE:
+        return "i";
+      case HOUR:
+        return "h";
+      case DAY:
+        return "d";
+      case WEEK:
+        return "w";
+      case MONTH:
+        return "m";
+      case YEAR:
+        return "y";
+    }
+  }
+};
+
+
+namespace is_datestring {
 struct TestDate {
  public:
   TestDate(std::string const json, bool v) : _date(nullptr), _isValid(v) {
@@ -168,6 +221,168 @@ SCENARIO("Testing DATE_COMPARE", "[AQL][DATE]") {
 }
  
 }  // date_compare
+
+namespace date_diff {
+SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
+  fakeit::Mock<Query> queryMock;
+  Query& query = queryMock.get();
+
+  fakeit::Mock<transaction::Methods> trxMock;
+  transaction::Methods& trx = trxMock.get();
+
+  WHEN("Checking all modifier Flags") {
+    // These dates differ by:
+    // 1 year
+    // 2 months
+    // 1 week
+    // 12 days
+    // 4 hours
+    // 5 minutes
+    // 6 seconds
+    // 123 milliseconds
+    std::string const earlierDate = "2000-04-01T02:48:42.123"; 
+    std::string const laterDate = "2001-06-13T06:53:48.246";
+    // Exact milisecond difference
+    double dateDiffMillis = 37857906123;
+    // Average number of days per month in the given dates
+    double avgDaysPerMonth = 31*8+30*5+28;
+    avgDaysPerMonth /= 14; // We have 14 months
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+    VPackBuilder dateBuilder;
+    dateBuilder.openArray();
+    dateBuilder.add(VPackValue(earlierDate));
+    dateBuilder.add(VPackValue(laterDate));
+    dateBuilder.close();
+    VPackBuilder flagBuilder;
+    VPackBuilder switchBuilder;
+
+    auto testCombinations = [&](std::string const& f, double expected) -> void {
+      double eps = 0.05;
+      params.clear();
+      flagBuilder.clear();
+      flagBuilder.add(VPackValue(f));
+      WHEN("using "  + earlierDate + ", " + laterDate + ", " + f) {
+        params.emplace_back(dateBuilder.slice().at(0));
+        params.emplace_back(dateBuilder.slice().at(1));
+        params.emplace_back(flagBuilder.slice());
+        THEN("returning float") {
+          switchBuilder.add(VPackValue(true));
+          params.emplace_back(switchBuilder.slice());
+          AqlValue res =
+              Functions::DateDiff(&query, &trx, params);
+          REQUIRE(res.isNumber());
+          double out = res.toDouble(&trx);
+          REQUIRE(out >= expected - eps);
+          REQUIRE(out <= expected + eps);
+        }
+        THEN("returning integer") {
+          switchBuilder.add(VPackValue(false));
+          params.emplace_back(switchBuilder.slice());
+          AqlValue res =
+              Functions::DateDiff(&query, &trx, params);
+          REQUIRE(res.isNumber());
+          REQUIRE(res.toDouble(&trx) == std::round(expected));
+        }
+      }
+      WHEN("using "  + laterDate + ", " + earlierDate + ", " + f) {
+        params.emplace_back(dateBuilder.slice().at(1));
+        params.emplace_back(dateBuilder.slice().at(0));
+        params.emplace_back(flagBuilder.slice());
+        THEN("returning float") {
+          switchBuilder.add(VPackValue(true));
+          params.emplace_back(switchBuilder.slice());
+          AqlValue res =
+              Functions::DateDiff(&query, &trx, params);
+          REQUIRE(res.isNumber());
+          double out = res.toDouble(&trx);
+          REQUIRE(out >= -(expected + eps));
+          REQUIRE(out <= -(expected - eps));
+        }
+        THEN("returning integer") {
+          switchBuilder.add(VPackValue(false));
+          params.emplace_back(switchBuilder.slice());
+          AqlValue res =
+              Functions::DateDiff(&query, &trx, params);
+          REQUIRE(res.isNumber());
+          REQUIRE(res.toDouble(&trx) == -std::round(expected));
+        }
+      }
+ 
+      for (auto& it : params) {
+        it.destroy();
+      }
+
+    };
+
+    WHEN("checking Millis") {
+      double expectedDiff = dateDiffMillis;
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::MILLI);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Seconds") {
+      double expectedDiff = dateDiffMillis / 1000;
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::SECOND);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Minutes") {
+      double expectedDiff = dateDiffMillis / (1000 * 60);
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::MINUTE);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Hours") {
+      double expectedDiff = dateDiffMillis / (1000 * 60 * 60);
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::HOUR);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Days") {
+      double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24);
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::DAY);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Weeks") {
+      double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24 * 7);
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::WEEK);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Months") {
+      double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::MONTH);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+    WHEN("checking Years") {
+      double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / 365;
+      auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::YEAR);
+      for (auto const& f : allFlags) {
+        testCombinations(f, expectedDiff);
+      }
+    }
+
+  }
+}
+} // date_diff
+
 }  // date_functions_aql
 }  // tests
 }  // arangodb
