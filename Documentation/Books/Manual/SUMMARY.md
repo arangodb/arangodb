@@ -7,7 +7,6 @@
 
 * [Getting Started](GettingStarted/README.md)
   * [Authentication](GettingStarted/Authentication.md)
-  * [Accessing the Web Interface](GettingStarted/WebInterface.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
