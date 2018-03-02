@@ -15,18 +15,22 @@ Join tuples
 
 We'll start with a SQL-ish result set and return each tuple (user name, friends userId) 
 separately. The AQL query to generate such result is:
-
-```js
+@EXAMPLE_AQL{joinTuples}
+@DATASET{joinSampleDataset}
 FOR u IN users
   FILTER u.active == true
   LIMIT 0, 4
   FOR f IN relations
-    FILTER f.type == "friend" && f.friendOf == u.userId
+    FILTER f.type == @friend && f.friendOf == u.userId
     RETURN {
       "user" : u.name,
       "friendId" : f.thisUser
     }
-```
+@BV {
+friend: "friend"
+}
+@END_EXAMPLE_AQL
+
 
 ```json
 [

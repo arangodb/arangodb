@@ -87,6 +87,7 @@ ArangoshRunLineNo = {}
 ################################################################################
 
 ArangoshFiles = {}
+AQLFiles = {}
 
 ################################################################################
 ### @brief map the source files for error messages
@@ -113,6 +114,9 @@ FilterForTestcase = None
 STATE_BEGIN = 0
 STATE_ARANGOSH_OUTPUT = 'HTTP_LOUTPUT'
 STATE_ARANGOSH_RUN = 'ARANGOSH_OUTPUT'
+STATE_AQL = 'AQL'
+STATE_AQL_DS = 'AQL_DS'
+STATE_AQL_BIND = 'AQL_BV'
 
 ################################################################################
 ### @brief option states
@@ -142,9 +146,13 @@ def generateArangoshHeader():
 
 regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
-    
+aqlLine = re.compile(r'^(/// )? *@EXAMPLE_AQL{([^}]*)}')
+aqlDataSetLine = re.compile(r'^(/// )? *@DATASET{([^}]*)}')
+aqlBindvaluesLine = re.compile(r'^(/// )? *@BV (.*)')
+
 def matchStartLine(line, filename):
-    global regularStartLine, errorStartLine, runLine, FilterForTestcase, filterTestList
+    global regularStartLine, errorStartLine, runLine
+    global aqlLine, FilterForTestcase, filterTestList
     errorName = ""
     m = regularStartLine.match(line)
 
@@ -169,7 +177,7 @@ def matchStartLine(line, filename):
     if m:
         strip = m.group(1)
         name = m.group(2)
-        
+
         if name in ArangoshFiles:
             print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
             sys.exit(1)
@@ -182,8 +190,44 @@ def matchStartLine(line, filename):
         ArangoshFiles[name] = True
         return (name, STATE_ARANGOSH_RUN)
 
+    m = aqlLine.match(line)
+    if m:
+        strip = m.group(1)
+        name = m.group(2)
+    
+        if name in AQLFiles:
+            print >> sys.stderr, "%s\nduplicate test name '%s' in file %s!\n%s\n" % ('#' * 80, name, filename, '#' * 80)
+            sys.exit(1)
+    
+        # if we match for filters, only output these!
+        if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            filterTestList.append(name)
+            return("", STATE_BEGIN);
+    
+        AQLFiles[name] = True
+        return (name, STATE_AQL)
+
     # Not found, remain in STATE_BEGIN
     return ("", STATE_BEGIN)
+
+def matchAqlLine(line, filename, oldState):
+    global aqlDataSetLine, aqlBindvaluesLine
+    m = aqlDataSetLine.match(line)
+
+    if m:
+        strip = m.group(1)
+        name = m.group(2)
+        return (name, STATE_AQL_DS)
+
+    m = aqlBindvaluesLine.match(line)
+
+    if m:
+        strip = m.group(1)
+        bindvalueStart = m.group(2)
+        return (bindvalueStart, STATE_AQL_BIND)
+
+    # Not found, remain in STATE_AQL
+    return (line, oldState)
 
 endExample = re.compile(r'^(/// )? *@END_EXAMPLE_')
 #r5 = re.compile(r'^ +')
@@ -192,6 +236,9 @@ TESTLINES="testlines"
 TYPE="type"
 LINE_NO="lineNo"
 STRING="string"
+AQL="aql"
+AQLDS="aql_dataset"
+AQLBV="aql_bindvalues"
 
 ################################################################################
 ### @brief loop over the lines of one input file
@@ -229,7 +276,23 @@ def analyzeFile(f, filename):
             if state == STATE_ARANGOSH_RUN:
                 RunTests[name][LINE_NO] = lineNo;
                 RunTests[name][STRING] = "";
+
+            if state == STATE_AQL:
+                RunTests[name][LINE_NO] = lineNo;
+                RunTests[name][AQL] = "";
             continue
+
+        if state == STATE_AQL:
+            (data, aqlState) = matchAqlLine(line, filename, state)
+            if aqlState == STATE_AQL_BIND:
+                RunTests[name][AQLBV] = data
+                state = aqlState
+                continue
+            if aqlState == STATE_AQL_DS:
+                RunTests[name][AQLDS] = data
+                # flip back to aql - query will come.
+                state = STATE_AQL
+                continue
 
         # we are within a example
         line = line[len(strip):]
@@ -287,6 +350,10 @@ def analyzeFile(f, filename):
             RunTests[name][TESTLINES].append([line, showCmd, lineNo])
         elif state == STATE_ARANGOSH_RUN:
             RunTests[name][STRING] += line + "\n"
+        elif state == STATE_AQL:
+            RunTests[name][AQL] += line + "\n"
+        elif state == STATE_AQL_BIND:
+            RunTests[name][AQLBV] += line + "\n"
 
 
 def generateSetupFunction():
@@ -332,9 +399,9 @@ def generateArangoshOutput(testName):
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
         )
     except Exception as x:
-        print x
-        print testName
-        print value
+        print  >> sys.stderr,x
+        print  >> sys.stderr,testName
+        print  >> sys.stderr,value
         raise
 
     for l in value[TESTLINES]:
@@ -429,6 +496,56 @@ def generateArangoshRun(testName):
 ### @brief generate arangosh run
 ################################################################################
 
+def generateAQL(testName):
+    print  >> sys.stderr, str(testName)
+    value = RunTests[testName]
+    startLineNo = RunTests[testName][LINE_NO]
+    print '''
+%s
+/// %s
+(function() {
+  internal.startPrettyPrint(true);
+  internal.stopColorPrint(true);
+  var testName = '%s';
+  var lineCount = 0;
+  var startLineCount = %d;
+  var outputDir = '%s';
+  var sourceFile = '%s';
+  var startTime = time();
+  internal.startCaptureMode();
+  output = '';
+''' % (
+        ('/'*80),
+        testName,
+        testName,
+        startLineNo,
+        escapeBS.sub(doubleBS, OutputDir),
+        escapeBS.sub(doubleBS, MapSourceFiles[testName])
+    )
+    print "  let query = `" + value[AQL] + "`;"
+    print "  let bv = " + value[AQLBV] + ";"
+    print "  let ds = '" + value[AQLDS] + "';"
+    print '''
+  examples[ds].removeDS();
+  examples[ds].createDS();
+  let result = db._query(query, bv);
+
+  output += highlight("AQL", query);
+  jsonAppender(result.toArray());
+
+  examples[ds].removeDS();
+  print("[" + (time () - startTime) + "s] " + rc);
+  ///output = highlight("js", output);
+  fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
+  checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
+}());
+
+'''
+
+################################################################################
+### @brief generate arangosh run
+################################################################################
+
 def generateArangoshShutdown():
     print '''
 if (allErrors.length > 0) {
@@ -443,7 +560,6 @@ if (allErrors.length > 0) {
 
 def loopDirectories():
     global ArangoshSetup, OutputDir, FilterForTestcase
-
     argv = sys.argv
     argv.pop(0)
     filenames = []
@@ -501,7 +617,6 @@ def loopDirectories():
     for filename in filenames:
         if (filename.find("#") < 0):
             f = open(filename, "r")
-        
             analyzeFile(f, filename)
     
             f.close()
@@ -518,6 +633,8 @@ def generateTestCases():
             generateArangoshOutput(thisTest)
         elif RunTests[thisTest][TYPE] == STATE_ARANGOSH_RUN:
             generateArangoshRun(thisTest)
+        elif RunTests[thisTest][TYPE] == STATE_AQL:
+            generateAQL(thisTest)
 
 ################################################################################
 ### @brief main
