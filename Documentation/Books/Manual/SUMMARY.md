@@ -6,8 +6,13 @@
 ## GETTING FAMILIAR 
 
 * [Getting Started](GettingStarted/README.md)
+  * [Installation](GettingStarted/Installation.md) 
   * [Authentication](GettingStarted/Authentication.md)
+  * [Web Interface](GettingStarted/WebInterface.md) 
+  * [Databases, Collections and Documents](GettingStarted/DatabasesCollectionsDocuments.md)   
+  * [Querying the Database](GettingStarted/QueryingTheDatabase.md)   
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
+  * [Next Steps](GettingStarted/NextSteps.md) 
 * [Tutorials](Tutorials/README.md)  
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
