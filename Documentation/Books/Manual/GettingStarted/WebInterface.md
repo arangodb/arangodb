@@ -1,10 +1,10 @@
 Web Interface
 =============
 
-The server itself (*arangod*) speaks HTTP / REST, but you can use the
-graphical web interface to keep it simple. There's also
+The server itself (_arangod_) speaks HTTP / REST, but you can use the
+graphical web interface to keep it simple. There is also
 [arangosh](../Administration/Arangosh/README.md), a synchronous shell
-for interaction with the server. If you're a developer, you might
+for interaction with the server. If you are a developer, you might
 prefer the shell over the GUI. It does not provide features like
 syntax highlighting however.
 
