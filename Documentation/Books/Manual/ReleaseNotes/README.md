@@ -20,10 +20,10 @@ For a high level list of changes, please refer to one of the following sections:
 - [What's New in 2.1](NewFeatures21.md)
 
 
-Changelog
----------
+Changelogs
+----------
 
-For a detailed list of changes, please refer to one of the following sections:
+For a detailed list of changes, please refer to one of the following _changelogs_:
 
 - [3.4 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/3.4/CHANGELOG)
 - [3.3 Changelog](https://raw.githubusercontent.com/arangodb/arangodb/3.3/CHANGELOG)
