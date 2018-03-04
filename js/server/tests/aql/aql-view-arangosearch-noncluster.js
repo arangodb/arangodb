@@ -40,7 +40,7 @@ function iResearchAqlTestSuite () {
   var v;
 
   return {
-    setUpAll : function () {
+    setUp : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -82,7 +82,7 @@ function iResearchAqlTestSuite () {
       c.save({ _key: "foo", xyz: 1 });
     },
 
-    tearDownAll : function () {
+    tearDown : function () {
       var meta = { links : { "UnitTestsCollection": null } };
       v.properties(meta);
       v.drop();

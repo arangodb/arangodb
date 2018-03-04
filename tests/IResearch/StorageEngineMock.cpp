@@ -78,11 +78,10 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   EdgeIndexIteratorMock(
       arangodb::LogicalCollection* collection,
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::Index const* index,
       Map const& map,
       std::unique_ptr<VPackBuilder>&& keys
-  ) : IndexIterator(collection, trx, mmdr, index),
+  ) : IndexIterator(collection, trx, index),
       _map(map),
       _begin(_map.begin()),
       _end(_map.end()),
@@ -348,7 +347,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)
@@ -385,7 +383,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)
@@ -646,7 +643,6 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
     newSlice,
     fromSlice,
     toSlice,
-    arangodb::LocalDocumentId(),
     isEdgeCollection,
     builder,
     options.isRestore,
@@ -690,7 +686,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::lookupIndex(arangodb::v
   return nullptr;
 }
 
-arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) {
+arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
   before();
   TRI_ASSERT(false);
   return arangodb::LocalDocumentId();
@@ -1243,6 +1239,10 @@ std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   return std::string();
 }
 
+void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
+  TRI_ASSERT(false);
+}
+
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
   TRI_ASSERT(false);
 }
@@ -1345,10 +1345,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 
@@ -1366,10 +1364,8 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 

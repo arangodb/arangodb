@@ -57,7 +57,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Basics/VelocyPackHelper.h"
@@ -173,70 +172,6 @@ struct CustomScorer : public irs::sort {
 
 REGISTER_SCORER_JSON(CustomScorer, CustomScorer::make);
 
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestDelimAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestDelimAnalyzer, ptr, args);
-    return ptr;
-  }
-
-  TestDelimAnalyzer(irs::string_ref const& delim)
-    : irs::analysis::analyzer(TestDelimAnalyzer::type()),
-      _delim(irs::ref_cast<irs::byte_type>(delim)) {
-    _attrs.emplace(_term);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    size_t i = 0;
-
-    for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
-
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value(irs::bytes_ref(_data.c_str(), i));
-        _data = irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()), _data.size() - i - (std::max)(size_t(1), _delim.size()));
-        return true;
-      }
-    }
-
-    _term.value(_data);
-    _data = irs::bytes_ref::nil;
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -258,11 +193,10 @@ struct IResearchQuerySetup {
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -354,7 +288,6 @@ struct IResearchQuerySetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // IResearchQuerySetup
@@ -367,6 +300,211 @@ NS_END
 
 TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]") {
   // should not recreate iterator each loop iteration in case of deterministic/independent inner loop scope
+}
+
+TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-query]") {
+  IResearchQuerySetup s;
+  UNUSED(s);
+
+  static std::vector<std::string> const EMPTY;
+
+  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
+    \"name\": \"testView\", \
+    \"type\": \"arangosearch\" \
+  }");
+
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+  arangodb::LogicalCollection* logicalCollection1{};
+  arangodb::LogicalCollection* logicalCollection2{};
+  arangodb::LogicalCollection* logicalCollection3{};
+  arangodb::LogicalCollection* logicalCollectionWithTheSameNameAsView{};
+
+  // add collection_1
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_1\" }");
+    logicalCollection1 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection1));
+  }
+
+  // add collection_2
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
+    logicalCollection2 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection2));
+  }
+
+  // add collection_3
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_3\" }");
+    logicalCollection3 = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollection3));
+  }
+
+  // add logical collection with the same name as view
+  {
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
+    logicalCollectionWithTheSameNameAsView = vocbase.createCollection(collectionJson->slice());
+    REQUIRE((nullptr != logicalCollectionWithTheSameNameAsView));
+  }
+
+  // add view
+  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  REQUIRE((false == !logicalView));
+  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  REQUIRE((false == !view));
+
+  // add link to collection
+  {
+    auto updateJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"links\": {"
+      "\"collection_1\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true, \"trackListPositions\": true },"
+      "\"collection_2\": { \"analyzers\": [ \"test_analyzer\", \"identity\" ], \"includeAllFields\": true }"
+      "}}"
+    );
+    CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
+
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    view->getPropertiesVPack(builder, false);
+    builder.close();
+
+    auto slice = builder.slice();
+    auto tmpSlice = slice.get("links");
+    CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
+  }
+
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsView;
+  std::deque<arangodb::ManagedDocumentResult> insertedDocsCollectionWithTheSameNameAsView;
+
+  // populate view with the data
+  {
+    arangodb::OperationOptions opt;
+    TRI_voc_tick_t tick;
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into collections
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder.slice();
+      REQUIRE(root.isArray());
+
+      size_t i = 0;
+
+      arangodb::LogicalCollection* collections[] {
+        logicalCollection1, logicalCollection2
+      };
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocsView.emplace_back();
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocsView.back(), opt, tick, false);
+
+        insertedDocsCollectionWithTheSameNameAsView.emplace_back();
+        logicalCollectionWithTheSameNameAsView->insert(&trx, doc, insertedDocsCollectionWithTheSameNameAsView.back(), opt, tick, false);
+
+        CHECK(res.ok());
+        ++i;
+      }
+    }
+
+    // insert into collection_3
+    std::deque<arangodb::ManagedDocumentResult> insertedDocsCollection;
+
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential_order.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder.slice();
+      REQUIRE(root.isArray());
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocsCollection.emplace_back();
+        auto const res = logicalCollection3->insert(&trx, doc, insertedDocsCollection.back(), opt, tick, false);
+        CHECK(res.ok());
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
+
+  // bind collection and view with the same name
+  {
+    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN x";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+      },
+      boundParameters
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
+// FIXME remove line above and uncomment lines below
+// will not return any results because of the:
+// https://github.com/arangodb/backlog/issues/342
+// unable to resolve collection and view with the same name for the time being
+//
+//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+//
+//    auto result = queryResult.result->slice();
+//    CHECK(result.isArray());
+//
+//    arangodb::velocypack::ArrayIterator resultIt(result);
+//    REQUIRE(expectedDocs.size() == resultIt.size());
+//
+//    // Check documents
+//    auto expectedDoc = expectedDocs.begin();
+//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+//      auto const actualDoc = resultIt.value();
+//      auto const resolved = actualDoc.resolveExternals();
+//
+//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+//    }
+//    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // bind collection and view with the same name
+  //
+  // FIXME
+  // will not return any results because of the:
+  // https://github.com/arangodb/backlog/issues/342
+  {
+    std::string const query = "LET c=5 FOR x IN @@dataSource FILTER x.seq == c FOR d IN VIEW @@dataSource FILTER x.seq == d.seq RETURN d";
+    auto const boundParameters = arangodb::velocypack::Parser::fromJson("{ \"@dataSource\" : \"testView\" }");
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query, {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+      },
+      boundParameters
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsCollectionWithTheSameNameAsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query, boundParameters);
+    REQUIRE(TRI_ERROR_INTERNAL == queryResult.code);
+  }
 }
 
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {

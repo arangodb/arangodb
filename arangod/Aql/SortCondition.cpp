@@ -243,7 +243,7 @@ void SortCondition::toVelocyPackHelper(VPackBuilder& nodes,
 
 std::shared_ptr<SortCondition> SortCondition::fromVelocyPack(
     ExecutionPlan const* plan, arangodb::velocypack::Slice const& base,
-    std::string name) {
+    std::string const& name) {
   // TODO FIXME implement
   return nullptr;
 }

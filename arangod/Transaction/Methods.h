@@ -71,7 +71,6 @@ class BaseEngine;
 }
 
 namespace transaction {
-class CallbackInvoker;
 class Context;
 struct Options;
 }
@@ -90,7 +89,6 @@ namespace transaction {
 
 class Methods {
   friend class traverser::BaseEngine;
-  friend class CallbackInvoker;
 
  public:
   class IndexHandle {
@@ -137,6 +135,13 @@ class Methods {
 
  public:
 
+  typedef Result(*StateRegistrationCallback)(TRI_voc_cid_t cid, TransactionState& state);
+
+  /// @brief add a callback to be called for state instance association events
+  ///        e.g. addCollection(...)
+  /// @note not thread-safe on the assumption of static factory registration
+  static void addStateRegistrationCallback(StateRegistrationCallback callback);
+
   /// @brief default batch size for index and other operations
   static constexpr uint64_t defaultBatchSize() { return 1000; }
 
@@ -145,11 +150,6 @@ class Methods {
     ALL = 0,
     ANY
   };
-
-  /// @brief register a callback for transaction commit or abort
-  void registerCallback(std::function<void(arangodb::transaction::Methods* trx)> const& cb) {
-    _callbacks.emplace_back(cb);
-  }
 
   /// @brief return database of transaction
   TRI_vocbase_t* vocbase() const;
@@ -590,23 +590,6 @@ class Methods {
     std::string name;
   }
   _collectionCache;
-
-  /// @brief optional callback function that will be called on transaction
-  /// commit or abort
-  std::vector<std::function<void(arangodb::transaction::Methods* trx)>> _callbacks;
-};
-
-class CallbackInvoker {
- public:
-  explicit CallbackInvoker(transaction::Methods* trx) : _trx(trx) {}
-  ~CallbackInvoker() {
-    invoke();
-  }
-
-  void invoke() noexcept;
-
- private:
-  transaction::Methods* _trx;
 };
 
 }

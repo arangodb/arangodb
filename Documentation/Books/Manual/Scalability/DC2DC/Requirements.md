@@ -1,4 +1,5 @@
-# Requirements 
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+# Requirements
 
 To use _datacenter to datacenter replication_ you need the following:
 
@@ -13,8 +14,8 @@ To use _datacenter to datacenter replication_ you need the following:
 - At least 2 instances of the _ArangoSync master_ in each datacenter.
 - One instances of the _ArangoSync worker_ on every machine in each datacenter.
 
-Note: In several places you will need a (x509) certificate. 
-<br/>The [Certificates](..\..\Security\DC2DC\README.md#certificates) section provides more guidance for creating 
+Note: In several places you will need a (x509) certificate.
+<br/>The [Certificates](../../Security/DC2DC/README.md#certificates) section provides more guidance for creating
 and renewing these certificates.
 
 Besides the above list, you probably want to use the following:

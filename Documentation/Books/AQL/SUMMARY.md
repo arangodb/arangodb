@@ -1,6 +1,7 @@
 
 
 # Summary
+* [Introduction](README.md)
 * [Tutorial](Tutorial/README.md)
   * [Basic CRUD](Tutorial/CRUD.md)
   * [Matching documents](Tutorial/Filter.md)

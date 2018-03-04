@@ -274,7 +274,7 @@ class Condition {
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place
-  void deduplicateInOperation(AstNode*);
+  AstNode* deduplicateInOperation(AstNode*);
 
   /// @brief merge the values from two IN operations
   AstNode* mergeInOperations(transaction::Methods* trx, AstNode const*, AstNode const*);
@@ -282,8 +282,12 @@ class Condition {
   /// @brief merges the current node with the sub nodes of same type
   AstNode* collapse(AstNode const*);
 
-  /// @brief converts binary logical operators into n-ary operators
-  AstNode* transformNode(AstNode*);
+  /// @brief converts binary to n-ary, comparision normal and negation normal
+  ///        form
+  AstNode* transformNodePreorder(AstNode*);
+
+  /// @brief converts from negation normal to disjunctive normal form
+  AstNode* transformNodePostorder(AstNode*);
 
   /// @brief Creates a top-level OR node if it does not already exist, and make
   /// sure that all second level nodes are AND nodes. Additionally, this step

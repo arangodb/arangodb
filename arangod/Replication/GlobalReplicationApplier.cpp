@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Logger/Logger.h"
+#include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -89,7 +90,13 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
   return ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), std::string());
 }
 
-std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+std::unique_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
+  return std::make_unique<arangodb::GlobalInitialSyncer>(_configuration);
+}
+
+std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(TRI_voc_tick_t initialTick,
+                                                                            bool useTick,
+                                                                            TRI_voc_tick_t barrierId) const {
   return std::make_unique<arangodb::GlobalTailingSyncer>(_configuration, initialTick, useTick, barrierId);
 }
 

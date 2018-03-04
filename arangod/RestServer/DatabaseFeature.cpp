@@ -45,7 +45,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -57,7 +56,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -386,6 +384,8 @@ void DatabaseFeature::beginShutdown() {
 }
 
 void DatabaseFeature::stop() {
+  stopAppliers();
+
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
 
@@ -405,9 +405,6 @@ void DatabaseFeature::stop() {
 }
 
 void DatabaseFeature::unprepare() {
-  // close all databases
-  closeDatabases();
-
   // delete the database manager thread
   if (_databaseManager != nullptr) {
     _databaseManager->beginShutdown();
@@ -917,7 +914,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -929,9 +926,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (authentication->isActive()) {
-        auto level = authentication->authInfo()->canUseDatabase(username, vocbase->name());
-        if (level == AuthLevel::NONE) {
+      if (af->isActive()) {
+        auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
+        if (level == auth::Level::NONE) { // hide dbs without access
           continue;
         }
       }
@@ -1182,7 +1179,7 @@ void DatabaseFeature::updateContexts() {
       vocbase);
 }
 
-void DatabaseFeature::closeDatabases() {
+void DatabaseFeature::stopAppliers() {
   // stop the replication appliers so all replication transactions can end
   ReplicationFeature* replicationFeature =
       static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));

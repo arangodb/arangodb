@@ -56,7 +56,7 @@ class IRESEARCH_API by_same_position : public filter {
     const attribute_view& ctx
   ) const override;
 
-  virtual size_t hash() const override;
+  virtual size_t hash() const NOEXCEPT override;
 
   by_same_position& push_back(const std::string& field, const bstring& term);
   by_same_position& push_back(const std::string& field, bstring&& term);
@@ -74,7 +74,7 @@ class IRESEARCH_API by_same_position : public filter {
   void clear() { terms_.clear(); }
 
  protected:
-  virtual bool equals(const filter& rhs) const override;
+  virtual bool equals(const filter& rhs) const NOEXCEPT override;
 
  private: 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN

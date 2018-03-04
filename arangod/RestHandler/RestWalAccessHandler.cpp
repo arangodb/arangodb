@@ -26,6 +26,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/common-defines.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -245,10 +246,25 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                   "invalid from/to values");
     return;
   }
+    
+  std::string const& value3 = _request->value("serverId", found);
+
+  TRI_server_id_t serverId = 0;
+  if (found) {
+    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
+  }
 
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
+  }
+  
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = 0;
+  std::string const& value4 = _request->value("barrier", found);
+  
+  if (found) {
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value4));
   }
 
   size_t chunkSize = 1024 * 1024;  
@@ -258,14 +274,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     chunkSize = std::min((size_t)128 * 1024 * 1024, chunkSize);
   }
   
-  // check if a barrier id was specified in request
-  TRI_voc_tid_t barrierId = 0;
-  std::string const& value3 = _request->value("barrier", found);
-  
-  if (found) {
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value3));
-  }
-
   WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
   VPackOptions opts = VPackOptions::Defaults;
@@ -330,6 +338,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   _response->setHeaderNC(
       StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa(result.lastIncludedTick()));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(result.lastScannedTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(result.latestTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
@@ -338,24 +348,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   if (length > 0) {
     _response->setResponseCode(rest::ResponseCode::OK);
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
-    });
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Wal tailing after " << tickStart
-    << ", lastIncludedTick " << result.lastIncludedTick()
-    << ", fromTickIncluded " << result.fromTickIncluded();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing after " << tickStart
+      << ", lastIncludedTick " << result.lastIncludedTick()
+      << ", fromTickIncluded " << result.fromTickIncluded();
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "No more data in WAL after " << tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
+    
+  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+    vocbase->updateReplicationClient(serverId, tickStart, InitialSyncer::defaultBatchTimeout);
+  });
 }
 
 void RestWalAccessHandler::handleCommandDetermineOpenTransactions(

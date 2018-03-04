@@ -4,7 +4,7 @@ Highlights
 Version 3.3
 -----------
 
-### Enterprise Edition
+**Enterprise Edition**
 
 - [**Datacenter to Datacenter Replication**](Deployment/DC2DC.md): Replicate
   the entire structure and content of an ArangoDB cluster asynchronously to
@@ -16,9 +16,9 @@ Version 3.3
   Arangodump can create backups encrypted with a secret key using AES256
   block cipher.
 
-### All Editions
+**All Editions**
 
-- [**Server-level Replication**](Administration/Replication/Asynchronous/ServerLevelSetup.md):
+- [**Server-level Replication**](Administration/MasterSlave/ServerLevelSetup.md):
   In addition to per-database replication, there is now an additional
   `globalApplier`. Start the global replication on the slave once and all
   current and future databases will be replicated from the master to the
@@ -53,7 +53,7 @@ Version 3.2
   further security and scalability features to ArangoDB Enterprise like
   [LDAP integration](Administration/Configuration/Ldap.md),
   [Encryption at Rest](Administration/Encryption/README.md), and the brand new
-  [Satellite Collections](Administration/Replication/Synchronous/Satellites.md).
+  [Satellite Collections](Administration/Satellites.md).
 
 Also see [What's New in 3.2](ReleaseNotes/NewFeatures32.md).
 
@@ -75,7 +75,7 @@ Also see [What's New in 3.1](ReleaseNotes/NewFeatures31.md).
 Version 3.0
 -----------
 
-- [**self-organizing cluster**](Scalability/Architecture.md) with
+- [**self-organizing cluster**](Scalability/Cluster/Architecture.md) with
   synchronous replication, master/master setup, shared nothing
   architecture, cluster management agency.
 

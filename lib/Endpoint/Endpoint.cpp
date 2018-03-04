@@ -64,6 +64,10 @@ std::string Endpoint::uriForm(std::string const& endpoint) {
     return "http://" + endpoint.substr(6);
   } else if (StringUtils::isPrefix(endpoint, "ssl://")) {
     return "https://" + endpoint.substr(6);
+  } else if (StringUtils::isPrefix(endpoint, "unix://")) {
+    return endpoint;
+  } else if (StringUtils::isPrefix(endpoint, "http+unix://")) {
+    return "unix://" + endpoint.substr(12);
   } else {
     return illegal;
   }

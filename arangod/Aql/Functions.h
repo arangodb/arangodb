@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_FUNCTIONS_H
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
+
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Aql/AqlValue.h"
@@ -121,6 +122,10 @@ struct Functions {
                            VPackFunctionParameters const&);
    static AqlValue Length(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue FindFirst(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+   static AqlValue FindLast(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
    static AqlValue First(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Last(arangodb::aql::Query*, transaction::Methods*,
@@ -155,6 +160,12 @@ struct Functions {
    static AqlValue Trim(arangodb::aql::Query*,
                         transaction::Methods*,
                         VPackFunctionParameters const&);
+   static AqlValue LTrim(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue RTrim(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
@@ -335,6 +346,10 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue Assert(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+   static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
 };
   
 }

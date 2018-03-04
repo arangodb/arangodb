@@ -174,6 +174,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     result = nullptr;
 
     if (tries++ >= _params._maxRetries) {
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _params._retryMessage
+      << " - no retries left";
       break;
     }
     
@@ -186,6 +188,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
+    // 1 microsecond == 10^-6 seconds
     std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
@@ -903,8 +906,8 @@ std::string SimpleHttpClient::getHttpErrorMessage(
 
     VPackSlice slice = builder->slice();
     if (slice.isObject()) {
-      VPackSlice msg = slice.get("errorMessage");
-      int errorNum = slice.get("errorNum").getNumericValue<int>();
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+      int errorNum = slice.get(StaticStrings::ErrorNum).getNumericValue<int>();
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
         if (errorCode != nullptr) {

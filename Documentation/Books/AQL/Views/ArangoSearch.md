@@ -123,7 +123,7 @@ This can be used to better understand how the specific analyzer is going to beha
 - *input* string to tokenize
 - *analyzer* [one of the available string analyzers](../../../Manual/Views/ArangoSearch/Analyzers.html)
 
-#### filtering examples:
+#### Filtering examples
 
 to match documents which have a 'name' attribute
 
@@ -251,7 +251,7 @@ Sorts documents using the [**term frequency–inverse document frequency** algor
 
   optionally specifying that norms should be used via **with-norms**
 
-### sorting examples:
+### Sorting examples
 
 to sort documents by the value of the 'name' attribute
 

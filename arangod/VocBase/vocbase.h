@@ -168,8 +168,8 @@ struct TRI_vocbase_t {
   std::unordered_map<std::string, arangodb::LogicalCollection*>
       _collectionsByUuid;  // collections by uuid
 
-  arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
-  std::atomic<std::thread::id> _viewsLockWriteOwner; // current thread owning '_viewsLock' write lock (workaround for non-recusrive ReadWriteLock)
+  mutable arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
+  mutable std::atomic<std::thread::id> _viewsLockWriteOwner; // current thread owning '_viewsLock' write lock (workaround for non-recusrive ReadWriteLock)
   std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalView>>
       _viewsByName;  // views by name
   std::unordered_map<TRI_voc_cid_t, std::shared_ptr<arangodb::LogicalView>>
@@ -205,11 +205,19 @@ struct TRI_vocbase_t {
   TRI_vocbase_type_e type() const { return _type; }
   State state() const { return _state; }
   void setState(State state) { _state = state; }
-  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t);
+  // return all replication clients registered
   std::vector<std::tuple<TRI_server_id_t, double, TRI_voc_tick_t>>
   getReplicationClients();
-  /// garbage collect replication clients
-  void garbageCollectReplicationClients(double ttl);
+
+  // the ttl value is amount of seconds after which the client entry will
+  // expire and may be garbage-collected
+  void updateReplicationClient(TRI_server_id_t, double ttl);
+  // the ttl value is amount of seconds after which the client entry will
+  // expire and may be garbage-collected
+  void updateReplicationClient(TRI_server_id_t, TRI_voc_tick_t, double ttl);
+  // garbage collect replication clients that have an expire date later
+  // than the specified timetamp
+  void garbageCollectReplicationClients(double expireStamp);
   
   arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();
@@ -270,6 +278,11 @@ struct TRI_vocbase_t {
   /// the name is fetched under a lock to make this thread-safe.
   /// returns empty string if the collection does not exist.
   std::string collectionName(TRI_voc_cid_t id);
+
+  /// @brief get a view name by a view id
+  /// the name is fetched under a lock to make this thread-safe.
+  /// returns empty string if the view does not exist.
+  std::string viewName(TRI_voc_cid_t id) const;
 
   /// @brief looks up a collection by uuid
   arangodb::LogicalCollection* lookupCollectionByUuid(std::string const&) const;

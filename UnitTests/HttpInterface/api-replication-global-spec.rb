@@ -657,95 +657,233 @@ describe ArangoDB do
         doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
         doc.code.should eq(200)
       end
+      
+      it "validates chunkSize restriction" do
+        ArangoDB.drop_collection("UnitTestsReplication")
+
+        sleep 1
+
+        cmd = api + "/lastTick"
+        doc = ArangoDB.log_get("#{prefix}-follow-chunksize", cmd, :body => "")
+        doc.code.should eq(200)
+        fromTick = doc.parsed_response["tick"]
+        originalTick = fromTick
+
+        # create collection
+        cid = ArangoDB.create_collection("UnitTestsReplication")
+        cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]        
+
+        # create documents
+        (1..1500).each do |value| 
+          cmd = "/_api/document?collection=UnitTestsReplication"
+          body = "{ \"value\" : \"thisIsALongerStringBecauseWeWantToTestTheChunkSizeLimitsLaterOnAndItGetsEvenLongerWithTimeForRealNow\" }"
+          doc = ArangoDB.log_post("#{prefix}-follow-chunksize", cmd, :body => body)
+          doc.code.should eq(201)
+        end
+
+
+        sleep 1
+        
+        tickTypes = { 2000 => 0, 2001 => 0, 2300 => 0 }
+
+        while 1
+          cmd = api + "/tail?global=true&from=" + fromTick + "&chunkSize=16384"
+          doc = ArangoDB.log_get("#{prefix}-follow-chunksize", cmd, :body => "", :format => :plain)
+          [200, 204].should include(doc.code)
+            
+          break if doc.code == 204
+
+          doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+          doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+          if fromTick == originalTick
+            # first batch
+            doc.headers["x-arango-replication-checkmore"].should eq("true")
+          end
+          doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+          # we need to allow for some overhead here, as the chunkSize restriction is not honored precisely
+          doc.headers["content-length"].to_i.should be < (16 + 8) * 1024
+
+          body = doc.response.body
+
+          i = 0
+          while 1
+            position = body.index("\n")
+
+            break if position == nil
+
+            part = body.slice(0, position)
+            marker = JSON.parse(part)
+
+            # update last tick value
+            marker.should have_key("tick")
+            fromTick = marker["tick"]
+
+            if marker["type"] >= 2000 and marker["cuid"] == cuid
+              # create collection
+              marker.should have_key("type")
+              marker.should have_key("cuid")
+
+              if marker["type"] == 2300
+                marker.should have_key("data")
+              end
+
+              cc = tickTypes[marker["type"]]
+              tickTypes[marker["type"]] = cc + 1
+           
+              break if tickTypes[2300] == 1500
+            end
+            body = body.slice(position + 1, body.length)
+          end
+        end
+
+        tickTypes[2000].should eq(1) # collection create
+        tickTypes[2001].should eq(0) # collection drop
+        tickTypes[2300].should eq(1500) # document inserts
+
+        
+        # now try again with a single chunk  
+        tickTypes = { 2000 => 0, 2001 => 0, 2300 => 0 }
+
+        cmd = api + "/tail?global=true&from=" + originalTick + "&chunkSize=1048576"
+        doc = ArangoDB.log_get("#{prefix}-follow-chunksize", cmd, :body => "", :format => :plain)
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        # we need to allow for some overhead here, as the chunkSize restriction is not honored precisely
+        doc.headers["content-length"].to_i.should be > (16 + 8) * 1024
+
+        body = doc.response.body
+
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+          marker = JSON.parse(part)
+
+          marker.should have_key("tick")
+
+          if marker["type"] >= 2000 and marker["cuid"] == cuid
+            # create collection
+            marker.should have_key("type")
+            marker.should have_key("cuid")
+
+            if marker["type"] == 2300
+              marker.should have_key("data")
+            end
+
+            cc = tickTypes[marker["type"]]
+            tickTypes[marker["type"]] = cc + 1
+           
+            break if tickTypes[2300] == 1500
+          end
+          body = body.slice(position + 1, body.length)
+        end
+
+        tickTypes[2000].should eq(1) # collection create
+        tickTypes[2001].should eq(0) # collection drop
+        tickTypes[2300].should eq(1500) # document inserts
+
+        # drop collection
+        cmd = "/_api/collection/UnitTestsReplication"
+        doc = ArangoDB.log_delete("#{prefix}-follow-chunksize", cmd)
+        doc.code.should eq(200)
+      end
     end
 
 ################################################################################
 ## inventory / dump
 ################################################################################
 
-    context "dealing with the initial dump" do
+      context "dealing with the initial dump" do
 
-      api = "/_api/replication"
-      prefix = "api-replication"
+        api = "/_api/replication"
+        prefix = "api-replication"
 
-      before do
-        ArangoDB.drop_collection("UnitTestsReplication")
-        ArangoDB.drop_collection("UnitTestsReplication2")
-        doc = ArangoDB.post(api + "/batch", :body => "{}")
-        doc.code.should eq(200)
-        @batchId = doc.parsed_response['id']
-        @batchId.should  match(/^\d+$/)
-      end
+        before do
+          ArangoDB.drop_collection("UnitTestsReplication")
+          ArangoDB.drop_collection("UnitTestsReplication2")
+          doc = ArangoDB.post(api + "/batch", :body => "{}")
+          doc.code.should eq(200)
+          @batchId = doc.parsed_response['id']
+          @batchId.should  match(/^\d+$/)
+        end
 
-      after do
-        ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
-        ArangoDB.drop_collection("UnitTestsReplication")
-        ArangoDB.drop_collection("UnitTestsReplication2")
-      end
+        after do
+          ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
+          ArangoDB.drop_collection("UnitTestsReplication")
+          ArangoDB.drop_collection("UnitTestsReplication2")
+        end
 
 ################################################################################
 ## inventory
 ################################################################################
 
-      it "checks the initial inventory" do
-        cmd = api + "/inventory?includeSystem=true&global=true&batchId=#{@batchId}"
-        doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
+        it "checks the initial inventory" do
+          cmd = api + "/inventory?includeSystem=true&global=true&batchId=#{@batchId}"
+          doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")
 
-        doc.code.should eq(200)
-        all = doc.parsed_response
-        all.should have_key('databases')
-        all.should have_key('state')
-        state = all['state']
-        state['running'].should eq(true)
-        state['lastLogTick'].should match(/^\d+$/)
-        state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
-        
-        databases = all['databases']        
-        databases.each { |name, database|
-          database.should have_key('collections')
+          doc.code.should eq(200)
+          all = doc.parsed_response
+          all.should have_key('databases')
+          all.should have_key('state')
+          state = all['state']
+          state['running'].should eq(true)
+          state['lastLogTick'].should match(/^\d+$/)
+          state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
+          
+          databases = all['databases']        
+          databases.each { |name, database|
+            database.should have_key('collections')
 
-          collections = database["collections"]
-          filtered = [ ]
-          collections.each { |collection|
-            if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
-              filtered.push collection
-            end
-            collection["parameters"].should have_key('globallyUniqueId')
+            collections = database["collections"]
+            filtered = [ ]
+            collections.each { |collection|
+              if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
+                filtered.push collection
+              end
+              collection["parameters"].should have_key('globallyUniqueId')
+            }
+            filtered.should eq([ ])
           }
-          filtered.should eq([ ])
-        }
-      end
+        end
 
-      it "checks the inventory after creating collections" do
-        cid = ArangoDB.create_collection("UnitTestsReplication", false)
-        cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]                
-        cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
-        cuid2 = ArangoDB.properties_collection(cid2)["globallyUniqueId"]                        
+        it "checks the inventory after creating collections" do
+          cid = ArangoDB.create_collection("UnitTestsReplication", false)
+          cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]                
+          cid2 = ArangoDB.create_collection("UnitTestsReplication2", true, 3)
+          cuid2 = ArangoDB.properties_collection(cid2)["globallyUniqueId"]                        
 
-        cmd = api + "/inventory?includeSystem=true&global=true&batchId=#{@batchId}"
-        doc = ArangoDB.log_get("#{prefix}-inventory-create", cmd, :body => "")
-        doc.code.should eq(200)
-        all = doc.parsed_response        
+          cmd = api + "/inventory?includeSystem=true&global=true&batchId=#{@batchId}"
+          doc = ArangoDB.log_get("#{prefix}-inventory-create", cmd, :body => "")
+          doc.code.should eq(200)
+          all = doc.parsed_response        
 
-        all.should have_key('state')
-        state = all['state']
-        state['running'].should eq(true)
-        state['lastLogTick'].should match(/^\d+$/)
-        state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
+          all.should have_key('state')
+          state = all['state']
+          state['running'].should eq(true)
+          state['lastLogTick'].should match(/^\d+$/)
+          state['time'].should match(/^\d+-\d+-\d+T\d+:\d+:\d+Z$/)
 
-        all.should have_key('databases')
-        databases = all['databases']
+          all.should have_key('databases')
+          databases = all['databases']
 
-        filtered = [ ]        
-        databases.each { |name, database|
-          database.should have_key('collections')
+          filtered = [ ]        
+          databases.each { |name, database|
+            database.should have_key('collections')
 
-          collections = database["collections"]
-          filtered = [ ]
-          collections.each { |collection|
-            if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
-              filtered.push collection
-            end
+            collections = database["collections"]
+            filtered = [ ]
+            collections.each { |collection|
+              if [ "UnitTestsReplication", "UnitTestsReplication2" ].include? collection["parameters"]["name"]
+                filtered.push collection
+              end
             collection["parameters"].should have_key('globallyUniqueId')
           }
         }

@@ -207,9 +207,10 @@ static void mergeResults(
   resultBody->openArray();
   for (auto const& pair : reverseMapping) {
     VPackSlice arr = resultMap.find(pair.first)->second->slice();
-    if (arr.isObject() && arr.hasKey("error") && arr.get("error").isBoolean() && arr.get("error").getBoolean()) {
+    if (arr.isObject() && arr.hasKey(StaticStrings::Error) &&
+        arr.get(StaticStrings::Error).isBoolean() && arr.get(StaticStrings::Error).getBoolean()) {
       // an error occurred, now rethrow the error
-      int res = arr.get("errorNum").getNumericValue<int>();
+      int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
       THROW_ARANGO_EXCEPTION(res);
     }
     resultBody->add(arr.at(pair.second));
@@ -245,8 +246,8 @@ static void mergeResultsAllShards(
   size_t realNotFound = 0;
   VPackBuilder cmp;
   cmp.openObject();
-  cmp.add("error", VPackValue(true));
-  cmp.add("errorNum", VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
+  cmp.add(StaticStrings::Error, VPackValue(true));
+  cmp.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND));
   cmp.close();
   VPackSlice notFound = cmp.slice();
   resultBody->clear();
@@ -450,8 +451,8 @@ static void collectResultsFromAllShards(
       size_t count = weSend->second.size();
       for (size_t i = 0; i < count; ++i) {
         tmpBuilder->openObject();
-        tmpBuilder->add("error", VPackValue(true));
-        tmpBuilder->add("errorNum", VPackValue(commError));
+        tmpBuilder->add(StaticStrings::Error, VPackValue(true));
+        tmpBuilder->add(StaticStrings::ErrorNum, VPackValue(commError));
         tmpBuilder->close();
       }
       resultMap.emplace(sId, tmpBuilder);
@@ -549,9 +550,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
                        TRI_voc_cid_t cid) {
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
-  if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
-    return result;
-  }
+  TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
   std::shared_ptr<LogicalCollection> other =
     ci->getCollection(col->dbName(), cidString);
@@ -561,6 +560,13 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   if (!other->distributeShardsLike().empty()) {
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() + "' it is already distributed like '" + other->distributeShardsLike() + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
+  }
+
+  // We need to replace the distribute with the cid.
+  col->distributeShardsLike(cidString);
+
+  if (col->isSmart() && col->type() == TRI_COL_TYPE_EDGE) {
+    return result;
   }
 
   if (col->replicationFactor() != other->replicationFactor()) {
@@ -587,8 +593,6 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
     }
     result->emplace(shardId, it->second);
   }
-  // We need to replace the distribute with the cid.
-  col->distributeShardsLike(cidString);
   return result;
 }
 
@@ -1997,7 +2001,7 @@ void fetchVerticesFromEngines(
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION_MESSAGE(
           code, arangodb::basics::VelocyPackHelper::getStringValue(
-                    resSlice, "errorMessage", TRI_errno_string(code)));
+                    resSlice, StaticStrings::ErrorMessage, TRI_errno_string(code)));
     }
     for (auto const& pair : VPackObjectIterator(resSlice)) {
       StringRef key(pair.key);
@@ -2102,7 +2106,7 @@ void fetchVerticesFromEngines(
       // We have an error case here. Throw it.
       THROW_ARANGO_EXCEPTION_MESSAGE(
           code, arangodb::basics::VelocyPackHelper::getStringValue(
-                    resSlice, "errorMessage", TRI_errno_string(code)));
+                    resSlice, StaticStrings::ErrorMessage, TRI_errno_string(code)));
     }
     bool cached = false;
 

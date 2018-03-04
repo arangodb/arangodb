@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -36,6 +37,7 @@
 #include "GeneralServer/VstNetwork.h"
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -268,11 +270,11 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
     LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
   }
   
-  if (_authentication->isActive()) { // will just fail if method is NONE
-    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
-    _authorized = result._authorized;
+  if (_auth->isActive()) { // will just fail if method is NONE
+    auto entry = _auth->tokenCache()->checkAuthentication(authType, authString);
+    _authorized = entry.authenticated();
     if (_authorized) {
-      _authenticatedUser = std::move(result._username);
+      _authenticatedUser = std::move(entry._username);
     }
   } else {
     _authorized = true;
@@ -287,9 +289,20 @@ void VstCommTask::handleAuthHeader(VPackSlice const& header,
                       "authentication successful", messageId);
   } else {
     _authenticatedUser.clear();
-    handleSimpleError(rest::ResponseCode::UNAUTHORIZED, fakeRequest,
-                      TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
-                      messageId);
+    ServerState::Mode mode = ServerState::serverMode();
+    if (mode == ServerState::Mode::REDIRECT || mode == ServerState::Mode::TRYAGAIN) {
+      try {
+        VstResponse resp(ResponseCode::SERVICE_UNAVAILABLE, messageId);
+        resp.setContentType(fakeRequest.contentTypeResponse());
+        ReplicationFeature::prepareFollowerResponse(&resp, mode);
+      } catch (...) {
+        closeStream();
+      }
+    } else {
+      handleSimpleError(rest::ResponseCode::UNAUTHORIZED, fakeRequest,
+                        TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
+                        messageId);
+    }
   }
 }
 
@@ -374,8 +387,12 @@ bool VstCommTask::processRead(double startTime) {
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
-      request->setAuthorized(_authorized);
+      request->setAuthenticated(_authorized);
       request->setUser(_authenticatedUser);
+      if (_authorized) {
+        // if we don't call checkAuthentication we need to refresh
+        _auth->userManager()->refreshUser(_authenticatedUser);
+      }
       bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
       if (!res || request->requestContext() == nullptr) {
         handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,

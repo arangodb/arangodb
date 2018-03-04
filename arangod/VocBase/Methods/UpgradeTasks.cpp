@@ -109,8 +109,8 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
   if (!users.isArray()) {
     return;
   }
-  AuthInfo* auth = AuthenticationFeature::INSTANCE->authInfo();
-  TRI_ASSERT(auth != nullptr);
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  TRI_ASSERT(um != nullptr);
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);
@@ -120,12 +120,15 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
     std::string passwd = VelocyPackHelper::getStringValue(slice, "passwd", "");
     bool active = VelocyPackHelper::getBooleanValue(slice, "active", true);
     VPackSlice extra = slice.get("extra");
-    Result res = auth->storeUser(false, user, passwd, active);
+    Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user "
                                        << user;
     } else if (extra.isObject() && !extra.isEmptyObject()) {
-      auth->setUserData(user, extra);
+      um->updateUser(user, [&](auth::User& user) {
+        user.setUserData(VPackBuilder(extra));
+        return TRI_ERROR_NO_ERROR;
+      });
     }
   }
 }

@@ -1914,7 +1914,7 @@ int MMFilesCollection::iterateMarkersOnLoad(transaction::Methods* trx) {
 }
 
 LocalDocumentId MMFilesCollection::lookupKey(transaction::Methods *trx,
-                                                     VPackSlice const& key) {
+                                                     VPackSlice const& key) const {
   MMFilesPrimaryIndex *index = primaryIndex();
   MMFilesSimpleIndexElement element = index->lookupKey(trx, key);
   return element ? LocalDocumentId(element.localDocumentId()) : LocalDocumentId();
@@ -2748,7 +2748,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
 
       LocalDocumentId const documentId = LocalDocumentId::create();
       TRI_voc_rid_t revisionId;
-      newObjectForRemove(trx, oldDoc, documentId, *builder.get(), options.isRestore, revisionId);
+      newObjectForRemove(trx, oldDoc, *builder.get(), options.isRestore, revisionId);
 
       Result res = removeFastPath(trx, revisionId, oldDocumentId, VPackSlice(vpack),
                                   options, documentId, builder->slice());
@@ -2833,8 +2833,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   VPackSlice newSlice;
   Result res(TRI_ERROR_NO_ERROR);
   if (options.recoveryData == nullptr) {
-    res = newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
-                             isEdgeCollection, *builder.get(), options.isRestore, revisionId);
+    res = newObjectForInsert(trx, slice, fromSlice, toSlice, isEdgeCollection,
+                             *builder.get(), options.isRestore, revisionId);
     if (res.fail()) {
       return res;
     }
@@ -3310,8 +3310,8 @@ Result MMFilesCollection::update(
   transaction::BuilderLeaser builder(trx);
   if (options.recoveryData == nullptr) {
     mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
-                          documentId, options.mergeObjects,
-                          options.keepNull, *builder.get(), options.isRestore, revisionId);
+                          options.mergeObjects, options.keepNull,
+                          *builder.get(), options.isRestore, revisionId);
 
     if (_isDBServer) {
       // Need to check that no sharding keys have changed:
@@ -3443,8 +3443,8 @@ Result MMFilesCollection::replace(
   TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
-                      isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore, revisionId);
+                      isEdgeCollection, *builder.get(),
+                      options.isRestore, revisionId);
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
@@ -3519,7 +3519,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
+  newObjectForRemove(trx, slice, *builder.get(), options.isRestore, revisionId);
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created

@@ -932,7 +932,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         (!groupVariables.empty() &&
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseMethod(CollectOptions::CollectMethod::HASH));
-       
+
     if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
       if (collectNode->getOptions().shouldUseMethod(CollectOptions::CollectMethod::HASH)) {
         // user has explicitly asked for hash method
@@ -964,7 +964,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
         modified = true;
         continue;
-      } 
+      }
 
       // create a new plan with the adjusted COLLECT node
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
@@ -2578,7 +2578,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
       ExecutionNode::UPDATE,
       ExecutionNode::REPLACE,
       ExecutionNode::REMOVE,
-      ExecutionNode::UPSERT};
+      ExecutionNode::UPSERT
+  };
 
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
@@ -2641,10 +2642,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
         }
       }
     } else if (nodeType == ExecutionNode::INSERT ||
-                nodeType == ExecutionNode::UPDATE ||
-                nodeType == ExecutionNode::REPLACE ||
-                nodeType == ExecutionNode::REMOVE ||
-                nodeType == ExecutionNode::UPSERT) {
+               nodeType == ExecutionNode::UPDATE ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::REMOVE ||
+               nodeType == ExecutionNode::UPSERT) {
       vocbase = static_cast<ModificationNode*>(node)->vocbase();
       collection = static_cast<ModificationNode*>(node)->collection();
       if (nodeType == ExecutionNode::REMOVE ||
@@ -2741,7 +2742,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     SubqueryNode* snode = nullptr;
     ExecutionNode* root = nullptr; //only used for asserts
     bool hasFound = false;
-    if (subqueryNode == plan->root()){
+    if (subqueryNode == plan->root()) {
       snode = nullptr;
       root = plan->root();
     } else {
@@ -2784,27 +2785,25 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     if (node == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
-
+   
     ExecutionNode* originalParent = nullptr;
-    {
-      if (node->hasParent()) {
-        auto const& parents = node->getParents();
-        originalParent = parents[0];
-        TRI_ASSERT(originalParent != nullptr);
-        TRI_ASSERT(node != root);
-      } else {
-        TRI_ASSERT(node == root);
-      }
+    if (node->hasParent()) {
+      auto const& parents = node->getParents();
+      originalParent = parents[0];
+      TRI_ASSERT(originalParent != nullptr);
+      TRI_ASSERT(node != root);
+    } else {
+      TRI_ASSERT(node == root);
     }
 
     // when we get here, we have found a matching data-modification node!
     auto const nodeType = node->getType();
 
     TRI_ASSERT(nodeType == ExecutionNode::INSERT ||
-                nodeType == ExecutionNode::REMOVE ||
-                nodeType == ExecutionNode::UPDATE ||
-                nodeType == ExecutionNode::REPLACE ||
-                nodeType == ExecutionNode::UPSERT);
+               nodeType == ExecutionNode::REMOVE ||
+               nodeType == ExecutionNode::UPDATE ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::UPSERT);
 
     Collection const* collection =
         static_cast<ModificationNode*>(node)->collection();
@@ -2835,24 +2834,26 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     TRI_ASSERT(node->hasDependency());
     auto const& deps = node->getDependencies();
 
-
+    bool haveAdjusted = false;
     if (originalParent != nullptr) {
       // nodes below removed node
       originalParent->removeDependency(node);
       //auto planRoot = plan->root();
       plan->unlinkNode(node, true);
-      if (!snode){
-        //plan->root(planRoot, true);
-      } else {
-        snode->setSubquery(originalParent,true);
+      if (snode) {
+        if (snode->getSubquery() == node) { 
+          snode->setSubquery(originalParent, true);
+          haveAdjusted = true;
+        }
       }
     } else {
       // no nodes below unlinked node
       plan->unlinkNode(node, true);
-      if (!snode){
-        plan->root(deps[0], true);
+      if (snode) {
+        snode->setSubquery(deps[0], true);
+        haveAdjusted = true;
       } else {
-        snode->setSubquery(deps[0],true);
+        plan->root(deps[0], true);
       }
     }
 
@@ -2873,7 +2874,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       inputVariable = node->getVariablesUsedHere()[0];
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                              inputVariable->id, createKeys, true);
+                             inputVariable->id, createKeys, true);
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -2885,7 +2886,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                              inputVariable->id, false, v.size() > 1);
+                             inputVariable->id, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -2899,7 +2900,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                              inputVariable->id, false, v.size() > 1);
+                             inputVariable->id, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
@@ -2921,7 +2922,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
     // insert a remote node
     ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(),
-                                                vocbase, collection, "", "", "");
+                                               vocbase, collection, "", "", "");
     plan->registerNode(remoteNode);
     remoteNode->addDependency(distNode);
 
@@ -2946,10 +2947,12 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       originalParent->addDependency(gatherNode);
     } else {
       // we replaced the root node, set a new root node
-      if (!snode){
-        plan->root(gatherNode, true);
+      if (snode) {
+        if (snode->getSubquery() == node || haveAdjusted) { 
+          snode->setSubquery(gatherNode, true);
+        }
       } else {
-        snode->setSubquery(gatherNode,true);
+        plan->root(gatherNode, true);
       }
     }
     wasModified = true;
@@ -3025,14 +3028,14 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           stopSearching = true;
           break;
 
-        case EN::CALCULATION: 
+        case EN::CALCULATION:
           // check if the expression can be executed on a DB server safely
           if (!static_cast<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
             stopSearching = true;
             break;
-          } 
+          }
           // intentionally falls through
-        
+
         case EN::FILTER:
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
@@ -3248,7 +3251,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         _enumColl(nullptr),
         _setter(nullptr),
         _variable(nullptr),
-        _lastNode(nullptr){};
+        _lastNode(nullptr) {}
 
   ~RemoveToEnumCollFinder() {}
 
@@ -4512,7 +4515,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (node->getType() != EN::CALCULATION) {
     return false;
   }
-  
+
   CalculationNode* calcNode = static_cast<CalculationNode*>(node);
   Expression* expr = calcNode->expression();
   // the expression must exist and it must have an astNode
@@ -4523,7 +4526,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (flltxtNode->type != NODE_TYPE_FCALL) {
     return false;
   }
-  
+
   // get the ast node of the expression
   auto func = static_cast<Function const*>(flltxtNode->getData());
   // we're looking for "FULLTEXT()", which is a function call
@@ -4535,7 +4538,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (fargs->numMembers() != 3 && fargs->numMembers() != 4) {
     return false;
   }
-  
+
   AstNode* collArg = fargs->getMember(0);
   AstNode* attrArg = fargs->getMember(1);
   AstNode* queryArg = fargs->getMember(2);
@@ -4545,7 +4548,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
       (limitArg != nullptr && !isValueTypeNumber(limitArg))) {
     return false;
   }
-  
+
   std::string name = collArg->getString();
   TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
   std::vector<basics::AttributeName> field;
@@ -4553,7 +4556,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (field.empty()) {
     return false;
   }
-  
+
   // check for suitable indexes
   std::shared_ptr<arangodb::Index> index;
   methods::Collections::lookup(vocbase, name, [&](LogicalCollection* logical) {
@@ -4570,8 +4573,8 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   if (!index) { // no index found
     return false;
   }
-  
-  Ast* ast = plan->getAst();  
+
+  Ast* ast = plan->getAst();
   AstNode* args = ast->createNodeArray(3 + (limitArg != nullptr ? 0 : 1));
   args->addMember(ast->clone(collArg));  // only so createNodeFunctionCall doesn't throw
   args->addMember(attrArg);
@@ -4584,7 +4587,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
   auto condition = std::make_unique<Condition>(ast);
   condition->andCombine(cond);
   condition->normalize(plan);
-  
+
   // we assume by now that collection `name` exists
   aql::Collections* colls = plan->getAst()->query()->collections();
   aql::Collection* coll = colls->get(name);
@@ -4597,7 +4600,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
       plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
     }
   }
-  
+
   auto indexNode = new IndexNode(plan, plan->nextId(), vocbase,
                                  coll, elnode->outVariable(),
                                  std::vector<transaction::Methods::IndexHandle>{
@@ -4623,7 +4626,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     }
     limitNode->addDependency(indexNode);
   }
-  
+
   return true;
 }
 
@@ -4635,7 +4638,7 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
   bool modified = false;
   // inspect each return node and work upwards to SingletonNode
   plan->findEndNodes(nodes, true);
-  
+
   for (ExecutionNode* node : nodes) {
     ExecutionNode* current = node;
     LimitNode* limit = nullptr; // maybe we have an existing LIMIT x,y
@@ -4650,7 +4653,7 @@ void arangodb::aql::fulltextIndexRule(Optimizer* opt,
       current = current->getFirstDependency();  // inspect next node
     }
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -5147,6 +5150,8 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
          ++i) {
       if (replaceInfo.expressionParent->getMember(i) ==
           replaceInfo.expressionNode) {
+        // edit in place for now; TODO change to replace instead
+        TEMPORARILY_UNLOCK_NODE(replaceInfo.expressionParent);
         replaceInfo.expressionParent->removeMemberUnchecked(i);
         replaceInfo.expressionParent->addMember(replacement);
       }

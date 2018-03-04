@@ -68,8 +68,8 @@ fully ACID as well. Note that for non-sharded collections in a cluster, the
 transactional properties of a single server apply (fully ACID).
 
 
-Transactions in the RocksDB storage engine
-------------------------------------------
+With RocksDB storage engine
+---------------------------
 
 Data of ongoing transactions is stored in RAM. Transactions that get too big 
 (in terms of number of operations involved or the total size of data created or

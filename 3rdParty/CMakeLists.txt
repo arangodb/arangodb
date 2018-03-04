@@ -101,7 +101,7 @@ if (USE_IRESEARCH)
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
-    IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
+    IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
   set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
@@ -197,7 +197,8 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0 EXCLUDE_FROM_ALL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
 ## SNAPPY

@@ -56,7 +56,6 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Basics/VelocyPackHelper.h"
@@ -74,70 +73,6 @@
 extern const char* ARGV0; // defined in main.cpp
 
 NS_LOCAL
-
-struct TestTermAttribute: public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) {
-    value_ = value;
-  }
-};
-
-class TestDelimAnalyzer: public irs::analysis::analyzer {
- public:
-  DECLARE_ANALYZER_TYPE();
-
-  static ptr make(irs::string_ref const& args) {
-    if (args.null()) throw std::exception();
-    if (args.empty()) return nullptr;
-    PTR_NAMED(TestDelimAnalyzer, ptr, args);
-    return ptr;
-  }
-
-  TestDelimAnalyzer(irs::string_ref const& delim)
-    : irs::analysis::analyzer(TestDelimAnalyzer::type()),
-      _delim(irs::ref_cast<irs::byte_type>(delim)) {
-    _attrs.emplace(_term);
-  }
-
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
-
-  virtual bool next() override {
-    if (_data.empty()) {
-      return false;
-    }
-
-    size_t i = 0;
-
-    for (size_t count = _data.size(); i < count; ++i) {
-      auto data = irs::ref_cast<char>(_data);
-      auto delim = irs::ref_cast<char>(_delim);
-
-      if (0 == strncmp(&(data.c_str()[i]), delim.c_str(), delim.size())) {
-        _term.value(irs::bytes_ref(_data.c_str(), i));
-        _data = irs::bytes_ref(_data.c_str() + i + (std::max)(size_t(1), _delim.size()), _data.size() - i - (std::max)(size_t(1), _delim.size()));
-        return true;
-      }
-    }
-
-    _term.value(_data);
-    _data = irs::bytes_ref::nil;
-    return true;
-  }
-
-  virtual bool reset(irs::string_ref const& data) override {
-    _data = irs::ref_cast<irs::byte_type>(data);
-    return true;
-  }
-
- private:
-  irs::attribute_view _attrs;
-  irs::bytes_ref _delim;
-  irs::bytes_ref _data;
-  TestTermAttribute _term;
-};
-
-DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
-REGISTER_ANALYZER_JSON(TestDelimAnalyzer, TestDelimAnalyzer::make);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -159,11 +94,10 @@ struct IResearchQuerySetup {
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // must be first
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -223,7 +157,6 @@ struct IResearchQuerySetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 }; // IResearchQuerySetup

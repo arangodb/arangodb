@@ -92,9 +92,8 @@ void RestAdminServerHandler::handleRole() {
   }
   auto state = ServerState::instance();
   bool hasFailover = false;
-  auto replicationFeature = ReplicationFeature::INSTANCE;
-  if (replicationFeature != nullptr &&
-      replicationFeature->isAutomaticFailoverEnabled()) {
+  if (ReplicationFeature::INSTANCE != nullptr &&
+      ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
     hasFailover = true;
   } 
   VPackBuilder builder;

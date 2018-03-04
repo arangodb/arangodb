@@ -1,4 +1,5 @@
-# ArangoDB cluster 
+<!-- don't edit here, its from https://@github.com/arangodb/arangosync.git / docs/Manual/ -->
+# ArangoDB cluster
 
 There are several ways to start an ArangoDB cluster. In this section we will focus
 on our recommended way to start ArangoDB: the ArangoDB _Starter_.
@@ -14,7 +15,7 @@ The _Starter_ simplifies things for the operator and will coordinate a distribut
 cluster startup across several machines and assign cluster roles automatically.
 
 When started on several machines and enough machines have joined, the _Starters_
-will start _Agents_, s_Coordinators_ and _DBservers_ on these machines.
+will start _Agents_, _Coordinators_ and _DBservers_ on these machines.
 
 When running the _Starter_ will supervise its child tasks (namely _Coordinators_,
 _DBservers_ and _Agents_) and restart them in case of failure.
@@ -23,7 +24,7 @@ To start the cluster using a `systemd` unit file use the following:
 
 ```text
 [Unit]
-Description=Run the ArangoDB Starter 
+Description=Run the ArangoDB Starter
 After=network.target
 
 [Service]
@@ -48,7 +49,7 @@ Note that we set `rocksdb` in the unit service file.
 
 ## Cluster authentication
 
-The communication between the cluster nodes use a token (JWT) to authenticate. 
+The communication between the cluster nodes use a token (JWT) to authenticate.
 This must be shared between cluster nodes.
 
 Sharing secrets is obviously a very delicate topic. The above workflow assumes
@@ -76,4 +77,4 @@ The _Starter_ itself will use port `8528`.
 Since the _Agents_ are so critical to the availability of both the ArangoDB and the ArangoSync cluster,
 it is recommended to run _Agents_ on dedicated machines. Consider these machines "pets".
 
-_Coordinators_ and _DBServers_ can be deployed of other machines that should be considered "cattle".
+_Coordinators_ and _DBServers_ can be deployed on other machines that should be considered "cattle".

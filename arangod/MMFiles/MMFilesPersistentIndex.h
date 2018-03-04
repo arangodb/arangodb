@@ -63,7 +63,6 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
  public:
   MMFilesPersistentIndexIterator(LogicalCollection* collection,
                                  transaction::Methods* trx,
-                                 ManagedDocumentResult* mmdr,
                                  arangodb::MMFilesPersistentIndex const* index,
                                  arangodb::MMFilesPrimaryIndex* primaryIndex,
                                  rocksdb::OptimisticTransactionDB* db,
@@ -178,7 +177,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the MMFilesPersistentIndexIterator* results
   MMFilesPersistentIndexIterator* lookup(transaction::Methods*,
-                                         ManagedDocumentResult* mmdr,
                                          arangodb::velocypack::Slice const,
                                          bool reverse) const;
 

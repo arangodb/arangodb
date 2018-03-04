@@ -1,7 +1,8 @@
 Geo Indexes
 ===========
 
-### Introduction to Geo Indexes
+Introduction to Geo Indexes
+---------------------------
 
 This is an introduction to ArangoDB's geo indexes.
 
