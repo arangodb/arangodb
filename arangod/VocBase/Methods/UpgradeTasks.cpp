@@ -172,7 +172,7 @@ void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
   }
   OperationOptions opts;
   opts.waitForSync = true;
-  for (std::string const& key :toRemove) {
+  for (std::string const& key : toRemove) {
     VPackBuilder b;
     b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
     trx.remove("_routing", b.slice(), opts); // check results
