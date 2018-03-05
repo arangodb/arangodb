@@ -488,10 +488,10 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
       return false;
     }
     VPackSlice doc(mmdr.vpack());
-    double distance = distRad * geo::kEarthRadiusInMeters;
 
     // add to builder results
     if (!attributeName.empty()) {
+      double distance = distRad * geo::kEarthRadiusInMeters;
       // We have to copy the entire document
       VPackObjectBuilder docGuard(&builder);
       builder.add(attributeName, VPackValue(distance));
