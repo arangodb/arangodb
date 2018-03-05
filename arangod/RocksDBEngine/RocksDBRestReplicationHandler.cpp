@@ -246,6 +246,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   size_t chunkSize = determineChunkSize();
+  grantTemporaryRights();
+
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
@@ -710,6 +712,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << context->id() << "'";
   
+  grantTemporaryRights();
+  
   uint64_t chunkSize = determineChunkSize();
   auto ctx = transaction::StandaloneContext::Create(_vocbase);
   VPackBuffer<uint8_t> buffer;
@@ -794,6 +798,4 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     // avoid double freeing
     TRI_StealStringBuffer(dump.stringBuffer());
   }
-  
-
 }

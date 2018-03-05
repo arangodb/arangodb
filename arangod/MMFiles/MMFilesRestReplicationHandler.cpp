@@ -40,6 +40,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Auth/Common.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -361,6 +362,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -927,44 +930,18 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  // determine start tick for dump
-  TRI_voc_tick_t tickStart = 0;
-  TRI_voc_tick_t tickEnd = static_cast<TRI_voc_tick_t>(UINT64_MAX);
-  bool flush = true;  // flush WAL before dumping?
-  bool withTicks = true;
-  uint64_t flushWait = 0;
-
-  // determine flush WAL value
-  bool found;
-  std::string const& value1 = _request->value("flush", found);
-
-  if (found) {
-    flush = StringUtils::boolean(value1);
-  }
-
+  // flush WAL before dumping?
+  bool flush = _request->parsedValue("flush", true);
   // determine flush WAL wait time value
-  std::string const& value3 = _request->value("flushWait", found);
-
-  if (found) {
-    flushWait = StringUtils::uint64(value3);
-    if (flushWait > 60) {
-      flushWait = 60;
-    }
+  uint64_t flushWait = _request->parsedValue("flushWait", static_cast<uint64_t>(0));
+  if (flushWait > 60) {
+    flushWait = 60;
   }
-
+  
   // determine start tick for dump
-  std::string const& value4 = _request->value("from", found);
-
-  if (found) {
-    tickStart = (TRI_voc_tick_t)StringUtils::uint64(value4);
-  }
-
+  TRI_voc_tick_t tickStart = _request->parsedValue("from", static_cast<TRI_voc_tick_t>(0));
   // determine end tick for dump
-  std::string const& value5 = _request->value("to", found);
-
-  if (found) {
-    tickEnd = (TRI_voc_tick_t)StringUtils::uint64(value5);
-  }
+  TRI_voc_tick_t tickEnd = _request->parsedValue("to", static_cast<TRI_voc_tick_t>(UINT64_MAX));
 
   if (tickStart > tickEnd || tickEnd == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -972,23 +949,22 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  bool includeSystem = true;
-
-  std::string const& value6 = _request->value("includeSystem", found);
-
-  if (found) {
-    includeSystem = StringUtils::boolean(value6);
-  }
-
-  std::string const& value7 = _request->value("ticks", found);
-  if (found) {
-    withTicks = StringUtils::boolean(value7);
-  }
-
+  bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool withTicks = _request->parsedValue("ticks", true);
+  
+  grantTemporaryRights();
   LogicalCollection* c = _vocbase->lookupCollection(collection);
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), c->name(), auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
     return;
   }
 

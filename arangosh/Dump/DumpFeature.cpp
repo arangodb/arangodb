@@ -76,7 +76,9 @@ DumpFeature::DumpFeature(application_features::ApplicationServer* server,
       _result(result),
       _batchId(0),
       _clusterMode(false),
+#ifdef USE_ENTERPRISE
       _encryption(nullptr),
+#endif
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
