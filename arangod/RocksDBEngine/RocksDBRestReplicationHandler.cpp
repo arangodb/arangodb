@@ -251,6 +251,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
