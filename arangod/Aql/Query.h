@@ -65,7 +65,6 @@ class ExecutionPlan;
 class Query;
 struct QueryProfile;
 class QueryRegistry;
-class V8Executor;
 
 /// @brief equery part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -193,9 +192,6 @@ class Query {
   /// @brief explain an AQL query
   QueryResult explain();
 
-  /// @brief get v8 executor
-  V8Executor* v8Executor();
-  
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
 
@@ -301,9 +297,6 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t* _vocbase;
-
-  /// @brief V8 code executor
-  std::unique_ptr<V8Executor> _v8Executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;

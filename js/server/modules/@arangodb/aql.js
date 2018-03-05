@@ -840,7 +840,7 @@ function FCALL_USER (name, parameters) {
   try {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply({ name: name }, parameters));
   } catch (err) {
-    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
+    THROW(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }

@@ -77,12 +77,7 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
                   "' contains invalid characters");
   }
 
-  std::string aql("RETURN LENGTH( "
-                  " FOR fn IN @@col"
-                  "  FILTER fn._key == @fnName"
-                  "  REMOVE { _key: fn._key } in @@col RETURN 1)");
-
-
+  std::string aql("FOR fn IN @@col FILTER fn._key == @fnName REMOVE { _key: fn._key } in @@col RETURN 1");
   std::string UCFN = basics::StringUtils::toupper(functionName);
 
   auto binds = std::make_shared<VPackBuilder>();
@@ -92,7 +87,8 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
   binds->close();  // obj
 
   {
-    arangodb::aql::Query query(true, vocbase, arangodb::aql::QueryString(aql),
+    bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
+    arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
                                binds, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -107,11 +103,11 @@ Result arangodb::unregisterUserFunction(TRI_vocbase_t* vocbase,
     }
 
     VPackSlice countSlice = queryResult.result->slice();
-    if (!countSlice.isArray() || (countSlice.length() != 1)) {
+    if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
     }
 
-    if (countSlice[0].getNumericValue<int>() != 1) {
+    if (countSlice.length() != 1) {
       return Result(TRI_ERROR_QUERY_FUNCTION_NOT_FOUND,
                     std::string("no AQL user function with name '") + functionName + "' found");
     }
@@ -150,13 +146,11 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
   binds->add("@col", VPackValue(collectionName));
   binds->close();
 
-  std::string aql("RETURN LENGTH("
-                  " FOR fn IN @@col"
-                  "  FILTER UPPER(LEFT(fn.name, @fnLength)) == @ucName"
-                  "  REMOVE { _key: fn._key} in @@col RETURN 1)");
+  std::string aql("FOR fn IN @@col FILTER UPPER(LEFT(fn.name, @fnLength)) == @ucName REMOVE { _key: fn._key} in @@col RETURN 1");
 
   {
-    arangodb::aql::Query query(true, vocbase, arangodb::aql::QueryString(aql),
+    bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
+    arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
                                binds, nullptr, arangodb::aql::PART_MAIN);
 
     auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
@@ -172,11 +166,11 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
     }
 
     VPackSlice countSlice = queryResult.result->slice();
-    if (!countSlice.isArray() || (countSlice.length() != 1)) {
+    if (!countSlice.isArray()) {
       return Result(TRI_ERROR_INTERNAL, "bad query result for deleting AQL user functions");
     }
 
-    deleteCount = countSlice[0].getNumericValue<int>();
+    deleteCount = static_cast<int>(countSlice.length());
   }
 
   reloadAqlUserFunctions();
@@ -229,7 +223,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
     ISOLATE;
     bool throwV8Exception = (isolate != nullptr);
     V8ContextDealerGuard dealerGuard(res, isolate, vocbase, true /*allowModification*/);
-    if(res.fail()){
+    if (res.fail()) {
       return res;
     }
 
@@ -295,9 +289,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
 
   {
     arangodb::OperationOptions opOptions;
-    opOptions.isRestore = false;
     opOptions.waitForSync = true;
-    opOptions.silent = false;
 
     // find and load collection given by name or identifier
     auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
@@ -352,7 +344,8 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t* vocbase,
   binds->add("@col", VPackValue(collectionName));
   binds->close();
 
-  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
+  bool const contextOwnedByExterior = (v8::Isolate::GetCurrent() != nullptr);
+  arangodb::aql::Query query(contextOwnedByExterior, vocbase, arangodb::aql::QueryString(aql),
                              binds, nullptr, arangodb::aql::PART_MAIN);
 
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;

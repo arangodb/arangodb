@@ -94,6 +94,7 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _canThrow(true),
       _canRunOnDBServer(false),
       _isDeterministic(false),
+      _willUseV8(false),
       _preparedV8Context(false),
       _attributes(),
       _expressionContext(nullptr) {
@@ -331,6 +332,7 @@ void Expression::initConstantExpression() {
   _canThrow = false;
   _canRunOnDBServer = true;
   _isDeterministic = true;
+  _willUseV8 = false;
   _data = nullptr;
   
   _type = JSON;
@@ -340,6 +342,7 @@ void Expression::initSimpleExpression() {
   _canThrow = _node->canThrow();
   _canRunOnDBServer = _node->canRunOnDBServer();
   _isDeterministic = _node->isDeterministic();
+  _willUseV8 = _node->willUseV8();
   
   _type = SIMPLE;
 
@@ -390,7 +393,7 @@ void Expression::initExpression() {
   if (_node->isConstant()) {
     // expression is a constant value
     initConstantExpression();
-  } else if (_node->isSimple()) {
+  } else {
     // expression is a simple expression
     initSimpleExpression();
   } 
@@ -838,7 +841,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
   // only some functions have C++ handlers
   // check that the called function actually has one
   auto func = static_cast<Function*>(node->getData());
-  if (func->implementation != nullptr) {
+  if (func->implementation != nullptr && (!func->condition || func->condition())) {
     return executeSimpleExpressionFCallCxx(node, trx, mustDestroy);
   }
   return executeSimpleExpressionFCallV8(node, trx, mustDestroy);
@@ -910,17 +913,10 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
 AqlValue Expression::executeSimpleExpressionFCallV8(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
-  // a V8 context must have been entered by the query beforehand in order
-  // for this to work
-  if (!_ast->query()->hasEnteredContext()) {
-    _ast->query()->enterContext();
-  }
-
   prepareV8Context();
 
   mustDestroy = false;
   auto func = static_cast<Function*>(node->getData());
-  TRI_ASSERT(func->implementation == nullptr);
   
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_ASSERT(isolate != nullptr);
@@ -938,12 +934,16 @@ AqlValue Expression::executeSimpleExpressionFCallV8(
     for (size_t i = 0; i < n; ++i) {
       auto arg = member->getMemberUnchecked(i);
 
-      // TODO: add parameter conversion for NODE_TYPE_COLLECTION here
-      bool localMustDestroy;
-      AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
-      AqlValueGuard guard(a, localMustDestroy);
+      if (arg->type == NODE_TYPE_COLLECTION) {
+        // parameter conversion for NODE_TYPE_COLLECTION here
+        args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(), arg->getStringLength());
+      } else {
+        bool localMustDestroy;
+        AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
+        AqlValueGuard guard(a, localMustDestroy);
 
-      args[i] = a.toV8(isolate, trx);
+        args[i] = a.toV8(isolate, trx);
+      }
     }
 
     TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));

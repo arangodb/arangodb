@@ -146,6 +146,10 @@ class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
   /// @brief A managed document result to temporary hold one document
   std::unique_ptr<ManagedDocumentResult> _mmdr;
 
+  /// @brief whether or not we will use an expression that requires V8, and we need to take
+  /// special care to enter a context before and exit it properly
+  bool _hasV8Expression;
+
   /// @brief Flag if all indexes are exhausted to be maintained accross several getSome() calls
   bool _indexesExhausted;
 

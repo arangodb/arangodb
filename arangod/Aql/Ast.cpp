@@ -2842,7 +2842,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
-  // execute the expression using the C++ variant
+  
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
@@ -3118,11 +3118,17 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   // place. note that the transaction has not necessarily been
   // started yet...
   TRI_ASSERT(_query->trx() != nullptr);
+  
+  if (node->willUseV8()) {
+    // if the expression is going to use V8 internally, we do not
+    // bother to optimize it here
+    return node;
+  }
 
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
-  // execute the expression using the C++ variant
+ 
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 

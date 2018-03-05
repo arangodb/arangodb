@@ -103,6 +103,14 @@ class Expression {
     }
     return _isDeterministic;
   }
+  
+  /// @brief whether or not the expression will use V8
+  inline bool willUseV8() {
+    if (_type == UNPROCESSED) {
+      initExpression();
+    }
+    return _willUseV8;
+  }
 
   /// @brief clone the expression, needed to clone execution plans
   Expression* clone(ExecutionPlan* plan, Ast* ast) {
@@ -367,6 +375,9 @@ class Expression {
 
   /// @brief whether or not the expression is deterministic
   bool _isDeterministic;
+
+  /// @brief whether or not the expression will make use of V8
+  bool _willUseV8;
 
   /// @brief whether or not the preparation routine for V8 contexts was run
   /// once for this expression

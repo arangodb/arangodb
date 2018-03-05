@@ -155,29 +155,33 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
   TRI_ASSERT(_expression != nullptr);
 
-  auto cleanup = [this]() {
-    if (_isRunningInCluster) {
-      // must invalidate the expression now as we might be called from
-      // different threads
-      _expression->invalidate();
+  if (!_expression->willUseV8()) {
+    // an expression that does not require V8
+    executeExpression(result);
+  } else {
+    auto cleanup = [this]() {
+      if (_isRunningInCluster) {
+        // must invalidate the expression now as we might be called from
+        // different threads
+        _expression->invalidate();
 
-      _engine->getQuery()->exitContext();
-    }
-  };
-  
-  // must have a V8 context here to protect Expression::execute()
-  _engine->getQuery()->enterContext();
-  TRI_DEFER(cleanup());
+        _engine->getQuery()->exitContext();
+      }
+    };
+    
+    // must have a V8 context here to protect Expression::execute()
+    _engine->getQuery()->enterContext();
+    TRI_DEFER(cleanup());
 
-  ISOLATE;
-  v8::HandleScope scope(isolate);  // do not delete this!
+    ISOLATE;
+    v8::HandleScope scope(isolate);  // do not delete this!
 
-  // do not merge the following function call with the same function call
-  // above!
-  // the V8 expression execution must happen in the scope that contains
-  // the V8 handle scope and the scope guard
-  executeExpression(result);
-  
+    // do not merge the following function call with the same function call
+    // above!
+    // the V8 expression execution must happen in the scope that contains
+    // the V8 handle scope and the scope guard
+    executeExpression(result);
+  }
   DEBUG_END_BLOCK();
 }
 
