@@ -910,13 +910,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto* vocbase = _state->vocbase();
-
-    if (!vocbase) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-
-    auto dataSource = vocbase->lookupDataSource(cid);
+    auto dataSource = resolver()->getDataSource(cid);
 
     if (!dataSource) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -2881,24 +2875,18 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     throwCollectionNotFound(name);
   }
 
-  auto* vocbase = _state->vocbase();
-
-  if (!vocbase) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
   Result res;
   bool visited = false;
   auto visitor = _state->isEmbeddedTransaction()
     ? std::function<bool(TRI_voc_cid_t)>(
-        [this, vocbase, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
+        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
           res = addCollectionEmbedded(ccid, name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = vocbase->lookupDataSource(ccid);
+          auto dataSource = resolver()->getDataSource(ccid);
 
           if (!dataSource) {
             res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -2913,14 +2901,14 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
         }
       )
     : std::function<bool(TRI_voc_cid_t)>(
-        [this, vocbase, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
+        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
           res = addCollectionToplevel(ccid, name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = vocbase->lookupDataSource(ccid);
+          auto dataSource = resolver()->getDataSource(ccid);
 
           if (!dataSource) {
             res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -2945,7 +2933,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     return res;
   }
 
-  auto dataSource = vocbase->lookupDataSource(cid);
+  auto dataSource = resolver()->getDataSource(cid);
 
   if (!dataSource) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
