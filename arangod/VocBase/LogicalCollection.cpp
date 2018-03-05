@@ -1078,7 +1078,11 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(vocbase(), id(), this, doSync);
-  DatabaseFeature::DATABASE->versionTracker()->track("change collection");
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("change collection");
+  }
 
   return {};
 }
@@ -1126,7 +1130,10 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
                                                       bool& created) {
   auto idx = _physical->createIndex(trx, info, created);
   if (idx) {
-    DatabaseFeature::DATABASE->versionTracker()->track("create index");
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create index");
+    }
   }
   return idx;
 }
@@ -1140,7 +1147,10 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   arangodb::aql::QueryCache::instance()->invalidate(vocbase(), name());
   bool result = _physical->dropIndex(iid);
   if (result) {
-    DatabaseFeature::DATABASE->versionTracker()->track("drop index");
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("drop index");
+    }
   }
   return result;
 }

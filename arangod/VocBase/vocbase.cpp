@@ -1148,7 +1148,10 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   // API compatibility, we always return the collection, even if creation
   // failed.
   
-  DatabaseFeature::DATABASE->versionTracker()->track("create collection");
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create collection");
+  }
 
   return collection;
 }
@@ -1249,7 +1252,10 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
         engine->signalCleanup(collection->vocbase());
       }
       
-      DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
+      if (DatabaseFeature::DATABASE != nullptr &&
+          DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+        DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
+      }
     }
 
     if (state == DROP_PERFORM || state == DROP_EXIT) {
@@ -1418,7 +1424,10 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   locker.unlock();
   writeLocker.unlock();
   
-  DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
+  }
 
   // invalidate all entries for the two collections
   arangodb::aql::PlanCache::instance()->invalidate(this);
@@ -1602,7 +1611,10 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   // API compatibility, we always return the view, even if creation failed.
  
   if (view) { 
-    DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
   }
 
   return view;
@@ -1672,7 +1684,10 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   writeLocker.unlock();
   
   events::DropView(view->name(), TRI_ERROR_NO_ERROR);
-  DatabaseFeature::DATABASE->versionTracker()->track("drop view");
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop view");
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

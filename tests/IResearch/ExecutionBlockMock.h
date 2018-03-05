@@ -52,6 +52,12 @@ class ExecutionNodeMock final : public arangodb::aql::ExecutionNode {
 
   /// @brief return the type of the node
   virtual NodeType getType() const override;
+  
+  virtual std::unique_ptr<arangodb::aql::ExecutionBlock> createBlock(
+    arangodb::aql::ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, arangodb::aql::ExecutionBlock*> const& cache,
+    std::unordered_set<std::string> const& includedShards
+  ) const;
 
   /// @brief clone execution Node recursively, this makes the class abstract
   virtual ExecutionNode* clone(
