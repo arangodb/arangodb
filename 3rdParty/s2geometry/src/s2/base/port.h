@@ -261,7 +261,7 @@ inline void sized_delete_array(void *ptr, size_t size) {
 // -----------------------------------------------------------------------------
 
 // IS_LITTLE_ENDIAN, IS_BIG_ENDIAN
-#if defined OS_LINUX || defined OS_ANDROID || defined(__ANDROID__)
+#if defined OS_LINUX || defined(__linux__) || defined OS_ANDROID || defined(__ANDROID__)
 // _BIG_ENDIAN
 #include <endian.h>
 
@@ -390,7 +390,7 @@ const char PATH_SEPARATOR = '/';
 // -----------------------------------------------------------------------------
 
 // uint, ushort, ulong
-#if defined OS_LINUX
+#if defined OS_LINUX || defined(__linux__)
 // The uint mess:
 // mysql.h sets _GNU_SOURCE which sets __USE_MISC in <features.h>
 // sys/types.h typedefs uint if __USE_MISC
