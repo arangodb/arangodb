@@ -93,23 +93,15 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     try {
       queryRegistry->insert(_id, query, 600.0);
     } catch (...) {
-      // TODO Is this correct or does it cause failures?
-      // TODO Add failure tests
       delete engine->getQuery();
       // This deletes the new query as well as the engine
       throw;
     }
 
-    try {
-      std::string queryId = arangodb::basics::StringUtils::itoa(_id);
-      std::string theID =
-          arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
-      queryIds.emplace(theID, queryId);
-    } catch (...) {
-      queryRegistry->destroy(dbname, _id, TRI_ERROR_INTERNAL);
-      // This deletes query, engine and entry in QueryRegistry
-      throw;
-    }
+    std::string queryId = arangodb::basics::StringUtils::itoa(_id);
+    std::string theID =
+        arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
+    queryIds.emplace(theID, queryId);
   }
 }
 

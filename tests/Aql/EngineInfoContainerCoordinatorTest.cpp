@@ -549,7 +549,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Verify(Method(mockRegistry, insert)).Exactly(2);
   }
 
-  SECTION("it should unregister all engines on error in query clone") {
+  SECTION("error cases") {
     std::unordered_set<std::string> const restrictToShards;
     std::unordered_map<std::string, std::string> queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
@@ -606,13 +606,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
 
-    // Mock query clone
-    When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
-      REQUIRE(part == PART_DEPENDENT);
-      REQUIRE(withPlan == false);
-      return &queryClone;
-    }).Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
-
     When(Method(mockQueryClone, setEngine)).Do([&](ExecutionEngine* eng) -> void {
       // We expect that the snippet injects a new engine into our
       // query.
@@ -643,7 +636,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       REQUIRE(errorCode == TRI_ERROR_INTERNAL);
     });
 
-
     // ------------------------------
     // Section: Run the test
     // ------------------------------
@@ -666,31 +658,62 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Close the second snippet
     testee.closeSnippet();
 
-    ExecutionEngineResult result = testee.buildEngines(
-      &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
-    );
+    SECTION("cloning of a query fails") {
 
-    REQUIRE(!result.ok());
-    // Make sure we check the right thing here
-    REQUIRE(result.errorNumber() == TRI_ERROR_DEBUG);
+      SECTION("it throws an error") {
+        // Mock query clone
+        When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
+          REQUIRE(part == PART_DEPENDENT);
+          REQUIRE(withPlan == false);
+          return &queryClone;
+        }).Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
-    // Validate that the path up to intended error was taken
+        ExecutionEngineResult result = testee.buildEngines(
+          &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+        );
+        REQUIRE(!result.ok());
+        // Make sure we check the right thing here
+        REQUIRE(result.errorNumber() == TRI_ERROR_DEBUG);
+      }
 
-    // Validate that the query is wired up with the engine
-    Verify(Method(mockQuery, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    Verify(Method(mockEngine, setLockedShards)).Exactly(1);
-    Verify(Method(mockEngine, createBlocks)).Exactly(1);
+      SECTION("it returns nullptr") {
+        // Mock query clone
+        When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
+          REQUIRE(part == PART_DEPENDENT);
+          REQUIRE(withPlan == false);
+          return nullptr;
+        });
 
-    // Validate that the second query is wired up with the second engine
-    Verify(Method(mockQueryClone, setEngine)).Exactly(1);
-    // Validate that lockedShards and createBlocks have been called!
-    Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
-    Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
-    Verify(Method(mockRegistry, insert)).Exactly(1);
 
-    // Assert unregister of second engine.
-    Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
+        ExecutionEngineResult result = testee.buildEngines(
+          &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+        );
+        REQUIRE(!result.ok());
+        // Make sure we check the right thing here
+        REQUIRE(result.errorNumber() == TRI_ERROR_INTERNAL);
+      }
+
+      // Validate that the path up to intended error was taken
+
+      // Validate that the query is wired up with the engine
+      Verify(Method(mockQuery, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockEngine, createBlocks)).Exactly(1);
+
+      // Validate that the second query is wired up with the second engine
+      Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+      Verify(Method(mockRegistry, insert)).Exactly(1);
+
+      // Assert unregister of second engine.
+      Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
+    }
+
+
+
   }
 
 }
