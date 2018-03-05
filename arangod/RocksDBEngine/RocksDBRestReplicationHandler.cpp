@@ -722,10 +722,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
       return buffer.byteSize() < chunkSize;
     };
     
-    vpb.openArray(true);
-    auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);
-    vpb.close();
-    
+    auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);    
     LOG_TOPIC(ERR, Logger::FIXME) << "Dumping " << vpb.slice().length() << " docs";
     size_t bufferSize = buffer.byteSize(); // std::move(buffer) resets buffer
     

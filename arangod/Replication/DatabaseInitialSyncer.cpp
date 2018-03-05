@@ -282,9 +282,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
   
   bool found = false;
   std::string cType = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
-  bool isVelocyPack = found && (cType == StaticStrings::MimeTypeVPack);
-  
-  if (isVelocyPack) {
+  if (found && (cType == StaticStrings::MimeTypeVPack)) {
     
     VPackOptions options;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
@@ -293,25 +291,23 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     VPackValidator validator(&options);
     
     try {
-      // throws if the data is invalid
-      validator.validate(data.c_str(), data.length());
+      while (p < end) {
+        ptrdiff_t remaining = end - p;
+        // throws if the data is invalid
+        validator.validate(p, remaining, /*isSubPart*/true);
+        
+        VPackSlice marker(p);
+        Result r = parseCollectionDumpMarker(trx, coll, marker);
+        if (r.fail()) {
+          r.reset(r.errorNumber(), invalidMsg);
+          return r;
+        }
+        ++markersProcessed;
+        p += marker.byteSize();
+      }
     } catch(velocypack::Exception const& e) {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "Error parsing VPack response: " << e.what();
       return Result(e.errorCode(), e.what());
-    }
-    
-    VPackSlice dump(data.c_str());
-    if (!dump.isArray()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "VPack response is not an array";
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, invalidMsg);
-    }
-    for (VPackSlice const& slice : VPackArrayIterator(dump)) {
-      Result r = parseCollectionDumpMarker(trx, coll, slice);
-      if (r.fail()) {
-        r.reset(r.errorNumber(), invalidMsg);
-        return r;
-      }
-      ++markersProcessed;
     }
     
   } else {
