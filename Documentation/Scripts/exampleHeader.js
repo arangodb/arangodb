@@ -41,7 +41,7 @@ var ignoreCollectionAlreadyThere = [];
 var rc;
 var j;
 
-var examples = require("@arangodb/examples/examples").Examples;
+var exds = require("@arangodb/examples/examples").Examples;
 
 var hljs = require('highlightjs');
 
