@@ -63,7 +63,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
+size_t const DatabaseInitialSyncer::MaxChunkSize = 64 * 1024 * 1024;
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
                                              ReplicationApplierConfiguration const& configuration)
@@ -539,6 +539,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     trx.addHint(transaction::Hints::Hint::RECOVERY);
     // smaller batch sizes should work better here
     trx.state()->options().intermediateCommitCount = 64;
+    trx.state()->options().intermediateCommitSize = 8 * 1024 * 1024;
 
     Result res = trx.begin();
 
