@@ -58,8 +58,10 @@ MMFilesEdgeIndexIterator::MMFilesEdgeIndexIterator(
     ManagedDocumentResult* mmdr, arangodb::MMFilesEdgeIndex const* index,
     TRI_MMFilesEdgeIndexHash_t const* indexImpl,
     std::unique_ptr<VPackBuilder>& keys)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(indexImpl),
+      _mmdr(mmdr),
+      _context(trx, collection, _mmdr, index->fields().size()),
       _keys(keys.get()),
       _iterator(_keys->slice()),
       _posInBuffer(0),

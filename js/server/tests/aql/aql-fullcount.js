@@ -192,6 +192,20 @@ function optimizerFullcountTestSuite () {
 
       assertEqual(2, result.stats.fullCount);
       assertEqual(0, result.json.length);
+    },
+
+    testJoin1 : function () {
+      let result = AQL_EXECUTE("FOR doc1 IN UnitTestsCollection LIMIT 1 FOR doc2 IN UnitTestsCollection RETURN 1", null, { fullCount: true });
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(3, result.json.length);
+    },
+
+    testJoin2 : function () {
+      let result = AQL_EXECUTE("FOR doc1 IN UnitTestsCollection LIMIT 1 FOR doc2 IN UnitTestsCollection FILTER doc1._id == doc2._id RETURN 1", null, { fullCount: true });
+
+      assertEqual(3, result.stats.fullCount);
+      assertEqual(1, result.json.length);
     }
 
   };

@@ -505,7 +505,7 @@ static void JS_TypeViewVocbase(
 
   LogicalView* view = v->get();
 
-  std::string const type = view->type();
+  auto& type = view->type().name();
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, type));
   TRI_V8_TRY_CATCH_END
 }
@@ -546,3 +546,7 @@ void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoView"),
                                ft->GetFunction());
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

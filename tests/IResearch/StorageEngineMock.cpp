@@ -78,11 +78,10 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   EdgeIndexIteratorMock(
       arangodb::LogicalCollection* collection,
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::Index const* index,
       Map const& map,
       std::unique_ptr<VPackBuilder>&& keys
-  ) : IndexIterator(collection, trx, mmdr, index),
+  ) : IndexIterator(collection, trx, index),
       _map(map),
       _begin(_map.begin()),
       _end(_map.end()),
@@ -348,7 +347,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)
@@ -385,7 +383,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)

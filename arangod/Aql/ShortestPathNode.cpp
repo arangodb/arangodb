@@ -28,6 +28,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ShortestPathBlock.h"
 #include "Aql/Query.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"
@@ -253,6 +254,15 @@ void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<ShortestPathBlock>(&engine, this);
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,

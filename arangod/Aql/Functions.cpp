@@ -41,7 +41,6 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
@@ -2036,8 +2035,8 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
 
 /// @brief function COLLECTIONS
 AqlValue Functions::Collections(arangodb::aql::Query* query,
-                          transaction::Methods* trx,
-                          VPackFunctionParameters const& parameters) {
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -2072,20 +2071,19 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     return basics::StringUtils::tolower(lhs->name()) < basics::StringUtils::tolower(rhs->name());
   });
 
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
 
   size_t const n = colls.size();
   for (size_t i = 0; i < n; ++i) {
-    auto& collection = colls[i];
+    LogicalCollection* coll = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
-    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
     builder->openObject();
-    builder->add("_id", VPackValue(collection->cid_as_string()));
-    builder->add("name", VPackValue(collection->name()));
+    builder->add("_id", VPackValue(coll->cid_as_string()));
+    builder->add("name", VPackValue(coll->name()));
     builder->close();
   }
 
@@ -4161,33 +4159,34 @@ AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Metho
 }
 
 AqlValue Functions::Assert(arangodb::aql::Query* query, transaction::Methods* trx,
-                                 VPackFunctionParameters const& parameters) {
+                           VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "ASSERT", 2, 2);
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
-  if(!message.isString()){
+
+  if (!message.isString()) {
     RegisterInvalidArgumentWarning(query, "ASSERT");
     return AqlValue(AqlValueHintNull());
   }
-  if(!expr.toBoolean()){
+  if (!expr.toBoolean()) {
     std::string msg = message.slice().copyString();
-    query->registerError(TRI_ERROR_QUERY_USER_ASSERT,msg.data());
+    query->registerError(TRI_ERROR_QUERY_USER_ASSERT, msg.data());
   }
   return AqlValue(AqlValueHintBool(true));
-
 }
 
 AqlValue Functions::Warn(arangodb::aql::Query* query, transaction::Methods* trx,
-                                 VPackFunctionParameters const& parameters) {
-
+                         VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "WARN", 2, 2);
   auto const expr = ExtractFunctionParameterValue(parameters, 0);
   auto const message = ExtractFunctionParameterValue(parameters, 1);
-  if(!message.isString()){
+
+  if (!message.isString()) {
     RegisterInvalidArgumentWarning(query, "WARN");
     return AqlValue(AqlValueHintNull());
   }
-  if(!expr.toBoolean()){
+
+  if (!expr.toBoolean()) {
     std::string msg = message.slice().copyString();
     query->registerWarning(TRI_ERROR_QUERY_USER_WARN, msg.data());
     return AqlValue(AqlValueHintBool(false));

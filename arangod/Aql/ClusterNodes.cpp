@@ -24,6 +24,7 @@
 #include "ClusterNodes.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ClusterBlocks.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 
@@ -40,6 +41,17 @@ RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
       _ownName(base.get("ownName").copyString()),
       _queryId(base.get("queryId").copyString()),
       _isResponsibleForInitializeCursor(base.get("isResponsibleForInitializeCursor").getBoolean()) {}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<RemoteBlock>(
+    &engine, this, server(), ownName(), queryId()
+  );
+}
 
 /// @brief toVelocyPack, for RemoteNode
 void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -80,6 +92,19 @@ ScatterNode::ScatterNode(ExecutionPlan* plan,
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())) {}
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const& includedShards
+) const {
+  auto const shardIds = collection()->shardIds(includedShards);
+
+  return std::make_unique<ScatterBlock>(
+    &engine, this, *shardIds
+  );
+}
+
 /// @brief toVelocyPack, for ScatterNode
 void ScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
@@ -111,6 +136,19 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
       _createKeys(base.get("createKeys").getBoolean()),
       _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
       _allowSpecifiedKeys(false) {}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const& includedShards
+) const {
+  auto const shardIds = collection()->shardIds(includedShards);
+
+  return std::make_unique<DistributeBlock>(
+    &engine, this, *shardIds, collection()
+  );
+}
 
 /// @brief toVelocyPack, for DistributedNode
 void DistributeNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -191,6 +229,15 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<GatherBlock>(&engine, this);
 }
 
 /// @brief estimateCost
