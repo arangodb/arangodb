@@ -153,8 +153,10 @@ the following options are available. Note: *TLS is not supported under Windows*:
       protocol via the LDAP url (see previous section), then ArangoDB
       will use the `STARTTLS` protocol to initiate TLS. This is the
       recommended approach.
-  - `--ldap.tls-version` the tls version that should be used.
-    Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. 
+  - `--ldap.tls-version` the minimal TLS version that ArangoDB should accept.
+      Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. If
+      your LDAP server does not support Version 1.2, you have to change
+      this setting.
   - `--ldap.tls-cert-check-strategy` strategy to validate the ldap server
      certificate.  Available strategies are `never`, `hard`,
       `demand`, `allow` and `try`. The default is `hard`.
