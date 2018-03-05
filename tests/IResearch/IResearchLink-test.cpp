@@ -47,7 +47,6 @@
 #include "Logger/LogTopic.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -80,9 +79,8 @@ struct IResearchLinkSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
@@ -122,6 +120,8 @@ struct IResearchLinkSetup {
       TRI_GetTempPath())/=
       (std::string("arangodb_tests.") + std::to_string(TRI_microtime()))
       ).utf8();
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath;
 
     long systemError;
     std::string systemErrorStr;
@@ -150,7 +150,6 @@ struct IResearchLinkSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -316,17 +315,14 @@ SECTION("test_write") {
   static std::vector<std::string> const EMPTY;
   auto doc0 = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
   auto doc1 = arangodb::velocypack::Parser::fromJson("{ \"ghi\": \"jkl\" }");
-  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("test_write")).utf8();
+  std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-42")).utf8();
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   auto linkJson = arangodb::velocypack::Parser::fromJson("{ \"type\": \"arangosearch\", \"view\": 42, \"includeAllFields\": true }");
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \
     \"id\": 42, \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\", \
-    \"properties\": { \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-    } \
+    \"type\": \"arangosearch\" \
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
   REQUIRE((nullptr != logicalCollection));

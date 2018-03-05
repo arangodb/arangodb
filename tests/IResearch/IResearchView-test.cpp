@@ -61,7 +61,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -141,7 +140,6 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true);
     features.emplace_back(new arangodb::RandomFeature(&server), false); // required by AuthenticationFeature
     features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
@@ -212,7 +210,6 @@ struct IResearchViewSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -248,9 +245,6 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("-") + std::to_string(logicalView.id());
-
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -261,9 +255,9 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((6U == slice.length()));
+    CHECK((5U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
-    CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
   // existing view definition with LogicalView
@@ -274,9 +268,6 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("-") + std::to_string(logicalView.id());
-
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -287,9 +278,9 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
+    CHECK((6U == slice.length()));
     CHECK((slice.hasKey("links")));
-    CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
   // new view definition
@@ -306,9 +297,6 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("-") + std::to_string(logicalView.id());
-
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -319,9 +307,9 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((6U == slice.length()));
+    CHECK((5U == slice.length()));
     CHECK((!slice.hasKey("links"))); // for persistence so no links
-    CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
   }
 
   // new view definition with LogicalView
@@ -332,9 +320,6 @@ SECTION("test_defaults") {
     CHECK((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("-") + std::to_string(logicalView.id());
-
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
@@ -345,8 +330,8 @@ SECTION("test_defaults") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -376,13 +361,11 @@ SECTION("test_defaults") {
 }
 
 SECTION("test_drop") {
-  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
+  std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
+    \"id\": 123, \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\", \
-    \"properties\": { \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-    } \
+    \"type\": \"arangosearch\" \
   }");
 
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
@@ -409,13 +392,11 @@ SECTION("test_drop") {
 }
 
 SECTION("test_drop_with_link") {
-  std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
+  std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
   auto json = arangodb::velocypack::Parser::fromJson("{ \
+    \"id\": 123, \
     \"name\": \"testView\", \
-    \"type\": \"arangosearch\", \
-    \"properties\": { \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-    } \
+    \"type\": \"arangosearch\" \
   }");
 
   CHECK((false == TRI_IsDirectory(dataPath.c_str())));
@@ -435,7 +416,6 @@ SECTION("test_drop_with_link") {
   CHECK((true == logicalCollection->getIndexes().empty()));
   CHECK((false == !vocbase.lookupView("testView")));
   CHECK((true == TRI_IsDirectory(dataPath.c_str())));
-
 
   auto links = arangodb::velocypack::Parser::fromJson("{ \
     \"links\": { \"testCollection\": {} } \
@@ -1056,92 +1036,10 @@ SECTION("test_link") {
   }
 }
 
-SECTION("test_move_datapath") {
-  std::string createDataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme0")).utf8();
-  std::string updateDataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme1")).utf8();
-  auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-  auto createJson = arangodb::velocypack::Parser::fromJson("{ \
-    \"name\": \"testView\", \
-    \"type\": \"arangosearch\", \
-    \"properties\": { \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(createDataPath, "\\", "/") + "\" \
-    } \
-  }");
-  auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
-    \"dataPath\": \"" + arangodb::basics::StringUtils::replace(updateDataPath, "\\", "/") + "\" \
-  }");
-
-  CHECK((false == TRI_IsDirectory(createDataPath.c_str())));
-  CHECK((false == TRI_IsDirectory(updateDataPath.c_str())));
-
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-  CHECK((false == TRI_IsDirectory(createDataPath.c_str()))); // createView(...) will call open()
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto view = logicalView->getImplementation();
-  REQUIRE((false == !view));
-
-  CHECK((true == TRI_IsDirectory(createDataPath.c_str())));
-  CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-  CHECK((false == TRI_IsDirectory(createDataPath.c_str())));
-  CHECK((true == TRI_IsDirectory(updateDataPath.c_str())));
-}
-
 SECTION("test_open") {
-  // absolute data path
-  {
-    std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
-    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\" \
-    }");
-
-    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
-    auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
-
-    REQUIRE((false == !view));
-    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-    view->open();
-    CHECK((true == TRI_IsDirectory(dataPath.c_str())));
-  }
-
-  auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-  auto origDirectory = dbPathFeature->directory();
-  auto restoreDirectory = irs::make_finally([dbPathFeature, &origDirectory]()->void{
-    const_cast<std::string&>(dbPathFeature->directory()) = origDirectory;
-  });
-
-  // relative data path
-  {
-    arangodb::options::ProgramOptions options("", "", "", nullptr);
-
-    options.addPositional((irs::utf8_path()/=s.testFilesystemPath).utf8());
-    dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
-
-    std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("deleteme")).utf8();
-    auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    auto json = arangodb::velocypack::Parser::fromJson("{ \
-      \"dataPath\": \"deleteme\" \
-    }");
-
-    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-    arangodb::LogicalView logicalView(nullptr, namedJson->slice());
-    auto view = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
-    CHECK((false == !view));
-    CHECK((false == TRI_IsDirectory(dataPath.c_str())));
-    view->open();
-    CHECK((true == TRI_IsDirectory(dataPath.c_str())));
-  }
-
   // default data path
   {
-    arangodb::options::ProgramOptions options("", "", "", nullptr);
-
-    options.addPositional((irs::utf8_path()/=s.testFilesystemPath).utf8());
-    dbPathFeature->validateOptions(std::shared_ptr<decltype(options)>(&options, [](decltype(options)*){})); // set data directory
-
-    std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("testType-123")).utf8();
+    std::string dataPath = (((irs::utf8_path()/=s.testFilesystemPath)/=std::string("databases"))/=std::string("arangosearch-123")).utf8();
     auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 123, \"name\": \"testView\", \"type\": \"testType\" }");
     auto json = arangodb::velocypack::Parser::fromJson("{}");
 
@@ -1283,9 +1181,8 @@ SECTION("test_query") {
 
   // query while running FlushThread
   {
-    auto dataPath = arangodb::basics::StringUtils::replace(((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8(), "\\", "/");
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
-    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"properties\": { \"dataPath\": \"" + dataPath + "\" } }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
     auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
     REQUIRE(feature);
@@ -2398,7 +2295,6 @@ SECTION("test_update_overwrite") {
         \"threadsMaxTotal\": 20 \
       }");
 
-      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedMeta._locale = irs::locale_utils::locale("en", true);
       expectedMeta._threadsMaxIdle = 10;
       expectedMeta._threadsMaxTotal = 20;
@@ -2414,8 +2310,8 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2428,7 +2324,6 @@ SECTION("test_update_overwrite") {
         \"locale\": \"ru\" \
       }");
 
-      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedMeta._locale = irs::locale_utils::locale("ru", true);
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2442,8 +2337,8 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2473,7 +2368,6 @@ SECTION("test_update_overwrite") {
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
       expectedMeta._collections.insert(logicalCollection0->cid());
-      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -2487,8 +2381,8 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -2521,7 +2415,6 @@ SECTION("test_update_overwrite") {
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
       expectedMeta._collections.insert(logicalCollection1->cid());
-      expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2535,8 +2428,8 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -2647,7 +2540,6 @@ SECTION("test_update_partial") {
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedMeta._locale = irs::locale_utils::locale("en", true);
     expectedMeta._threadsMaxIdle = 10;
     expectedMeta._threadsMaxTotal = 20;
@@ -2663,14 +2555,14 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   }
 
-  // test rollback on meta modification failure
+  // test rollback on meta modification failure (as an example invalid value for 'locale')
   {
     Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
@@ -2678,17 +2570,13 @@ SECTION("test_update_partial") {
     auto view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
-    std::string dataPath = ((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8();
-    auto res = TRI_CreateDatafile(dataPath, 1); // create a file where the data path directory should be
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     auto updateJson = arangodb::velocypack::Parser::fromJson(std::string() + "{ \
-      \"dataPath\": \"" + arangodb::basics::StringUtils::replace(dataPath, "\\", "/") + "\", \
-      \"locale\": \"en\", \
+      \"locale\": 123, \
       \"threadsMaxIdle\": 10, \
       \"threadsMaxTotal\": 20 \
     }");
 
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     CHECK((TRI_ERROR_BAD_PARAMETER == view->updateProperties(updateJson->slice(), true, false).errorNumber()));
 
     arangodb::velocypack::Builder builder;
@@ -2701,8 +2589,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2763,7 +2651,6 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2779,8 +2666,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -2836,7 +2723,6 @@ SECTION("test_update_partial") {
       }}");
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2852,8 +2738,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -2886,9 +2772,6 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
-
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": {} \
@@ -2906,8 +2789,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -2987,7 +2870,6 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
     expectedMeta._collections.insert(logicalCollection->cid());
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -3007,8 +2889,8 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 1 == tmpSlice.length()));
@@ -3033,8 +2915,8 @@ SECTION("test_update_partial") {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      CHECK((7U == slice.length()));
-      CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+      CHECK((6U == slice.length()));
+      CHECK((meta.init(slice, error) && expectedMeta == meta));
 
       auto tmpSlice = slice.get("links");
       CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3050,9 +2932,6 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
-
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": null \
@@ -3070,8 +2949,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
@@ -3089,9 +2968,6 @@ SECTION("test_update_partial") {
     REQUIRE((false == !view));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
-
-    expectedMeta._dataPath = std::string("arangosearch-") + std::to_string(logicalView->id());
-
     auto updateJson = arangodb::velocypack::Parser::fromJson("{ \
       \"links\": { \
         \"testCollection\": null \
@@ -3109,8 +2985,8 @@ SECTION("test_update_partial") {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
 
-    CHECK((7U == slice.length()));
-    CHECK((meta.init(slice, error, *logicalView) && expectedMeta == meta));
+    CHECK((6U == slice.length()));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
 
     auto tmpSlice = slice.get("links");
     CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));

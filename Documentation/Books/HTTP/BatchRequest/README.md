@@ -209,4 +209,4 @@ part operations of a batch. When doing so, any other database name used
 in a batch part will be ignored.
 
 
-@startDocuBlock JSF_batch_processing
+@startDocuBlock batch_processing

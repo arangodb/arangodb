@@ -50,7 +50,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
  public:
   RocksDBEdgeIndexIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
                            std::unique_ptr<VPackBuilder>& keys,
                            std::shared_ptr<cache::Cache>);
@@ -179,11 +178,11 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 

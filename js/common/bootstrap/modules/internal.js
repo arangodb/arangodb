@@ -1754,6 +1754,15 @@ global.DEFINE_MODULE('internal', (function () {
     exports.authenticationEnabled = global.AUTHENTICATION_ENABLED;
     delete global.AUTHENTICATION_ENABLED;
   }
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief ldapEnabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (typeof LDAP_ENABLED !== 'undefined') {
+    exports.ldapEnabled = global.LDAP_ENABLED;
+    delete global.LDAP_ENABLED;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief options

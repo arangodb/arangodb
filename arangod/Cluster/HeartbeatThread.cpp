@@ -48,7 +48,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -415,8 +414,8 @@ void HeartbeatThread::runDBServer() {
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
   double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  TRI_ASSERT(auth != nullptr);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
   if (!replication->isActiveFailoverEnabled()) {
@@ -428,7 +427,8 @@ void HeartbeatThread::runSingleServer() {
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
-  
+ 
+  uint64_t lastSentVersion = 0;
   double start = 0; // no wait time initially
   while (!isStopping()) {
     double remain = interval - (TRI_microtime() - start);
@@ -445,15 +445,34 @@ void HeartbeatThread::runSingleServer() {
     }
     start = TRI_microtime();
     
+    if (isStopping()) {
+      break;
+    }
+
     try {
       // send our state to the agency.
       // we don't care if this fails
-      sendState();
-      if (isStopping()) {
-        break;
+      double const timeout = 1.0;
+
+      // check current local version of database objects version, and bump
+      // the global version number in the agency in case it changed. this
+      // informs other listeners about our local DDL changes
+      uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
+      
+      if (currentVersion != lastSentVersion) {
+        AgencyOperation incrementVersion("Plan/Version",
+                                         AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction trx(incrementVersion);
+        AgencyCommResult res = _agency.sendTransactionWithFailover(trx, timeout);
+
+        if (res.successful()) {
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "successfully increased plan version in agency";
+        } else {
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "could not increase version number in agency";
+        }
       }
 
-      double const timeout = 1.0;
+      lastSentVersion = currentVersion;
 
       AgencyReadTransaction trx(
         std::vector<std::string>({
@@ -589,7 +608,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = auth->jwtToken();
+          config._jwt = af->tokenCache()->jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -806,7 +825,8 @@ void HeartbeatThread::runCoordinator() {
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
             if (authentication->isActive()) {
-              authentication->authInfo()->outdate();
+              authentication->userManager()->outdate();
+              authentication->tokenCache()->invalidateBasicCache();
             }
           }
         }

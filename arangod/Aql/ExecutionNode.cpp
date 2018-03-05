@@ -25,19 +25,25 @@
 
 #include "ExecutionNode.h"
 #include "Aql/Ast.h"
+#include "Aql/BasicBlocks.h"
+#include "Aql/CalculationBlock.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/EnumerateCollectionBlock.h"
+#include "Aql/EnumerateListBlock.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Aql/SubqueryBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
+#include "Utils/OperationCursor.h"
 
 #ifdef USE_IRESEARCH
 #include "IResearch/IResearchViewNode.h"
@@ -1153,6 +1159,15 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
   }
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<SingletonBlock>(&engine, this);
+}
+
 /// @brief toVelocyPack, for SingletonNode
 void SingletonNode::toVelocyPackHelper(VPackBuilder& nodes,
                                        bool verbose) const {
@@ -1204,6 +1219,15 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> EnumerateCollectionNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<EnumerateCollectionBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1261,6 +1285,15 @@ void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> EnumerateListNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<EnumerateListBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -1341,6 +1374,15 @@ LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _limit(base.get("limit").getNumericValue<decltype(_limit)>()),
       _fullCount(base.get("fullCount").getBoolean()) {}
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<LimitBlock>(&engine, this);
+}
+
 // @brief toVelocyPack, for LimitNode
 void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);  // call base class method
@@ -1393,6 +1435,15 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<CalculationBlock>(&engine, this);
 }
 
 ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
@@ -1470,6 +1521,18 @@ bool SubqueryNode::isConst() {
   }
 
   return true;
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
+    std::unordered_set<std::string> const&
+) const {
+  auto const it = cache.find(getSubquery());
+  TRI_ASSERT(it != cache.end());
+
+  return std::make_unique<SubqueryBlock>(&engine, this, it->second);
 }
 
 ExecutionNode* SubqueryNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -1663,6 +1726,15 @@ void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<FilterBlock>(&engine, this);
+}
+
 ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
   auto inVariable = _inVariable;
@@ -1710,6 +1782,15 @@ void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<ReturnBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -1740,6 +1821,15 @@ void NoResultsNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   //And close it
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
+    ExecutionEngine &engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<NoResultsBlock>(&engine, this);
 }
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
