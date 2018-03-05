@@ -140,6 +140,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
           failAction->endStats();
           failAction=failAction->getNextAction();
         } while(failAction);
+        _loopState = (_directAction ? eSTOP : eFIND_ACTION);
       } // else
     } else {
       // no current action, go back to hunting for one

@@ -84,9 +84,13 @@ protected:
 
   /// @brief actionFactory is a subroutine of createAction().  Its functionality is isolated
   ///   to allow unit tests to quietly add "test actions" via a virtual function
+#if 0
+  virtual void * actionFactory(std::string & name);
+#else
   virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                             std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties);
+#endif
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.

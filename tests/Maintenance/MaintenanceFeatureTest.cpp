@@ -42,27 +42,27 @@
 // TestFeature wraps MaintenanceFeature to all test specific action objects
 //  by overriding the actionFactory() virtual function
 //
-class TestFeature : public arangodb::MaintenanceFeature {
+class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 public:
-  TestFeature() {
+  TestMaintenanceFeature() {
 //    prepare();
 //    start();  ... threads die due to lack of ApplicationServer instance
   };
 
-  virtual ~TestFeature() {
+  virtual ~TestMaintenanceFeature() {
 //    beginShutdown();
 //    stop();
 //    unprepare();
 };
-#if 0
-  virtual arangodb::maintenance::MaintenanceActionPtr_t actionFactory(std::string name,
+#if 1
+  virtual arangodb::maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                                       std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties) override;
 
 #endif
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
 
-};// TestFeature
+};// TestMaintenanceFeature
 
 
 //
@@ -98,8 +98,8 @@ public:
 
 };// TestActionBasic
 
-#if 0
-arangodb::maintenance::MaintenanceActionPtr_t TestFeature::actionFactory(std::string & name,
+#if 1
+arangodb::maintenance::MaintenanceActionPtr_t TestMaintenanceFeature::actionFactory(std::string & name,
                                                                          std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                                std::shared_ptr<VPackBuilder> const & properties) {
   arangodb::maintenance::MaintenanceActionPtr_t newAction;
@@ -114,13 +114,13 @@ arangodb::maintenance::MaintenanceActionPtr_t TestFeature::actionFactory(std::st
 
   return newAction;
 
-} // TestFeature::actionFactory
+} // TestMaintenanceFeature::actionFactory
 #endif
 
 TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
 
   SECTION("Basic action test") {
-    TestFeature tf;
+    TestMaintenanceFeature tf;
     arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","2"}};
     auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
     auto prop_ptr = std::make_shared<VPackBuilder>();
