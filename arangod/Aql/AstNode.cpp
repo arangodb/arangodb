@@ -1605,6 +1605,18 @@ bool AstNode::willUseV8() const {
     }
     
     if (func->condition && !func->condition()) {
+      // a function with an execution condition
+      setFlag(DETERMINED_V8, VALUE_V8);
+      return true;
+    }
+  }
+    
+  size_t const n = numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = getMemberUnchecked(i);
+
+    if (member->willUseV8()) {
       setFlag(DETERMINED_V8, VALUE_V8);
       return true;
     }
