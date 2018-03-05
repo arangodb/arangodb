@@ -91,7 +91,8 @@ private:
   std::unordered_set<LocalDocumentId> _seen;
 };*/
 
-template <typename CMP = geo_index::DocumentsAscending>
+template <typename CMP = geo_index::DocumentsAscending,
+          typename SEEN = geo_index::Deduplicator>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
@@ -99,8 +100,7 @@ struct NearIterator final : public IndexIterator {
                geo::QueryParams&& params)
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
-        _near(std::move(params),
-              index->variant() == geo_index::Index::Variant::GEOJSON),
+        _near(std::move(params)),
         _scans{0} {
     estimateDensity();
   }
@@ -220,7 +220,6 @@ struct NearIterator final : public IndexIterator {
   void reset() override { _near.reset(); }
 
  private:
-  size_t _scans;
   // we need to get intervals representing areas in a ring (annulus)
   // around our target point. We need to fetch them ALL and then sort
   // found results in a priority list according to their distance
@@ -286,8 +285,11 @@ struct NearIterator final : public IndexIterator {
 
  private:
   MMFilesGeoS2Index const* _index;
-  geo_index::NearUtils<CMP> _near;
+  geo_index::NearUtils<CMP, SEEN> _near;
+  size_t _scans; // TODO remove later
 };
+typedef NearIterator<geo_index::DocumentsAscending,
+                     geo_index::NoopDeduplicator> LegacyIterator;
 
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
@@ -462,6 +464,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
+  params.pointsOnly = pointsOnly();
   params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
@@ -482,10 +485,22 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
+  
+  // why does this have to be shit?
   if (params.ascending) {
-    return new NearIterator<geo_index::DocumentsAscending>(
-        _collection, trx, mmdr, this, std::move(params));
+    if (params.pointsOnly) {
+      return new NearIterator<geo_index::DocumentsAscending,
+                              geo_index::NoopDeduplicator>(_collection, trx, mmdr,
+                                                           this, std::move(params));
+    }
+    return new NearIterator<geo_index::DocumentsAscending>(_collection, trx, mmdr,
+                                 this, std::move(params));
   } else {
+    if (params.pointsOnly) {
+      return new NearIterator<geo_index::DocumentsDescending,
+      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
+                                   this, std::move(params));
+    }
     return new NearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
   }
@@ -500,20 +515,19 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
-  params.pointsOnly = index.pointsOnly();
   params.origin = {lat, lon};
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
     params.fullRange = true;
   }
+  params.pointsOnly = index.pointsOnly();
   params.limit = count;
   size_t limit = (count > 0) ? count : SIZE_MAX;
 
   ManagedDocumentResult mmdr;
   LogicalCollection* collection = index.collection();
-  NearIterator<geo_index::DocumentsAscending> iter(collection, trx, &mmdr,
-                                                   &index, std::move(params));
+  LegacyIterator iter(collection, trx, &mmdr, &index, std::move(params));
   auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
     bool read = collection->readDocument(trx, token, mmdr);
     if (!read) {

@@ -64,12 +64,32 @@ struct DocumentsDescending {
     return a.distRad < b.distRad;
   }
 };
+  
+struct Deduplicator {
+  bool operator()(LocalDocumentId const& lid) {
+    auto const& it = _seen.find(lid);
+    if (it != _seen.end()) {
+      return true;
+    }
+    _seen.emplace(lid);
+    return false;
+  }
+  void clear() { _seen.clear(); };
+  
+  std::unordered_set<LocalDocumentId> _seen;
+};
+  
+struct NoopDeduplicator {
+  bool operator()(LocalDocumentId const& lid) const { return false; }
+  void clear() {};
+};
 
 /// @brief Helper class to build a simple near query iterator.
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on rsesult points and
 /// search intervals). Should be storage engine agnostic
-template <typename CMP = DocumentsAscending>
+template <typename CMP = DocumentsAscending,
+          typename SEEN = Deduplicator>
 class NearUtils {
   static_assert(std::is_same<CMP, DocumentsAscending>::value ||
                     std::is_same<CMP, DocumentsDescending>::value,
@@ -86,7 +106,7 @@ class NearUtils {
   typedef std::priority_queue<Document, std::vector<Document>, CMP>
       GeoDocumentsQueue;
 
-  NearUtils(geo::QueryParams&& params, bool deduplicate) noexcept;
+  NearUtils(geo::QueryParams&& params) noexcept;
 
  public:
   /// @brief get cell covering target coordinate (at max level)
@@ -183,11 +203,6 @@ class NearUtils {
   /// max distance in radians on the unit sphere
   double const _maxBound = geo::kMaxRadiansBetweenPoints;
 
-  /// Enable additional deduplication
-  bool const _deduplicate;
-  /// for deduplication of results
-  std::unordered_set<LocalDocumentId> _seen;
-
   /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;
   /// inner limit (in radians on unit sphere) of search area
@@ -200,6 +215,9 @@ class NearUtils {
 
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
+  
+  // deduplication routine
+  SEEN _deduplicator;
 
   /// Track the already scanned region
   S2CellUnion _scannedCells;

@@ -43,7 +43,8 @@
 
 using namespace arangodb;
 
-template <typename CMP = geo_index::DocumentsAscending>
+template <typename CMP = geo_index::DocumentsAscending,
+          typename SEEN = geo_index::Deduplicator>
 class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
@@ -52,8 +53,7 @@ class RDBNearIterator final : public IndexIterator {
                   geo::QueryParams&& params)
       : IndexIterator(collection, trx, mmdr, index),
         _index(index),
-        _near(std::move(params),
-              index->variant() == geo_index::Index::Variant::GEOJSON) {
+        _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->readOptions();
     TRI_ASSERT(options.prefix_same_as_start);
@@ -251,9 +251,11 @@ class RDBNearIterator final : public IndexIterator {
 
  private:
   RocksDBGeoS2Index const* _index;
-  geo_index::NearUtils<CMP> _near;
+  geo_index::NearUtils<CMP, SEEN> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
+typedef RDBNearIterator<geo_index::DocumentsAscending,
+                        geo_index::NoopDeduplicator> LegacyIterator;
 
 RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
@@ -372,6 +374,9 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   geo::QueryParams params;
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
+  params.pointsOnly = pointsOnly();
+  params.fullRange = opts.fullRange;
+  params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
   // FIXME: <Optimize away>
@@ -390,10 +395,22 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
+  
+  
   if (params.ascending) {
+    if (params.pointsOnly) {
+      return new RDBNearIterator<geo_index::DocumentsAscending,
+      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
+                                   this, std::move(params));
+    }
     return new RDBNearIterator<geo_index::DocumentsAscending>(
         _collection, trx, mmdr, this, std::move(params));
   } else {
+    if (params.pointsOnly) {
+      return new RDBNearIterator<geo_index::DocumentsDescending,
+      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
+                                   this, std::move(params));
+    }
     return new RDBNearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
   }
@@ -468,20 +485,19 @@ void retrieveNear(RocksDBGeoS2Index const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
-  params.pointsOnly = index.pointsOnly();
   params.origin = {lat, lon};
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
     params.fullRange = true;
   }
+  params.pointsOnly = index.pointsOnly();
   params.limit = count;
   size_t limit = (count > 0) ? count : SIZE_MAX;
 
   ManagedDocumentResult mmdr;
   LogicalCollection* collection = index.collection();
-  RDBNearIterator<geo_index::DocumentsAscending> iter(
-      collection, trx, &mmdr, &index, std::move(params));
+  LegacyIterator iter(collection, trx, &mmdr, &index, std::move(params));
   auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
     bool read = collection->readDocument(trx, token, mmdr);
     if (!read) {

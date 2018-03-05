@@ -40,14 +40,13 @@
 namespace arangodb {
 namespace geo_index {
 
-template <typename CMP>
-NearUtils<CMP>::NearUtils(geo::QueryParams&& qp, bool dedup) noexcept
+template <typename CMP, typename SEEN>
+NearUtils<CMP, SEEN>::NearUtils(geo::QueryParams&& qp) noexcept
     : _params(std::move(qp)),
       _origin(S2LatLng::FromDegrees(qp.origin.latitude, qp.origin.longitude)
                   .ToPoint()),
       _minBound(_params.minDistanceRad()),
       _maxBound(_params.maxDistanceRad()),
-      _deduplicate(dedup),
       _coverer(qp.cover.regionCovererOpts()) {
   TRI_ASSERT(_params.origin.isValid());
   reset();
@@ -68,13 +67,11 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp, bool dedup) noexcept
         << "  sorted " << (_params.ascending ? "asc" : "desc");*/
 }
 
-template <typename CMP>
-void NearUtils<CMP>::reset() {
-  if (!_seen.empty() || !_buffer.empty()) {
-    _seen.clear();
-    while (!_buffer.empty()) {
-      _buffer.pop();
-    }
+template <typename CMP, typename SEEN>
+void NearUtils<CMP, SEEN>::reset() {
+  _deduplicator.clear();
+  while (!_buffer.empty()) {
+    _buffer.pop();
   }
 
   if (_boundDelta <= 0) {  // do not reset everytime
@@ -94,8 +91,8 @@ void NearUtils<CMP>::reset() {
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBound);
 }
 
-template <typename CMP>
-std::vector<geo::Interval> NearUtils<CMP>::intervals() {
+template <typename CMP, typename SEEN>
+std::vector<geo::Interval> NearUtils<CMP, SEEN>::intervals() {
   TRI_ASSERT(!hasNearest());
   TRI_ASSERT(!isDone());
   TRI_ASSERT(!_params.ascending || _innerBound != _maxBound);
@@ -190,8 +187,8 @@ static inline S2Point toPoint(geo::Coordinate const& cc) {
   return S2Point(std::cos(theta) * cosphi, std::sin(theta) * cosphi, std::sin(phi));
 }
 
-template <typename CMP>
-void NearUtils<CMP>::reportFound(LocalDocumentId lid,
+template <typename CMP, typename SEEN>
+void NearUtils<CMP, SEEN>::reportFound(LocalDocumentId lid,
                                  geo::Coordinate const& center) {
   double rad = _origin.Angle(toPoint(center));  // distance in radians
   /*LOG_TOPIC(INFO, Logger::FIXME)
@@ -210,14 +207,8 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
       return;
     }
   }
-
-  if (_deduplicate) {           // FIXME: can we use a template instead ?
-    _statsFoundLastInterval++;  // we have to estimate scan bounds
-    auto const& it = _seen.find(lid);
-    if (it != _seen.end()) {
-      return;  // deduplication
-    }
-    _seen.emplace(lid);
+  if (_deduplicator(lid)) {
+    return;  // ignore repeated documents
   }
 
   // possibly expensive point rejection, but saves parsing of document
@@ -227,11 +218,12 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
       return;
     }
   }
+  _statsFoundLastInterval++;  // we have to estimate scan bounds
   _buffer.emplace(lid, rad);
 }
 
-template <typename CMP>
-void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
+template <typename CMP, typename SEEN>
+void NearUtils<CMP, SEEN>::estimateDensity(geo::Coordinate const& found) {
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
   double multiplier =
@@ -252,8 +244,8 @@ void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
 }
 
 /// @brief adjust the bounds delta
-template <typename CMP>
-void NearUtils<CMP>::estimateDelta() {
+template <typename CMP, typename SEEN>
+void NearUtils<CMP, SEEN>::estimateDelta() {
   if ((isAscending() && _innerBound > _minBound) ||
       (isDescending() && _innerBound < _maxBound)) {
     double const minBound = S2::kMaxDiag.GetValue(S2::kMaxCellLevel - 3);
@@ -269,8 +261,10 @@ void NearUtils<CMP>::estimateDelta() {
   }
 }
 
-template class NearUtils<DocumentsAscending>;
-template class NearUtils<DocumentsDescending>;
+template class NearUtils<DocumentsAscending, Deduplicator>;
+template class NearUtils<DocumentsDescending, Deduplicator>;
+template class NearUtils<DocumentsAscending, NoopDeduplicator>;
+template class NearUtils<DocumentsDescending, NoopDeduplicator>;
 
 }  // namespace geo_index
 }  // namespace arangodb

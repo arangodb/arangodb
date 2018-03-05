@@ -55,10 +55,10 @@ struct CoordAscCompare {
 };
 
 /// Perform indexx scan
-template<typename CMP>
+template<typename CMP, typename SEEN>
 static std::vector<LocalDocumentId> nearSearch(index_t const& index,
                                              coords_t const& coords,
-                                             geo_index::NearUtils<CMP>& near,
+                                             geo_index::NearUtils<CMP, SEEN>& near,
                                              size_t limit) {
   std::vector<LocalDocumentId> result;
 
@@ -116,6 +116,11 @@ static std::vector<geo::Coordinate> convert(coords_t const& coords,
 
 /***********************************/
 
+typedef geo_index::NearUtils<geo_index::DocumentsAscending,
+                             geo_index::NoopDeduplicator> AscIterator;
+typedef geo_index::NearUtils<geo_index::DocumentsDescending,
+                             geo_index::NoopDeduplicator> DescIterator;
+
 TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   // simulated index
@@ -150,7 +155,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   SECTION("query all sorted ascending") {
     params.ascending = true;
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
     std::set<LocalDocumentId> unique;
@@ -175,7 +180,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   SECTION("query all sorted ascending with limit") {
     params.ascending = true;
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
     REQUIRE(result.size() == 5);
@@ -192,7 +197,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   SECTION("query sorted ascending with limit and max distance") {
     params.ascending = true;
     params.maxDistance = 111200.0;
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
@@ -209,7 +214,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   SECTION("query sorted ascending with different inital delta") {
     params.ascending = true;
     params.maxDistance = 111200;
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     near.estimateDensity(geo::Coordinate(0,1));
 
@@ -228,7 +233,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   SECTION("query sorted ascending with different inital delta") {
     params.ascending = true;
     params.maxDistance = 111200;
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     near.estimateDensity(geo::Coordinate(0,1));
 
@@ -246,7 +251,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   SECTION("query all sorted descending") {
     params.ascending = false;
-    geo_index::NearUtils<geo_index::DocumentsDescending> near(std::move(params), false);
+    DescIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, SIZE_MAX);
     std::set<LocalDocumentId> unique;
@@ -271,7 +276,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   SECTION("query all sorted descending with limit") {
     params.ascending = false;
-    geo_index::NearUtils<geo_index::DocumentsDescending> near(std::move(params), false);
+    DescIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
     std::set<LocalDocumentId> unique;
@@ -288,7 +293,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   SECTION("query all sorted descending with limit and max distance") {
     params.ascending = false;
     params.maxDistance = 111200;
-    geo_index::NearUtils<geo_index::DocumentsDescending> near(std::move(params), false);
+    DescIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     std::set<LocalDocumentId> unique;
@@ -358,7 +363,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
 
   SECTION("southpole (1)") {
     params.origin = geo::Coordinate(-83.2, 19.2);
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 7);
     REQUIRE(result.size() == 7);
@@ -367,7 +372,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
 
   SECTION("southpole (2)") {
     params.origin = geo::Coordinate(-83.2, 19.2);
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
     REQUIRE(result.size() == 100);
@@ -376,7 +381,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
 
   SECTION("southpole (3)") {
     params.origin = geo::Coordinate(-89.9, 0);
-    geo_index::NearUtils<geo_index::DocumentsAscending> near(std::move(params), false);
+    AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
     REQUIRE(result.size() == 100);
