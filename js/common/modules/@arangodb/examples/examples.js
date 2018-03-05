@@ -41,6 +41,7 @@ exports.Examples = {
       ].forEach(function (v) {
         db.users.save( {
           _key: v[1],
+          name: v[1],
           active: v[2],
           userId: v[0]
         });
@@ -58,7 +59,7 @@ exports.Examples = {
         [4,2,"friend"]
       ].forEach(function (v) {
         db.relations.save( {
-          type: v[1],
+          type: v[2],
           friendOf: v[0],
           thisUser: v[1]
         });
