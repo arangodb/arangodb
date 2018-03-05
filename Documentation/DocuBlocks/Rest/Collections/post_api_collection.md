@@ -4,6 +4,10 @@
 
 @RESTHEADER{POST /_api/collection, Create collection}
 
+@RESTDESCRIPTION
+Creates a new collection with a given name. The request must contain an
+object with the following attributes.
+
 @RESTBODYPARAM{name,string,required,string}
 The name of the collection.
 
@@ -16,7 +20,7 @@ whether or not the collection will be compacted (default is *true*)
 This option is meaningful for the MMFiles storage engine only.
 
 @RESTBODYPARAM{journalSize,integer,optional,int64}
-The maximal size of a journal or datafile in bytes. The value 
+The maximal size of a journal or datafile in bytes. The value
 must be at least `1048576` (1 MiB). (The default is a configuration parameter)
 This option is meaningful for the MMFiles storage engine only.
 
@@ -34,8 +38,8 @@ or re-starting the server will also cause full loss of data in the
 collection. Setting this option will make the resulting collection be
 slightly faster than regular collections because ArangoDB does not
 enforce any synchronization to disk and does not calculate any CRC
-checksums for datafiles (as there are no datafiles). This option 
-should therefore be used for cache-type collections only, and not 
+checksums for datafiles (as there are no datafiles). This option
+should therefore be used for cache-type collections only, and not
 for data that cannot be re-created otherwise.
 (The default is *false*)
 This option is meaningful for the MMFiles storage engine only.
@@ -72,15 +76,15 @@ The following values for *type* are valid:
 @RESTBODYPARAM{indexBuckets,integer,optional,int64}
 The number of buckets into which indexes using a hash
 table are split. The default is 16 and this number has to be a
-power of 2 and less than or equal to 1024. 
+power of 2 and less than or equal to 1024.
 
-For very large collections one should increase this to avoid long pauses 
-when the hash table has to be initially built or resized, since buckets 
-are resized individually and can be initially built in parallel. For 
+For very large collections one should increase this to avoid long pauses
+when the hash table has to be initially built or resized, since buckets
+are resized individually and can be initially built in parallel. For
 example, 64 might be a sensible value for a collection with 100
 000 000 documents. Currently, only the edge index respects this
-value, but other index types might follow in future ArangoDB versions. 
-Changes (see below) are applied when the collection is loaded the next 
+value, but other index types might follow in future ArangoDB versions.
+Changes (see below) are applied when the collection is loaded the next
 time.
 This option is meaningful for the MMFiles storage engine only.
 
@@ -98,10 +102,10 @@ and the hash value is used to determine the target shard.
 **Note**: Values of shard key attributes cannot be changed once set.
   This option is meaningless in a single server setup.
 
-@RESTBODYPARAM{replicationFactor,integer,optional,int64} 
-(The default is *1*): in a cluster, this attribute determines how many copies 
-of each shard are kept on different DBServers. The value 1 means that only one 
-copy (no synchronous replication) is kept. A value of k means that k-1 replicas 
+@RESTBODYPARAM{replicationFactor,integer,optional,int64}
+(The default is *1*): in a cluster, this attribute determines how many copies
+of each shard are kept on different DBServers. The value 1 means that only one
+copy (no synchronous replication) is kept. A value of k means that k-1 replicas
 are kept. Any two copies reside on different DBServers. Replication between them is 
 synchronous, that is, every write operation to the "leader" copy will be replicated 
 to all "follower" replicas, before the write operation is reported successful.
@@ -112,28 +116,24 @@ copies take over, usually without an error being reported.
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
 (The default is *""*): in an enterprise cluster, this attribute binds
 the specifics of sharding  for the newly created collection to follow that of a
-specified existing collection. 
+specified existing collection.
 **Note**: Using this parameter has consequences for the prototype
 collection. It can no longer be dropped, before sharding imitating
 collections are dropped. Equally, backups and restores of imitating
 collections alone will generate warnings, which can be overridden,
-about missing sharding prototype. 
+about missing sharding prototype.
 
-@RESTQUERYPARAMETERS 
-@RESTQUERYPARAM{waitForSyncReplication,integer,optional,int64}
-Default is *1* which means the server will only report success back to the client
-if all replicas have created the collection. Set to *0* if you want faster
-server responses and don't care about full replication.
+@RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{enforceReplicationFactor,integer,optional,int64}
+@RESTQUERYPARAM{waitForSyncReplication,integer,optional}
+Default is *1* which means the server will only report success back to the
+client if all replicas have created the collection. Set to *0* if you want
+faster server responses and don't care about full replication.
+
+@RESTQUERYPARAM{enforceReplicationFactor,integer,optional}
 Default is *1* which means the server will check if there are enough replicas
-available at creation time and bail out otherwise. Set to *0* to disable this
-extra check.
-
-@RESTDESCRIPTION
-Creates a new collection with a given name. The request must contain an
-object with the following attributes.
-
+available at creation time and bail out otherwise. Set to *0* to disable
+this extra check.
 
 @RESTRETURNCODES
 
