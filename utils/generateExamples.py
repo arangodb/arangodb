@@ -167,6 +167,7 @@ def matchStartLine(line, filename):
 
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "Arangosh: filtering out testcase '%s'" %name
             filterTestList.append(name)
             return("", STATE_BEGIN);
 
@@ -185,6 +186,7 @@ def matchStartLine(line, filename):
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
             filterTestList.append(name)
+            print >> sys.stderr, "CuRL: filtering out testcase '%s'" %name
             return("", STATE_BEGIN);
 
         ArangoshFiles[name] = True
@@ -201,6 +203,7 @@ def matchStartLine(line, filename):
     
         # if we match for filters, only output these!
         if ((FilterForTestcase != None) and not FilterForTestcase.match(name)):
+            print >> sys.stderr, "AQL: filtering out testcase '%s'" %name
             filterTestList.append(name)
             return("", STATE_BEGIN);
     
@@ -498,9 +501,11 @@ def generateArangoshRun(testName):
 ################################################################################
 
 def generateAQL(testName):
-    print  >> sys.stderr, str(testName)
     value = RunTests[testName]
     startLineNo = RunTests[testName][LINE_NO]
+    if not AQLBV in value:
+        value[AQLBV] = "{}"
+
     print '''
 %s
 /// %s
@@ -513,7 +518,6 @@ def generateAQL(testName):
   var outputDir = '%s';
   var sourceFile = '%s';
   var startTime = time();
-  internal.startCaptureMode();
   output = '';
 ''' % (
         ('/'*80),
@@ -541,9 +545,8 @@ def generateAQL(testName):
   jsonAppender(JSON.stringify(result, null, 2));
 
   exds.%s.removeDS();
-  print("[" + (time () - startTime) + "s] " + rc);
-  ///output = highlight("js", output);
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
+  print("[" + (time () - startTime) + "s]  done with  " + testName);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 
@@ -643,11 +646,15 @@ def generateTestCases():
         elif RunTests[thisTest][TYPE] == STATE_AQL:
             generateAQL(thisTest)
 
+
 ################################################################################
 ### @brief main
 ################################################################################
 
 loopDirectories()
+if len(RunTests) == 0:
+    print >> sys.stderr, "no testcases generated - bailing out"
+    raise Exception("no Testcases")
 print >> sys.stderr, "filtering test %d cases" %(len(filterTestList))
 
 generateArangoshHeader()
