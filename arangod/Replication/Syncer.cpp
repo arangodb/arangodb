@@ -24,6 +24,7 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -551,16 +552,26 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   // resolve collection by uuid, name, cid (in that order of preference)
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col != nullptr && col->type() == type) {
+
+  if (col != nullptr && 
+      col->type() == type && 
+      (!simulate32Client() || col->name() == name)) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
+   
+  bool forceRemoveCid = false;
+  if (col != nullptr && simulate32Client()) {
+    forceRemoveCid = true;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "would have got a wrong collection!";
+    // go on now and truncate or drop/re-create the collection
+  }
+  
   // conflicting collections need to be dropped from 3.3 onwards
   col = vocbase->lookupCollection(name);
   if (col != nullptr) {
-    TRI_ASSERT(!simulate32Client()); // < 3.3 should never get here
     if (col->isSystem()) {
-      TRI_ASSERT(col->globallyUniqueId() == col->name());
+      TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
       
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       col->cid(), AccessMode::Type::WRITE);
@@ -585,20 +596,20 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  s.add("objectId", VPackSlice::nullSlice());
-  if (uuid.isString() && !simulate32Client()) { // need to use cid for 3.2 master
+  if ((uuid.isString() && !simulate32Client()) || forceRemoveCid) { // need to use cid for 3.2 master
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
     s.add("cid", VPackSlice::nullSlice());
   }
   s.close();
-
-  VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
-                                               /*mergeValues*/true, /*nullMeansRemove*/true);
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(), /*mergeValues*/true,
+                                               /*nullMeansRemove*/true);
   
+  // we need to remove every occurence of objectId as a key
+  auto stripped = rocksutils::stripObjectIds(merged.slice());
   try {
-    col = vocbase->createCollection(merged.slice());
+    col = vocbase->createCollection(stripped.first);
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -881,9 +892,8 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 }
 
 void Syncer::reloadUsers() {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
-  authentication->authInfo()->outdate();
-  authentication->authInfo()->reloadAllUsers();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  af->userManager()->outdate();
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {

@@ -29,7 +29,6 @@
 namespace arangodb {
 enum class OperationMode {
   MODE_CONSOLE,
-  MODE_UNITTESTS,
   MODE_SCRIPT,
   MODE_SERVER
 };

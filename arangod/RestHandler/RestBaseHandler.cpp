@@ -107,7 +107,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   try {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder tmp(buffer);
-    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.add("result", payload);
@@ -127,7 +127,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   
   try {
     VPackBuilder tmp;
-    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.close();

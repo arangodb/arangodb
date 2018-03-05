@@ -235,6 +235,28 @@ db._executeTransaction({
 });
 ```
 
+Throwing Arango Exceptions
+--------------------------
+
+If you catch errors in your transaction, try to get them solved, but fail 
+you may want to mimic original arangodb error messages to ease the control flow
+of your invoking environment. This can be done like this:
+
+```js
+db._executeTransaction({
+  collections: {},
+  action: function () {
+    const arangodb = require('@arangodb');
+    var err = new arangodb.ArangoError();
+    err.errorNum = arangodb.ERROR_BAD_PARAMETER;
+    err.errorMessage = "who's bad?";
+    throw err;
+  }
+});
+```
+
+The documentation contains [a complete list of used arangodb errors in the appendix](../Appendix/ErrorCodes.md)
+
 Custom exceptions
 -----------------
 
@@ -248,7 +270,7 @@ db._executeTransaction({
   collections: {},
   action: function () {
     var err = new Error('My error context');
-    err.errorNumber = 1234;
+    err.errorNum = 1234;
     throw err;
   }
 });
@@ -258,6 +280,9 @@ db._executeTransaction({
 `Error`-like form were simply converted to strings and exposed in the
 `exception` field of the returned error. This is no longer the case, as it had
 the potential to leak unwanted information if improperly used.
+
+**Note**: In some versions the above example wouldn't propagate the `errorNum` to the 
+invoking party, you may need to upgrade your ArangoDB.
 
 ### Examples
 

@@ -24,6 +24,7 @@
 
 #include "IndexBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
@@ -133,8 +134,8 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression;
 
     bool mustDestroy;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions], mustDestroy);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions], _inRegs[posInExpressions]);
+    AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);

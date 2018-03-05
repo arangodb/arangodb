@@ -54,7 +54,7 @@ std::vector<bucket_size_t> compute_bucket_meta() {
   std::vector<bucket_size_t> bucket_meta(num_buckets);
 
   if (!num_buckets) {
-    return bucket_meta;
+    return std::move(bucket_meta);
   }
 
   bucket_meta[0].size = 1 << skip_bits;
@@ -69,7 +69,7 @@ std::vector<bucket_size_t> compute_bucket_meta() {
   // all subsequent buckets should have the same meta as the last bucket
   bucket_meta.back().next = &(bucket_meta.back());
 
-  return bucket_meta;
+  return std::move(bucket_meta);
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
@@ -125,11 +125,15 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
     buffers_.clear();
   }
 
-  FORCE_INLINE buffer_t get_buffer(size_t i) const NOEXCEPT {
+  FORCE_INLINE const buffer_t& get_buffer(size_t i) const NOEXCEPT {
     return buffers_[i];
   }
 
-  buffer_t push_buffer() {
+  FORCE_INLINE buffer_t& get_buffer(size_t i) NOEXCEPT {
+    return buffers_[i];
+  }
+
+  buffer_t& push_buffer() {
     static const auto& meta = get_bucket_meta();
 
     if (buffers_.size() < meta.size()) { // one of the precomputed buckets

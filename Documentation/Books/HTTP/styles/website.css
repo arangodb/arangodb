@@ -19,7 +19,7 @@ div.example_show_button {
   background-color: rgba(240,240,0,0.4);
 }
 
-.book .book-body li:last-child {
+.book .book-body section > ul li:last-child {
   margin-bottom: 0.85em;
 }
 

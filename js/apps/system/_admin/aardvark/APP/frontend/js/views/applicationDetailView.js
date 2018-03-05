@@ -9,7 +9,7 @@
     divs: ['#readme', '#swagger', '#app-info', '#sideinformation', '#information', '#settings'],
     navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
 
-    template: templateEngine.createTemplate('applicationDetailView.ejs'),
+    template: templateEngine.createTemplate('serviceDetailView.ejs'),
 
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
@@ -113,12 +113,12 @@
     },
 
     replaceApp: function () {
-      var mount = this.model.get('mount');
-      window.foxxInstallView.upgrade(mount, function () {
-        window.App.applicationDetail(encodeURIComponent(mount));
-      });
-      $('.createModalDialog .arangoHeader').html('Replace Service');
-      $('#infoTab').click();
+      window.App.replaceApp = true;
+      window.App.replaceAppData = {
+        model: this.model,
+        mount: this.model.get('mount')
+      };
+      window.App.navigate('services/install', {trigger: true});
     },
 
     updateConfig: function () {
@@ -275,7 +275,8 @@
             $(this.el).html(this.template.render({
               app: this.model,
               baseUrl: arangoHelper.databaseUrl('', db),
-              mode: mode
+              mode: mode,
+              installed: true
             }));
 
             // init ace
@@ -491,7 +492,6 @@
             msg: 'This field is required.'
           });
         }
-        console.log(name);
         return window.modalView[methodName](
           'app_config_' + CryptoJS.MD5(name).toString(),
           name,

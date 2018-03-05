@@ -81,7 +81,7 @@ void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& 
   }
 
   positions_.emplace( pos, start, end,
-                      pay ? pay->value : iresearch::bytes_ref::nil);
+                      pay ? pay->value : iresearch::bytes_ref::NIL);
 }
 
 /* -------------------------------------------------------------------
@@ -176,7 +176,7 @@ void index_segment::add(const ifield& f) {
   auto& pay = attrs.get<iresearch::payload>();
 
   bool empty = true;
-  auto doc_id = (ir::type_limits<ir::type_t::doc_id_t>::min)() + count_;
+  auto doc_id = (irs::type_limits<irs::type_t::doc_id_t>::min)() + count_;
 
   while (stream.next()) {
     tests::term& trm = fld.add(term->value());
@@ -236,7 +236,7 @@ bool index_meta_reader::last_segments_file(
 void index_meta_reader::read(
   const iresearch::directory& dir,
   iresearch::index_meta& meta,
-  const iresearch::string_ref& filename /*= string_ref::nil*/
+  const iresearch::string_ref& filename /*= string_ref::NIL*/
 ) {
 }
 
@@ -262,7 +262,7 @@ void segment_meta_writer::write(
 void segment_meta_reader::read( 
   const iresearch::directory& dir,
   iresearch::segment_meta& meta,
-  const iresearch::string_ref& filename /*= string_ref::nil*/
+  const iresearch::string_ref& filename /*= string_ref::NIL*/
 ) {
 }
 
@@ -324,8 +324,8 @@ void field_writer::write(
   const iresearch::term_reader* expected_term_reader = readers_.field(fld->name);
   ASSERT_NE(nullptr, expected_term_reader);
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::NIL };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::NIL };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;
@@ -393,7 +393,7 @@ class doc_iterator : public iresearch::doc_iterator {
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
-      return ir::type_limits<ir::type_t::doc_id_t>::eof();
+      return irs::type_limits<irs::type_t::doc_id_t>::eof();
     }
 
     prev_ = it;
@@ -501,7 +501,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
   bool next() override {
     if ( next_ == data_.terms.end() ) {
-      value_ = iresearch::bytes_ref::nil;
+      value_ = iresearch::bytes_ref::NIL;
       return false;
     }
 
@@ -517,7 +517,7 @@ class term_iterator : public iresearch::seek_term_iterator {
 
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = iresearch::bytes_ref::nil;
+      value_ = iresearch::bytes_ref::NIL;
       return false;
     }
 
@@ -531,7 +531,7 @@ class term_iterator : public iresearch::seek_term_iterator {
     auto it = data_.terms.lower_bound(value);
     if (it == data_.terms.end()) {
       prev_ = next_ = it;
-      value_ = iresearch::bytes_ref::nil;
+      value_ = iresearch::bytes_ref::NIL;
       return iresearch::SeekResult::END;
     }
 
@@ -788,8 +788,8 @@ void assert_terms_next(
   ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
   ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
 
-  iresearch::bytes_ref actual_min;
-  iresearch::bytes_ref actual_max;
+  iresearch::bytes_ref actual_min{ irs::bytes_ref::NIL };
+  iresearch::bytes_ref actual_max{ irs::bytes_ref::NIL };
   iresearch::bstring actual_min_buf;
   iresearch::bstring actual_max_buf;
   size_t actual_size = 0;

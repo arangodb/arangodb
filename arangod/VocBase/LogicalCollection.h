@@ -25,11 +25,11 @@
 #ifndef ARANGOD_VOCBASE_LOGICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
+#include "LogicalDataSource.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -73,7 +73,7 @@ class ChecksumResult : public Result {
   velocypack::Builder _builder;
 };
 
-class LogicalCollection {
+class LogicalCollection: public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
@@ -116,16 +116,14 @@ class LogicalCollection {
 
   uint32_t internalVersion() const;
 
-  inline TRI_voc_cid_t cid() const { return _cid; }
+  inline TRI_voc_cid_t cid() const { return id(); }
 
   virtual std::string cid_as_string() const;
 
-  TRI_voc_cid_t planId() const;
   std::string planId_as_string() const;
 
   TRI_col_type_e type() const;
 
-  virtual std::string name() const;
   std::string dbName() const;
 
   std::string globallyUniqueId() const;
@@ -169,7 +167,7 @@ class LogicalCollection {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  bool deleted() const;
+  using LogicalDataSource::deleted; // required by TRI_vocbase_t
   bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;
@@ -178,8 +176,6 @@ class LogicalCollection {
   void waitForSync(bool value) { _waitForSync = value; }
 
   std::unique_ptr<FollowerInfo> const& followers() const;
-
-  void setDeleted(bool);
 
   PhysicalCollection* getPhysical() const { return _physical.get(); }
 
@@ -236,17 +232,17 @@ class LogicalCollection {
                                std::string const& key) const;
 
   // SECTION: Modification Functions
-  int rename(std::string const&);
   void load();
   void unload();
-  virtual void drop();
 
+  virtual void drop() override;
+  virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
-  
+
   void toVelocyPackIgnore(velocypack::Builder& result,
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
       bool forPersistence) const;
@@ -260,7 +256,6 @@ class LogicalCollection {
                                                bool isReady,
                                                bool allInSync) const;
 
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this collection.
   virtual arangodb::Result updateProperties(velocypack::Slice const&, bool);
@@ -326,7 +321,7 @@ class LogicalCollection {
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& token,
                     ManagedDocumentResult& result) const;
-  
+
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb) const;
@@ -388,17 +383,8 @@ class LogicalCollection {
   
   bool const _isAStub;
 
-  // @brief Local collection id
-  TRI_voc_cid_t const _cid;
-
-  // @brief Global collection id
-  TRI_voc_cid_t const _planId;
-
   // @brief Collection type
   TRI_col_type_e const _type;
-
-  // @brief Collection Name
-  std::string _name;
 
   // @brief Name of other collection this shards should be distributed like
   std::string _distributeShardsLike;
@@ -420,12 +406,10 @@ class LogicalCollection {
   // SECTION: Properties
   bool _isLocal;
 
-  bool _isDeleted;
-
   bool const _isSystem;
 
   bool _waitForSync;
-  
+
   uint32_t _version;
 
   // SECTION: Replication
@@ -440,7 +424,6 @@ class LogicalCollection {
   // the first one still has a valid copy
   std::shared_ptr<ShardMap> _shardIds;
 
-  TRI_vocbase_t* _vocbase;
   // SECTION: Key Options
   // TODO Really VPack?
   std::shared_ptr<velocypack::Buffer<uint8_t> const>

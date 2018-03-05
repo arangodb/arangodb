@@ -124,12 +124,6 @@ class Expression {
   AqlValue execute(transaction::Methods* trx, ExpressionContext* ctx,
                    bool& mustDestroy);
 
-  /// @brief execute the expression
-  /// DEPRECATED
-  AqlValue execute(transaction::Methods* trx, AqlItemBlock const*, size_t,
-                   std::vector<Variable const*> const&,
-                   std::vector<RegisterId> const&, bool& mustDestroy);
-
   /// @brief check whether this is a JSON expression
   inline bool isJson() {
     if (_type == UNPROCESSED) {

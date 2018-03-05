@@ -557,7 +557,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
                   endif()
                endif()
                if(NOT _header OR ${_resultVar})
-                  list(APPEND Vc_ARCHITECTURE_FLAGS "-m${_flag}")
+                  AddCompilerFlag("-m${_flag}" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
                endif()
             endif()
          endforeach(_flag)
