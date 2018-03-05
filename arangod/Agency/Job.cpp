@@ -294,16 +294,7 @@ std::vector<Job::shard_t> Job::clones(
     if (otherCollection != collection &&
         col.has("distributeShardsLike") &&
         col("distributeShardsLike").slice().copyString() == collection) {
-      auto const theirshards = sortedShardList(col("shards"));
-      if (theirshards.size() > 0) { // do not care about virtual collections 
-        if (theirshards.size() == myshards.size()) { 
-          ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
-        } else {
-          LOG_TOPIC(ERR, Logger::SUPERVISION)
-            << "Shard distribution of clone(" << othercollection
-            << ") does not match ours (" << collection << ")";
-        } 
-      }
+      ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
     }
 
   }
