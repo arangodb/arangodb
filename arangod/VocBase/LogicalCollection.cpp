@@ -56,6 +56,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -1077,6 +1078,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(vocbase(), id(), this, doSync);
+  DatabaseFeature::DATABASE->versionTracker()->track("change collection");
 
   return {};
 }
@@ -1122,7 +1124,11 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
 std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
-  return _physical->createIndex(trx, info, created);
+  auto idx = _physical->createIndex(trx, info, created);
+  if (idx) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create index");
+  }
+  return idx;
 }
 
 /// @brief drops an index, including index file removal and replication
@@ -1132,7 +1138,11 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
   arangodb::aql::QueryCache::instance()->invalidate(vocbase(), name());
-  return _physical->dropIndex(iid);
+  bool result = _physical->dropIndex(iid);
+  if (result) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop index");
+  }
+  return result;
 }
 
 /// @brief Persist the connected physical collection.
