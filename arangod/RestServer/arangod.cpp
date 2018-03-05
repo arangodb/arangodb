@@ -50,6 +50,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ReplicationTimeoutFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LoggerBufferFeature.h"
@@ -65,8 +66,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LockfileFeature.h"
@@ -76,7 +77,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/WorkMonitorFeature.h"
@@ -95,6 +95,12 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RestServer/arangodEE.h"
+#endif
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchAnalyzerFeature.h"
+  #include "IResearch/IResearchFeature.h"
+  #include "IResearch/SystemDatabaseFeature.h"
 #endif
 
 // storage engines
@@ -148,8 +154,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new EndpointFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
     server.addFeature(new EnvironmentFeature(&server));
-    server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
+    server.addFeature(new FlushFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));
     server.addFeature(new FrontendFeature(&server));
     server.addFeature(new GeneralServerFeature(&server));
@@ -167,20 +173,20 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new PrivilegeFeature(&server));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new ReplicationFeature(&server));
+    server.addFeature(new ReplicationTimeoutFeature(&server));
     server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
+    server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new StatisticsFeature(&server));
     server.addFeature(new StorageEngineFeature(&server));
     server.addFeature(new TempFeature(&server, name));
     server.addFeature(new TransactionManagerFeature(&server));
     server.addFeature(new TraverserEngineRegistryFeature(&server));
-    server.addFeature(new UnitTestsFeature(&server, &ret));
     server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(&server));
     server.addFeature(new V8PlatformFeature(&server));
@@ -202,6 +208,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     setupServerEE(&server);
 #else
     server.addFeature(new SslServerFeature(&server));
+#endif
+
+#ifdef USE_IRESEARCH
+    server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(&server));
+    server.addFeature(new arangodb::iresearch::IResearchFeature(&server));
+    server.addFeature(new arangodb::iresearch::SystemDatabaseFeature(&server));
 #endif
 
     // storage engines

@@ -57,6 +57,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -218,6 +222,14 @@ ExecutionBlock* ExecutionEngine::createBlock(
       return new EnumerateListBlock(this,
                                     static_cast<EnumerateListNode const*>(en));
     }
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      // FIXME better to replace switch with factory method
+      TRI_ASSERT(engine);
+      auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
+      return viewNode->createExecutionBlock(*engine);
+    }
+#endif
     case ExecutionNode::TRAVERSAL: {
       return new TraversalBlock(this, static_cast<TraversalNode const*>(en));
     }
@@ -253,7 +265,7 @@ ExecutionBlock* ExecutionEngine::createBlock(
       } else if (aggregationMethod ==
                  CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
         return new DistinctCollectBlock(this,
-                                      static_cast<CollectNode const*>(en));
+                                        static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -110,14 +110,11 @@ static bool FindRange(std::vector<uint8_t const*> const& markers,
 }
 
 Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
-                             arangodb::LogicalCollection* col,
-                             std::string const& keysId,
-                             std::string const& cid,
-                             std::string const& collectionName,
-                             TRI_voc_tick_t maxTick) {
+                             arangodb::LogicalCollection* coll,
+                             std::string const& keysId) {
 
   std::string progress =
-      "collecting local keys for collection '" + collectionName + "'";
+      "collecting local keys for collection '" + coll->name() + "'";
   syncer.setProgress(progress);
 
   // fetch all local keys from primary index
@@ -129,7 +126,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   // note: the ditch also protects against unloading the collection
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::READ);
 
     Result res = trx.begin();
@@ -138,7 +135,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       return Result(res.errorNumber(), std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage());
     }
 
-    ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
+    ditch = arangodb::MMFilesCollection::toMMFilesCollection(coll)
                 ->ditches()
                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
@@ -149,13 +146,13 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   TRI_ASSERT(ditch != nullptr);
 
-  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(col)
+  TRI_DEFER(arangodb::MMFilesCollection::toMMFilesCollection(coll)
                 ->ditches()
                 ->freeDitch(ditch));
 
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::READ);
 
     Result res = trx.begin();
@@ -179,7 +176,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             markers.emplace_back(mmdr.vpack());
 
             if (++iterations % 10000 == 0) {
-              if (syncer.checkAborted()) {
+              if (syncer.isAborted()) {
                 return false;
               }
             }
@@ -187,7 +184,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           return true;
         });
 
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -195,7 +192,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     syncer.sendExtendBarrier();
 
     std::string progress = "sorting " + std::to_string(markers.size()) +
-                           " local key(s) for collection '" + collectionName +
+                           " local key(s) for collection '" + coll->name() +
                            "'";
     syncer.setProgress(progress);
 
@@ -227,7 +224,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         });
   }
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -241,7 +238,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + collectionName +
+  progress = "fetching remote keys chunks for collection '" + coll->name() +
              "' from " + url;
   syncer.setProgress(progress);
 
@@ -249,7 +246,8 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") +
+                  syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
@@ -287,8 +285,11 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::WRITE);
+    
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -318,7 +319,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
       keyBuilder.close();
 
-      trx.remove(collectionName, keyBuilder.slice(), options);
+      trx.remove(coll->name(), keyBuilder.slice(), options);
     }
 
     // last high
@@ -344,7 +345,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       keyBuilder.add(StaticStrings::KeyString, VPackValue(key));
       keyBuilder.close();
 
-      trx.remove(collectionName, keyBuilder.slice(), options);
+      trx.remove(coll->name(), keyBuilder.slice(), options);
     }
 
     trx.commit();
@@ -354,21 +355,24 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
         AccessMode::Type::WRITE);
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), std::string("unable to start transaction : ") + res.errorMessage());
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
-    trx.pinData(col->cid());  // will throw when it fails
+    trx.pinData(coll->cid());  // will throw when it fails
 
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.
@@ -382,7 +386,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
     size_t const currentChunkId = i;
     progress = "processing keys chunk " + std::to_string(currentChunkId) +
-               " for collection '" + collectionName + "'";
+               " for collection '" + coll->name() + "'";
     syncer.setProgress(progress);
 
     syncer.sendExtendBatch();
@@ -437,7 +441,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                         "?type=keys&chunk=" + std::to_string(i) +
                         "&chunkSize=" + std::to_string(chunkSize);
       progress = "fetching keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + collectionName + "' from " + url;
+                 " for collection '" + coll->name() + "' from " + url;
       syncer.setProgress(progress);
 
       std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -478,7 +482,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
           keyBuilder.close();
 
-          trx.remove(collectionName, keyBuilder.slice(), options);
+          trx.remove(coll->name(), keyBuilder.slice(), options);
           ++nextStart;
         } else {
           break;
@@ -530,7 +534,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
             keyBuilder.close();
 
-            trx.remove(collectionName, keyBuilder.slice(), options);
+            trx.remove(coll->name(), keyBuilder.slice(), options);
             ++nextStart;
           } else if (res == 0) {
             // key match
@@ -606,7 +610,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                             "&chunkSize=" + std::to_string(chunkSize) + "&offset=" + std::to_string(offsetInChunk);
           progress = "fetching documents chunk " +
                      std::to_string(currentChunkId) + " for collection '" +
-                     collectionName + "' from " + url;
+                     coll->name() + "' from " + url;
 
           syncer.setProgress(progress);
 
@@ -670,7 +674,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                 bool success = physical->readDocument(&trx, conflictId, mmdr);
                 if (success) {
                   VPackSlice conflictingKey(mmdr.vpack());
-                  return trx.remove(collectionName, conflictingKey, options);
+                  return trx.remove(coll->name(), conflictingKey, options);
                 }
               }
               return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
@@ -678,7 +682,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
             if (!element) {
               // INSERT
-              OperationResult opRes = trx.insert(collectionName, it, options);
+              OperationResult opRes = trx.insert(coll->name(), it, options);
               if (opRes.fail()) {
                 if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
                   // remove conflict and retry
@@ -686,7 +690,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                   if (inner.fail()) {
                     return opRes.result;
                   }
-                  opRes = trx.insert(collectionName, it, options);
+                  opRes = trx.insert(coll->name(), it, options);
                   if (opRes.fail()) {
                     return opRes.result;
                   }
@@ -696,7 +700,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
               }
             } else {
               // REPLACE
-              OperationResult opRes = trx.replace(collectionName, it, options);
+              OperationResult opRes = trx.replace(coll->name(), it, options);
               if (opRes.fail()) {
                 if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && opRes.errorMessage() > keySlice.copyString()) {
                   // remove conflict and retry
@@ -704,7 +708,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                   if (inner.fail()) {
                     return opRes.result;
                   }
-                  opRes = trx.replace(collectionName, it, options);
+                  opRes = trx.replace(coll->name(), it, options);
                   if (opRes.fail()) {
                     return opRes.result;
                   }

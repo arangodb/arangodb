@@ -507,8 +507,10 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
                       MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _skiplistIndex(skiplist),
+      _mmdr(mmdr),
+      _context(trx, collection, _mmdr, index->fields().size()),
       _numPaths(numPaths),
       _reverse(reverse),
       _cursor(nullptr),
@@ -757,8 +759,8 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-          // We ignore unique_constraint violated if we are not unique
-          res = TRI_ERROR_NO_ERROR;
+        // We ignore unique_constraint violated if we are not unique
+        res = TRI_ERROR_NO_ERROR;
       }
 
       break;
@@ -1283,7 +1285,7 @@ IndexIterator* MMFilesSkiplistIndex::iteratorForCondition(
                                      // will have _fields many entries.
     TRI_ASSERT(mapping.size() == _fields.size());
     if (!findMatchingConditions(node, reference, mapping, usesIn)) {
-      return new EmptyIndexIterator(_collection, trx, mmdr, this);
+      return new EmptyIndexIterator(_collection, trx, this);
     }
   } else {
     TRI_IF_FAILURE("SkiplistIndex::noSortIterator") {
@@ -1463,6 +1465,10 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
   matchAttributes(node, reference, found, values, nonNullAttributes, false);
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;

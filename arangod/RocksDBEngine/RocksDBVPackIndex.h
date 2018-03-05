@@ -66,7 +66,6 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
                                   transaction::Methods* trx,
-                                  ManagedDocumentResult* mmdr,
                                   arangodb::RocksDBVPackIndex const* index,
                                   VPackSlice const& indexValues);
 
@@ -98,17 +97,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
  public:
   RocksDBVPackIndexIterator(LogicalCollection* collection,
                             transaction::Methods* trx,
-                            ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse,
-                            RocksDBKeyBounds&& bounds);
+                            bool reverse, RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
  public:
-  char const* typeName() const override {
-    return "rocksdb-index-iterator";
-  }
+  char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many element in the index
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
@@ -145,6 +140,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
+  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+  bool needToPersistEstimate() const override;
+
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   bool allowExpansion() const override { return true; }
@@ -167,9 +165,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
   IndexIterator* lookup(transaction::Methods*,
-                                    ManagedDocumentResult* mmdr,
-                                    arangodb::velocypack::Slice const,
-                                    bool reverse) const;
+                        arangodb::velocypack::Slice const, bool reverse) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -188,9 +184,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  void serializeEstimate(std::string& output) const override;
+  rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const override;
 
-  bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
+  bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
   void recalculateEstimates() override;
 
@@ -211,9 +208,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
-
-  Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
-                           rocksdb::Slice const& value) override;
 
  private:
   bool isDuplicateOperator(arangodb::aql::AstNode const*,
@@ -240,14 +234,16 @@ class RocksDBVPackIndex : public RocksDBIndex {
                  std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased, LocalDocumentId const& documentId,
-                  VPackSlice const& doc, std::vector<RocksDBKey>& elements,
+  int fillElement(velocypack::Builder& leased,
+                  LocalDocumentId const& documentId, VPackSlice const& doc,
+                  std::vector<RocksDBKey>& elements,
                   std::vector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased, LocalDocumentId const& documentId,
+  void addIndexValue(velocypack::Builder& leased,
+                     LocalDocumentId const& documentId,
                      VPackSlice const& document,
                      std::vector<RocksDBKey>& elements,
                      std::vector<VPackSlice>& sliceStack,

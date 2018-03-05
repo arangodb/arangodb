@@ -1,7 +1,8 @@
 Basics and Terminology
 ======================
 
-### Documents, Keys, Handles and Revisions
+Documents, Keys, Handles and Revisions
+--------------------------------------
 
 Documents in ArangoDB are JSON objects. These objects can be nested (to
 any depth) and may contain lists. Each document has a unique 
@@ -46,14 +47,16 @@ creating a document. `_id` and `_key` values are immutable once the document
 has been created. The `_rev` value is maintained by ArangoDB automatically.
 
 
-### Document Handle
+Document Handle
+---------------
 
 A document handle uniquely identifies a document in the database. It
 is a string and consists of the collection's name and the document key
 (`_key` attribute) separated by `/`.
 
 
-### Document Key
+Document Key
+------------
 
 A document key uniquely identifies a document in the collection it is
 stored in. It can and should be used by clients when specific documents
@@ -73,7 +76,8 @@ completely, or to force a specific regime for auto-generating the `_key`
 values.
 
 
-### Document Revision
+Document Revision
+-----------------
 
 As ArangoDB supports MVCC (Multiple Version Concurrency Control),
 documents can exist in more than one
@@ -100,11 +104,12 @@ to check if a document revision is older than one another, even if this
 might work for some cases.
 
 
-### Document Etag
+Document Etag
+-------------
 
 ArangoDB tries to adhere to the existing HTTP standard as far as
 possible. To this end, results of single document queries have the HTTP
-header `ETag` set to the document revision enclosed in double quotes.
+header `Etag` set to the document revision enclosed in double quotes.
 
 The basic operations (create, read, exists, replace, update, delete)
 for documents are mapped to the standard HTTP methods (*POST*, *GET*,
@@ -114,7 +119,8 @@ If you modify a document, you can use the *If-Match* field to detect conflicts.
 The revision of a document can be checking using the HTTP method *HEAD*.
 
 
-### Multiple Documents in a single Request
+Multiple Documents in a single Request
+--------------------------------------
 
 Beginning with ArangoDB 3.0 the basic document API has been extended
 to handle not only single documents but multiple documents in a single
@@ -137,7 +143,8 @@ endpoints to request and delete multiple documents in one request.
 FIXME: ADD SENSIBLE LINKS HERE.
 
 
-### URI of a Document
+URI of a Document
+-----------------
 
 Any document can be retrieved using its unique URI:
 
@@ -165,7 +172,7 @@ Example:
 **Note**: The following examples use the short URL format for brevity.
 
 The [document revision](../../Manual/Appendix/Glossary.html#document-revision) 
-is returned in the "ETag" HTTP header when requesting a document.
+is returned in the "Etag" HTTP header when requesting a document.
 
 If you obtain a document using *GET* and you want to check whether a 
 newer revision
@@ -175,4 +182,3 @@ unchanged, a *HTTP 412* (precondition failed) error is returned.
 If you want to query, replace, update or delete a document, then you
 can use the *If-Match* header. If the document has changed, then the
 operation is aborted and an *HTTP 412* error is returned.
-

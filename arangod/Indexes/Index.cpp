@@ -32,6 +32,11 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchFeature.h"
+#endif
+
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -167,6 +172,11 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+#ifdef USE_IRESEARCH
+  if (arangodb::iresearch::IResearchFeature::type() == type) {
+    return TRI_IDX_TYPE_IRESEARCH_LINK;
+  }
+#endif
   if (::strcmp(type, "noaccess") == 0) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }
@@ -197,6 +207,10 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+#ifdef USE_IRESEARCH
+    case TRI_IDX_TYPE_IRESEARCH_LINK:
+      return arangodb::iresearch::IResearchFeature::type().c_str();
+#endif
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -882,3 +896,7 @@ std::ostream& operator<<(std::ostream& stream, arangodb::Index const& index) {
   stream << index.context();
   return stream;
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

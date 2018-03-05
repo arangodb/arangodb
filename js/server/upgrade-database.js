@@ -42,6 +42,7 @@
   const currentVersion = require('@arangodb/database-version').CURRENT_VERSION;
   const db = internal.db;
   const shallowCopy = require('@arangodb/util').shallowCopy;
+  const errors = internal.errors;
 
   function upgrade () {
     // default replication factor for system collections
@@ -594,6 +595,25 @@
         });
       }
     });
+    
+    // setupAnalyzersConfig
+    addTask({
+      name: 'setupAnalyzers',
+      description: 'setup _iresearch_analyzers collection',
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function () {
+        return createSystemCollection('_iresearch_analyzers', {
+          waitForSync: false,
+          journalSize: 4 * 1024 * 1024,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+          distributeShardsLike: '_graphs'
+        });
+      }
+    });
 
     // _routing
     addTask({
@@ -645,17 +665,25 @@
 
         // add redirections to new location
         ['/', '/_admin/html', '/_admin/html/index.html'].forEach(function (src) {
-          routing.save({
-            url: src,
-            action: {
-              'do': '@arangodb/actions/redirectRequest',
-              options: {
-                permanently: true,
-                destination: '/_db/' + db._name() + '/_admin/aardvark/index.html'
-              }
-            },
-            priority: -1000000
-          });
+          try {
+            routing.save({
+              url: src,
+              action: {
+                'do': '@arangodb/actions/redirectRequest',
+                options: {
+                  permanently: true,
+                  destination: '/_db/' + db._name() + '/_admin/aardvark/index.html'
+                }
+              },
+              priority: -1000000
+            });
+          } catch (err) {
+            // ignore unique constraint violations here
+            if (err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+              // rethrow all other types of errors
+              throw err;
+            }
+          }
         });
 
         return true;
@@ -677,20 +705,6 @@
           replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
           distributeShardsLike: '_graphs'
         });
-      }
-    });
-
-    // createStatistics
-    addTask({
-      name: 'createStatistics',
-      description: 'create statistics collections',
-
-      system: DATABASE_SYSTEM,
-      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
-      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
-
-      task: function () {
-        return require('@arangodb/statistics').createStatisticsCollections();
       }
     });
 
@@ -756,7 +770,7 @@
       name: 'createJobsIndex',
       description: 'create index on attributes in _jobs collection',
 
-      system: DATABASE_SYSTEM,
+      system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
       database: [DATABASE_INIT, DATABASE_UPGRADE],
 
@@ -806,7 +820,7 @@
       name: 'createAppsIndex',
       description: 'create index on attributes in _apps collection',
 
-      system: DATABASE_SYSTEM,
+      system: DATABASE_ALL,
       cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
       database: [DATABASE_INIT, DATABASE_UPGRADE],
 

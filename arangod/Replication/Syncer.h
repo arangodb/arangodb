@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/common-defines.h"
 #include "Utils/DatabaseGuard.h"
-#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
@@ -75,10 +75,10 @@ class Syncer {
   explicit Syncer(ReplicationApplierConfiguration const&);
 
   virtual ~Syncer();
-  
+
   /// @brief sleeps (nanoseconds)
   void sleep(uint64_t time) {
-    usleep(static_cast<TRI_usleep_t>(time));
+    std::this_thread::sleep_for(std::chrono::microseconds(time));
   }
 
   /// @brief request location rewriter (injects database name)
@@ -93,6 +93,10 @@ class Syncer {
   
   /// @brief send a "remove barrier" command
   Result sendRemoveBarrier();
+  
+  void setAborted(bool value);
+  
+  virtual bool isAborted() const;
 
  protected:
   /// @brief reload all users
@@ -110,7 +114,7 @@ class Syncer {
 
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarker(transaction::Methods&,
-                                   std::string const&,
+                                   LogicalCollection* coll,
                                    TRI_replication_operation_e,
                                    arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
@@ -160,7 +164,7 @@ class Syncer {
   
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                           std::string const&,
+                                           LogicalCollection* coll,
                                            TRI_replication_operation_e,
                                            arangodb::velocypack::Slice const&, 
                                            arangodb::velocypack::Slice const&); 
@@ -187,6 +191,9 @@ class Syncer {
 
   /// @brief the connection to the master
   httpclient::GeneralClientConnection* _connection;
+  
+  /// @brief a mutex for assigning and freeing the _client object
+  mutable Mutex _clientMutex;
 
   /// @brief the http client we're using
   httpclient::SimpleHttpClient* _client;
@@ -218,7 +225,7 @@ class Syncer {
   /// follower and thus only accepts modifications that are replications
   /// from the leader. Leave empty if there is no concept of a "leader".
   std::string _leaderId;
-  
+
   /// @brief base url of the replication API
   static std::string const ReplicationUrl;
 };

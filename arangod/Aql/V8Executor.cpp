@@ -101,7 +101,7 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
     v8::Handle<v8::Value> empty;
     TRI_ASSERT(_buffer != nullptr);
     HandleV8Error(tryCatch, empty, _buffer.get(), true);
-    
+
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
@@ -110,8 +110,8 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
 /// @brief executes an expression directly
 /// this method is called during AST optimization and will be used to calculate
 /// values for constant expressions
-int V8Executor::executeExpression(Query* query, AstNode const* node, 
-                                VPackBuilder& builder) {
+int V8Executor::executeExpression(Query* query, AstNode const* node,
+                                  VPackBuilder& builder) {
   ISOLATE;
 
   _constantRegisters.clear();
@@ -199,7 +199,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
 
   if (previous != NODE_TYPE_FCALL && previous != NODE_TYPE_FCALL_USER) {
     // FCALL has an ARRAY node as its immediate child
-    // however, we do not want to constify this whole array, but just its 
+    // however, we do not want to constify this whole array, but just its
     // individual members
     // otherwise, only the ARRAY node will be marked as constant but not
     // its members. When the code is generated for the function call,
@@ -370,7 +370,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
     // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
-  
+
   // if we get here, no exception has been raised
 }
 
@@ -399,14 +399,14 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", {}); "));
   }
- 
-  // generate specialized functions for UDFs 
+
+  // generate specialized functions for UDFs
   for (auto const& it : _userFunctions) {
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.e"));
     _buffer->appendInteger(it.second);
-    // "state.e\d+" executes the user function in a wrapper, converting the 
+    // "state.e\d+" executes the user function in a wrapper, converting the
     // function result back into the allowed range, and catching any errors
-    // thrown by the function 
+    // thrown by the function
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(" = function(params) { try { return _AQL.fixValue(state.f"));
     _buffer->appendInteger(it.second);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR(".apply({ name: \""));
@@ -415,8 +415,8 @@ void V8Executor::generateCodeExpression(AstNode const* node) {
     _buffer->appendText(it.first);
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("\", require(\"internal\").errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, _AQL.AQL_TO_STRING(err.stack || String(err))); } }; "));
   }
-   
-  // set "state.i" to true (=initialized) 
+
+  // set "state.i" to true (=initialized)
   _buffer->appendText(TRI_CHAR_LENGTH_PAIR("state.i = true; } return "));
 
   generateCodeNode(node);
@@ -698,7 +698,18 @@ void V8Executor::generateCodeCollection(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 0);
 
-  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS("));
+  // we should not get here anymore, as all collection accesses should
+  // have either been transformed to collection names (i.e. strings)
+  // or FOR ... RETURN ... subqueries beforehand
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type 'collection' found in script generatin");
+}
+
+/// @brief generate JavaScript code for a full view access
+void V8Executor::generateCodeView(AstNode const* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->numMembers() == 0);
+
+  _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL.GET_DOCUMENTS_FROM_VIEW("));
   generateCodeString(node->getStringValue(), node->getStringLength());
   _buffer->appendChar(')');
 }
@@ -715,7 +726,7 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
   if (func->name != "V8") {
-    // special case for the V8 function... this is actually not a function 
+    // special case for the V8 function... this is actually not a function
     // call at all, but a wrapper to ensure that the following expression
     // is executed using V8
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
@@ -959,6 +970,10 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 
     case NODE_TYPE_COLLECTION:
       generateCodeCollection(node);
+      break;
+
+    case NODE_TYPE_VIEW:
+      generateCodeView(node);
       break;
 
     case NODE_TYPE_FCALL:

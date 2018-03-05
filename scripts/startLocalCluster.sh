@@ -173,7 +173,7 @@ start() {
 
     TYPE=$1
     PORT=$2
-    mkdir cluster/data$PORT cluster/apps$PORT 
+    mkdir -p cluster/data$PORT cluster/apps$PORT 
     echo == Starting $TYPE on port $PORT
     $CMD \
         -c none \

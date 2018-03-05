@@ -1,5 +1,6 @@
 
 # Summary
+* [Introduction](README.md)
 * [General HTTP Handling](General/README.md)
 * [HTTP Interface](Api/README.md)
 * [Databases](Database/README.md)
@@ -14,7 +15,7 @@
   * [Basics and Terminology](Document/AddressAndEtag.md)
   * [Working with Documents](Document/WorkingWithDocuments.md)
 * [Edges](Edge/README.md)
-  * [Address and ETag](Edge/AddressAndEtag.md)
+  * [Address and Etag](Edge/AddressAndEtag.md)
   * [Working with Edges](Edge/WorkingWithEdges.md)
 * [General Graph](Gharial/README.md)
   * [Management](Gharial/Management.md)
@@ -41,6 +42,11 @@
   * [Persistent](Indexes/Persistent.md)
   * [Geo](Indexes/Geo.md)
   * [Fulltext](Indexes/Fulltext.md)
+* [Views](Views/README.md)
+  * [Creating](Views/Creating.md)
+  * [Modifying](Views/Modifying.md)
+  * [Retrieving](Views/Getting.md)
+  * [ArangoSearch Views](Views/ArangoSearch.md)
 * [Transactions](Transaction/README.md)
 * [Replication](Replications/README.md)
   * [Replication Dump](Replications/ReplicationDump.md)

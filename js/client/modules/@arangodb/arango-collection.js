@@ -460,7 +460,8 @@ ArangoCollection.prototype.drop = function (options) {
     requestResult = this._database._connection.DELETE(this._baseurl());
   }
 
-  if (requestResult !== null
+  if (requestResult !== null 
+    && requestResult !== undefined
     && requestResult.error === true
     && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"

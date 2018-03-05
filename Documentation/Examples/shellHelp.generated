@@ -37,3 +37,4 @@ View Functions:
   _views()                                  list all views                
   _view(&lt;name&gt;)                             get view by name              
   _createView(&lt;name&gt;, &lt;type&gt;, &lt;properties&gt;) creates a new view            
+  _dropView(&lt;name&gt;)                         delete a view                 

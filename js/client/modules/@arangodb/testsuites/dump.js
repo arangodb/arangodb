@@ -47,11 +47,14 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 function dump (options) {
   let cluster;
+  let notCluster;
 
   if (options.cluster) {
     cluster = '-cluster';
+    notCluster = '-singleserver';
   } else {
     cluster = '';
+    notCluster = '-cluster';
   }
 
   const storageEngine = options.storageEngine;
@@ -96,18 +99,18 @@ function dump (options) {
         'UnitTestsDumpDst');
       results.restore.failed = 1;
       if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-        (results.restore.status === true)) {
+          (results.restore.status === true)) {
         results.restore.failed = 0;
 
         print(CYAN + Date() + ': Dump and Restore - dump after restore' + RESET);
 
         results.test = tu.runInArangosh(options, instanceInfo,
-          tu.makePathUnix('js/server/tests/dump/dump-' + storageEngine + cluster + '.js'), {
-            'server.database': 'UnitTestsDumpDst'
-          });
+                                        tu.makePathUnix('js/server/tests/dump/dump-' + storageEngine + cluster + '.js'), {
+                                          'server.database': 'UnitTestsDumpDst'
+                                        });
         results.test.failed = 1;
         if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
-          (results.test.status === true)) {
+            (results.test.status === true)) {
           results.test.failed = 0;
 
           print(CYAN + Date() + ': Dump and Restore - teardown' + RESET);
@@ -115,15 +118,39 @@ function dump (options) {
           results.tearDown = tu.runInArangosh(options, instanceInfo,
                                               tu.makePathUnix('js/server/tests/dump/dump-teardown' + cluster + '.js'));
           results.tearDown.failed = 1;
-          if (results.tearDown.status) {
+          if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
+              (results.tearDown.status === true)) {
             results.tearDown.failed = 0;
-            results.failed = 0;
+
+            print(CYAN + Date() + ': Dump and Restore - restoreOld' + RESET);
+            let restoreDir = tu.makePathUnix('js/server/tests/dump/dump' + notCluster);
+
+            results.restoreOld = pu.run.arangoDumpRestore(options,
+                                                          instanceInfo,
+                                                          'restore',
+                                                          '_system',
+                                                          pu.TOP_DIR,
+                                                          restoreDir);
+            results.restoreOld.failed = 1;
+            if (pu.arangod.check.instanceAlive(instanceInfo, options) &&
+                (results.restoreOld.status === true)) {
+              results.restoreOld.failed = 0;
+
+              results.testRestoreOld = tu.runInArangosh(options,
+                                                        instanceInfo,
+                                                        tu.makePathUnix('js/server/tests/dump/check-graph.js'));
+              results.testRestoreOld.failed = 1;
+
+              if (results.testRestoreOld.status) {
+                results.testRestoreOld.failed = 10;
+                results.failed = 0;
+              }
+            }
           }
         }
       }
     }
   }
-
   print(CYAN + 'Shutting down...' + RESET);
   pu.shutdownInstance(instanceInfo, options);
   print(CYAN + 'done.' + RESET);

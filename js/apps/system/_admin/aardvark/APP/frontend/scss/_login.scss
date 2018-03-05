@@ -48,8 +48,18 @@
     top: 20px;
   };
   position: relative;
-  top: 100px;
+  top: 25px;
   width: 350px;
+
+  .databaseInput {
+    box-sizing: border-box;
+    font-size: 16px;
+    height: 40px;
+    line-height: 40px;
+    margin-bottom: 30px;
+    padding-left: 10px;
+    width: 100%;
+  }
 
   select {
     @extend %flat-select;
@@ -95,6 +105,7 @@
     }
   }
 
+  .no-access,
   .wrong-credentials {
     color: $c-negative;
     margin-left: -20px;
@@ -125,6 +136,10 @@
     padding: 10px;
     padding-left: 35px;
     width: 100%;
+  }
+
+  .databaseInput {
+    padding-left: 10px !important;
   }
 
   .form-error {

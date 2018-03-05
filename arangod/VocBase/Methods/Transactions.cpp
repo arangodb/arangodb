@@ -21,7 +21,6 @@
 
 namespace arangodb {
 
-
 Result executeTransaction(
     v8::Isolate* isolate,
     basics::ReadWriteLock& lock,
@@ -82,7 +81,13 @@ Result executeTransaction(
 
   if (tryCatch.HasCaught()) {
     //we have some javascript error that is not an arangoError
-    std::string msg = *v8::String::Utf8Value(tryCatch.Message()->Get());
+    std::string msg;
+    if (!tryCatch.Message().IsEmpty()) {
+      v8::String::Utf8Value m(tryCatch.Message()->Get());
+      if (*m != nullptr) {
+        msg = *m;
+      }
+    }
     rv.reset(TRI_ERROR_HTTP_SERVER_ERROR, msg);
   }
 
@@ -140,7 +145,9 @@ Result executeTransactionJS(
     // parse all other options. `allowImplicitCollections` will
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
-    TRI_V8ToVPack(isolate, builder, object, false);
+    // we must use "convertFunctionsToNull" here, because "action" is most
+    // likey a JavaScript function
+    TRI_V8ToVPack(isolate, builder, object, false, /*convertFunctionsToNull*/ true);
     if (!builder.isClosed()) {
       builder.close();
     }
@@ -287,12 +294,20 @@ Result executeTransactionJS(
 
     action = v8::Local<v8::Function>::Cast(function);
     if (tryCatch.HasCaught()) {
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.Message()->Get());
-      actionError += " - ";
-      actionError += *v8::String::Utf8Value(tryCatch.StackTrace());
+      if (!tryCatch.Message().IsEmpty()) {
+        v8::String::Utf8Value tryCatchMessage(tryCatch.Message()->Get());
+        if (*tryCatchMessage != nullptr) {
+          actionError += " - ";
+          actionError += *tryCatchMessage;
+        }
+      }
+      v8::String::Utf8Value tryCatchStackTrace(tryCatch.StackTrace());
+      if (*tryCatchStackTrace != nullptr) {
+        actionError += " - ";
+        actionError += *tryCatchStackTrace;
+      }
       rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
-      tryCatch.Reset(); //reset as we have transferd the error message into the Result
+      tryCatch.Reset(); //reset as we have transferred the error message into the Result
       return rv;
     }
     action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionSource"));
@@ -310,10 +325,11 @@ Result executeTransactionJS(
       std::make_shared<transaction::V8Context>(vocbase, embed);
   // start actual transaction
   std::unique_ptr<transaction::Methods> trx(new transaction::UserTransaction(transactionContext, readCollections,
-                                             writeCollections, exclusiveCollections,
-                                             trxOptions));
+                                            writeCollections, exclusiveCollections,
+                                            trxOptions));
     
   rv = trx->begin();
+  
   if (rv.fail()) {
     return rv;
   }
@@ -323,9 +339,12 @@ Result executeTransactionJS(
     result = action->Call(current, 1, &arguments);
     if (tryCatch.HasCaught()) {
       trx->abort();
-      std::tuple<bool,bool,Result> rvTuple = extractArangoError(isolate, tryCatch);
-      if (std::get<1>(rvTuple)){
+      std::tuple<bool, bool, Result> rvTuple = extractArangoError(isolate, tryCatch, TRI_ERROR_TRANSACTION_INTERNAL);
+      if (std::get<1>(rvTuple)) {
         rv = std::get<2>(rvTuple);
+      } else {
+        // some general error we don't know about
+        rv = Result(TRI_ERROR_TRANSACTION_INTERNAL, "an unknown error occured while executing the transaction");  
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -338,11 +357,10 @@ Result executeTransactionJS(
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
-  if (rv.fail()) {
-    return rv;
+  if (!rv.fail()) {
+    rv = trx->commit();
   }
 
-  rv = trx->commit();
   return rv;
 }
 

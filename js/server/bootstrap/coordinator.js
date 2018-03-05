@@ -35,19 +35,6 @@
   const internal = require('internal');
   const errors = require('@arangodb').errors;
 
-  // statistics can be turned off
-  if (internal.enableStatistics && internal.threadNumber === 0) {
-    try {
-      require('@arangodb/statistics').startup();
-    } catch (e) {
-      if (e.errorNum !== errors.ERROR_TASK_DUPLICATE_ID.code) {
-        // a "duplicate task id" error is actually allowed here, because
-        // the bootstrap function may be called repeatedly by the BootstrapFeature
-        throw e;
-      }
-    }
-  }
-
   // autoload all modules and reload routing information in all threads
   internal.loadStartup('server/bootstrap/autoload.js').startup();
   internal.loadStartup('server/bootstrap/routing.js').startup();

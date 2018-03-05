@@ -99,7 +99,6 @@
         <div id="swaggerJsonContent" style="display: none">
           <div id="swaggerJsonEditor" style="height: 100%;"></div>
         </div>
-        <iframe src="<%= baseUrl %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
       <div id="settings" class="readme" style="display: none;">
         <% if (_.isEmpty(app.get('config'))) { %>
@@ -109,7 +108,7 @@
       </div>
       <div id="readme" class="readme" style="display: none;">
         <% if (app.get('readme')) { %>
-        <%= app.get('readme') %>
+        <%= marker(app.get('readme')) %>
         <% } else { %>
         <p>No README data found.</p>
         <% } %>

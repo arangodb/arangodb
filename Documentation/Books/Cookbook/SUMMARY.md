@@ -1,4 +1,5 @@
 # Summary
+* [Introduction](README.md)
 * [Modelling Document Inheritance](DocumentInheritance.md)
 * [Accessing Shapes Data](AccessingShapesData.md)
 * [AQL](AQL/README.md)
@@ -25,7 +26,9 @@
 * [Administration](Administration/README.md)
   * [Using Authentication](Administration/Authentication.md)
   * [Importing Data](Administration/ImportingData.md)
-  * [Replicating Data](Administration/ReplicatingData.md)
+  * [Replication](Administration/Replication/README.md)
+    * [Replicating Data](Administration/ReplicatingData.md)
+    * [Slave Initialization](Administration/Replication/ReplicationFromBackup.md)
   * [XCopy Install Windows](Administration/XCopyInstallWindows.md)
   * [Silent NSIS on Windows](Administration/NSISSilentMode.md)
   * [Migrating 2.8 to 3.0](Administration/Migrate2.8to3.0.md)

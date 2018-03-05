@@ -71,7 +71,7 @@ static void raceForClusterBootstrap() {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP)
       << "raceForClusterBootstrap: no agency communication";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     
@@ -90,7 +90,7 @@ static void raceForClusterBootstrap() {
       }
       LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: somebody else does the bootstrap";
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
       
@@ -102,7 +102,7 @@ static void raceForClusterBootstrap() {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
       << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     // OK, we handle things now
@@ -115,7 +115,7 @@ static void raceForClusterBootstrap() {
       LOG_TOPIC(TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no DBservers, waiting";
       agency.removeValues(boostrapKey, false);
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
 
@@ -135,12 +135,12 @@ static void raceForClusterBootstrap() {
         LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
       }
       agency.removeValues(boostrapKey, false);
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
-    AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+    AuthenticationFeature::instance()->userManager()->createRootUser();
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -154,7 +154,7 @@ static void raceForClusterBootstrap() {
 
     LOG_TOPIC(TRACE, Logger::STARTUP)
         << "raceForClusterBootstrap: could not indicate success";
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 }
 
@@ -200,7 +200,7 @@ void BootstrapFeature::start() {
           << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
         }
         if (!success) {
-          sleep(1);
+          std::this_thread::sleep_for(std::chrono::seconds(1));
         }
       }
     } else if (ServerState::isDBServer(role)) {
@@ -211,47 +211,56 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
-
+    std::string const myId = ServerState::instance()->getId(); // local cluster UUID
+    
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
     if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
       std::string const leaderPath = "Plan/AsyncReplication/Leader";
-      std::string const myId = ServerState::instance()->getId();
       
       try {
         VPackBuilder myIdBuilder;
         myIdBuilder.add(VPackValue(myId));
         AgencyComm agency;
         AgencyCommResult res = agency.getValues(leaderPath);
-        VPackSlice leaderSlice;
         if (res.successful()) {
-          leaderSlice = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
-          if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
-            res = agency.casValue(leaderPath, leaderSlice, myIdBuilder.slice(),
-                                  /* ttl */ 0, /* timeout */ 5.0);
-            if (res.successful()) {
-              // sucessfull leadership takeover
-              ss->setFoxxmaster(myId);
+          VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+          if (!leader.isString() || leader.getStringLength() == 0) { // no leader in agency
+            if (leader.isNone()) {
+              res = agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            } else {
+              res = agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+            }
+            if (res.successful()) { // sucessfull leadership takeover
+              leader = myIdBuilder.slice();
+            } // ignore for now, heartbeat thread will handle it
+          }
+          
+          if (leader.isString() && leader.getStringLength() > 0) {
+            ss->setFoxxmaster(leader.copyString());
+            if (leader == myIdBuilder.slice()) {
               LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
-            } // heartbeat thread will take care later
-          } else {
-            ss->setFoxxmaster(leaderSlice.copyString());
-            LOG_TOPIC(INFO, Logger::STARTUP) << "Following " << ss->getFoxxmaster();
+            } else {
+              LOG_TOPIC(INFO, Logger::STARTUP) << "Following leader: " << ss->getFoxxmaster();
+            }
           }
         }
       } catch(...) {} // weglaecheln
+    } else {
+      ss->setFoxxmaster(myId); // could be empty, but set anyway
     }
     
-    // will run foxx/manager.js internally and start queues etc
+    // will run foxx/manager.js::_startup() and more (start queues, load routes, etc)
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
     // Agency is not allowed to call this
     if (ServerState::isSingleServer(role)) {
       // only creates root user if it does not exist, will be overwritten on slaves
-      AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+      AuthenticationFeature::instance()->userManager()->createRootUser();
     }
   }
-  
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: is set to correct value in the heartbeat thread

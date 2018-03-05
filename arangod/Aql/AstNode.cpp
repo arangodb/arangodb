@@ -47,6 +47,13 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 
+namespace {
+
+arangodb::StringRef const VIEW_NODE_SUFFIX("\0v", 2);
+arangodb::StringRef const COLLECTION_NODE_SUFFIX("\0c", 2);
+
+}
+
 using namespace arangodb::aql;
 
 std::unordered_map<int, std::string const> const AstNode::Operators{
@@ -156,7 +163,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN),
      "array compare not in"},
     {static_cast<int>(NODE_TYPE_QUANTIFIER), "quantifier"},
-    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"}};
+    {static_cast<int>(NODE_TYPE_SHORTEST_PATH), "shortest path"},
+    {static_cast<int>(NODE_TYPE_VIEW), "view"}};
 
 /// @brief names for AST node value types
 std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
@@ -430,6 +438,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
 
   switch (type) {
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
@@ -670,6 +679,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_VARIABLE:
     case NODE_TYPE_FCALL:
@@ -757,7 +767,7 @@ AstNode::AstNode(std::function<void(AstNode*)> registerNode,
 
 /// @brief destroy the node
 AstNode::~AstNode() {
-  if (computedValue != nullptr) {
+  if (computedValue != nullptr && !isDataSource()) {
     delete[] computedValue;
   }
 }
@@ -765,10 +775,9 @@ AstNode::~AstNode() {
 /// @brief return the string value of a node, as an std::string
 std::string AstNode::getString() const {
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_OBJECT_ELEMENT ||
-             type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_PARAMETER || type == NODE_TYPE_COLLECTION ||
-             type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
-             type == NODE_TYPE_FCALL_USER);
+             type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_PARAMETER ||
+             type == NODE_TYPE_COLLECTION || type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
+             type == NODE_TYPE_FCALL_USER || type == NODE_TYPE_VIEW);
   TRI_ASSERT(value.type == VALUE_TYPE_STRING);
   return std::string(getStringValue(), getStringLength());
 }
@@ -791,7 +800,7 @@ bool AstNode::isOnlyEqualityMatch() const {
 }
 
 /// @brief computes a hash value for a value node
-uint64_t AstNode::hashValue(uint64_t hash) const {
+uint64_t AstNode::hashValue(uint64_t hash) const noexcept {
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -830,7 +839,8 @@ uint64_t AstNode::hashValue(uint64_t hash) const {
       if (sub != nullptr) {
         hash = fasthash64(static_cast<const void*>(sub->getStringValue()),
                           sub->getStringLength(), hash);
-        hash = sub->getMember(0)->hashValue(hash);
+        TRI_ASSERT(sub->numMembers() > 0);
+        hash = sub->getMemberUnchecked(0)->hashValue(hash);
       }
     }
     return hash;
@@ -888,6 +898,7 @@ VPackSlice AstNode::computeValue() const {
 void AstNode::sort() {
   TRI_ASSERT(type == NODE_TYPE_ARRAY);
   TRI_ASSERT(isConstant());
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
 
   std::sort(members.begin(), members.end(),
             [](AstNode const* lhs, AstNode const* rhs) {
@@ -1061,7 +1072,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
     builder.add("typeID", VPackValue(static_cast<int>(type)));
   }
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_ATTRIBUTE_ACCESS ||
+      type == NODE_TYPE_ATTRIBUTE_ACCESS || type == NODE_TYPE_VIEW ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
@@ -1383,7 +1394,7 @@ bool AstNode::isAttributeAccessForVariable(
     result.second.clear();
   }
   auto node = this;
-  
+
   basics::StringBuffer indexBuff(false);
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
@@ -1500,11 +1511,11 @@ bool AstNode::isSimple() const {
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GT ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_GE ||
       type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN || 
+      type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN ||
       type == NODE_TYPE_RANGE ||
-      type == NODE_TYPE_INDEXED_ACCESS || 
+      type == NODE_TYPE_INDEXED_ACCESS ||
       type == NODE_TYPE_PASSTHRU ||
-      type == NODE_TYPE_OBJECT_ELEMENT || 
+      type == NODE_TYPE_OBJECT_ELEMENT ||
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OPERATOR_UNARY_NOT ||
@@ -2342,6 +2353,7 @@ void AstNode::findVariableAccess(
     case NODE_TYPE_ASSIGN:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
@@ -2512,6 +2524,7 @@ AstNode const* AstNode::findReference(AstNode const* findme) const {
     case NODE_TYPE_REFERENCE:
     case NODE_TYPE_OBJECT_ELEMENT:
     case NODE_TYPE_COLLECTION:
+    case NODE_TYPE_VIEW:
     case NODE_TYPE_PARAMETER:
     case NODE_TYPE_FCALL_USER:
     case NODE_TYPE_NOP:
@@ -2589,6 +2602,7 @@ void AstNode::appendValue(arangodb::basics::StringBuffer* buffer) const {
 }
 
 void AstNode::stealComputedValue() {
+  TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   if (computedValue != nullptr) {
     delete[] computedValue;
     computedValue = nullptr;
@@ -2613,6 +2627,18 @@ void AstNode::removeMembersInOtherAndNode(AstNode const* other) {
         break;
       }
     }
+  }
+}
+
+void AstNode::markFinalized(AstNode* subtreeRoot) {
+  if ((nullptr == subtreeRoot) ||
+      subtreeRoot->hasFlag(AstNodeFlagType::FLAG_FINALIZED)) {
+    return;
+  }
+
+  subtreeRoot->setFlag(AstNodeFlagType::FLAG_FINALIZED);
+  for (size_t i = 0; i < subtreeRoot->numMembers(); ++i) {
+    markFinalized(subtreeRoot->getMember(i));
   }
 }
 

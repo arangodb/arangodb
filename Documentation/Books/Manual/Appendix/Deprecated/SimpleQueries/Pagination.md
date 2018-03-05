@@ -17,7 +17,9 @@ result pages with 10 result documents per page, you can use <i>skip(n *
 10).limit(10)</i> to access the 10 documents on the *n*th page. This result
 should be sorted, so that the pagination works in a predicable way.
 
-### Limit
+Limit
+-----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -51,7 +53,9 @@ unclear which documents will be included in the result set.
 
 
 
-### Skip
+Skip
+----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -86,3 +90,32 @@ will not be supported in future versions of ArangoDB.
     @endDocuBlock querySkip
 
 
+Ignore any limit with count:
+
+    @startDocuBlockInline cursorCountUnLimited
+    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountUnLimited}
+    ~ db._create("five");
+    ~ db.five.save({ name : "one" });
+    ~ db.five.save({ name : "two" });
+    ~ db.five.save({ name : "three" });
+    ~ db.five.save({ name : "four" });
+    ~ db.five.save({ name : "five" });
+    db.five.all().limit(2).count();
+    ~ db._drop("five")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock cursorCountUnLimited
+
+Counting any limit or skip:
+
+    @startDocuBlockInline cursorCountLimit
+    @EXAMPLE_ARANGOSH_OUTPUT{cursorCountLimit}
+    ~ db._create("five");
+    ~ db.five.save({ name : "one" });
+    ~ db.five.save({ name : "two" });
+    ~ db.five.save({ name : "three" });
+    ~ db.five.save({ name : "four" });
+    ~ db.five.save({ name : "five" });
+    db.five.all().limit(2).count(true);
+    ~ db._drop("five")
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock cursorCountLimit

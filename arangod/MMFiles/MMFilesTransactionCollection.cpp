@@ -99,6 +99,9 @@ bool MMFilesTransactionCollection::isLocked(AccessMode::Type accessType, int nes
   
 /// @brief check whether a collection is locked at all
 bool MMFilesTransactionCollection::isLocked() const {
+  if (_collection == nullptr) {
+    return false;
+  }
   if (CollectionLockState::_noLockHeaders != nullptr) {
     std::string collName(_collection->name());
     auto it = CollectionLockState::_noLockHeaders->find(collName);

@@ -89,7 +89,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     auto startTime = TRI_microtime();
     auto endTime = startTime + 60.0;
     do {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
       if (TRI_microtime() > endTime) {
         break;
       }
@@ -99,6 +99,8 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   */
   if (col != nullptr) {
     cid = col->cid();
+  } else {
+    cid = resolver()->getCollectionId(collection->getName());
   }
 
   Result res =
@@ -126,21 +128,6 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 
 int AqlTransaction::lockCollections() { return state()->lockCollections(); }
 
-/// @brief count the number of documents in a collection
-/// Handle locks based on the collections known to this transaction
-/// (Coordinator only)
-OperationResult AqlTransaction::count(std::string const& collectionName,
-                                      bool aggregate) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  if (_state->isCoordinator()) {
-    // If the collection is known to this transaction we do not need to lock on DBServers (locked already)
-    // If it is not known we need to lock
-    bool needsToLock = (_collections.find(collectionName) == _collections.end());
-    return countCoordinator(collectionName, aggregate, needsToLock);
-  }
-
-  return countLocal(collectionName);
-}
-
-
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

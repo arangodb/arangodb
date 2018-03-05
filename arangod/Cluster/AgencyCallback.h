@@ -21,8 +21,8 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_CLUSTER_AGENCYCALLBACK_H
-#define ARANGODB_CLUSTER_AGENCYCALLBACK_H
+#ifndef ARANGODB_CLUSTER_AGENCY_CALLBACK_H
+#define ARANGODB_CLUSTER_AGENCY_CALLBACK_H
 
 #include "Basics/Common.h"
 

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, after, afterEach, before, it */
+/* global describe, after, afterEach, before, beforeEach, it */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -31,21 +31,28 @@ const db = require('@arangodb').db;
 
 describe('Grants', function() {
   before(function() {
+    db._drop('grants');
     db._create('grants');
   });
+  beforeEach(function() {
+    try {
+      // remove any such user if it exists
+      users.remove('hans');
+    } catch (err) {}
+  });
   afterEach(function() {
-    users.remove('hans');
     let resp = request.put({
       url: '/_admin/server/mode',
       body: {'mode': 'default'},
       json: true,
     });
     expect(resp.statusCode).to.equal(200);
+    // wait for readonly mode to reset
+    require('internal').wait(5.0);
+    users.remove('hans');
   });
   after(function() {
     db._drop('grants');
-    // wait for readonly mode to reset
-    require('internal').wait(5.0);
   });
   it('should show the effective rights for a user', function() {
     users.save('hans');

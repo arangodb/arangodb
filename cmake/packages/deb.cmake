@@ -24,6 +24,8 @@ else()
   set(CPACK_SYSTEMD_FOUND "0")
 endif()
 
+set(LOGROTATE_GROUP "adm")
+
 # substitute the package name so debconf works:
 configure_file (
   "${PROJECT_SOURCE_DIR}/Installation/debian/templates.in"
@@ -118,12 +120,12 @@ endif()
 ################################################################################
 # hook to build the server package
 ################################################################################
-add_custom_target(package-arongodb-server
+add_custom_target(package-arangodb-server
   COMMAND ${CMAKE_COMMAND} .
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-server)
+list(APPEND PACKAGES_LIST package-arangodb-server)
 
 ################################################################################
 # hook to build the client package
@@ -134,7 +136,7 @@ set(ARANGODB_CLIENT_PACKAGE_FILE_NAME "${CPACK_CLIENT_PACKAGE_NAME}-${CPACK_PACK
 
 set(CLIENT_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb-client)
 configure_file(cmake/packages/client/deb.txt ${CLIENT_BUILD_DIR}/CMakeLists.txt @ONLY)
-add_custom_target(package-arongodb-client
+add_custom_target(package-arangodb-client
   COMMAND ${CMAKE_COMMAND} .
   COMMENT "configuring client package environment"
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
@@ -143,7 +145,7 @@ add_custom_target(package-arongodb-client
   COMMENT "uploading client packages"
   WORKING_DIRECTORY ${CLIENT_BUILD_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-client)
+list(APPEND PACKAGES_LIST package-arangodb-client)
 
 
 add_custom_target(copy_deb_packages
@@ -175,10 +177,10 @@ list(APPEND CLEAN_PACKAGES_LIST remove_packages)
 set(DEBUG_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR}/packages/arangodb3-dbg)
 configure_file(cmake/packages/dbg/deb.txt ${DEBUG_BUILD_DIR}/CMakeLists.txt @ONLY)
 
-add_custom_target(package-arongodb-dbg
+add_custom_target(package-arangodb-dbg
   COMMAND ${CMAKE_COMMAND} . -DCMAKE_OBJCOPY=${CMAKE_OBJCOPY}
   COMMAND ${CMAKE_CPACK_COMMAND} -G DEB
   COMMAND ${CMAKE_COMMAND} -E copy ${ARANGODB_DBG_PACKAGE_FILE_NAME}.deb ${PROJECT_BINARY_DIR}
   WORKING_DIRECTORY ${DEBUG_BUILD_DIR})
 
-list(APPEND PACKAGES_LIST package-arongodb-dbg)
+list(APPEND PACKAGES_LIST package-arangodb-dbg)

@@ -198,6 +198,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
               caches.emplace(res);
             }
           }
+          // intentionally falls through
           case 1:
           default: {
             if (!caches.empty()) {

@@ -89,9 +89,12 @@ void Logger::setLogLevel(std::string const& levelName) {
     return;
   }
 
+  // if log level is "foo = bar", we better get rid of the whitespace
+  StringUtils::trimInPlace(v[0]);
   bool isGeneral = v.size() == 1;
 
   if (!isGeneral) {
+    StringUtils::trimInPlace(v[1]);
     l = v[1];
   }
 
@@ -421,7 +424,7 @@ void Logger::shutdown() {
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
       _loggingThread->wakeup();
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
     _loggingThread->beginShutdown();
     _loggingThread.reset();

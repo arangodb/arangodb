@@ -66,7 +66,7 @@ The request function takes the following options:
 * *followRedirect*: whether HTTP 3xx redirects should be followed. Default: `true`.
 * *maxRedirects*: the maximum number of redirects to follow. Default: `10`.
 * *encoding*: encoding to be used for the response body. If set to `null`, the response body will be returned as a `Buffer`. Default: `"utf-8"`.
-* *timeout*: number of milliseconds to wait for a response before aborting the request.
+* *timeout*: number of seconds to wait for a response before aborting the request.
 * *returnBodyOnError*: whether the response body should be returned even when the server response indicates an error. Default: `true`.
 
 The function returns a *Response* object with the following properties:

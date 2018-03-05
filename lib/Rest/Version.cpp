@@ -44,6 +44,10 @@
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
 
+#ifdef USE_IRESEARCH
+#include "3rdParty/iresearch/core/utils/version_defines.hpp"
+#endif
+
 using namespace arangodb::rest;
 
 std::map<std::string, std::string> Version::Values;
@@ -100,6 +104,9 @@ void Version::initialize() {
   Values["debug"] = "true";
 #else
   Values["debug"] = "false";
+#endif
+#if defined(ARCHITECTURE_OPTIMIZATIONS)
+  Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
@@ -182,6 +189,10 @@ void Version::initialize() {
   Values["fd-client-event-handler"] = "poll";
 #else
   Values["fd-client-event-handler"] = "select";
+#endif
+
+#ifdef USE_IRESEARCH
+  Values["iresearch-version"] = getIResearchVersion();
 #endif
   
   for (auto& it : Values) {
@@ -290,6 +301,15 @@ std::string Version::getICUVersion() {
 
   return icuVersionString;
 }
+
+#ifdef USE_IRESEARCH
+
+/// @brief get IResearch version
+std::string Version::getIResearchVersion() {
+  return IResearch_version;
+}
+
+#endif
 
 /// @brief get compiler
 std::string Version::getCompiler() {

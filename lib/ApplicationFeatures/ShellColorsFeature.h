@@ -35,6 +35,7 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
 
  private:
   bool useColors();
+  bool prepareConsole(); 
 
  public:
   static char const* SHELL_COLOR_RED;

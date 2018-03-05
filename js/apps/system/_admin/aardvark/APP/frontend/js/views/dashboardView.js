@@ -1227,7 +1227,9 @@
           hideStatistics: true
         }));
         // hide menu entries
-        $('.subMenuEntry').remove();
+        if (!frontendConfig.isCluster) {
+          $('#subNavigationBar .breadcrumb').html('');
+        }
         this.getNodeInfo();
       }
     }

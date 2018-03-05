@@ -45,6 +45,9 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
   // return all available storage engines
   static std::unordered_map<std::string, std::string> availableEngines();
 
+  // whether the engine has been started yet
+  bool hasStarted() const { return _hasStarted.load(); }
+
   static char const* engineName();
 
  public:
@@ -55,6 +58,7 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
  private:
   std::string _engine;
   std::string _engineFilePath;
+  std::atomic<bool> _hasStarted;
 };
 }
 

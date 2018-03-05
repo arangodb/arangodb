@@ -213,7 +213,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, false);
 
   if (opCursor->fail()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -243,7 +243,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   opCursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
-  });
+  }, 1000);
 
   resultBuilder.close();
   

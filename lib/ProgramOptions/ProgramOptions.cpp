@@ -62,7 +62,7 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
 
 // sets a value translator
 void ProgramOptions::setTranslator(
-    std::function<std::string(std::string const&, char const*)> translator) {
+    std::function<std::string(std::string const&, char const*)> const& translator) {
   _translator = translator;
 }
 

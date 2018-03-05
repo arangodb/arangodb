@@ -180,7 +180,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -338,7 +337,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -483,7 +481,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -647,7 +644,6 @@
 #define TRI_WRITE ::write
 #define TRI_FDOPEN(a, b) ::fdopen((a), (b))
 
-#define TRI_usleep_t useconds_t
 #define TRI_lseek_t off_t
 #define TRI_read_t size_t
 #define TRI_stat_t struct stat
@@ -752,7 +748,6 @@
 #define putenv _putenv
 #define sleep TRI_sleep
 #define tzset _tzset
-#define usleep TRI_usleep
 
 // available features
 
@@ -844,7 +839,6 @@ typedef unsigned char bool;
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
-#define TRI_usleep_t unsigned long
 #define TRI_lseek_t __int64
 #define TRI_read_t unsigned int
 #define TRI_stat_t struct _stat64

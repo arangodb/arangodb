@@ -24,11 +24,12 @@
 #ifndef ARANGOD_VOCBASE_LOGICAL_VIEW_H
 #define ARANGOD_VOCBASE_LOGICAL_VIEW_H 1
 
+#include "LogicalDataSource.h"
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
 
@@ -38,14 +39,29 @@ namespace velocypack {
 class Slice;
 }
 
+namespace aql {
+class ExecutionPlan;
+struct ExecutionContext;
+}
+
 class PhysicalView;
 
-class LogicalView {
+class LogicalView final: public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
   LogicalView(TRI_vocbase_t*, velocypack::Slice const&);
   ~LogicalView();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that a view will return
+  /// @return visitation was successful
+  //////////////////////////////////////////////////////////////////////////////
+  bool visitCollections(
+      std::function<bool(TRI_voc_cid_t)> const& visitor
+  ) const {
+    return _implementation && _implementation->visitCollections(visitor);
+  }
 
  protected:  // If you need a copy outside the class, use clone below.
   explicit LogicalView(LogicalView const&);
@@ -61,23 +77,13 @@ class LogicalView {
     return std::unique_ptr<LogicalView>(p);
   }
 
-  inline TRI_voc_cid_t id() const { return _id; }
-
-  TRI_voc_cid_t planId() const;
-
-  std::string type() const { return _type; }
-  std::string name() const;
-  std::string dbName() const;
-
-  bool deleted() const;
-  void setDeleted(bool);
-
   PhysicalView* getPhysical() const { return _physical.get(); }
   ViewImplementation* getImplementation() const {
     return _implementation.get();
   }
 
-  void drop();
+  virtual void drop() override;
+  virtual Result rename(std::string&& newName, bool doSync) override;
 
   // SECTION: Serialization
   velocypack::Builder toVelocyPack(bool includeProperties = false,
@@ -85,8 +91,6 @@ class LogicalView {
 
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;
-
-  inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
   // Update this view.
   arangodb::Result updateProperties(velocypack::Slice const&, bool, bool);
@@ -106,23 +110,6 @@ class LogicalView {
 
  private:
   // SECTION: Meta Information
-  //
-  // @brief Local view id
-  TRI_voc_cid_t const _id;
-
-  // @brief Global view id
-  TRI_voc_cid_t const _planId;
-
-  // @brief view type
-  std::string const _type;
-
-  // @brief view Name
-  std::string _name;
-
-  bool _isDeleted;
-
-  TRI_vocbase_t* _vocbase;
-
   std::unique_ptr<PhysicalView> _physical;
   std::unique_ptr<ViewImplementation> _implementation;
 

@@ -25,6 +25,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Replication/InitialSyncer.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
 
 struct TRI_vocbase_t;
@@ -54,7 +55,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl);
+  RocksDBReplicationContext* createContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -72,7 +73,7 @@ class RocksDBReplicationManager {
 
   RocksDBReplicationContext* find(
       RocksDBReplicationId, bool& isBusy,
-      double ttl = RocksDBReplicationContext::DefaultTTL);
+      double ttl = InitialSyncer::defaultBatchTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a context for later use
@@ -143,10 +144,20 @@ class RocksDBReplicationContextGuard {
   
   RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
                                  RocksDBReplicationContext* ctx)
-    : _manager(manager), _ctx(ctx) {}
+    : _manager(manager), _ctx(ctx) {
+    if (_ctx != nullptr) {
+      TRI_ASSERT(_ctx->isUsed());
+    }
+  }
+
+  RocksDBReplicationContextGuard(RocksDBReplicationContextGuard&& other)
+    noexcept : _manager(other._manager), _ctx(other._ctx) {
+    other._ctx = nullptr;
+  } 
   
   ~RocksDBReplicationContextGuard()  {
     if (_ctx != nullptr) {
+      TRI_ASSERT(_ctx->isUsed());
       _manager->release(_ctx);
     }
   }

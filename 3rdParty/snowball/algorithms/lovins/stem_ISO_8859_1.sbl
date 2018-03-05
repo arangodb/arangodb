@@ -1,0 +1,208 @@
+
+stringescapes {}
+
+routines (
+   A B C D E F G H I J K L M N O P Q R S T U V W X Y Z AA BB CC
+
+   endings
+
+   undouble respell
+)
+
+externals ( stem )
+
+backwardmode (
+
+  /* Lovins' conditions A, B ... CC, as given in her Appendix B, where
+     a test for a two letter prefix ('test hop 2') is implicitly
+     assumed. Note that 'e' next 'u' corresponds to her u*e because
+     Snowball is scanning backwards. */
+
+  define A  as ( hop 2 )
+  define B  as ( hop 3 )
+  define C  as ( hop 4 )
+  define D  as ( hop 5 )
+  define E  as ( test hop 2 not 'e' )
+  define F  as ( test hop 3 not 'e' )
+  define G  as ( test hop 3 'f' )
+  define H  as ( test hop 2 't' or 'll' )
+  define I  as ( test hop 2 not 'o' not 'e' )
+  define J  as ( test hop 2 not 'a' not 'e' )
+  define K  as ( test hop 3 'l' or 'i' or ('e' next 'u') )
+  define L  as ( test hop 2 not 'u' not 'x' not ('s' not 'o') )
+  define M  as ( test hop 2 not 'a' not 'c' not 'e' not 'm' )
+  define N  as ( test hop 3 ( hop 2 not 's' or hop 2 ) )
+  define O  as ( test hop 2 'l' or 'i' )
+  define P  as ( test hop 2 not 'c' )
+  define Q  as ( test hop 2 test hop 3 not 'l' not 'n' )
+  define R  as ( test hop 2 'n' or 'r' )
+  define S  as ( test hop 2 'dr' or ('t' not 't') )
+  define T  as ( test hop 2 's' or ('t' not 'o') )
+  define U  as ( test hop 2 'l' or 'm' or 'n' or 'r' )
+  define V  as ( test hop 2 'c' )
+  define W  as ( test hop 2 not 's' not 'u' )
+  define X  as ( test hop 2 'l' or 'i' or ('e' next 'u') )
+  define Y  as ( test hop 2 'in' )
+  define Z  as ( test hop 2 not 'f' )
+  define AA as ( test hop 2 among ( 'd' 'f' 'ph' 'th' 'l' 'er' 'or'
+                                    'es' 't' ) )
+  define BB as ( test hop 3 not 'met' not 'ryst' )
+  define CC as ( test hop 2 'l' )
+
+
+  /* The system of endings, as given in Appendix A. */
+
+  define endings as (
+    [substring] among(
+    'alistically' B 'arizability' A 'izationally' B
+
+     'antialness' A  'arisations' A  'arizations' A  'entialness' A
+
+      'allically' C   'antaneous' A   'antiality' A   'arisation' A
+      'arization' A   'ationally' B   'ativeness' A   'eableness' E
+      'entations' A   'entiality' A   'entialize' A   'entiation' A
+      'ionalness' A   'istically' A   'itousness' A   'izability' A
+      'izational' A
+
+       'ableness' A    'arizable' A    'entation' A    'entially' A
+       'eousness' A    'ibleness' A    'icalness' A    'ionalism' A
+       'ionality' A    'ionalize' A    'iousness' A    'izations' A
+       'lessness' A
+
+        'ability' A     'aically' A     'alistic' B     'alities' A
+        'ariness' E     'aristic' A     'arizing' A     'ateness' A
+        'atingly' A     'ational' B     'atively' A     'ativism' A
+        'elihood' E     'encible' A     'entally' A     'entials' A
+        'entiate' A     'entness' A     'fulness' A     'ibility' A
+        'icalism' A     'icalist' A     'icality' A     'icalize' A
+        'ication' G     'icianry' A     'ination' A     'ingness' A
+        'ionally' A     'isation' A     'ishness' A     'istical' A
+        'iteness' A     'iveness' A     'ivistic' A     'ivities' A
+        'ization' F     'izement' A     'oidally' A     'ousness' A
+
+         'aceous' A      'acious' B      'action' G      'alness' A
+         'ancial' A      'ancies' A      'ancing' B      'ariser' A
+         'arized' A      'arizer' A      'atable' A      'ations' B
+         'atives' A      'eature' Z      'efully' A      'encies' A
+         'encing' A      'ential' A      'enting' C      'entist' A
+         'eously' A      'ialist' A      'iality' A      'ialize' A
+         'ically' A      'icance' A      'icians' A      'icists' A
+         'ifully' A      'ionals' A      'ionate' D      'ioning' A
+         'ionist' A      'iously' A      'istics' A      'izable' E
+         'lessly' A      'nesses' A      'oidism' A
+
+          'acies' A       'acity' A       'aging' B       'aical' A
+          'alist' A       'alism' B       'ality' A       'alize' A
+          'allic'BB       'anced' B       'ances' B       'antic' C
+          'arial' A       'aries' A       'arily' A       'arity' B
+          'arize' A       'aroid' A       'ately' A       'ating' I
+          'ation' B       'ative' A       'ators' A       'atory' A
+          'ature' E       'early' Y       'ehood' A       'eless' A
+          'elity' A       'ement' A       'enced' A       'ences' A
+          'eness' E       'ening' E       'ental' A       'ented' C
+          'ently' A       'fully' A       'ially' A       'icant' A
+          'ician' A       'icide' A       'icism' A       'icist' A
+          'icity' A       'idine' I       'iedly' A       'ihood' A
+          'inate' A       'iness' A       'ingly' B       'inism' J
+          'inity'CC       'ional' A       'ioned' A       'ished' A
+          'istic' A       'ities' A       'itous' A       'ively' A
+          'ivity' A       'izers' F       'izing' F       'oidal' A
+          'oides' A       'otide' A       'ously' A
+
+           'able' A        'ably' A        'ages' B        'ally' B
+           'ance' B        'ancy' B        'ants' B        'aric' A
+           'arly' K        'ated' I        'ates' A        'atic' B
+           'ator' A        'ealy' Y        'edly' E        'eful' A
+           'eity' A        'ence' A        'ency' A        'ened' E
+           'enly' E        'eous' A        'hood' A        'ials' A
+           'ians' A        'ible' A        'ibly' A        'ical' A
+           'ides' L        'iers' A        'iful' A        'ines' M
+           'ings' N        'ions' B        'ious' A        'isms' B
+           'ists' A        'itic' H        'ized' F        'izer' F
+           'less' A        'lily' A        'ness' A        'ogen' A
+           'ward' A        'wise' A        'ying' B        'yish' A
+
+            'acy' A         'age' B         'aic' A         'als'BB
+            'ant' B         'ars' O         'ary' F         'ata' A
+            'ate' A         'eal' Y         'ear' Y         'ely' E
+            'ene' E         'ent' C         'ery' E         'ese' A
+            'ful' A         'ial' A         'ian' A         'ics' A
+            'ide' L         'ied' A         'ier' A         'ies' P
+            'ily' A         'ine' M         'ing' N         'ion' Q
+            'ish' C         'ism' B         'ist' A         'ite'AA
+            'ity' A         'ium' A         'ive' A         'ize' F
+            'oid' A         'one' R         'ous' A
+
+             'ae' A          'al'BB          'ar' X          'as' B
+             'ed' E          'en' F          'es' E          'ia' A
+             'ic' A          'is' A          'ly' B          'on' S
+             'or' T          'um' U          'us' V          'yl' R
+           '{'}s' A        's{'}' A
+
+              'a' A           'e' A           'i' A           'o' A
+              's' W           'y' B
+
+        (delete)
+    )
+  )
+
+  /* Undoubling is rule 1 of appendix C. */
+
+  define undouble as (
+    test substring among ('bb' 'dd' 'gg' 'll' 'mm' 'nn' 'pp' 'rr' 'ss'
+                          'tt')
+    [next] delete
+  )
+
+  /* The other appendix C rules can be done together. */
+
+  define respell as (
+    [substring] among (
+      'iev'  (<-'ief')
+      'uct'  (<-'uc')
+      'umpt' (<-'um')
+      'rpt'  (<-'rb')
+      'urs'  (<-'ur')
+      'istr' (<-'ister')
+      'metr' (<-'meter')
+      'olv'  (<-'olut')
+      'ul'   (not 'a' not 'i' not 'o' <-'l')
+      'bex'  (<-'bic')
+      'dex'  (<-'dic')
+      'pex'  (<-'pic')
+      'tex'  (<-'tic')
+      'ax'   (<-'ac')
+      'ex'   (<-'ec')
+      'ix'   (<-'ic')
+      'lux'  (<-'luc')
+      'uad'  (<-'uas')
+      'vad'  (<-'vas')
+      'cid'  (<-'cis')
+      'lid'  (<-'lis')
+      'erid' (<-'eris')
+      'pand' (<-'pans')
+      'end'  (not 's' <-'ens')
+      'ond'  (<-'ons')
+      'lud'  (<-'lus')
+      'rud'  (<-'rus')
+      'her'  (not 'p' not 't' <-'hes')
+      'mit'  (<-'mis')
+      'ent'  (not 'm' <-'ens')
+        /* 'ent' was 'end' in the 1968 paper - a typo. */
+      'ert'  (<-'ers')
+      'et'   (not 'n' <-'es')
+      'yt'   (<-'ys')
+      'yz'   (<-'ys')
+    )
+  )
+)
+
+define stem as (
+
+  backwards (
+    do endings
+    do undouble
+    do respell
+  )
+)
+

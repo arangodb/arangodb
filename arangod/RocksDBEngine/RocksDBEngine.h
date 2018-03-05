@@ -47,10 +47,11 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBCounterManager;
 class RocksDBKey;
 class RocksDBLogValue;
+class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
+class RocksDBSettingsManager;
 class RocksDBThrottle;    // breaks tons if RocksDBThrottle.h included here
 class RocksDBVPackComparator;
 class RocksDBWalAccess;
@@ -71,6 +72,8 @@ class RocksDBEngine final : public StorageEngine {
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer*);
   ~RocksDBEngine();
+  
+public:
 
   // inherited from ApplicationFeature
   // ---------------------------------
@@ -87,6 +90,9 @@ class RocksDBEngine final : public StorageEngine {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+
+  // minimum timeout for the synchronous replication
+  double minimumSyncReplicationTimeout() const override { return 1.0; }
 
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
@@ -143,8 +149,7 @@ class RocksDBEngine final : public StorageEngine {
                                           bool doSync) override;
   Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                         arangodb::LogicalCollection* col,
-                        std::string const& keysId, std::string const& cid,
-                        std::string const& collectionName, TRI_voc_tick_t maxTick) override;
+                        std::string const& keysId) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
                            velocypack::Builder& builder) override;
   Result createTickRanges(velocypack::Builder& builder) override;
@@ -163,6 +168,7 @@ class RocksDBEngine final : public StorageEngine {
   void waitForSyncTimeout(double) override {}
   Result flushWal(bool waitForSync, bool waitForCollector,
                   bool writeShutdownFile) override;
+  void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;
@@ -205,6 +211,12 @@ class RocksDBEngine final : public StorageEngine {
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*) override;
 
+  // asks the storage engine to persist renaming of a view
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameView(TRI_vocbase_t* vocbase,
+                              std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& oldName) override;
+
   arangodb::Result persistView(TRI_vocbase_t* vocbase,
                                arangodb::LogicalView const*) override;
 
@@ -243,14 +255,27 @@ class RocksDBEngine final : public StorageEngine {
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
-  std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
-      uint64_t) const;
+  void addIndexMapping(uint64_t objectId, TRI_voc_tick_t,
+                       TRI_voc_cid_t, TRI_idx_iid_t);
+  void removeIndexMapping(uint64_t);
+
+  // Identifies a collection
+  typedef std::pair<TRI_voc_tick_t, TRI_voc_cid_t> CollectionPair;
+  typedef  std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> IndexTriple;
+  CollectionPair mapObjectToCollection(uint64_t) const;
+  IndexTriple mapObjectToIndex(uint64_t) const;
 
   std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
+  // management methods for synchronizing with external persistent stores
+  virtual TRI_voc_tick_t currentTick() const override;
+  virtual TRI_voc_tick_t releasedTick() const override;
+  virtual void releaseTick(TRI_voc_tick_t) override;
+
  private:
+  void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
   int saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
@@ -279,9 +304,9 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   /// @brief recovery manager
-  RocksDBCounterManager* counterManager() const {
-    TRI_ASSERT(_counterManager);
-    return _counterManager.get();
+  RocksDBSettingsManager* settingsManager() const {
+    TRI_ASSERT(_settingsManager);
+    return _settingsManager.get();
   }
 
   /// @brief manages the ongoing dump clients
@@ -289,6 +314,11 @@ class RocksDBEngine final : public StorageEngine {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
   }
+
+  static arangodb::Result registerRecoveryHelper(
+      std::shared_ptr<RocksDBRecoveryHelper> helper);
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
+      recoveryHelpers();
 
  private:
   /// single rocksdb database used in this storage engine
@@ -305,7 +335,7 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// @brief tracks the count of documents in collections
-  std::unique_ptr<RocksDBCounterManager> _counterManager;
+  std::unique_ptr<RocksDBSettingsManager> _settingsManager;
   /// @brief Local wal access abstraction
   std::unique_ptr<RocksDBWalAccess> _walAccess;
 
@@ -318,20 +348,30 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _intermediateCommitCount;  // limit of transaction count
                                       // for intermediate commit
 
-  mutable basics::ReadWriteLock _collectionMapLock;
-  std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>
-      _collectionMap;
+  // hook-ins for recovery process
+  static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
+  mutable basics::ReadWriteLock _mapLock;
+  std::unordered_map<uint64_t, CollectionPair> _collectionMap;
+  std::unordered_map<uint64_t, IndexTriple> _indexMap;
+
+  mutable basics::ReadWriteLock _walFileLock;
   // which WAL files can be pruned when
   std::unordered_map<std::string, double> _prunableWalFiles;
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
 
-  // code to pace ingest rate of writes to reduce chances of compactions getting
-  //  too far behind and blocking incoming writes
-  std::shared_ptr<RocksDBThrottle> _listener;
+  // do not release walfiles containing writes later than this
+  TRI_voc_tick_t _releasedTick;
 
+  // use write-throttling
+  bool _useThrottle;
+
+  // code to pace ingest rate of writes to reduce chances of compactions getting
+  // too far behind and blocking incoming writes
+  // (will only be set if _useThrottle is true)
+  std::shared_ptr<RocksDBThrottle> _listener;
 };
 }  // namespace arangodb
 #endif

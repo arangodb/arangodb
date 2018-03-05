@@ -114,7 +114,7 @@ var updateFishbowlFromZip = function (filename) {
     var reSub = /(.*)\.json$/;
     var f, match, service, desc;
 
-    for (i = 0;  i < m.length;  ++i) {
+    for (i = 0; i < m.length; ++i) {
       f = m[i];
       match = reSub.exec(f);
       if (match === null) {
@@ -195,7 +195,7 @@ var searchJson = function (name) {
     name = name.replace(/[^a-zA-Z0-9]/g, ' ');
 
     // get results by looking in "description" attribute
-    docs = db._query("FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) RETURN doc", { name, "@collection" : fishbowl.name() }).toArray();
+    docs = db._query('FOR doc IN @@collection FILTER CONTAINS(doc.description, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
 
     // build a hash of keys
     var i;
@@ -206,7 +206,7 @@ var searchJson = function (name) {
     }
 
     // get results by looking in "name" attribute
-    var docs2 = db._query("FOR doc IN @@collection FILTER CONTAINS(doc.name, @name) RETURN doc", { name, "@collection" : fishbowl.name() }).toArray();
+    var docs2 = db._query('FOR doc IN @@collection FILTER CONTAINS(doc.name, @name) RETURN doc', { name, '@collection': fishbowl.name() }).toArray();
 
     // merge the two result sets, avoiding duplicates
     for (i = 0; i < docs2.length; ++i) {
@@ -265,6 +265,7 @@ function extractMaxVersion (matchEngine, versionDoc) {
       continue;
     }
     let versionRange = info.engines.arangodb;
+
     if (!versionRange || semver.outside(serverVersion, versionRange, '<')) {
       // Explicitly backwards-incompatible with the server version: ignore
       continue;
@@ -294,16 +295,20 @@ function availableJson (matchEngine) {
       let serverVersion = plainServerVersion();
       let versionInfo = doc.versions[latestVersion];
       let legacy = Boolean(
-        versionInfo.engines
-        && versionInfo.engines.arangodb
-        && !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
+        versionInfo.engines &&
+        versionInfo.engines.arangodb &&
+        !semver.satisfies(serverVersion, versionInfo.engines.arangodb)
       );
       let res = {
         name: doc.name,
         description: doc.description || '',
         author: doc.author || '',
         latestVersion,
-      legacy};
+        legacy,
+        location: doc.versions[latestVersion].location,
+        license: doc.license,
+        categories: doc.keywords
+      };
 
       result.push(res);
     }
@@ -409,7 +414,6 @@ var infoJson = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var installationInfo = function (serviceInfo) {
-
   // TODO Validate
   let infoSplit = serviceInfo.split(':');
   let name = infoSplit[0];

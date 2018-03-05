@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
-/*global applicationContext */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief An example Foxx-Application for ArangoDB
@@ -29,11 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  'use strict';
+  "use strict";
 
-  // initialize a new FoxxApplication
-  var FoxxApplication = require("@arangodb/foxx").Controller;
-  var controller = new FoxxApplication(applicationContext);
+  const createRouter = require('@arangodb/foxx/router');
+  const router = createRouter();
+
+  module.context.use(router);
 
   // include console module so we can log something (in the server's log)
   var console = require("console");
@@ -42,7 +43,7 @@
   // we also need this module for custom responses
   var actions = require("@arangodb/actions");
 
-  // use joi for validation 
+  // use joi for validation
   var joi = require("joi");
 
   // our app is about the following Aztec deities:
@@ -79,10 +80,10 @@
 
   // install index route (this is the default route mentioned in manifest.json)
   // this route will create an HTML overview page
-  controller.get('/index', function (req, res) {
-    res.contentType = "text/html";
+  router.get('/index', function (req, res) {
+    res.set("content-type", "text/html");
 
-    var body = "<h1>" + applicationContext.name + " (" + applicationContext.version + ")</h1>";
+    var body = "<h1>" + module.context.service.manifest.name + " (" + module.context.service.manifest.version + ")</h1>";
     body += "<h2>an example application demoing a few Foxx features</h2>";
 
     deities.forEach(function(deity) {
@@ -96,41 +97,31 @@
   .summary("prints an overview page");
 
   // install route to return a random deity name in JSON
-  controller.get('/random', function (req, res) {
+  router.get('/random', function (req, res) {
     var idx = Math.round(Math.random() * (deities.length - 1));
     res.json({ name: deities[idx] });
   })
   .summary("returns a random deity name");
-  
+
   // install deity-specific route for summoning
   // deity name is passed as part of the URL
-  controller.get('/:deity/summon', function (req, res) {
-    var deity = req.params("deity");
+  router.get('/:deity/summon', function (req, res) {
+    var deity = req.pathParams.deity;
 
     console.log("request to summon %s", deity);
 
     if (deities.indexOf(deity) === -1) {
       // unknown deity
-      throw new ArangoError();
+      res.throw(404, "The requested deity could not be found");
     }
 
     console.log("summoning %s", deity);
-    
+
     res.json({ name: deity, summoned: true });
   })
   .summary("summons the requested deity")
-  .pathParam("deity", {
-    type: joi.string().required()
-  })
-  .errorResponse(
-    Error, actions.HTTP_NOT_FOUND, "The requested deity could not be found", function(e) {
-      return {
-        error: true,
-        code: actions.HTTP_NOT_FOUND,
-        errorMessage: "The requested deity could not be found"
-      };
-    }
+  .pathParam("deity",
+    joi.string().required()
   );
 
 }());
-

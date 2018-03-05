@@ -1870,6 +1870,12 @@ function shardDistribution () {
   };
 }
 
+function collectionShardDistribution (name) {
+  return {
+    results: require('internal').getCollectionShardDistribution(name)
+  };
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief move shard
 // /////////////////////////////////////////////////////////////////////////////
@@ -2154,6 +2160,7 @@ exports.wait = waitForDistributedResponse;
 exports.endpointToURL = endpointToURL;
 exports.synchronizeOneShard = synchronizeOneShard;
 exports.shardDistribution = shardDistribution;
+exports.collectionShardDistribution = collectionShardDistribution;
 exports.rebalanceShards = rebalanceShards;
 exports.moveShard = moveShard;
 exports.supervisionState = supervisionState;

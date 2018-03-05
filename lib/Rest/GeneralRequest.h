@@ -83,7 +83,7 @@ class GeneralRequest {
         _protocol(""),
         _connectionInfo(connectionInfo),
         _clientTaskId(0),
-        _authorized(false),
+        _authenticated(false),
         _requestContext(nullptr),
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
@@ -111,9 +111,9 @@ class GeneralRequest {
   /// @brief User exists on this server or on external auth system
   ///  and password was checked. Must not imply any access rights
   ///  to any specific resource
-  bool authorized() const { return _authorized; }
-  void setAuthorized(bool a) { _authorized = a; }
-
+  bool authenticated() const { return _authenticated; }
+  void setAuthenticated(bool a) { _authenticated = a; }
+  
   // @brief User sending this request
   TEST_VIRTUAL std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
@@ -196,6 +196,10 @@ class GeneralRequest {
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return std::make_shared<VPackBuilder>(payload(&optionsWithUniquenessCheck), &optionsWithUniquenessCheck);
   };
+  
+  std::shared_ptr<VPackBuilder> toVelocyPackBuilderPtrNoUniquenessChecks() {
+    return std::make_shared<VPackBuilder>(payload());
+  };
 
   ContentType contentType() const { return _contentType; }
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
@@ -216,7 +220,7 @@ class GeneralRequest {
   ConnectionInfo _connectionInfo;
   uint64_t _clientTaskId;
   std::string _databaseName;
-  bool _authorized;
+  bool _authenticated;
   std::string _user;
 
   // request context

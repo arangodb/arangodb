@@ -1,9 +1,7 @@
 /*jshint maxlen: 240 */
 /*global require */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from errors.dat
 
 (function () {
   "use strict";
@@ -178,7 +176,7 @@
     "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR" : { "code" : 1493, "message" : "conflicting replication factor with distributeShardsLike parameter assignment" },
     "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS" : { "code" : 1494, "message" : "conflicting shard number with distributeShardsLike parameter assignment" },
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
-    "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "no leader" },
+    "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -220,6 +218,8 @@
     "ERROR_QUERY_BAD_JSON_PLAN"    : { "code" : 1590, "message" : "bad execution plan JSON" },
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
+    "ERROR_QUERY_USER_ASSERT"      : { "code" : 1593, "message" : "%s" },
+    "ERROR_QUERY_USER_WARN"        : { "code" : 1594, "message" : "%s" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
     "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
     "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1650, "message" : "internal transaction error" },

@@ -58,6 +58,9 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
+  '   - `minPort`: minimum port number to use',
+  '   - `maxPort`: maximum port number to use',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -115,6 +118,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'arangosearch':false,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -468,15 +472,7 @@ function unitTest (cases, options) {
       } else if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
-        let line = 'Unknown test "' + which + '"\nKnown tests are: ';
-        let sep = '';
-
-        Object.keys(testFuncs).map(function (key) {
-          line += sep + key;
-          sep = ', ';
-        });
-
-        print(line);
+        print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).join(', '));
 
         return {
           status: false
@@ -488,6 +484,21 @@ function unitTest (cases, options) {
   let globalStatus = true;
   let results = {};
   let cleanup = true;
+    
+  // real ugly hack. there are some suites which are just placeholders
+  // for other suites
+  caselist = (function() { 
+    let flattened = [];
+    for (let n = 0; n < caselist.length; ++n) {
+      let w = testFuncs[caselist[n]];
+      if (Array.isArray(w)) {
+        w.forEach(function(sub) { flattened.push(sub); });
+      } else {
+        flattened.push(caselist[n]);
+      }
+    }
+    return flattened;
+  })();
 
   // running all tests
   for (let n = 0; n < caselist.length; ++n) {
@@ -562,4 +573,3 @@ exports.unitTest = unitTest;
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
-

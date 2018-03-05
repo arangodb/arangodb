@@ -1,0 +1,2 @@
+arangosh&gt; db._view(<span class="hljs-string">"unknown"</span>);
+<span class="hljs-literal">null</span>

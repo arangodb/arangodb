@@ -260,7 +260,6 @@ typedef struct {
 
 // must be included here after struct definition
 #include <RocksDBEngine/RocksDBCommon.h>
-#include <RocksDBEngine/RocksDBCounterManager.h>
 #include <RocksDBEngine/RocksDBEngine.h>
 #include <RocksDBEngine/RocksDBGeoIndexImpl.h>
 #include <RocksDBEngine/RocksDBKey.h>
@@ -635,7 +634,7 @@ void GeoIndex_reset(GeoIdx* gi, RocksDBMethods* rocksMethods) {
   TRI_ASSERT(gi != nullptr);
   TRI_ASSERT(gix->nextFreePot >= 2);
   TRI_ASSERT(gix->nextFreeSlot >= 1);
-  
+
   GeoPot gp;
   gp.LorLeaf = 0;    // leaf pot
   gp.RorPoints = 0;  // with no points in it!
@@ -646,7 +645,7 @@ void GeoIndex_reset(GeoIdx* gi, RocksDBMethods* rocksMethods) {
   for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
   PotWrite(gix, rocksMethods, 1, &gp);  // pot 1 is root
 }
-  
+
 /* =================================================== */
 /*               GeoIndex_free routine                 */
 /* Destroys the GeoIndex, and frees all the memory that*/

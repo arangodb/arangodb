@@ -68,6 +68,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
   ConnectionStatistics::SET_START(_connectionStatistics);
 
   if (!skipInit) {
+    TRI_ASSERT(_peer != nullptr);
     _peer->setNonBlocking(true);
     if (!_peer->handshake()) {
       _closedSend = true;
@@ -84,7 +85,7 @@ SocketTask::~SocketTask() {
 
   MUTEX_LOCKER(locker, _lock);
   boost::system::error_code err;
-      
+
   if (_keepAliveTimerActive) {
     _keepAliveTimer.cancel(err);
   }
@@ -93,6 +94,8 @@ SocketTask::~SocketTask() {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to cancel _keepAliveTimer";
   }
 
+  // _peer could be nullptr if it was moved out of a HttpCommTask, during
+  // upgrade to a VstCommTask.
   if (_peer) {
     _peer->close(err);
   }
@@ -175,6 +178,9 @@ void SocketTask::writeWriteBuffer() {
   size_t total = _writeBuffer._buffer->length();
   size_t written = 0;
 
+  TRI_ASSERT(!_abandoned);
+  TRI_ASSERT(_peer != nullptr);
+
   if (!_peer->isEncrypted()) {
     boost::system::error_code err;
     err.clear();
@@ -237,7 +243,9 @@ void SocketTask::writeWriteBuffer() {
                         if (completedWriteBuffer()) {
                           _loop._scheduler->post([self, this]() {
                             MUTEX_LOCKER(locker, _lock);
-                            writeWriteBuffer();
+                            if(!_abandoned){
+                              writeWriteBuffer();
+                            }
                           });
                         }
                       }
@@ -247,13 +255,13 @@ void SocketTask::writeWriteBuffer() {
 
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   _lock.assertLockedByCurrentThread();
-  
+
   StringBuffer* buffer = nullptr;
   if (!_stringBuffers.empty()) {
     buffer = _stringBuffers.back();
     TRI_ASSERT(buffer != nullptr);
     TRI_ASSERT(buffer->length() == 0);
-    
+
     size_t const n = buffer->capacity();
     if (n < length) {
       if (buffer->reserve(length) != TRI_ERROR_NO_ERROR) {
@@ -264,14 +272,14 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   } else {
     buffer = new StringBuffer(length, false);
   }
-  
+
   TRI_ASSERT(buffer != nullptr);
-  
+
   // still check for safety reasons
   if (buffer->capacity() >= length) {
     return buffer;
   }
-  
+
   delete buffer;
   THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
@@ -279,13 +287,13 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   TRI_ASSERT(buffer != nullptr);
   _lock.assertLockedByCurrentThread();
-  
+
   if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
     // don't keep too many buffers around and don't hog too much memory
     delete buffer;
     return;
   }
-  
+
   try {
     buffer->reset();
     _stringBuffers.emplace_back(buffer);
@@ -326,13 +334,14 @@ void SocketTask::closeStream() {
 void SocketTask::closeStreamNoLock() {
   _lock.assertLockedByCurrentThread();
 
-  boost::system::error_code err;
+  bool mustCloseSend = !_closedSend;
+  bool mustCloseReceive = !_closedReceive;
 
-  bool closeSend = !_closedSend;
-  bool closeReceive = !_closedReceive;
-  
-  _peer->shutdown(err, closeSend, closeReceive);
-  
+  if(_peer != nullptr) {
+    boost::system::error_code err; //an error we do not care about
+    _peer->shutdown(err, mustCloseSend, mustCloseReceive);
+  }
+
   _closedSend = true;
   _closedReceive = true;
   _closeRequested = false;
@@ -424,9 +433,10 @@ bool SocketTask::trySyncRead() {
   if (_abandoned) {
     return false;
   }
-  
-  boost::system::error_code err;
 
+
+  boost::system::error_code err;
+  TRI_ASSERT(_peer != nullptr);
   if (0 == _peer->available(err)) {
     return false;
   }
@@ -464,14 +474,27 @@ bool SocketTask::trySyncRead() {
 }
 
 // caller must hold the _lock
+// runs until _closeRequested or ProcessRead Returns false is true or task becomes abandoned
+// returns bool - true value signals that processRead should continue to run (new read)
 bool SocketTask::processAll() {
   _lock.assertLockedByCurrentThread();
 
   double startTime = StatisticsFeature::time();
+  Result res;
+  bool rv = true;
+  while (rv) {
+    res = catchVoidToResult([&]() -> void {
+      rv = processRead(startTime);
+    });
 
-  while (processRead(startTime)) {
     if (_abandoned) {
       return false;
+    }
+
+    if(res.fail()){
+      LOG_TOPIC(ERR, Logger::COMMUNICATION) << res.errorMessage();
+      _closeRequested = true;
+      break;
     }
 
     if (_closeRequested) {
@@ -487,11 +510,11 @@ bool SocketTask::processAll() {
 // will acquire the _lock
 void SocketTask::asyncReadSome() {
   MUTEX_LOCKER(locker, _lock);
-    
   if (_abandoned) {
     return;
   }
 
+  TRI_ASSERT(_peer != nullptr);
   if (!_peer->isEncrypted()) {
     try {
       size_t const MAX_DIRECT_TRIES = 2;
@@ -537,6 +560,7 @@ void SocketTask::asyncReadSome() {
     // has been called! Otherwise ASIO will get confused and write to
     // the wrong position.
 
+    TRI_ASSERT(_peer != nullptr);
     _peer->asyncRead(
         boost::asio::buffer(_readBuffer.end(), READ_BLOCK_SIZE),
         [self, this](const boost::system::error_code& ec,

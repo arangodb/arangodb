@@ -129,6 +129,13 @@ class RequestStatistics {
       stat->_requestEnd = StatisticsFeature::time();
     }
   }
+  
+  static void SET_REQUEST_START_END(RequestStatistics* stat) {
+    if (stat != nullptr) {
+      stat->_requestStart = StatisticsFeature::time();
+      stat->_requestEnd = StatisticsFeature::time();
+    }
+  }
 
   static double ELAPSED_SINCE_READ_START(RequestStatistics* stat) {
     if (stat != nullptr) {

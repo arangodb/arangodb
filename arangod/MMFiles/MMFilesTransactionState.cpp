@@ -95,7 +95,7 @@ Result MMFilesTransactionState::beginTransaction(transaction::Hints hints) {
           return TRI_ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT;
         }
 
-        usleep(WaitTime);
+        std::this_thread::sleep_for(std::chrono::microseconds(WaitTime));
       }
     }
 

@@ -8,7 +8,7 @@ out="$1"
 
 echo "" > $out
 
-progs="arangobench arangosh arangoimp arangodump arangorestore arangod"
+progs="arangobench arangosh arangoimport arangodump arangorestore arangod"
 
 for progname in $progs
   do
@@ -16,9 +16,9 @@ for progname in $progs
     # check if the executable exists
     if [[ -f "build/bin/$progname" ]]; then
       executable="build/bin/$progname"
-  
+
       # setup the help command string
-      command="--help-all" 
+      command="--help-all"
 
       # set up the list of completions for the executable
       echo "# completions for $progname" >> "$out"

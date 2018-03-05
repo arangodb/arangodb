@@ -1,0 +1,255 @@
+PROJECT(snowball C)
+
+cmake_minimum_required(VERSION 2.8)
+
+SET(SNOWBALL_VERSION_MAJOR 1)
+SET(SNOWBALL_VERSION_MINOR 0)
+SET(SNOWBALL_VERSION_PATCH 0)
+
+SET(SNOWBALL_VERSION         "${SNOWBALL_VERSION_MAJOR}.${SNOWBALL_VERSION_MINOR}.${SNOWBALL_VERSION_PATCH}")
+SET(SNOWBALL_MASTER_SITE_URL "http://snowball.tartarus.org/")
+
+OPTION(ENABLE_OPTIMIZATION "Enable optimization [default: OFF]"                 OFF)
+OPTION(ENABLE_STATIC       "Enable static compiling [default: OFF]"             OFF)
+OPTION(DEBUG_MODE          "Enable debug output [default: ON]"                  ON)
+
+INCLUDE(CheckCCompilerFlag)
+INCLUDE(FindPerl)
+
+IF(NOT PERL_FOUND)
+	MESSAGE(FATAL "Perl required to build snowball")
+ENDIF()
+
+IF(NOT STEMMER_SOURCE_DIR)
+	MESSAGE(FATAL "Source directory required to build snowball")
+ENDIF()
+
+SET(CMAKE_CURRENT_SOURCE_DIR "${STEMMER_SOURCE_DIR}")
+
+IF(CMAKE_SYSTEM_NAME STREQUAL "SunOS")
+ 	IF(NOT BUILD_CPU_MODE)
+	 	SET (BUILD_CPU_MODE "32")
+	ENDIF()
+	
+	IF("${CMAKE_C_COMPILER_ID}" MATCHES SunPro)
+		SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Xa -xregs=no%frameptr -xstrconst -xc99")
+		SET(SUN_BUILD32 "-xtarget=generic")
+		SET(SUN_BUILD64 "-xtarget=generic64")
+		IF(ENABLE_OPTIMIZATION MATCHES "ON")
+			SET(CMAKE_C_OPT_FLAGS "-fast -xdepend")
+		ELSE(ENABLE_OPTIMIZATION MATCHES "ON")
+			SET(CMAKE_C_OPT_FLAGS "-xO0")
+		ENDIF(ENABLE_OPTIMIZATION MATCHES "ON")
+	ELSE()
+		set(SUN_BUILD32 "-m32")
+		set(SUN_BUILD64 "-m64")		
+	ENDIF()
+ 	IF (BUILD_CPU_MODE STREQUAL "32")
+		message (STATUS "Building 32-bit mode on Solaris")
+		# If we are asked to build 32 bit mode
+		set(CMAKE_C_FLAGS  "${SUN_BUILD32} ${CMAKE_C_FLAGS}")
+		set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} ${SUN_BUILD32}")
+ 	ELSE()
+       		# solaris 64-bit mode
+		message (STATUS "Building 64-bit mode on Solaris")
+       		set(CMAKE_C_FLAGS  "${SUN_BUILD64} ${CMAKE_C_FLAGS}")
+	       	set(CMAKE_SHARED_LINKER_FLAGS  "${CMAKE_SHARED_LINKER_FLAGS} ${SUN_BUILD64}")
+   	ENDIF()
+
+ 	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__EXTENSIONS__ -DSOLARIS -D_POSIX_SOURCE -D_POSIX_C_SOURCE=200112L")
+ENDIF()
+
+
+SET(CMAKE_C_WARN_FLAGS "")
+CHECK_C_COMPILER_FLAG(-Wall SUPPORT_WALL)
+CHECK_C_COMPILER_FLAG(-W SUPPORT_W)
+CHECK_C_COMPILER_FLAG(-Wpointer-arith SUPPORT_WPOINTER)
+CHECK_C_COMPILER_FLAG(-Wno-unused-parameter SUPPORT_WPARAM)
+CHECK_C_COMPILER_FLAG(-Wno-unused-function SUPPORT_WFUNCTION)
+CHECK_C_COMPILER_FLAG(-Wunused-variable SUPPORT_WUNUSED_VAR)
+CHECK_C_COMPILER_FLAG(-Wno-pointer-sign SUPPORT_WPOINTER_SIGN)
+CHECK_C_COMPILER_FLAG(-Wstrict-prototypes SUPPORT_WSTRICT_PROTOTYPES)
+CHECK_C_COMPILER_FLAG(-pedantic SUPPORT_PEDANTIC_FLAG)
+IF(NOT CMAKE_C_COMPILER_ID MATCHES SunPro)
+	CHECK_C_COMPILER_FLAG("-std=c99" SUPPORT_STD_FLAG)
+ENDIF(NOT CMAKE_C_COMPILER_ID MATCHES SunPro)
+IF(SUPPORT_W)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -W")
+ENDIF(SUPPORT_W)
+IF(SUPPORT_WALL)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wall")
+ENDIF(SUPPORT_WALL)
+IF(SUPPORT_WPOINTER)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wpointer-arith")
+ENDIF(SUPPORT_WPOINTER)
+IF(SUPPORT_WPARAM)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wno-unused-parameter")
+ENDIF(SUPPORT_WPARAM)
+IF(SUPPORT_WFUNCTION)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wno-unused-function")
+ENDIF(SUPPORT_WFUNCTION)
+IF(SUPPORT_WUNUSED_VAR)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wunused-variable")
+ENDIF(SUPPORT_WUNUSED_VAR)
+IF(SUPPORT_WPOINTER_SIGN)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wno-pointer-sign")
+ENDIF(SUPPORT_WPOINTER_SIGN)
+IF(SUPPORT_WSTRICT_PROTOTYPES)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -Wstrict-prototypes")
+ENDIF(SUPPORT_WSTRICT_PROTOTYPES)
+IF(SUPPORT_PEDANTIC_FLAG)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -pedantic")
+ENDIF(SUPPORT_PEDANTIC_FLAG)
+IF(SUPPORT_STD_FLAG)
+	SET(CMAKE_C_WARN_FLAGS "${CMAKE_C_WARN_FLAGS} -std=c99")
+ENDIF(SUPPORT_STD_FLAG)
+ 
+CHECK_C_COMPILER_FLAG(-fPIC SUPPORT_FPIC)
+IF(SUPPORT_FPIC)
+	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
+ENDIF(SUPPORT_FPIC)
+ 
+ # Optimization flags
+IF(NOT CMAKE_C_OPT_FLAGS)
+	IF(ENABLE_OPTIMIZATION MATCHES "ON")
+		SET(CMAKE_C_OPT_FLAGS "-O3 -fstrict-aliasing")
+	ELSE(ENABLE_OPTIMIZATION MATCHES "ON")
+		SET(CMAKE_C_OPT_FLAGS "-O0 -fstrict-aliasing")
+	ENDIF(ENABLE_OPTIMIZATION MATCHES "ON")
+ENDIF(NOT CMAKE_C_OPT_FLAGS)
+
+IF(DEBUG_MODE MATCHES "ON")
+	SET(CMAKE_BUILD_TYPE "Debug")
+ENDIF(DEBUG_MODE MATCHES "ON")
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_OPT_FLAGS} ${CMAKE_C_FLAGS} ${CMAKE_C_WARN_FLAGS}")
+
+
+IF(ENABLE_STATIC MATCHES "ON")
+	SET(BUILD_STATIC 1)
+	SET(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -pthread")
+	MESSAGE(STATUS "Static build of rspamd, no custom plugins support")
+	SET(LINK_TYPE "STATIC")
+	SET(NO_SHARED "ON")
+ELSE(ENABLE_STATIC MATCHES "ON")
+    IF(NO_SHARED MATCHES "OFF")
+        SET(LINK_TYPE "SHARED")
+    ELSE(NO_SHARED MATCHES "OFF")
+        SET(LINK_TYPE "STATIC")
+    ENDIF(NO_SHARED MATCHES "OFF")
+ENDIF(ENABLE_STATIC MATCHES "ON")
+
+# End of configuration
+SET(LIBSTEM_ALGORITHMS
+  arabic
+  danish dutch english finnish french german hungarian
+  irish italian
+  norwegian porter portuguese romanian
+  russian spanish swedish tamil turkish
+)
+SET(KOI8_ALGORITHMS russian)
+SET(ISO_8859_1_ALGORITHMS
+  danish dutch english finnish french german irish
+  italian norwegian porter portuguese spanish swedish
+)
+SET(ISO_8859_2_ALGORITHMS hungarian romanian)
+SET(OTHER_ALGORITHMS german2 kraaij_pohlmann lovins)
+SET(ALL_ALGORITHMS ${LIBSTEM_ALGORITHMS} ${OTHER_ALGORITHMS})
+
+SET(COMPILER_SOURCES
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/space.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/tokeniser.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/analyser.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/driver.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_go.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_java.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_jsx.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_python.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/compiler/generator_rust.c
+)
+
+SET(SNOWBALL_RUNTIME
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime/api.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/runtime/utilities.c
+)
+SET(LIBSTEMMER_SOURCES libstemmer/libstemmer.c)
+SET(LIBSTEMMER_UTF8_SOURCES libstemmer/libstemmer_utf8.c)
+#LIBSTEMMER_UTF8_SOURCES = libstemmer/libstemmer_utf8.c
+#LIBSTEMMER_HEADERS = include/libstemmer.h libstemmer/modules.h libstemmer/modules_utf8.h
+#LIBSTEMMER_EXTRA = libstemmer/modules.txt libstemmer/modules_utf8.txt libstemmer/libstemmer_c.in
+
+SET(STEMWORDS_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/examples/stemwords.c)
+SET(MODULES_H "modules.h")
+CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/libstemmer_c.in ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/libstemmer.c @ONLY)
+
+MACRO(gen_stem IN ENCODING)
+	FOREACH(_it ${IN})
+		SET(_base "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/stem_${ENCODING}_${_it}")
+		SET(_header "${_base}.h")
+		SET(_source "${_base}.c")
+		STRING(REPLACE "UTF_8" "Unicode" _in_enc "${ENCODING}")
+		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_${_in_enc}.sbl")
+		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
+			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
+				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+				DEPENDS snowball)
+			LIST(APPEND STEMMER_SOURCES ${_source})
+
+		ELSE()
+		IF(EXISTS "${_input}")
+			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
+				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+				DEPENDS snowball)
+			LIST(APPEND STEMMER_SOURCES ${_source})
+		ENDIF()
+		ENDIF()
+	ENDFOREACH()
+ENDMACRO()
+
+INCLUDE_DIRECTORIES("include")
+INCLUDE_DIRECTORIES("${CMAKE_CURRENT_BINARY_DIR}/libstemmer")
+
+ADD_EXECUTABLE(snowball ${COMPILER_SOURCES})
+
+ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
+  COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/mkmodules.pl ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h "libstemmer" ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/modules.txt ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/mkinc.mak
+)
+
+ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules_utf8.h
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
+  COMMAND ${PERL_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/mkmodules.pl ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h "libstemmer" ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer/modules_utf8.txt ${CMAKE_CURRENT_BINARY_DIR}/libstemmer/mkinc_utf8.mak utf8
+)
+
+ADD_CUSTOM_TARGET(modules DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/modules.h")
+
+SET(STEMMER_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/libstemmer/libstemmer.c")
+ADD_CUSTOM_TARGET(stemmer_deps ALL)
+ADD_DEPENDENCIES(stemmer_deps modules)
+ADD_DEPENDENCIES(stemmer_deps snowball) # ADD_CUSTOM_COMMAND(... DEPENDS snowball) does not always seem to apply
+
+gen_stem("${LIBSTEM_ALGORITHMS}" "UTF_8")
+gen_stem("${KOI8_ALGORITHMS}" "KOI8_R")
+gen_stem("${ISO_8859_1_ALGORITHMS}" "ISO_8859_1")
+gen_stem("${ISO_8859_2_ALGORITHMS}" "ISO_8859_2")
+
+INCLUDE_DIRECTORIES(
+  ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer
+  ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
+)
+
+# on MSVC Snowball does not export any symbols hence no proxy is ever created
+if (MSVC)
+  ADD_LIBRARY(stemmer-shared STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+else()
+  ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+endif()
+
+ADD_LIBRARY(stemmer-static STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+
+ADD_DEPENDENCIES(stemmer-shared stemmer_deps)
+ADD_DEPENDENCIES(stemmer-static stemmer_deps)
+
+ADD_EXECUTABLE(stemwords ${STEMWORDS_SOURCES})
+TARGET_LINK_LIBRARIES(stemwords stemmer-static)

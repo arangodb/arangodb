@@ -28,7 +28,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringRef.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterTraverser.h"
@@ -355,7 +354,7 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
                                       size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(0,atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);

@@ -69,7 +69,7 @@ class SliceScope;
 
 class SliceStaticData {
   friend class Slice;
-  static ValueLength const FixedTypeLengths[256];
+  static uint8_t const FixedTypeLengths[256];
   static ValueType const TypeMap[256];
   static unsigned int const WidthMap[32];
   static unsigned int const FirstSubMap[32];
@@ -425,13 +425,13 @@ class Slice {
       throw Exception(Exception::InvalidValueType, "Expecting type Object");
     }
 
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
   
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
-    Slice key = getNthKey(index, false);
+    Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
 
@@ -731,7 +731,7 @@ class Slice {
   ValueLength byteSize() const {
     auto const h = head();
     // check if the type has a fixed length first
-    ValueLength l = SliceStaticData::FixedTypeLengths[h];
+    ValueLength l = static_cast<ValueLength>(SliceStaticData::FixedTypeLengths[h]);
     if (l != 0) {
       // return fixed length
       return l;
@@ -746,15 +746,7 @@ class Slice {
           return readVariableValueLength<false>(_start + 1);
         }
 
-        if (h == 0x01 || h == 0x0a) {
-          // we cannot get here, because the FixedTypeLengths lookup
-          // above will have kicked in already. however, the compiler
-          // claims we'll be reading across the bounds of the input
-          // here...
-          return 1;
-        }
-
-        VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
+        VELOCYPACK_ASSERT(h > 0x01 && h <= 0x0e && h != 0x0a);
         if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
           throw Exception(Exception::InternalError, "invalid Array/Object type");
         }
@@ -762,20 +754,9 @@ class Slice {
                                                 SliceStaticData::WidthMap[h]);
       }
 
-      case ValueType::External: {
-        return 1 + sizeof(char*);
-      }
-
-      case ValueType::UTCDate: {
-        return 1 + sizeof(int64_t);
-      }
-
-      case ValueType::Int: {
-        return static_cast<ValueLength>(1 + (h - 0x1f));
-      }
-
       case ValueType::String: {
         VELOCYPACK_ASSERT(h == 0xbf);
+
         if (h < 0xbf) {
           // we cannot get here, because the FixedTypeLengths lookup
           // above will have kicked in already. however, the compiler
@@ -783,6 +764,7 @@ class Slice {
           // here...
           return h - 0x40;
         }
+        
         // long UTF-8 String
         return static_cast<ValueLength>(
             1 + 8 + readIntegerFixed<ValueLength, 8>(_start + 1));
@@ -836,7 +818,7 @@ class Slice {
           }
 
           default: {
-            // fallthrough intentional
+            throw Exception(Exception::InternalError);
           }
         }
       }
@@ -877,7 +859,7 @@ class Slice {
   int compareString(char const* value, size_t length) const;
   
   inline int compareString(std::string const& attribute) const {
-    return compareString(attribute.c_str(), attribute.size());
+    return compareString(attribute.data(), attribute.size());
   }
 
   bool isEqualString(std::string const& attribute) const;
@@ -941,6 +923,12 @@ class Slice {
   // extract the nth member from an Object, note that this is the nth
   // entry in the hash table for types 0x0b to 0x0e
   Slice getNthKey(ValueLength index, bool translate) const;
+
+  // extract the nth member from an Object, no translation
+  inline Slice getNthKeyUntranslated(ValueLength index) const {
+    VELOCYPACK_ASSERT(type() == ValueType::Object);
+    return Slice(_start + getNthOffset(index));
+  }
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;

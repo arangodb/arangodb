@@ -40,6 +40,9 @@
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
 
+#include <thread>
+#include <chrono>
+
 using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -100,10 +103,9 @@ void SchedulerFeature::validateOptions(
 
   if (_nrMaximalThreads == 0) {
     _nrMaximalThreads = 4 * _nrServerThreads;
-  }
-
-  if (_nrMaximalThreads < 64) {
-    _nrMaximalThreads = 64;
+    if (_nrMaximalThreads < 64) {
+      _nrMaximalThreads = 64;
+    }
   }
 
   if (_nrMinimalThreads > _nrMaximalThreads) {
@@ -160,7 +162,7 @@ void SchedulerFeature::stop() {
     exitSignals->cancel();
   }
 
-#ifndef WIN32
+#ifndef _WIN32
   if (_hangupSignals != nullptr) {
     _hangupSignals->cancel();
     _hangupSignals.reset();
@@ -176,7 +178,7 @@ void SchedulerFeature::stop() {
   for (size_t count = 0; count < MAX_TRIES && _scheduler->isRunning();
        ++count) {
     LOG_TOPIC(TRACE, Logger::STARTUP) << "waiting for scheduler to stop";
-    usleep(100000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100000));
   }
   
   // shutdown user jobs again, in case new ones appear
@@ -271,7 +273,7 @@ void SchedulerFeature::buildScheduler() {
 }
 
 void SchedulerFeature::buildControlCHandler() {
-#ifdef WIN32
+#ifdef _WIN32
   {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
@@ -281,7 +283,6 @@ void SchedulerFeature::buildControlCHandler() {
   }
 #else
 
-#ifndef WIN32
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
@@ -291,7 +292,6 @@ void SchedulerFeature::buildControlCHandler() {
   sigset_t all;
   sigemptyset(&all);
   pthread_sigmask(SIG_SETMASK, &all, 0);
-#endif
 
   auto ioService = _scheduler->managerService();
   _exitSignals = std::make_shared<boost::asio::signal_set>(*ioService, SIGINT,
@@ -326,7 +326,7 @@ void SchedulerFeature::buildControlCHandler() {
 }
 
 void SchedulerFeature::buildHangupHandler() {
-#ifndef WIN32
+#ifndef _WIN32
   auto ioService = _scheduler->managerService();
 
   _hangupSignals =

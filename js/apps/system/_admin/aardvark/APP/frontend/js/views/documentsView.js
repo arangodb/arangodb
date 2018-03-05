@@ -66,17 +66,28 @@
     },
 
     setCollectionId: function (colid, page) {
+      var self = this;
       this.collection.setCollection(colid);
       this.collection.setPage(page);
       this.page = page;
 
-      var callback = function (error, type) {
+      var callback = function (error, type, responseData) {
         if (error) {
-          arangoHelper.arangoError('Error', 'Could not get collection properties.');
+          self.renderNotFound(this.collection.collectionID);
         } else {
           this.type = type;
+          if (responseData) {
+            this.collectionName = responseData.name;
+          } else {
+            this.collectionName = colid;
+          }
           this.collection.getDocuments(this.getDocsCallback.bind(this));
           this.collectionModel = this.collectionsStore.get(colid);
+
+          // fill navigation and breadcrumb
+          this.breadcrumb();
+          // render pagination
+          this.renderPaginationElements();
         }
       }.bind(this);
 
@@ -98,6 +109,19 @@
         // check permissions and adjust views
         arangoHelper.checkCollectionPermissions(this.collection.collectionID, this.changeViewToReadOnly);
       }
+    },
+
+    renderNotFound: function (name) {
+      $('.headerButton').remove();
+      // $('#documentsToolbar').remove();
+      $('#documentSize').hide();
+      $('#docPureTable').html(
+        '<div class="infoBox errorBox">' +
+        '<h4>Error</h4>' +
+        '<p>Collection not found. Requested name was: "' + name + '".</p>' +
+        '</div>'
+      );
+      $('#subNavigationBar .breadcrumb').html();
     },
 
     events: {
@@ -943,6 +967,8 @@
     },
 
     render: function () {
+      this.collectionName = window.location.hash.split('/')[1];
+
       $(this.el).html(this.template.render({}));
       if (this.type === 2) {
         this.type = 'document';
@@ -956,32 +982,17 @@
         this.collection.collectionID
       );
 
-      this.collectionName = window.location.hash.split('/')[1];
-
       this.checkCollectionState();
 
       // set last active collection name
       this.lastCollectionName = this.collectionName;
 
-      /*
-      if (this.collectionContext.prev === null) {
-        $('#collectionPrev').parent().addClass('disabledPag')
-      }
-      if (this.collectionContext.next === null) {
-        $('#collectionNext').parent().addClass('disabledPag')
-      }
-      */
-
       this.uploadSetup();
 
       arangoHelper.fixTooltips(['.icon_arangodb', '.arangoicon', 'top', '[data-toggle=tooltip]', '.upload-info']);
-      this.renderPaginationElements();
       this.selectActivePagesize();
       this.markFilterToggle();
       this.resize();
-
-      // fill navigation and breadcrumb
-      this.breadcrumb();
 
       return this;
     },

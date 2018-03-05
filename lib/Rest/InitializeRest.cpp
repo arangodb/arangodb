@@ -39,8 +39,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-using namespace arangodb::basics;
-
 // -----------------------------------------------------------------------------
 // initialization
 // -----------------------------------------------------------------------------
@@ -48,7 +46,6 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace rest {
 void InitializeRest() {
-  TRI_InitializeMemory();
   TRI_InitializeDebugging();
   TRI_InitializeError();
   TRI_InitializeFiles();
@@ -75,7 +72,6 @@ void ShutdownRest() {
   TRI_ShutdownProcess();
   TRI_ShutdownMimetypes();
   TRI_ShutdownFiles();
-  TRI_ShutdownError();
   TRI_ShutdownDebugging();
 }
 }

@@ -24,8 +24,8 @@
 #include "v8-replication.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/Logger.h"
 #include "Replication/DatabaseTailingSyncer.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -527,7 +527,7 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->start(initialTick, useTick, barrierId);
+  applier->startTailing(initialTick, useTick, barrierId);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -648,7 +648,7 @@ static void JS_FailoverEnabledGlobalApplierReplication(
   
   auto replicationFeature = ReplicationFeature::INSTANCE;
   if (replicationFeature != nullptr &&
-      replicationFeature->isAutomaticFailoverEnabled()) {
+      replicationFeature->isActiveFailoverEnabled()) {
     TRI_V8_RETURN_TRUE();
   }
   TRI_V8_RETURN_FALSE();

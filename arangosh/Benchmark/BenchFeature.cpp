@@ -234,12 +234,12 @@ void BenchFeature::start() {
 
     // give all threads a chance to start so they will not miss the broadcast
     while (getStartCounter() < (int)_concurreny) {
-      usleep(5000);
+      std::this_thread::sleep_for(std::chrono::microseconds(5000));
     }
 
     if (_delay) {
       status("sleeping (startup delay)...");
-      sleep(10);
+      std::this_thread::sleep_for(std::chrono::seconds(10));
     }
 
     status("executing tests...");
@@ -270,7 +270,7 @@ void BenchFeature::start() {
         nextReportValue += stepValue;
       }
 
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     double time = TRI_microtime() - start;

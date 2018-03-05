@@ -346,29 +346,42 @@ function optimizerCollectMethodsTestSuite () {
 /// @brief test override of collect method
 ////////////////////////////////////////////////////////////////////////////////
 
-    testOverrideMethodWithHashIgnored : function () {
+    testOverrideMethodWithHashButHavingIndex : function () {
       c.ensureIndex({ type: "skiplist", fields: [ "group" ] }); 
       c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] }); 
 
       // the expectation is that the optimizer will still use the 'sorted' method here as there are
       // sorted indexes supporting it
       var queries = [
-        "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]",
-        "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value",
-        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'hash' } RETURN [ value1, value2 ]",
-        "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value, l ]",
-        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value1, value2, l ]"
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group INTO g RETURN [ value, g ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value", "hash" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'sorted' } RETURN value", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value", "hash" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'sorted' } RETURN value", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'hash' } RETURN [ value1, value2 ]", "hash" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'sorted' } RETURN [ value1, value2 ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value, l ]", "hash" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN [ value, l ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value1, value2, l ]", "hash" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN [ value1, value2, l ]", "sorted" ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", "sorted" ]
       ];
 
       queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query[0]).plan;
 
         var aggregateNodes = 0;
         var sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.collectOptions.method);
+            assertEqual(query[1], node.collectOptions.method, query);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -376,7 +389,7 @@ function optimizerCollectMethodsTestSuite () {
         });
         
         assertEqual(1, aggregateNodes);
-        assertEqual(0, sortNodes);
+        assertEqual(query[1] === 'hash' ? 1 : 0, sortNodes);
       });
     },
 
@@ -442,7 +455,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test many collects
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testManyCollects : function () {
       c.truncate();
       c.insert({ value: 3 });

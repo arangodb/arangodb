@@ -89,12 +89,16 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
   }
   return nullptr;
 }
+  
+TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  return TRI_HybridLogicalClock();
+}
 
 /// @brief merge two objects for update, oldValue must have correctly set
 /// _key and _id attributes
 void PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
-    VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& newValue, bool isEdgeCollection,
     bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
 
@@ -172,7 +176,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
@@ -239,8 +243,8 @@ void PhysicalCollection::mergeObjectsForUpdate(
 int PhysicalCollection::newObjectForInsert(
     transaction::Methods* trx, VPackSlice const& value,
     VPackSlice const& fromSlice, VPackSlice const& toSlice,
-    LocalDocumentId const& documentId, bool isEdgeCollection, 
-    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
+    bool isEdgeCollection, VPackBuilder& builder, bool isRestore,
+                                           TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -309,7 +313,7 @@ int PhysicalCollection::newObjectForInsert(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
@@ -323,7 +327,6 @@ int PhysicalCollection::newObjectForInsert(
 /// @brief new object for remove, must have _key set
 void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
                                             VPackSlice const& oldValue,
-                                            LocalDocumentId const& documentId,
                                             VPackBuilder& builder,
                                             bool isRestore, TRI_voc_rid_t& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
@@ -335,7 +338,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
-  revisionId = TRI_HybridLogicalClock();
+  revisionId = newRevisionId();
   builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   builder.close();
 }
@@ -345,7 +348,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
 void PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, VPackSlice const& fromSlice,
-    VPackSlice const& toSlice, bool isEdgeCollection, LocalDocumentId const& documentId,
+    VPackSlice const& toSlice, bool isEdgeCollection,
     VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
@@ -384,7 +387,7 @@ void PhysicalCollection::newObjectForReplace(
     }
   }
   if (!handled) {
-    revisionId = TRI_HybridLogicalClock();
+    revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 

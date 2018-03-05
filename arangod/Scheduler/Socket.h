@@ -29,6 +29,9 @@
 #include <boost/asio/serial_port_service.hpp>
 #include <boost/asio/ssl.hpp>
 
+#include <thread>
+#include <chrono>
+
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Logger/Logger.h"
@@ -82,7 +85,7 @@ bool doSslHandshake(T& socket) {
 	LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "forcefully shutting down connection after wait time";
 	break;
       } else {
-	usleep(10000);
+	std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
     }
 
@@ -90,7 +93,10 @@ bool doSslHandshake(T& socket) {
   }
 
   if (ec) {
-    LOG_TOPIC(ERR, Logger::COMMUNICATION)
+    // this message will also be emitted if a connection is attempted
+    // with a wrong protocol (e.g. HTTP instead of SSL/TLS). so it's
+    // definitely not worth logging an error here
+    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
         << "unable to perform ssl handshake: " << ec.message() << " : "
         << ec.value();
     return false;
@@ -152,18 +158,18 @@ class Socket {
   virtual std::size_t available(boost::system::error_code& ec) = 0;
   virtual void asyncRead(boost::asio::mutable_buffers_1 const& buffer,
                          AsyncHandler const& handler) = 0;
-  
+
   virtual void close(boost::system::error_code& ec) = 0;
-  virtual void shutdown(boost::system::error_code& ec, bool closeSend, bool closeReceive) {
-    if (closeSend) {
+  virtual void shutdown(boost::system::error_code& ec, bool mustCloseSend, bool mustCloseReceive) {
+    if (mustCloseSend) {
       this->shutdownSend(ec);
       if (ec && ec != boost::asio::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
             << "shutdown send stream failed with: " << ec.message();
       }
     }
-    
-    if (closeReceive) {
+
+    if (mustCloseReceive) {
       this->shutdownReceive(ec);
       if (ec && ec != boost::asio::error::not_connected) {
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)

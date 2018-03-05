@@ -84,7 +84,7 @@ void RestCollectionHandler::handleCommandGet() {
     methods::Collections::enumerate(_vocbase, [&](LogicalCollection* coll) {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
-                    exec->canUseCollection(coll->name(), AuthLevel::RO);
+                    exec->canUseCollection(coll->name(), auth::Level::RO);
       if (canUse && (!excludeSystem || !coll->isSystem())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,
@@ -204,7 +204,7 @@ void RestCollectionHandler::handleCommandGet() {
   }
   if (found.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(found);
   }
@@ -332,12 +332,7 @@ void RestCollectionHandler::handleCommandPut() {
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::EXCLUSIVE);
 
-          // we must read our own writes in this transaction for the deletion
-          // checks that are executed at the end of truncate in maintainer mode
-          trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
-
           res = trx.begin();
-
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
             res = trx.finish(result.result);
@@ -406,7 +401,7 @@ void RestCollectionHandler::handleCommandPut() {
     generateError(found);
   } else if (res.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(res);
   }

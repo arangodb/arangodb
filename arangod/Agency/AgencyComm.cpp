@@ -48,7 +48,6 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -278,7 +277,7 @@ bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
-
+/*
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
   for (auto const& trx : transactions) {
     auto opers = std::get<0>(trx);
@@ -323,7 +322,7 @@ void AgencyGeneralTransaction::push_back(
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
   return (result.slice().isArray() &&
           result.slice().length() >= 1); // >= transactions.size()
-}
+}*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
@@ -351,8 +350,7 @@ AgencyCommResult::AgencyCommResult()
       _values(),
       _statusCode(0),
       _connected(false),
-      _sent(false),
-      _clientId("") {}
+      _sent(false) {}
 
 AgencyCommResult::AgencyCommResult(
   int code, std::string const& message, std::string const& clientId)
@@ -362,22 +360,18 @@ AgencyCommResult::AgencyCommResult(
       _values(),
       _statusCode(code),
       _connected(false),
-      _sent(false),
-    _clientId(clientId) {}
+      _sent(false) {}
 
-void AgencyCommResult::set(int code, std::string const& message,
-                           std::string const& clientId) {
-  _location.clear();
+void AgencyCommResult::set(int code, std::string const& message) {
   _message = message;
+  _statusCode = code;
+  _location.clear();
   _body.clear();
   _values.clear();
-  _statusCode = code;
-  _clientId = clientId;
+  _vpack.reset();
 }
 
 bool AgencyCommResult::connected() const { return _connected; }
-
-std::string AgencyCommResult::clientId() const { return _clientId; }
 
 int AgencyCommResult::httpCode() const { return _statusCode; }
 
@@ -413,7 +407,7 @@ std::string AgencyCommResult::errorMessage() const {
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
         VPackParser::fromJson(_body);
-    
+
 
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
@@ -446,6 +440,7 @@ void AgencyCommResult::clear() {
   _location = "";
   _message = "";
   _body = "";
+  _vpack.reset();
   _statusCode = 0;
   _sent = false;
   _connected = false;
@@ -823,7 +818,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 
   AgencyOperation operation(key, AgencyValueOperationType::SET,
                             builder.slice());
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyWriteTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -833,7 +828,7 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyWriteTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -843,7 +838,7 @@ AgencyCommResult AgencyComm::setTransient(std::string const& key,
                                       arangodb::velocypack::Slice const& slice,
                                       double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
-  operation._ttl = static_cast<uint32_t>(ttl);
+  operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransientTransaction transaction(operation);
 
   return sendTransactionWithFailover(transaction);
@@ -890,12 +885,12 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!result.slice().isArray()) {
-      result._statusCode = 500;
+      result.set(500, "got invalid result structure for getValues response");
       return result;
     }
 
     if (result.slice().length() != 1) {
-      result._statusCode = 500;
+      result.set(500, "got invalid result structure length for getValues response");
       return result;
     }
 
@@ -942,7 +937,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyPrecondition precondition(key, AgencyPrecondition::Type::EMPTY,
                                   !prevExist);
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint32_t>(ttl);
+    operation._ttl = static_cast<uint64_t>(ttl);
   }
 
   VPackBuilder preBuilder;
@@ -967,7 +962,7 @@ AgencyCommResult AgencyComm::casValue(std::string const& key,
   AgencyPrecondition precondition(key, AgencyPrecondition::Type::VALUE,
                                   oldBuilder.slice());
   if (ttl >= 0.0) {
-    operation._ttl = static_cast<uint32_t>(ttl);
+    operation._ttl = static_cast<uint64_t>(ttl);
   }
 
   AgencyWriteTransaction transaction(operation, precondition);
@@ -992,7 +987,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   while (tries++ < maxTries) {
     result = getValues("Sync/LatestID");
     if (!result.successful()) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1028,7 +1023,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
     try {
       newBuilder.add(VPackValue(newValue));
     } catch (...) {
-      usleep(500000);
+      std::this_thread::sleep_for(std::chrono::microseconds(500000));
       continue;
     }
 
@@ -1134,7 +1129,7 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
       arangodb::rest::RequestType::POST,
       (timeout == 0.0) ?
        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout : timeout,
-      url, builder.slice(), transaction.getClientId());
+      url, builder.slice());
 
   if (!result.successful() && result.httpCode() !=
       (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
@@ -1145,7 +1140,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     result.setVPack(VPackParser::fromJson(result.bodyRef()));
 
     if (!transaction.validate(result)) {
-      result._statusCode = 500;
+      result.set(500, std::string("validation failed for response to URL " + url));
+      LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) << "validation failed for url: " << url << ", type: " << transaction.typeName() << ", sent: " << builder.toJson() << ", received: " << result.bodyRef();
       return result;
     }
 
@@ -1158,8 +1154,8 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
                                        << result._statusCode
                                        << ", incriminating body: "
                                        << result.bodyRef()
-                                       << ", url: " << url 
-                                       << ", timeout: " << timeout 
+                                       << ", url: " << url
+                                       << ", timeout: " << timeout
                                        << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
@@ -1173,9 +1169,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
-
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
 
   while (true) {
     while (shouldInitializeStructure()) {
@@ -1192,7 +1185,7 @@ bool AgencyComm::ensureStructureInitialized() {
       LOG_TOPIC(WARN, Logger::AGENCYCOMM)
           << "Initializing agency failed. We'll try again soon";
       // We should really have exclusive access, here, this is strange!
-      sleep(1);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     AgencyCommResult result = getValues("InitDone");
@@ -1210,7 +1203,7 @@ bool AgencyComm::ensureStructureInitialized() {
     LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
         << "Waiting for agency to get initialized";
 
-    sleep(1);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
   return true;
@@ -1251,7 +1244,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
       return true;
     }
 
-    usleep((TRI_usleep_t) sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
@@ -1292,7 +1285,7 @@ bool AgencyComm::unlock(std::string const& key, VPackSlice const& slice,
       return true;
     }
 
-    usleep((TRI_usleep_t)sleepTime);
+    std::this_thread::sleep_for(std::chrono::microseconds(sleepTime));
 
     if (sleepTime < MAX_SLEEP_TIME) {
       sleepTime += INITIAL_SLEEP_TIME;
@@ -1334,13 +1327,24 @@ void AgencyComm::updateEndpoints(arangodb::velocypack::Slice const& current) {
 
 AgencyCommResult AgencyComm::sendWithFailover(
     arangodb::rest::RequestType method, double const timeout,
-    std::string const& initialUrl, VPackSlice body,
-    std::string const& clientId) {
+    std::string const& initialUrl, VPackSlice inBody) {
 
   std::string endpoint;
   std::unique_ptr<GeneralClientConnection> connection =
     AgencyCommManager::MANAGER->acquire(endpoint);
 
+  std::vector<std::string> clientIds;
+  VPackSlice body = inBody.resolveExternals();
+
+  if (body.isArray()) {
+    // In the writing case we want to find all transactions with client IDs
+    // and remember these IDs:
+    for (auto const& query : VPackArrayIterator(body)) {
+      if (query.isArray() && query.length() == 3 && query[0].isObject() && query[2].isString()) {
+        clientIds.push_back(query[2].copyString());
+      }
+    }
+  }
   AgencyCommResult result;
   std::string url;
 
@@ -1379,12 +1383,14 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
   bool isInquiry = false;   // Set to true whilst we investigate a potentially
                             // failed transaction.
+  static std::string const writeURL {"/_api/agency/write"};
+  bool isWriteTrans = (initialUrl == writeURL);
 
   while (true) {  // will be left by timeout eventually
     // If for some reason we did not find an agency endpoint, we bail out:
     if (connection == nullptr) {
       LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "No agency endpoints.";
-      result.set(400, "No endpoints for agency found.", clientId);
+      result.set(400, "No endpoints for agency found.");
       break;
     }
 
@@ -1397,7 +1403,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 
     // timeout exit strategy:
     if (std::chrono::steady_clock::now() > timeOut) {
-      result.set(0, "timeout in AgencyComm operation", clientId);
+      result.set(0, "timeout in AgencyComm operation");
       break;
     }
 
@@ -1428,8 +1434,16 @@ AgencyCommResult AgencyComm::sendWithFailover(
           bodyString = body.toJson();
         }
         url = initialUrl;  // Attention: overwritten by redirect below!
-        result = send(connection.get(), method, conTimeout, url, bodyString,
-                      clientId);
+        result = send(connection.get(), method, conTimeout, url, bodyString);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        if (!clientIds.empty()) {
+          if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_0") {
+            result._statusCode = 0;
+          } else if (clientIds[0] == "INTEGRATION_TEST_INQUIRY_ERROR_503") {
+            result._statusCode = 503;
+          }
+        }
+#endif
       } catch (...) {
         // Rotate to new agent endpoint:
         AgencyCommManager::MANAGER->failed(std::move(connection), endpoint);
@@ -1438,8 +1452,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
         continue;
       }
 
-      // got a result, we are done
-      if (result.successful()) {
+      // got a result or shutdown, we are done
+      if (result.successful() || application_features::ApplicationServer::isStopping()) {
         AgencyCommManager::MANAGER->release(std::move(connection), endpoint);
         break;
       }
@@ -1456,7 +1470,8 @@ AgencyCommResult AgencyComm::sendWithFailover(
       // the operation. If it actually was done, we are good. If not, we
       // can retry. If in doubt, we have to retry inquire until the global
       // timeout is reached.
-      if (!clientId.empty() && result._sent &&
+      // Also note that we only inquire about WriteTransactions.
+      if (isWriteTrans && !clientIds.empty() && result._sent &&
           (result._statusCode == 0 || result._statusCode == 503)) {
         isInquiry = true;
       }
@@ -1468,18 +1483,18 @@ AgencyCommResult AgencyComm::sendWithFailover(
       // the transaction lead to isInquiry == true because we got a timeout
       // or a 503.
       VPackBuilder b;
-      {
-        VPackArrayBuilder ab(&b);
-        b.add(VPackValue(clientId));
-      }
+      { VPackArrayBuilder ab(&b);
+        for (auto const& i : clientIds) {
+          b.add(VPackValue(i));
+        }}
 
       LOG_TOPIC(DEBUG, Logger::AGENCYCOMM) <<
         "Failed agency comm (" << result._statusCode << ")! " <<
-        "Inquiring about clientId " << clientId << ".";
+        "Inquiring about clientIds " << clientIds << ".";
 
       url = "/_api/agency/inquire";  // attention: overwritten by redirect!
       result = send(
-          connection.get(), method, conTimeout, url, b.toJson(), "");
+          connection.get(), method, conTimeout, url, b.toJson());
 
       // Inquire returns a body like write or if the write is still ongoing
       // We check, if the operation is still ongoing then body is {"ongoing:true"}
@@ -1492,7 +1507,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
         if (outer.isObject() && outer.hasKey("ongoing")) {
           continue;
         }
-        
+
         // If we get an answer, and it contains a "results" key,
         // we release the connection and break out of the loop letting the
         // inquiry result go to the client. Otherwise try again.
@@ -1511,7 +1526,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
             continue;
           }
         } else {
-          // How odd, we are supposed to get at least [[]], let's retry...
+          // How odd, we are supposed to get at least {results=[...]}, let's retry...
           isInquiry = false;
           continue;
         }
@@ -1563,7 +1578,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
 AgencyCommResult AgencyComm::send(
     arangodb::httpclient::GeneralClientConnection* connection,
     arangodb::rest::RequestType method, double timeout, std::string const& url,
-    std::string const& body, std::string const& clientId) {
+    std::string const& body) {
   TRI_ASSERT(connection != nullptr);
 
   if (method == arangodb::rest::RequestType::GET ||
@@ -1576,10 +1591,6 @@ AgencyCommResult AgencyComm::send(
 
   AgencyCommResult result;
 
-  if (!clientId.empty()) {
-    result._clientId = clientId;
-  }
-
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "sending " << arangodb::HttpRequest::translateMethod(method)
       << " request to agency at endpoint '"
@@ -1587,8 +1598,9 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
-  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  params.setJwt(af->tokenCache()->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1645,7 +1657,7 @@ AgencyCommResult AgencyComm::send(
 
   basics::StringBuffer& sb = response->getBody();
   result._body = std::string(sb.c_str(), sb.length());
-  
+
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "request to agency returned status code " << result._statusCode
       << ", message: '" << result._message << "', body: '" << result._body
@@ -1660,7 +1672,7 @@ bool AgencyComm::tryInitializeStructure() {
   try {
     VPackObjectBuilder b(&builder);
 
-    
+
     builder.add(                       // Cluster Id --------------------------
       "Cluster", VPackValue(to_string(boost::uuids::random_generator()())));
 
@@ -1673,11 +1685,7 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add("Leader", VPackValue(""));
-      }
+      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1783,7 +1791,11 @@ bool AgencyComm::tryInitializeStructure() {
     AgencyWriteTransaction initTransaction;
     initTransaction.operations.push_back(initOperation);
 
-    auto result = sendTransactionWithFailover(initTransaction);
+    AgencyCommResult result = sendTransactionWithFailover(initTransaction);
+    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Cannot authenticate with agency,"
+      << " check value of --server.jwt-secret";
+    }
 
     return result.successful();
   } catch (std::exception const& e) {

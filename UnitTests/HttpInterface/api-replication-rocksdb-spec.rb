@@ -439,7 +439,7 @@ describe ArangoDB do
         sleep 5
 
         cmd = api + "/logger-follow?from=" + fromTick
-        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+        doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
 
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
@@ -510,8 +510,6 @@ describe ArangoDB do
             document["type"].should eq(2302)
             document["cid"].should eq(cid)
             document["data"]["_key"].should eq("test")
-            document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
-            document["data"]["_rev"].should_not eq(rev)
 
             i = i + 1
           elsif i == 3 and document["type"] == 2001 and document["cid"] == cid
@@ -1630,8 +1628,6 @@ describe ArangoDB do
             document["type"].should eq(2302)
             document["cid"].should eq(cid)
             document["data"]["_key"].should eq("test")
-            document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
-            document["data"]["_rev"].should_not eq(rev)
 
             i = i + 1
           elsif i == 3 and document["type"] == 2001 and document["cid"] == cid

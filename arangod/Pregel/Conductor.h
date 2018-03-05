@@ -123,6 +123,9 @@ class Conductor {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs
                              : _endTimeSecs - _startTimeSecs;
   }
+ 
+ private:
+  void cancelNoLock();
 };
 }
 }

@@ -213,6 +213,9 @@ class Query {
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
 
+  /// @brief mark a query as modification query
+  void setIsModificationQuery() { _isModificationQuery = true; }
+
   /// @brief enter a V8 context
   void enterContext();
 

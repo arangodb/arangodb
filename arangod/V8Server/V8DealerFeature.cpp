@@ -51,6 +51,7 @@
 #include "V8/v8-utils.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/v8-actions.h"
+#include "V8Server/v8-user-functions.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/vocbase.h"
 
@@ -114,6 +115,7 @@ V8DealerFeature::V8DealerFeature(
   startsAfter("Scheduler");
   startsAfter("V8Platform");
   startsAfter("WorkMonitor");
+  startsAfter("Temp");
 }
 
 void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -196,7 +198,9 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  ctx->normalizePath(_appPath, "javascript.app-path", true);
+  // Tests if this path is either a directory (ok) or does not exist (we create it in ::start)
+  // If it is something else this will throw an error.
+  ctx->normalizePath(_appPath, "javascript.app-path", false);
 
   // use a minimum of 1 second for GC
   if (_gcFrequency < 1) {
@@ -218,6 +222,23 @@ void V8DealerFeature::start() {
 
     if (!_appPath.empty()) {
       paths.push_back(std::string("application '" + _appPath + "'"));
+
+
+      // create app directory if it does not exist 
+      if (!basics::FileUtils::isDirectory(_appPath)) {
+        std::string systemErrorStr;
+        long errorNo;
+
+        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo,
+                                               systemErrorStr);
+
+        if (res == TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "created javascript.app-path directory '" << _appPath << "'";
+        } else {
+          LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create javascript.app-path directory '" << _appPath << "': " << systemErrorStr;
+          FATAL_ERROR_EXIT();
+        }
+      }
     }
 
     LOG_TOPIC(INFO, arangodb::Logger::V8) << "JavaScript using " << StringUtils::join(paths, ", ");
@@ -310,18 +331,12 @@ V8Context* V8DealerFeature::addContext() {
 }
 
 void V8DealerFeature::unprepare() {
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
-
   shutdownContexts();
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
 
   DEALER = nullptr;
-
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -371,9 +386,6 @@ void V8DealerFeature::collectGarbage() {
   // the time we'll wait for a signal when the previous wait timed out
   uint64_t const reducedWaitTime =
       static_cast<uint64_t>(_gcFrequency * 1000.0 * 200.0);
-
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
 
   while (!_stopping) {
     try {
@@ -441,7 +453,7 @@ void V8DealerFeature::collectGarbage() {
         {
           // this guard will lock and enter the isolate
           // and automatically exit and unlock it when it runs out of scope
-          V8ContextGuard contextGuard(context);
+          V8ContextEntryGuard contextGuard(context);
 
           v8::HandleScope scope(isolate);
 
@@ -500,9 +512,6 @@ void V8DealerFeature::collectGarbage() {
     }
   } 
   
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
-
   _gcFinished = true;
 }
   
@@ -639,9 +648,6 @@ void V8DealerFeature::prepareLockedContext(TRI_vocbase_t* vocbase,
 
   auto isolate = context->_isolate;
 
-  // turn off memory allocation failures before going into v8 code 
-  TRI_DisallowMemoryFailures();
-
   {
     v8::HandleScope scope(isolate);
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
@@ -752,7 +758,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "waiting for V8 context #" << id << " to become available";
-      usleep(50 * 1000);
+      std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
     }
 
     if (context == nullptr) {
@@ -1022,9 +1028,6 @@ void V8DealerFeature::exitContext(V8Context* context) {
     LOG_TOPIC(TRACE, arangodb::Logger::V8) << "returned dirty V8 context #" << context->id() << " back into free";
     guard.broadcast();
   }
-  
-  // turn on memory allocation failures again
-  TRI_AllowMemoryFailures();
 }
 
 void V8DealerFeature::defineContextUpdate(
@@ -1126,7 +1129,7 @@ void V8DealerFeature::shutdownContexts() {
 
     // wait until garbage collector thread is done
     while (!_gcFinished) {
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "commanding V8 GC thread to terminate";
@@ -1223,7 +1226,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
   try {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context.get());
+    V8ContextEntryGuard contextGuard(context.get());
 
     v8::HandleScope scope(isolate);
 
@@ -1267,11 +1270,11 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
                    FileUtils::buildFilename(directory, "common/modules") + sep +
                    FileUtils::buildFilename(directory, "node");
       }
-
+      TRI_InitV8UserFunctions(isolate, localContext);
       TRI_InitV8UserStructures(isolate, localContext);
       TRI_InitV8Buffer(isolate, localContext);
       TRI_InitV8Utils(isolate, localContext, _startupDirectory, modules);
-      TRI_InitV8DebugUtils(isolate, localContext, _startupDirectory, modules);
+      TRI_InitV8DebugUtils(isolate, localContext);
       TRI_InitV8Shell(isolate, localContext);
 
       {
@@ -1400,7 +1403,7 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   {
     // this guard will lock and enter the isolate
     // and automatically exit and unlock it when it runs out of scope
-    V8ContextGuard contextGuard(context);
+    V8ContextEntryGuard contextGuard(context);
 
     v8::HandleScope scope(isolate);
 
@@ -1453,4 +1456,33 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "closed V8 context #" << context->id();
 
   delete context;
+}
+
+V8ContextDealerGuard::V8ContextDealerGuard(Result& res, v8::Isolate*& isolate, TRI_vocbase_t* vocbase, bool allowModification)
+  : _isolate(isolate)
+  , _context(nullptr)
+  , _active(isolate ? false : true)
+{
+  if (_active) {
+    if(!vocbase){
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - no vocbase provided");
+      return;
+    }
+    _context = V8DealerFeature::DEALER->enterContext(vocbase, allowModification);
+    if (!_context) {
+      res.reset(TRI_ERROR_INTERNAL, "V8ContextDealerGuard - could not acquire context");
+      return;
+    }
+    isolate = _context->_isolate;
+  }
+}
+
+V8ContextDealerGuard::~V8ContextDealerGuard() {
+  if (_active && _context) {
+    try {
+      V8DealerFeature::DEALER->exitContext(_context);
+    }
+    catch (...) {}
+    _isolate = nullptr;
+  }
 }

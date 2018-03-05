@@ -38,6 +38,7 @@
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
@@ -155,17 +156,6 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "invalid expression type");
-}
-
-/// @brief execute the expression
-/// TODO DEPRECATED
-AqlValue Expression::execute(transaction::Methods* trx,
-                             AqlItemBlock const* argv, size_t startPos,
-                             std::vector<Variable const*> const& vars,
-                             std::vector<RegisterId> const& regs,
-                             bool& mustDestroy) {
-  BaseExpressionContext ctx(startPos, argv, vars, regs);
-  return execute(trx, &ctx, mustDestroy);
 }
 
 /// @brief replace variables in the expression with other variables
@@ -631,15 +621,17 @@ AqlValue Expression::executeSimpleExpressionIndexedAccess(
     }
      
     if (indexResult.isString()) {
-      std::string const value = indexResult.slice().copyString();
+      VPackSlice s = indexResult.slice();
+      TRI_ASSERT(s.isString());
+      VPackValueLength l;
+      char const* p = s.getString(l);
 
-      try {
-        // stoll() might throw an exception if the string is not a number
-        int64_t position = static_cast<int64_t>(std::stoll(value));
+      bool valid;
+      int64_t position = NumberUtils::atoi<int64_t>(p, p + l, valid); 
+      if (valid) {
         return result.at(trx, position, mustDestroy, true);
-      } catch (...) {
-        // no number found.
-      }
+      } 
+      // no number found.
     } 
       
     // fall-through to returning null
@@ -910,8 +902,8 @@ AqlValue Expression::executeSimpleExpressionFCall(
   VPackFunctionParameters parameters{arena};
  
   // same here
-  SmallVector<uint64_t>::allocator_type::arena_type arena2;
-  SmallVector<uint64_t> destroyParameters{arena2};
+  SmallVector<uint8_t>::allocator_type::arena_type arena2;
+  SmallVector<uint8_t> destroyParameters{arena2};
   parameters.reserve(n);
   destroyParameters.reserve(n);
 

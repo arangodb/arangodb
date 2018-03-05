@@ -27,8 +27,8 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
-#include "VocBase/replication-common.h"
 
 namespace arangodb {
 class ClusterInfo;

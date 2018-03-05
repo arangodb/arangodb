@@ -27,6 +27,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchFeature.h"
+#endif
+
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
@@ -44,6 +49,10 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#ifdef USE_IRESEARCH
+  #include "IResearch/IResearchRocksDBLink.h"
+#endif
 
 using namespace arangodb;
 
@@ -343,6 +352,12 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       res = EnhanceJsonIndexFulltext(definition, enhanced, create);
       break;
 
+#ifdef USE_IRESEARCH
+    case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+      res = arangodb::iresearch::EnhanceJsonIResearchLink(definition, enhanced, create);
+      break;
+#endif
+
     default: {
       res = TRI_ERROR_BAD_PARAMETER;
       break;
@@ -355,7 +370,7 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     arangodb::velocypack::Slice info, bool generateKey, LogicalCollection* col,
     bool isClusterConstructor) const {
-  
+
   TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
 
   // extract type
@@ -403,6 +418,11 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
   if (typeString == "fulltext") {
     return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
   }
+#ifdef USE_IRESEARCH
+  if (arangodb::iresearch::IResearchFeature::type() == typeString) {
+    return arangodb::iresearch::IResearchRocksDBLink::make(iid, col, info);
+  }
+#endif
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
 }
@@ -430,3 +450,7 @@ std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
   return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
                                   "persistent", "geo",  "fulltext"};
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

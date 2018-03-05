@@ -31,7 +31,7 @@
 module.isSystem = true;
 
 var ArangoStatement = require('@arangodb/arango-statement-common').ArangoStatement;
-var GeneralArrayCursor = require('@arangodb/simple-query-common').GeneralArrayCursor;
+var GeneralArrayCursor = require('@arangodb/arango-cursor').GeneralArrayCursor;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief parse a query and return the results

@@ -40,13 +40,12 @@ var db = require("org/arangodb").db;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ahuacatlMiscFunctionsTestSuite () {
-  return {
+function ahuacatlMiscFunctionsTestSuite () { return {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse identifier function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testParseIdentifier : function () {
       var actual;
       var buildQuery = function (nr, input) {
@@ -65,16 +64,16 @@ function ahuacatlMiscFunctionsTestSuite () {
       for (var i = 0; i < 3; ++i) {
         actual = getQueryResults(buildQuery(i, "'foo/bar'"));
         assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
-        
+
         actual = getQueryResults(buildQuery(i, "'this-is-a-collection-name/and-this-is-an-id'"));
         assertEqual([ { collection: 'this-is-a-collection-name', key: 'and-this-is-an-id' } ], actual);
-        
+
         actual = getQueryResults(buildQuery(i, "'MY_COLLECTION/MY_DOC'"));
         assertEqual([ { collection: 'MY_COLLECTION', key: 'MY_DOC' } ], actual);
 
         actual = getQueryResults(buildQuery(i, "'_users/AbC'"));
         assertEqual([ { collection: '_users', key: 'AbC' } ], actual);
-        
+
         actual = getQueryResults(buildQuery(i, "{ _id: 'foo/bar', value: 'baz' }"));
         assertEqual([ { collection: 'foo', key: 'bar' } ], actual);
 
@@ -89,7 +88,7 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test parse identifier function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testParseIdentifierCollection : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -152,24 +151,24 @@ function ahuacatlMiscFunctionsTestSuite () {
       };
 
       for (var i = 0; i < 3; ++i) {
-        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "")); 
+        assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, ""));
         assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, buildQuery(i, "'foo', 'bar'"));
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "3")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"foo\"")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo bar'")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo/bar/baz'")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ]")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }")); 
-        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ foo: 'bar' }")); 
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "null"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "false"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "3"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "\"foo\""));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo bar'"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "'foo/bar/baz'"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "[ ]"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ }"));
+        assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, buildQuery(i, "{ foo: 'bar' }"));
       }
     },
- 
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_same_collection function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testIsSameCollection : function () {
       var buildQuery = function (nr, collection, doc) {
         var q = "IS_SAME_COLLECTION(" + JSON.stringify(collection) + ", " + JSON.stringify(doc) + ")";
@@ -204,7 +203,7 @@ function ahuacatlMiscFunctionsTestSuite () {
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { id: "foobar/bark" })));
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foo/bark" })));
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", { _key: "foobar/bark" })));
-        
+
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", null)));
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", true)));
         assertEqual([ null ], getQueryResults(buildQuery(i, "foo", false)));
@@ -217,7 +216,7 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_same_collection function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testIsSameCollectionCollection : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -269,25 +268,25 @@ function ahuacatlMiscFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 'bar', 'baz')");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 'bar', 'baz'))");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', null)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', false)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', true)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 3)"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', [ ])"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', { })"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', 3)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', [ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN IS_SAME_COLLECTION('foo', { })");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', null))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', false))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', true))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 3))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', [ ]))"); 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', { }))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', null))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', false))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', true))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', 3))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', [ ]))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN V8(IS_SAME_COLLECTION('foo', { }))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDocument1 : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -316,22 +315,22 @@ function ahuacatlMiscFunctionsTestSuite () {
         expected = [ { title: "123", value : 456 } ];
         actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._id + "\""));
         assertEqual(expected, actual);
-        
+
         actual = getQueryResults(buildQuery(i, cn + ", \"" + d1._key + "\""));
         assertEqual(expected, actual);
-        
+
         expected = [ { title: "nada", value : 123 } ];
         actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._id + "\""));
         assertEqual(expected, actual);
-        
+
         actual = getQueryResults(buildQuery(i, cn + ", \"" + d2._key + "\""));
         assertEqual(expected, actual);
-        
+
         // test with one parameter
         expected = [ { title: "nada", value : 123 } ];
         actual = getQueryResults(buildQuery(i, "\"" + d2._id + "\""));
         assertEqual(expected, actual);
-        
+
         // test with function result parameter
         actual = getQueryResults(buildQuery(i, "CONCAT(\"foo\", \"bar\")"));
         assertEqual([ null ], actual);
@@ -346,26 +345,26 @@ function ahuacatlMiscFunctionsTestSuite () {
         assertEqual(expected, actual);
         actual = getQueryResults(buildQuery(i, "CONCAT(\"" + cn + "\", \"/\", @k)"), { k: "foo" });
         assertEqual(expected, actual);
-        
+
         // test with bind parameter
         expected = [ { title: "nada", value : 123 } ];
         actual = getQueryResults(buildQuery(i, "@id"), { id: d2._id });
         assertEqual(expected, actual);
-        
+
         // test dynamic parameter
         expected = [ { title: "nada", value : 123 }, { title: "123", value: 456 }, { value: "bar" } ];
         actual = getQueryResults("FOR d IN @@cn SORT d.value " + buildQuery(i, "d._id"), { "@cn" : cn });
         assertEqual(expected, actual);
         cx.remove("foo");
       }
-      
+
       internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDocument2 : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -380,22 +379,22 @@ function ahuacatlMiscFunctionsTestSuite () {
       expected = [ { title: "123", value : 456, zxy: 1 } ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._id });
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d1._key });
       assertEqual(expected, actual);
-      
+
       expected = [ { title: "nada", value : 123, zzzz : false } ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._id });
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : d2._key });
       assertEqual(expected, actual);
-      
+
       // test with one parameter
       expected = [ { title: "123", value : 456, zxy: 1 } ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d1._id });
       assertEqual(expected, actual);
-      
+
       expected = [ { title: "nada", value : 123, zzzz : false } ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : d2._id });
       assertEqual(expected, actual);
@@ -406,7 +405,7 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDocumentMulti1 : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -427,11 +426,11 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d1._id, d2._id, d3._id ] }, true);
       assertEqual(expected, actual);
-     
+
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id ] }, true);
       assertEqual(expected, actual);
-      
+
       // test with one parameter
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id ] }, true);
@@ -439,22 +438,22 @@ function ahuacatlMiscFunctionsTestSuite () {
 
 
       cx.remove(d3);
-      
+
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@@cn, @id)", { "@cn" : cn, "id" : [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
-      
+
       expected = [ [ { title: "nada", value : 123, zzzz : false } ] ];
       actual = getQueryResults("RETURN DOCUMENT(@id)", { "id" : [ d2._id, d3._id, "abc/def" ] }, true);
       assertEqual(expected, actual);
-      
+
       internal.db._drop(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDocumentInvalid : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -467,19 +466,19 @@ function ahuacatlMiscFunctionsTestSuite () {
       expected = [ null ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"" + cn + "/99999999999\")");
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", \"thefoxdoesnotexist/99999999999\")");
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT({}, 'foo')");
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT({}, {})");
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT(true, 'foo')");
       assertEqual(expected, actual);
-      
+
       actual = getQueryResults("RETURN DOCUMENT('foo', {})");
       assertEqual(expected, actual);
 
@@ -489,7 +488,7 @@ function ahuacatlMiscFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test document indexed access function
 ////////////////////////////////////////////////////////////////////////////////
-    
+
     testDocumentIndexedAccess : function () {
       var cn = "UnitTestsAhuacatlFunctions";
 
@@ -502,7 +501,7 @@ function ahuacatlMiscFunctionsTestSuite () {
       expected = [ "123" ];
       actual = getQueryResults("RETURN DOCUMENT(" + cn + ", [ \"" + d1._id + "\" ])[0].title");
       assertEqual(expected, actual);
-      
+
       internal.db._drop(cn);
     },
 
@@ -554,9 +553,63 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       // allow some tolerance for the time diff (because of busy servers and Valgrind)
       assertTrue(diff >= 1.8 && diff <= 20, "SLEEP(2) did not take between 1.8 and 20 seconds");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test ASSERT function
+////////////////////////////////////////////////////////////////////////////////
+
+    testAssert : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var c = internal.db._create(cn);
+      c.insert({"foo": 0});
+      c.insert({"foo": 1});
+      c.insert({"foo": 2});
+
+      var result = db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn" : cn });
+      assertEqual(result.toArray().length,3);
+
+      try {
+        db._query("FOR doc in @@cn FILTER ASSERT(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_USER_ASSERT.code, err.errorNum);
+      } finally {
+        internal.db._drop(cn);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test WARN function
+////////////////////////////////////////////////////////////////////////////////
+
+    testWarn : function () {
+      var cn = "UnitTestsAhuacatlFunctions";
+
+      internal.db._drop(cn);
+      var c = internal.db._create(cn);
+      c.insert({"foo": 0});
+      c.insert({"foo": 1});
+      c.insert({"foo": 2});
+
+
+      var result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 4,'USER MESSAGE: doc.foo not less than 4') RETURN doc", { "@cn" : cn });
+      assertEqual(result.toArray().length,3);
+
+      result = db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn });
+      assertEqual(result.toArray().length,2);
+
+      try {
+        db._query("FOR doc in @@cn FILTER WARN(doc.foo < 2,'USER MESSAGE: doc.foo not less than 2') RETURN doc", { "@cn" : cn }, {"failOnWarning": true});
+      } catch (err) {
+        assertEqual(errors.ERROR_QUERY_USER_WARN.code, err.errorNum);
+      } finally {
+        internal.db._drop(cn);
+      }
     }
-  };
-}
+};} // ahuacatlMiscFunctionsTestSuite
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

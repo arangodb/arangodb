@@ -36,6 +36,7 @@ set(PACKAGING_HANDLE_CONFIG_FILES false)
 set(BIN_ARANGOBENCH @BIN_ARANGOBENCH@)
 set(BIN_ARANGODUMP @BIN_ARANGODUMP@)
 set(BIN_ARANGOEXPORT @BIN_ARANGOEXPORT@)
+set(BIN_ARANGOIMPORT @BIN_ARANGOIMPORT@)
 set(BIN_ARANGOIMP @BIN_ARANGOIMP@)
 set(BIN_ARANGORESTORE @BIN_ARANGORESTORE@)
 set(BIN_ARANGOSH @BIN_ARANGOSH@)
@@ -113,7 +114,7 @@ include(CPack)
 # TODO: missing usr/share/man/man1
 # TODO: missing usr/share/man/man1/arangobench.1
 # TODO: missing usr/share/man/man1/arangodump.1
-# TODO: missing usr/share/man/man1/arangoimp.1
+# TODO: missing usr/share/man/man1/arangoimport.1
 # TODO: missing usr/share/man/man1/arangorestore.1
 # TODO: missing usr/share/man/man1/arangosh.1
 # usr/share/man/man8/foxx-manager.8

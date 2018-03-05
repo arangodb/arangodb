@@ -396,7 +396,11 @@ std::vector<std::string> listFiles(std::string const& directory) {
   handle = _findfirst(filter.c_str(), &fd);
 
   if (handle == -1) {
-    return result;
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_errno();
+
+    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
   do {
@@ -412,7 +416,11 @@ std::vector<std::string> listFiles(std::string const& directory) {
   DIR* d = opendir(directory.c_str());
 
   if (d == nullptr) {
-    return result;
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_errno();
+
+    std::string message("failed to enumerate files in directory '" + directory + "': " + strerror(res));
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
   }
 
   dirent* de = readdir(d);

@@ -155,7 +155,7 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   virtual AqlItemBlock* getSome(size_t atLeast, size_t atMost);
 
-  void traceGetSomeBegin() const;
+  void traceGetSomeBegin(size_t atLeast, size_t atMost) const;
   void traceGetSomeEnd(AqlItemBlock const*) const;
 
  protected:

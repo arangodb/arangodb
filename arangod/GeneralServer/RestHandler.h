@@ -121,7 +121,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  public:
   void initEngine(EventLoop loop,
-                  std::function<void(RestHandler*)> storeResult) {
+                  std::function<void(RestHandler*)> const& storeResult) {
     _storeResult = storeResult;
     _engine.init(loop);
   }
@@ -142,21 +142,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::function<void(rest::RestHandler*)> _storeResult;
 };
 
-inline uint64_t RestHandler::messageId() const {
-  uint64_t messageId = 0UL;
-  auto req = _request.get();
-  auto res = _response.get();
-  if (req) {
-    messageId = req->messageId();
-  } else if (res) {
-    messageId = res->messageId();
-  } else {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "could not find corresponding request/response";
-  }
-
-  return messageId;
-}
 }
 }
 

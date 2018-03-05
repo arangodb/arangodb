@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertTrue, assertFalse, AQL_EXECUTE, 
+/*global fail, assertEqual, assertTrue, assertFalse, assertMatch, AQL_EXECUTE, 
   AQL_QUERY_CACHE_PROPERTIES, AQL_QUERY_CACHE_INVALIDATE */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -951,7 +951,7 @@ function ahuacatlQueryCacheTestSuite () {
         });
         fail();
       } catch (err) {
-        assertEqual("peng!", String(err));
+        assertMatch(/peng!/, String(err));
       }
             
       var result = AQL_EXECUTE(query, { "@collection": c1.name() });

@@ -22,6 +22,30 @@
   .shortcut-icons {
     display: none;
   }
+
+  .login-window {
+    padding: 10px 10px 30px;
+    top: 20px;
+    
+    .login-logo-round {
+      margin-bottom: 10px;
+      margin-left: 25%;
+      margin-top: 0;
+      width: 50%;
+    }
+
+    #logout {
+      margin-top: 10px !important;
+    }
+
+    form .fa {
+      left: 20px;
+    }
+
+    .login-input {
+      padding: 10px 10px 10px 30px;
+    }
+  }
 }
 
 // WIDTHS

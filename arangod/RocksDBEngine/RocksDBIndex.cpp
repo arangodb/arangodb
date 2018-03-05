@@ -63,6 +63,8 @@ RocksDBIndex::RocksDBIndex(
   if (_cacheEnabled) {
     createCache();
   }
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -82,6 +84,8 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   if (_cacheEnabled) {
     createCache();
   }
+  RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
 }
 
 RocksDBIndex::~RocksDBIndex() {
@@ -102,8 +106,9 @@ rocksdb::Comparator const* RocksDBIndex::comparator() const {
 void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   TRI_ASSERT(builder.isOpenObject());
   Index::toVelocyPackFigures(builder);
-  builder.add("cacheInUse", VPackValue(useCache()));
-  if (useCache()) {
+  bool cacheInUse = useCache();
+  builder.add("cacheInUse", VPackValue(cacheInUse));
+  if (cacheInUse) {
     builder.add("cacheSize", VPackValue(_cache->size()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
@@ -125,7 +130,6 @@ void RocksDBIndex::load() {
 
 void RocksDBIndex::unload() {
   if (useCache()) {
-    // LOG_TOPIC(ERR, Logger::FIXME) << "unload cache";
     destroyCache();
     TRI_ASSERT(!_cachePresent);
   }
@@ -176,11 +180,13 @@ void RocksDBIndex::destroyCache() {
   TRI_ASSERT(_cacheEnabled);
 }
 
-void RocksDBIndex::serializeEstimate(std::string&) const {
+rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(
+    std::string&, rocksdb::SequenceNumber seq) const {
   // All indexes that do not have an estimator do not serialize anything.
+  return seq;
 }
 
-bool RocksDBIndex::deserializeEstimate(RocksDBCounterManager*) {
+bool RocksDBIndex::deserializeEstimate(RocksDBSettingsManager*) {
   // All indexes that do not have an estimator do not deserialize anything.
   // So the estimate is always recreatable.
   // We do not advance anything here.
@@ -242,68 +248,14 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
                                     LocalDocumentId const& newDocumentId,
                                     arangodb::velocypack::Slice const& newDoc,
                                     OperationMode mode) {
+  // It is illegal to call this method on the primary index
+  // RocksDBPrimaryIndex must override this method accordingly
+  TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);
   Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
   }
   return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
-}
-
-void RocksDBIndex::truncate(transaction::Methods* trx) {
-  auto* mthds = RocksDBTransactionState::toMethods(trx);
-  auto state = RocksDBTransactionState::toState(trx);
-  RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
-
-  rocksdb::ReadOptions options = mthds->readOptions();
-  rocksdb::Slice end = indexBounds.end();
-  rocksdb::Comparator const* cmp = this->comparator();
-  options.iterate_upper_bound = &end;
-  if (type() == RocksDBIndex::TRI_IDX_TYPE_EDGE_INDEX) {
-    options.prefix_same_as_start = false;
-    options.total_order_seek = true;
-  }
-  options.verify_checksums = false;
-  options.fill_cache = false;
-
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(options, _cf);
-  iter->Seek(indexBounds.start());
-
-  while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
-    TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
-    
-    // report size of key
-    RocksDBOperationResult result = state->addInternalOperation(
-        0, iter->key().size());
-
-    // transaction size limit reached -- fail
-    if (result.fail()) {
-      THROW_ARANGO_EXCEPTION(result);
-    }
-
-    Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-
-    r = postprocessRemove(trx, iter->key(), iter->value());
-    if (!r.ok()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-
-    iter->Next();
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  //check if index entries have been deleted
-  if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {
-    if (mthds->countInBounds(getBounds(), true)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "deletion check in collection truncate "
-                                     "failed - not all documents in an index "
-                                     "have been deleted");
-    }
-  }
-#endif
 }
 
 /// @brief return the memory usage of the index
@@ -324,16 +276,12 @@ size_t RocksDBIndex::memory() const {
 void RocksDBIndex::cleanup() {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = this->getBounds();
-  TRI_ASSERT(_cf == bounds.columnFamily());
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, _cf, &b, &e);
-}
-
-Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
-                                       rocksdb::Slice const& key,
-                                       rocksdb::Slice const& value) {
-  return Result();
+  if (_cf != RocksDBColumnFamily::invalid()) {
+    RocksDBKeyBounds bounds = this->getBounds();
+    TRI_ASSERT(_cf == bounds.columnFamily());
+    rocksdb::Slice b = bounds.start(), e = bounds.end();
+    db->CompactRange(opts, _cf, &b, &e);
+  }
 }
 
 // blacklist given key from transactional cache
@@ -372,8 +320,20 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
+#ifdef USE_IRESEARCH
+    case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
+      return RocksDBKeyBounds::Empty();
+#endif
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
+}
+
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() {
+  return nullptr;
+}
+
+bool RocksDBIndex::needToPersistEstimate() const {
+  return false;
 }

@@ -154,12 +154,14 @@ int ExecutionBlock::shutdown(int errorCode) {
 }
 
 // Trace the start of a getSome call
-void ExecutionBlock::traceGetSomeBegin() const {
+void ExecutionBlock::traceGetSomeBegin(size_t atLeast, size_t atMost) const {
   if (_tracing > 0) {
     auto node = getPlanNode();
-    LOG_TOPIC(INFO, Logger::QUERIES) << "getSome type="
-      << node->getTypeString() << " this=" << (uintptr_t) this
-      << " id=" << node->id();
+    LOG_TOPIC(INFO, Logger::QUERIES)
+      << "getSome type=" << node->getTypeString()
+      << " atLeast = " << atLeast
+      << " atMost = " << atMost
+      << " this=" << (uintptr_t) this << " id=" << node->id();
   }
 }
 
@@ -195,7 +197,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 /// if it returns an actual block, it must contain at least one item.
 AqlItemBlock* ExecutionBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   std::unique_ptr<AqlItemBlock> result(
       getSomeWithoutRegisterClearout(atLeast, atMost));
   clearRegisters(result.get());

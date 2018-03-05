@@ -31,6 +31,7 @@
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 
 #include <iostream>
 #include <regex>
@@ -52,12 +53,14 @@ ImportFeature::ImportFeature(application_features::ApplicationServer* server,
       _fromCollectionPrefix(""),
       _toCollectionPrefix(""),
       _createCollection(false),
+      _createDatabase(false),
       _createCollectionType("document"),
       _typeImport("json"),
       _overwrite(false),
       _quote("\""),
       _separator(""),
       _progress(true),
+      _ignoreMissing(false),
       _onDuplicateAction("error"),
       _rowsToSkip(0),
       _result(result) {
@@ -103,6 +106,10 @@ void ImportFeature::collectOptions(
   options->addOption("--create-collection",
                      "create collection if it does not yet exist",
                      new BooleanParameter(&_createCollection));
+
+  options->addOption("--create-database",
+                     "create the target database if it does not exist",
+                     new BooleanParameter(&_createDatabase));
 
   options->addOption("--skip-lines",
                      "number of lines to skip for formats (csv and tsv only)",
@@ -155,6 +162,9 @@ void ImportFeature::collectOptions(
 
   options->addOption("--progress", "show progress",
                      new BooleanParameter(&_progress));
+  
+  options->addOption("--ignore-missing", "ignore missing columns in csv input",
+                     new BooleanParameter(&_ignoreMissing));
 
   std::unordered_set<std::string> actions = {"error", "update", "replace",
                                              "ignore"};
@@ -265,73 +275,109 @@ void ImportFeature::start() {
     }
   }
 
-  std::unique_ptr<SimpleHttpClient> httpClient;
-
   try {
-    httpClient = client->createHttpClient();
+    _httpClient = client->createHttpClient();
   } catch (...) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  httpClient->params().setLocationRewriter(static_cast<void*>(client),
+  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
+
                                            &rewriteLocation);
-  httpClient->params().setUserNamePassword("/", client->username(),
+  _httpClient->params().setUserNamePassword("/", client->username(),
                                            client->password());
 
   // must stay here in order to establish the connection
-  httpClient->getServerVersion();
 
-  if (!httpClient->isConnected()) {
+  int err = TRI_ERROR_NO_ERROR;
+  auto versionString = _httpClient->getServerVersion(&err);
+  auto dbName = client->databaseName();
+  bool createdDatabase = false;
+  
+  auto successfulConnection = [&](){
+    std::cout << "Connected to ArangoDB '"
+              << _httpClient->getEndpointSpecification() << "', version "
+              << versionString << ", database: '"
+              << client->databaseName() << "', username: '" << client->username()
+              << "'" << std::endl;
+
+    std::cout << "----------------------------------------" << std::endl;
+    std::cout << "database:               " << client->databaseName()
+              << std::endl;
+    std::cout << "collection:             " << _collectionName << std::endl;
+    if (!_fromCollectionPrefix.empty()) {
+      std::cout << "from collection prefix: " << _fromCollectionPrefix
+                << std::endl;
+    }
+    if (!_toCollectionPrefix.empty()) {
+      std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
+    }
+    std::cout << "create:                 " << (_createCollection ? "yes" : "no")
+              << std::endl;
+    std::cout << "create database:        " << (_createDatabase ? "yes" : "no")
+              << std::endl;
+    std::cout << "source filename:        " << _filename << std::endl;
+    std::cout << "file type:              " << _typeImport << std::endl;
+
+    if (_typeImport == "csv") {
+      std::cout << "quote:                  " << _quote << std::endl;
+    }
+    if (_typeImport == "csv" || _typeImport == "tsv") {
+      std::cout << "separator:              " << _separator << std::endl;
+    }
+    std::cout << "threads:                " << _threadCount << std::endl;
+
+    std::cout << "connect timeout:        " << client->connectionTimeout()
+              << std::endl;
+    std::cout << "request timeout:        " << client->requestTimeout()
+              << std::endl;
+    std::cout << "----------------------------------------" << std::endl;
+  };
+
+  if (_createDatabase && err == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    // database not found, but database creation requested
+    std::cout << "Creating database '" << dbName << "'" << std::endl;
+
+    client->setDatabaseName("_system");
+
+    int res = tryCreateDatabase(client, dbName);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
+                                              << dbName << "'";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          << _httpClient->getErrorMessage() << "'";
+      FATAL_ERROR_EXIT();
+    }
+
+    successfulConnection();
+
+    // restore old database name
+    client->setDatabaseName(dbName);
+    versionString = _httpClient->getServerVersion(nullptr);
+    createdDatabase = true;
+  }
+
+
+  if (!_httpClient->isConnected()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Could not connect to endpoint '" << client->endpoint()
         << "', database: '" << client->databaseName() << "', username: '"
         << client->username() << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << httpClient->getErrorMessage()
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage()
                                               << "'";
     FATAL_ERROR_EXIT();
   }
 
   // successfully connected
-  std::cout << "Connected to ArangoDB '"
-            << httpClient->getEndpointSpecification() << "', version "
-            << httpClient->getServerVersion() << ", database: '"
-            << client->databaseName() << "', username: '" << client->username()
-            << "'" << std::endl;
-
-  std::cout << "----------------------------------------" << std::endl;
-  std::cout << "database:               " << client->databaseName()
-            << std::endl;
-  std::cout << "collection:             " << _collectionName << std::endl;
-  if (!_fromCollectionPrefix.empty()) {
-    std::cout << "from collection prefix: " << _fromCollectionPrefix
-              << std::endl;
+  if(!createdDatabase) {
+    successfulConnection();
   }
-  if (!_toCollectionPrefix.empty()) {
-    std::cout << "to collection prefix:   " << _toCollectionPrefix << std::endl;
-  }
-  std::cout << "create:                 " << (_createCollection ? "yes" : "no")
-            << std::endl;
-  std::cout << "source filename:        " << _filename << std::endl;
-  std::cout << "file type:              " << _typeImport << std::endl;
+  _httpClient->disconnect();  // we do not reuse this anymore
 
-  if (_typeImport == "csv") {
-    std::cout << "quote:                  " << _quote << std::endl;
-  }
-  if (_typeImport == "csv" || _typeImport == "tsv") {
-    std::cout << "separator:              " << _separator << std::endl;
-  }
-  std::cout << "threads:                " << _threadCount << std::endl;
-
-  std::cout << "connect timeout:        " << client->connectionTimeout()
-            << std::endl;
-  std::cout << "request timeout:        " << client->requestTimeout()
-            << std::endl;
-  std::cout << "----------------------------------------" << std::endl;
-  httpClient->disconnect();  // we do not reuse this anymore
-
-  SimpleHttpClientParams params = httpClient->params();
+  SimpleHttpClientParams params = _httpClient->params();
   arangodb::import::ImportHelper ih(client, client->endpoint(), params,
                                     _chunkSize, _threadCount);
 
@@ -348,6 +394,7 @@ void ImportFeature::start() {
   ih.setRowsToSkip(static_cast<size_t>(_rowsToSkip));
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
+  ih.ignoreMissing(_ignoreMissing);
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
@@ -490,4 +537,47 @@ void ImportFeature::start() {
   }
 
   *_result = ret;
+}
+
+int ImportFeature::tryCreateDatabase(ClientFeature* client,
+                                      std::string const& name) {
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("name", VPackValue(name));
+  builder.add("users", VPackValue(VPackValueType::Array));
+  builder.openObject();
+  builder.add("username", VPackValue(client->username()));
+  builder.add("passwd", VPackValue(client->password()));
+  builder.close();
+  builder.close();
+  builder.close();
+
+  std::string const body = builder.slice().toJson();
+
+  std::unique_ptr<SimpleHttpResult> response(_httpClient->request(
+      rest::RequestType::POST, "/_api/database", body.c_str(), body.size()));
+
+  if (response == nullptr || !response->isComplete()) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  auto returnCode = response->getHttpReturnCode();
+
+  if (returnCode == static_cast<int>(rest::ResponseCode::OK) ||
+      returnCode == static_cast<int>(rest::ResponseCode::CREATED)) {
+    // all ok
+    return TRI_ERROR_NO_ERROR;
+  }
+  if (returnCode == static_cast<int>(rest::ResponseCode::UNAUTHORIZED) ||
+      returnCode == static_cast<int>(rest::ResponseCode::FORBIDDEN)) {
+    // invalid authorization
+    _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                                 false);
+    return TRI_ERROR_FORBIDDEN;
+  }
+
+  // any other error
+  _httpClient->setErrorMessage(getHttpErrorMessage(response.get(), nullptr),
+                               false);
+  return TRI_ERROR_INTERNAL;
 }

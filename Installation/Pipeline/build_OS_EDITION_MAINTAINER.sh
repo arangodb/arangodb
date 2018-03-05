@@ -49,9 +49,9 @@ mkdir -p build
 
 if [ ! -f build/location ]; then
     if [ "$os" == mac ]; then
-        (ls -l  && echo "$os-$edition-$maintainer") | md5 | awk '{print $1}' > build/location
+        (ls -l && echo "$os-$edition-$maintainer" && head -c 20 /dev/urandom) | md5 | awk '{print $1}' > build/location
     else
-        (ls -l  && echo "$os-$edition-$maintainer") | md5sum | awk '{print $1}' > build/location
+        (ls -l && echo "$os-$edition-$maintainer" && head -c 20 /dev/urandom) | md5sum | awk '{print $1}' > build/location
     fi
 fi
 
@@ -106,6 +106,8 @@ function configureBuild {
 ) || exit 1
 
 # the file is huge and taking lots of space and is totally useless on jenkins afterwards
-rm build/arangod/libarangoserver.a || exit 2
+rm build/arangod/libarangoserver.a || true
+rm build/bin/libarangoserver.a || true
+
 
 echo "`date +%T` done..."

@@ -317,8 +317,8 @@ TEST_CASE("cache with backing store", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           std::this_thread::sleep_for(std::chrono::milliseconds(500));
         } else {
           std::this_thread::sleep_for(std::chrono::microseconds(100));

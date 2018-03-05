@@ -190,7 +190,11 @@ PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_
 
 PlainCache::~PlainCache() {
   if (!_shutdown) {
-    shutdown();
+    try {
+      shutdown();
+    } catch (...) {
+      // no exceptions allowed here
+    }
   }
 }
 

@@ -42,15 +42,15 @@ typedef uint64_t Ticket;
 
 struct RequestInProgress {
   RequestInProgress(Destination destination, Callbacks callbacks,
-                    Ticket ticketId, std::string const& requestBody,
-                    Options const& options)
+                    Ticket ticketId, Options const& options,
+                    std::unique_ptr<GeneralRequest> request)
       : _destination(destination),
         _callbacks(callbacks),
+        _request(std::move(request)),
         _ticketId(ticketId),
-        _requestBody(requestBody),
         _requestHeaders(nullptr),
         _startTime(0.0),
-        _responseBody(new basics::StringBuffer(false)),
+        _responseBody(new basics::StringBuffer(1024, false)),
         _options(options),
         _aborted(false) {
     _errorBuffer[0] = '\0';
@@ -65,11 +65,10 @@ struct RequestInProgress {
   RequestInProgress(RequestInProgress const& other) = delete;
   RequestInProgress& operator=(RequestInProgress const& other) = delete;
 
-  // mop: i think we should just hold the full request here later
   Destination _destination;
   Callbacks _callbacks;
+  std::unique_ptr<GeneralRequest> _request;
   Ticket _ticketId;
-  std::string _requestBody;
   struct curl_slist* _requestHeaders;
 
   HeadersInProgress _responseHeaders;
@@ -120,7 +119,7 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination, std::unique_ptr<GeneralRequest>, Callbacks,
+  Ticket addRequest(Destination&&, std::unique_ptr<GeneralRequest>, Callbacks,
                     Options);
 
   int work_once();
@@ -162,7 +161,7 @@ class Communicator {
  private:
   void abortRequestInternal(Ticket ticketId);
   std::vector<RequestInProgress const*> requestsInProgress();
-  void createRequestInProgress(NewRequest const& newRequest);
+  void createRequestInProgress(NewRequest&& newRequest);
   void handleResult(CURL*, CURLcode);
   void transformResult(CURL*, HeadersInProgress&&,
                        std::unique_ptr<basics::StringBuffer>, HttpResponse*);

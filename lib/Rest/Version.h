@@ -106,6 +106,11 @@ class Version {
 
   /// @brief get ICU version
   static std::string getICUVersion();
+
+#ifdef USE_IRESEARCH
+  /// @brief get IResearch version
+  static std::string getIResearchVersion();
+#endif
   
   /// @brief get compiler
   static std::string getCompiler();

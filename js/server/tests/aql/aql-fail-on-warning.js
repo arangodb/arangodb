@@ -98,12 +98,12 @@ function ahuacatlFailOnWarningTestSuite () {
       }
     },
 
-    testEnabledWithCollectionInExpression : function () {
+    testEnabledArrayExpected : function () {
       try {
-        AQL_EXECUTE("RETURN _users + 1", null, { failOnWarning: true }).json;
+        AQL_EXECUTE("RETURN MEDIAN(7)", null, { failOnWarning: true }).json;
         fail();
       } catch (err) {
-        assertEqual(errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION.code, err.errorNum);
+        assertEqual(errors.ERROR_QUERY_ARRAY_EXPECTED.code, err.errorNum);
       }
     }
   };

@@ -109,7 +109,7 @@ class AqlItemBlock {
     if (value.requiresDestruction()) {
       if (++_valueCount[value] == 1) {
         mem = value.memoryUsage();
-        increaseMemoryUsage(value.memoryUsage());
+        increaseMemoryUsage(mem);
       }
     }
 
@@ -120,7 +120,7 @@ class AqlItemBlock {
       throw;
     }
   }
-  
+
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
@@ -129,7 +129,6 @@ class AqlItemBlock {
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
     void* p = &_data[index * _nrRegs + varNr];
-    size_t mem = 0;
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -144,15 +143,13 @@ class AqlItemBlock {
       // Now update the reference count, if this fails, we'll roll it back
       if (value->requiresDestruction()) {
         if (++_valueCount[*value] == 1) {
-          mem = value->memoryUsage();
-          increaseMemoryUsage(mem);
+          increaseMemoryUsage(value->memoryUsage());
         }
       }
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
 
-      decreaseMemoryUsage(mem);
       _data[index * _nrRegs + varNr].destroy();
       throw;
     }

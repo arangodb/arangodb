@@ -64,7 +64,8 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer* server)
       _supportsColors(isatty(STDIN_FILENO) != 0),
       _toPager(stdout),
       _toAuditFile(nullptr),
-      _lastDuration(0.0) {
+      _lastDuration(0.0),
+      _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Logger");
@@ -421,6 +422,10 @@ ConsoleFeature::Prompt ConsoleFeature::buildPrompt(ClientFeature* client) {
       } else if (c == 't') {
         std::ostringstream tmp;
         tmp << std::setprecision(6) << std::fixed << TRI_microtime();
+        result.append(tmp.str());
+      } else if (c == 'a') {
+        std::ostringstream tmp;
+        tmp << std::setprecision(6) << std::fixed << (TRI_microtime() - _startTime);
         result.append(tmp.str());
       } else if (c == 'p') {
         std::ostringstream tmp;

@@ -47,6 +47,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
     std::vector<std::pair<std::string, uint64_t>> const& markers) {
+  // first thing we do is extend the batch lifetime
+  syncer.sendExtendBatch();
+  syncer.sendExtendBarrier();
+
   std::string const baseUrl = syncer.ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
@@ -70,7 +74,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                     std::to_string(chunkSize) + "&low=" + lowString;
 
   std::string progress =
-      "fetching keys chunk '" + std::to_string(chunkId) + "' from " + url;
+      "fetching keys chunk " + std::to_string(chunkId) + " from " + url;
   syncer.setProgress(progress);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -207,6 +211,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     return Result();
   }
 
+  syncer.sendExtendBatch();
+  syncer.sendExtendBarrier();
+
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
                                         << " documents for this chunk";
 
@@ -228,7 +235,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
                       "&offset=" + std::to_string(offsetInChunk);
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
-               " for collection '" + collectionName + "' from " + url;
+               " (" + std::to_string(toFetch.size()) + " keys) for collection '" + collectionName + "' from " + url;
     syncer.setProgress(progress);
 
     std::unique_ptr<httpclient::SimpleHttpResult> response(
@@ -350,13 +357,12 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
 
 Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                              arangodb::LogicalCollection* col,
-                             std::string const& keysId, std::string const& cid,
-                             std::string const& collectionName, TRI_voc_tick_t maxTick) {
+                             std::string const& keysId) {
   std::string progress =
-      "collecting local keys for collection '" + collectionName + "'";
+      "collecting local keys for collection '" + col->name() + "'";
   syncer.setProgress(progress);
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -368,7 +374,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
-  progress = "fetching remote keys chunks for collection '" + collectionName +
+  progress = "fetching remote keys chunks for collection '" + col->name() +
              "' from " + url;
   syncer.setProgress(progress);
   auto const headers = syncer.createHeaders();
@@ -417,6 +423,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
 
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -442,7 +451,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
     LogicalCollection* coll = trx.documentCollection();
     auto ph = static_cast<RocksDBCollection*>(coll->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx, &mmdr);
+        ph->getSortedAllIterator(&trx);
     iterator->next(
         [&](LocalDocumentId const& token) {
           if (coll->readDocument(&trx, token, mmdr) == false) {
@@ -451,9 +460,9 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
           VPackSlice doc(mmdr.vpack());
           VPackSlice key = doc.get(StaticStrings::KeyString);
           if (key.compareString(lowKey.data(), lowKey.length()) < 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           } else if (key.compareString(highKey.data(), highKey.length()) > 0) {
-            trx.remove(collectionName, doc, options);
+            trx.remove(col->name(), doc, options);
           }
         },
         UINT64_MAX);
@@ -466,13 +475,16 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   }
 
   {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::EXCLUSIVE);
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -499,7 +511,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
       syncer.sendExtendBarrier();
 
       progress = "processing keys chunk " + std::to_string(currentChunkId) +
-                 " for collection '" + collectionName + "'";
+                 " for collection '" + col->name() + "'";
       syncer.setProgress(progress);
 
       // read remote chunk
@@ -538,7 +550,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
       if (cmp1 < 0) {
         // smaller values than lowKey mean they don't exist remotely
-        trx.remove(collectionName, key, options);
+        trx.remove(col->name(), key, options);
         return;
       } else if (cmp1 >= 0 && cmp2 <= 0) {
         // we only need to hash we are in the range
@@ -590,7 +602,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
     auto ph = static_cast<RocksDBCollection*>(col->getPhysical());
     std::unique_ptr<IndexIterator> iterator =
-        ph->getSortedAllIterator(&trx, &mmdr);
+        ph->getSortedAllIterator(&trx);
     iterator->next(
         [&](LocalDocumentId const& token) {
           if (col->readDocument(&trx, token, mmdr) == false) {

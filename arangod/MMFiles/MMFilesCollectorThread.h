@@ -56,7 +56,7 @@ class MMFilesCollectorThread final : public Thread {
 
   /// @brief signal the thread that there is something to do
   void signal();
-  
+
   /// @brief force the shutdown by setting _forcedStopIterations
   void forceStop();
 
@@ -66,6 +66,10 @@ class MMFilesCollectorThread final : public Thread {
   /// @brief check whether there are queued operations left for the given
   /// collection
   bool hasQueuedOperations(TRI_voc_cid_t);
+
+  /// @brief clear all queued operations. note that this is only allowed
+  /// when the server is shutting down. otherwise there will be data-loss
+  void clearQueuedOperations();
 
   // execute a callback during a phase in which the collector has nothing
   // queued. This is used in the DatabaseManagerThread when dropping
@@ -107,7 +111,7 @@ class MMFilesCollectorThread final : public Thread {
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);
 
-  void broadcastCollectorResult(int res); 
+  void broadcastCollectorResult(int res);
 
  private:
   /// @brief the logfile manager

@@ -1172,7 +1172,7 @@ struct TransactionCountTest : public BenchmarkOperation {
     TRI_AppendStringStringBuffer(buffer,
                                  "\\\"]; var startcount = c.count(); for (var "
                                  "i = 0; i < 50; ++i) { if (startcount + i !== "
-                                 "c.count()) { throw \\\"error\\\"; } c.save({ "
+                                 "c.count()) { throw \\\"error, counters deviate!\\\"; } c.save({ "
                                  "}); } }\" }");
 
     *length = TRI_LengthStringBuffer(buffer);
@@ -1318,7 +1318,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
                                    "var r1 = 0; c1.toArray().forEach(function "
                                    "(d) { r1 += d.count }); var r2 = "
                                    "c2.document(\\\"sum\\\").count; if (r1 !== "
-                                   "r2) { throw \\\"error\\\"; }");
+                                   "r2) { throw \\\"error, counters deviate!\\\"; }");
     }
 
     TRI_AppendStringStringBuffer(buffer, " }\" }");

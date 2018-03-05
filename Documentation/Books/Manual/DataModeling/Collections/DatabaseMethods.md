@@ -1,7 +1,9 @@
 Database Methods
 ================
 
-### Collection
+Collection
+----------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -45,7 +47,9 @@ Unknown collection:
     @endDocuBlock collectionDatabaseNameUnknown
 
 
-### Create
+Create
+------
+
 <!-- arangod/V8Server/v8-vocindex.cpp -->
 
 
@@ -143,14 +147,17 @@ to the [naming conventions](../NamingConventions/README.md).
   servers holding copies take over, usually without an error being
   reported.
 
-- *distributeShardsLike* distribute the shards of this collection
-  cloning the shard distribution of another.
-
   When using the *Enterprise* version of ArangoDB the replicationFactor
   may be set to "satellite" making the collection locally joinable
   on every database server. This reduces the number of network hops
   dramatically when using joins in AQL at the costs of reduced write
   performance on these collections.
+
+- *distributeShardsLike* distribute the shards of this collection
+  cloning the shard distribution of another. If this value is set
+  it will copy *replicationFactor* and *numberOfShards* from the
+  other collection, the attributes in this collection will be 
+  ignored and can be ommited.
 
 
 `db._create(collection-name, properties, type)`
@@ -259,7 +266,9 @@ Creates a new document collection named *collection-name*. If the
 document name already exists and error is thrown.
 
 
-### All Collections
+All Collections
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -282,7 +291,9 @@ Returns all collections of the given database.
 
 
 
-### Collection Name
+Collection Name
+---------------
+
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 
 
@@ -307,7 +318,9 @@ default properties.
 
 
 
-### Drop
+Drop
+----
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 
@@ -371,7 +384,9 @@ Drops a system collection
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock collectionDatabaseDropSystem
 
-### Truncate
+Truncate
+--------
+
 <!-- js/server/modules/@arangodb/arango-database.js -->
 
 

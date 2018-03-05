@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionKeys.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -61,11 +63,11 @@ void MMFilesRestReplicationHandler::insertClient(
   bool found;
   std::string const& value = _request->value("serverId", found);
 
-  if (found) {
-    TRI_server_id_t serverId = (TRI_server_id_t)StringUtils::uint64(value);
+  if (found && !value.empty() && value != "none") {
+    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
-      _vocbase->updateReplicationClient(serverId, lastServedTick);
+      _vocbase->updateReplicationClient(serverId, lastServedTick, InitialSyncer::defaultBatchTimeout);
     }
   }
 }
@@ -418,14 +420,16 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          checkMore ? "true" : "false");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(state.lastCommittedTick));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(dump._lastScannedTick));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
   if (length > 0) {
@@ -454,10 +458,19 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       // to avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
-    insertClient(dump._lastFoundTick);
   }
-  // if no error
+
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  insertClient(tickStart == 0 ? tickStart : tickStart - 1);
 }
+
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not
@@ -521,10 +534,10 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   _response->setContentType(rest::ContentType::DUMP);
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(dump._lastFoundTick));
 
   if (length > 0) {
@@ -898,8 +911,8 @@ void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
@@ -980,6 +993,14 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), c->name(), auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
@@ -1031,10 +1052,10 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   response->setContentType(rest::ContentType::DUMP);
 
   // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderCheckMore,
                          (dump._hasMore ? "true" : "false"));
 
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                          StringUtils::itoa(dump._lastFoundTick));
 
   // transfer ownership of the buffer contents

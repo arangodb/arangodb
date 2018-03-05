@@ -63,9 +63,10 @@ function checkReplicationFactor(name, fac) {
         internal.sleep(0.5);
     }
     let current = ArangoAgency.get('Current/Collections/_system');
-    let val = current.arango.Current.Collections['_system'][collectionId];   
-    throw "replicationFactor is not reflected properly in " + 
-          "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val); 
+    let val = current.arango.Current.Collections['_system'][collectionId];
+    expect(true).to.equal(false, "Expected replicationFactor of " + fac + " in collection "
+      + name + " is not reflected properly in " +
+      "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val));
 };
 
 describe('Update collection properties', function() {
@@ -87,13 +88,13 @@ describe('Update collection properties', function() {
         checkReplicationFactor(cn1, 1);
 
         const coll = db._collection(cn1);
-        
+
         let props = coll.properties({replicationFactor: 2});
         expect(props.replicationFactor).to.equal(2);
 
         checkReplicationFactor(cn1, 2);
     });
-    
+
     it('decrease replication factor ', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
 
@@ -115,7 +116,7 @@ describe('Update collection properties', function() {
         try {
             const coll = db._collection(cn1);
             coll.properties({replicationFactor: -1});
-            expect(false.replicationFactor).to.equal(true, 
+            expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
             expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
@@ -124,7 +125,7 @@ describe('Update collection properties', function() {
         try {
             const coll = db._collection(cn1);
             coll.properties({replicationFactor: 100});
-            expect(false.replicationFactor).to.equal(true, 
+            expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
             expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
@@ -133,7 +134,7 @@ describe('Update collection properties', function() {
         try {
             const coll = db._collection(cn1);
             coll.properties({replicationFactor: "satellite"});
-            expect(false.replicationFactor).to.equal(true, 
+            expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
             expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
@@ -153,9 +154,9 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         db._useDatabase("_system");
 
         try {
-            db._drop(cn2);            
+            db._drop(cn2);
         } catch (e) {}
-        
+
         try {
             db._drop(cn1);
         } catch (e) {}
@@ -166,22 +167,22 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 1);
-        checkReplicationFactor(cn2, 1);   
+        checkReplicationFactor(cn2, 1);
 
         const leader = db._collection(cn1);
         let props = leader.properties({replicationFactor: 2});
         expect(props.replicationFactor).to.equal(2);
 
         checkReplicationFactor(cn1, 2);
-        checkReplicationFactor(cn2, 2); 
+        checkReplicationFactor(cn2, 2);
     });
-    
+
     it('decrease replication factor', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
-        checkReplicationFactor(cn2, 2); 
+        checkReplicationFactor(cn2, 2);
 
         const leader = db._collection(cn1);
 
@@ -197,12 +198,12 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         db._create(cn2, {distributeShardsLike: cn1}, {waitForSyncReplication: true});
 
         checkReplicationFactor(cn1, 2);
-        checkReplicationFactor(cn2, 2); 
-        
+        checkReplicationFactor(cn2, 2);
+
         try {
             const follower = db._collection(cn2);
             follower.properties({replicationFactor: 1});
-            expect(false.replicationFactor).to.equal(true, 
+            expect(false.replicationFactor).to.equal(true,
                 "Was able to update replicationFactor of follower");
         } catch(e) {
             expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
@@ -219,10 +220,16 @@ describe('Replication factor constraints', function() {
         db._useDatabase("_system");
 
         try {
-            db._drop(cn1);            
+            // must be dropped first because cn1 is prototype for this collection
+            // and can only be dropped if all dependent collections are dropped first.
+            db._drop(cn2);
+        } catch (e) {}
+
+        try {
+            db._drop(cn1);
         } catch (e) {}
     });
-    
+
     it('should not allow to create a collection with more replicas than dbservers available', function() {
         try {
             db._create(cn1, {replicationFactor: 5});
@@ -234,5 +241,28 @@ describe('Replication factor constraints', function() {
 
     it('should allow to create a collection with more replicas than dbservers when explicitly requested', function() {
         db._create(cn1, {replicationFactor: 5}, {enforceReplicationFactor: false});
+    });
+
+    it('check replication factor of system collections', function() {
+        ["_appbundles", "_apps", "_aqlfunctions", "_frontend", "_graphs",
+         "_iresearch_analyzers", "_jobs", "_modules", "_queues", "_routing",
+         "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
+        ].forEach(name => {
+          if(name === "_graphs"){
+            expect(db[name].properties()['replicationFactor']).to.equal(2);
+          } else if(db[name]){
+            expect(db[name].properties()['replicationFactor']).to.equal(2);
+            expect(db[name].properties()['distributeShardsLike']).to.equal("_graphs");
+          }
+
+        });
+    });
+
+    it('distributeShardsLike should ignore additional parameters', function() {
+        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+        db._create(cn2, {distributeShardsLike: cn1, replicationFactor: 5, numberOfShards: 99}, {waitForSyncReplication: true});
+        expect(db[cn1].properties()['replicationFactor']).to.equal(db[cn2].properties()['replicationFactor']);
+        expect(db[cn1].properties()['numberOfShards']).to.equal(db[cn2].properties()['numberOfShards']);
+        expect(db[cn2].properties()['distributeShardsLike']).to.equal(cn1);
     });
 });

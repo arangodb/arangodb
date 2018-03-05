@@ -25,13 +25,12 @@
 
 #include "Agency/AgencyComm.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -78,12 +77,13 @@ std::vector<std::string> Databases::list(std::string const& user) {
   } else {
     // slow path for user case
     if (ServerState::instance()->isCoordinator()) {
-      auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+      
+      AuthenticationFeature* af = AuthenticationFeature::instance();
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (!auth->isActive() ||
-            auth->authInfo()->canUseDatabase(user, db) != AuthLevel::NONE) {
+        if (!af->isActive() ||
+            af->userManager()->databaseAuthLevel(user, db) > auth::Level::NONE) {
           names.push_back(db);
         }
       }
@@ -139,7 +139,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
 arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
@@ -153,13 +153,13 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (options.isNone() || options.isNull()) {
     options = VPackSlice::emptyObjectSlice();
   } else if (!options.isObject()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
   VPackSlice users = inUsers;
   if (users.isNone() || users.isNull()) {
     users = VPackSlice::emptyArraySlice();
   } else if (!users.isArray()) {
-    return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
+    return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   VPackBuilder sanitizedUsers;
@@ -248,7 +248,7 @@ arangodb::Result Databases::create(std::string const& dbName,
         break;
       }
       // sleep
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
     if (vocbase == nullptr) {
@@ -261,10 +261,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     // we need to add the permissions before running the upgrade script
     if (ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(
-          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
-            entry.grantDatabase(dbName, AuthLevel::RW);
-            entry.grantCollection(dbName, "*", AuthLevel::RW);
+      af->userManager()->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+            entry.grantDatabase(dbName, auth::Level::RW);
+            entry.grantCollection(dbName, "*", auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
           });
     }
 
@@ -285,7 +286,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     isolate->GetCurrentContext()->Global()->Set(
         TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
-    // initalize database
+    // initialize database
     bool allowUseDatabase = v8g->_allowUseDatabase;
     v8g->_allowUseDatabase = true;
     // execute script
@@ -299,7 +300,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     // purposes)
     TRI_voc_tick_t id = 0;
     if (options.hasKey("id")) {
-      id = options.get("id").getUInt();
+      id = basics::VelocyPackHelper::stringUInt64(options, "id");
     }
 
     TRI_vocbase_t* vocbase = nullptr;
@@ -314,12 +315,15 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (ServerState::instance()->isSingleServer() &&
         ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
-                                   [&](AuthUserEntry& entry) {
-                                     entry.grantDatabase(dbName, AuthLevel::RW);
-                                     entry.grantCollection(dbName, "*", AuthLevel::RW);
-                                   });
+      af->userManager()->updateUser(
+          ExecContext::CURRENT->user(), [&](auth::User& entry) {
+             entry.grantDatabase(dbName, auth::Level::RW);
+             entry.grantCollection(dbName, "*", auth::Level::RW);
+             return TRI_ERROR_NO_ERROR;
+           });
     }
+
+    TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
 
     V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
@@ -345,7 +349,7 @@ arangodb::Result Databases::create(std::string const& dbName,
 
       v8g->_vocbase = vocbase;
 
-      // initalize database
+      // initialize database
       try {
         V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
             isolate, isolate->GetCurrentContext(),
@@ -382,7 +386,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   TRI_ASSERT(systemVocbase->isSystem());
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    if (exec->systemAuthLevel() != AuthLevel::RW) {
+    if (exec->systemAuthLevel() != auth::Level::RW) {
       return TRI_ERROR_FORBIDDEN;
     } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
@@ -434,7 +438,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
       vocbase->release();
       // sleep
-      usleep(10000);
+      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
 
   } else {
@@ -458,11 +462,11 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
 
   Result res;
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
-    res = auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
-      entry.removeDatabase(dbName);
+    res = af->userManager()->enumerateUsers([&](auth::User& entry) -> bool {
+      return entry.removeDatabase(dbName);
     });
   }
   return res;

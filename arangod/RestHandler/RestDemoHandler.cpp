@@ -21,12 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestDemoHandler.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
+
+#include <thread>
+#include <chrono>
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,7 +41,7 @@ RestDemoHandler::RestDemoHandler(GeneralRequest* request,
 RestStatus RestDemoHandler::execute() {
   return RestStatus::QUEUE
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler going to sleep"; })
-      .then([]() { sleep(5); })
+      .then([]() { std::this_thread::sleep_for(std::chrono::seconds(5)); })
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler done sleeping"; })
       .then([this]() { doSomeMoreWork(); })
       .then([this]() { return evenMoreWork(); });
@@ -62,7 +64,7 @@ RestStatus RestDemoHandler::evenMoreWork() {
 
   return RestStatus::DONE
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler keeps working"; })
-      .then([]() { sleep(5); })
+      .then([]() { std::this_thread::sleep_for(std::chrono::seconds(5)); })
       .then(
           []() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "even if the result has already been returned"; })
       .then([]() { LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "finally done"; });

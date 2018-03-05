@@ -102,6 +102,3 @@ void TRI_InitializeError() {
   TRI_InitializeErrorMessages();
   TRI_InitializeExitMessages();
 }
-
-/// @brief shuts down the error messages
-void TRI_ShutdownError() {}

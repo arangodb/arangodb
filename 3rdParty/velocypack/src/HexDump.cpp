@@ -70,22 +70,7 @@ namespace arangodb {
 namespace velocypack {
 
 std::ostream& operator<<(std::ostream& stream, HexDump const& hexdump) {
-  int current = 0;
-
-  for (uint8_t it : hexdump.slice) {
-    if (current != 0) {
-      stream << hexdump.separator;
-
-      if (hexdump.valuesPerLine > 0 && current == hexdump.valuesPerLine) {
-        stream << std::endl;
-        current = 0;
-      }
-    }
-
-    stream << HexDump::toHex(it);
-    ++current;
-  }
-
+  stream << hexdump.toString();
   return stream;
 }
 

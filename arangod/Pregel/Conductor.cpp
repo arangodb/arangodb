@@ -107,6 +107,8 @@ Conductor::~Conductor() {
 }
 
 void Conductor::start() {
+  MUTEX_LOCKER(guard, _callbackMutex);
+  _callbackMutex.assertLockedByCurrentThread();
   _startTimeSecs = TRI_microtime();
   _globalSuperstep = 0;
   _state = ExecutionState::RUNNING;
@@ -122,6 +124,7 @@ void Conductor::start() {
 // only called by the conductor, is protected by the
 // mutex locked in finishedGlobalStep
 bool Conductor::_startGlobalStep() {
+  _callbackMutex.assertLockedByCurrentThread();
   // send prepare GSS notice
   VPackBuilder b;
   b.openObject();
@@ -372,12 +375,19 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     }
   }
   if (res != TRI_ERROR_NO_ERROR) {
-    cancel();
+    cancelNoLock();
     LOG_TOPIC(INFO, Logger::PREGEL) << "Recovery failed";
   }
 }
 
 void Conductor::cancel() {
+  MUTEX_LOCKER(guard, _callbackMutex);
+  cancelNoLock();
+}
+
+void Conductor::cancelNoLock() {
+  _callbackMutex.assertLockedByCurrentThread();
+
   if (_state == ExecutionState::RUNNING ||
       _state == ExecutionState::RECOVERING ||
       _state == ExecutionState::IN_ERROR) {
@@ -392,7 +402,7 @@ void Conductor::startRecovery() {
     return;  // maybe we are already in recovery mode
   } else if (_algorithm->supportsCompensation() == false) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Algorithm does not support recovery";
-    cancel();
+    cancelNoLock();
     return;
   }
 
@@ -420,7 +430,7 @@ void Conductor::startRecovery() {
         _dbServers, goodServers);
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Recovery proceedings failed";
-      cancel();
+      cancelNoLock();
       return;
     }
     _dbServers = goodServers;
@@ -439,7 +449,7 @@ void Conductor::startRecovery() {
     if (_masterContext) {
       bool proceed = _masterContext->preCompensation();
       if (!proceed) {
-        cancel();
+        cancelNoLock();
       }
     }
 
@@ -454,7 +464,7 @@ void Conductor::startRecovery() {
     // _dbServers list to the new primary DBServers
     res = _initializeWorkers(Utils::startRecoveryPath, additionalKeys.slice());
     if (res != TRI_ERROR_NO_ERROR) {
-      cancel();
+      cancelNoLock();
       LOG_TOPIC(ERR, Logger::PREGEL) << "Compensation failed";
     }
   });
@@ -483,7 +493,7 @@ static void resolveInfo(
     ClusterInfo* ci = ClusterInfo::instance();
     std::shared_ptr<LogicalCollection> lc =
         ci->getCollection(vocbase->name(), collectionID);
-    if (!lc || lc->deleted()) {
+    if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
@@ -509,6 +519,8 @@ static void resolveInfo(
 /// proceedings
 int Conductor::_initializeWorkers(std::string const& suffix,
                                   VPackSlice additional) {
+  _callbackMutex.assertLockedByCurrentThread();
+
   std::string const path =
       Utils::baseUrl(_vocbaseGuard.database()->name(), Utils::workerPrefix) +
       suffix;
@@ -593,26 +605,32 @@ int Conductor::_initializeWorkers(std::string const& suffix,
     b.close();
     b.close();
 
-    // only on single server
+    // hack for singke serveronly on single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
-      std::shared_ptr<IWorker> w =
-          PregelFeature::instance()->worker(_executionNumber);
-      if (!w) {
-        PregelFeature::instance()->addWorker(
-            AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice()),
-            _executionNumber);
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "Worker with this execution number already exists.");
+      TRI_ASSERT(vertexMap.size() == 1);
+      PregelFeature* feature = PregelFeature::instance();
+      
+      std::shared_ptr<IWorker> worker = feature->worker(_executionNumber);
+      if (worker) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "a worker with this execution number already exists.");
       }
+      
+      TRI_vocbase_t* vocbase = _vocbaseGuard.database();
+      auto created = AlgoRegistry::createWorker(vocbase, b.slice());
+      TRI_ASSERT(created.get() != nullptr);
+      PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
+      worker = PregelFeature::instance()->worker(_executionNumber);
+      TRI_ASSERT (worker);
+      worker->setupWorker();
       return TRI_ERROR_NO_ERROR;
+      
+    } else {
+      auto body = std::make_shared<std::string const>(b.toJson());
+      requests.emplace_back("server:" + server, rest::RequestType::POST, path,
+                            body);
+      LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
-
-    auto body = std::make_shared<std::string const>(b.toJson());
-    requests.emplace_back("server:" + server, rest::RequestType::POST, path,
-                          body);
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Initializing Server " << server;
   }
 
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
@@ -624,6 +642,8 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 }
 
 int Conductor::_finalizeWorkers() {
+  _callbackMutex.assertLockedByCurrentThread();
+
   double compEnd = TRI_microtime();
 
   bool store = _state == ExecutionState::DONE;
@@ -669,6 +689,8 @@ int Conductor::_finalizeWorkers() {
 }
 
 VPackBuilder Conductor::collectAQLResults() {
+  _callbackMutex.assertLockedByCurrentThread();
+
   if (_state != ExecutionState::DONE) {
     return VPackBuilder();
   }
@@ -714,6 +736,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
 int Conductor::_sendToAllDBServers(std::string const& path,
                                    VPackBuilder const& message,
                                    std::function<void(VPackSlice)> handle) {
+  _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
 
   // to support the single server case, we handle it without optimizing it
@@ -765,6 +788,8 @@ int Conductor::_sendToAllDBServers(std::string const& path,
 }
 
 void Conductor::_ensureUniqueResponse(VPackSlice body) {
+  _callbackMutex.assertLockedByCurrentThread();
+
   // check if this the only time we received this
   ServerID sender = body.get(Utils::senderKey).copyString();
   if (_respondedServers.find(sender) != _respondedServers.end()) {

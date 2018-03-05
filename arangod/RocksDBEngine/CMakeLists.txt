@@ -44,7 +44,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
-  RocksDBEngine/RocksDBCounterManager.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBExportCursor.cpp
@@ -62,7 +61,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
-  RocksDBEngine/RocksDBRecoveryFinalizer.cpp
+  RocksDBEngine/RocksDBRecoveryManager.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
   RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBReplicationManager.cpp
@@ -71,6 +70,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
+  RocksDBEngine/RocksDBSettingsManager.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBThrottle.cpp

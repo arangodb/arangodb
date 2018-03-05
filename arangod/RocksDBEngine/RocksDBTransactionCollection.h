@@ -87,8 +87,35 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
-                    uint64_t operationSize, TRI_voc_rid_t revisionId);
-  void commitCounts();
+                    TRI_voc_rid_t revisionId);
+
+  /**
+   * @brief Prepare collection for commit by placing index blockers
+   * @param trxId        Active transaction ID
+   * @param preCommitSeq Current seq/tick immediately before call
+   */
+  void prepareCommit(uint64_t trxId, uint64_t preCommitSeq);
+
+  /**
+   * @brief Signal upstream abort/rollback to clean up index blockers
+   * @param trxId Active transaction ID
+   */
+  void abortCommit(uint64_t trxId);
+
+  /**
+   * @brief Commit collection counts and buffer tracked index updates
+   * @param trxId     Active transaction ID
+   * @param commitSeq Seq/tick immediately after upstream commit
+   */
+  void commitCounts(uint64_t trxId, uint64_t commitSeq);
+
+  /// @brief Every index can track hashes inserted into this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexInsert(uint64_t idxObjectId, uint64_t hash);
+
+  /// @brief Every index can track hashes removed from this index
+  ///        Used to update the estimate after the trx commited
+  void trackIndexRemove(uint64_t idxObjectId, uint64_t hash);
 
  private:
   /// @brief request a lock for a collection
@@ -105,11 +132,17 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
-  uint64_t _operationSize;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
   bool _usageLocked;
+
+  /// @brief A list where all indexes with estimates can store their operations
+  ///        Will be applied to the inserter on commit and not applied on abort
+  std::unordered_map<uint64_t,
+                     std::pair<std::vector<uint64_t>, std::vector<uint64_t>>>
+      _trackedIndexOperations;
+
 };
 }
 

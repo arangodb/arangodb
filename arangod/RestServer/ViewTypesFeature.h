@@ -27,6 +27,7 @@
 #include "VocBase/ViewImplementation.h"
 
 namespace arangodb {
+
 class ViewTypesFeature final
     : public application_features::ApplicationFeature {
  public:

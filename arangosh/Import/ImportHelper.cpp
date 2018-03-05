@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ImportHelper.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
@@ -153,6 +154,7 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _overwrite(false),
       _progress(false),
       _firstChunk(true),
+      _ignoreMissing(false),
       _numberLines(0),
       _rowsRead(0),
       _rowOffset(0),
@@ -167,7 +169,10 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
     auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats));
+    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
+      CONDITION_LOCKER(guard, _threadsCondition);
+      guard.signal();
+    }));
     _senderThreads.back()->start();
   }
  
@@ -727,8 +732,8 @@ bool ImportHelper::checkCreateCollection() {
   std::shared_ptr<velocypack::Builder> bodyBuilder(result->getBodyVelocyPack());
   velocypack::Slice error = bodyBuilder->slice();
   if (!error.isNone()) {
-    auto errorNum = error.get("errorNum").getUInt();
-    auto errorMsg = error.get("errorMessage").copyString();
+    auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
+    auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
@@ -784,7 +789,7 @@ void ImportHelper::sendCsvBuffer() {
 
   std::string url("/_api/import?" + getCollectionUrlPart() + "&line=" +
                   StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" +
-                  StringUtils::urlEncode(_onDuplicateAction));
+                  StringUtils::urlEncode(_onDuplicateAction) + "&ignoreMissing=" + (_ignoreMissing ? "true" : "false"));
 
   if (!_fromCollectionPrefix.empty()) {
     url += "&fromPrefix=" + StringUtils::urlEncode(_fromCollectionPrefix);
@@ -859,7 +864,9 @@ SenderThread* ImportHelper::findIdleSender() {
         return t.get();
       }
     }
-    std::this_thread::yield();
+
+    CONDITION_LOCKER(guard, _threadsCondition);
+    guard.wait(10000);
   }
   return nullptr;
 }
@@ -880,7 +887,7 @@ void ImportHelper::waitForSenders() {
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
 }

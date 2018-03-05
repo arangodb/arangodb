@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpRequest.h"
+#include "Basics/NumberUtils.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -549,7 +550,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
   if (keyLength == StaticStrings::ContentLength.size() &&
       memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) ==
           0) {  // 14 = strlen("content-length")
-    _contentLength = StringUtils::int64(value, valueLength);
+    _contentLength = NumberUtils::atoi_zero<int64_t>(value, value + valueLength);
     // do not store this header
     return;
   }

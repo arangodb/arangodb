@@ -134,8 +134,8 @@ This can be changed by setting the 3rd parameter to *true* to interpret the poin
   points of the polygon
 - **coord** (array): the search coordinate as a number array with two elements
 - **useLonLat** (bool, *optional*): if set to *true*, the coordinates in *polygon* and
-  the search coordinate *coord* will be interpreted as *[lon, lat]*. The default is
-  *false* and the format *[lat, lon]* is expected.
+  the search coordinate *coord* will be interpreted as *[lon, lat]* (GeoJSON).
+  The default is *false* and the format *[lat, lon]* is expected.
 - returns **bool** (bool): *true* if the point *coord* is inside the *polygon* or
   *false* if it's not. The result is undefined (can be *true* or *false*) if the
   specified point is exactly on a boundary of the polygon.

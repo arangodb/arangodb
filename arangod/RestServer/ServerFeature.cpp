@@ -56,12 +56,12 @@ ServerFeature::ServerFeature(application_features::ApplicationServer* server,
   startsAfter("Authentication");
   startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("FeatureCache");
   startsAfter("Scheduler");
   startsAfter("Statistics");
   startsAfter("Upgrade");
   startsAfter("V8Dealer");
   startsAfter("WorkMonitor");
+  startsAfter("Temp");
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -79,9 +79,6 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("javascript", "Configure the Javascript engine");
 
-  options->addHiddenOption("--javascript.unit-tests", "run unit-tests and exit",
-                           new VectorParameter<StringParameter>(&_unitTests));
-
   options->addOption("--javascript.script", "run scripts and exit",
                      new VectorParameter<StringParameter>(&_scripts));
 
@@ -92,16 +89,11 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new UInt32Parameter(&_vstMaxSize));
 }
 
-void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   int count = 0;
 
   if (_console) {
     _operationMode = OperationMode::MODE_CONSOLE;
-    ++count;
-  }
-
-  if (!_unitTests.empty()) {
-    _operationMode = OperationMode::MODE_UNITTESTS;
     ++count;
   }
 
@@ -126,9 +118,14 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
                                         "SslServer", "Supervisor"});
 
-    ReplicationFeature* replicationFeature =
-        ApplicationServer::getFeature<ReplicationFeature>("Replication");
-    replicationFeature->disableReplicationApplier();
+    if (!options->processingResult().touched("replication.auto-start")) {
+      // turn off replication applier when we do not have a rest server
+      // but only if the config option is not explicitly set (the recovery
+      // test want the applier to be enabled for testing it)
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      replicationFeature->disableReplicationApplier();
+    }
 
     StatisticsFeature* statisticsFeature =
         ApplicationServer::getFeature<StatisticsFeature>("Statistics");
@@ -138,8 +135,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   V8DealerFeature* v8dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
-  if (_operationMode == OperationMode::MODE_SCRIPT ||
-      _operationMode == OperationMode::MODE_UNITTESTS) {
+  if (_operationMode == OperationMode::MODE_SCRIPT) {
     v8dealer->setMinimumContexts(2);
   } else {
     v8dealer->setMinimumContexts(1);
@@ -162,7 +158,6 @@ void ServerFeature::start() {
   *_result = EXIT_SUCCESS;
 
   switch (_operationMode) {
-    case OperationMode::MODE_UNITTESTS:
     case OperationMode::MODE_SCRIPT:
     case OperationMode::MODE_CONSOLE:
       break;
@@ -203,7 +198,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    usleep(100 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
   }
 }
 
@@ -211,8 +206,6 @@ std::string ServerFeature::operationModeString(OperationMode mode) {
   switch (mode) {
     case OperationMode::MODE_CONSOLE:
       return "console";
-    case OperationMode::MODE_UNITTESTS:
-      return "unittests";
     case OperationMode::MODE_SCRIPT:
       return "script";
     case OperationMode::MODE_SERVER:

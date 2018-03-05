@@ -270,9 +270,9 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   return hasPath;
 }
 
-AqlItemBlock* ShortestPathBlock::getSome(size_t, size_t atMost) {
+AqlItemBlock* ShortestPathBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);

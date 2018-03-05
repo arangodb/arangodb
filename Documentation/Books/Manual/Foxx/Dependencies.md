@@ -33,7 +33,8 @@ Foxx dependencies can be declared in a [service's manifest](Manifest.md) using t
 
 * `dependencies` lists the dependencies a given service uses, i.e. which APIs its dependencies need to be compatible with
 
-A dependency name should generally use the same format as a namespaced (org-scoped) NPM module, e.g. `@foxx/sessions`.
+A dependency name should generally use the same format as a namespaced (org-scoped) NPM module, e.g. `@foxx/sessions`. The dependency name should follow either the case-insensitive format
+  `/^@[_$a-z][-_$a-z0-9]*(\/[_$a-z][-_$a-z0-9]*)*$/` or `/^[_$a-z][-_$a-z0-9]*$/`.
 
 Dependency names refer to the external JavaScript API of a service rather than specific services implementing those APIs. Some dependency names defined by officially maintained services are:
 
@@ -74,6 +75,8 @@ A `dependencies` definition maps the local alias of a given dependency against i
 Dependencies can be configured from the web interface in a service's settings tab using the *Dependencies* button.
 
 <!-- TODO (Add link to relevant aardvark docs) -->
+
+The local alias should be a valid identifier following the case-insensitive format `/^[_$a-z][-_$a-z0-9]*$/`.
 
 The value for each dependency should be the database-relative mount path of the service (including the leading slash). In order to be usable as the dependency of another service both services need to be mounted in the same database. A service can be used to provide multiple dependencies for the same service (as long as the expected JavaScript APIs don't conflict).
 

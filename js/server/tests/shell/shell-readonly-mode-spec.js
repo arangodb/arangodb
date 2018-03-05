@@ -58,7 +58,7 @@ describe('Readonly mode api', function() {
   after(function() {
     // wait 5 seconds so the "default" server mode has a chance to be picked up by all db servers
     // before we go on with other tests
-    require("internal").wait(5, false); 
+    internal.wait(5, false); 
   });
 
   it('outputs its current mode', function() {
@@ -105,7 +105,7 @@ describe('Readonly mode api', function() {
     });
     expect(resp.code).to.equal(200);
     // heartbeat thread will take some time
-    internal.wait(0.5);
+    internal.wait(5, false);
     
     let res = instanceInfo.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
     .every(arangod => {

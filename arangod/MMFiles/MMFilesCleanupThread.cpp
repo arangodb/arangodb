@@ -113,7 +113,7 @@ void MMFilesCleanupThread::run() {
         locker.wait(cleanupInterval());
       } else {
         // prevent busy waiting
-        usleep(10000);
+        std::this_thread::sleep_for(std::chrono::microseconds(10000));
       }
 
     } catch (...) {

@@ -110,7 +110,7 @@ ClusterSelectivityEstimates::ValueType ClusterSelectivityEstimates::fetch() {
     } 
     
     now = TRI_microtime(); 
-    usleep(10000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
   }
 }
 

@@ -33,6 +33,8 @@
 #include "Ssl/ssl-helper.h"
 
 #include <iostream>
+#include <thread>
+#include <chrono>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -150,7 +152,7 @@ void ClientFeature::prepare() {
   if (_authentication &&
       isEnabled() &&
       _haveServerPassword) {
-    usleep(10 * 1000);
+    std::this_thread::sleep_for(std::chrono::microseconds(10 * 1000));
 
     try {
       ConsoleFeature* console =

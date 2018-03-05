@@ -182,6 +182,8 @@ typedef long suseconds_t;
 // leading to follow-up compile errors
 #undef free
 #undef small
+// Windows debug mode also seems to define DEBUG preproc symbol
+#undef DEBUG
 #endif
 
 /// @brief helper macro for calculating strlens for static strings at

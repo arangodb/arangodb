@@ -292,10 +292,9 @@ class MMFilesCollection final : public PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const override;
 
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
-                                                ManagedDocumentResult* mdr,
                                                 bool reverse) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(
-      transaction::Methods* trx, ManagedDocumentResult* mdr) const override;
+      transaction::Methods* trx) const override;
   void invokeOnAllElements(
       transaction::Methods* trx,
       std::function<bool(LocalDocumentId const&)> callback) override;
@@ -330,7 +329,7 @@ class MMFilesCollection final : public PhysicalCollection {
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
   LocalDocumentId lookupKey(transaction::Methods* trx,
-                                    velocypack::Slice const& key) override;
+                            velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
@@ -340,11 +339,11 @@ class MMFilesCollection final : public PhysicalCollection {
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& documentId,
-                    ManagedDocumentResult& result) override;
+                    ManagedDocumentResult& result) const override;
 
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& documentId,
-                                IndexIterator::DocumentCallback const& cb) override;
+                                IndexIterator::DocumentCallback const& cb) const override;
 
   size_t readDocumentWithCallback(transaction::Methods* trx,
                                   std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds,
@@ -537,6 +536,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesDocumentOperation&,
                         MMFilesWalMarker const*, OperationOptions& options,
                         bool& waitForSync);
+
+  LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

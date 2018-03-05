@@ -1,5 +1,5 @@
 /* jshint browser: true */
-/* global Backbone, $, window, ace, arangoHelper, templateEngine, Joi, _ */
+/* global Backbone, $, window, ace, arangoHelper, CryptoJS, templateEngine, Joi, _ */
 (function () {
   'use strict';
 
@@ -9,7 +9,7 @@
     divs: ['#readme', '#swagger', '#app-info', '#sideinformation', '#information', '#settings'],
     navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
 
-    template: templateEngine.createTemplate('applicationDetailView.ejs'),
+    template: templateEngine.createTemplate('serviceDetailView.ejs'),
 
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
@@ -80,6 +80,19 @@
       } else if (e.currentTarget.id === 'service-api') {
         this.resize();
         $('#swagger').show();
+        $('#swaggerIframe').remove();
+        // load swagger iframe
+        var path = window.location.pathname.split('/');
+        var urlswag = window.location.protocol + '//' + window.location.hostname + ':' + window.location.port + '/' + path[1] + '/' + path[2] + '/_admin/aardvark/foxxes/docs/index.html?mount=' + this.model.get('mount');
+
+        var ifr = $('<iframe/>', {
+          id: 'swaggerIframe',
+          src: urlswag,
+          load: function () {
+            $('#swagger').height($('.centralRow').height() - 150);
+          }
+        });
+        $('#swagger').append(ifr);
       } else if (e.currentTarget.id === 'service-info') {
         this.resize(true);
         this.render();
@@ -100,12 +113,12 @@
     },
 
     replaceApp: function () {
-      var mount = this.model.get('mount');
-      window.foxxInstallView.upgrade(mount, function () {
-        window.App.applicationDetail(encodeURIComponent(mount));
-      });
-      $('.createModalDialog .arangoHeader').html('Replace Service');
-      $('#infoTab').click();
+      window.App.replaceApp = true;
+      window.App.replaceAppData = {
+        model: this.model,
+        mount: this.model.get('mount')
+      };
+      window.App.navigate('services/install', {trigger: true});
     },
 
     updateConfig: function () {
@@ -262,7 +275,8 @@
             $(this.el).html(this.template.render({
               app: this.model,
               baseUrl: arangoHelper.databaseUrl('', db),
-              mode: mode
+              mode: mode,
+              installed: true
             }));
 
             // init ace
@@ -396,7 +410,7 @@
     applyConfig: function () {
       var cfg = {};
       _.each(this.model.get('config'), function (opt, key) {
-        var $el = $('#app_config_' + key);
+        var $el = $('#app_config_' + CryptoJS.MD5(key).toString());
         var val = $el.val();
         if (opt.type === 'boolean' || opt.type === 'bool') {
           cfg[key] = $el.is(':checked');
@@ -479,7 +493,7 @@
           });
         }
         return window.modalView[methodName](
-          'app_config_' + name,
+          'app_config_' + CryptoJS.MD5(name).toString(),
           name,
           currentValue,
           obj.description,

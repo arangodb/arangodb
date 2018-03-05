@@ -5,7 +5,8 @@ Within the ArangoDB shell, the *_query* and *_createStatement* methods of the
 *db* object can be used to execute AQL queries. This chapter also describes
 how to use bind parameters, counting, statistics and cursors. 
 
-### with db._query
+With db._query
+--------------
 
 One can execute queries with the *_query* method of the *db* object. 
 This will run the specified query in the context of the currently
@@ -21,7 +22,7 @@ can be printed using its *toArray* method:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 01_workWithAQL_all
 
-#### db._query Bind parameters
+### db._query Bind parameters
 
 To pass bind parameters into a query, they can be specified as second argument to the
 *_query* method:
@@ -36,7 +37,7 @@ To pass bind parameters into a query, they can be specified as second argument t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 02_workWithAQL_bindValues
 
-#### ES6 template strings
+### ES6 template strings
 
 It is also possible to use ES6 template strings for generating AQL queries. There is
 a template string generator function named *aql*; we call it once to demonstrate
@@ -77,7 +78,7 @@ Note: data-modification AQL queries normally do not return a result (unless the 
 contains an extra *RETURN* statement). When not using a *RETURN* statement in the query, the 
 *toArray* method will return an empty array.
 
-#### Statistics and extra Information
+### Statistics and extra Information
  
 It is always possible to retrieve statistics for a query with the *getExtra* method:
 
@@ -93,7 +94,7 @@ It is always possible to retrieve statistics for a query with the *getExtra* met
 The meaning of the statistics values is described in [Execution statistics](../ExecutionAndPerformance/QueryStatistics.md).
 You also will find warnings in here; If you're designing queries on the shell be sure to also look at it.
 
-#### Setting a memory limit
+### Setting a memory limit
 
 To set a memory limit for the query, pass *options* to the *_query* method.
 The memory limit specifies the maximum number of bytes that the query is
@@ -116,7 +117,7 @@ startup option *--query.memory-limit* will be used for restricting the maximum a
 of memory the query can use. A memory limit value of *0* means that the maximum
 amount of memory for the query is not restricted. 
 
-#### Setting options
+### Setting options
 
 There are further options that can be passed in the *options* attribute of the *_query* method:
 
@@ -164,7 +165,8 @@ In the ArangoDB Enterprise Edition there is an additional parameter:
   and different users execute AQL queries on that graph. You can now naturally limit the 
   accessible results by changing the access rights of users on collections.
 
-### with _createStatement (ArangoStatement)
+With _createStatement (ArangoStatement)
+---------------------------------------
 
 The *_query* method is a shorthand for creating an ArangoStatement object,
 executing it and iterating over the resulting cursor. If more control over the
@@ -187,7 +189,7 @@ To execute the query, use the *execute* method of the statement:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements2
 
-#### Cursors
+### Cursors
 
 Once the query executed the query results are available in a cursor. 
 The cursor can return all its results at once using the *toArray* method.
@@ -222,7 +224,7 @@ the results again, the query needs to be re-executed.
 Additionally, the iteration can be done in a forward-only fashion. There is no 
 backwards iteration or random access to elements in a cursor.    
 
-#### ArangoStatement parameters binding
+### ArangoStatement parameters binding
 
 To execute an AQL query using bind parameters, you need to create a statement first
 and then bind the parameters to it before execution:
@@ -276,7 +278,7 @@ making it a bit more convenient:
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 05_workWithAQL_statements8
 
-#### Counting with a cursor
+### Counting with a cursor
     
 Cursors also optionally provide the total number of results. By default, they do not. 
 To make the server return the total number of results, you may set the *count* attribute to 
@@ -319,7 +321,7 @@ on the server-side and may be able to apply optimizations if a result set is not
 a client.
 
 
-#### Using cursors to obtain additional information on internal timings
+### Using cursors to obtain additional information on internal timings
 
 Cursors can also optionally provide statistics of the internal execution phases. By default, they do not. 
 To get to know how long parsing, otpimisation, instanciation and execution took,
@@ -344,4 +346,3 @@ produced statistics:
     c.getExtra();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 06_workWithAQL_statements12
-

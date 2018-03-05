@@ -13,6 +13,10 @@ for i in $@; do
     fi
 done
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS="${MOREOPTS} --downloadStarter"
+fi
+
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \
@@ -20,8 +24,8 @@ done
     --buildDir build-${EP}rpm \
     --targetDir /var/tmp/ \
     --jemalloc \
-    --downloadStarter \
     --noopt \
+    ${MOREOPTS} \
     $@
 
 cd ${DIR}/..

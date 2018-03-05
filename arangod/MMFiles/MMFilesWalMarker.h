@@ -28,6 +28,7 @@
 #include "Basics/encoding.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
@@ -66,6 +67,13 @@ class MMFilesWalMarker {
     // not implemented for base marker type
     TRI_ASSERT(false);
     return nullptr;
+  }
+  
+  virtual bool hasLocalDocumentId() const { return false; }
+  
+  virtual LocalDocumentId getLocalDocumentId() const {
+    TRI_ASSERT(false);
+    return LocalDocumentId();
   }
 };
 
@@ -113,6 +121,26 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
     // be written again!
     TRI_ASSERT(false); 
   }
+  
+  bool hasLocalDocumentId() const override {
+    if (type() != TRI_DF_MARKER_VPACK_DOCUMENT &&
+        type() != TRI_DF_MARKER_VPACK_REMOVE) {
+      return false;
+    }
+    
+    // size is header size + vpack size + LocalDocumentId size -> LocalDocumentId contained!
+    // size is not header size + vpack size + LocalDocumentId size -> no LocalDocumentId contained!
+    return (size() == MMFilesDatafileHelper::VPackOffset(type()) + 
+                      arangodb::velocypack::Slice(vpack()).byteSize() + 
+                      sizeof(LocalDocumentId::BaseType));
+  }
+  
+  LocalDocumentId getLocalDocumentId() const override {
+    uint8_t const* ptr = reinterpret_cast<uint8_t const*>(mem()) + 
+                         MMFilesDatafileHelper::VPackOffset(type()) + 
+                         arangodb::velocypack::Slice(vpack()).byteSize(); 
+    return LocalDocumentId(encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
+  }
 
  private:
   MMFilesMarker const* _other;
@@ -125,9 +153,11 @@ class MMFilesMarkerEnvelope : public MMFilesWalMarker {
 class MMFilesCrudMarker : public MMFilesWalMarker {
  public:
   MMFilesCrudMarker(MMFilesMarkerType type, 
-             TRI_voc_tid_t transactionId, 
-             arangodb::velocypack::Slice const& data)
+                    TRI_voc_tid_t transactionId, 
+                    LocalDocumentId localDocumentId, 
+                    arangodb::velocypack::Slice const& data)
     : _transactionId(transactionId),
+      _localDocumentId(localDocumentId),
       _data(data),
       _type(type) {}
 
@@ -143,6 +173,10 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
  
   /// @brief returns the marker size 
   uint32_t size() const override final { 
+    if (_localDocumentId.isSet()) {
+      // we have to take localDocumentId into account
+      return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize()) + sizeof(LocalDocumentId::BaseType);
+    }
     return static_cast<uint32_t>(MMFilesDatafileHelper::VPackOffset(_type) + _data.byteSize());
   }
 
@@ -150,15 +184,22 @@ class MMFilesCrudMarker : public MMFilesWalMarker {
   void store(char* mem) const override final { 
     // store transaction id
     encoding::storeNumber<decltype(_transactionId)>(reinterpret_cast<uint8_t*>(mem) + MMFilesDatafileHelper::TransactionIdOffset(_type), _transactionId, sizeof(decltype(_transactionId)));
-    // store VPack
-    memcpy(mem + MMFilesDatafileHelper::VPackOffset(_type), _data.begin(), static_cast<size_t>(_data.byteSize()));
+    // store VPack (and optionally the local document id)
+    size_t const vpackOffset = MMFilesDatafileHelper::VPackOffset(_type);
+    size_t const vpackLength = static_cast<size_t>(_data.byteSize());
+    memcpy(mem + vpackOffset, _data.begin(), vpackLength);
+    if (_localDocumentId.isSet()) {
+      // also store localDocumentId
+      encoding::storeNumber<LocalDocumentId::BaseType>(reinterpret_cast<uint8_t*>(mem) + vpackOffset + vpackLength, _localDocumentId.id(), sizeof(LocalDocumentId::BaseType));
+    }
   }
-  
+
   /// @brief a pointer the beginning of the VPack payload
   uint8_t* vpack() const override final { return const_cast<uint8_t*>(_data.begin()); }
 
  private:
   TRI_voc_tid_t _transactionId;
+  LocalDocumentId _localDocumentId;
   arangodb::velocypack::Slice _data;
   MMFilesMarkerType _type;
 };
@@ -209,7 +250,7 @@ class MMFilesCollectionMarker : public MMFilesWalMarker {
  public:
   MMFilesCollectionMarker(MMFilesMarkerType type, 
                    TRI_voc_tick_t databaseId, 
-                   TRI_voc_cid_t collectionId, 
+                   TRI_voc_cid_t collectionId,
                    arangodb::velocypack::Slice const& data)
     : _databaseId(databaseId),
       _collectionId(collectionId),

@@ -428,7 +428,7 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
 AqlItemBlock* ReturnBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin();
+  traceGetSomeBegin(atLeast, atMost);
   std::unique_ptr<AqlItemBlock> res(
       ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 

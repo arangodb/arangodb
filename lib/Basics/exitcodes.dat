@@ -20,6 +20,7 @@ EXIT_VERSION_CHECK_FAILED,13,"version check failed","Will be returned when there
 EXIT_ALREADY_RUNNING,20,"already running","Will be returned when arangod is already running according to PID-file"
 EXIT_COULD_NOT_BIND_PORT,21,"port blocked","Will be returned when endpoint is taken by another process"
 EXIT_COULD_NOT_LOCK,22,"could not lock - another process could be running","fill me"
+EXIT_RECOVERY,23,"recovery failed","Will be returned if the recovery fails"
 
 # network
 #EXIT_NO_COORDINATOR

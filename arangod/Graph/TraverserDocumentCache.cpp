@@ -51,7 +51,11 @@ TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
 TraverserDocumentCache::~TraverserDocumentCache() {
   if (_cache != nullptr) {
     auto cacheManager = CacheManagerFeature::MANAGER;
-    cacheManager->destroyCache(_cache);
+    try {
+      cacheManager->destroyCache(_cache);
+    } catch (...) {
+      // no exceptions allowed here
+    }
   }
 }
 

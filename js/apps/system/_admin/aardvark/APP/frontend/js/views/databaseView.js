@@ -58,7 +58,15 @@
       $('#' + clicked).click();
     },
 
+    setReadOnly: function () {
+      $('#createDatabase').parent().parent().addClass('disabled');
+    },
+
     render: function () {
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+    },
+
+    continueRender: function (readOnly) {
       var self = this;
 
       var callback = function (error, db) {
@@ -75,8 +83,13 @@
               $(self.el).html(self.template.render({
                 collection: self.collection,
                 searchString: '',
-                currentDB: self.currentDB
+                currentDB: self.currentDB,
+                readOnly: readOnly
               }));
+
+              if (readOnly) {
+                self.setReadOnly();
+              }
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
@@ -146,7 +159,9 @@
 
     createDatabase: function (e) {
       e.preventDefault();
-      this.createAddDatabaseModal();
+      if (!$('#createDatabase').parent().parent().hasClass('disabled')) {
+        this.createAddDatabaseModal();
+      }
     },
 
     switchDatabase: function (e) {
@@ -165,7 +180,10 @@
       var userName = $('#newUser').val();
 
       var options = {
-        name: dbname
+        name: dbname,
+        users: [{
+          username: userName
+        }]
       };
 
       this.collection.create(options, {
@@ -173,25 +191,6 @@
           self.handleError(err.status, err.statusText, dbname);
         },
         success: function (data) {
-          if (userName !== 'root') {
-            $.ajax({
-              type: 'PUT',
-              url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(userName) + '/database/' + encodeURIComponent(dbname)),
-              contentType: 'application/json',
-              data: JSON.stringify({
-                grant: 'rw'
-              })
-            });
-          }
-          $.ajax({
-            type: 'PUT',
-            url: arangoHelper.databaseUrl('/_api/user/root/database/' + encodeURIComponent(dbname)),
-            contentType: 'application/json',
-            data: JSON.stringify({
-              grant: 'rw'
-            })
-          });
-
           if (window.location.hash === '#databases') {
             self.updateDatabases();
           }

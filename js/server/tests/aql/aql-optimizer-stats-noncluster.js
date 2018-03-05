@@ -112,7 +112,7 @@ function optimizerStatsTestSuite () {
       assertTrue(stats.hasOwnProperty("rulesSkipped"));
 
       assertEqual(1, stats.plansCreated);
-      assertEqual(0, stats.rulesExecuted);
+      assertTrue(1, stats.rulesExecuted);
       assertNotEqual(0, stats.rulesSkipped);
     },
 

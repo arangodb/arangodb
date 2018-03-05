@@ -1,0 +1,40 @@
+libstemmer_java
+===============
+
+This document pertains to the Java version of the libstemmer distribution,
+available for download from:
+
+http://snowballstem.org/dist/libstemmer_java.tgz
+
+
+Compiling the library
+=====================
+
+Simply run the java compiler on all the java source files under the java
+directory.  For example, this can be done under unix by changing directory into
+the java directory, and running:
+
+ javac org/tartarus/snowball/*.java org/tartarus/snowball/ext/*.java
+
+This will compile the library and also an example program "TestApp" which
+provides a command line interface to the library.
+
+
+Using the library
+=================
+
+There is currently no formal documentation on the use of the Java version
+of the library.  Additionally, its interface is not guaranteed to be
+stable.
+
+The best documentation of the library is the source of the TestApp example
+program.
+
+
+The TestApp example
+===================
+
+The TestApp example program allows you to run any of the stemmers
+compiled into the libstemmer library on a sample vocabulary.  For
+details on how to use it, run it with no command line parameters.
+

@@ -112,6 +112,10 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackValueLength l;
   char const* queryString = querySlice.getString(l);
+  
+  if (l == 0) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
+  }
 
   arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
                              bindVarsBuilder, options,
@@ -189,8 +193,8 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         } else {
           result.add("extra", extra->slice());
         }
-        result.add("error", VPackValue(false));
-        result.add("code", VPackValue((int)_response->responseCode()));
+        result.add(StaticStrings::Error, VPackValue(false));
+        result.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
       } catch (...) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
@@ -214,24 +218,19 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     Cursor* cursor = cursors->createFromQueryResult(
         std::move(queryResult), batchSize, extra, ttl, count);
 
-    try {
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder result(buffer);
-      result.openObject();
-      result.add("error", VPackValue(false));
-      result.add("code", VPackValue(static_cast<int>(_response->responseCode())));
-      cursor->dump(result);
-      result.close();
+    TRI_DEFER(cursors->release(cursor));
+      
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder result(buffer);
+    result.openObject();
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
+    cursor->dump(result);
+    result.close();
 
-      _response->setContentType(rest::ContentType::JSON);
-      generateResult(_response->responseCode(), std::move(buffer),
-                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
-
-      cursors->release(cursor);
-    } catch (...) {
-      cursors->release(cursor);
-      throw;
-    }
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(_response->responseCode(), std::move(buffer),
+                    static_cast<VelocyPackCursor*>(cursor)->result()->context);
   }
 }
 
@@ -462,23 +461,18 @@ void RestCursorHandler::modifyCursor() {
     return;
   }
 
-  try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue(static_cast<int>(rest::ResponseCode::OK)));
-    cursor->dump(builder);
-    builder.close();
+  TRI_DEFER(cursors->release(cursor));
 
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice(),
-                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
+  cursor->dump(builder);
+  builder.close();
 
-    cursors->release(cursor);
-  } catch (...) {
-    cursors->release(cursor);
-    throw;
-  }
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::OK, builder.slice(),
+                    static_cast<VelocyPackCursor*>(cursor)->result()->context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -511,8 +505,8 @@ void RestCursorHandler::deleteCursor() {
   VPackBuilder builder;
   builder.openObject();
   builder.add("id", VPackValue(id));
-  builder.add("error", VPackValue(false));
-  builder.add("code",
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code,
               VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   builder.close();
 

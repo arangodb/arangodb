@@ -367,6 +367,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if (testname.indexOf('-arangosearch') !== -1 && !options.arangosearch) {
+    whichFilter.filter = 'arangosearch';
+    return false;
+  }
+
   // if we filter, we don't care about the other filters below:
   if (options.hasOwnProperty('test') && (typeof (options.test) !== 'undefined')) {
     whichFilter.filter = 'testcase';

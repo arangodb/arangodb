@@ -59,6 +59,11 @@ function ArangoDatabase (connection) {
       delete this._viewList[name];
     }
   };
+  this._renameView = function (from, to) {
+    // store the view in our own list
+    this._viewList[to] = this._viewList[from];
+    delete this._viewList[from];
+  };
 }
 
 exports.ArangoDatabase = ArangoDatabase;
@@ -249,7 +254,8 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   'View Functions:                                                           ' + '\n' +
   '  _views()                                  list all views                ' + '\n' +
   '  _view(<name>)                             get view by name              ' + '\n' +
-  '  _createView(<name>, <type>, <properties>) creates a new view            ';
+  '  _createView(<name>, <type>, <properties>) creates a new view            ' + '\n' +
+  '  _dropView(<name>)                         delete a view                 ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -1176,6 +1182,33 @@ ArangoDatabase.prototype._createView = function (name, type, properties) {
   if (nname !== undefined) {
     this._registerView(nname, new this._viewConstructor(this, requestResult));
     return this._viewList[nname];
+  }
+
+  return undefined;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief deletes a view
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._dropView = function (id) {
+  var name;
+
+  for (name in this._viewList) {
+    if (this._viewList.hasOwnProperty(name)) {
+      var view = this._viewList[name];
+
+      if (view instanceof this._viewConstructor) {
+        if (view._id === id || view._name === id) {
+          return view.drop();
+        }
+      }
+    }
+  }
+
+  var v = this._collection(id);
+  if (v) {
+    return v.drop();
   }
 
   return undefined;

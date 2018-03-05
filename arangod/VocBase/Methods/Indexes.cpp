@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -48,7 +47,6 @@
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/v8-collection.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -106,17 +104,16 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     //std::string const cid = collection->cid_as_string();
     std::string const& cid = collection->name();
 
-    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-
     // add code for estimates here
     std::unordered_map<std::string,double> estimates;
 
-    int rv = selectivityEstimatesOnCoordinator(databaseName,cid,estimates);
+    int rv = selectivityEstimatesOnCoordinator(databaseName, cid, estimates);
     if (rv != TRI_ERROR_NO_ERROR){
       return Result(rv, "could not retrieve estimates");
     }
 
     VPackBuilder tmpInner;
+    auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
     c->getIndexesVPack(tmpInner, withFigures, false);
 
     tmp.openArray();
@@ -142,14 +139,16 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     tmp.close();
 
   } else {
-    // add locks for consistency
-
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(collection->vocbase()),
         collection->cid(), AccessMode::Type::READ);
+
+    // we actually need this hint here, so that the collection is not
+    // loaded if it has status unloaded.
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }
@@ -319,11 +318,11 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   // can read indexes with RO on db and collection. Modifications require RW/RW
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
-    AuthLevel lvl = exec->databaseAuthLevel();
-    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
-    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
-    if ((create && (lvl != AuthLevel::RW || !canModify)) ||
-        (lvl == AuthLevel::NONE || !canRead)) {
+    auth::Level lvl = exec->databaseAuthLevel();
+    bool canModify = exec->canUseCollection(collection->name(), auth::Level::RW);
+    bool canRead = exec->canUseCollection(collection->name(), auth::Level::RO);
+    if ((create && (lvl != auth::Level::RW || !canModify)) ||
+        (lvl == auth::Level::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
     if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
@@ -347,7 +346,6 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   VPackSlice indexDef = defBuilder.slice();
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
-    auto c = ClusterInfo::instance()->getCollection(dbname, collname);
 
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
@@ -371,6 +369,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
       if (v.isBoolean() && v.getBoolean()) {
         // unique index, now check if fields and shard keys match
+        auto c = ClusterInfo::instance()->getCollection(dbname, collname);
         VPackSlice flds = indexDef.get("fields");
         if (flds.isArray() && c->numberOfShards() > 1) {
           std::vector<std::string> const& shardKeys = c->shardKeys();
@@ -511,8 +510,8 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 arangodb::Result Indexes::drop(LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
   if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
-        !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RW)) {
+    if (ExecContext::CURRENT->databaseAuthLevel() != auth::Level::RW ||
+        !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

@@ -197,10 +197,10 @@ void V8Context::handleCancelationCleanup() {
   }
 }
 
-V8ContextGuard::V8ContextGuard(V8Context* context) : _context(context) {
+V8ContextEntryGuard::V8ContextEntryGuard(V8Context* context) : _context(context) {
   _context->lockAndEnter();
 }
 
-V8ContextGuard::~V8ContextGuard() {
+V8ContextEntryGuard::~V8ContextEntryGuard() {
   _context->unlockAndExit();
 }

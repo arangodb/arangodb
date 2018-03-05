@@ -39,8 +39,7 @@ Parser::Parser(Query* query)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _stack(),
-      _isModificationQuery(false) {
+      _stack() {
   _stack.reserve(4);
     
   QueryString const& qs = queryString();
@@ -63,7 +62,7 @@ bool Parser::configureWriteQuery(AstNode const* collectionNode,
   }
 
   // register that we have seen a modification operation
-  _isModificationQuery = true;
+  _query->setIsModificationQuery();
 
   return true;
 }

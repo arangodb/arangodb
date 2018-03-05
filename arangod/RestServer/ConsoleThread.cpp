@@ -58,7 +58,7 @@ ConsoleThread::~ConsoleThread() { shutdown(); }
 static char const* USER_ABORTED = "user aborted";
 
 void ConsoleThread::run() {
-  usleep(100 * 1000);
+  std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
 
   // enter V8 context
   _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);

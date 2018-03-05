@@ -104,6 +104,76 @@ function ahuacatlTypesFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN TYPENAME('a', 'b')"); 
     },
 
+    testIsKey : function () {
+      var tests = [
+        [ null, false ],
+        [ false, false ],
+        [ true, false ],
+        [ 0, false ],
+        [ 1, false ],
+        [ -1, false ],
+        [ 1000, false ],
+        [ 1.234, false ],
+        [ [ ], false ],
+        [ [ "key" ], false ],
+        [ [ "key", "bar" ], false ],
+        [ [ 1, 2, 3 ], false ],
+        [ { key: true }, false ],
+        [ { key: "key" }, false ],
+        [ "", false ],
+        [ " ", false ],
+        [ " a", false ],
+        [ " 1", false ],
+        [ "1 ", false ],
+        [ "a ", false ],
+        [ "1", true ],
+        [ "12345", true ],
+        [ "a", true ],
+        [ "A", true ],
+        [ "A1B2C3", true ],
+        [ "aaAABBcc", true ],
+        [ "a string", false ],
+        [ "1234567", true ],
+        [ "1234567-12345", true ],
+        [ "1234567/1234", false ],
+        [ "/", false ],
+        [ "1/", false ],
+        [ "/1", false ],
+        [ "tröt", false ],
+        [ "AAA", true ],
+        [ ":", true ],
+        [ "@", true ],
+        [ "_", true ],
+        [ "-", true ],
+        [ ":", true ],
+        [ ".", true ],
+        [ "(", true ],
+        [ ")", true ],
+        [ "+", true ],
+        [ ",", true ],
+        [ "=", true ],
+        [ ";", true ],
+        [ "$", true ],
+        [ "!", true ],
+        [ "*", true ],
+        [ "'", true ],
+        [ "%", true ],
+        [ "1-2", true ],
+        [ "foo@bar", true ],
+        [ "foo@bar.com", true ],
+        [ "foo_bar", true ],
+        [ Array(253 + 1).join("a"), true ],
+        [ Array(254 + 1).join("a"), true ],
+        [ Array(255 + 1).join("a"), false ],
+      ];
+
+      tests.forEach(function(test) {
+        assertEqual([ test[1] ], getQueryResults("RETURN IS_KEY(" + JSON.stringify(test[0]) + ")"), test);
+        assertEqual([ test[1] ], getQueryResults("RETURN V8(IS_KEY(" + JSON.stringify(test[0]) + "))"), test);
+        assertEqual([ test[1] ], getQueryResults("RETURN NOOPT(IS_KEY(" + JSON.stringify(test[0]) + "))"), test);
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test is_string function
 ////////////////////////////////////////////////////////////////////////////////

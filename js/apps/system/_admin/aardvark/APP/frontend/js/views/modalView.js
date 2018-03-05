@@ -97,17 +97,16 @@
       // submit modal
       $(this.el).unbind('keydown');
       $(this.el).unbind('return');
-      // $(this.el).bind('keydown', 'return', function (e) {});
 
-      $('.modal-body input').unbind('keydown');
-      $('.modal-body input').unbind('return');
-      $('.modal-body input', $(this.el)).bind('keydown', 'return', function () {
+      $('.modal-body .collectionTh > input').unbind('keydown');
+      $('.modal-body .collectionTh > input').unbind('return');
+      $('.modal-body .collectionTh > input', $(this.el)).bind('keydown', 'return', function (e) {
         $('.createModalDialog .modal-footer .button-success').click();
       });
 
-      $('.modal-body select').unbind('keydown');
-      $('.modal-body select').unbind('return');
-      $('.modal-body select', $(this.el)).bind('keydown', 'return', function () {
+      $('.modal-body .collectionTh > select').unbind('keydown');
+      $('.modal-body .collectionTh > select').unbind('return');
+      $('.modal-body .collectionTh > select', $(this.el)).bind('keydown', 'return', function (e) {
         $('.createModalDialog .modal-footer .button-success').click();
       });
     },

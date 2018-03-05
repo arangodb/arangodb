@@ -36,6 +36,7 @@ namespace arangodb {
 /// RocksDBPrefixExtractor as well.
 ////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBEntryType : char {
+  Placeholder = '\0',
   Database = '0',
   Collection = '1',
   CounterValue = '2',
@@ -69,12 +70,20 @@ enum class RocksDBLogType : char {
   ViewDrop = ':',
   ViewChange = ';',
   BeginTransaction = '<',
-  DocumentOperationsPrologue = '=',
-  DocumentRemove = '>',
+  DocumentOperationsPrologue = '=',  // <- deprecated
+  DocumentRemove = '>',              // <- deprecated
   SinglePut = '?',
-  SingleRemove = '@'
+  SingleRemove = '@',                  // <- deprecated
+  DocumentRemoveAsPartOfUpdate = 'A',  // <- deprecated
+  ViewRename = 'B',
+#ifdef USE_IRESEARCH
+  IResearchLinkDrop = 'C',
+#endif
+  CommitTransaction = 'D',
+  DocumentRemoveV2 = 'E',
+  SingleRemoveV2 = 'F'
 };
-  
+
 enum class RocksDBSettingsType : char {
   Invalid = 0,
   Version = 'V',

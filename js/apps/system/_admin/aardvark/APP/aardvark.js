@@ -51,11 +51,11 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.set('Content-Type', 'text/html');
     res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
   } else {
     res.sendFile(module.context.fileName('frontend/build/index-min.html'));
   }
+  res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
   res.set('X-XSS-Protection', '1; mode=block');
 })
@@ -65,12 +65,19 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
+  let ldapEnabled = false;
+  if (isEnterprise) {
+    if (internal.ldapEnabled()) {
+      ldapEnabled = true;
+    }
+  }
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
       db: req.database,
       isEnterprise: isEnterprise,
       authenticationEnabled: internal.authenticationEnabled(),
+      ldapEnabled: ldapEnabled,
       isCluster: cluster.isCluster(),
       engine: db._engine().name
     })}`
@@ -383,6 +390,24 @@ authRouter.get('/graph/:name', function (req, res) {
     res.throw('bad request', e.message, {cause: e});
   }
 
+  var getPseudoRandomStartVertex = function (collName) {
+    let maxDoc = db[collName].count();
+    if (maxDoc === 0) {
+      return null;
+    }
+    if (maxDoc > 1000) {
+      maxDoc = 1000;
+    }
+    let randDoc = Math.floor(Math.random() * maxDoc);
+
+    return db._query(
+      'FOR vertex IN @@vertexCollection LIMIT @skipN, 1 RETURN vertex',
+      {
+        '@vertexCollection': collName,
+        'skipN': randDoc
+      }
+    ).toArray()[0];
+  };
   var multipleIds;
   if (config.nodeStart) {
     if (config.nodeStart.indexOf(' ') > -1) {
@@ -394,11 +419,11 @@ authRouter.get('/graph/:name', function (req, res) {
         res.throw('bad request', e.message, {cause: e});
       }
       if (!startVertex) {
-        startVertex = db[vertexName].any();
+        startVertex = getPseudoRandomStartVertex(vertexName);
       }
     }
   } else {
-    startVertex = db[vertexName].any();
+    startVertex = getPseudoRandomStartVertex(vertexName);
   }
 
   var limit = 0;

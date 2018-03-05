@@ -22,39 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexIterator.h"
-#include "Basics/StringUtils.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
   
 IndexIterator::IndexIterator(LogicalCollection* collection, 
                              transaction::Methods* trx, 
-                             ManagedDocumentResult* mmdr, 
                              arangodb::Index const* index)
       : _collection(collection), 
-        _trx(trx), 
-        _mmdr(mmdr ? mmdr : new ManagedDocumentResult), 
-        _context(trx, collection, _mmdr, index->fields().size()),
-        _responsible(mmdr == nullptr) {
+        _trx(trx) { 
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_trx != nullptr);
-  TRI_ASSERT(_mmdr != nullptr);
-}
-
-/// @brief default destructor. Does not free anything
-IndexIterator::~IndexIterator() {
-  if (_responsible) {
-    delete _mmdr;
-  }
-}
-
-bool IndexIterator::hasExtra() const {
-  // The default index has no extra information
-  return false;
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
@@ -116,7 +95,7 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
 /// @brief Reset the cursor
 ///        This will reset ALL internal iterators and start all over again
 void MultiIndexIterator::reset() {
-  _current = _iterators.at(0);
+  _current = _iterators[0];
   _currentIdx = 0;
   for (auto& it : _iterators) {
     it->reset();

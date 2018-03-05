@@ -100,7 +100,7 @@ void VelocyPackCursor::dump(VPackBuilder& builder) {
     // reserve an arbitrary number of bytes for the result to save
     // some reallocs
     // (not accurate, but the actual size is unknown anyway)
-    builder.buffer()->reserve(num * 32);
+    builder.reserve(num * 32);
 
     VPackOptions const* oldOptions = builder.options;
 

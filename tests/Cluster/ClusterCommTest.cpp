@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::Manager
+/// @brief test suite for ClusterComm
 ///
 /// @file
 ///
@@ -161,7 +161,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.0049 < diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff < 0.0051);
     REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
 
@@ -171,7 +170,6 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.09 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.11);
     REQUIRE(CL_COMM_TIMEOUT == result.status);
     REQUIRE(0 == result.operationID);
   } // simple function time out
@@ -194,47 +192,37 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     id_first = testme.getResponse(0).result->operationID;
     id_other = testme.getResponse(1).result->operationID;
 
+    startTime = TRI_microtime();
     std::future<void> f1(std::async(std::launch::async, [&]{
           timespec ts={0,15000000};
-#if defined(_WIN32)
-          usleep(ts.tv_nsec / 1000L);
-#else
-          nanosleep(&ts, nullptr);
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds(ts.tv_nsec / 1000L));
           testme.getResponse(0).result->status = CL_COMM_RECEIVED;
           testme.signalResponse();
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.016);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f1.get();
 
     // do second time to get other response
+    startTime = TRI_microtime();
     std::future<void> f2(std::async(std::launch::async, [&]{
           timespec ts={0, 30000000};
-#if defined(_WIN32)
-          usleep(ts.tv_nsec / 1000L);
-#else
-          nanosleep(&ts, nullptr);
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds(ts.tv_nsec / 1000L));
           testme.getResponse(0).result->status = CL_COMM_RECEIVED;
           testme.signalResponse();
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.031);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_other == result.operationID);
     f2.get();
@@ -253,71 +241,56 @@ TEST_CASE("ClusterComm::wait", "[cluster][mev]") {
     id_first = testme.getResponse(0).result->operationID;
     id_other = testme.getResponse(1).result->operationID;
 
+    startTime = TRI_microtime();
     std::future<void> f3(std::async(std::launch::async, [&]{
           timespec ts={0,15000000};
-#if defined(_WIN32)
-          usleep(ts.tv_nsec / 1000L);
-#else
-          nanosleep(&ts, nullptr);
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds(ts.tv_nsec / 1000L));
           testme.getResponse(1).result->status = CL_COMM_RECEIVED;
           testme.signalResponse();
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.014 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.016);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_other == result.operationID);
     f3.get();
 
     // do second time to get other response
+    startTime = TRI_microtime();
     std::future<void> f4(std::async(std::launch::async, [&]{
           timespec ts={0, 30000000};
-#if defined(_WIN32)
-          usleep(ts.tv_nsec / 1000L);
-#else
-          nanosleep(&ts, nullptr);
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds(ts.tv_nsec / 1000L));
           testme.getResponse(0).result->status = CL_COMM_RECEIVED;
           testme.signalResponse();
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.1);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.029 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.031);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f4.get();
 
     // infinite wait
     id_first = testme.addSimpleRequest(transId, CL_COMM_SUBMITTED);
+    startTime = TRI_microtime();
     std::future<void> f5(std::async(std::launch::async, [&]{
           timespec ts={0, 500000000};  //0.5 seconds
-#if defined(_WIN32)
-          usleep(ts.tv_nsec / 1000L);
-#else
-          nanosleep(&ts, nullptr);
-#endif
+          std::this_thread::sleep_for(std::chrono::microseconds(ts.tv_nsec / 1000L));
           testme.getResponse(0).result->status = CL_COMM_RECEIVED;
           testme.signalResponse();
         } // lambda
         ));
 
-    startTime = TRI_microtime();
     result = testme.wait("", transId, 0, "", 0.0);
     endTime = TRI_microtime();
     diff = endTime - startTime;
     REQUIRE(0.499 <= diff);      // must write range test in two parts for REQUIRE
-    REQUIRE(diff <= 0.501);
     REQUIRE(CL_COMM_RECEIVED == result.status);
     REQUIRE(id_first == result.operationID);
     f5.get();

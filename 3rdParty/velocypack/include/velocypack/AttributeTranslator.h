@@ -56,7 +56,7 @@ class AttributeTranslator {
 
   void seal();
 
-  Builder* builder() { return _builder; }
+  Builder* builder() const { return _builder; }
 
   // translate from string to id
   uint8_t const* translate(std::string const& key) const;

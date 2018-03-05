@@ -1,11 +1,12 @@
-////////////////////////////////////////////////////////////////////////////////
-/// @brief auto-generated file generated from errors.dat
-////////////////////////////////////////////////////////////////////////////////
+/// auto-generated file generated from errors.dat
 
 #include "Basics/Common.h"
-#include "./lib/Basics/voc-errors.h"
+#include "Basics/voc-errors.h"
 
-void TRI_InitializeErrorMessages () {
+/// helper macro to define an error string
+#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
+
+void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_NO_ERROR, "no error");
   REG_ERROR(ERROR_FAILED, "failed");
   REG_ERROR(ERROR_SYS_ERROR, "system error");
@@ -174,7 +175,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR, "conflicting replication factor with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
-  REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "no leader");
+  REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_QUERY_KILLED, "query killed");
   REG_ERROR(ERROR_QUERY_PARSE, "%s");
   REG_ERROR(ERROR_QUERY_EMPTY, "query is empty");
@@ -216,6 +217,8 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
+  REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
+  REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
