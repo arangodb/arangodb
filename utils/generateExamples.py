@@ -535,13 +535,13 @@ def generateAQL(testName):
   exds.%s.createDS();
   let result = db._query(query, bv).toArray();
 
-  output += "Query:\\n"
-  output += highlight("AQL", query);
+  output += "@Q:\\n"
+  output += highlight("js", query);
   if (Object.keys(bv).length > 0) {
-    output += "Bind Variables:\\n"
+    output += "@B\\n"
     jsonAppender(JSON.stringify(bv, null, 2));
   }
-  output += "\\nResult:\\n";
+  output += "\\n@R\\n";
   jsonAppender(JSON.stringify(result, null, 2));
 
   exds.%s.removeDS();
