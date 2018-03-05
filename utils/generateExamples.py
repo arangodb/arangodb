@@ -309,7 +309,8 @@ def analyzeFile(f, filename):
             continue
 
         line = line.lstrip('/');
-        line = line.lstrip(' ');
+        if state != STATE_AQL:
+            line = line.lstrip(' ');
         if state == STATE_ARANGOSH_OUTPUT:
             line = line.replace("\\", "\\\\").replace("'", "\\'")
         #print line
@@ -526,21 +527,27 @@ def generateAQL(testName):
     print "  let bv = " + value[AQLBV] + ";"
     print "  let ds = '" + value[AQLDS] + "';"
     print '''
-  examples[ds].removeDS();
-  examples[ds].createDS();
-  let result = db._query(query, bv);
+  exds.%s.removeDS();
+  exds.%s.createDS();
+  let result = db._query(query, bv).toArray();
 
+  output += "Query:\\n"
   output += highlight("AQL", query);
-  jsonAppender(result.toArray());
+  if (Object.keys(bv).length > 0) {
+    output += "Bind Variables:\\n"
+    jsonAppender(JSON.stringify(bv, null, 2));
+  }
+  output += "\\nResult:\\n";
+  jsonAppender(JSON.stringify(result, null, 2));
 
-  examples[ds].removeDS();
+  exds.%s.removeDS();
   print("[" + (time () - startTime) + "s] " + rc);
   ///output = highlight("js", output);
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 
-'''
+''' % (value[AQLDS], value[AQLDS], value[AQLDS])
 
 ################################################################################
 ### @brief generate arangosh run
