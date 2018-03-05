@@ -355,6 +355,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
       }
     }
 
+    /*
     WHEN("checking Weeks") {
       double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24 * 7);
       auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::WEEK);
@@ -362,6 +363,7 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
         testCombinations(f, expectedDiff);
       }
     }
+    */
 
     WHEN("checking Months") {
       double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
@@ -380,8 +382,79 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
     }
 
   }
+
+  WHEN("checking leap days") {
+    // TODO!
+  }
 }
 } // date_diff
+
+
+namespace date_subtract {
+
+struct TestDate {
+ public:
+  TestDate(std::string const& json, std::string const& v) : _input(nullptr), _result(v) {
+    // Make sure to only insert valid JSON.
+    // We are not testing the parser here.
+    _input = arangodb::velocypack::Parser::fromJson(json);
+  }
+
+  std::string const testName() const {
+    return _input->toJson() + " => " + _result;
+  }
+
+  void buildParams(VPackFunctionParameters& input) const {
+    VPackSlice s = _input->slice();
+    for (auto const& it : VPackArrayIterator(s)) {
+      input.emplace_back(it);
+    }
+  }
+
+  void validateResult(AqlValue const& result) const {
+    REQUIRE(result.isString());
+    auto res = result.slice();
+    StringRef ref(res);
+    REQUIRE(ref == _result);
+  }
+
+ private:
+  std::shared_ptr<arangodb::velocypack::Builder> _input;
+  std::string const _result;
+};
+
+
+SCENARIO("Testing DATE_SUBTRACT", "[AQL][DATE]") {
+  fakeit::Mock<Query> queryMock;
+  Query& query = queryMock.get();
+
+  fakeit::Mock<transaction::Methods> trxMock;
+  transaction::Methods& trx = trxMock.get();
+
+  GIVEN("the non error case") {
+    std::vector<TestDate> testees = {
+#include "DATE_SUBTRACT.testcases"
+    };
+
+    for (auto const& testee : testees) {
+      THEN("Validating: " + testee.testName()) {
+        SmallVector<AqlValue>::allocator_type::arena_type arena;
+        SmallVector<AqlValue> params{arena};
+        testee.buildParams(params);
+        AqlValue res =
+            Functions::DateSubtract(&query, &trx, params);
+        testee.validateResult(res);
+        res.destroy();
+        // Free input parameters
+        for (auto& it : params) {
+          it.destroy();
+        }
+      }
+    }
+  }
+}
+ 
+} // date_subtract
 
 }  // date_functions_aql
 }  // tests
