@@ -32,6 +32,7 @@ namespace arangodb {
 namespace geo {
 struct QueryParams;
 
+#warning TODO store values as radians to save on conversions
 /// coordinate point on the sphere in DEGREES
 struct Coordinate {
  public:

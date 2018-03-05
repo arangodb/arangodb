@@ -182,12 +182,18 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   return intervals;
 }
 
+// micro-optimize conversion
+static inline S2Point toPoint(geo::Coordinate const& cc) {
+  double phi = (geo::kPi / 180.0) * cc.latitude;
+  double theta = (geo::kPi / 180.0) * cc.longitude;
+  double cosphi = std::cos(phi);
+  return S2Point(std::cos(theta) * cosphi, std::sin(theta) * cosphi, std::sin(phi));
+}
+
 template <typename CMP>
 void NearUtils<CMP>::reportFound(LocalDocumentId lid,
                                  geo::Coordinate const& center) {
-  S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
-  double rad = _origin.Angle(cords.ToPoint());  // distance in radians
-
+  double rad = _origin.Angle(toPoint(center));  // distance in radians
   /*LOG_TOPIC(INFO, Logger::FIXME)
   << "[Found] " << rid << " at " << (center.toString())
   << " distance: " << (rad * geo::kEarthRadiusInMeters);*/
@@ -239,7 +245,7 @@ void NearUtils<CMP>::estimateDensity(geo::Coordinate const& found) {
     TRI_ASSERT(!isAscending() || (_innerBound == _minBound && _buffer.empty()));
     TRI_ASSERT(!isDescending() ||
                (_innerBound == _maxBound && _buffer.empty()));
-    LOG_TOPIC(DEBUG, Logger::ROCKSDB)
+    LOG_TOPIC(DEBUG, Logger::ENGINES)
         << "Estimating density with " << _boundDelta * geo::kEarthRadiusInMeters
         << "m";
   }
