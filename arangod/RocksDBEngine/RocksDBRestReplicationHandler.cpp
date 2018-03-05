@@ -723,8 +723,10 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     };
     
     auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);    
-    LOG_TOPIC(ERR, Logger::FIXME) << "Dumping " << vpb.slice().length() << " docs";
     size_t bufferSize = buffer.byteSize(); // std::move(buffer) resets buffer
+    if (vpb.size() < bufferSize) {
+      buffer.resetTo(vpb.size()); // fixing a bug in VPackBuilder
+    }
     
     // generate the result
     if (result.fail()) {

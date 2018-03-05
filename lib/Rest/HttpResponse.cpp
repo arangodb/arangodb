@@ -314,9 +314,8 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     } else {
       if (_vpackBody != nullptr) {
         TRI_ASSERT(_stringBody->length() == 0);
-        VPackSlice outSlice(_vpackBody->data());
-        LOG_TOPIC(ERR, Logger::FIXME) << "Content-Length: " << outSlice.byteSize();
-        output->appendInteger(outSlice.byteSize());
+        LOG_TOPIC(ERR, Logger::FIXME) << "Content-Length: " << _vpackBody->byteSize();
+        output->appendInteger(_vpackBody->byteSize());
       } else {
         output->appendInteger(_stringBody->length());
       }

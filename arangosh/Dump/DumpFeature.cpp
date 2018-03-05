@@ -405,28 +405,29 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
       bool result;
       bool found = false;
       std::string cType = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
-      bool isVelocyPack = found && (cType == StaticStrings::MimeTypeVPack);
-      if (isVelocyPack) {
+      if (found && (cType == StaticStrings::MimeTypeVPack)) {
         try {
-          // throws if the data is invalid
-          validator.validate(body.c_str(), body.length());
+          char const* p = body.begin();
+          char const* end = p + body.length();
+          while (p < end) {
+            ptrdiff_t remaining = end - p;
+            // throws if the data is invalid
+            validator.validate(p, remaining, /*isSubPart*/true);
+            
+            VPackSlice marker(p);
+            dumper.dump(marker);
+            tmpBuffer.appendChar('\n');
+            _stats._totalWritten++;
+            p += marker.byteSize();
+          }
         } catch(velocypack::Exception const& e) {
           errorMsg = std::string("Error parsing VPack response: ") + e.what();
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
         
-        VPackSlice dump(body.c_str());
-        if (!dump.isArray()) {
-          errorMsg =  "VPack response is not an array";
-          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-        }
-        for (VPackSlice const& slice : VPackArrayIterator(dump)) {
-          dumper.dump(slice);
-          tmpBuffer.appendChar('\n');
-          _stats._totalWritten++;
-        }
         result = writeData(fd, tmpBuffer.data(), tmpBuffer.length());
         tmpBuffer.reset();
+        
       } else {
         result = writeData(fd, body.c_str(), body.length());
       }
