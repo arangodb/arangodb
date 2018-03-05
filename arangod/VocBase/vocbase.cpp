@@ -60,6 +60,7 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
+#include "Utils/VersionTracker.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -1146,6 +1147,11 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   arangodb::Result res2 = engine->persistCollection(this, collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create collection");
+  }
 
   return collection;
 }
@@ -1244,6 +1250,11 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
         collection->deferDropCollection(DropCollectionCallback);
         // wake up the cleanup thread
         engine->signalCleanup(collection->vocbase());
+      }
+      
+      if (DatabaseFeature::DATABASE != nullptr &&
+          DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+        DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
       }
     }
 
@@ -1412,6 +1423,11 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
   locker.unlock();
   writeLocker.unlock();
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
+  }
 
   // invalidate all entries for the two collections
   arangodb::aql::PlanCache::instance()->invalidate(this);
@@ -1593,6 +1609,13 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   // TODO Review
   arangodb::Result res2 = engine->persistView(this, view.get());
   // API compatibility, we always return the view, even if creation failed.
+ 
+  if (view) { 
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
+  }
 
   return view;
 }
@@ -1652,18 +1675,6 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   view->drop();
-  /*
-  VPackBuilder b;
-  b.openObject();
-  view->toVelocyPack(b, true, true);
-  b.close();
-
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
-  view->updateProperties(b.slice(), doSync);
-*/
   unregisterView(view);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1671,8 +1682,12 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   locker.unlock();
   writeLocker.unlock();
-
+  
   events::DropView(view->name(), TRI_ERROR_NO_ERROR);
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop view");
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
