@@ -649,7 +649,7 @@ class AgencyComm {
 
   template<typename Container>
   typename std::enable_if<
-    std::is_convertible<typename Container::value_type, std::string>::value,
+    std::is_convertible<typename Container::value_type, std::string const>::value,
     AgencyCommResult
   >::type
   getValues(Container const& keyStrings) {
