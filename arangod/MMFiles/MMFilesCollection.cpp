@@ -2091,6 +2091,8 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
   }
 #endif
+  
+  TRI_ASSERT(!getIndexes().empty());
 }
 
 /// @brief creates the initial indexes for the collection

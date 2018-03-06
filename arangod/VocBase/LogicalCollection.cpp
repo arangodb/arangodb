@@ -410,7 +410,6 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   // This has to be called AFTER _phyiscal and _logical are properly linked
   // together.
   prepareIndexes(info.get("indexes"));
-  TRI_ASSERT(!_physical->getIndexes().empty());
 }
 
 LogicalCollection::~LogicalCollection() {}
