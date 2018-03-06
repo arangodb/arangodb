@@ -108,6 +108,7 @@ public:
 
   bool isShuttingDown() const {return(_isShuttingDown);};
 
+  /// @brief Return number of seconds to say "not done" to block retries too soon
   uint32_t getSecondsActionsBlock() const {return _secondsActionsBlock;};
 
 protected:
@@ -129,7 +130,6 @@ protected:
   /// @brief Search for action by Id (but lock already held by caller)
   /// @return shared pointer to action object if exists, nullptr if not
   maintenance::MaintenanceActionPtr_t findActionIdNoLock(uint64_t hash);
-
 
 protected:
   /// @brief tunable option for thread pool size

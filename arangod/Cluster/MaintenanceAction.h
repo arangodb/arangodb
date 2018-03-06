@@ -124,6 +124,9 @@ class MaintenanceAction {
   /// @brief finalize statistics
   void endStats();
 
+  /// @brief return progress statistic
+  uint64_t getProgress() const {return _progress.load();};
+
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() {_preAction.reset();};
 

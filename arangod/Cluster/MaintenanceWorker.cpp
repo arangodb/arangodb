@@ -86,9 +86,16 @@ void MaintenanceWorker::run() {
 
 void MaintenanceWorker::nextState(bool actionMore) {
 
-  if (actionMore) {
-    if (_curAction) {
+  // bad result code forces actionMore to false
+  if (_curAction && !_curAction->result().ok())
+  {
+    actionMore = false;
+  } // if
 
+  // actionMore means iterate again
+  if (actionMore) {
+    // There should be an valid _curAction
+    if (_curAction) {
       if (eFIND_ACTION == _loopState) {
         _curAction->startStats();
         _loopState = eRUN_FIRST;
@@ -116,12 +123,14 @@ void MaintenanceWorker::nextState(bool actionMore) {
     if (_curAction) {
       _lastResult = _curAction->result();
 
-      // if action's state not set, assume it failed
-      if (MaintenanceAction::COMPLETE == _curAction->getState()
-          && _curAction->result().ok()) {
-        _curAction->incStats();
+      // if action's state not set, assume it succeeded when result ok
+      if (_curAction->result().ok()
+          && MaintenanceAction::FAILED != _curAction->getState()) {
+//        _curAction->incStats();
         _curAction->endStats();
+        _curAction->setState(MaintenanceAction::COMPLETE);
 
+        // continue execution with "next" action tied to this one
         if (_curAction->getNextAction()) {
           _curAction = _curAction->getNextAction();
           _curAction->clearPreAction();

@@ -54,12 +54,14 @@ public:
 //    stop();
 //    unprepare();
 };
-#if 1
+
   virtual arangodb::maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                                       std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties) override;
 
-#endif
+  void setSecondsActionsBlock(uint32_t seconds) {_secondsActionsBlock = seconds;};
+
+public:
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
 
 };// TestMaintenanceFeature
@@ -75,30 +77,38 @@ public:
     TestActionBasic(arangodb::MaintenanceFeature & feature,
                     std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                     std::shared_ptr<VPackBuilder> const & properties)
-      : MaintenanceAction(feature, description, properties), _iteration(1)
+      : MaintenanceAction(feature, description, properties), _iteration(1), _resultCode(0)
   {
     auto des_it = description->find("iterate_count");
 
     if (description->end() != des_it) {
       _iteration = atol(des_it->second.c_str());
       // safety check
-      if (_iteration < 1) {
+      if (_iteration < 0) {
         _iteration = 1;
       } // if
     } // if
+
+    auto res_it = description->find("result_code");
+
+    if (description->end() != res_it) {
+      _resultCode = atol(res_it->second.c_str());
+    } // if
+
   };
 
   virtual ~TestActionBasic() {};
 
-  bool first() override {return(0 < --_iteration);};
+  bool first() override {if (0==_iteration) _result.reset(_resultCode); return(0 < _iteration--);};
 
-  bool next() override {return(0 < --_iteration);};
+  bool next() override {if (0==_iteration) _result.reset(_resultCode); return(0 < _iteration--);};
 
   int _iteration;
+  int _resultCode;
 
 };// TestActionBasic
 
-#if 1
+
 arangodb::maintenance::MaintenanceActionPtr_t TestMaintenanceFeature::actionFactory(std::string & name,
                                                                          std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                                std::shared_ptr<VPackBuilder> const & properties) {
@@ -115,12 +125,83 @@ arangodb::maintenance::MaintenanceActionPtr_t TestMaintenanceFeature::actionFact
   return newAction;
 
 } // TestMaintenanceFeature::actionFactory
-#endif
+
 
 TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
 
-  SECTION("Basic action test") {
+  SECTION("Iterate Action 0 times - ok") {
     TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","0"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(result.ok());
+    REQUIRE(tf._recentAction->result().ok());
+    REQUIRE(0==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::COMPLETE);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 0 times - fail") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","0"},
+                                                     {"result_code","1"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(!result.ok());
+    REQUIRE(!tf._recentAction->result().ok());
+    REQUIRE(0==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::FAILED);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 1 time - ok") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","1"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(result.ok());
+    REQUIRE(tf._recentAction->result().ok());
+    REQUIRE(1==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::COMPLETE);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 1 time - fail") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","1"},
+                                                     {"result_code","1"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(!result.ok());
+    REQUIRE(!tf._recentAction->result().ok());
+    REQUIRE(1==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::FAILED);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 2 times - ok") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
     arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","2"}};
     auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
     auto prop_ptr = std::make_shared<VPackBuilder>();
@@ -128,6 +209,46 @@ TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
 
     REQUIRE(result.ok());
+    REQUIRE(tf._recentAction->result().ok());
+    REQUIRE(2==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::COMPLETE);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 100 times - ok") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(result.ok());
+    REQUIRE(tf._recentAction->result().ok());
+    REQUIRE(100==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::COMPLETE);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
+  }
+
+  SECTION("Iterate Action 100 times - fail") {
+    TestMaintenanceFeature tf;
+    tf.setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"},
+                                                     {"result_code","1"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf.addAction(desc_ptr, prop_ptr, true);
+
+    REQUIRE(!result.ok());
+    REQUIRE(!tf._recentAction->result().ok());
+    REQUIRE(100==tf._recentAction->getProgress());
+    REQUIRE(tf._recentAction->getState() == arangodb::maintenance::MaintenanceAction::FAILED);
+    REQUIRE(tf._recentAction->done());
+    REQUIRE(1==tf._recentAction->id());
   }
 
 
