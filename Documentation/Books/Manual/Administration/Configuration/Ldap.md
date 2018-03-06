@@ -140,10 +140,15 @@ To configure the usage of encrypted TLS to communicate with the LDAP server
 the following options are available. Note: *TLS is not supported under Windows*:
 
   - `--ldap.tls` The main switch to active TLS. can either be 
-      `true` => use tls. or `false` => do not use tls. Is switched
-      off by default
-  - `--ldap.tls-version` the tls version that should be used.
-    Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. 
+      `true` => use tls. or `false` => do not use tls. It is switched
+      off by default. If you switch this on and do not use the `ldaps`
+      protocol via the LDAP url (see previous section), then ArangoDB
+      will use the `STARTTLS` protocol to initiate TLS. This is the
+      recommended approach.
+  - `--ldap.tls-version` the minimal TLS version that ArangoDB should accept.
+      Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. If
+      your LDAP server does not support Version 1.2, you have to change
+      this setting.
   - `--ldap.tls-cert-check-strategy` strategy to validate the ldap server
      certificate.  Available strategies are `never`, `hard`,
       `demand`, `allow` and `try`. The default is `hard`.

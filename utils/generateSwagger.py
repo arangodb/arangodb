@@ -573,19 +573,26 @@ def resturlparameters(cargo, r=Regexen()):
 def resturlparam(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
     (fp, last) = cargo
+    name = ""
+    pformat = ""
+    required = ""
 
-    parametersList = parameters(last).split(',')
+    try:
+        (name, pformat, required)  = parameters(last).split(',')
+    except Exception as x:
+        print >> sys.stderr, "RESTURLPARAM: 3 arguments required. You gave me: " + parameters(last)
+        raise x
 
-    if parametersList[2].strip() != 'required':
+    if required.strip() != 'required':
         print >> sys.stderr, "only required is supported in RESTURLPARAM"
         raise Exception("invalid url parameter")
 
     para = {
-        'name': parametersList[0].strip(),
+        'name': name.strip(),
         'in': 'path',
-        'format': parametersList[1].strip(),
+        'format': pformat.strip(),
         'description': '',
-        'type': parametersList[1].strip().lower(),
+        'type': pformat.strip().lower(),
         'required': True
         }
     swagger['paths'][httpPath][method]['parameters'].append(para) 
@@ -873,6 +880,7 @@ def restreplybody(cargo, r=Regexen()):
         (name, ptype, required, ptype2) = parameters(last).split(',')
     except Exception as x:
         print >> sys.stderr, "RESTREPLYBODY: 4 arguments required. You gave me: " + parameters(last)
+        raise x
 
     CheckReqOpt(required)
     if required == 'required':
