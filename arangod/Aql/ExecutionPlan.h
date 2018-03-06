@@ -198,6 +198,7 @@ class ExecutionPlan {
   /// throw an exception, in addition, the pointer is set to nullptr such
   /// that another delete does not hurt
   ExecutionNode* registerNode(ExecutionNode*);
+  ExecutionNode* registerNode(std::unique_ptr<ExecutionNode>&&);
 
   /// @brief replaceNode, note that <newNode> must be registered with the plan
   /// before this method is called, also this does not delete the old

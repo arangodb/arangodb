@@ -59,7 +59,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       arangodb::aql::ExecutionPlan* plan,
       size_t id,
       TRI_vocbase_t* vocbase,
-      const std::shared_ptr<arangodb::LogicalView>& view,
+      std::shared_ptr<arangodb::LogicalView> const& view,
       arangodb::aql::Variable const* outVariable,
       arangodb::aql::AstNode* filterCondition,
       std::vector<IResearchSort>&& sortCondition)
@@ -188,6 +188,73 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   std::vector<IResearchSort> _sortCondition;
 
 }; // EnumerateViewNode
+
+/// @brief class IResearchScatterNode
+class IResearchViewScatterNode final : public aql::ExecutionNode {
+ public:
+  IResearchViewScatterNode(
+      aql::ExecutionPlan& plan,
+      size_t id,
+      TRI_vocbase_t& vocbase,
+      std::shared_ptr<LogicalView> const& view
+  ) : ExecutionNode(&plan, id),
+      _vocbase(&vocbase),
+      _view(view) {
+  }
+
+  IResearchViewScatterNode(
+    aql::ExecutionPlan&,
+    velocypack::Slice const& base
+  );
+
+  /// @brief return the type of the node
+  NodeType getType() const noexcept final {
+    return SCATTER_IRESEARCH_VIEW;
+  }
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(
+    arangodb::velocypack::Builder&,
+    bool
+  ) const final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<aql::ExecutionBlock> createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const& includedShards
+  ) const final;
+
+  /// @brief clone ExecutionNode recursively
+  aql::ExecutionNode* clone(
+      aql::ExecutionPlan* plan,
+      bool withDependencies,
+      bool withProperties
+  ) const final {
+    auto node = std::make_unique<IResearchViewScatterNode>(
+      *plan, _id, *_vocbase, _view
+    );
+
+    cloneHelper(node.get(), withDependencies, withProperties);
+
+    return node.release();
+  }
+
+  /// @brief estimateCost
+  double estimateCost(size_t&) const final;
+
+  /// @brief return the database
+  TRI_vocbase_t& vocbase() const noexcept { 
+    return *_vocbase; 
+  }
+
+ private:
+  /// @brief the underlying database
+  TRI_vocbase_t* _vocbase;
+
+  /// @brief the underlying view
+  std::shared_ptr<LogicalView> const _view;
+}; // IResearchViewScatterNode
 
 } // iresearch
 } // arangodb

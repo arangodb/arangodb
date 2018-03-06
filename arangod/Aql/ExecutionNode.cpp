@@ -157,10 +157,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new EnumerateCollectionNode(plan, slice);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, slice);
-#ifdef USE_IRESEARCH
-    case ENUMERATE_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewNode(plan, slice);
-#endif
     case FILTER:
       return new FilterNode(plan, slice);
     case LIMIT:
@@ -278,6 +274,12 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new TraversalNode(plan, slice);
     case SHORTEST_PATH:
       return new ShortestPathNode(plan, slice);
+#ifdef USE_IRESEARCH
+    case ENUMERATE_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewNode(plan, slice);
+    case SCATTER_IRESEARCH_VIEW:
+      return new iresearch::IResearchViewScatterNode(*plan, slice);
+#endif
   }
   return nullptr;
 }
@@ -874,15 +876,6 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       totalNrRegs++;
       break;
     }
-#ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
-      TRI_ASSERT(ep);
-
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
-    }
-#endif
 
     case ExecutionNode::CALCULATION: {
       nrRegsHere[depth]++;
@@ -1121,6 +1114,20 @@ void ExecutionNode::RegisterPlan::after(ExecutionNode* en) {
       }
       break;
     }
+
+#ifdef USE_IRESEARCH
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+      auto ep = static_cast<iresearch::IResearchViewNode const*>(en);
+      TRI_ASSERT(ep);
+
+      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+      break;
+    }
+
+    case ExecutionNode::SCATTER_IRESEARCH_VIEW:
+      // these node type does not produce any new registers
+      break;
+#endif
   }
 
   en->_depth = depth;
