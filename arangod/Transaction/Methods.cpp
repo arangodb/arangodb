@@ -2296,9 +2296,6 @@ OperationResult transaction::Methods::allLocal(
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
-  VPackBuilder resultBuilder;
-  resultBuilder.openArray();
-
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
 
   if (!lockResult.ok() && !lockResult.is(TRI_ERROR_LOCKED)) {

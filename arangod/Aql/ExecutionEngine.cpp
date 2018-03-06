@@ -225,9 +225,8 @@ ExecutionBlock* ExecutionEngine::createBlock(
 #ifdef USE_IRESEARCH
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
       // FIXME better to replace switch with factory method
-      TRI_ASSERT(engine);
       auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
-      return viewNode->createExecutionBlock(*engine);
+      return viewNode->createExecutionBlock(*this);
     }
 #endif
     case ExecutionNode::TRAVERSAL: {
@@ -255,15 +254,15 @@ ExecutionBlock* ExecutionEngine::createBlock(
           static_cast<CollectNode const*>(en)->aggregationMethod();
 
       if (aggregationMethod ==
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+          CollectOptions::CollectMethod::HASH) {
         return new HashedCollectBlock(this,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
+                 CollectOptions::CollectMethod::SORTED) {
         return new SortedCollectBlock(this,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
+                 CollectOptions::CollectMethod::DISTINCT) {
         return new DistinctCollectBlock(this,
                                         static_cast<CollectNode const*>(en));
       }
