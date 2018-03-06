@@ -150,10 +150,12 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder builder;
+  builder.openObject(true); // conversion uses sequential iterator, no indexing
   Result r = cursor->dump(builder);
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MEMORY(); // for compatibility
   }
+  builder.close();
   
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);

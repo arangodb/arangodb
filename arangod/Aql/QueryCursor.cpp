@@ -54,8 +54,6 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t* vocbase, CursorId id,
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());
-  result.stats = nullptr;
-  result.warnings = nullptr;
   result.profile = nullptr;
 }
 
