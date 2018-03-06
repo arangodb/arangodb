@@ -55,7 +55,13 @@ struct QueryResult {
   QueryResult() : QueryResult(TRI_ERROR_NO_ERROR) {}
 
   virtual ~QueryResult() {}
-
+  
+  ////////////////////////////////////////////////////////////////////
+  /// @brief builds the "extra" attribute values from the result.
+  ////////////////////////////////////////////////////////////////////
+  std::shared_ptr<velocypack::Builder> extra() const;
+  
+public:
   int code;
   bool cached;
   std::string details;

@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CursorRepository.h"
+
+#include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -109,15 +111,14 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createFromQueryResult(
-    aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
-    double ttl, bool count) {
+    aql::QueryResult&& result, size_t batchSize,
+    double ttl, bool hasCount) {
   TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewTickServer();
 
-  std::unique_ptr<Cursor> cursor;
-  cursor.reset(new VelocyPackCursor(
-      _vocbase, id, std::move(result), batchSize, extra, ttl, count));
+  std::unique_ptr<Cursor> cursor(new aql::QueryResultCursor(
+      _vocbase, id, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
 
   return addCursor(std::move(cursor));

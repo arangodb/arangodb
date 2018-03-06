@@ -70,10 +70,12 @@ class CursorRepository {
   /// the cursor will retain a shared pointer of both json and extra
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createFromQueryResult(
-      aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-      double, bool);
-
+  Cursor* createFromQueryResult(aql::QueryResult&&, size_t, double, bool);
+  
+  Cursor* createQueryStream(std::string const& query,
+                            std::shared_ptr<velocypack::Builder> const& binds,
+                            std::shared_ptr<velocypack::Builder> const& opts);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
   //////////////////////////////////////////////////////////////////////////////
