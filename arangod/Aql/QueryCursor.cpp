@@ -250,55 +250,5 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   }
 
   return TRI_ERROR_NO_ERROR;
-  
-  /*try {
-    size_t const n = batchSize();
-    // reserve an arbitrary number of bytes for the result to save
-    // some reallocs
-    // (not accurate, but the actual size is unknown anyway)
-    builder.reserve(std::max<size_t>(1, std::min<size_t>(n, 10000)) * 32);
-    
-    VPackOptions const* oldOptions = builder.options;
-    builder.options = _result.context->getVPackOptionsForDump();
-    
-    builder.add("result", VPackValue(VPackValueType::Array));
-    for (size_t i = 0; i < n; ++i) {
-      if (!hasNext()) {
-        break;
-      }
-      builder.add(next());
-    }
-    builder.close();
-    
-    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
-    // should not be string
-    builder.add("hasMore", VPackValue(hasNext()));
-    
-    if (hasNext()) {
-      builder.add("id", VPackValue(std::to_string(id())));
-    }
-    
-    if (hasCount()) {
-      builder.add("count", VPackValue(static_cast<uint64_t>(count())));
-    }
-    
-    if (extra().isObject()) {
-      builder.add("extra", extra());
-    }
-    
-    builder.add("cached", VPackValue(_cached));
-    
-    if (!hasNext()) {
-      // mark the cursor as deleted
-      this->deleted();
-    }
-    builder.options = oldOptions;
-  } catch (arangodb::basics::Exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal error during QueryResultCursor::dump");
-  }*/
 }
 

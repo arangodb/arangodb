@@ -107,7 +107,7 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
 /// returned later using release()
-/// the cursor will take ownership of both json and extra
+/// the cursor will take ownership and retain the entire QueryResult object
 ////////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createFromQueryResult(
@@ -121,6 +121,27 @@ Cursor* CursorRepository::createFromQueryResult(
       _vocbase, id, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
 
+  return addCursor(std::move(cursor));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cursor and stores it in the registry
+/// the cursor will be returned with the usage flag set to true. it must be
+/// returned later using release()
+/// the cursor will create a query internally and retain it until deleted
+//////////////////////////////////////////////////////////////////////////////
+
+Cursor* CursorRepository::createQueryStream(std::string const& query,
+                                            std::shared_ptr<VPackBuilder> const& binds,
+                                            std::shared_ptr<VPackBuilder> const& opts,
+                                            size_t batchSize, double ttl) {
+  TRI_ASSERT(!query.empty());
+  
+  CursorId const id = TRI_NewTickServer();
+  std::unique_ptr<Cursor> cursor(new aql::QueryStreamCursor(
+        _vocbase, id, query, binds, opts, batchSize, ttl));
+  cursor->use();
+  
   return addCursor(std::move(cursor));
 }
 

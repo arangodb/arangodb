@@ -189,7 +189,9 @@ class Query {
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
   
-  /// @brief enter finalization phase, execute(..) will call this for you
+  /// @brief Enter finalization phase and do cleanup.
+  /// Sets `warnings``, `stats`, `profile`, timings and does the cleanup.
+  /// Only use directly for a streaming query, rather use `execute(...)`
   void finalize(QueryResult&);
 
   /// @brief parse an AQL query

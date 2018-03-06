@@ -37,6 +37,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestCursorHandler::RestCursorHandler(
@@ -107,14 +108,29 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackSlice opts = options->slice();
   
+  CursorRepository* cursors = _vocbase->cursorRepository();
+  TRI_ASSERT(cursors != nullptr);
+  
+  bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+  size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
+  bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
+  
+  if (stream) {
+    TRI_ASSERT(!count); // disallowed
+    Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
+                                                options, batchSize, ttl);
+    TRI_DEFER(cursors->release(cursor));
+    generateCursorResult(rest::ResponseCode::CREATED, cursor);
+    return; // done
+  }
+  
   VPackValueLength l;
-  char const* queryString = querySlice.getString(l);
+  char const* queryStr = querySlice.getString(l);
   TRI_ASSERT(l > 0);
   
-  bool streaming = basics::VelocyPackHelper::getBooleanValue(opts, "stream", false);
-
   aql::Query query(false, _vocbase,
-                        arangodb::aql::QueryString(queryString, static_cast<size_t>(l)),
+                        arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
                              bindVarsBuilder, options,
                              arangodb::aql::PART_MAIN);
   
@@ -139,9 +155,6 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   TRI_ASSERT(qResult.isArray());
 
   _response->setContentType(rest::ContentType::JSON);
-
-  size_t batchSize = basics::VelocyPackHelper::getNumericValue<size_t>(
-                                                opts, "batchSize", 1000);
   size_t const n = static_cast<size_t>(qResult.length());
   if (n <= batchSize) {
     // result is smaller than batchSize and will be returned directly. no need
@@ -172,8 +185,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
       result.add(VPackValue("result"));
       result.add(VPackValue(qResult.begin(), VPackValueType::External));
       result.add("hasMore", VPackValue(false));
-      if (arangodb::basics::VelocyPackHelper::getBooleanValue(opts, "count",
-                                                              false)) {
+      if (VelocyPackHelper::getBooleanValue(opts, "count", false)) {
         result.add("count", VPackValue(n));
       }
       result.add("cached", VPackValue(queryResult.cached));
@@ -193,27 +205,12 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
                    queryResult.context);
   } else {
     // result is bigger than batchSize, and a cursor will be created
-    CursorRepository* cursors = _vocbase->cursorRepository();
-    TRI_ASSERT(cursors != nullptr);
     TRI_ASSERT(queryResult.result.get() != nullptr);
-    
-    double ttl = basics::VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
-    bool count = basics::VelocyPackHelper::getBooleanValue(opts, "count", false);
-    
     // steal the query result, cursor will take over the ownership
     Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult), batchSize, ttl, count);
+    
     TRI_DEFER(cursors->release(cursor));
-    
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder result(buffer);
-    result.openObject();
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
-    cursor->dump(result);
-    result.close();
-    
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer), cursor->context());
+    generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
 }
 
@@ -238,7 +235,6 @@ void RestCursorHandler::registerQuery(arangodb::aql::Query* query) {
 
 void RestCursorHandler::unregisterQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
-
   _query = nullptr;
 }
 
@@ -278,14 +274,34 @@ bool RestCursorHandler::wasCanceled() {
 VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   VPackBuilder options;
   VPackObjectBuilder obj(&options);
-
-  VPackSlice count = slice.get("count");
-  if (count.isBool()) {
-    options.add("count", count);
-  } else {
-    options.add("count", VPackValue(false));
+  
+  bool hasCache = false;
+  VPackSlice opts = slice.get("options");
+  bool isStream = false;
+  if (opts.isObject()) {
+    isStream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
+    for (auto const& it : VPackObjectIterator(opts)) {
+      if (!it.key.isString() || it.value.isNone()) {
+        continue;
+      }
+      std::string keyName = it.key.copyString();
+      if (keyName == "count" || keyName == "batchSize" ||
+          keyName == "ttl" || (isStream && keyName == "fullCount")) {
+        continue;// filter out top-level keys
+      } else if (keyName == "cache") {
+        hasCache = true; // don't honour if appears below
+      }
+      options.add(keyName, it.value);
+    }
   }
 
+  if (!isStream) { // invalid for streaming queries
+    options.add("count", VPackValue(VelocyPackHelper::getBooleanValue(slice, "count", false)));
+    if (!hasCache) {
+      options.add("cache", VPackValue(VelocyPackHelper::getBooleanValue(slice, "cache", false)));
+    }
+  }
+  
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
     if ((batchSize.isDouble() && batchSize.getDouble() == 0.0) ||
@@ -302,35 +318,37 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   if (memoryLimit.isNumber()) {
     options.add("memoryLimit", memoryLimit);
   }
-
-  bool hasCache = false;
-  VPackSlice cache = slice.get("cache");
-  if (cache.isBool()) {
-    hasCache = true;
-    options.add("cache", cache);
-  }
   
   VPackSlice ttl = slice.get("ttl");
   options.add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
 
-  VPackSlice opts = slice.get("options");
-  if (opts.isObject()) {
-    for (auto const& it : VPackObjectIterator(opts)) {
-      if (!it.key.isString() || it.value.isNone()) {
-        continue;
-      }
-      std::string keyName = it.key.copyString();
-
-      if (keyName != "count" && keyName != "batchSize" && keyName != "ttl") {
-        if (keyName == "cache" && hasCache) {
-          continue;
-        }
-        options.add(keyName, it.value);
-      }
-    }
-  }
-
   return options;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief append the contents of the cursor into the response body
+//////////////////////////////////////////////////////////////////////////////
+
+void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
+                                             arangodb::Cursor* cursor) {
+  
+  // dump might delete the cursor
+  std::shared_ptr<transaction::Context> ctx = cursor->context();
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder result(buffer);
+  result.openObject();
+  result.add(StaticStrings::Error, VPackValue(false));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+  Result r = cursor->dump(result);
+  result.close();
+  
+  if (r.ok()) {
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(code, std::move(buffer), std::move(ctx));
+  } else {
+    generateError(r);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,16 +422,7 @@ void RestCursorHandler::modifyQueryCursor() {
   }
 
   TRI_DEFER(cursors->release(cursor));
-
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
-  cursor->dump(builder);
-  builder.close();
-
-  _response->setContentType(rest::ContentType::JSON);
-  generateResult(rest::ResponseCode::OK, builder.slice(), cursor->context());
+  generateCursorResult(rest::ResponseCode::OK, cursor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

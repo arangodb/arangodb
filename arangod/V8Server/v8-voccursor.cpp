@@ -85,7 +85,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create a cursor
-  auto cursors = vocbase->cursorRepository();
+  CursorRepository* cursors = vocbase->cursorRepository();
 
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.result = builder;
@@ -148,8 +148,12 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CURSOR_NOT_FOUND);
   }
+  
+  auto cth = cursor->context()->orderCustomTypeHandler();
+  VPackOptions opts = VPackOptions::Defaults;
+  opts.customTypeHandler = cth.get();
 
-  VPackBuilder builder;
+  VPackBuilder builder(&opts);
   builder.openObject(true); // conversion uses sequential iterator, no indexing
   Result r = cursor->dump(builder);
   if (r.fail()) {

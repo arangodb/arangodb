@@ -108,7 +108,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief append the contents of the cursor into the response body
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpCursor(arangodb::Cursor*);
+  void generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results

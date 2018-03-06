@@ -111,7 +111,6 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
     _queryOptions.fromVelocyPack(_options->slice());
   }
 
-
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " <<
   // queryString << "\n";
   int64_t tracing = _queryOptions.tracing;
@@ -639,41 +638,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
     result.result = std::move(resultBuilder);
     result.context = _trx->transactionContext();
     // will set warnings, stats, profile and cleanup plan and engine
-    this->finalize(result);
-    
-    /*LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                      << "Query::execute: before _trx->commit"
-                                      << " this: " << (uintptr_t) this;
-
-    auto commitResult = _trx->commit();
-    if (commitResult.fail()) {
-      THROW_ARANGO_EXCEPTION(commitResult);
-    }
-    
-    LOG_TOPIC(DEBUG, Logger::QUERIES)
-        << TRI_microtime() - _startTime << " "
-        << "Query::execute: before cleanupPlanAndEngine"
-        << " this: " << (uintptr_t) this;
-
-    _engine->_stats.setExecutionTime(runTime());
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
-
-    auto stats = std::make_shared<VPackBuilder>();
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
-
-    result.warnings = warningsToVelocyPack();
-    result.stats = std::move(stats);
-
-    // patch stats in place
-    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    double now = TRI_microtime();
-    double const rt = runTime(now);
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
-
-    if (_profile != nullptr && _queryOptions.profile) {
-      _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
-      result.profile = _profile->toVelocyPack();
-    }*/
+    finalize(result);
     
     return result;
   } catch (arangodb::basics::Exception const& ex) {
@@ -838,41 +803,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     result.result = resArray;
     result.context = _trx->transactionContext();
     // will set warnings, stats, profile and cleanup plan and engine
-    this->finalize(result);
-
-    /*LOG_TOPIC(DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
-                                      << "Query::executeV8: before _trx->commit"
-                                      << " this: " << (uintptr_t) this;
-
-    auto commitResult = _trx->commit();
-    if (commitResult.fail()) {
-        THROW_ARANGO_EXCEPTION(commitResult);
-    }
-
-    LOG_TOPIC(DEBUG, Logger::QUERIES)
-        << TRI_microtime() - _startTime << " "
-        << "Query::executeV8: before cleanupPlanAndEngine"
-        << " this: " << (uintptr_t) this;
-
-    _engine->_stats.setExecutionTime(runTime());
-    enterState(QueryExecutionState::ValueType::FINALIZATION);
-
-    auto stats = std::make_shared<VPackBuilder>();
-    cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, stats.get());
-
-    result.warnings = warningsToVelocyPack();
-    result.stats = std::move(stats);
-
-    // patch executionTime stats value in place
-    // we do this because "executionTime" should include the whole span of the execution and we have to set it at the very end
-    double now = TRI_microtime();
-    double const rt = runTime(now);
-    basics::VelocyPackHelper::patchDouble(result.stats->slice().get("executionTime"), rt);
-
-    if (_profile != nullptr && _queryOptions.profile) {
-      _profile->setEnd(QueryExecutionState::ValueType::FINALIZATION, now);
-      result.profile = _profile->toVelocyPack();
-    }*/
+    finalize(result);
     
     return result;
   } catch (arangodb::basics::Exception const& ex) {
@@ -1192,10 +1123,8 @@ void Query::init() {
   TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
-  if (_queryOptions.profile) {
-    _profile.reset(new QueryProfile(this));
-  }
-  
+  // adds query to QueryList which is needed for /_api/query/current
+  _profile.reset(new QueryProfile(this));
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
