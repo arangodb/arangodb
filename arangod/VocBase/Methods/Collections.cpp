@@ -591,9 +591,6 @@ Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
       return TRI_ERROR_OUT_OF_MEMORY;
     }
     
-    // copy default options
-    VPackOptions resultOptions = VPackOptions::Defaults;
-    resultOptions.customTypeHandler = ctx->orderCustomTypeHandler().get();
     opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
       cb(doc.resolveExternal());
     }, 1000);
