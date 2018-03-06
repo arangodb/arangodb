@@ -49,6 +49,8 @@ std::string stats::fromGroupType(stats::GroupType gt) {
     case stats::GroupType::Server:
       return "server";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 void stats::Group::toVPack(velocypack::Builder& b) const {
@@ -66,6 +68,8 @@ std::string stats::fromFigureType(stats::FigureType t) {
     case stats::FigureType::Distribution:
       return "distribution";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 std::string stats::fromUnit(stats::Unit u) {
@@ -79,6 +83,8 @@ std::string stats::fromUnit(stats::Unit u) {
     case stats::Unit::Number:
       return "number";
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
 }
 
 void stats::Figure::toVPack(velocypack::Builder& b) const {

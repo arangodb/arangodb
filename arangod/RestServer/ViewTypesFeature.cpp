@@ -27,43 +27,51 @@
 #include "ProgramOptions/Section.h"
 #include "Views/LoggerView.h"
 
-using namespace arangodb;
-using namespace arangodb::application_features;
-using namespace arangodb::basics;
-using namespace arangodb::options;
+namespace {
 
-std::unordered_map<std::string, arangodb::ViewCreator>
-    ViewTypesFeature::_viewCreators;
+std::string const FEATURE_NAME("ViewTypes");
+arangodb::ViewCreator const INVALID{};
 
-ViewTypesFeature::ViewTypesFeature(ApplicationServer* server)
-    : ApplicationFeature(server, "ViewTypes") {
+} // namespace
+
+namespace arangodb {
+
+ViewTypesFeature::ViewTypesFeature(
+  application_features::ApplicationServer* server
+): application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("WorkMonitor");
 }
 
+bool ViewTypesFeature::emplace(
+    LogicalDataSource::Type const& type,
+    ViewCreator creator
+) {
+  return _factories.emplace(&type, creator).second;
+}
+
+ViewCreator const& ViewTypesFeature::factory(
+    LogicalDataSource::Type const& type
+) const noexcept {
+  auto itr = _factories.find(&type);
+
+  return itr == _factories.end() ? INVALID : itr->second;
+}
+
+/*static*/ std::string const& ViewTypesFeature::name() {
+  return FEATURE_NAME;
+}
+
 void ViewTypesFeature::prepare() {
   // register the "logger" example view type
-  registerViewImplementation(LoggerView::type, LoggerView::creator);
+  emplace(LoggerView::type(), LoggerView::creator);
 }
 
-void ViewTypesFeature::unprepare() { _viewCreators.clear(); }
+void ViewTypesFeature::unprepare() { _factories.clear(); }
 
-void ViewTypesFeature::registerViewImplementation(std::string const& type,
-                                                  ViewCreator creator) {
-  _viewCreators.emplace(type, creator);
-}
+} // arangodb
 
-bool ViewTypesFeature::isValidType(std::string const& type) const {
-  return (_viewCreators.find(type) != _viewCreators.end());
-}
-
-ViewCreator& ViewTypesFeature::creator(std::string const& type) const {
-  auto it = _viewCreators.find(type);
-
-  if (it == _viewCreators.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "no handler found for view type");
-  }
-  return (*it).second;
-}
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

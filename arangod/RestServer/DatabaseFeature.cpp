@@ -52,7 +52,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/Events.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
@@ -672,6 +671,8 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
   result = vocbase.release();
   events::CreateDatabase(name, res);
+    
+  DatabaseFeature::DATABASE->versionTracker()->track("create database");
 
   return res;
 }
@@ -789,6 +790,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   }
 
   events::DropDatabase(name, res);
+  
+  DatabaseFeature::DATABASE->versionTracker()->track("drop database");
+
   return res;
 }
 
