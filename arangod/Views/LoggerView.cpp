@@ -115,7 +115,8 @@ LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
 }
 
 /*static*/ LogicalDataSource::Type const& LoggerView::type() noexcept {
-  static auto& type = LogicalDataSource::Type::emplace("logger");
+  static auto& type =
+    LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("logger"));
 
   return type;
 }

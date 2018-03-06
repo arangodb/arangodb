@@ -1927,7 +1927,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
 /*static*/ arangodb::LogicalDataSource::Type const& IResearchView::type() noexcept {
   static auto& type = arangodb::LogicalDataSource::Type::emplace(
-    std::string(IResearchFeature::type())
+    arangodb::velocypack::StringRef(IResearchFeature::type())
   );
 
   return type;
@@ -2193,7 +2193,7 @@ void IResearchView::verifyKnownCollections() {
       virtual arangodb::Result commitTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual bool hasFailedOperations() const { return false; }
+      virtual bool hasFailedOperations() const override { return false; }
     };
 
     State state;
