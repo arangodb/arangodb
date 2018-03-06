@@ -46,9 +46,8 @@ std::shared_ptr<VPackBuilder> QueryResult::extra() const {
       extra->add(VPackValue("profile"));
       extra->add(profile->slice());
     }
-    if (warnings) {
-      extra->add("warnings", VPackValue(VPackValueType::Array));
-      extra->close();
+    if (!warnings) {
+      extra->add("warnings", VPackSlice::emptyArraySlice());
     } else {
       extra->add(VPackValue("warnings"));
       extra->add(warnings->slice());
