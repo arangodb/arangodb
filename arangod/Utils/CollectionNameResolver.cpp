@@ -238,7 +238,8 @@ std::string CollectionNameResolver::getCollectionNameCluster(
       return name;
     }
   }
-
+ 
+  int caught = 0;
   int tries = 0;
 
   while (tries++ < 2) {
@@ -251,11 +252,12 @@ std::string CollectionNameResolver::getCollectionNameCluster(
       return name;
     } catch (...) {
       // most likely collection not found. now try again
+      ++caught;
       ClusterInfo::instance()->flush();
     }
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid;
+  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "CollectionNameResolver: was not able to resolve id " << cid << ", caught: " << caught;
   return "_unknown";
 }
 
@@ -297,11 +299,14 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         catch (...) {
         }
         if (ci == nullptr) {
+          LOG_TOPIC(ERR, Logger::FIXME) << "CI IS A NULLPTR FOR " << (*it).second->dbName() << ", " << name;
           name = ""; // collection unknown
         } else {
           name = ci->name();  // can be empty, if collection unknown
         }
       }
+    } else {
+          LOG_TOPIC(ERR, Logger::FIXME) << "CID " << cid << " NOT FOUND IN COLLECTIONS MAP";
     }
   } else {
     // exactly as in the non-cluster case

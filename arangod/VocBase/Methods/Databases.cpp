@@ -288,8 +288,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
+  
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
+
+    TRI_DEFER(vocbase->release());
 
     // we need to add the permissions before running the upgrade script
     if (ServerState::instance()->isSingleServer() &&

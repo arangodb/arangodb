@@ -423,8 +423,8 @@ void RocksDBCollection::prepareIndexes(
     }
   }
 #endif
-  
-  TRI_ASSERT(!getIndexes().empty());
+
+  TRI_ASSERT(!_indexes.empty());
 }
 
 static std::shared_ptr<Index> findIndex(
