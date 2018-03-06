@@ -885,7 +885,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                        body.size(), headerFields));
 
     int returnCode = 500;  // set a default
-    std::string returnMessage;
+    std::string returnMessage = "";
 
     if (response == nullptr || !response->isComplete()) {
       // save error message
@@ -918,11 +918,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
         continue;
       }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                  v8::Number::New(isolate, returnCode));
-      result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
-                  TRI_V8_STD_STRING(isolate, returnMessage));
 
       // process response headers
       auto const& responseHeaders = response->getHeaderFields();

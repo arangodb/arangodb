@@ -90,6 +90,9 @@
 ///   Will be raised when an internal server is encountered.
 /// - 503: @LIT{service unavailable}
 ///   Will be raised when a service is temporarily unavailable.
+/// - 504: @LIT{gateway timeout}
+///   Will be raised when a service contacted by ArangoDB does not respond in a
+///   timely manner.
 /// - 600: @LIT{invalid JSON object}
 ///   Will be raised when a string representation of a JSON object is corrupt.
 /// - 601: @LIT{superfluous URL suffices}
@@ -1171,6 +1174,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                (503)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 504: ERROR_HTTP_GATEWAY_TIMEOUT
+///
+/// gateway timeout
+///
+/// Will be raised when a service contacted by ArangoDB does not respond in a
+/// timely manner.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_GATEWAY_TIMEOUT                                    (504)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 600: ERROR_HTTP_CORRUPTED_JSON
