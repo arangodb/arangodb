@@ -50,7 +50,7 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t* vocbase, CursorId id,
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
-      _extra(result.extra()),
+      _extra(_result.extra()),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.result->slice().isArray());

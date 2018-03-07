@@ -36,17 +36,17 @@ std::shared_ptr<VPackBuilder> QueryResult::extra() const {
   auto extra = std::make_shared<VPackBuilder>();
   try {
     VPackObjectBuilder b(extra.get());
-    if (stats) {
+    if (stats != nullptr) {
       VPackSlice const value = stats->slice();
       if (!value.isNone()) {
         extra->add("stats", value);
       }
     }
-    if (profile) {
+    if (profile != nullptr) {
       extra->add(VPackValue("profile"));
       extra->add(profile->slice());
     }
-    if (!warnings) {
+    if (warnings == nullptr) {
       extra->add("warnings", VPackSlice::emptyArraySlice());
     } else {
       extra->add(VPackValue("warnings"));

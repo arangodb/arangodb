@@ -83,7 +83,8 @@ Specify *true* and the query will be executed in a **streaming** fashion. The qu
 not stored on the server, but calculated on the fly. *Beware*: long-running queries will
 need to hold the collection locks for as long as the query-cursor exists. It is advisable
 to *only* use this option on short-running queries or without exclusive locks (write-locks on MMFiles).
-Also note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
+Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
+Additionally query statistics, warnings and profiling data will only be available after the query is finished.
 The default value is *false*
 
 @RESTSTRUCT{optimizer.rules,post_api_cursor_opts,array,optional,string}
