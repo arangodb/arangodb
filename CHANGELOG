@@ -155,6 +155,8 @@ devel
   `DATE_QUARTER()`, `DATE_DAYS_IN_MONTH()`, `DATE_ADD()`, `DATE_SUBTRACT()`,
   `DATE_DIFF()` and `DATE_COMPARE()`
 
+* fixed a bug where supervision tried to deal with shards of virtual collections
+
 v3.3.4 (XXXX-XX-XX)
 -------------------
 
