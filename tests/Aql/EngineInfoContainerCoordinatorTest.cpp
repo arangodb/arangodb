@@ -681,6 +681,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
         When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
           REQUIRE(part == PART_DEPENDENT);
           REQUIRE(withPlan == false);
+          return &queryClone;
+        }).Do([&](QueryPart part, bool withPlan) -> Query* {
+          REQUIRE(part == PART_DEPENDENT);
+          REQUIRE(withPlan == false);
           return nullptr;
         });
 
