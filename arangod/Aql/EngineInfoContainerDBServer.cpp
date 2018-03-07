@@ -675,15 +675,26 @@ void EngineInfoContainerDBServer::buildEngines(
 #endif
 }
 
-void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
+void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
   // Add all Edge Collections to the Transactions, Traversals do never write
   for (auto const& col : node->edgeColls()) {
     handleCollection(col.get(), false, false);
   }
 
   // Add all Vertex Collections to the Transactions, Traversals do never write
-  for (auto const& col : node->vertexColls()) {
-    handleCollection(col.get(), false, false);
+  auto& vCols = node->vertexColls();
+  if (vCols.empty()) {
+    // This case indicates we do not have a named graph. We simply use
+    // ALL collections known to this query.
+    std::map<std::string, Collection*>* cs =
+        query->collections()->collections();
+    for (auto const& col : *cs) {
+      handleCollection(col.second, false, false);
+    }
+  } else {
+    for (auto const& col : node->vertexColls()) {
+      handleCollection(col.get(), false, false);
+    }
   }
 
   _graphNodes.emplace_back(node);

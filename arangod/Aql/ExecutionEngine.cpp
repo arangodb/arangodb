@@ -503,9 +503,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   EngineInfoContainerDBServer _dbserverParts;
   bool _isCoordinator;
   QueryId _lastClosed;
+  Query* _query;
 
  public:
-  CoordinatorInstanciator() : _isCoordinator(true), _lastClosed(0) {}
+  CoordinatorInstanciator(Query* query) : _isCoordinator(true), _lastClosed(0), _query(query) {}
 
   ~CoordinatorInstanciator() {}
 
@@ -525,7 +526,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbserverParts.addGraphNode(static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
           break;
         default:
           // Do nothing
@@ -572,19 +573,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        * After this step DBServer-Collections are locked!
   ///
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngineResult buildEngines(Query* query, QueryRegistry* registry,
+  ExecutionEngineResult buildEngines(QueryRegistry* registry,
                                      std::unordered_set<ShardID>* lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
-    _dbserverParts.buildEngines(query, queryIds, query->queryOptions().shardIds,
+    _dbserverParts.buildEngines(_query, queryIds, _query->queryOptions().shardIds,
                                 lockedShards);
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
     return _coordinatorParts.buildEngines(
-        query, registry, query->vocbase()->name(),
-        query->queryOptions().shardIds, queryIds, lockedShards);
+        _query, registry, _query->vocbase()->name(),
+        _query->queryOptions().shardIds, queryIds, lockedShards);
   }
 };
 
@@ -645,14 +646,14 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           lockedShards = std::make_unique<std::unordered_set<std::string>>();
         }
 
-        auto inst = std::make_unique<CoordinatorInstanciator>();
+        auto inst = std::make_unique<CoordinatorInstanciator>(query);
 
         // TODO optionally restrict query to certain shards
         // inst->includedShards(query->queryOptions().shardIds);
 
         plan->root()->walk(inst.get());
 
-        auto result = inst->buildEngines(query, queryRegistry, lockedShards.get());
+        auto result = inst->buildEngines(queryRegistry, lockedShards.get());
         if (!result.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
         }
