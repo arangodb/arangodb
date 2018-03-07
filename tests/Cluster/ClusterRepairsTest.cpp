@@ -280,14 +280,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE(!jobid.is_initialized());
 
-        std::shared_ptr<VPackBuffer<uint8_t>>
-          protoCollIdVpack = R"=("789876")="_vpack;
-        Slice
-          protoCollIdSlice = Slice(protoCollIdVpack->data());
-        std::shared_ptr<VPackBuffer<uint8_t>>
-          replicationFactorVpack = R"=(3)="_vpack;
-        Slice
-          replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
+        VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
         AgencyWriteTransaction expectedTrx{
           std::vector<AgencyOperation> {
@@ -356,6 +352,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
       }
     }
+
     GIVEN("A BeginRepairsOperation differing replicationFactors and rename=false") {
       BeginRepairsOperation operation{
         .database = "myDbName",
@@ -375,18 +372,12 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE(!jobid.is_initialized());
 
-        std::shared_ptr<VPackBuffer<uint8_t>>
-          protoCollIdVpack = R"=("789876")="_vpack;
-        Slice
-          protoCollIdSlice = Slice(protoCollIdVpack->data());
-        std::shared_ptr<VPackBuffer<uint8_t>>
-          oldReplicationFactorVpack = R"=(5)="_vpack;
-        Slice
-          oldReplicationFactorSlice = Slice(oldReplicationFactorVpack->data());
-        std::shared_ptr<VPackBuffer<uint8_t>>
-          replicationFactorVpack = R"=(4)="_vpack;
-        Slice
-          replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
+        VPackBufferPtr oldReplicationFactorVpack = R"=(5)="_vpack;
+        Slice oldReplicationFactorSlice = Slice(oldReplicationFactorVpack->data());
+        VPackBufferPtr replicationFactorVpack = R"=(4)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
         AgencyWriteTransaction expectedTrx{
           std::vector<AgencyOperation> {
@@ -425,6 +416,92 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
+      }
+    }
+
+    GIVEN("A FinishRepairsOperation") {
+      FinishRepairsOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .protoCollectionId = "789876",
+        .protoCollectionName = "myProtoCollection",
+        .replicationFactor = 3,
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE(!jobid.is_initialized());
+
+        VPackBufferPtr protoIdVpack = R"=("789876")="_vpack;
+        Slice protoIdSlice = Slice(protoIdVpack->data());
+        VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
+
+        AgencyWriteTransaction expectedTrx{
+          std::vector<AgencyOperation> {
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencySimpleOperationType::DELETE_OP,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyValueOperationType::SET,
+              protoIdSlice,
+            },
+          },
+          std::vector<AgencyPrecondition> {
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::EMPTY,
+              true,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyPrecondition::Type::VALUE,
+              protoIdSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+          },
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
+      }
+
+      WHEN("Compared via ==") {
+        FinishRepairsOperation other = operation;
+
+        REQUIRE(operation == other);
+
+        (other = operation).database = "differing database";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionId = "differing collectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionName = "differing collectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionId = "differing protoCollectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionName = "differing protoCollectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).replicationFactor = 42;
+        REQUIRE_FALSE(operation == other);
+
       }
     }
   }
