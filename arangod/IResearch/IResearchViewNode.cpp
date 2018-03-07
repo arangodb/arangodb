@@ -123,22 +123,44 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 IResearchViewNode::IResearchViewNode(
-    arangodb::aql::ExecutionPlan* plan,
-    arangodb::velocypack::Slice const& base)
+    aql::ExecutionPlan* plan,
+    size_t id,
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalView> const& view,
+    arangodb::aql::Variable const* outVariable,
+    arangodb::aql::AstNode* filterCondition,
+    std::vector<IResearchSort>&& sortCondition)
+  : arangodb::aql::ExecutionNode(plan, id),
+    _vocbase(vocbase),
+    _view(view),
+    _outVariable(outVariable),
+    // in case if filter is not specified
+    // set it to surrogate 'RETURN ALL' node
+    _filterCondition(filterCondition ? filterCondition : &ALL),
+    _sortCondition(std::move(sortCondition)) {
+  TRI_ASSERT(_vocbase);
+  TRI_ASSERT(_view); // FIXME assert view type here
+  TRI_ASSERT(_outVariable);
+}
+
+IResearchViewNode::IResearchViewNode(
+    aql::ExecutionPlan* plan,
+    velocypack::Slice const& base)
   : aql::ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
     _view(_vocbase->lookupView(base.get("view").copyString())),
     _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-    _filterCondition(new aql::AstNode(plan->getAst(), base.get("condition"))), // AST will own the node
-    _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
-  init();
-}
-
-void IResearchViewNode::init() {
-  if (!_filterCondition) {
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
-    _filterCondition = &ALL;
+    _filterCondition(&ALL),
+    _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
+  auto const filterSlice = base.get("condition");
+
+  if (!filterSlice.isEmptyObject()) {
+    // AST will own the node
+    _filterCondition = new aql::AstNode(
+      plan->getAst(), filterSlice
+    );
   }
 }
 
@@ -252,14 +274,8 @@ aql::ExecutionNode* IResearchViewNode::clone(
 
 /// @brief the cost of an enumerate view node
 double IResearchViewNode::estimateCost(size_t& nrItems) const {
-  size_t incoming = 0;
-  double depCost = _dependencies.at(0)->getCost(incoming);
-
-  // For the time being, we assume 100
-  size_t length = 100; // TODO: get a better guess from view
-
-  nrItems = length * incoming;
-  return depCost + static_cast<double>(length) * incoming;
+  // TODO: get a better guess from view
+  return _dependencies.empty() ? 0. : _dependencies[0]->getCost(nrItems);
 }
 
 std::vector<aql::Variable const*> IResearchViewNode::getVariablesUsedHere() const {
@@ -349,8 +365,8 @@ IResearchViewScatterNode::IResearchViewScatterNode(
     arangodb::velocypack::Slice const& base
 ) : ExecutionNode(&plan, base),
     _vocbase(plan.getAst()->query()->vocbase()),
-    //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find view
-    _view(nullptr) {
+    //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find a view
+    _view(_vocbase->lookupView(base.get("view").copyString())) {
 }
 
 /// @brief creates corresponding ExecutionBlock

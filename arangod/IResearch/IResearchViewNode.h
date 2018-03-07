@@ -38,8 +38,19 @@ namespace iresearch {
 struct IResearchSort {
   IResearchSort() = default;
 
-  IResearchSort(aql::Variable const* var, aql::AstNode const* node, bool asc)
+  IResearchSort(
+      aql::Variable const* var,
+      aql::AstNode const* node,
+      bool asc) noexcept
     : var(var), node(node), asc(asc) {
+  }
+
+  bool operator==(IResearchSort const& rhs) const noexcept {
+    return var == rhs.var && node == rhs.node && asc == rhs.asc;
+  }
+
+  bool operator!=(IResearchSort const& rhs) const noexcept {
+    return !(*this == rhs);
   }
 
   aql::Variable const* var{};
@@ -56,28 +67,18 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
  public:
   IResearchViewNode(
-      arangodb::aql::ExecutionPlan* plan,
-      size_t id,
-      TRI_vocbase_t* vocbase,
-      std::shared_ptr<arangodb::LogicalView> const& view,
-      arangodb::aql::Variable const* outVariable,
-      arangodb::aql::AstNode* filterCondition,
-      std::vector<IResearchSort>&& sortCondition)
-    : arangodb::aql::ExecutionNode(plan, id),
-      _vocbase(vocbase),
-      _view(view),
-      _outVariable(outVariable),
-      _filterCondition(filterCondition),
-      _sortCondition(std::move(sortCondition)) {
-    TRI_ASSERT(_vocbase);
-    TRI_ASSERT(_view);
-    TRI_ASSERT(_outVariable);
-    init();
-  }
+    aql::ExecutionPlan* plan,
+    size_t id,
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalView> const& view,
+    aql::Variable const* outVariable,
+    aql::AstNode* filterCondition,
+    std::vector<IResearchSort>&& sortCondition
+  );
 
   IResearchViewNode(
-    arangodb::aql::ExecutionPlan*,
-    arangodb::velocypack::Slice const& base
+    aql::ExecutionPlan*,
+    velocypack::Slice const& base
   );
 
   /// @brief return the type of the node
@@ -170,13 +171,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   ) const override;
 
  private:
-  void init();
-
   /// @brief the database
   TRI_vocbase_t* _vocbase;
 
   /// @brief collection
-  std::shared_ptr<LogicalView> _view;
+  std::shared_ptr<LogicalView> const _view;
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable;
@@ -200,6 +199,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   ) : ExecutionNode(&plan, id),
       _vocbase(&vocbase),
       _view(view) {
+    // FIXME assert view type here
   }
 
   IResearchViewScatterNode(
@@ -246,6 +246,10 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   /// @brief return the database
   TRI_vocbase_t& vocbase() const noexcept { 
     return *_vocbase; 
+  }
+
+  std::shared_ptr<LogicalView> view() const noexcept {
+    return _view;
   }
 
  private:
