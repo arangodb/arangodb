@@ -1210,6 +1210,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
             // wait that all followers have created our new collection
             if (tmpError.empty() && waitForReplication) {
+              
               std::vector<ServerID> plannedServers;
               {
                 READ_LOCKER(readLocker, _planProt.lock);
@@ -1390,6 +1391,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
+      // Reup plan, in case the servers have been updated in meantime
+      loadPlan();
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }
