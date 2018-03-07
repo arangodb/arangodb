@@ -117,11 +117,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
 
   if (stream) {
-    TRI_ASSERT(!count);  // disallowed
-    Cursor* cursor = cursors->createQueryStream(
-        querySlice.copyString(), bindVarsBuilder, options, batchSize, ttl);
-    TRI_DEFER(cursors->release(cursor));
-    generateCursorResult(rest::ResponseCode::CREATED, cursor);
+    if (count) {
+      generateError(Result(TRI_ERROR_BAD_PARAMETER, "cannot use 'count' option for a streaming query"));
+    } else {
+      Cursor* cursor = cursors->createQueryStream(
+          querySlice.copyString(), bindVarsBuilder, options, batchSize, ttl);
+      TRI_DEFER(cursors->release(cursor));
+      generateCursorResult(rest::ResponseCode::CREATED, cursor);
+    }
     return;  // done
   }
 

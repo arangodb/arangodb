@@ -126,10 +126,6 @@ Result MMFilesExportCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    /*if (extra().isObject()) {
-      builder.add("extra", extra());
-    }*/
-
     if (!hasNext()) {
       // mark the cursor as deleted
       delete _ex;

@@ -163,10 +163,6 @@ Result RocksDBExportCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    /*if (extra().isObject()) {
-      builder.add("extra", extra());
-    }*/
-
     if (!hasNext()) {
       // mark the cursor as deleted
       _iter.reset();
@@ -180,7 +176,7 @@ Result RocksDBExportCursor::dump(VPackBuilder& builder) {
     return Result(TRI_ERROR_INTERNAL, "internal error during RocksDBExportCursor::dump");
   }
   builder.options = oldOptions;
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 std::shared_ptr<transaction::Context> RocksDBExportCursor::context() const {

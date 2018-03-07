@@ -286,6 +286,7 @@ void MMFilesRestExportHandler::createCursor() {
   Result r = c->dump(builder);
   if (r.fail()) {
     generateError(r);
+    return;
   }
   builder.close();
 
@@ -334,6 +335,7 @@ void MMFilesRestExportHandler::modifyCursor() {
   Result r = cursor->dump(builder);
   if (r.fail()) {
     generateError(r);
+    return;
   }
   builder.close();
 

@@ -190,7 +190,7 @@ class Query {
   QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
   
   /// @brief Enter finalization phase and do cleanup.
-  /// Sets `warnings``, `stats`, `profile`, timings and does the cleanup.
+  /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
   /// Only use directly for a streaming query, rather use `execute(...)`
   void finalize(QueryResult&);
 

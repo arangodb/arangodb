@@ -107,8 +107,6 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
     }
     builder.close();
 
-    // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
-    // should not be string
     builder.add("hasMore", VPackValue(hasNext()));
 
     if (hasNext()) {
@@ -204,25 +202,23 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
             val.toVelocyPack(_query->trx(), builder, false);
           }
         }
-        engine->_itemBlockManager.returnBlock(value);
+        // return used block: this will reset value to a nullptr
+        engine->_itemBlockManager.returnBlock(value); 
         hasMore = engine->hasMore();
       } else {
         hasMore = false;
       }
       builder.close();  // result
 
-      // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
-      // should not be string
       builder.add("hasMore", VPackValue(hasMore));
       if (hasMore) {
         builder.add("id", VPackValue(std::to_string(id())));
       }
 
       builder.add("cached", VPackValue(false));
-
     } catch (...) {
       delete value;
-      throw;  // rethrow, is catched below
+      throw;  // rethrow, is caught below
     }
 
     if (!hasMore) {
@@ -234,7 +230,6 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       }
       this->deleted();
     }
-
   } catch (arangodb::basics::Exception const& ex) {
     this->deleted();
     return Result(ex.code(),

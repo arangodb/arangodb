@@ -258,6 +258,7 @@ void RocksDBRestExportHandler::createCursor() {
   Result r = c->dump(builder);
   if (r.fail()) {
     generateError(r);
+    return;
   }
   builder.close();
 
@@ -303,6 +304,7 @@ void RocksDBRestExportHandler::modifyCursor() {
   Result r = cursor->dump(builder);
   if (r.fail()) {
     generateError(r);
+    return;
   }
   builder.close();
 
