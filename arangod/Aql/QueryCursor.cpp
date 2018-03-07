@@ -149,6 +149,9 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t* vocbase, CursorId id,
       _guard(vocbase),
       _queryString(query) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
+  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
+  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
+        
   _query = std::make_unique<Query>(false, _guard.database(),
       aql::QueryString(_queryString.c_str(), _queryString.length()),
       std::move(bindVars), std::move(opts), arangodb::aql::PART_MAIN);
