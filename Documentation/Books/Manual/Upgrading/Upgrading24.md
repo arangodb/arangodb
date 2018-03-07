@@ -2,7 +2,7 @@ Upgrading to ArangoDB 2.4
 =========================
 
 Please read the following sections if you upgrade from a previous version to
-ArangoDB 2.4. Please be sure that you have checked the list of [changes in 2.4](../../ReleaseNotes/UpgradingChanges24.md)
+ArangoDB 2.4. Please be sure that you have checked the list of [changes in 2.4](../ReleaseNotes/UpgradingChanges24.md)
 before upgrading.
 
 Please note first that a database directory used with ArangoDB 2.4

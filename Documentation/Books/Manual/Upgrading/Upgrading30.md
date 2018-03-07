@@ -3,7 +3,7 @@ Upgrading to ArangoDB 3.0
 
 Please read the following sections if you upgrade from a previous
 version to ArangoDB 3.0. Please be sure that you have checked the list
-of [changes in 3.0](../../ReleaseNotes/UpgradingChanges30.md) before
+of [changes in 3.0](../ReleaseNotes/UpgradingChanges30.md) before
 upgrading.
 
 Migrating databases and collections from ArangoDB 2.8 to 3.0
@@ -121,7 +121,7 @@ via the 2.8 web interface.
 
 The zip files can then be uploaded in the "Services" section in the ArangoDB 3.0 web interface.
 Applications may need to be adjusted manually to run in 3.0. Please consult the 
-[migration guide for Foxx apps](../../Foxx/Migrating2x/README.md).
+[migration guide for Foxx apps](../Foxx/Migrating2x/README.md).
 
 An alternative way of moving Foxx apps into 3.0 is to copy the source directory of a 2.8 Foxx
 application manually into the 3.0 Foxx apps directory for the target database (which is normally

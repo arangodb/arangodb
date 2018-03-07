@@ -27,7 +27,7 @@ Known Issues
 Incompatible changes
 --------------------
 
-Also see [Upgrading](../Administration/Upgrading/README.md) in the 
+Also see [Upgrading](../Upgrading/README.md) in the 
 Administration chapter.
 
 - [Incompatible changes in 3.3](UpgradingChanges33.md)
