@@ -137,9 +137,8 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
-// TODO write tests for RepairOperation to Transaction conversion
 
-SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
+SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
 
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
@@ -216,7 +215,9 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
   }
   // restore old manager
   AgencyCommManager::MANAGER = std::move(old_manager);
+}
 
+SCENARIO("VersionSort", "[cluster][shards][repairs]") {
   GIVEN("Different version strings") {
     REQUIRE(VersionSort()("s2", "s10"));
     REQUIRE(! VersionSort()("s10", "s2"));
@@ -225,6 +226,107 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][
     REQUIRE(! VersionSort()("s7", "s5"));
   }
 }
+
+// TODO write more tests for RepairOperation to Transaction conversion
+
+SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
+
+  // save old manager (may be null)
+  std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
+
+  try {
+    // get a new manager
+    AgencyCommManager::initialize("testArangoAgencyPrefix");
+
+    RepairOperationToTransactionVisitor conversionVisitor;
+
+    GIVEN("A BeginRepairsOperation with equal replicationFactors and rename=true") {
+      BeginRepairsOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .protoCollectionId = "789876",
+        .protoCollectionName = "myProtoCollection",
+        .collectionReplicationFactor = 3,
+        .protoReplicationFactor = 3,
+        .renameDistributeShardsLike = true,
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE(!jobid.is_initialized());
+
+        std::shared_ptr<VPackBuffer<uint8_t>>
+          protoCollIdVpack = R"=("789876")="_vpack;
+        Slice
+          protoCollIdSlice = Slice(protoCollIdVpack->data());
+        std::shared_ptr<VPackBuffer<uint8_t>>
+          replicationFactorVpack = R"=(3)="_vpack;
+        Slice
+          replicationFactorSlice = Slice(replicationFactorVpack->data());
+
+        AgencyWriteTransaction expectedTrx{
+          std::vector<AgencyOperation> {
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencySimpleOperationType::DELETE_OP,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyValueOperationType::SET,
+              protoCollIdSlice,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyValueOperationType::SET,
+              replicationFactorSlice,
+            },
+          },
+          std::vector<AgencyPrecondition> {
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyPrecondition::Type::EMPTY,
+              true,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::VALUE,
+              protoCollIdSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+          }
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
+
+      }
+    }
+  }
+  catch (...) {
+    // restore old manager
+    AgencyCommManager::MANAGER = std::move(old_manager);
+    throw;
+  }
+  // restore old manager
+  AgencyCommManager::MANAGER = std::move(old_manager);
+}
+
 
 }
 }
