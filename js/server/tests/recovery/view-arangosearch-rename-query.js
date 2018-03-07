@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull */
+/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull, AQL_EXECUTE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -43,29 +43,12 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
-  v.properties({ threadsMaxTotal: 17 });
+  v.properties({ links: { 'UnitTestsDummy': { includeAllFields: true } } });
+  db._collection('UnitTestsDummy').save({ _key: 'foo', num: 1 }, { waitForSync: true });
+
   v.rename('UnitTestsRecovery2');
 
-  db._dropView('UnitTestsRecovery3');
-  db._dropView('UnitTestsRecovery4');
-  v = db._createView('UnitTestsRecovery3', 'arangosearch', {});
-  v.properties({ threadsMaxTotal: 16 });
-  v.rename('UnitTestsRecovery4');
-
-  db._dropView('UnitTestsRecovery5');
-  db._dropView('UnitTestsRecovery6');
-  v = db._createView('UnitTestsRecovery5', 'arangosearch', {});
-  v.rename('UnitTestsRecovery6');
-  v.rename('UnitTestsRecovery5');
-
-  db._dropView('UnitTestsRecovery7');
-  db._dropView('UnitTestsRecovery8');
-  v = db._createView('UnitTestsRecovery7', 'arangosearch', {});
-  v.rename('UnitTestsRecovery8');
-  db._dropView('UnitTestsRecovery8');
-  v = db._createView('UnitTestsRecovery8', 'arangosearch', {});
-
-  db._collection('UnitTestsDummy').save({ _key: 'foo' }, { waitForSync: true });
+  db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -85,24 +68,13 @@ function recoverySuite () {
     // / @brief test whether rename works
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewRename: function () {
-      var v, prop;
+    testIResearchViewRename: function () {
+      var v, res;
 
       assertNull(db._view('UnitTestsRecovery1'));
-      v = db._view('UnitTestsRecovery2');
-      prop = v.properties();
-      assertEqual(prop.threadsMaxTotal, 17);
-
-      assertNull(db._view('UnitTestsRecovery3'));
-      v = db._view('UnitTestsRecovery4');
-      prop = v.properties();
-      assertEqual(prop.threadsMaxTotal, 16);
-
-      assertNull(db._view('UnitTestsRecovery6'));
-      assertNotNull(db._view('UnitTestsRecovery5'));
-
-      assertNull(db._view('UnitTestsRecovery7'));
-      v = db._view('UnitTestsRecovery8');
+      assertNotNull(db._view('UnitTestsRecovery2'));
+      res = AQL_EXECUTE('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
+      assertEqual(res.length, 2);
     }
 
   };
