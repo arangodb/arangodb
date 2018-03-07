@@ -357,11 +357,11 @@ Result executeTransactionJS(
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
-  if (rv.fail()) {
-    return rv;
+  if (!rv.fail()) {
+    rv = trx->commit();
   }
 
-  return trx->commit();
+  return rv;
 }
 
 } // arangodb

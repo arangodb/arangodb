@@ -58,24 +58,6 @@ class ColumnFamilyHandle;
 
 namespace arangodb {
 
-class RocksDBOperationResult : public Result {
-public:
-  RocksDBOperationResult() 
-      : Result(), _keySize(0) {}
-  
-  RocksDBOperationResult(Result const& other) 
-      : Result(other), _keySize(0) {}
-  
-  RocksDBOperationResult(Result&& other) noexcept 
-      : Result(std::move(other)), _keySize(0) {}
-  
-  uint64_t keySize() const { return _keySize; }
-  void keySize(uint64_t s) { _keySize = s; }
-  
-protected:
-  uint64_t _keySize;
-};
-
 class RocksDBMethods;
 class RocksDBKeyBounds;
 class RocksDBEngine;
@@ -232,8 +214,8 @@ arangodb::Result globalRocksDBRemove(
 
 uint64_t latestSequenceNumber();
 
-void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);
 std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
+std::tuple<TRI_voc_tick_t, TRI_voc_cid_t, TRI_idx_iid_t> mapObjectToIndex(uint64_t);
 
 /// @brief count all keys in the given column family
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);

@@ -59,6 +59,8 @@
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
+#include "Utils/VersionTracker.h"
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -487,6 +489,13 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
+    ExecContext const* exec = ExecContext::CURRENT;
+    if (exec != nullptr &&
+        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+      return TRI_set_errno(TRI_ERROR_FORBIDDEN);
+    }
+
+
     READ_LOCKER_EVENTUAL(locker, collection->_lock);
 
     // return original status to the caller
@@ -720,15 +729,15 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       if (!collection->deleted()) {
-        collection->setDeleted(true);
+        collection->deleted(true);
         try {
           engine->changeCollection(this, collection->cid(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
-          collection->setDeleted(false);
+          collection->deleted(false);
           events::DropCollection(colName, ex.code());
           return ex.code();
         } catch (std::exception const&) {
-          collection->setDeleted(false);
+          collection->deleted(false);
           events::DropCollection(colName, TRI_ERROR_INTERNAL);
           return TRI_ERROR_INTERNAL;
         }
@@ -750,7 +759,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
     case TRI_VOC_COL_STATUS_LOADED:
     case TRI_VOC_COL_STATUS_UNLOADING: {
       // collection is loaded
-      collection->setDeleted(true);
+      collection->deleted(true);
 
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool doSync =
@@ -903,6 +912,7 @@ void TRI_vocbase_t::inventory(
     });
   }
   
+  ExecContext const* exec = ExecContext::CURRENT;
   result.openArray();
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
@@ -924,7 +934,12 @@ void TRI_vocbase_t::inventory(
     if (!nameFilter(collection)) {
       continue;
     }
-   
+
+    if (exec != nullptr &&
+        !exec->canUseCollection(_name, collection->name(), auth::Level::RO)) {
+      continue;
+    }
+
     if (collection->cid() <= maxTick) { 
       result.openObject();
       
@@ -1058,9 +1073,56 @@ LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const {
   return (*it).second;
 }
 
+/// @brief looks up a data-source by identifier
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    TRI_voc_cid_t id
+) const noexcept {
+  // FIXME TODO use a common map for collection and view
+  auto* collection = lookupCollection(id);
+
+  if (collection) {
+    return std::shared_ptr<arangodb::LogicalDataSource>(
+      collection, [](arangodb::LogicalDataSource*)->void{}
+    );
+  }
+
+  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(id));
+}
+
+/// @brief looks up a data-source by name
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    std::string const& nameOrId
+) const noexcept {
+  // FIXME TODO use a common map for collection and view
+  auto* collection = lookupCollection(nameOrId);
+
+  if (collection) {
+    return std::shared_ptr<arangodb::LogicalDataSource>(
+      collection, [](arangodb::LogicalDataSource*)->void{}
+    );
+  }
+
+  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(nameOrId));
+}
+
+/// @brief looks up a view by identifier
+std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
+    TRI_voc_cid_t id
+) const noexcept {
+  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+
+  auto it = _viewsById.find(id);
+
+  if (it == _viewsById.end()) {
+    return std::shared_ptr<LogicalView>();
+  }
+  return (*it).second;
+}
+
 /// @brief looks up a view by name
 std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
-    std::string const& name) {
+    std::string const& name
+) const noexcept {
   if (name.empty()) {
     return std::shared_ptr<LogicalView>();
   }
@@ -1078,18 +1140,6 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
   auto it = _viewsByName.find(name);
 
   if (it == _viewsByName.end()) {
-    return std::shared_ptr<LogicalView>();
-  }
-  return (*it).second;
-}
-
-/// @brief looks up a view by identifier
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(TRI_voc_cid_t id) {
-  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
-
-  auto it = _viewsById.find(id);
-
-  if (it == _viewsById.end()) {
     return std::shared_ptr<LogicalView>();
   }
   return (*it).second;
@@ -1132,6 +1182,11 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   arangodb::Result res2 = engine->persistCollection(this, collection);
   // API compatibility, we always return the collection, even if creation
   // failed.
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create collection");
+  }
 
   return collection;
 }
@@ -1231,6 +1286,11 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
         // wake up the cleanup thread
         engine->signalCleanup(collection->vocbase());
       }
+      
+      if (DatabaseFeature::DATABASE != nullptr &&
+          DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+        DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
+      }
     }
 
     if (state == DROP_PERFORM || state == DROP_EXIT) {
@@ -1275,18 +1335,22 @@ int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
 
   _viewsByName.emplace(newName, view);
   _viewsByName.erase(oldName);
-  
+
   // stores the parameters on disk
-  bool const doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-         "Database")
-          ->forceSyncProperties();
-  view->rename(newName, doSync);
+  auto* databaseFeature =
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(databaseFeature);
+  auto doSync = databaseFeature->forceSyncProperties();
+  auto res = view->rename(std::string(newName), doSync);
+
+  if (!res.ok()) {
+    return res.errorNumber(); // rename failed
+  }
 
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res = engine->renameView(this, view, oldName);
+  res = engine->renameView(this, view, oldName);
 
   return res.errorNumber();
 }
@@ -1369,11 +1433,14 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
-  int res = collection->rename(newName);
+  auto* databaseFeature =
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(databaseFeature);
+  auto doSync = databaseFeature->forceSyncProperties();
+  auto res = collection->rename(std::string(newName), doSync);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // Renaming failed
-    return res;
+  if (!res.ok()) {
+    res.errorNumber(); // rename failed
   }
 
   // The collection is renamed. Now swap cache entries.
@@ -1391,6 +1458,11 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
   locker.unlock();
   writeLocker.unlock();
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
+  }
 
   // invalidate all entries for the two collections
   arangodb::aql::PlanCache::instance()->invalidate(this);
@@ -1508,8 +1580,24 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
       application_features::ApplicationServer::getFeature<ViewTypesFeature>(
           "ViewTypes");
 
-  // will throw if type is invalid
-  ViewCreator& creator = viewTypesFeature->creator(type);
+  if (!viewTypesFeature) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'"
+    );
+  }
+
+  auto& dataSourceType =
+    arangodb::LogicalDataSource::Type::emplace(std::move(type));
+  auto& creator = viewTypesFeature->factory(dataSourceType);
+
+  if (!creator) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      "no handler found for view type"
+    );
+  }
+
   // Try to create a new view. This is not registered yet
   std::shared_ptr<arangodb::LogicalView> view =
       std::make_shared<arangodb::LogicalView>(this, parameters);
@@ -1572,6 +1660,13 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   // TODO Review
   arangodb::Result res2 = engine->persistView(this, view.get());
   // API compatibility, we always return the view, even if creation failed.
+ 
+  if (view) { 
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
+  }
 
   return view;
 }
@@ -1631,18 +1726,6 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   arangodb::aql::QueryCache::instance()->invalidate(this);
 
   view->drop();
-  /*
-  VPackBuilder b;
-  b.openObject();
-  view->toVelocyPack(b, true, true);
-  b.close();
-
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
-  view->updateProperties(b.slice(), doSync);
-*/
   unregisterView(view);
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1650,8 +1733,12 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   locker.unlock();
   writeLocker.unlock();
-
+  
   events::DropView(view->name(), TRI_ERROR_NO_ERROR);
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop view");
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

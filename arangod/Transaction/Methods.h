@@ -135,7 +135,7 @@ class Methods {
 
  public:
 
-  typedef Result(*StateRegistrationCallback)(TRI_voc_cid_t cid, TransactionState& state);
+  typedef Result(*StateRegistrationCallback)(LogicalDataSource& dataSource, TransactionState& state);
 
   /// @brief add a callback to be called for state instance association events
   ///        e.g. addCollection(...)

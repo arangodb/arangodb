@@ -31,7 +31,7 @@
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
@@ -40,9 +40,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder) const {
   builder.add("filtered", VPackValue(filtered));
   builder.add("httpRequests", VPackValue(httpRequests));
 
-  if (fullCount > -1) {
-    // fullCount is exceptional. it has a default value of -1 and is
-    // not reported with this value
+  if (reportFullCount) {
+    // fullCount is exceptional, as it may be hidden
     builder.add("fullCount", VPackValue(fullCount));
   }
       
@@ -58,7 +57,7 @@ void ExecutionStats::toVelocyPackStatic(VPackBuilder& builder) {
   builder.add("scannedIndex", VPackValue(0));
   builder.add("filtered", VPackValue(0));
   builder.add("httpRequests", VPackValue(0));
-  builder.add("fullCount", VPackValue(-1));
+  builder.add("fullCount", VPackValue(0));
   builder.add("executionTime", VPackValue(0.0));
   builder.close();
 }
@@ -70,7 +69,7 @@ ExecutionStats::ExecutionStats()
       scannedIndex(0),
       filtered(0),
       httpRequests(0),
-      fullCount(-1),
+      fullCount(0),
       executionTime(0.0) {}
 
 ExecutionStats::ExecutionStats(VPackSlice const& slice) 

@@ -218,24 +218,19 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     Cursor* cursor = cursors->createFromQueryResult(
         std::move(queryResult), batchSize, extra, ttl, count);
 
-    try {
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder result(buffer);
-      result.openObject();
-      result.add(StaticStrings::Error, VPackValue(false));
-      result.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
-      cursor->dump(result);
-      result.close();
+    TRI_DEFER(cursors->release(cursor));
+      
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder result(buffer);
+    result.openObject();
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue(static_cast<int>(_response->responseCode())));
+    cursor->dump(result);
+    result.close();
 
-      _response->setContentType(rest::ContentType::JSON);
-      generateResult(_response->responseCode(), std::move(buffer),
-                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
-
-      cursors->release(cursor);
-    } catch (...) {
-      cursors->release(cursor);
-      throw;
-    }
+    _response->setContentType(rest::ContentType::JSON);
+    generateResult(_response->responseCode(), std::move(buffer),
+                    static_cast<VelocyPackCursor*>(cursor)->result()->context);
   }
 }
 
@@ -466,23 +461,18 @@ void RestCursorHandler::modifyCursor() {
     return;
   }
 
-  try {
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add(StaticStrings::Error, VPackValue(false));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
-    cursor->dump(builder);
-    builder.close();
+  TRI_DEFER(cursors->release(cursor));
 
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice(),
-                     static_cast<VelocyPackCursor*>(cursor)->result()->context);
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
+  cursor->dump(builder);
+  builder.close();
 
-    cursors->release(cursor);
-  } catch (...) {
-    cursors->release(cursor);
-    throw;
-  }
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::OK, builder.slice(),
+                    static_cast<VelocyPackCursor*>(cursor)->result()->context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

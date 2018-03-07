@@ -67,7 +67,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/EndpointFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/FrontendFeature.h"
@@ -79,7 +78,6 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
-#include "RestServer/UnitTestsFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RestServer/WorkMonitorFeature.h"
@@ -157,7 +155,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new EndpointFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
     server.addFeature(new EnvironmentFeature(&server));
-    server.addFeature(new FeatureCacheFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
     server.addFeature(new FlushFeature(&server));
     server.addFeature(new FoxxQueuesFeature(&server));
@@ -185,14 +182,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new ServerFeature(&server, &ret));
     server.addFeature(new ServerIdFeature(&server));
     server.addFeature(new ShellColorsFeature(&server));
-    server.addFeature(new ShutdownFeature(&server, {"UnitTests", "Script"}));
+    server.addFeature(new ShutdownFeature(&server, {"Script"}));
     server.addFeature(new SslFeature(&server));
     server.addFeature(new StatisticsFeature(&server));
     server.addFeature(new StorageEngineFeature(&server));
     server.addFeature(new TempFeature(&server, name));
     server.addFeature(new TransactionManagerFeature(&server));
     server.addFeature(new TraverserEngineRegistryFeature(&server));
-    server.addFeature(new UnitTestsFeature(&server, &ret));
     server.addFeature(new UpgradeFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new V8DealerFeature(&server));
     server.addFeature(new V8PlatformFeature(&server));

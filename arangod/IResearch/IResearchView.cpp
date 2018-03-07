@@ -31,7 +31,6 @@
 #include "utils/directory_utils.hpp"
 #include "utils/memory.hpp"
 #include "utils/misc.hpp"
-#include "utils/utf8_path.hpp"
 
 #include "ApplicationServerHelper.h"
 #include "IResearchAttributes.h"
@@ -85,11 +84,6 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ///        corresponding link definitions
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the view type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& VIEW_TYPE = arangodb::iresearch::IResearchFeature::type();
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
@@ -232,9 +226,11 @@ struct ViewState: public arangodb::TransactionState::Cookie {
 /// @brief generates user-friendly description of the specified view
 ////////////////////////////////////////////////////////////////////////////////
 std::string toString(arangodb::iresearch::IResearchView const& view) {
-  std::string str(arangodb::iresearch::IResearchView::type());
+  std::string str(arangodb::iresearch::IResearchView::type().name());
+
   str += ":";
   str += std::to_string(view.id());
+
   return str;
 }
 
@@ -243,43 +239,6 @@ std::string toString(arangodb::iresearch::IResearchView const& view) {
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::FlushFeature* getFlushFeature() noexcept {
   return arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief construct an absolute path from the IResearchViewMeta configuration
-////////////////////////////////////////////////////////////////////////////////
-bool appendAbsolutePersistedDataPath(
-    std::string& buf,
-    arangodb::iresearch::IResearchView const& view,
-    arangodb::iresearch::IResearchViewMeta const& meta
-) {
-  auto& path = meta._dataPath;
-
-  if (path.empty()) {
-    return false; // empty data path should have been set to a default value
-  }
-
-  if (TRI_PathIsAbsolute(path)) {
-    buf = path;
-
-    return true;
-  }
-
-  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
-
-  if (!feature) {
-    return false;
-  }
-
-  // get base path from DatabaseServerFeature (similar to MMFilesEngine)
-  irs::utf8_path absPath(feature->directory());
-  static std::string subPath("databases");
-
-  absPath/=subPath;
-  absPath/=path;
-  buf = absPath.utf8();
-
-  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,73 +260,6 @@ bool appendLinkRemoval(
   }
 
   return true;
-}
-
-arangodb::Result createPersistedDataDirectory(
-    irs::directory::ptr& dstDirectory, // out param
-    irs::index_writer::ptr& dstWriter, // out param
-    std::string const& dstDataPath,
-    irs::directory_reader srcReader, // !srcReader ==  do not import
-    TRI_voc_cid_t viewId
-) noexcept {
-  try {
-    auto directory = irs::directory::make<irs::mmap_directory>(dstDataPath);
-
-    if (!directory) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error creating persistent directry for iResearch view '") + std::to_string(viewId) + "' at path '" + dstDataPath + "'"
-      );
-    }
-
-    // for the case where the data directory is moved into the same physical location (possibly different path)
-    // 1. open the writer on the last index meta (will prevent cleaning files of the last index meta)
-    // 2. clear the index (new index meta)
-    // 3. populate index from the reader
-    auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
-    auto writer = irs::index_writer::make(*directory, format, irs::OM_CREATE_APPEND);
-
-    if (!writer) {
-      return arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error creating persistent writer for iResearch view '") + std::to_string(viewId) + "' at path '" + dstDataPath + "'"
-      );
-    }
-
-    irs::all filter;
-
-    writer->remove(filter);
-    writer->commit(); // clear destination directory
-
-    if (srcReader) {
-      srcReader = srcReader.reopen();
-      writer->import(srcReader);
-      writer->commit(); // initialize 'store' as a copy of the existing store
-    }
-
-    dstDirectory = std::move(directory);
-    dstWriter = std::move(writer);
-
-    return arangodb::Result(/*TRI_ERROR_NO_ERROR*/);
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while creating iResearch view '" << viewId
-      << "' data path '" + dstDataPath + "': " << e.what();
-    IR_LOG_EXCEPTION();
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("error creating iResearch view '") + std::to_string(viewId) + "' data path '" + dstDataPath + "'"
-    );
-  } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while creating iResearch view '" << viewId
-      << "' data path '" + dstDataPath + "'";
-    IR_LOG_EXCEPTION();
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("error creating iResearch view '") + std::to_string(viewId) + "' data path '" + dstDataPath + "'"
-    );
-  }
 }
 
 // @brief approximate iResearch directory instance size
@@ -870,9 +762,14 @@ IResearchView::MemoryStore::MemoryStore() {
   _reader = irs::directory_reader::open(*_directory); // open after 'commit' for valid 'store'
 }
 
+IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
+  : _path(std::move(path)) {
+}
+
 IResearchView::IResearchView(
   arangodb::LogicalView* view,
-  arangodb::velocypack::Slice const& info
+  arangodb::velocypack::Slice const& info,
+  irs::utf8_path&& persistedPath
 ) : ViewImplementation(view, info),
     FlushTransaction(toString(*this)),
    _asyncMetaRevision(1),
@@ -880,6 +777,7 @@ IResearchView::IResearchView(
    _asyncTerminate(false),
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
+   _storePersisted(std::move(persistedPath)),
    _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
    _inRecovery(false) {
   // set up in-recovery insertion hooks
@@ -1207,7 +1105,11 @@ void IResearchView::drop() {
       _storePersisted._directory.reset();
     }
 
-    if (!TRI_IsDirectory(_meta._dataPath.c_str()) || TRI_ERROR_NO_ERROR == TRI_RemoveDirectory(_meta._dataPath.c_str())) {
+    bool exists;
+
+    // remove persisted data store directory if present
+    if (_storePersisted._path.exists_directory(exists)
+        && (!exists || _storePersisted._path.remove())) {
       return; // success
     }
   } catch (std::exception const& e) {
@@ -1690,12 +1592,40 @@ arangodb::Result IResearchView::link(
   arangodb::velocypack::Slice const& info,
   bool isNew
 ) {
-  PTR_NAMED(IResearchView, ptr, view, info);
+  if (!view) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "invalid LogicalView argument while constructing IResearch view";
+    return nullptr;
+  }
+
+  auto* feature =
+    arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+
+  if (!feature) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failure to find feature 'DatabasePath' while constructing IResearch view '" << view->id() << "'";
+
+    return nullptr;
+  }
+
+  // get base path from DatabaseServerFeature (similar to MMFilesEngine)
+  // the path is hardcoded to reside under:
+  // <DatabasePath>/<IResearchView::type()>-<view id>
+  // similar to the data path calculation for collections
+  irs::utf8_path dataPath(feature->directory());
+  static std::string subPath("databases");
+
+  dataPath /= subPath;
+  dataPath /= arangodb::iresearch::IResearchView::type().name();
+  dataPath += "-";
+  dataPath += std::to_string(view->id());
+
+  PTR_NAMED(IResearchView, ptr, view, info, std::move(dataPath));
   auto& impl = reinterpret_cast<IResearchView&>(*ptr);
   auto& json = info.isNone() ? emptyObjectSlice() : info; // if no 'info' then assume defaults
   std::string error;
 
-  if (!view || !impl._meta.init(json, error, *view)) {
+  if (!impl._meta.init(json, error)) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed to initialize iResearch view from definition, error: " << error;
 
@@ -1727,6 +1657,7 @@ size_t IResearchView::memory() const {
 
   if (_storePersisted) {
     size += directoryMemory(*(_storePersisted._directory), id());
+    size += _storePersisted._path.native().size() * sizeof(irs::utf8_path::native_char_t);
   }
 
   return size;
@@ -1750,14 +1681,12 @@ void IResearchView::open() {
     return; // view already open
   }
 
-  std::string absoluteDataPath;
-
   try {
     auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
 
-    if (format && appendAbsolutePersistedDataPath(absoluteDataPath, *this, _meta)) {
+    if (format) {
       _storePersisted._directory =
-        irs::directory::make<irs::mmap_directory>(absoluteDataPath);
+        irs::directory::make<irs::mmap_directory>(_storePersisted._path.utf8());
 
       if (_storePersisted._directory) {
         // create writer before reader to ensure data directory is present
@@ -1800,10 +1729,10 @@ void IResearchView::open() {
   }
 
   LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-    << "failed to open iResearch view '" << id() << "' at: " << absoluteDataPath;
+    << "failed to open IResearch view '" << name() << "' at: " << _storePersisted._path.utf8();
 
   throw std::runtime_error(
-    std::string("failed to open iResearch view '") + std::to_string(id()) + "' at: " + absoluteDataPath
+    std::string("failed to open iResearch view '") + name() + "' at: " + _storePersisted._path.utf8()
   );
 }
 
@@ -1996,8 +1925,12 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   return false;
 }
 
-/*static*/ std::string const& IResearchView::type() noexcept {
-  return VIEW_TYPE;
+/*static*/ arangodb::LogicalDataSource::Type const& IResearchView::type() noexcept {
+  static auto& type = arangodb::LogicalDataSource::Type::emplace(
+    std::string(IResearchFeature::type())
+  );
+
+  return type;
 }
 
 arangodb::Result IResearchView::updateLogicalProperties(
@@ -2052,7 +1985,7 @@ arangodb::Result IResearchView::updateProperties(
 
     auto& initialMeta = partialUpdate ? _meta : IResearchViewMeta::DEFAULT();
 
-    if (!meta.init(slice, error, *_logicalView, initialMeta, &mask)) {
+    if (!meta.init(slice, error, initialMeta, &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
 
@@ -2123,75 +2056,6 @@ arangodb::Result IResearchView::updateProperties(
     // reset non-updatable values to match current meta
     meta._collections = _meta._collections;
 
-    // do not modify data path if not changes since will cause lock obtain failure
-    mask._dataPath = mask._dataPath && _meta._dataPath != meta._dataPath;
-
-    DataStore storePersisted; // renamed persisted data store
-    std::string srcDataPath = _meta._dataPath;
-    char const* dropDataPath = nullptr;
-
-    // copy directory to new location
-    if (mask._dataPath) {
-      std::string absoluteDataPath;
-
-      if (!appendAbsolutePersistedDataPath(absoluteDataPath, *this, meta)) {
-        return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("error generating absolute path for iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
-        );
-      }
-
-      auto res = createPersistedDataDirectory(
-        storePersisted._directory,
-        storePersisted._writer,
-        absoluteDataPath,
-        _storePersisted._reader, // reader from the original persisted data store
-        id()
-      );
-
-      if (!res.ok()) {
-        return res;
-      }
-
-      try {
-        storePersisted._reader = irs::directory_reader::open(*(storePersisted._directory));
-        storePersisted._segmentCount += storePersisted._reader.size(); // add commited segments (previously had 0)
-        dropDataPath = _storePersisted ? srcDataPath.c_str() : nullptr;
-      } catch (std::exception const& e) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "caught exception while opening iResearch view '" << id()
-          << "' data path '" + meta._dataPath + "': " << e.what();
-        IR_LOG_EXCEPTION();
-        return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("error opening iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
-        );
-      } catch (...) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "caught exception while opening iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
-        IR_LOG_EXCEPTION();
-        return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("error opening iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
-        );
-      }
-
-      if (!storePersisted._reader) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-          << "error while opening reader for iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
-        return arangodb::Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::string("error opening reader for iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
-        );
-      }
-    }
-
-    _meta = std::move(meta);
-
-    if (mask._dataPath) {
-      _storePersisted = std::move(storePersisted);
-    }
-
     if (mask._threadsMaxIdle) {
       _threadPool.max_idle(meta._threadsMaxIdle);
     }
@@ -2205,9 +2069,7 @@ arangodb::Result IResearchView::updateProperties(
       _asyncCondition.notify_all(); // trigger reload of timeout settings for async jobs
     }
 
-    if (dropDataPath) {
-      res = TRI_RemoveDirectory(dropDataPath); // ignore error (only done to tidy-up filesystem)
-    }
+    _meta = std::move(meta);
   }
 
   std::unordered_set<TRI_voc_cid_t> collections;

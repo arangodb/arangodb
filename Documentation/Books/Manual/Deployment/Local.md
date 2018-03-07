@@ -7,7 +7,7 @@ However starting a cluster manually is possible and is a very easy method to get
 
 The easiest way to start a local cluster for testing purposes is to run `scripts/startLocalCluster.sh` from a clone of the [source repository](https://github.com/ArangoDB/ArangoDB) after compiling ArangoDB from source (see instructions in the file `README_maintainers.md` in the repository. This will start 1 Agency, 2 DBServers and 1 Coordinator. To stop the cluster issue `scripts/stopLocalCluster.sh`.
 
-This section will discuss the required parameters for every role in an ArangoDB cluster. Be sure to read the [Architecture](../Scalability/Architecture.md) documentation to get a basic understanding of the underlying architecture and the involved roles in an ArangoDB cluster.
+This section will discuss the required parameters for every role in an ArangoDB cluster. Be sure to read the [Architecture](../Scalability/Cluster/Architecture.md) documentation to get a basic understanding of the underlying architecture and the involved roles in an ArangoDB cluster.
 
 In the following sections we will go through the relevant options per role.
 

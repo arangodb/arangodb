@@ -429,7 +429,6 @@ ExecutionPlan* Query::prepare() {
     parser.parse(false);
     // put in bind parameters
     parser.ast()->injectBindParameters(_bindParameters);
-    _isModificationQuery = parser.isModificationQuery();
   }
 
   TRI_ASSERT(_trx == nullptr);
@@ -548,7 +547,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         // got a result from the query cache
         if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
+            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -601,29 +600,26 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     try {
       resultBuilder->openArray();
+        
+      // iterate over result, return it and store it in query cache
+      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize()))) {
+        size_t const n = value->size();
+
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue const& val = value->getValueReference(i, resultRegister);
+
+          if (!val.isEmpty()) {
+            val.toVelocyPack(_trx, *resultBuilder, useQueryCache);
+          }
+        }
+        _engine->_itemBlockManager.returnBlock(value);
+      }
+
+      // must close result array here because it must be passed as a closed
+      // array to the query cache
+      resultBuilder->close();
 
       if (useQueryCache) {
-        // iterate over result, return it and store it in query cache
-        while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize()))) {
-          size_t const n = value->size();
-
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = value->getValueReference(i, resultRegister);
-
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, *resultBuilder, true);
-            }
-          }
-          delete value;
-          value = nullptr;
-        }
-
-        // must close result array here because it must be passed as a closed
-        // array
-        // to the query cache
-        resultBuilder->close();
-
         if (_warnings.empty()) {
           // finally store the generated result in the query cache
           auto result = QueryCache::instance()->store(
@@ -634,24 +630,6 @@ QueryResult Query::execute(QueryRegistry* registry) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
         }
-      } else {
-        // iterate over result and return it
-        while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize()))) {
-          size_t const n = value->size();
-          for (size_t i = 0; i < n; ++i) {
-            AqlValue const& val = value->getValueReference(i, resultRegister);
-
-            if (!val.isEmpty()) {
-              val.toVelocyPack(_trx, *resultBuilder, false);
-            }
-          }
-          delete value;
-          value = nullptr;
-        }
-
-        // must close result array
-        resultBuilder->close();
       }
     } catch (...) {
       delete value;
@@ -664,7 +642,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
 
     auto commitResult = _trx->commit();
     if (commitResult.fail()) {
-        THROW_ARANGO_EXCEPTION(commitResult);
+      THROW_ARANGO_EXCEPTION(commitResult);
     }
     
     LOG_TOPIC(DEBUG, Logger::QUERIES)
@@ -750,7 +728,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         // got a result from the query cache
         if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
+            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -820,8 +798,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               val.toVelocyPack(_trx, *builder, true);
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
 
         builder->close();
@@ -851,8 +828,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               }
             }
           }
-          delete value;
-          value = nullptr;
+          _engine->_itemBlockManager.returnBlock(value);
         }
       }
     } catch (...) {
@@ -1123,7 +1099,7 @@ void Query::exitContext() {
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    _engine->_stats.toVelocyPack(builder);
+    _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
   }
@@ -1285,7 +1261,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
     try {
       _engine->shutdown(errorCode);
       if (statsBuilder != nullptr) {
-        _engine->_stats.toVelocyPack(*statsBuilder);
+        _engine->_stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
       }
     } catch (...) {
       // shutdown may fail but we must not throw here
