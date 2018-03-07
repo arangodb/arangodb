@@ -132,7 +132,15 @@ as one option has the combined effect of setting
 
 That is, the LDAP URL consists of the ldap *server* and *port*, a *basedn*, a
 *search attribute* and a *scope* which can be one of *base*, *one* or
-*sub*.
+*sub*. There is also the possibility to use the `ldaps` protocol as in:
+
+    --ldap.url ldaps://ldap.arangodb.com:636/dc=arangodb,dc=com?uid?sub
+
+This does exactly the same as the one above, except that it uses the
+LDAP over TLS protocol. This is a non-standard method which does not
+involve using the STARTTLS protocol. Note that this does not work in the
+Windows version! We suggest to use the `ldap` protocol and STARTTLS
+as described in the next section.
 
 ### TLS options
 
