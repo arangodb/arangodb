@@ -35,6 +35,8 @@
 
 using namespace arangodb;
 
+namespace {
+
 static LogLevel LevelStringToEnum(std::string const& level) {
   if (level == "ERR") {
     return LogLevel::ERR;
@@ -81,7 +83,9 @@ static std::string LevelEnumToString(LogLevel level) {
                                   << arangodb::Logger::FILE(__FILE__)   \
                                   << arangodb::Logger::FUNCTION(__FUNCTION__))
 
-std::string LoggerView::type("logger");
+} // namespace
+
+namespace arangodb {
 
 std::unique_ptr<ViewImplementation> LoggerView::creator(
     LogicalView* view, arangodb::velocypack::Slice const& info, bool isNew) {
@@ -108,6 +112,12 @@ LoggerView::LoggerView(ConstructionGuard const&, LogicalView* logical,
 
   std::string levelString = levelSlice.copyString();
   _level = LevelStringToEnum(levelString);
+}
+
+/*static*/ LogicalDataSource::Type const& LoggerView::type() noexcept {
+  static auto& type = LogicalDataSource::Type::emplace("logger");
+
+  return type;
 }
 
 arangodb::Result LoggerView::updateProperties(
@@ -150,3 +160,9 @@ void LoggerView::drop() {
       << "called LoggerView::drop. view data: "
       << _logicalView->toVelocyPack(true, false).slice().toJson();
 }
+
+} // arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
