@@ -78,6 +78,7 @@ enum DateSelectionModifier {
   MINUTE,
   HOUR,
   DAY,
+  WEEK,
   MONTH,
   YEAR
 };
@@ -91,7 +92,9 @@ static_assert(DateSelectionModifier::MINUTE < DateSelectionModifier::HOUR,
               "incorrect date selection order");
 static_assert(DateSelectionModifier::HOUR < DateSelectionModifier::DAY,
               "incorrect date selection order");
-static_assert(DateSelectionModifier::DAY < DateSelectionModifier::MONTH,
+static_assert(DateSelectionModifier::DAY < DateSelectionModifier::WEEK,
+              "incorrect date selection order");
+static_assert(DateSelectionModifier::WEEK < DateSelectionModifier::MONTH,
               "incorrect date selection order");
 static_assert(DateSelectionModifier::MONTH < DateSelectionModifier::YEAR,
               "incorrect date selection order");
@@ -133,6 +136,10 @@ static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
         return YEAR;
       }
       break;
+    case 'w':
+      if (flagStr == "weeks" || flagStr == "week" || flagStr == "w") {
+        return WEEK;
+      }
     case 'm':
       if (flagStr == "months" || flagStr == "month" || flagStr == "m") {
         return MONTH;
@@ -2234,9 +2241,6 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
 AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SUBTRACT", 0)) {
@@ -2248,24 +2252,86 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
 
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
-    AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
-
-    if (!durationUnit.isNumber() || // unit must be number
-        !durationType.isString()) { // unit type must be string
+    if (!durationUnit.isNumber()) { // unit must be number
       RegisterInvalidArgumentWarning(query, "DATE_SUBTRACT");
       return AqlValue(AqlValueHintNull());
     }
-    int64_t units = durationUnit.toInt64(trx);
-    std::string duration = durationType.slice().copyString();
-    std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
+
+    AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
+    if (!durationType.isString()) { // unit type must be string
+      RegisterInvalidArgumentWarning(query, "DATE_SUBTRACT");
+      return AqlValue(AqlValueHintNull());
+    }
+
 
     year_month_day ymd{floor<days>(tp)};
     auto day_time = make_time(tp - sys_days(ymd));
-    milliseconds ms{0};
+    std::chrono::duration<double, std::ratio<1l, 1000l> > ms;
+
+    DateSelectionModifier flag = ParseDateModifierFlag(durationType.slice());
+
+    double doubleUnits = durationUnit.toDouble(trx);
+    double intPart = 0.0;
+
+    // All Fallthroughs intentional. We still have some remainder
+    switch (flag) {
+      case YEAR:
+        doubleUnits = std::modf(doubleUnits, &intPart);
+        ymd -= years{static_cast<int64_t>(intPart)};
+        if (doubleUnits == 0.0) {
+          break; // We are done
+        }
+        doubleUnits *= 12;
+      case MONTH:
+        doubleUnits = std::modf(doubleUnits, &intPart);
+        ymd -= months{static_cast<int64_t>(intPart)};
+        if (doubleUnits == 0.0) {
+          break; // We are done
+        }
+        doubleUnits *= 30; // 1 Month ~= 30 Days
+        // After this fall through the date may actually a bit off
+      case DAY:
+        // From here on we do not need leap-day handling
+        ms = days{1};
+        ms = doubleUnits * ms;
+        break;
+      case WEEK:
+        ms = weeks{1};
+        ms *= doubleUnits;
+        break;
+      case HOUR:
+        ms = hours{1};
+        ms *= doubleUnits;
+        break;
+      case MINUTE:
+        ms = minutes{1};
+        ms *= doubleUnits;
+        break;
+      case SECOND:
+        ms = seconds{1};
+        ms *= doubleUnits;
+        break;
+      case MILLI:
+        ms = milliseconds{1};
+        ms *= doubleUnits;
+        break;
+      default:
+        RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+        return AqlValue(AqlValueHintNull());
+    }
+    // Here we reconstruct the timepoint again
+    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - std::chrono::duration_cast<milliseconds>(ms)};
+
+    // int64_t units = durationUnit.toInt64(trx);
+
+    /*
+    std::string duration = durationType.slice().copyString();
+    std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
+
 
     if (duration == "y" || duration == "year" || duration == "years") {
       ymd -= years{units};
-    } else if (duration == "m" || duration == "month" || duration == "months") {
+   } else if (duration == "m" || duration == "month" || duration == "months") {
       ymd -= months{units};
 
     } else if (duration == "w" || duration == "week" || duration == "weeks") {
@@ -2285,6 +2351,7 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
     tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
+    */
 
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
@@ -2322,25 +2389,22 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
 
 /// @brief function DATE_DIFF
 AqlValue Functions::DateDiff(arangodb::aql::Query* query,
-                                 transaction::Methods* trx,
-                                 VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
-  double diff;
-  bool  asFloat = false;
-
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  // Extract first date
   tp_sys_clock_ms tp1;
-  tp_sys_clock_ms tp2;
-
   if (!ParameterToTimePoint(query, trx, parameters, tp1, "DATE_DIFF", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
+  // Extract second date
+  tp_sys_clock_ms tp2;
   if (!ParameterToTimePoint(query, trx, parameters, tp2, "DATE_DIFF", 1)) {
     return AqlValue(AqlValueHintNull());
   }
 
+  double diff;
+  bool  asFloat = false;
   auto diffDuration = tp2 - tp1;
 
   AqlValue unitValue = ExtractFunctionParameterValue(parameters, 2);

@@ -414,7 +414,7 @@ struct TestDate {
   void validateResult(AqlValue const& result) const {
     REQUIRE(result.isString());
     auto res = result.slice();
-    StringRef ref(res);
+    std::string ref = res.copyString(); // Readability in test Tool
     REQUIRE(ref == _result);
   }
 
