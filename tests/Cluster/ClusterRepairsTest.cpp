@@ -134,6 +134,27 @@ void checkAgainstExpectedOperations(
   }
 }
 
+void requireTransactionIdsToBeUnique(
+  std::vector<AgencyWriteTransaction> const& transactions
+) {
+  std::set<std::__cxx11::string> transactionClientIds;
+  for (auto const& it : transactions) {
+    bool inserted;
+    tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
+    REQUIRE(inserted);
+  }
+}
+
+void overwriteTransactionIdsWith(
+  std::vector<AgencyWriteTransaction>& transactions,
+  std::string const& id
+) {
+  std::set<std::__cxx11::string> transactionClientIds;
+  for (auto& it : transactions) {
+    it.clientId = id;
+  }
+}
+
 // TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
@@ -279,11 +300,6 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
               AgencyValueOperationType::SET,
               protoCollIdSlice,
             },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyValueOperationType::SET,
-              replicationFactorSlice,
-            },
           },
           std::vector<AgencyPrecondition> {
             AgencyPrecondition {
@@ -338,6 +354,77 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         (other = operation).renameDistributeShardsLike = ! operation.renameDistributeShardsLike;
         REQUIRE_FALSE(operation == other);
 
+      }
+    }
+    GIVEN("A BeginRepairsOperation differing replicationFactors and rename=false") {
+      BeginRepairsOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .protoCollectionId = "789876",
+        .protoCollectionName = "myProtoCollection",
+        .collectionReplicationFactor = 5,
+        .protoReplicationFactor = 4,
+        .renameDistributeShardsLike = false,
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE(!jobid.is_initialized());
+
+        std::shared_ptr<VPackBuffer<uint8_t>>
+          protoCollIdVpack = R"=("789876")="_vpack;
+        Slice
+          protoCollIdSlice = Slice(protoCollIdVpack->data());
+        std::shared_ptr<VPackBuffer<uint8_t>>
+          oldReplicationFactorVpack = R"=(5)="_vpack;
+        Slice
+          oldReplicationFactorSlice = Slice(oldReplicationFactorVpack->data());
+        std::shared_ptr<VPackBuffer<uint8_t>>
+          replicationFactorVpack = R"=(4)="_vpack;
+        Slice
+          replicationFactorSlice = Slice(replicationFactorVpack->data());
+
+        AgencyWriteTransaction expectedTrx{
+          std::vector<AgencyOperation> {
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyValueOperationType::SET,
+              replicationFactorSlice,
+            },
+          },
+          std::vector<AgencyPrecondition> {
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::EMPTY,
+              true,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyPrecondition::Type::VALUE,
+              protoCollIdSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              oldReplicationFactorSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+          }
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
       }
     }
   }

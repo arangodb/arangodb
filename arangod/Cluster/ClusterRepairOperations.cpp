@@ -216,10 +216,10 @@ MoveShardOperation::toVpackTodo(uint64_t jobId) const {
 
 RepairOperationToTransactionVisitor::ReturnValueT
 RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op) {
-  std::string const oldAttrPath
+  std::string const distributeShardsLikePath
     = agencyCollectionId(op.database, op.collectionId)
       + "/" + "distributeShardsLike";
-  std::string const newAttrPath
+  std::string const repairingDistributeShardsLikePath
     = agencyCollectionId(op.database, op.collectionId)
       + "/" + "repairingDistributeShardsLike";
   std::string const replicationFactorPath
@@ -244,44 +244,87 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
   velocypack::Slice protoReplicationFactorSlice = builder.slice();
   vpackBufferArray.emplace_back(std::move(builder.steal()));
 
-  std::vector<AgencyPrecondition> preconditions{
-    AgencyPrecondition {
-      oldAttrPath,
-      AgencyPrecondition::Type::VALUE,
-      protoCollectionIdSlice,
-    },
-    AgencyPrecondition {
-      newAttrPath,
-      AgencyPrecondition::Type::EMPTY,
-      true,
-    },
+  std::vector<AgencyPrecondition> preconditions;
+
+  if (op.renameDistributeShardsLike) {
+    // assert that distributeShardsLike is set, but repairingDistributeShardsLike
+    // is not
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        distributeShardsLikePath,
+        AgencyPrecondition::Type::VALUE,
+        protoCollectionIdSlice,
+      }
+    );
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        repairingDistributeShardsLikePath,
+        AgencyPrecondition::Type::EMPTY,
+        true,
+      }
+    );
+  }
+  else {
+    // assert that repairingDistributeShardsLike is set, but distributeShardsLike
+    // is not
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        repairingDistributeShardsLikePath,
+        AgencyPrecondition::Type::VALUE,
+        protoCollectionIdSlice,
+      }
+    );
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        distributeShardsLikePath,
+        AgencyPrecondition::Type::EMPTY,
+        true,
+      }
+    );
+  }
+
+  // assert replicationFactors
+  preconditions.emplace_back(
     AgencyPrecondition {
       replicationFactorPath,
       AgencyPrecondition::Type::VALUE,
       collectionReplicationFactorSlice,
-    },
+    }
+  );
+  preconditions.emplace_back(
     AgencyPrecondition {
       protoReplicationFactorPath,
       AgencyPrecondition::Type::VALUE,
       protoReplicationFactorSlice,
-    },
+    }
+  );
+
+  std::vector<AgencyOperation> operations;
+  if (op.renameDistributeShardsLike) {
+    operations.emplace_back(
+      AgencyOperation {
+        repairingDistributeShardsLikePath,
+        AgencyValueOperationType::SET,
+        protoCollectionIdSlice,
+      }
+    );
+    operations.emplace_back(
+      AgencyOperation {
+        distributeShardsLikePath,
+        AgencySimpleOperationType::DELETE_OP,
+      }
+    );
   };
-  std::vector<AgencyOperation> operations{
-    AgencyOperation {
-      newAttrPath,
-      AgencyValueOperationType::SET,
-      protoCollectionIdSlice,
-    },
-    AgencyOperation {
-      oldAttrPath,
-      AgencySimpleOperationType::DELETE_OP,
-    },
-    AgencyOperation {
-      replicationFactorPath,
-      AgencyValueOperationType::SET,
-      protoReplicationFactorSlice,
-    },
-  };
+
+  if (op.collectionReplicationFactor != op.protoReplicationFactor) {
+    operations.emplace_back(
+      AgencyOperation {
+        replicationFactorPath,
+        AgencyValueOperationType::SET,
+        protoReplicationFactorSlice,
+      }
+    );
+  }
 
   return {
     AgencyWriteTransaction {operations, preconditions},
