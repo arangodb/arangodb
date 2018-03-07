@@ -29,6 +29,7 @@
 #include "Agency/MoveShard.h"
 #include "lib/Random/RandomGenerator.h"
 
+#include <boost/date_time.hpp>
 #include <boost/range/combine.hpp>
 
 #include <iostream>
@@ -259,7 +260,19 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
 
-    RepairOperationToTransactionVisitor conversionVisitor;
+    uint64_t (*mockJobIdGenerator)() = []() {
+      REQUIRE(false);
+      return 0ul;
+    };
+    boost::posix_time::ptime (*mockJobCreationTimestampGenerator)() = []() {
+      REQUIRE(false);
+      return boost::posix_time::ptime();
+    };
+
+    RepairOperationToTransactionVisitor conversionVisitor(
+      mockJobIdGenerator,
+      mockJobCreationTimestampGenerator
+    );
 
     GIVEN("A BeginRepairsOperation with equal replicationFactors and rename=true") {
       BeginRepairsOperation operation{
@@ -500,6 +513,113 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         (other = operation).protoCollectionName = "differing protoCollectionName";
         REQUIRE_FALSE(operation == other);
         (other = operation).replicationFactor = 42;
+        REQUIRE_FALSE(operation == other);
+
+      }
+    }
+
+    GIVEN("A MoveShardOperation") {
+      MoveShardOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .shard = "s1",
+        .from = "db-from-server",
+        .to = "db-to-server",
+        .isLeader = true,
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        uint64_t nextJobId = 41;
+        auto jobIdGenerator = [&nextJobId]() {
+          return nextJobId++;
+        };
+        auto jobCreationTimestampGenerator = []() {
+          return boost::posix_time::time_from_string("2018-03-07T15:20:01.284Z");
+        };
+
+        conversionVisitor = RepairOperationToTransactionVisitor(
+          jobIdGenerator,
+          jobCreationTimestampGenerator
+        );
+
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE(jobid.is_initialized());
+
+//      js-code for moveShard:
+//          var todo = { 'type': 'moveShard',
+//            'database': info.database,
+//            'collection': collInfo.id,
+//            'shard': info.shard,
+//            'fromServer': info.fromServer,
+//            'toServer': info.toServer,
+//            'jobId': id,
+//            'timeCreated': (new Date()).toISOString(),
+//            'creator': ArangoServerState.id(),
+//            'isLeader': isLeader };
+//          global.ArangoAgency.set('Target/ToDo/' + id, todo);
+
+        VPackBufferPtr todoVpack = R"=(
+          {
+            "type": "moveShard",
+            "database": "myDbName",
+            "collection": "123456",
+            "shard": "s1",
+            "fromServer": "db-from-server",
+            "toServer": "db-to-server"",
+            "jobId": "783",
+            "timeCreated": "2018-03-07T15:20:01.284Z",
+            "creator": "Coordinator",
+            "isLeader": true
+          }
+        )="_vpack;
+        Slice todoSlice = Slice(todoVpack->data());
+
+        AgencyWriteTransaction expectedTrx{
+          std::vector<AgencyOperation> {
+            AgencyOperation {
+              "Target/ToDo/" + jobid.get(),
+              AgencyValueOperationType::SET,
+              todoSlice,
+            },
+          },
+          std::vector<AgencyPrecondition> {
+            AgencyPrecondition {
+              "Target/ToDo/" + jobid.get(),
+              AgencyPrecondition::Type::EMPTY,
+              true,
+            },
+          },
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
+      }
+
+      WHEN("Compared via ==") {
+        MoveShardOperation other = operation;
+
+        REQUIRE(operation == other);
+
+        (other = operation).database = "differing database";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionId = "differing collectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionName = "differing collectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).shard = "differing shard";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).from = "differing from";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).to = "differing to";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).isLeader = ! operation.isLeader;
         REQUIRE_FALSE(operation == other);
 
       }

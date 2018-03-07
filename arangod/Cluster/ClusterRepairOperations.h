@@ -77,7 +77,10 @@ struct MoveShardOperation {
   MoveShardOperation() = delete;
 
   VPackBufferPtr
-  toVpackTodo(uint64_t jobId) const;
+  toVpackTodo(
+    uint64_t jobId,
+    boost::posix_time::ptime jobCreationTimestamp
+  ) const;
 };
 
 struct FixServerOrderOperation {
@@ -129,7 +132,11 @@ class RepairOperationToTransactionVisitor
   using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
 
  public:
-  std::vector<VPackBufferPtr> vpackBufferArray;
+  RepairOperationToTransactionVisitor();
+  RepairOperationToTransactionVisitor(
+    std::function<uint64_t()> getJobId,
+    std::function<boost::posix_time::ptime()> getJobCreationTimestamp
+  );
 
   ReturnValueT
   operator()(BeginRepairsOperation const &op);
@@ -145,6 +152,14 @@ class RepairOperationToTransactionVisitor
 
 
  private:
+  std::vector<VPackBufferPtr> _vpackBufferArray;
+  std::function<uint64_t()> _getJobId;
+  std::function<boost::posix_time::ptime()> _getJobCreationTimestamp;
+
+
+  std::vector<VPackBufferPtr>&& steal();
+
+
   std::string agencyCollectionId(
     DatabaseID database,
     CollectionID collection

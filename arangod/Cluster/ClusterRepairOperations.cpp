@@ -187,11 +187,15 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, RepairOperation
 
 
 VPackBufferPtr
-MoveShardOperation::toVpackTodo(uint64_t jobId) const {
+MoveShardOperation::toVpackTodo(
+  uint64_t jobId,
+  boost::posix_time::ptime jobCreationTimestamp
+) const {
   std::string const serverId = ServerState::instance()->getId();
 
   // TODO This needs the lib boost_date_time. Maybe use strftime from <ctime> instead
-  boost::posix_time::ptime now = boost::posix_time::second_clock::local_time();
+  std::string const isoTimeString
+    = boost::posix_time::to_iso_extended_string(jobCreationTimestamp);
 
   VPackBuilder builder;
 
@@ -204,7 +208,7 @@ MoveShardOperation::toVpackTodo(uint64_t jobId) const {
   builder.add("fromServer", VPackValue(from));
   builder.add("toServer", VPackValue(to));
   builder.add("jobId", VPackValue(std::to_string(jobId)));
-  builder.add("timeCreated", VPackValue(boost::posix_time::to_iso_extended_string(now)));
+  builder.add("timeCreated", VPackValue(isoTimeString));
   builder.add("creator", VPackValue(serverId));
   builder.add("isLeader", VPackValue(isLeader));
 
@@ -232,17 +236,17 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
   VPackBuilder builder;
   builder.add(VPackValue(op.protoCollectionId));
   velocypack::Slice protoCollectionIdSlice = builder.slice();
-  vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
   builder = VPackBuilder();
   builder.add(VPackValue(op.collectionReplicationFactor));
   velocypack::Slice collectionReplicationFactorSlice = builder.slice();
-  vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
   builder = VPackBuilder();
   builder.add(VPackValue(op.protoReplicationFactor));
   velocypack::Slice protoReplicationFactorSlice = builder.slice();
-  vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
   std::vector<AgencyPrecondition> preconditions;
 
@@ -351,12 +355,12 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
   VPackBuilder builder;
   builder.add(VPackValue(op.protoCollectionId));
   velocypack::Slice protoCollectionIdSlice = builder.slice();
-  vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
   builder = VPackBuilder();
   builder.add(VPackValue(op.replicationFactor));
   velocypack::Slice replicationFactorSlice = builder.slice();
-  vpackBufferArray.emplace_back(std::move(builder.steal()));
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
 
   std::vector<AgencyPrecondition> preconditions{
@@ -402,10 +406,12 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
 
 RepairOperationToTransactionVisitor::ReturnValueT
 RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
-  uint64_t jobId = ClusterInfo::instance()->uniqid();
-  VPackBufferPtr vpackTodo = op.toVpackTodo(jobId);
+  uint64_t jobId = _getJobId();
+  boost::posix_time::ptime jobCreationTimestamp = _getJobCreationTimestamp();
 
-  vpackBufferArray.push_back(vpackTodo);
+  VPackBufferPtr vpackTodo = op.toVpackTodo(jobId, jobCreationTimestamp);
+
+  _vpackBufferArray.push_back(vpackTodo);
 
   std::string const agencyKey = "Target/ToDo/" + std::to_string(jobId);
 
@@ -431,11 +437,11 @@ RepairOperationToTransactionVisitor::operator()(FixServerOrderOperation const& o
 
   VPackBufferPtr vpack = createShardDbServerArray(op.leader, op.followers);
   VPackSlice oldDbServerSlice = velocypack::Slice(vpack->data());
-  vpackBufferArray.emplace_back(std::move(vpack));
+  _vpackBufferArray.emplace_back(std::move(vpack));
 
   vpack = createShardDbServerArray(op.leader, op.protoFollowers);
   VPackSlice protoDbServerSlice = velocypack::Slice(vpack->data());
-  vpackBufferArray.emplace_back(std::move(vpack));
+  _vpackBufferArray.emplace_back(std::move(vpack));
 
   std::vector<AgencyPrecondition> agencyPreconditions {
     AgencyPrecondition {
@@ -490,4 +496,20 @@ RepairOperationToTransactionVisitor::createShardDbServerArray(
   builder.close();
 
   return builder.steal();
+}
+
+RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor()
+: _getJobId([]() { return ClusterInfo::instance()->uniqid(); }),
+  _getJobCreationTimestamp([]() { return boost::posix_time::second_clock::local_time(); })
+{ }
+
+RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(
+  std::function<uint64_t()> getJobId_,
+  std::function<boost::posix_time::ptime()> getJobCreationTimestamp_
+) : _getJobId(getJobId_),
+  _getJobCreationTimestamp(getJobCreationTimestamp_)
+{ }
+
+std::vector<VPackBufferPtr>&& RepairOperationToTransactionVisitor::steal() {
+  return std::move(_vpackBufferArray);
 }
