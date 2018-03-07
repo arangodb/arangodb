@@ -77,11 +77,11 @@ default value for *failOnWarning* so it does not need to be set on a per-query l
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 When set to *false* a query will be executed right away in its entirety. 
-In that case query results are either returned right away (if the result-set is small enough),
+In that case query results are either returned right away (if the resultset is small enough),
 or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`). 
 Specify *true* and the query will be executed in a **streaming** fashion. The query result is
 not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query-cursor exists. It is advisable
+need to hold the collection locks for as long as the query cursor exists. It is advisable
 to *only* use this option on short-running queries or without exclusive locks (write-locks on MMFiles).
 Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
