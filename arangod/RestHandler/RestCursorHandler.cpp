@@ -298,7 +298,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
     }
   }
 
-  if (!isStream) {  // invalid for streaming queries
+  if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
     options.add("count", VPackValue(val));
     if (!hasCache) {

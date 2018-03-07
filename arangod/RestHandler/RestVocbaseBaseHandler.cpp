@@ -535,10 +535,10 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    CollectionLockState::_noLockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
+  CollectionLockState::_noLockHeaders = nullptr;
 
   RestBaseHandler::finalizeExecute();
 }

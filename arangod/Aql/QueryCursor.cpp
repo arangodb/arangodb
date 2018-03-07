@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/WorkMonitor.h"
+#include "Cluster/CollectionLockState.h"
 #include "Logger/Logger.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Context.h"
@@ -148,13 +149,16 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t* vocbase, CursorId id,
       _guard(vocbase),
       _queryString(query) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
-
-  _query.reset(new Query(
-      false, _guard.database(),
+  _query = std::make_unique<Query>(false, _guard.database(),
       aql::QueryString(_queryString.c_str(), _queryString.length()),
-      std::move(bindVars), std::move(opts), arangodb::aql::PART_MAIN));
+      std::move(bindVars), std::move(opts), arangodb::aql::PART_MAIN);
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
+  // If we have set _noLockHeaders, we need to unset it:
+  if (CollectionLockState::_noLockHeaders != nullptr &&
+      CollectionLockState::_noLockHeaders == _query->engine()->lockedShards()) {
+    CollectionLockState::_noLockHeaders = nullptr;
+  }
 }
 
 std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
@@ -163,6 +167,10 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 
 Result QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
+  auto prevLockHeaders = CollectionLockState::_noLockHeaders;
+  // If we had set _noLockHeaders, we need to reset it:
+  CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
+  TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
 
   // we do have a query string... pass query to WorkMonitor
   AqlWorkStack work(_guard.database(), _query->id(), _queryString.data(),
