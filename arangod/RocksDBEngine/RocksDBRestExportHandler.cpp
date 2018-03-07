@@ -253,8 +253,7 @@ void RocksDBRestExportHandler::createCursor() {
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code,
-              VPackValue(static_cast<int>(_response->responseCode())));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
   Result r = c->dump(builder);
   if (r.fail()) {
     generateError(r);
@@ -300,7 +299,7 @@ void RocksDBRestExportHandler::modifyCursor() {
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
   Result r = cursor->dump(builder);
   if (r.fail()) {
     generateError(r);
@@ -339,8 +338,7 @@ void RocksDBRestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code,
-             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());
