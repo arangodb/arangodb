@@ -77,10 +77,13 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
     if (it != _collectionCache.end()) {
       return it->second.collection();
     }
-    LogicalCollection* collection = vocbase->lookupCollection(cid);
-    if (collection != nullptr) {
-      _collectionCache.emplace(cid, CollectionGuard(vocbase, collection));
-      return collection;
+    try {
+      auto created = _collectionCache.emplace(cid, CollectionGuard(vocbase, cid));
+      if (created.second) {
+        return created.first->second.collection();
+      }
+    } catch(...) {
+      // weglaecheln
     }
   }
   return nullptr;

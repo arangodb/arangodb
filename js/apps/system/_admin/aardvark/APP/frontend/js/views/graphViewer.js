@@ -680,6 +680,7 @@
                   userConfig: self.userConfig,
                   saveCallback: self.render
                 });
+                self.graphSettingsView.render();
               }
             } catch (ignore) {
               // continue without config

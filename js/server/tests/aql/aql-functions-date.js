@@ -1904,6 +1904,27 @@ testDateCompare() {
 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(-1, 1, 1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(-1, 1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, -1, 1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, -1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, -1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, -1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, -1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, -1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, 1, -1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, 1, -1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, 1, 1, -1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, 1, 1, -1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, -1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_TIMESTAMP(1, 1, 1, 1, 1, 1, -1)))");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2057,6 +2078,27 @@ testDateCompare() {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ISO8601()))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1))");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(-1, 1, 1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(-1, 1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, -1, 1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, -1, 1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, 1, -1, 1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, -1, 1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, -1, 1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, -1, 1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, 1, -1, 1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, 1, -1, 1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, 1, 1, -1, 1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, 1, 1, -1, 1)))");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_ISO8601(1, 1, 1, 1, 1, 1, -1))");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_ISO8601(1, 1, 1, 1, 1, 1, -1)))");
 
       const values = [
         "foobar", 

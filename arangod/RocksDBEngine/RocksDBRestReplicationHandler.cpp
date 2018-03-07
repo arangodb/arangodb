@@ -73,7 +73,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
     
     bool found;
     std::string const& value = _request->value("serverId", found);
@@ -85,7 +85,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       }
     }
 
-    // create transaction+snapshot
+    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
     RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
@@ -124,7 +124,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    // extract ttl
+    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
     double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
@@ -251,6 +251,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -380,24 +382,18 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   }
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-
   // include system collections?
-  bool includeSystem = true;
-  {
-    std::string const& value = _request->value("includeSystem", found);
-    if (found) {
-      includeSystem = StringUtils::boolean(value);
-    }
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
   
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
+  VPackBuilder inventoryBuilder;
+  Result res = ctx->getInventory(this->_vocbase, includeSystem,
+                                 isGlobal, inventoryBuilder);
+  if (res.fail()) {
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
     return;
   }
@@ -405,7 +401,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  VPackSlice const inventory = inventoryBuilder.slice();
   if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
@@ -727,6 +723,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), collection, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
+    return;
+  }
   // do the work!
   auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
 

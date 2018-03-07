@@ -1,4 +1,5 @@
-# ArangoDB Programs
+ArangoDB Programs
+=================
 
 The full ArangoDB package comes with the following programs:
 
@@ -6,6 +7,9 @@ The full ArangoDB package comes with the following programs:
   This server program is intended to run as a daemon process / service to serve the
   various clients connections to the server via TCP / HTTP. It also provides a
   [web interface](../Administration/WebInterface/README.md).
+
+- `arangodb`: [ArangoDB Starter](Starter/README.md) for easy deployment of
+  ArangoDB instances.
 
 - `arangosh`: [ArangoDB shell](../Administration/Arangosh/README.md).
   A client that implements a read-eval-print loop (REPL) and provides functions
@@ -30,17 +34,8 @@ The full ArangoDB package comes with the following programs:
 - `arangobench`: [Benchmark and test tool](../Troubleshooting/Arangobench.md).
   It can be used for performance and server function testing.
 
-<!--
-- `arangovpack`: ???
-
-- `foxx-manager`: ???
-
-- `arango-init-database`: ???
-
-- `arango-secure-installation`: ???
-
-ArangoDB starter (not included?)
--->
+- `arangovpack`: Utility to convert [VPack](https://github.com/arangodb/velocypack)
+  data to JSON.
 
 The client package comes with a subset of programs:
 
@@ -51,4 +46,3 @@ The client package comes with a subset of programs:
 - arangorestore
 - arangobench
 - arangovpack
-- foxx-manager

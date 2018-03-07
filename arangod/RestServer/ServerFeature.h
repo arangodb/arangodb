@@ -32,8 +32,6 @@ class RestHandlerFactory;
 class AsyncJobManager;
 }
 
-class FeatureCacheFeature;
-
 class ServerFeature final : public application_features::ApplicationFeature {
  public:
   static std::string operationModeString(OperationMode mode);

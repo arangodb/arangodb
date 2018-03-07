@@ -83,7 +83,6 @@
 ## ADVANCED TOPICS	
 
 * [Architecture](Architecture/README.md)
-  * [Modes](Architecture/ServerModes.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
@@ -154,7 +153,10 @@
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/SingleInstance/README.md)
   * [Master/Slave](Deployment/MasterSlave/README.md)
+    * [Manual Start](Deployment/MasterSlave/ManualStart.md)
   * [Active Failover](Deployment/ActiveFailover/README.md)
+    * [Manual Start](Deployment/ActiveFailover/ManualStart.md)
+    * [Using the ArangoDB Starter](Deployment/ActiveFailover/UsingTheStarter.md)	
   * [Cluster](Deployment/Cluster/README.md)  
     * [Cluster: Mesos, DC/OS](Deployment/Mesos.md)
     * [Cluster: Generic & Docker](Deployment/ArangoDBStarter.md)

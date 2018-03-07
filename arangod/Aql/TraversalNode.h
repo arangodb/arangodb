@@ -105,6 +105,13 @@ class TraversalNode : public GraphNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
