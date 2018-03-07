@@ -45,7 +45,7 @@ static std::string const COLLECTION("collection");
 static std::string const EDGE("edge");
 static std::string const NAME("name");
 static std::string const ID("id");
-static std::string const LEADER("leader");
+static std::string const LEADER("theLeader");
 static std::string const LOCAL_LEADER("localLeader");
 static std::string const GLOB_UID("globallyUniqueId");
 static std::string const OBJECT_ID("objectId");

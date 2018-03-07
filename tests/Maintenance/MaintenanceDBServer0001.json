@@ -1,25 +1,32 @@
 R"=(
 {
   "_system": {
-    "s10002": {
-      "id": "1010001",
-      "name": "s10002",
+    "s10": {
+      "id": "1010012",
+      "name": "s10",
       "type": 2,
       "status": 3,
+      "planId": "9",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c9/s10",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": false,
+      "isVolatile": false,
+      "journalSize": 1048576,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s10002/0",
+          "id": "s10/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -27,25 +34,493 @@ R"=(
         }
       ]
     },
-    "s10004": {
-      "id": "1010005",
-      "name": "s10004",
+    "s13": {
+      "id": "1010014",
+      "name": "s13",
       "type": 2,
       "status": 3,
+      "planId": "12",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c12/s13",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": false,
+      "isVolatile": false,
+      "journalSize": 4194304,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
-        "lastValue": 4010340
+        "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s10004/0",
+          "id": "s13/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s16": {
+      "id": "1010016",
+      "name": "s16",
+      "type": 2,
+      "status": 3,
+      "planId": "15",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c15/s16",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 4194304,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 19
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s16/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s22": {
+      "id": "1010018",
+      "name": "s22",
+      "type": 2,
+      "status": 3,
+      "planId": "21",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c21/s22",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 1048576,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s22/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s25": {
+      "id": "1010020",
+      "name": "s25",
+      "type": 2,
+      "status": 3,
+      "planId": "24",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c24/s25",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 1048576,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s25/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s28": {
+      "id": "1010022",
+      "name": "s28",
+      "type": 2,
+      "status": 3,
+      "planId": "27",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c27/s28",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 1048576,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s28/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s3": {
+      "id": "1010002",
+      "name": "s3",
+      "type": 2,
+      "status": 3,
+      "planId": "2",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c2/s3",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 1048576,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s3/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s31": {
+      "id": "1010024",
+      "name": "s31",
+      "type": 2,
+      "status": 3,
+      "planId": "30",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c30/s31",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 2097152,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s31/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "queue",
+            "status",
+            "delayUntil"
+          ],
+          "id": "s31/32",
+          "sparse": false,
+          "type": "skiplist",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "status",
+            "queue",
+            "delayUntil"
+          ],
+          "id": "s31/33",
+          "sparse": false,
+          "type": "skiplist",
+          "unique": true
+        }
+      ]
+    },
+    "s36": {
+      "id": "1010026",
+      "name": "s36",
+      "type": 2,
+      "status": 3,
+      "planId": "35",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c35/s36",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 2097152,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s36/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "mount"
+          ],
+          "id": "s36/37",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "hash",
+          "unique": true
+        }
+      ]
+    },
+    "s40": {
+      "id": "1010028",
+      "name": "s40",
+      "type": 2,
+      "status": 3,
+      "planId": "39",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c39/s40",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 2097152,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 0
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s40/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        }
+      ]
+    },
+    "s44": {
+      "id": "1010030",
+      "name": "s44",
+      "type": 2,
+      "status": 3,
+      "planId": "43",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c43/s44",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 8388608,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 5010356
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s44/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s44/45",
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s48": {
+      "id": "1010032",
+      "name": "s48",
+      "type": 2,
+      "status": 3,
+      "planId": "47",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c47/s48",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 8388608,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 5010357
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s48/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s48/49",
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s52": {
+      "id": "1010034",
+      "name": "s52",
+      "type": 2,
+      "status": 3,
+      "planId": "51",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c51/s52",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 8388608,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 5010191
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s52/0",
+          "selectivityEstimate": 1,
+          "sparse": false,
+          "type": "primary",
+          "unique": true
+        },
+        {
+          "deduplicate": true,
+          "fields": [
+            "time"
+          ],
+          "id": "s52/53",
+          "sparse": false,
+          "type": "skiplist",
+          "unique": false
+        }
+      ]
+    },
+    "s6": {
+      "id": "1010010",
+      "name": "s6",
+      "type": 2,
+      "status": 3,
+      "planId": "5",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c5/s6",
+      "indexBuckets": 8,
+      "isSystem": false,
+      "isVolatile": false,
+      "journalSize": 4194304,
+      "keyOptions": {
+        "type": "traditional",
+        "allowUserKeys": true,
+        "lastValue": 60
+      },
+      "statusString": "loaded",
+      "waitForSync": false,
+      "indexes": [
+        {
+          "fields": [
+            "_key"
+          ],
+          "id": "s6/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -56,495 +531,42 @@ R"=(
           "fields": [
             "user"
           ],
-          "id": "s10004/10005",
+          "id": "s6/7",
           "selectivityEstimate": 1,
           "sparse": true,
           "type": "hash",
           "unique": true
         }
       ]
-    },
-    "s10007": {
-      "id": "1010006",
-      "name": "s10007",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10007/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10009": {
-      "id": "1010007",
-      "name": "s10009",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10009/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10011": {
-      "id": "1010008",
-      "name": "s10011",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 10014
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10011/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10016": {
-      "id": "1010009",
-      "name": "s10016",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10016/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10018": {
-      "id": "1010010",
-      "name": "s10018",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10018/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10020": {
-      "id": "1010011",
-      "name": "s10020",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10020/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10022": {
-      "id": "1010012",
-      "name": "s10022",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10022/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "queue",
-            "status",
-            "delayUntil"
-          ],
-          "id": "s10022/10023",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "status",
-            "queue",
-            "delayUntil"
-          ],
-          "id": "s10022/10024",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
-        }
-      ]
-    },
-    "s10026": {
-      "id": "1010013",
-      "name": "s10026",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10026/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "mount"
-          ],
-          "id": "s10026/10027",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        }
-      ]
-    },
-    "s10029": {
-      "id": "1010014",
-      "name": "s10029",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10029/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s10032": {
-      "id": "1010015",
-      "name": "s10032",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 5010488
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10032/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "time"
-          ],
-          "id": "s10032/10033",
-          "selectivityEstimate": 0.975103734439834,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s10035": {
-      "id": "1010016",
-      "name": "s10035",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 5010489
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10035/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "time"
-          ],
-          "id": "s10035/10036",
-          "selectivityEstimate": 0.975,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s10038": {
-      "id": "1010017",
-      "name": "s10038",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 5010369
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s10038/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "time"
-          ],
-          "id": "s10038/10039",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": false
-        }
-      ]
-    },
-    "s4010414": {
-      "id": "1010041",
-      "name": "s4010414",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010414/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010415": {
-      "id": "1010039",
-      "name": "s4010415",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010415/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010416": {
-      "id": "1010040",
-      "name": "s4010416",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010416/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
     }
   },
-  "testdb": {
-    "s4010374": {
-      "id": "1010027",
-      "name": "s4010374",
+  "db2": {
+    "s159": {
+      "id": "1010064",
+      "name": "s159",
       "type": 2,
       "status": 3,
+      "planId": "158",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c158/s159",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": false,
+      "isVolatile": false,
+      "journalSize": 33554432,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4010374/0",
+          "id": "s159/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -552,25 +574,32 @@ R"=(
         }
       ]
     },
-    "s4010376": {
-      "id": "1010028",
-      "name": "s4010376",
+    "s160": {
+      "id": "1010060",
+      "name": "s160",
       "type": 2,
       "status": 3,
+      "planId": "158",
+      "theLeader": "PRMR-ab2038f2-b7bd-404b-a565-fce46c2af0fe",
+      "doCompact": true,
+      "globallyUniqueId": "c158/s160",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": false,
+      "isVolatile": false,
+      "journalSize": 33554432,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4010376/0",
+          "id": "s160/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -578,77 +607,32 @@ R"=(
         }
       ]
     },
-    "s4010378": {
-      "id": "1010029",
-      "name": "s4010378",
+    "s161": {
+      "id": "1010062",
+      "name": "s161",
       "type": 2,
       "status": 3,
+      "planId": "158",
+      "theLeader": "",
+      "doCompact": true,
+      "globallyUniqueId": "c158/s161",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 4010381
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010378/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010383": {
-      "id": "1010030",
-      "name": "s4010383",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
+      "isVolatile": false,
+      "journalSize": 33554432,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010383/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010385": {
-      "id": "1010031",
-      "name": "s4010385",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
+      "statusString": "loaded",
       "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4010385/0",
+          "id": "s161/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -656,166 +640,32 @@ R"=(
         }
       ]
     },
-    "s4010387": {
-      "id": "1010032",
-      "name": "s4010387",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010387/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010389": {
-      "id": "1010033",
-      "name": "s4010389",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010389/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "queue",
-            "status",
-            "delayUntil"
-          ],
-          "id": "s4010389/4010390",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "status",
-            "queue",
-            "delayUntil"
-          ],
-          "id": "s4010389/4010391",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "skiplist",
-          "unique": true
-        }
-      ]
-    },
-    "s4010393": {
-      "id": "1010034",
-      "name": "s4010393",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010393/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "deduplicate": true,
-          "fields": [
-            "mount"
-          ],
-          "id": "s4010393/4010396",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "hash",
-          "unique": true
-        }
-      ]
-    },
-    "s4010398": {
-      "id": "1010035",
-      "name": "s4010398",
-      "type": 2,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": false,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010398/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        }
-      ]
-    },
-    "s4010406": {
-      "id": "1010036",
-      "name": "s4010406",
+    "s168": {
+      "id": "1010068",
+      "name": "s168",
       "type": 3,
       "status": 3,
+      "planId": "167",
+      "theLeader": "PRMR-2650441a-751c-46ef-b892-220609137ec3",
+      "doCompact": true,
+      "globallyUniqueId": "c167/s168",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": true,
+      "isVolatile": false,
+      "journalSize": 33554432,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4010406/0",
+          "id": "s168/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -826,7 +676,7 @@ R"=(
             "_from",
             "_to"
           ],
-          "id": "s4010406/2",
+          "id": "s168/1",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "edge",
@@ -834,25 +684,32 @@ R"=(
         }
       ]
     },
-    "s4010407": {
-      "id": "1010037",
-      "name": "s4010407",
+    "s169": {
+      "id": "1010066",
+      "name": "s169",
       "type": 3,
       "status": 3,
+      "planId": "167",
+      "theLeader": "",
+      "doCompact": true,
+      "globallyUniqueId": "c167/s169",
+      "indexBuckets": 8,
       "isSystem": false,
-      "waitForSync": true,
+      "isVolatile": false,
+      "journalSize": 33554432,
       "keyOptions": {
         "type": "traditional",
         "allowUserKeys": true,
         "lastValue": 0
       },
-      "cacheEnabled": false,
+      "statusString": "loaded",
+      "waitForSync": false,
       "indexes": [
         {
           "fields": [
             "_key"
           ],
-          "id": "s4010407/0",
+          "id": "s169/0",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "primary",
@@ -863,44 +720,7 @@ R"=(
             "_from",
             "_to"
           ],
-          "id": "s4010407/2",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "edge",
-          "unique": false
-        }
-      ]
-    },
-    "s4010408": {
-      "id": "1010038",
-      "name": "s4010408",
-      "type": 3,
-      "status": 3,
-      "isSystem": false,
-      "waitForSync": true,
-      "keyOptions": {
-        "type": "traditional",
-        "allowUserKeys": true,
-        "lastValue": 0
-      },
-      "cacheEnabled": false,
-      "indexes": [
-        {
-          "fields": [
-            "_key"
-          ],
-          "id": "s4010408/0",
-          "selectivityEstimate": 1,
-          "sparse": false,
-          "type": "primary",
-          "unique": true
-        },
-        {
-          "fields": [
-            "_from",
-            "_to"
-          ],
-          "id": "s4010408/2",
+          "id": "s169/1",
           "selectivityEstimate": 1,
           "sparse": false,
           "type": "edge",

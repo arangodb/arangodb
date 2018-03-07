@@ -27,6 +27,7 @@
 #include "Cluster/ActionBase.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
+#include "Cluster/UpdateCollection.h"
 
 #include "Logger/Logger.h"
 
@@ -39,6 +40,8 @@ Action::Action(ActionDescription const& d) : _action(nullptr) {
 //    _action = new CreateDatabase(d);
   } else if (name == "DropDatabase") {
     _action = new DropDatabase(d);
+  } else if (name == "UpdateCollection") {
+    _action = new UpdateCollection(d);
   } else {
     // We should never get here
     LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Unknown maintenance action" << name;
