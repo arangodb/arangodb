@@ -39,13 +39,13 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  var v1 = db._createView('UnitTestsRecovery1', 'logger', {});
+  var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
   // make sure the next operations go into a separate log
   internal.wal.flush(true, true);
 
   db._dropView('UnitTestsRecovery1');
-  var v2 = db._createView('UnitTestsRecovery1', 'logger', {level: 'WARN'});
+  var v2 = db._createView('UnitTestsRecovery1', 'arangosearch', {threadsMaxTotal: 7});
 
   c.save({ _key: 'crashme' }, true);
 
@@ -71,8 +71,8 @@ function recoverySuite () {
     testViewRecreate: function () {
       var v2 = db._view('UnitTestsRecovery1');
       assertEqual(v2.name(), 'UnitTestsRecovery1');
-      assertEqual(v2.type(), 'logger');
-      assertEqual(v2.properties().level, 'WARN');
+      assertEqual(v2.type(), 'arangosearch');
+      assertEqual(v2.properties().threadsMaxTotal, 7);
     }
 
   };
