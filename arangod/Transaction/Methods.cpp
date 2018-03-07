@@ -889,8 +889,6 @@ OperationResult transaction::Methods::anyLocal(
   
   resultBuilder.close();
 
-  resultBuilder.close();
-
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
 
