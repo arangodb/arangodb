@@ -32,16 +32,19 @@
 #include <boost/variant.hpp>
 
 #include "ClusterInfo.h"
+#include "ClusterRepairOperations.h"
 
 namespace arangodb {
 namespace velocypack {
 class Slice;
+template<typename T>
+class Buffer;
 }
 
 namespace cluster_repairs {
 
 using DBServers = std::vector<ServerID>;
-using VPackBufferPtr = std::shared_ptr<VPackBuffer<uint8_t>>;
+using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
 template<typename T, std::size_t N>
 std::ostream& operator<<(std::ostream& stream, std::array<T, N> array) {
@@ -213,79 +216,6 @@ struct Collection {
   Collection() = delete;
 };
 
-struct BeginRepairsOperation {
-  DatabaseID database;
-  CollectionID collectionId;
-  std::string collectionName;
-  CollectionID protoCollectionId;
-  std::string protoCollectionName;
-  size_t collectionReplicationFactor;
-  size_t protoReplicationFactor;
-  bool renameDistributeShardsLike;
-
-  BeginRepairsOperation() = delete;
-};
-
-struct FinishRepairsOperation {
-  DatabaseID database;
-  CollectionID collectionId;
-  std::string collectionName;
-  CollectionID protoCollectionId;
-  std::string protoCollectionName;
-  size_t replicationFactor;
-
-  FinishRepairsOperation() = delete;
-};
-
-struct MoveShardOperation {
-  DatabaseID database;
-  CollectionID collectionId;
-  std::string collectionName;
-  ShardID shard;
-  ServerID from;
-  ServerID to;
-  bool isLeader;
-
-  MoveShardOperation() = delete;
-
-  VPackBufferPtr
-  toVpackTodo(uint64_t jobId) const;
-};
-
-struct FixServerOrderOperation {
-  DatabaseID database;
-  CollectionID collectionId;
-  std::string collectionName;
-  CollectionID protoCollectionId;
-  std::string protoCollectionName;
-  ShardID shard;
-  ShardID protoShard;
-  ServerID leader;
-  std::vector<ServerID> followers;
-  std::vector<ServerID> protoFollowers;
-
-  FixServerOrderOperation() = delete;
-};
-
-
-bool operator==(BeginRepairsOperation const &left, BeginRepairsOperation const &right);
-bool operator==(FinishRepairsOperation const &left, FinishRepairsOperation const &right);
-bool operator==(MoveShardOperation const &left, MoveShardOperation const &right);
-bool operator==(FixServerOrderOperation const &left, FixServerOrderOperation const &right);
-
-std::ostream& operator<<(std::ostream& ostream, BeginRepairsOperation const& operation);
-std::ostream& operator<<(std::ostream& ostream, FinishRepairsOperation const& operation);
-std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation);
-std::ostream& operator<<(std::ostream& ostream, FixServerOrderOperation const& operation);
-
-using RepairOperation = boost::variant<
-  BeginRepairsOperation const,
-  FinishRepairsOperation const,
-  MoveShardOperation const,
-  FixServerOrderOperation const
->;
-
-std::ostream& operator<<(std::ostream& ostream, RepairOperation const& operation);
 
 class DistributeShardsLikeRepairer {
  public:
@@ -373,43 +303,6 @@ class DistributeShardsLikeRepairer {
   );
 };
 
-
-class RepairOperationToTransactionVisitor
-  : public boost::static_visitor<
-    std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>
-  > {
-  using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
-
- public:
-  std::vector<VPackBufferPtr> vpackBufferArray;
-
-  ReturnValueT
-  operator()(BeginRepairsOperation const& op);
-
-  ReturnValueT
-  operator()(FinishRepairsOperation const& op);
-
-  ReturnValueT
-  operator()(MoveShardOperation const& op);
-
-  ReturnValueT
-  operator()(FixServerOrderOperation const& op);
-
-
- private:
-  std::string agencyCollectionId(
-    DatabaseID database,
-    CollectionID collection
-  ) const;
-
-
-  VPackBufferPtr
-  createShardDbServerArray(
-    ServerID const& leader,
-    DBServers const& followers
-  ) const;
-
-};
 
 }
 }

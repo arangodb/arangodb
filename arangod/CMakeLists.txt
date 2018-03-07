@@ -275,6 +275,7 @@ SET(ARANGOD_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterMethods.cpp
   Cluster/ClusterRepairs.cpp
+  Cluster/ClusterRepairOperations.cpp
   Cluster/ClusterTraverser.cpp
   Cluster/CollectionLockState.cpp
   Cluster/FollowerInfo.cpp
