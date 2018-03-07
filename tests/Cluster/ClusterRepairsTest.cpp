@@ -314,6 +314,29 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
+      }
+
+      WHEN("Compared via ==") {
+        BeginRepairsOperation other = operation;
+
+        REQUIRE(operation == other);
+
+        (other = operation).database = "differing database";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionId = "differing collectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionName = "differing collectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionId = "differing protoCollectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionName = "differing protoCollectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionReplicationFactor = 42;
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoReplicationFactor = 23;
+        REQUIRE_FALSE(operation == other);
+        (other = operation).renameDistributeShardsLike = ! operation.renameDistributeShardsLike;
+        REQUIRE_FALSE(operation == other);
 
       }
     }
