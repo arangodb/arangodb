@@ -51,93 +51,48 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::shared_ptr<VPackBuffer<uint8_t>>
-  collName11111111vpack = R"=("11111111")="_vpack;
-Slice
-  collName11111111slice = Slice(collName11111111vpack->data());
-
-std::shared_ptr<VPackBuffer<uint8_t>>
-  previousServerOrderVpack = R"=([
-    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
-    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
-  ])="_vpack;
-std::shared_ptr<VPackBuffer<uint8_t>>
-  correctServerOrderVpack = R"=([
-    "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
-  ])="_vpack;
-Slice previousServerOrderSlice = Slice(previousServerOrderVpack->data());
-Slice correctServerOrderSlice = Slice(correctServerOrderVpack->data());
 
 std::vector< RepairOperation >
   expectedOperationsWithWronglyOrderedFollowers {
 // rename distributeShardsLike to repairingDistributeShardsLike
-  AgencyWriteTransaction {
-    std::vector<AgencyOperation> {
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencySimpleOperationType::DELETE_OP,
-      },
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencyValueOperationType::SET,
-        collName11111111slice,
-      },
-    },
-    std::vector<AgencyPrecondition> {
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencyPrecondition::Type::VALUE,
-        collName11111111slice,
-      },
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencyPrecondition::Type::EMPTY,
-        true,
-      },
-    },
+  BeginRepairsOperation {
+    .database = "someDb",
+    .collectionId = "22222222",
+    .collectionName = "followingCollection",
+    .protoCollectionId = "11111111",
+    .protoCollectionName = "leadingCollection",
+    .collectionReplicationFactor = 4,
+    .protoReplicationFactor = 4,
+    .renameDistributeShardsLike = true,
   },
 // fix server order
-  AgencyWriteTransaction {
-    AgencyOperation {
-      "Plan/Collections/someDb/22222222/shards/s22",
-      AgencyValueOperationType::SET,
-      correctServerOrderSlice,
+  FixServerOrderOperation {
+    .database = "someDb",
+    .collectionId = "22222222",
+    .collectionName = "followingCollection",
+    .protoCollectionId = "11111111",
+    .protoCollectionName = "leadingCollection",
+    .shard = "s22",
+    .protoShard = "s11",
+    .leader = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+    .followers = {
+      "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
+      "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+      "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
     },
-    AgencyPrecondition {
-      "Plan/Collections/someDb/22222222/shards/s22",
-      AgencyPrecondition::Type::VALUE,
-      previousServerOrderSlice,
+    .protoFollowers = {
+      "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+      "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+      "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
     },
   },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  AgencyWriteTransaction {
-    std::vector<AgencyOperation> {
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencySimpleOperationType::DELETE_OP,
-      },
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencyValueOperationType::SET,
-        collName11111111slice,
-      },
-    },
-    std::vector<AgencyPrecondition> {
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencyPrecondition::Type::EMPTY,
-        true,
-      },
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencyPrecondition::Type::VALUE,
-        collName11111111slice,
-      },
-    },
+  FinishRepairsOperation {
+    .database = "someDb",
+    .collectionId = "22222222",
+    .collectionName = "followingCollection",
+    .protoCollectionId = "11111111",
+    .protoCollectionName = "leadingCollection",
+    .replicationFactor = 4,
   },
 };

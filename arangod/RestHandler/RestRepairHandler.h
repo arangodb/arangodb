@@ -74,6 +74,18 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   template <std::size_t N>
   cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
+  getFromAgencyOld(std::array<std::string const, N> const& agencyKeyArray);
+
+  template <std::size_t N>
+  cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
+  getFromAgencyArray(std::array<std::string const, N> const& agencyKeyArray);
+
+  template <std::size_t N>
+  cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
+  getFromAgencyNew(std::array<std::string const, N> const& agencyKeyArray);
+
+  template <std::size_t N>
+  cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
   getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
 
   cluster_repairs::ResultT<cluster_repairs::VPackBufferPtr>

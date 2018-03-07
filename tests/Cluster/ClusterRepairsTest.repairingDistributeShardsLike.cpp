@@ -49,37 +49,26 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::shared_ptr<VPackBuffer<uint8_t>>
-  collName11111111vpack = R"=("11111111")="_vpack;
-Slice
-  collName11111111slice = Slice(collName11111111vpack->data());
-
 std::vector< RepairOperation >
   expectedOperationsWithRepairingDistributeShardsLike {
+// begin without rename
+  BeginRepairsOperation {
+    .database = "someDb",
+    .collectionId = "22222222",
+    .collectionName = "followingCollection",
+    .protoCollectionId = "11111111",
+    .protoCollectionName = "leadingCollection",
+    .collectionReplicationFactor = 3,
+    .protoReplicationFactor = 3,
+    .renameDistributeShardsLike = false,
+  },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  AgencyWriteTransaction {
-    std::vector<AgencyOperation> {
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencySimpleOperationType::DELETE_OP,
-      },
-      AgencyOperation {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencyValueOperationType::SET,
-        collName11111111slice,
-      },
-    },
-    std::vector<AgencyPrecondition> {
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/distributeShardsLike",
-        AgencyPrecondition::Type::EMPTY,
-        true,
-      },
-      AgencyPrecondition {
-        "Plan/Collections/someDb/22222222/repairingDistributeShardsLike",
-        AgencyPrecondition::Type::VALUE,
-        collName11111111slice,
-      },
-    },
+  FinishRepairsOperation {
+    .database = "someDb",
+    .collectionId = "22222222",
+    .collectionName = "followingCollection",
+    .protoCollectionId = "11111111",
+    .protoCollectionName = "leadingCollection",
+    .replicationFactor = 3,
   },
 };

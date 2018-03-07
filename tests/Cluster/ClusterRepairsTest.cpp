@@ -126,33 +126,6 @@ void checkAgainstExpectedOperations(
     REQUIRE(repairOperations.size() == expectedRepairOperations.size());
   }
 
-  { // Transaction IDs shall be unique.
-    std::set<std::string> transactionClientIds;
-    for (auto &it : repairOperations) {
-      if (it.type() != typeid(AgencyWriteTransaction)) {
-        continue;
-      }
-
-      bool inserted;
-      auto& transaction = boost::get<AgencyWriteTransaction>(it);
-      std::tie(std::ignore, inserted) = transactionClientIds.insert(transaction.clientId);
-      REQUIRE(inserted);
-
-      // Overwrite the client ID for the following comparisons to work
-      transaction.clientId = "dummy-client-id";
-    }
-
-    // Overwrite expected client IDs as well
-    for (auto &it : expectedRepairOperations) {
-      if (it.type() != typeid(AgencyWriteTransaction)) {
-        continue;
-      }
-      auto& transaction = boost::get<AgencyWriteTransaction>(it);
-
-      transaction.clientId = "dummy-client-id";
-    }
-  }
-
   for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
     auto const &repairOpIt = it.get<0>();
     auto const &expectedRepairOpIt = it.get<1>();
@@ -163,6 +136,8 @@ void checkAgainstExpectedOperations(
 
 // TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
 // TODO Add a test with a deleted collection
+// TODO Add a test with different replicationFactors on leader and follower
+// TODO write tests for RepairOperation to Transaction conversion
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs][!throws]") {
 

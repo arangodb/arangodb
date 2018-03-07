@@ -51,91 +51,62 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::shared_ptr<VPackBuffer<uint8_t>>
-  collName22222222vpack = R"=("22222222")="_vpack;
-Slice
-  collName22222222slice = Slice(collName22222222vpack->data());
+//std::shared_ptr<VPackBuffer<uint8_t>>
+//  collName22222222vpack = R"=("22222222")="_vpack;
+//Slice
+//  collName22222222slice = Slice(collName22222222vpack->data());
 
 std::vector< RepairOperation >
   expectedOperationsWithTwoSwappedDBServers {
   // rename distributeShardsLike to repairingDistributeShardsLike
-  AgencyWriteTransaction {
-    std::vector<AgencyOperation> {
-      AgencyOperation {
-        "Plan/Collections/someDb/11111111/distributeShardsLike",
-        AgencySimpleOperationType::DELETE_OP,
-      },
-      AgencyOperation {
-        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
-        AgencyValueOperationType::SET,
-        collName22222222slice,
-      },
-    },
-    std::vector<AgencyPrecondition> {
-      AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/distributeShardsLike",
-        AgencyPrecondition::Type::VALUE,
-        collName22222222slice,
-      },
-      AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
-        AgencyPrecondition::Type::EMPTY,
-        true,
-      },
-    },
+  BeginRepairsOperation {
+    .database = "someDb",
+    .collectionId = "11111111",
+    .collectionName = "_frontend",
+    .protoCollectionId = "22222222",
+    .protoCollectionName = "_graphs",
+    .collectionReplicationFactor = 2,
+    .protoReplicationFactor = 2,
+    .renameDistributeShardsLike = true,
   },
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
   MoveShardOperation {
     .database = "someDb",
-    .collection = "11111111",
+    .collectionId = "11111111",
+    .collectionName = "_frontend",
     .shard = "s11",
     .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
     .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    .isLeader = false
+    .isLeader = false,
   },
 // move leader to the correct dbserver
   MoveShardOperation {
     .database = "someDb",
-    .collection = "11111111",
+    .collectionId = "11111111",
+    .collectionName = "_frontend",
     .shard = "s11",
     .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
     .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    .isLeader = true
+    .isLeader = true,
   },
 // fix the remaining shard
   MoveShardOperation {
     .database = "someDb",
-    .collection = "11111111",
+    .collectionId = "11111111",
+    .collectionName = "_frontend",
     .shard = "s11",
     .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
     .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    .isLeader = false
+    .isLeader = false,
   },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  AgencyWriteTransaction {
-    std::vector<AgencyOperation> {
-      AgencyOperation {
-        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
-        AgencySimpleOperationType::DELETE_OP,
-      },
-      AgencyOperation {
-        "Plan/Collections/someDb/11111111/distributeShardsLike",
-        AgencyValueOperationType::SET,
-        collName22222222slice,
-      },
-    },
-    std::vector<AgencyPrecondition> {
-      AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/distributeShardsLike",
-        AgencyPrecondition::Type::EMPTY,
-        true,
-      },
-      AgencyPrecondition {
-        "Plan/Collections/someDb/11111111/repairingDistributeShardsLike",
-        AgencyPrecondition::Type::VALUE,
-        collName22222222slice,
-      },
-    },
+  FinishRepairsOperation {
+    .database = "someDb",
+    .collectionId = "11111111",
+    .collectionName = "_frontend",
+    .protoCollectionId = "22222222",
+    .protoCollectionName = "_graphs",
+    .replicationFactor = 2,
   },
 };

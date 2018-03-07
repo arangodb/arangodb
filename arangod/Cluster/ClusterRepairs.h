@@ -43,6 +43,28 @@ namespace cluster_repairs {
 using DBServers = std::vector<ServerID>;
 using VPackBufferPtr = std::shared_ptr<VPackBuffer<uint8_t>>;
 
+template<typename T, std::size_t N>
+std::ostream& operator<<(std::ostream& stream, std::array<T, N> array) {
+  stream << "std::array<" << typeid(T).name() << "> { ";
+  std::for_each(
+    array.begin(),
+    array.end(),
+    [&stream](T const &val) {
+      stream << val << ", ";
+    }
+  );
+
+  stream << "}";
+
+  return stream;
+}
+
+inline std::ostream& operator<<(std::ostream& stream, VPackBufferPtr vpack) {
+  return stream << "std::shared_ptr<VPackBuffer> { "
+                << velocypack::Slice(vpack->data()).toJson() << " "
+                << "}";
+}
+
 template<typename T>
 class ResultT : public arangodb::Result {
  public:
@@ -107,6 +129,26 @@ class ResultT : public arangodb::Result {
     return _val.get();
   }
 
+  ResultT map(ResultT<T> (*fun)(T const& val)) const {
+    if (ok()) {
+      return ResultT<T>::success(fun(get()));
+    }
+
+    return *this;
+  }
+
+  bool operator==(ResultT<T> const& other) const {
+    if (this->ok() && other.ok()) {
+      return this->get() == other.get();
+    }
+    if (this->fail() && other.fail()) {
+      return this->errorNumber() == other.errorNumber()
+             && this->errorMessage() == other.errorMessage();
+    }
+
+    return false;
+  }
+
  protected:
   boost::optional<T> _val;
 
@@ -116,6 +158,19 @@ class ResultT : public arangodb::Result {
   ResultT(boost::optional<T> val_, int errorNumber, std::__cxx11::string const &errorMessage)
     : Result(errorNumber, errorMessage), _val(val_) {}
 };
+
+
+template<typename T>
+std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
+  return stream
+    << "ResultT<" << typeid(T).name() << "> "
+    << ": Result { "
+    << "errorNumber = " << result.errorNumber() << ", "
+    << "errorMessage = \"" << result.errorMessage() << "\" "
+    << "} { "
+    << "val = " << result.get() << " "
+    << "}";
+}
 
 
 class VersionSort {
@@ -158,9 +213,34 @@ struct Collection {
   Collection() = delete;
 };
 
+struct BeginRepairsOperation {
+  DatabaseID database;
+  CollectionID collectionId;
+  std::string collectionName;
+  CollectionID protoCollectionId;
+  std::string protoCollectionName;
+  size_t collectionReplicationFactor;
+  size_t protoReplicationFactor;
+  bool renameDistributeShardsLike;
+
+  BeginRepairsOperation() = delete;
+};
+
+struct FinishRepairsOperation {
+  DatabaseID database;
+  CollectionID collectionId;
+  std::string collectionName;
+  CollectionID protoCollectionId;
+  std::string protoCollectionName;
+  size_t replicationFactor;
+
+  FinishRepairsOperation() = delete;
+};
+
 struct MoveShardOperation {
   DatabaseID database;
-  CollectionID collection;
+  CollectionID collectionId;
+  std::string collectionName;
   ShardID shard;
   ServerID from;
   ServerID to;
@@ -172,10 +252,40 @@ struct MoveShardOperation {
   toVpackTodo(uint64_t jobId) const;
 };
 
-bool operator==(MoveShardOperation const &left, MoveShardOperation const &other);
-std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation);
+struct FixServerOrderOperation {
+  DatabaseID database;
+  CollectionID collectionId;
+  std::string collectionName;
+  CollectionID protoCollectionId;
+  std::string protoCollectionName;
+  ShardID shard;
+  ShardID protoShard;
+  ServerID leader;
+  std::vector<ServerID> followers;
+  std::vector<ServerID> protoFollowers;
 
-using RepairOperation = boost::variant<MoveShardOperation, AgencyWriteTransaction>;
+  FixServerOrderOperation() = delete;
+};
+
+
+bool operator==(BeginRepairsOperation const &left, BeginRepairsOperation const &right);
+bool operator==(FinishRepairsOperation const &left, FinishRepairsOperation const &right);
+bool operator==(MoveShardOperation const &left, MoveShardOperation const &right);
+bool operator==(FixServerOrderOperation const &left, FixServerOrderOperation const &right);
+
+std::ostream& operator<<(std::ostream& ostream, BeginRepairsOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, FinishRepairsOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, MoveShardOperation const& operation);
+std::ostream& operator<<(std::ostream& ostream, FixServerOrderOperation const& operation);
+
+using RepairOperation = boost::variant<
+  BeginRepairsOperation const,
+  FinishRepairsOperation const,
+  MoveShardOperation const,
+  FixServerOrderOperation const
+>;
+
+std::ostream& operator<<(std::ostream& ostream, RepairOperation const& operation);
 
 class DistributeShardsLikeRepairer {
  public:
@@ -242,33 +352,64 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  ResultT<boost::optional<AgencyWriteTransaction>>
-  createFixServerOrderTransaction(
-    Collection& collection,
-    Collection const& proto,
-    ShardID const& shardId,
-    ShardID const& protoShardId
+  ResultT<boost::optional<FixServerOrderOperation>>
+  createFixServerOrderOperation(
+    Collection &collection,
+    Collection const &proto,
+    ShardID const &shardId,
+    ShardID const &protoShardId
   );
 
-  AgencyWriteTransaction
-  createRenameAttributeTransaction(
-    Collection const& collection,
-    velocypack::Slice const& value,
-    std::string const& from,
-    std::string const& to
+  ResultT<BeginRepairsOperation>
+  createBeginRepairsOperation(
+    Collection &collection,
+    Collection const &proto
   );
 
-  ResultT<AgencyWriteTransaction>
-  createRenameDistributeShardsLikeAttributeTransaction(
-    Collection &collection
-  );
-
-  ResultT<AgencyWriteTransaction>
-  createRestoreDistributeShardsLikeAttributeTransaction(
-    Collection &collection
+  ResultT<FinishRepairsOperation>
+  createFinishRepairsOperation(
+    Collection &collection,
+    Collection const &proto
   );
 };
 
+
+class RepairOperationToTransactionVisitor
+  : public boost::static_visitor<
+    std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>
+  > {
+  using ReturnValueT = std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>;
+
+ public:
+  std::vector<VPackBufferPtr> vpackBufferArray;
+
+  ReturnValueT
+  operator()(BeginRepairsOperation const& op);
+
+  ReturnValueT
+  operator()(FinishRepairsOperation const& op);
+
+  ReturnValueT
+  operator()(MoveShardOperation const& op);
+
+  ReturnValueT
+  operator()(FixServerOrderOperation const& op);
+
+
+ private:
+  std::string agencyCollectionId(
+    DatabaseID database,
+    CollectionID collection
+  ) const;
+
+
+  VPackBufferPtr
+  createShardDbServerArray(
+    ServerID const& leader,
+    DBServers const& followers
+  ) const;
+
+};
 
 }
 }
