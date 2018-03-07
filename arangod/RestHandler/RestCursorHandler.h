@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>

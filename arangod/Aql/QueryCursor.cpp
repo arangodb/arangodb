@@ -45,8 +45,9 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t* vocbase, CursorId id,
-                                   aql::QueryResult&& result, size_t batchSize,
-                                   double ttl, bool hasCount)
+                                     aql::QueryResult&& result,
+                                     size_t batchSize, double ttl,
+                                     bool hasCount)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _result(std::move(result)),
@@ -56,7 +57,6 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t* vocbase, CursorId id,
   TRI_ASSERT(_result.result->slice().isArray());
   result.profile = nullptr;
 }
-
 
 VPackSlice QueryResultCursor::extra() const {
   if (_extra == nullptr) {
@@ -135,7 +135,8 @@ Result QueryResultCursor::dump(VPackBuilder& builder) {
   } catch (std::exception const& ex) {
     return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL, "internal error during QueryResultCursor::dump");
+    return Result(TRI_ERROR_INTERNAL,
+                  "internal error during QueryResultCursor::dump");
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -145,14 +146,15 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t* vocbase, CursorId id,
                                      std::shared_ptr<VPackBuilder> bindVars,
                                      std::shared_ptr<VPackBuilder> opts,
                                      size_t batchSize, double ttl)
-: Cursor(id, batchSize, ttl, /*hasCount*/false),
-  _guard(vocbase),
-  _queryString(query) {
+    : Cursor(id, batchSize, ttl, /*hasCount*/ false),
+      _guard(vocbase),
+      _queryString(query) {
   TRI_ASSERT(QueryRegistryFeature::QUERY_REGISTRY != nullptr);
-  
-  _query.reset(new Query(false, _guard.database(), aql::QueryString(_queryString.c_str(), _queryString.length()),
-                         std::move(bindVars), std::move(opts),
-                         arangodb::aql::PART_MAIN));
+
+  _query.reset(new Query(
+      false, _guard.database(),
+      aql::QueryString(_queryString.c_str(), _queryString.length()),
+      std::move(bindVars), std::move(opts), arangodb::aql::PART_MAIN));
   _query->prepare(QueryRegistryFeature::QUERY_REGISTRY, aql::Query::DontCache);
   TRI_ASSERT(_query->state() == aql::QueryExecutionState::ValueType::EXECUTION);
 }
@@ -163,11 +165,13 @@ std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
 
 Result QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
-  
+
   // we do have a query string... pass query to WorkMonitor
-  AqlWorkStack work(_guard.database(), _query->id(), _queryString.data(), _queryString.size());
-  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '" << _queryString.substr(1024) << "'";
-  
+  AqlWorkStack work(_guard.database(), _query->id(), _queryString.data(),
+                    _queryString.size());
+  LOG_TOPIC(TRACE, Logger::QUERIES) << "executing query " << _id << ": '"
+                                    << _queryString.substr(1024) << "'";
+
   VPackOptions const* oldOptions = builder.options;
   TRI_DEFER(builder.options = oldOptions);
   VPackOptions options = VPackOptions::Defaults;
@@ -175,28 +179,27 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   options.buildUnindexedObjects = true;
   options.escapeUnicode = true;
   builder.options = &options;
-  
-  try {
 
+  try {
     aql::ExecutionEngine* engine = _query->engine();
     TRI_ASSERT(engine != nullptr);
-    
+
     // this is the RegisterId our results can be found in
     RegisterId const resultRegister = engine->resultRegister();
     AqlItemBlock* value = nullptr;
-    
+
     bool hasMore = true;
     try {
       // reserve some space in Builder to avoid frequent reallocs
       builder.reserve(16 * 1024);
       builder.add("result", VPackValue(VPackValueType::Array, true));
-      
+
       // get one batch
       if ((value = engine->getSome(1, batchSize())) != nullptr) {
         size_t const n = value->size();
         for (size_t i = 0; i < n; ++i) {
           AqlValue const& val = value->getValueReference(i, resultRegister);
-          
+
           if (!val.isEmpty()) {
             val.toVelocyPack(_query->trx(), builder, false);
           }
@@ -206,22 +209,22 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       } else {
         hasMore = false;
       }
-      builder.close(); // result
-      
+      builder.close();  // result
+
       // builder.add("hasMore", VPackValue(hasNext() ? "true" : "false"));
       // should not be string
       builder.add("hasMore", VPackValue(hasMore));
       if (hasMore) {
         builder.add("id", VPackValue(std::to_string(id())));
       }
-      
+
       builder.add("cached", VPackValue(false));
-      
+
     } catch (...) {
       delete value;
-      throw; // rethrow, is catched below
+      throw;  // rethrow, is catched below
     }
-    
+
     if (!hasMore) {
       QueryResult result;
       _query->finalize(result);
@@ -231,24 +234,28 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       }
       this->deleted();
     }
-    
+
   } catch (arangodb::basics::Exception const& ex) {
     this->deleted();
-    return Result(ex.code(), "AQL: " + ex.message() +
-                  QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(ex.code(),
+                  "AQL: " + ex.message() +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (std::bad_alloc const&) {
     this->deleted();
-    return Result(TRI_ERROR_OUT_OF_MEMORY, TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                  QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(TRI_ERROR_OUT_OF_MEMORY,
+                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (std::exception const& ex) {
     this->deleted();
-    return Result(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
+    return Result(
+        TRI_ERROR_INTERNAL,
+        ex.what() + QueryExecutionState::toStringWithPrefix(_query->state()));
   } catch (...) {
     this->deleted();
     return Result(TRI_ERROR_INTERNAL,
-                  TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_query->state()));
+                  TRI_errno_string(TRI_ERROR_INTERNAL) +
+                      QueryExecutionState::toStringWithPrefix(_query->state()));
   }
 
   return TRI_ERROR_NO_ERROR;
 }
-

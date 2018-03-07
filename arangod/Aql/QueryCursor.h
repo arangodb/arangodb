@@ -34,7 +34,7 @@ namespace arangodb {
 namespace aql {
 
 class Query;
-  
+
 /// Cursor managing an entire query result in-memory
 /// Should be used in conjunction with the RestCursorHandler
 class QueryResultCursor final : public arangodb::Cursor {
@@ -46,21 +46,21 @@ class QueryResultCursor final : public arangodb::Cursor {
 
  public:
   aql::QueryResult const* result() const { return &_result; }
-  
+
   CursorType type() const override final { return CURSOR_VPACK; }
 
   bool hasNext();
-  
+
   arangodb::velocypack::Slice next();
 
   size_t count() const override final;
 
   Result dump(velocypack::Builder&) override final;
-  
+
   std::shared_ptr<transaction::Context> context() const override final {
     return _result.context;
   }
-  
+
   /// @brief Returns a slice to read the extra values.
   /// Make sure the Cursor Object is not destroyed while reading this slice.
   /// If no extras are set this will return a NONE slice.
@@ -73,37 +73,35 @@ class QueryResultCursor final : public arangodb::Cursor {
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;
 };
-  
+
 /// Cursor managing a query from which it continuously gets
 /// new results. Query, transaction and locks will live until
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
-public:
+ public:
   QueryStreamCursor(TRI_vocbase_t*, CursorId, std::string const& query,
                     std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts,
-                    size_t, double ttl);
-  
+                    std::shared_ptr<velocypack::Builder> opts, size_t,
+                    double ttl);
+
   ~QueryStreamCursor() = default;
-  
-public:
-  
+
+ public:
   CursorType type() const override final { return CURSOR_VPACK; }
-  
+
   size_t count() const override final { return 0; }
-  
+
   Result dump(velocypack::Builder&) override final;
-  
+
   std::shared_ptr<transaction::Context> context() const override final;
-  
-private:
+
+ private:
   DatabaseGuard _guard;
   std::string _queryString;
   std::unique_ptr<aql::Query> _query;
 };
 
-
-} // aql
-} // arangodb
+}  // aql
+}  // arangodb
 
 #endif

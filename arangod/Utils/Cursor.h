@@ -41,21 +41,19 @@ typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType {
-    CURSOR_VPACK,
-    CURSOR_EXPORT
-  };
+  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
 
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
-  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount) : _id(id),
-  _batchSize(batchSize),
-  _ttl(ttl),
-  _expires(TRI_microtime() + _ttl),
-  _hasCount(hasCount),
-  _isDeleted(false),
-  _isUsed(false) {}
+  Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
+      : _id(id),
+        _batchSize(batchSize),
+        _ttl(ttl),
+        _expires(TRI_microtime() + _ttl),
+        _hasCount(hasCount),
+        _isDeleted(false),
+        _isUsed(false) {}
 
   virtual ~Cursor() {}
 
@@ -92,11 +90,11 @@ class Cursor {
   virtual CursorType type() const = 0;
 
   virtual size_t count() const = 0;
-  
+
   virtual std::shared_ptr<transaction::Context> context() const = 0;
 
   virtual Result dump(velocypack::Builder&) = 0;
-  
+
  protected:
   CursorId const _id;
   size_t const _batchSize;
@@ -106,7 +104,6 @@ class Cursor {
   bool _isDeleted;
   bool _isUsed;
 };
-
 }
 
 #endif

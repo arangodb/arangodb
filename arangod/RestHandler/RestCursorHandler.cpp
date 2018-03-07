@@ -28,9 +28,9 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Value.h>
@@ -65,7 +65,6 @@ RestStatus RestCursorHandler::execute() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  
   return RestStatus::DONE;
 }
 
@@ -107,33 +106,33 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
 
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackSlice opts = options->slice();
-  
+
   CursorRepository* cursors = _vocbase->cursorRepository();
   TRI_ASSERT(cursors != nullptr);
-  
+
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
-  size_t batchSize = VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
+  size_t batchSize =
+      VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(opts, "ttl", 30);
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
-  
+
   if (stream) {
-    TRI_ASSERT(!count); // disallowed
-    Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
-                                                options, batchSize, ttl);
+    TRI_ASSERT(!count);  // disallowed
+    Cursor* cursor = cursors->createQueryStream(
+        querySlice.copyString(), bindVarsBuilder, options, batchSize, ttl);
     TRI_DEFER(cursors->release(cursor));
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
-    return; // done
+    return;  // done
   }
-  
+
   VPackValueLength l;
   char const* queryStr = querySlice.getString(l);
   TRI_ASSERT(l > 0);
-  
+
   aql::Query query(false, _vocbase,
-                        arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-                             bindVarsBuilder, options,
-                             arangodb::aql::PART_MAIN);
-  
+                   arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
+                   bindVarsBuilder, options, arangodb::aql::PART_MAIN);
+
   registerQuery(&query);
   aql::QueryResult queryResult = query.execute(_queryRegistry);
   unregisterQuery();
@@ -197,7 +196,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
         result.add("extra", extra->slice());
       }
       result.add(StaticStrings::Error, VPackValue(false));
-      result.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
+      result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
     } catch (...) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -207,8 +206,9 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
     // result is bigger than batchSize, and a cursor will be created
     TRI_ASSERT(queryResult.result.get() != nullptr);
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult), batchSize, ttl, count);
-    
+    Cursor* cursor = cursors->createFromQueryResult(std::move(queryResult),
+                                                    batchSize, ttl, count);
+
     TRI_DEFER(cursors->release(cursor));
     generateCursorResult(rest::ResponseCode::CREATED, cursor);
   }
@@ -274,7 +274,7 @@ bool RestCursorHandler::wasCanceled() {
 VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   VPackBuilder options;
   VPackObjectBuilder obj(&options);
-  
+
   bool hasCache = false;
   VPackSlice opts = slice.get("options");
   bool isStream = false;
@@ -285,23 +285,25 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
         continue;
       }
       std::string keyName = it.key.copyString();
-      if (keyName == "count" || keyName == "batchSize" ||
-          keyName == "ttl" || (isStream && keyName == "fullCount")) {
-        continue;// filter out top-level keys
+      if (keyName == "count" || keyName == "batchSize" || keyName == "ttl" ||
+          (isStream && keyName == "fullCount")) {
+        continue;  // filter out top-level keys
       } else if (keyName == "cache") {
-        hasCache = true; // don't honour if appears below
+        hasCache = true;  // don't honour if appears below
       }
       options.add(keyName, it.value);
     }
   }
 
-  if (!isStream) { // invalid for streaming queries
-    options.add("count", VPackValue(VelocyPackHelper::getBooleanValue(slice, "count", false)));
+  if (!isStream) {  // invalid for streaming queries
+    bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
+    options.add("count", VPackValue(val));
     if (!hasCache) {
-      options.add("cache", VPackValue(VelocyPackHelper::getBooleanValue(slice, "cache", false)));
+      val = VelocyPackHelper::getBooleanValue(slice, "cache", false);
+      options.add("cache", VPackValue(val));
     }
   }
-  
+
   VPackSlice batchSize = slice.get("batchSize");
   if (batchSize.isNumber()) {
     if ((batchSize.isDouble() && batchSize.getDouble() == 0.0) ||
@@ -318,7 +320,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   if (memoryLimit.isNumber()) {
     options.add("memoryLimit", memoryLimit);
   }
-  
+
   VPackSlice ttl = slice.get("ttl");
   options.add("ttl", VPackValue(ttl.isNumber() ? ttl.getNumber<double>() : 30));
 
@@ -331,10 +333,9 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
 
 void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
                                              arangodb::Cursor* cursor) {
-  
   // dump might delete the cursor
   std::shared_ptr<transaction::Context> ctx = cursor->context();
-  
+
   VPackBuffer<uint8_t> buffer;
   VPackBuilder result(buffer);
   result.openObject();
@@ -342,7 +343,7 @@ void RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   result.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
   Result r = cursor->dump(result);
   result.close();
-  
+
   if (r.ok()) {
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
