@@ -18,7 +18,8 @@ to grant it write permissions to `C:\Program Files`.
 
 For more in-depth information on how to install ArangoDB, as well as available
 startup parameters, installation in a cluster and so on, see
-[Installing](../Installing/README.md).
+[Installation](../Installation/README.md) and
+[Deployment](../Deployment/README.md).
 
 {% hint 'info' %}
 ArangoDB offers two [**storage engines**](../Architecture/StorageEngines.md):

@@ -2,6 +2,7 @@
 # Summary
 
 * [Introduction](README.md)
+* [Highlights](Highlights.md)
 
 ## GETTING FAMILIAR 
 
@@ -18,7 +19,14 @@
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
-* [Highlights](Highlights.md)
+* [ArangoDB Programs](Programs/README.md)
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter](Programs/Starter/README.md)
+    * [Options](Programs/Starter/options.md)
+    * [Security](Programs/Starter/security.md)
+
+## CORE TOPICS	
+
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
@@ -40,14 +48,6 @@
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
-* [ArangoDB Programs](Programs/README.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](Programs/Starter/README.md)
-    * [Options](Programs/Starter/options.md)
-    * [Security](Programs/Starter/security.md)
-
-## CORE TOPICS	
-
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
   * [Which index to use when](Indexing/WhichIndex.md)
