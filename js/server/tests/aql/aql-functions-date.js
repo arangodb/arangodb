@@ -1492,6 +1492,7 @@ testDateSubtract() {
     [ ["2001-01-01", 1, "day"], "2000-12-31T00:00:00.000Z" ],
     [ ["2001-01-01Z", 1, "day"], "2000-12-31T00:00:00.000Z" ],
     [ ["2001-01-01Z", 1, "d"], "2000-12-31T00:00:00.000Z" ],
+    [ ['2012-02-12 13:34:12Z', 0.5, "d"], "2012-02-12T01:34:12.000Z" ],
     [ ["2001-01-01Z", "P1D"], "2000-12-31T00:00:00.000Z" ],
     [ ["2101-03-31", "P3M"], "2100-12-31T00:00:00.000Z" ],
     [ ["2101-03-31", 3, "months"], "2100-12-31T00:00:00.000Z" ],
@@ -1714,10 +1715,10 @@ testDateCompareInvalid() {
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', null))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', null)))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'yo'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'yo'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'yo')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', 'yo')))");
 
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(false, 1, 'y'))");
