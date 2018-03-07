@@ -106,6 +106,10 @@ class ExecutionEngine {
   /// @brief add a block to the engine
   void addBlock(ExecutionBlock*);
 
+  /// @brief add a block to the engine
+  /// @returns added block
+  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>&&);
+
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister) {
     _resultRegister = resultRegister;
