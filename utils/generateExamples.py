@@ -555,7 +555,7 @@ def generateAQL(testName):
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   print("[" + (time () - startTime) + "s]  done with  " + testName);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
-}());
+})();
 
 '''
 
