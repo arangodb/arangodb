@@ -238,7 +238,7 @@ std::string CollectionNameResolver::getCollectionNameCluster(
       return name;
     }
   }
-
+ 
   int tries = 0;
 
   while (tries++ < 2) {
@@ -388,7 +388,3 @@ bool CollectionNameResolver::visitCollections(
   // emulate the original behaviour, assume 'cid' is for a regular collection and visit it as is
   return visitor(cid);
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

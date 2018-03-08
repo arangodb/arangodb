@@ -206,7 +206,6 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
   TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
-// @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
