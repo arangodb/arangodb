@@ -1573,9 +1573,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
-      parameters, "type", "");
-
+  auto type =
+    arangodb::basics::VelocyPackHelper::getStringRef(parameters, "type", "");
   ViewTypesFeature* viewTypesFeature =
       application_features::ApplicationServer::getFeature<ViewTypesFeature>(
           "ViewTypes");
@@ -1587,8 +1586,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     );
   }
 
-  auto& dataSourceType =
-    arangodb::LogicalDataSource::Type::emplace(std::move(type));
+  auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
   auto& creator = viewTypesFeature->factory(dataSourceType);
 
   if (!creator) {

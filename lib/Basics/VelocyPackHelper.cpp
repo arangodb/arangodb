@@ -502,6 +502,35 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice,
   }
 }
 
+/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
+  arangodb::velocypack::Slice slice,
+  arangodb::velocypack::StringRef const& defaultValue
+) noexcept {
+  return slice.isString()
+    ? arangodb::velocypack::StringRef(slice) : defaultValue
+    ;
+}
+
+/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
+  arangodb::velocypack::Slice slice,
+  std::string const& key,
+  arangodb::velocypack::StringRef const& defaultValue
+) noexcept {
+  if (slice.isExternal()) {
+    slice = arangodb::velocypack::Slice(slice.getExternal());
+  }
+
+  if (!slice.isObject() || !slice.hasKey(key)) {
+    return defaultValue;
+  }
+
+  auto value = slice.get(key);
+
+  return value.isString()
+    ? arangodb::velocypack::StringRef(value) : defaultValue
+    ;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a string value, or the default value if it is not a string
 ////////////////////////////////////////////////////////////////////////////////
