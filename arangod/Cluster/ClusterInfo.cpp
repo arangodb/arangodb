@@ -1217,6 +1217,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                 auto it = _shardServers.find(p.key.copyString());
                 if (it != _shardServers.end()) {
                   plannedServers = (*it).second;
+                } else {
+                  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                    << "Strange, did not find shard in _shardServers: "
+                    << p.key.copyString();
                 }
               }
               std::vector<ServerID> currentServers;
