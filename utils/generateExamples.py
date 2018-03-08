@@ -557,7 +557,7 @@ def generateAQL(testName):
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
 }());
 
-''' % (value[AQLDS], value[AQLDS], value[AQLDS])
+'''
 
 ################################################################################
 ### @brief generate arangosh run
