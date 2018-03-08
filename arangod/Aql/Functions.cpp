@@ -117,6 +117,11 @@ static AqlValue NumberValue(transaction::Methods* trx, double value, bool nullif
   return AqlValue(AqlValueHintDouble(value));
 }
 
+static inline AqlValue TimeAqlValue(tp_sys_clock_ms const& tp) {
+  std::string formatted = format("%FT%TZ", floor<milliseconds>(tp));
+  return AqlValue(formatted);
+}
+
 static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
   if (!flag.isString()) {
     return INVALID;
@@ -1814,7 +1819,7 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
     RegisterInvalidArgumentWarning(query, "DATE_ISO8601");
   }
 
-  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+  return TimeAqlValue(tp);
 }
 
 /// @brief function DATE_TIMESTAMP
@@ -2293,7 +2298,7 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
     tp += milliseconds{atoi((duration_parts[17].str()+"00").substr(0,3).c_str())};
   }
 
-  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+  return TimeAqlValue(tp);
 }
 
 /// @brief function DATE_SUBTRACT
@@ -2309,6 +2314,8 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   // size == 3 unit / unit type
   // size == 2 iso duration
 
+  year_month_day ymd{floor<days>(tp)};
+  auto day_time = make_time(tp - sys_days(ymd));
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) { // unit must be number
@@ -2322,9 +2329,6 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-
-    year_month_day ymd{floor<days>(tp)};
-    auto day_time = make_time(tp - sys_days(ymd));
     std::chrono::duration<double, std::ratio<1l, 1000l> > ms;
 
     DateSelectionModifier flag = ParseDateModifierFlag(durationType.slice());
@@ -2380,38 +2384,6 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
     }
     // Here we reconstruct the timepoint again
     tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - std::chrono::duration_cast<milliseconds>(ms)};
-
-    // int64_t units = durationUnit.toInt64(trx);
-
-    /*
-    std::string duration = durationType.slice().copyString();
-    std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
-
-
-    if (duration == "y" || duration == "year" || duration == "years") {
-      ymd -= years{units};
-   } else if (duration == "m" || duration == "month" || duration == "months") {
-      ymd -= months{units};
-
-    } else if (duration == "w" || duration == "week" || duration == "weeks") {
-      ms -= weeks{units};
-    } else if (duration == "d" || duration == "day" || duration == "days") {
-      ms -= days{units};
-    } else if (duration == "h" || duration == "hour" || duration == "hours") {
-      ms -= hours{units};
-    } else if (duration == "i" || duration == "minute" || duration == "minutes") {
-      ms -= minutes{units};
-    } else if (duration == "s" || duration == "second" || duration == "seconds") {
-      ms -= seconds{units};
-    } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
-      ms -= milliseconds{units};
-    } else {
-      RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
-    */
-
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -2427,23 +2399,38 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-    year_month_day ymd{floor<days>(tp)};
-    auto day_time = make_time(tp - sys_days(ymd));
+    int number = StringUtils::int32(duration_parts[2].str());
+    ymd -= years{number};
 
-    ymd -= years{atoi(duration_parts[2].str().c_str())};
-    ymd -= months{atoi(duration_parts[4].str().c_str())};
+    number = StringUtils::int32(duration_parts[4].str());
+    ymd -= months{number};
 
     tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration()};
 
-    tp -= weeks{atoi(duration_parts[6].str().c_str())} + days{atoi(duration_parts[8].str().c_str())};
+    number = StringUtils::int32(duration_parts[6].str());
+    tp -= weeks{number};
 
-    tp -= hours{atoi(duration_parts[11].str().c_str())};
-    tp -= minutes{atoi(duration_parts[13].str().c_str())};
-    tp -= seconds{atoi(duration_parts[15].str().c_str())};
-    tp -= milliseconds{atoi((duration_parts[17].str()+"00").substr(0,3).c_str())};
+    number = StringUtils::int32(duration_parts[8].str());
+    tp += days{number};
+
+    number = StringUtils::int32(duration_parts[11].str());
+    tp += hours{number};
+
+    number = StringUtils::int32(duration_parts[13].str());
+    tp += minutes{number};
+
+    number = StringUtils::int32(duration_parts[15].str());
+    tp += seconds{number};
+
+
+    // The Milli seconds can be shortened:
+    // .1 => 100ms
+    // so we append 00 but only take the first 3 digits
+    number = StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
+    tp += seconds{number};
   }
 
-  return AqlValue( format("%FT%TZ", floor<milliseconds>(tp) ));
+  return TimeAqlValue(tp);
 }
 
 /// @brief function DATE_DIFF
