@@ -145,12 +145,17 @@ arangodb::LogicalDataSource::Type const& ReadType(
     std::string const& key,
     TRI_col_type_e def
 ) {
-  static const auto& document =
-    arangodb::LogicalDataSource::Type::emplace("document");
-  static const auto& edge = arangodb::LogicalDataSource::Type::emplace("edge");
+  static const auto& document = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("document")
+  );
+  static const auto& edge = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("edge")
+  );
 
   // arbitrary system-global value for unknown
-  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace("");
+  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("")
+  );
 
   switch (Helper::readNumericValue<TRI_col_type_e, int>(info, key, def)) {
    case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
@@ -208,10 +213,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      VPackSlice const& info,
                                      bool isAStub)
     : LogicalDataSource(
+        category(),
         ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
         vocbase,
         ReadCid(info),
-        ReadPlanId(info, ReadCid(info)),
+        ReadPlanId(info, 0),
         ReadStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
       ),
@@ -415,6 +421,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 }
 
 LogicalCollection::~LogicalCollection() {}
+
+/*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
+  static const Category category;
+
+  return category;
+}
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);

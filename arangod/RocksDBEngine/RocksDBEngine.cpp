@@ -1645,10 +1645,8 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
-
-      std::string type = it.get("type").copyString();
-      auto& dataSourceType =
-        arangodb::LogicalDataSource::Type::emplace(std::move(type));
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
       auto& creator = viewTypesFeature->factory(dataSourceType);
 
       if (!creator) {
