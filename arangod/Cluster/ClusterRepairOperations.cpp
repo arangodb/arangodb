@@ -185,17 +185,34 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, RepairOperation
   return boost::apply_visitor(visitor, operation);
 }
 
+std::string
+getExtendedIsoString(std::chrono::system_clock::time_point time_point) {
+  std::time_t time_t = std::chrono::system_clock::to_time_t(time_point);
+  char const* format = "%FT%TZ";
+  char timeString[100];
+  size_t bytesWritten
+    = std::strftime(timeString, sizeof(timeString), format, std::gmtime(&time_t));
+
+  TRI_ASSERT(bytesWritten > 0);
+  if (bytesWritten == 0) {
+    // This should never happen
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+      "strftime returned 0 - buffer too small?");
+  }
+
+  return std::string(timeString);
+}
 
 VPackBufferPtr
 MoveShardOperation::toVpackTodo(
   uint64_t jobId,
-  boost::posix_time::ptime jobCreationTimestamp
+  std::chrono::system_clock::time_point jobCreationTimestamp
 ) const {
   std::string const serverId = ServerState::instance()->getId();
 
   // TODO This needs the lib boost_date_time. Maybe use strftime from <ctime> instead
   std::string const isoTimeString
-    = boost::posix_time::to_iso_extended_string(jobCreationTimestamp);
+    = getExtendedIsoString(jobCreationTimestamp);
 
   VPackBuilder builder;
 
@@ -320,6 +337,7 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
     );
   };
 
+  // TODO should we do this, even when op.renameDistributeShardsLike is false?
   if (op.collectionReplicationFactor != op.protoReplicationFactor) {
     operations.emplace_back(
       AgencyOperation {
@@ -407,7 +425,8 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
 RepairOperationToTransactionVisitor::ReturnValueT
 RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
   uint64_t jobId = _getJobId();
-  boost::posix_time::ptime jobCreationTimestamp = _getJobCreationTimestamp();
+  std::chrono::system_clock::time_point jobCreationTimestamp
+    = _getJobCreationTimestamp();
 
   VPackBufferPtr vpackTodo = op.toVpackTodo(jobId, jobCreationTimestamp);
 
@@ -421,7 +440,11 @@ RepairOperationToTransactionVisitor::operator()(MoveShardOperation const& op) {
       AgencyValueOperationType::SET,
       VPackSlice(vpackTodo->data())
     },
-    AgencyPrecondition {}
+    AgencyPrecondition {
+      agencyKey,
+      AgencyPrecondition::Type::EMPTY,
+      true,
+    }
   }, jobId);
 }
 
@@ -500,12 +523,12 @@ RepairOperationToTransactionVisitor::createShardDbServerArray(
 
 RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor()
 : _getJobId([]() { return ClusterInfo::instance()->uniqid(); }),
-  _getJobCreationTimestamp([]() { return boost::posix_time::second_clock::local_time(); })
+  _getJobCreationTimestamp([]() { return std::chrono::system_clock::now(); })
 { }
 
 RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(
   std::function<uint64_t()> getJobId_,
-  std::function<boost::posix_time::ptime()> getJobCreationTimestamp_
+  std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp_
 ) : _getJobId(getJobId_),
   _getJobCreationTimestamp(getJobCreationTimestamp_)
 { }

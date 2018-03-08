@@ -79,7 +79,7 @@ struct MoveShardOperation {
   VPackBufferPtr
   toVpackTodo(
     uint64_t jobId,
-    boost::posix_time::ptime jobCreationTimestamp
+    std::chrono::system_clock::time_point jobCreationTimestamp
   ) const;
 };
 
@@ -136,7 +136,7 @@ class RepairOperationToTransactionVisitor
   RepairOperationToTransactionVisitor();
   RepairOperationToTransactionVisitor(
     std::function<uint64_t()> getJobId,
-    std::function<boost::posix_time::ptime()> getJobCreationTimestamp
+    std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp
   );
 
   ReturnValueT
@@ -155,7 +155,7 @@ class RepairOperationToTransactionVisitor
  private:
   std::vector<VPackBufferPtr> _vpackBufferArray;
   std::function<uint64_t()> _getJobId;
-  std::function<boost::posix_time::ptime()> _getJobCreationTimestamp;
+  std::function<std::chrono::system_clock::time_point()> _getJobCreationTimestamp;
 
 
   std::vector<VPackBufferPtr>&& steal();

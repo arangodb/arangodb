@@ -23,6 +23,7 @@
 #include "catch.hpp"
 
 #include "Cluster/ClusterRepairs.h"
+#include "Cluster/ServerState.h"
 
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
@@ -163,7 +164,7 @@ void overwriteTransactionIdsWith(
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
 
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
+  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
 
   try {
     // get a new manager
@@ -232,11 +233,11 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
 
   } catch (...) {
     // restore old manager
-    AgencyCommManager::MANAGER = std::move(old_manager);
+    AgencyCommManager::MANAGER = std::move(oldManager);
     throw;
   }
   // restore old manager
-  AgencyCommManager::MANAGER = std::move(old_manager);
+  AgencyCommManager::MANAGER = std::move(oldManager);
 }
 
 SCENARIO("VersionSort", "[cluster][shards][repairs]") {
@@ -254,7 +255,8 @@ SCENARIO("VersionSort", "[cluster][shards][repairs]") {
 SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> old_manager = std::move(AgencyCommManager::MANAGER);
+  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
+  std::string const oldServerId = ServerState::instance()->getId();
 
   try {
     // get a new manager
@@ -264,9 +266,9 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
       REQUIRE(false);
       return 0ul;
     };
-    boost::posix_time::ptime (*mockJobCreationTimestampGenerator)() = []() {
+    std::chrono::system_clock::time_point (*mockJobCreationTimestampGenerator)() = []() {
       REQUIRE(false);
-      return boost::posix_time::ptime();
+      return std::chrono::system_clock::now();
     };
 
     RepairOperationToTransactionVisitor conversionVisitor(
@@ -519,6 +521,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     }
 
     GIVEN("A MoveShardOperation") {
+      ServerState::instance()->setId("CurrentCoordinatorServerId");
+
       MoveShardOperation operation{
         .database = "myDbName",
         .collectionId = "123456",
@@ -535,7 +539,19 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           return nextJobId++;
         };
         auto jobCreationTimestampGenerator = []() {
-          return boost::posix_time::time_from_string("2018-03-07T15:20:01.284Z");
+          std::tm tm;
+          tm.tm_year = 2018 - 1900; // years since 1900
+          tm.tm_mon = 3 - 1; // March, counted from january
+          tm.tm_mday = 7;
+          tm.tm_hour = 15;
+          tm.tm_min = 20;
+          tm.tm_sec = 1;
+          tm.tm_isdst = 0;
+
+          std::chrono::system_clock::time_point tp
+            = std::chrono::system_clock::from_time_t(TRI_timegm(&tm));
+
+          return tp;
         };
 
         conversionVisitor = RepairOperationToTransactionVisitor(
@@ -544,11 +560,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         );
 
         AgencyWriteTransaction trx;
-        boost::optional<uint64_t> jobid;
-        std::tie(trx, jobid) = conversionVisitor(operation);
+        boost::optional<uint64_t> jobId;
+        std::tie(trx, jobId) = conversionVisitor(operation);
 
-        REQUIRE(jobid.is_initialized());
-
+        REQUIRE(jobId.is_initialized());
+// "timeCreated": "2018-03-07T15:20:01.284Z",
         VPackBufferPtr todoVpack = R"=(
           {
             "type": "moveShard",
@@ -556,29 +572,25 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             "collection": "123456",
             "shard": "s1",
             "fromServer": "db-from-server",
-            "toServer": "db-to-server"",
-            "jobId": "783",
-            "timeCreated": "2018-03-07T15:20:01.284Z",
-            "creator": "Coordinator",
+            "toServer": "db-to-server",
+            "jobId": "41",
+            "timeCreated": "2018-03-07T15:20:01Z",
+            "creator": "CurrentCoordinatorServerId",
             "isLeader": true
           }
         )="_vpack;
         Slice todoSlice = Slice(todoVpack->data());
 
-        AgencyWriteTransaction expectedTrx{
-          std::vector<AgencyOperation> {
-            AgencyOperation {
-              "Target/ToDo/" + jobid.get(),
-              AgencyValueOperationType::SET,
-              todoSlice,
-            },
+        AgencyWriteTransaction expectedTrx {
+          AgencyOperation {
+            "Target/ToDo/" + std::to_string(jobId.get()),
+            AgencyValueOperationType::SET,
+            todoSlice,
           },
-          std::vector<AgencyPrecondition> {
-            AgencyPrecondition {
-              "Target/ToDo/" + jobid.get(),
-              AgencyPrecondition::Type::EMPTY,
-              true,
-            },
+          AgencyPrecondition {
+            "Target/ToDo/" + std::to_string(jobId.get()),
+            AgencyPrecondition::Type::EMPTY,
+            true,
           },
         };
 
@@ -719,11 +731,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
   }
   catch (...) {
     // restore old manager
-    AgencyCommManager::MANAGER = std::move(old_manager);
+    AgencyCommManager::MANAGER = std::move(oldManager);
     throw;
   }
   // restore old manager
-  AgencyCommManager::MANAGER = std::move(old_manager);
+  AgencyCommManager::MANAGER = std::move(oldManager);
 }
 
 
