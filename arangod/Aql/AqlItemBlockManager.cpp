@@ -84,7 +84,7 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) {
   if (!_buckets[i].full()) {
     // recycle the block
     block->destroy();
-    // store block in bucket
+    // store block in bucket (this will not fail)
     _buckets[i].push(block);
   } else {
     // bucket is full. simply delete the block

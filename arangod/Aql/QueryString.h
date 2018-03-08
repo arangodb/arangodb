@@ -32,6 +32,7 @@
 namespace arangodb {
 namespace aql {
 
+/// View on a query string, does no memory management
 class QueryString {
  public:
   QueryString(QueryString const& other) = default;

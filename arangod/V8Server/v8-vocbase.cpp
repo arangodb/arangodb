@@ -806,9 +806,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
 
-  // options
-  auto options = std::make_shared<VPackBuilder>();
-
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
@@ -823,12 +820,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  // options
+  auto options = std::make_shared<VPackBuilder>();
   if (args.Length() > 2) {
     // we have options! yikes!
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
+    
     int res = TRI_V8ToVPack(isolate, *options, args[2], false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
