@@ -58,7 +58,15 @@
       $('#' + clicked).click();
     },
 
+    setReadOnly: function () {
+      $('#createDatabase').parent().parent().addClass('disabled');
+    },
+
     render: function () {
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+    },
+
+    continueRender: function (readOnly) {
       var self = this;
 
       var callback = function (error, db) {
@@ -75,8 +83,13 @@
               $(self.el).html(self.template.render({
                 collection: self.collection,
                 searchString: '',
-                currentDB: self.currentDB
+                currentDB: self.currentDB,
+                readOnly: readOnly
               }));
+
+              if (readOnly) {
+                self.setReadOnly();
+              }
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
@@ -146,7 +159,9 @@
 
     createDatabase: function (e) {
       e.preventDefault();
-      this.createAddDatabaseModal();
+      if (!$('#createDatabase').parent().parent().hasClass('disabled')) {
+        this.createAddDatabaseModal();
+      }
     },
 
     switchDatabase: function (e) {

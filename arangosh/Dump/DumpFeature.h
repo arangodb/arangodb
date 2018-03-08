@@ -31,7 +31,9 @@ namespace httpclient {
 class SimpleHttpResult;
 }
 
+#ifdef USE_ENTERPRISE
 class EncryptionFeature;
+#endif
 
 class DumpFeature final : public application_features::ApplicationFeature,
                           public ArangoClientHelper {
@@ -80,7 +82,9 @@ class DumpFeature final : public application_features::ApplicationFeature,
   int* _result;
   uint64_t _batchId;
   bool _clusterMode;
+#ifdef USE_ENTERPRISE
   EncryptionFeature* _encryption;
+#endif
 
   struct {
     uint64_t _totalBatches;

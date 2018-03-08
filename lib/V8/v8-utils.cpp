@@ -590,9 +590,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string url = TRI_ObjectToString(isolate, args[0]);
+  std::vector<std::string> endpoints;
 
   if (!url.empty() && url[0] == '/') {
-    std::vector<std::string> endpoints;
 
     // check if we are a server
     try {
@@ -815,6 +815,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         endpoint = url.substr(6);
       }
       endpoint = "srv://" + endpoint;
+    } else if (url.substr(0, 7) == "unix://") {
+      // Can only have arrived here if endpoints is non empty
+      if (endpoints.empty()) {
+        TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
+      }
+      endpoint = endpoints.front();
+      relative = url.substr(endpoint.size());
     } else if (!url.empty() && url[0] == '/') {
       size_t found;
       // relative URL. prefix it with last endpoint
@@ -847,7 +854,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
     if (ep == nullptr) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
+      TRI_V8_THROW_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER, std::string("invalid URL ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
@@ -877,7 +885,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                        body.size(), headerFields));
 
     int returnCode = 500;  // set a default
-    std::string returnMessage;
+    std::string returnMessage = "";
 
     if (response == nullptr || !response->isComplete()) {
       // save error message
@@ -910,11 +918,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
         continue;
       }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                  v8::Number::New(isolate, returnCode));
-      result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
-                  TRI_V8_STD_STRING(isolate, returnMessage));
 
       // process response headers
       auto const& responseHeaders = response->getHeaderFields();
@@ -4562,6 +4565,21 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we are in the enterprise edition
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+  TRI_V8_RETURN(v8::False(isolate));
+#else
+  TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4785,6 +4803,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "VPACK_TO_V8"), JS_VPackToV8);
+
+  TRI_AddGlobalFunctionVocbase(isolate, 
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
+                               JS_IsEnterprise);
 
   // .............................................................................
   // create the global variables

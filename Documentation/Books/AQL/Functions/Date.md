@@ -566,7 +566,7 @@ DATE_COMPARE("1985-04-04", DATE_NOW(), "months", "days")
 
 // Will only match on one day if the current year is a leap year!
 // You may want to add or subtract one day from date1 to match every year.
-DATE_COMPARE("1984-02-29", DATE_NOW(), "months", days")
+DATE_COMPARE("1984-02-29", DATE_NOW(), "months", "days")
 
 // compare years, months and days (true, because it's the same day)
 DATE_COMPARE("2001-01-01T15:30:45.678Z", "2001-01-01T08:08:08.008Z", "years", "days")
