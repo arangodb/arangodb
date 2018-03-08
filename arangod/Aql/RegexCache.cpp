@@ -24,6 +24,11 @@
 #include "RegexCache.h"
 #include "Basics/Utf8Helper.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 RegexCache::~RegexCache() {
@@ -45,6 +50,40 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, 
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
+}
+
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, transaction::Methods* trx, bool& isEmptyExpression) {
+
+  std::string rx;
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(splitExpression, false);
+  if (splitExpression.isArray()) {
+    std::string copy;
+    for (auto const& it : VPackArrayIterator(slice)) {
+      copy = it.copyString();
+      if (copy.length() == 0) {
+        // one empty string rules them all
+        isEmptyExpression = true;
+        rx = "";
+        break;
+      }
+      if (rx.size() != 0) {
+        rx += '|';
+      }
+      rx += copy;
+    }
+  }
+  else if (splitExpression.isString()) {
+    rx = splitExpression.slice().copyString();
+    if (rx.length() == 0) {
+      isEmptyExpression = true;
+    }
+  }
+  else {
+    rx.clear();
+  }
+  return fromCache(rx, _likeCache);
 }
                                          
 void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {
