@@ -39,6 +39,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -218,6 +219,7 @@ struct IResearchOrderSetup {
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false);
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
 

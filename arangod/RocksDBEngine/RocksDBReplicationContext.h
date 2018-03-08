@@ -67,8 +67,8 @@ class RocksDBReplicationContext {
   int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
+  Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
+                      bool global, velocypack::Builder&);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection

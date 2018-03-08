@@ -144,16 +144,18 @@ IResearchViewBlockBase::IResearchViewBlockBase(
 
 int IResearchViewBlockBase::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-    const int res = ExecutionBlock::initializeCursor(items, pos);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
+  const int res = ExecutionBlock::initializeCursor(items, pos);
 
-    _hasMore = true; // has more data initially
-  DEBUG_END_BLOCK();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  _hasMore = true; // has more data initially
 
   return TRI_ERROR_NO_ERROR;
+
+  DEBUG_END_BLOCK();
 }
 
 void IResearchViewBlockBase::reset() {
