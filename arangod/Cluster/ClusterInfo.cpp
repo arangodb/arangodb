@@ -901,11 +901,83 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
   return std::make_shared<CollectionInfoCurrent>(0);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief ask about a view
+/// If it is not found in the cache, the cache is reloaded once. The second
+/// argument can be a collection ID or a view name (both cluster-wide).
+//////////////////////////////////////////////////////////////////////////////
+
 std::shared_ptr<LogicalView> ClusterInfo::getView(
-    DatabaseID const& vocbase, CollectionID const& view
-) {
-  // FIXME TODO implement
-  return nullptr;
+    DatabaseID const& databaseID, ViewID const& viewID) {
+
+  int tries = 0;
+
+  if (!_planProt.isValid) {
+    loadPlan();
+    ++tries;
+  }
+
+  while (true) {  // left by break
+    {
+      READ_LOCKER(readLocker, _planProt.lock);
+      // look up database by id
+      AllViews::const_iterator it = _plannedViews.find(databaseID);
+
+      if (it != _plannedViews.end()) {
+        // look up view by id (or by name)
+        DatabaseViews::const_iterator it2 =
+            (*it).second.find(viewID);
+
+        if (it2 != (*it).second.end()) {
+          return (*it2).second;
+        }
+      }
+    }
+    if (++tries >= 2) {
+      break;
+    }
+
+    // must load plan outside the lock
+    loadPlan();
+  }
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
+      "View not found: " + viewID + " in database " + databaseID);
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief ask about all views of a database
+//////////////////////////////////////////////////////////////////////////////
+
+std::vector<std::shared_ptr<LogicalView>> const ClusterInfo::getViews(
+    DatabaseID const& databaseID) {
+  std::vector<std::shared_ptr<LogicalView>> result;
+
+  // always reload
+  loadPlan();
+
+  READ_LOCKER(readLocker, _planProt.lock);
+  // look up database by id
+  AllViews::const_iterator it = _plannedViews.find(databaseID);
+
+  if (it == _plannedViews.end()) {
+    return result;
+  }
+
+  // iterate over all collections
+  DatabaseViews::const_iterator it2 = (*it).second.begin();
+  while (it2 != (*it).second.end()) {
+    char c = (*it2).first[0];
+
+    if (c < '0' || c > '9') {
+      // skip collections indexed by id
+      result.push_back((*it2).second);
+    }
+
+    ++it2;
+  }
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

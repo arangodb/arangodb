@@ -51,6 +51,7 @@ class LogicalCollection;
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
 typedef std::string CollectionID;  // ID of a collection
+typedef std::string ViewID;        // ID of a view
 typedef std::string ShardID;       // ID of a shard
 
 class CollectionInfoCurrent {
@@ -226,6 +227,10 @@ class ClusterInfo {
   typedef std::unordered_map<DatabaseID, DatabaseCollectionsCurrent>
       AllCollectionsCurrent;
 
+  typedef std::unordered_map<ViewID, std::shared_ptr<LogicalView>>
+      DatabaseViews;
+  typedef std::unordered_map<DatabaseID, DatabaseViews> AllViews;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief initializes library
@@ -315,7 +320,7 @@ class ClusterInfo {
                                                    CollectionID const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief ask about all collections
+  /// @brief ask about all collections of a database
   //////////////////////////////////////////////////////////////////////////////
 
   virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
@@ -326,9 +331,16 @@ class ClusterInfo {
   /// If it is not found in the cache, the cache is reloaded once. The second
   /// argument can be a collection ID or a view name (both cluster-wide).
   //////////////////////////////////////////////////////////////////////////////
+
   std::shared_ptr<LogicalView> getView(
-      DatabaseID const& vocbase, CollectionID const& view
-  );
+      DatabaseID const& vocbase, ViewID const& viewID);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief ask about all views of a database
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::vector<std::shared_ptr<LogicalView>> const getViews(
+      DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current collections from the agency
@@ -658,6 +670,8 @@ class ClusterInfo {
       _shardKeys;  // from Plan/Collections/
   // planned shard => servers map
   std::unordered_map<ShardID, std::vector<ServerID>> _shardServers;
+
+  AllViews _plannedViews;     // from Plan/Views/
 
   // The Current state:
   AllCollectionsCurrent _currentCollections;  // from Current/Collections/
