@@ -81,14 +81,6 @@ static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   return vid;
 }
 
-std::string ReadStringValue(
-    arangodb::velocypack::Slice info,
-    std::string const& name,
-    std::string const& def
-) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 }  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
@@ -106,11 +98,14 @@ LogicalView::LogicalView(LogicalView const& other)
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
     : LogicalDataSource(
-        LogicalDataSource::Type::emplace(ReadStringValue(info, "type", "")),
+        category(),
+        LogicalDataSource::Type::emplace(
+          arangodb::basics::VelocyPackHelper::getStringRef(info, "type", "")
+        ),
         vocbase,
         ReadId(info),
-        ReadPlanId(info, ReadId(info)),
-        ReadStringValue(info, "name", ""),
+        ReadPlanId(info, 0),
+        arangodb::basics::VelocyPackHelper::getStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
       ),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
@@ -125,8 +120,16 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
 
 LogicalView::~LogicalView() {}
 
+/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
+  static const Category category;
+
+  return category;
+}
+
 bool LogicalView::IsAllowedName(VPackSlice parameters) {
-  std::string name = ReadStringValue(parameters, "name", "");
+  std::string name =
+    arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+
   return IsAllowedName(name);
 }
 

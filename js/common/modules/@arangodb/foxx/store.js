@@ -160,8 +160,7 @@ var updateFishbowlFromZip = function (filename) {
         }
       });
 
-      arangodb.printf('Updated local repository information with %d service(s)\n',
-        toSave.length);
+      require('console').log('Updated local foxx repository with ' + toSave.length + ' service(s)');
     }
   } catch (err) {
     if (tempPath !== undefined && tempPath !== '') {

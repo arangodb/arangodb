@@ -42,17 +42,20 @@ class MMFilesExportCursor final : public Cursor {
  public:
   CursorType type() const override final { return CURSOR_EXPORT; }
 
-  bool hasNext() override final;
+  bool hasNext();
 
-  arangodb::velocypack::Slice next() override final;
+  arangodb::velocypack::Slice next();
 
   size_t count() const override final;
 
-  void dump(velocypack::Builder&) override final;
+  Result dump(velocypack::Builder&) override final;
+  
+  std::shared_ptr<transaction::Context> context() const override final;
 
  private:
   DatabaseGuard _guard;
   arangodb::MMFilesCollectionExport* _ex;
+  size_t _position;
   size_t const _size;
 };
 }

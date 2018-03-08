@@ -251,7 +251,6 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
         << "_numRemoves " << _numRemoves << "  "
         << "_numUpdates " << _numUpdates << "  "
         << "_numLogdata " << _numLogdata;
-        sleep(1); // let it print
       }
       // begin transaction + commit transaction + n doc removes
       TRI_ASSERT(_numLogdata == (2 + _numRemoves));
