@@ -93,7 +93,6 @@ void RestSimpleQueryHandler::allDocuments() {
     if (value.isString()) {
       collectionName = value.copyString();
     }
-    collectionName = value.copyString();
   } else {
     collectionName = _request->value("collection");
   }
@@ -185,7 +184,6 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     if (value.isString()) {
       collectionName = value.copyString();
     }
-    collectionName = value.copyString();
   } else {
     collectionName = _request->value("collection");
   }
@@ -285,18 +283,18 @@ void RestSimpleQueryHandler::byExample() {
     return;
   }
   
+  // velocypack will throw an exception for negative numbers
   size_t skip = basics::VelocyPackHelper::getNumericValue(body, "skip", 0);
   size_t limit = basics::VelocyPackHelper::getNumericValue(body, "limit", 0);
   size_t batchSize = basics::VelocyPackHelper::getNumericValue(body, "batchSize", 0);
   VPackSlice example = body.get("example");
   
   std::string cname;
-  if (body.isObject() && body.hasKey("collection")) {
+  if (body.hasKey("collection")) {
     VPackSlice const value = body.get("collection");
     if (value.isString()) {
       cname = value.copyString();
     }
-    cname = value.copyString();
   } else {
     cname = _request->value("collection");
   }
