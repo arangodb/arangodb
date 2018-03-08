@@ -141,26 +141,34 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-void Version::write(TRI_vocbase_t* vocbase,
+Result Version::write(TRI_vocbase_t* vocbase,
                     std::map<std::string, bool> tasks) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
-  std::string versionFile = engine->versionFilename(vocbase->id());
-  TRI_ASSERT(!versionFile.empty());
-  
-  VPackOptions opts;
-  opts.buildUnindexedObjects = true;
-  VPackBuilder builder(&opts);
-  builder.openObject(true);
-  builder.add("version", VPackValue(Version::current()));
-  builder.add("tasks", VPackValue(VPackValueType::Object));
-  for (auto const& task : tasks) {
-    builder.add(task.first, VPackValue(task.second));
+  try {
+    std::string versionFile = engine->versionFilename(vocbase->id());
+    TRI_ASSERT(!versionFile.empty());
+    
+    VPackOptions opts;
+    opts.buildUnindexedObjects = true;
+    VPackBuilder builder(&opts);
+    builder.openObject(true);
+    builder.add("version", VPackValue(Version::current()));
+    builder.add("tasks", VPackValue(VPackValueType::Object));
+    for (auto const& task : tasks) {
+      builder.add(task.first, VPackValue(task.second));
+    }
+    builder.close();
+    builder.close();
+    
+    std::string json = builder.slice().toJson();
+    basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+  } catch(basics::Exception const& ex) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed";
+    return Result(ex.code(), ex.message());
+  } catch(...) {
+    return Result(TRI_ERROR_INTERNAL, "could not write VERSION file");
   }
-  builder.close();
-  builder.close();
-  
-  std::string json = builder.slice().toJson();
-  basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+  return Result();
 }

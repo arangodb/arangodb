@@ -201,7 +201,9 @@ void UpgradeFeature::upgradeDatabase() {
       }
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
       << "' " << typeName << " failed (" << res.errorMessage() << "). "
-      "Please inspect the logs from the " << typeName << " procedure";
+      << "Please inspect the logs from the " << typeName << " procedure"
+      << " and try starting the server again.";
+      
       FATAL_ERROR_EXIT();
     }
   }
