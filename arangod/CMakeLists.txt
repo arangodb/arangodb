@@ -484,7 +484,6 @@ SET(ARANGOD_SOURCES
   V8Server/v8-vocbase.cpp
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
-  Views/LoggerView.cpp
   VocBase/Methods/AqlUserFunctions.cpp
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp

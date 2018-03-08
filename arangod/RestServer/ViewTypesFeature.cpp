@@ -25,7 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Views/LoggerView.h"
 
 namespace {
 
@@ -64,8 +63,6 @@ ViewCreator const& ViewTypesFeature::factory(
 }
 
 void ViewTypesFeature::prepare() {
-  // register the "logger" example view type
-  emplace(LoggerView::type(), LoggerView::creator);
 }
 
 void ViewTypesFeature::unprepare() { _factories.clear(); }

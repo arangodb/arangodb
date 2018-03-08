@@ -1,8 +1,7 @@
 /* jshint globalstrict:false, strict:false, unused : false */
 /* global assertEqual, assertFalse */
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for dump/reload
+// / @brief recovery tests for views
 // /
 // / @file
 // /
@@ -25,7 +24,7 @@
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -35,22 +34,14 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i;
 
-  db._drop('UnitTestsDummy');
-  db._create('UnitTestsDummy');
+  db._drop('UnitTestsRecoveryDummy');
+  var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  db._dropView('UnitTestsRecovery2');
-  var v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'DEBUG' });
+  var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
-  v.rename('UnitTestsRecovery2');
-
-  v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'INFO' });
-
-  db.UnitTestsDummy.save({ _key: 'foo' }, { waitForSync: true });
+  c.save({ _key: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');
 }
@@ -68,17 +59,14 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether rename and recreate works
+    // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewRenameRecreate: function () {
-      var v, prop;
-
-      v = db._view('UnitTestsRecovery1');
-      assertEqual(v.properties().level, 'INFO');
-
-      v = db._view('UnitTestsRecovery2');
-      assertEqual(v.properties().level, 'DEBUG');
+    testViewCreate: function () {
+      var v1 = db._view('UnitTestsRecovery1');
+      assertEqual(v1.name(), 'UnitTestsRecovery1');
+      assertEqual(v1.type(), 'arangosearch');
+      assertEqual(v1.properties().threadsMaxTotal, 5);
     }
 
   };
