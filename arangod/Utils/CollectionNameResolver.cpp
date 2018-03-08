@@ -331,19 +331,49 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   }
 
   try {
-    auto name = std::to_string(id);
+    auto const name = std::to_string(id);
     auto cinfo = ci->getCollection(_vocbase->name(), name);
 
     if (cinfo) {
-      return std::static_pointer_cast<LogicalDataSource>(cinfo);
+      return cinfo;
     }
 
-    return std::static_pointer_cast<LogicalDataSource>(
-      ci->getView(_vocbase->name(), name)
-    );
+    return ci->getView(_vocbase->name(), name);
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
       << "caught exception while resolving cluster data-source id: " << id;
+  }
+
+  return nullptr;
+}
+
+std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
+    std::string const& name
+) const noexcept {
+  // db server / standalone
+  if (!ServerState::isRunningInCluster(_serverRole)
+      || ServerState::isDBServer(_serverRole)) {
+    return _vocbase ? _vocbase->lookupDataSource(name) : nullptr;
+  }
+
+  // cluster coordinator
+  auto* ci = ClusterInfo::instance();
+
+  if (!ci) {
+    return nullptr;
+  }
+
+  try {
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+
+    if (cinfo) {
+      return cinfo;
+    }
+
+    return ci->getView(_vocbase->name(), name);
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "caught exception while resolving cluster data-source name: " << name;
   }
 
   return nullptr;

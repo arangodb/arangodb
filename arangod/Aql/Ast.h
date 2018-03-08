@@ -238,8 +238,7 @@ class Ast {
   /// @brief create an AST parameter node
   AstNode* createNodeParameter(
     char const* name,
-    size_t length,
-    AstNode::DataSourceType dataSourceType = AstNode::DataSourceType::Invalid
+    size_t length
   );
 
   /// @brief create an AST quantifier node
