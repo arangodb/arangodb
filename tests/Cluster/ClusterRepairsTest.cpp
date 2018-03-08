@@ -291,7 +291,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         boost::optional<uint64_t> jobid;
         std::tie(trx, jobid) = conversionVisitor(operation);
 
-        REQUIRE(!jobid.is_initialized());
+        REQUIRE_FALSE(jobid.is_initialized());
 
         VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
         Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
@@ -383,7 +383,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         boost::optional<uint64_t> jobid;
         std::tie(trx, jobid) = conversionVisitor(operation);
 
-        REQUIRE(!jobid.is_initialized());
+        REQUIRE_FALSE(jobid.is_initialized());
 
         VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
         Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
@@ -447,7 +447,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         boost::optional<uint64_t> jobid;
         std::tie(trx, jobid) = conversionVisitor(operation);
 
-        REQUIRE(!jobid.is_initialized());
+        REQUIRE_FALSE(jobid.is_initialized());
 
         VPackBufferPtr protoIdVpack = R"=("789876")="_vpack;
         Slice protoIdSlice = Slice(protoIdVpack->data());
@@ -549,19 +549,6 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         REQUIRE(jobid.is_initialized());
 
-//      js-code for moveShard:
-//          var todo = { 'type': 'moveShard',
-//            'database': info.database,
-//            'collection': collInfo.id,
-//            'shard': info.shard,
-//            'fromServer': info.fromServer,
-//            'toServer': info.toServer,
-//            'jobId': id,
-//            'timeCreated': (new Date()).toISOString(),
-//            'creator': ArangoServerState.id(),
-//            'isLeader': isLeader };
-//          global.ArangoAgency.set('Target/ToDo/' + id, todo);
-
         VPackBufferPtr todoVpack = R"=(
           {
             "type": "moveShard",
@@ -624,6 +611,111 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
       }
     }
+
+    GIVEN("A FixServerOrderOperation") {
+      FixServerOrderOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .protoCollectionId = "789876",
+        .protoCollectionName = "myProtoCollection",
+        .shard = "s1",
+        .protoShard = "s7",
+        .leader = "db-leader-server",
+        .followers = {
+          "db-follower-3-server",
+          "db-follower-2-server",
+          "db-follower-4-server",
+          "db-follower-1-server",
+        },
+        .protoFollowers = {
+          "db-follower-1-server",
+          "db-follower-2-server",
+          "db-follower-3-server",
+          "db-follower-4-server",
+        },
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        VPackBufferPtr previousServerOrderVpack = R"=([
+          "db-leader-server",
+          "db-follower-3-server",
+          "db-follower-2-server",
+          "db-follower-4-server",
+          "db-follower-1-server"
+        ])="_vpack;
+        VPackBufferPtr correctServerOrderVpack = R"=([
+          "db-leader-server",
+          "db-follower-1-server",
+          "db-follower-2-server",
+          "db-follower-3-server",
+          "db-follower-4-server"
+        ])="_vpack;
+        Slice previousServerOrderSlice = Slice(previousServerOrderVpack->data());
+        Slice correctServerOrderSlice = Slice(correctServerOrderVpack->data());
+
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE_FALSE(jobid.is_initialized());
+
+        AgencyWriteTransaction expectedTrx{
+          AgencyOperation {
+            "Plan/Collections/myDbName/123456/shards/s1",
+            AgencyValueOperationType::SET,
+            correctServerOrderSlice,
+          },
+          {
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/shards/s1",
+              AgencyPrecondition::Type::VALUE,
+              previousServerOrderSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/shards/s7",
+              AgencyPrecondition::Type::VALUE,
+              correctServerOrderSlice,
+            },
+          },
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
+      }
+
+      WHEN("Compared via ==") {
+        FixServerOrderOperation other = operation;
+
+        REQUIRE(operation == other);
+
+        (other = operation).database = "differing database";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionId = "differing collectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).collectionName = "differing collectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionId = "differing protoCollectionId";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoCollectionName = "differing protoCollectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).shard = "differing shard";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoShard = "differing protoShard";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).leader = "differing leader";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).followers = {"differing", "followers"};
+        REQUIRE_FALSE(operation == other);
+        (other = operation).protoFollowers = {"differing", "protoFollowers"};
+        REQUIRE_FALSE(operation == other);
+
+      }
+    }
+
   }
   catch (...) {
     // restore old manager

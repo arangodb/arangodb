@@ -124,7 +124,8 @@ using RepairOperation = boost::variant<
 
 std::ostream &operator<<(std::ostream &ostream, RepairOperation const &operation);
 
-
+// Converts any RepairOperation to a Transaction. If its a job (i.e. put in
+// Target/ToDo/), it returns the corresponding job id as well.
 class RepairOperationToTransactionVisitor
   : public boost::static_visitor<
     std::pair<AgencyWriteTransaction, boost::optional<uint64_t>>
