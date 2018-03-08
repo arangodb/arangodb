@@ -1658,7 +1658,7 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
       totalCount++;
     }
            
-    if (((limitNumber == -1) && (uCount != nrResults)) || // fetch any
+    if (((uCount != nrResults)) || // fetch any / found less then N
         ((limitNumber >= 0) && (totalCount >= limitNumber))) { // fetch N
       break;
     }
