@@ -3,35 +3,33 @@
 /* global describe, it, beforeEach, afterEach */
 'use strict';
 const internal = require('internal');
-const tasks = require('@arangodb/tasks');
 const expect = require('chai').expect;
 
 const isServer = typeof arango === 'undefined';
 const query = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-const taskInfo = {
-  offset: 0,
-  command: function () {
-    var taskQuery = 'FOR x IN 1..5 LET y = SLEEP(@value) RETURN x';
-    require('internal').db._query(taskQuery, { value: 1 }, {profile: true});
-  }
-};
 
 function filterQueries (q) {
   return (q.query === query);
 }
 
+// keep track of running cursors
+let cursors = [];
+
+// in theory a batchSize of 1 should allow this cursor
+// to exist in an unfinished state
 function sendQuery (count, async) {
   count = count || 1;
   for (let i = 0; i < count; ++i) {
-    if (async === false) {
-      internal.db._query(query, { value: 1 });
-    } else {
-      tasks.register(taskInfo);
+    let opts = { stream:true };
+    if (async === true) {
+      opts.batchSize = 1; // runs SLEEP once
     }
+    let cc = internal.db._query(query, { value: 1 }, opts);
+    cursors.push(cc);
   }
-  if (async === true) {
+  /*if (async === true) {
     internal.wait(1);
-  }
+  }*/
 }
 
 function restoreDefaults (testee) {
@@ -104,6 +102,14 @@ describe('AQL query analyzer', function () {
       if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
+      for (let cc of cursors) {
+        try {
+          cc.dispose();
+        } catch(e) {
+          // noop
+        }
+      }
+      cursors = [];
       const list = testee.current().filter(filterQueries);
       for (let item of list) {
         try {
@@ -169,18 +175,17 @@ describe('AQL query analyzer', function () {
     it('should work when tracking is turned off in the middle', function () {
       sendQuery(1, true);
       expect(testee.current().filter(filterQueries).length).to.equal(1);
+      expect(cursors.length).to.equal(1);
 
       // turn it off now
       testee.properties({
         enabled: false
       });
 
-      // wait a while, and expect the list of queries to be empty in the end
-      for (let tries = 0; tries < 20; tries++) {
-        if (testee.current().filter(filterQueries).length === 0) {
-          break;
-        }
-        internal.wait(1);
+      // execute query and expect list to be empty in the end
+      for (let i = 1; i < 6; i++) {
+        expect(cursors[0].hasNext()).to.be.true;
+        expect(cursors[0].next()).to.equal(i);
       }
 
       expect(testee.current().filter(filterQueries).length).to.equal(0);
@@ -277,17 +282,12 @@ describe('AQL query analyzer', function () {
 
     it('should be able to kill a query', function () {
       sendQuery(1, true);
+
+      expect(cursors.length).to.equal(1);
+      cursors[0].dispose();
+
       let list = testee.current().filter(filterQueries);
-      expect(list.length).to.equal(1);
-      expect(function () {
-        testee.kill(list[0].id);
-        list = testee.current().filter(filterQueries);
-        for (let i = 0; i < 10 && list.length > 0; ++i) {
-          internal.wait(0.1);
-          list = testee.current().filter(filterQueries);
-        }
-        expect(list.length).to.equal(0);
-      }).not.to.throw();
+      expect(list.length).to.equal(0);
     });
   });
 });

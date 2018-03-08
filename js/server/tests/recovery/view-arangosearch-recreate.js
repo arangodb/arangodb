@@ -1,8 +1,7 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull */
-
+/* global assertEqual, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for dump/reload
+// / @brief recovery tests for views
 // /
 // / @file
 // /
@@ -25,7 +24,7 @@
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
-// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -35,40 +34,24 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var v;
 
-  db._drop('UnitTestsDummy');
-  db._create('UnitTestsDummy');
+  db._drop('UnitTestsRecoveryDummy');
+  var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  db._dropView('UnitTestsRecovery2');
-  v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'DEBUG' });
-  v.rename('UnitTestsRecovery2');
+  var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
 
-  db._dropView('UnitTestsRecovery3');
-  db._dropView('UnitTestsRecovery4');
-  v = db._createView('UnitTestsRecovery3', 'logger', {});
-  v.properties({ level: 'INFO' });
-  v.rename('UnitTestsRecovery4');
+  // make sure the next operations go into a separate log
+  internal.wal.flush(true, true);
 
-  db._dropView('UnitTestsRecovery5');
-  db._dropView('UnitTestsRecovery6');
-  v = db._createView('UnitTestsRecovery5', 'logger', {});
-  v.rename('UnitTestsRecovery6');
-  v.rename('UnitTestsRecovery5');
+  db._dropView('UnitTestsRecovery1');
+  var v2 = db._createView('UnitTestsRecovery1', 'arangosearch', {threadsMaxTotal: 7});
 
-  db._dropView('UnitTestsRecovery7');
-  db._dropView('UnitTestsRecovery8');
-  v = db._createView('UnitTestsRecovery7', 'logger', {});
-  v.rename('UnitTestsRecovery8');
-  db._dropView('UnitTestsRecovery8');
-  v = db._createView('UnitTestsRecovery8', 'logger', {});
-
-  db._collection('UnitTestsDummy').save({ _key: 'foo' }, { waitForSync: true });
+  c.save({ _key: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');
 }
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -82,27 +65,14 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether rename works
+    // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewRename: function () {
-      var v, prop;
-
-      assertNull(db._view('UnitTestsRecovery1'));
-      v = db._view('UnitTestsRecovery2');
-      prop = v.properties();
-      assertEqual(prop.level, 'DEBUG');
-
-      assertNull(db._view('UnitTestsRecovery3'));
-      v = db._view('UnitTestsRecovery4');
-      prop = v.properties();
-      assertEqual(prop.level, 'INFO');
-
-      assertNull(db._view('UnitTestsRecovery6'));
-      assertNotNull(db._view('UnitTestsRecovery5'));
-
-      assertNull(db._view('UnitTestsRecovery7'));
-      v = db._view('UnitTestsRecovery8');
+    testViewRecreate: function () {
+      var v2 = db._view('UnitTestsRecovery1');
+      assertEqual(v2.name(), 'UnitTestsRecovery1');
+      assertEqual(v2.type(), 'arangosearch');
+      assertEqual(v2.properties().threadsMaxTotal, 7);
     }
 
   };
