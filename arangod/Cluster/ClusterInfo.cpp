@@ -371,6 +371,8 @@ void ClusterInfo::loadPlan() {
   uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
                                                      // we will set in the end
 
+  LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: wantedVersion="
+    << storedVersion << ", doneVersion=" << _planProt.doneVersion;
   if (_planProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -396,6 +398,8 @@ void ClusterInfo::loadPlan() {
         } catch (...) {
         }
       }
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion="
+        << newPlanVersion;
       if (newPlanVersion == 0) {
         LOG_TOPIC(WARN, Logger::CLUSTER)
           << "Attention: /arango/Plan/Version in the agency is not set or not "
