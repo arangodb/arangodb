@@ -52,6 +52,19 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, 
   return fromCache(_temp, _likeCache);
 }
 
+static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
+    }
+    out.push_back(c);
+  }
+}
+      
 icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, transaction::Methods* trx, bool& isEmptyExpression) {
 
   std::string rx;
@@ -59,10 +72,8 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, trans
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(splitExpression, false);
   if (splitExpression.isArray()) {
-    std::string copy;
     for (auto const& it : VPackArrayIterator(slice)) {
-      copy = it.copyString();
-      if (copy.length() == 0) {
+      if (!it.isString() || it.getStringLength() == 0) {
         // one empty string rules them all
         isEmptyExpression = true;
         rx = "";
@@ -71,11 +82,16 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, trans
       if (rx.size() != 0) {
         rx += '|';
       }
-      rx += copy;
+      
+      size_t length;
+      const char *str = it.getString(length);
+      escapeRegexParams(rx, str, length);
     }
   }
   else if (splitExpression.isString()) {
-    rx = splitExpression.slice().copyString();
+    size_t length;
+    const char *str = slice.getString(length);
+    escapeRegexParams(rx, str, length);
     if (rx.length() == 0) {
       isEmptyExpression = true;
     }

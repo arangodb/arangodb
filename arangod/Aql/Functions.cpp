@@ -1567,10 +1567,7 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
     if (limitNumber == 0) {
-      VPackBuilder result;
-      result.openArray();
-      result.close();
-      return AqlValue(result);
+      return AqlValue(VPackSlice::emptyArraySlice());
     }
   }
 
@@ -1630,12 +1627,12 @@ AqlValue Functions::Split(arangodb::aql::Query* query,
     uint16_t copyThisTime = uCount;
     
     if (U_FAILURE(errorCode)) {
-      RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
+      RegisterWarning(query, "SPLIT", TRI_ERROR_QUERY_INVALID_REGEX);
       return AqlValue(AqlValueHintNull());
     }
     
     if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
-      // last hit is the remaining string to be feed into split in a subsequent invocation
+      // last hit is the remaining string to be fed into split in a subsequent invocation
       copyThisTime --;
     }
     

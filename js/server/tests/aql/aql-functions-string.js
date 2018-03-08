@@ -1041,7 +1041,18 @@ function ahuacatlStringFunctionsTestSuite () {
         [ [ 'the', 'quick', 'brown', 'foxx' ], 'the quick brown foxx', ' ' ],
         [ [ 'the quick ', ' foxx' ], 'the quick brown foxx', 'brown' ],
         [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', '' ],
-        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', ['', 'ab'] ]
+        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', ['', 'ab'] ],
+        [ [ 'the quick', 'brown foxx' ], 'the quick()brown foxx', '()' ],
+        [ [ 'the quick  brown foxx' ], 'the quick  brown foxx', ' {2}' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '?' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '+' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '*' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '^' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '$' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '.' ],
+        [ [ 'the quick7brown foxx' ], 'the quick7brown foxx', '\\d' ],
+        [ [ 'the quick brown foxx' ], "the quick brown foxx", ["[a-f]"] ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', 'u|f' ]
       ];
 
       values.forEach(function (value) {
