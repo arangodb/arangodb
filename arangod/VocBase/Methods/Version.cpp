@@ -142,7 +142,8 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 }
 
 Result Version::write(TRI_vocbase_t* vocbase,
-                    std::map<std::string, bool> tasks) {
+                      std::map<std::string, bool> tasks,
+                      bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
@@ -163,7 +164,7 @@ Result Version::write(TRI_vocbase_t* vocbase,
     builder.close();
     
     std::string json = builder.slice().toJson();
-    basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+    basics::FileUtils::spit(versionFile, json.c_str(), json.length(), sync);
   } catch(basics::Exception const& ex) {
     LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed";
     return Result(ex.code(), ex.message());

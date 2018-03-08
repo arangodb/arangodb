@@ -67,7 +67,7 @@ struct Version {
   /// @brief read the VERSION file for a database
   static VersionResult check(TRI_vocbase_t*);
   /// @brief write a VERSION file including all tasks
-  static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks);
+  static Result write(TRI_vocbase_t*, std::map<std::string, bool> tasks, bool sync);
 };
 }
 }
