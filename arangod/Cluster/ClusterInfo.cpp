@@ -40,6 +40,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/SmartVertexCollection.h"
@@ -553,7 +554,7 @@ void ClusterInfo::loadPlan() {
                   i->updateClusterEstimate();
                 }
               }
-              // mop: register with name as well as with id
+              // register with name as well as with id:
               databaseCollections.emplace(
                   std::make_pair(collectionName, newCollection));
               databaseCollections.emplace(
@@ -669,11 +670,9 @@ void ClusterInfo::loadPlan() {
               newView = std::make_shared<LogicalView>(vocbase, viewSlice);
               newView->setPlanVersion(newPlanVersion);
               std::string const viewName = newView->name();
-              // mop: register with name as well as with id
-              databaseViews.emplace(
-                  std::make_pair(viewName, newView));
-              databaseCollections.emplace(
-                  std::make_pair(viewId, newView));
+              // register with name as well as with id:
+              databaseViews.emplace(std::make_pair(viewName, newView));
+              databaseViews.emplace(std::make_pair(viewId, newView));
 
             } catch (std::exception const& ex) {
               // The Plan contains invalid view information.
