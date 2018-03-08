@@ -233,15 +233,27 @@ struct Functions {
    static AqlValue Outersection(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
    static AqlValue Distance(arangodb::aql::Query*, transaction::Methods*,
-                            VPackFunctionParameters const&);
+                                VPackFunctionParameters const&);
    static AqlValue GeoDistance(arangodb::aql::Query*, transaction::Methods*,
-                               VPackFunctionParameters const&);
+                                VPackFunctionParameters const&);
    static AqlValue GeoContains(arangodb::aql::Query*, transaction::Methods*,
-                               VPackFunctionParameters const&);
+                                VPackFunctionParameters const&);
    static AqlValue GeoIntersects(arangodb::aql::Query*, transaction::Methods*,
-                                 VPackFunctionParameters const&);
+                                VPackFunctionParameters const&);
    static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,
-                               VPackFunctionParameters const&);
+                                VPackFunctionParameters const&);
+   static AqlValue GeoPoint(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue GeoPolygon(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue GeoMultiPolygon(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue GeoMultiPoint(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue GeoPolyLine(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue GeoMultiPolyLine(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
    static AqlValue Flatten(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
    static AqlValue Zip(arangodb::aql::Query*, transaction::Methods*,

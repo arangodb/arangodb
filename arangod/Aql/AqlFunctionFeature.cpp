@@ -111,6 +111,7 @@ void AqlFunctionFeature::prepare() {
   addListFunctions();
   addDocumentFunctions();
   addGeoFunctions();
+  addGeometryConstructors();
   addDateFunctions();
   addMiscFunctions();
   addStorageEngineFunctions();
@@ -427,6 +428,22 @@ void AqlFunctionFeature::addGeoFunctions() {
     true, &Functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true,
     true, &Functions::GeoIntersects});
+}
+
+void AqlFunctionFeature::addGeometryConstructors() {
+  // geometry types
+  add({"GEO_POINT", ".,.", true, false, true, true,
+       &Functions::GeoPoint});
+  add({"GEO_MULTIPOINT", ".", true, false, true, true,
+       &Functions::GeoMultiPoint});
+  add({"GEO_POLYGON", ".", true, false, true, true,
+       &Functions::GeoPolygon});
+  add({"GEO_MULTIPOLYGON", ".", true, false, true, true,
+       &Functions::GeoMultiPolygon});
+  add({"GEO_POLYLINE", ".", true, false, true, true,
+       &Functions::GeoPolyLine});
+  add({"GEO_MULTIPOLYLINE", ".", true, false, true, true,
+       &Functions::GeoMultiPolyLine});
 }
 
 void AqlFunctionFeature::addDateFunctions() {

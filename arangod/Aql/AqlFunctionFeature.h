@@ -70,6 +70,7 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void addListFunctions();
   void addDocumentFunctions();
   void addGeoFunctions();
+  void addGeometryConstructors();
   void addDateFunctions();
   void addMiscFunctions();
   void addStorageEngineFunctions();

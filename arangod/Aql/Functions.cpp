@@ -2779,6 +2779,191 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
+/// @brief geo constructors
+
+/// @brief function GEO_POINT
+AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POINT", 2, 2);
+  
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue lon1 = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue lat1 = ExtractFunctionParameterValue(parameters, 1);
+
+  // non-numeric input
+  if (!lat1.isNumber() || !lon1.isNumber()) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  bool failed;
+  bool error = false;
+  double lon1Value = lon1.toDouble(trx, failed);
+  error |= failed;
+  double lat1Value = lat1.toDouble(trx, failed);
+  error |= failed;
+  
+  if (error) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("Point"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+  b.add(VPackValue(lon1Value));
+  b.add(VPackValue(lat1Value));
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_POLYGON
+AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POLYGON", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_POLYGON",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 4) {
+    RegisterWarning(query, "GEO_POLYGON",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("Polygon"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else {
+          RegisterInvalidArgumentWarning(query, "GEO_POLYGON");
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else {
+      RegisterInvalidArgumentWarning(query, "GEO_POLYGON");
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_MULTIPOLYGON
+AqlValue Functions::GeoMultiPolygon(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_MULTIPOLYGON", 1, 1);
+  
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+  
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_MULTIPOLYGON",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("MultiPolygon"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& x : VPackArrayIterator(v)) {
+        b.openArray();
+        for (auto const& coord : VPackArrayIterator(x)) {
+          if (coord.isNumber()) {
+            b.add(VPackValue(coord.getNumber<double>()));
+          } else {
+            RegisterInvalidArgumentWarning(query, "GEO_MULTIPOLYGON");
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+        b.close();
+      }
+      b.close();
+    } else {
+      RegisterInvalidArgumentWarning(query, "GEO_MULTIPOLYGON");
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_MULTIPOINT
+AqlValue Functions::GeoMultiPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+}
+
+/// @brief function GEO_POLYLINE
+AqlValue Functions::GeoPolyLine(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+}
+
+/// @brief function GEO_MULTIPOLYLINE
+AqlValue Functions::GeoMultiPolyLine(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+}
+
 /// @brief function FLATTEN
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
                             transaction::Methods* trx,
