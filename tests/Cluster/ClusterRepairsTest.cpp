@@ -539,7 +539,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           return nextJobId++;
         };
         auto jobCreationTimestampGenerator = []() {
-          std::tm tm;
+          std::tm tm = {};
           tm.tm_year = 2018 - 1900; // years since 1900
           tm.tm_mon = 3 - 1; // March, counted from january
           tm.tm_mday = 7;

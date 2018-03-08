@@ -20,8 +20,6 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/date_time.hpp>
-
 #include "ClusterRepairOperations.h"
 #include "ServerState.h"
 
@@ -210,7 +208,6 @@ MoveShardOperation::toVpackTodo(
 ) const {
   std::string const serverId = ServerState::instance()->getId();
 
-  // TODO This needs the lib boost_date_time. Maybe use strftime from <ctime> instead
   std::string const isoTimeString
     = getExtendedIsoString(jobCreationTimestamp);
 
