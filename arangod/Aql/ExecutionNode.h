@@ -71,6 +71,8 @@ class Builder;
 class Slice;
 }
 
+class Index;
+
 namespace aql {
 class Ast;
 struct Collection;
@@ -79,7 +81,6 @@ class ExecutionBlock;
 class ExecutionEngine;
 class TraversalBlock;
 class ExecutionPlan;
-struct Index;
 class RedundantCalculationsReplacer;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
