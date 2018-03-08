@@ -292,6 +292,32 @@ TEST_CASE("Maintenance", "[cluster][maintenance][differencePlanLocal]") {
   }
   
   // Plan also now has db3 =====================================================
+  SECTION("Add one collection to local") {
+
+    VPackBuilder v; v.add(VPackValue(std::string()));
+
+    for (auto node : localNodes) {
+
+      std::vector<ActionDescription> actions;
+      
+      (*node.second("_system").children().begin()->second)("theLeader") =
+        v.slice();
+
+      arangodb::maintenance::diffPlanLocal(
+        plan.toBuilder().slice(), node.second.toBuilder().slice(),
+        node.first, actions);
+
+      
+      std::cout << node.first << " " << actions.size() << std::endl;
+      /*REQUIRE(actions.size() == 1);
+      for (auto const& action : actions) {
+        REQUIRE(action.name() == "UpdateCollection");
+        }*/
+        
+    }
+  }
+  
+  // Plan also now has db3 =====================================================
   SECTION(
     "Empty db3 in plan should drop all local db3 collections on all servers") {
 
