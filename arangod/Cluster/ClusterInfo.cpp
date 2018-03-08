@@ -410,9 +410,11 @@ void ClusterInfo::loadPlan() {
       decltype(_shards) newShards;
       decltype(_shardServers) newShardServers;
       decltype(_shardKeys) newShardKeys;
+      decltype(_plannedViews) newViews;
 
       bool swapDatabases = false;
       bool swapCollections = false;
+      bool swapViews = false;
 
       VPackSlice databasesSlice;
       databasesSlice = planSlice.get("Databases");
@@ -425,10 +427,10 @@ void ClusterInfo::loadPlan() {
         swapDatabases = true;
       }
 
-      // mop: immediate children of collections are DATABASES, followed by their
-      // collections
+      // Immediate children of "Collections" are database names, then ids
+      // of collections, then one JSON object with the description:
 
-      //{
+      // "Plan":{"Collections": {
       //  "_system": {
       //    "3010001": {
       //      "deleted": false,
@@ -474,7 +476,7 @@ void ClusterInfo::loadPlan() {
       //      "waitForSync": false
       //    },...
       //  },...
-      //}
+      // }}
 
       databasesSlice = planSlice.get("Collections"); //format above
       if (databasesSlice.isObject()) {
@@ -612,6 +614,104 @@ void ClusterInfo::loadPlan() {
         }
       }
 
+      // Immediate children of "Views" are database names, then ids
+      // of views, then one JSON object with the description:
+
+      // "Plan":{"Views": {
+      //  "_system": {
+      //    "654321": {
+      //      "id": "654321",
+      //      "name": "v",
+      //      "collections": [
+      //        <list of cluster-wide collection IDs of linked collections>
+      //      ]
+      //    },...
+      //  },...
+      //  }}
+
+      // Now the same for views:
+      databasesSlice = planSlice.get("Views"); // format above
+      if (databasesSlice.isObject()) {
+        bool isCoordinator = ServerState::instance()->isCoordinator();
+        for (auto const& databasePairSlice :
+             VPackObjectIterator(databasesSlice)) {
+          VPackSlice const& viewsSlice = databasePairSlice.value;
+          if (!viewsSlice.isObject()) {
+            continue;
+          }
+          DatabaseViews databaseViews;
+          std::string const databaseName = databasePairSlice.key.copyString();
+          TRI_vocbase_t* vocbase = nullptr;
+          if (isCoordinator) {
+            vocbase = databaseFeature->lookupDatabaseCoordinator(databaseName);
+          } else {
+            vocbase = databaseFeature->lookupDatabase(databaseName);
+          }
+
+          if (vocbase == nullptr) {
+            // No database with this name found.
+            // We have an invalid state here.
+            continue;
+          }
+
+          for (auto const& viewPairSlice :
+               VPackObjectIterator(viewsSlice)) {
+            VPackSlice const& viewSlice = viewPairSlice.value;
+            if (!viewSlice.isObject()) {
+              continue;
+            }
+
+            std::string const viewId =
+                viewPairSlice.key.copyString();
+
+            try {
+              std::shared_ptr<LogicalView> newView;
+              newView = std::make_shared<LogicalView>(vocbase, viewSlice);
+              newView->setPlanVersion(newPlanVersion);
+              std::string const viewName = newView->name();
+              // mop: register with name as well as with id
+              databaseViews.emplace(
+                  std::make_pair(viewName, newView));
+              databaseCollections.emplace(
+                  std::make_pair(viewId, newView));
+
+            } catch (std::exception const& ex) {
+              // The Plan contains invalid view information.
+              // This should not happen in healthy situations.
+              // If it happens in unhealthy situations the
+              // cluster should not fail.
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for view '" << viewId
+                << "': " << ex.what() << ". invalid information in Plan. The"
+                "view  will be ignored for now and the invalid information"
+                "will be repaired. VelocyPack: "
+                << viewSlice.toJson();
+
+              TRI_ASSERT(false);
+              continue;
+            } catch (...) {
+              // The Plan contains invalid view information.
+              // This should not happen in healthy situations.
+              // If it happens in unhealthy situations the
+              // cluster should not fail.
+              LOG_TOPIC(ERR, Logger::AGENCY)
+                << "Failed to load information for view '" << viewId
+                << ". invalid information in Plan. The view will "
+                "be ignored for now and the invalid information will "
+                "be repaired. VelocyPack: "
+                << viewSlice.toJson();
+
+              TRI_ASSERT(false);
+              continue;
+            }
+          }
+
+          newViews.emplace(
+              std::make_pair(databaseName, databaseViews));
+          swapViews = true;
+        }
+      }
+
       WRITE_LOCKER(writeLocker, _planProt.lock);
       _plan = planBuilder;
       _planVersion = newPlanVersion;
@@ -623,6 +723,9 @@ void ClusterInfo::loadPlan() {
         _shards.swap(newShards);
         _shardKeys.swap(newShardKeys);
         _shardServers.swap(newShardServers);
+      }
+      if (swapViews) {
+        _plannedViews.swap(newViews);
       }
       _planProt.doneVersion = storedVersion;
       _planProt.isValid = true;  // will never be reset to false

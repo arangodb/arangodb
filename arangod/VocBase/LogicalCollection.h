@@ -353,14 +353,6 @@ class LogicalCollection: public LogicalDataSource {
   // with the checksum provided in the reference checksum
   Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
-  // Set and get _planVersion, this is only used if the object is used in
-  // ClusterInfo to represent a cluster wide collection in the agency.
-  void setPlanVersion(uint64_t v) {
-    _planVersion = v;
-  }
-  uint64_t getPlanVersion() const {
-    return _planVersion;
-  }
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -443,12 +435,6 @@ class LogicalCollection: public LogicalDataSource {
   std::unordered_map<std::string, double> _clusterEstimates;
   double _clusterEstimateTTL; //only valid if above vector is not empty
   basics::ReadWriteLock _clusterEstimatesLock;
-
-  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
-                           // happens in ClusterInfo when this object is used
-                           // to represent a cluster wide collection. This is
-                           // then the version in the agency Plan that underpins
-                           // the information in this object. Otherwise 0.
 };
 
 }  // namespace arangodb

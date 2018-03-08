@@ -73,7 +73,8 @@ class LogicalDataSource {
       _vocbase(vocbase),
       _id(id),
       _planId(planId),
-      _deleted(deleted) {
+      _deleted(deleted),
+      _planVersion(0) {
   }
   LogicalDataSource(LogicalDataSource const& other)
     : _name(other._name),
@@ -81,7 +82,8 @@ class LogicalDataSource {
       _vocbase(other._vocbase),
       _id(other._id),
       _planId(other._planId),
-      _deleted(other._deleted) {
+      _deleted(other._deleted),
+      _planVersion(other._planVersion) {
   }
 
   virtual ~LogicalDataSource() {}
@@ -95,6 +97,15 @@ class LogicalDataSource {
   inline Type const& type() const noexcept { return _type; }
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
+  // Set and get _planVersion, this is only used if the object is used in
+  // ClusterInfo to represent a cluster wide collection in the agency.
+  void setPlanVersion(uint64_t v) {
+    _planVersion = v;
+  }
+  uint64_t getPlanVersion() const {
+    return _planVersion;
+  }
+
  protected:
   inline void deleted(bool deleted) noexcept { _deleted = deleted; }
   inline void name(std::string&& name) noexcept { _name = std::move(name); }
@@ -107,6 +118,12 @@ class LogicalDataSource {
   TRI_voc_cid_t const _id; // local data-source id (current database node)
   TRI_voc_cid_t const _planId; // global data-source id (cluster-wide)
   bool _deleted; // data-source marked as deleted
+
+  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
+                           // happens in ClusterInfo when this object is used
+                           // to represent a cluster wide collection. This is
+                           // then the version in the agency Plan that underpins
+                           // the information in this object. Otherwise 0.
 };
 
 } // arangodb
