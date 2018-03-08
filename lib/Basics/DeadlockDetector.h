@@ -113,42 +113,42 @@ class DeadlockDetector {
       auto it = _active.find(top.value);
         
       if (it != _active.end()) {
-	if (!top.isWrite) {
-	  // we are a reader
-	  bool other = (*it).second.second;
+        if (!top.isWrite) {
+          // we are a reader
+          bool other = (*it).second.second;
 
-	  if (other) {
-	    // other is a writer
-	    TID otherTid = *((*it).second.first.begin());
+          if (other) {
+            // other is a writer
+            TID otherTid = *((*it).second.first.begin());
 
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, other);
-	    }
-	  }
-	} else {
-	  // we are a writer
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(otherTid, (*it2).second.first, other);
+            }
+          }
+        } else {
+          // we are a writer
 
-	  // other is either a reader or a writer
-	  for (auto const& otherTid : (*it).second.first) {
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+          // other is either a reader or a writer
+          for (auto const& otherTid : (*it).second.first) {
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, (*it).second.second);
-	    }
-	  }
-	}
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(otherTid, (*it2).second.first, (*it).second.second);
+            }
+          }
+        }
       }
 
       visited.emplace(top.tid);
