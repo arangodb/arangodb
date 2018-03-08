@@ -25,19 +25,20 @@
 
 #include "Aql/AqlResult.h"
 #include "Aql/BasicBlocks.h"
-#include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
 #include "Aql/CollectNode.h"
-#include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
+#include "Aql/CollectOptions.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
+// #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/IndexBlock.h"
-#include "Aql/ModificationBlocks.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/ShortestPathBlock.h"
@@ -52,14 +53,12 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Graph/BaseOptions.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -113,7 +112,7 @@ void ExecutionEngine::createBlocks(
       }
 
       // for all node types but REMOTEs, we create blocks
-      std::unique_ptr<ExecutionBlock> uptrEb(createBlock(en, cache, includedShards));
+      std::unique_ptr<ExecutionBlock> uptrEb(en->createBlock(*this, cache, includedShards));
 
       if (uptrEb == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -202,133 +201,6 @@ void ExecutionEngine::createBlocks(
   }
 }
 
-/// @brief helper function to create a block
-ExecutionBlock* ExecutionEngine::createBlock(
-    ExecutionNode const* en,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards) {
-  switch (en->getType()) {
-    case ExecutionNode::SINGLETON: {
-      return new SingletonBlock(this, static_cast<SingletonNode const*>(en));
-    }
-    case ExecutionNode::INDEX: {
-      return new IndexBlock(this, static_cast<IndexNode const*>(en));
-    }
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      return new EnumerateCollectionBlock(
-          this, static_cast<EnumerateCollectionNode const*>(en));
-    }
-    case ExecutionNode::ENUMERATE_LIST: {
-      return new EnumerateListBlock(this,
-                                    static_cast<EnumerateListNode const*>(en));
-    }
-#ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      // FIXME better to replace switch with factory method
-      auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
-      return viewNode->createExecutionBlock(*this);
-    }
-#endif
-    case ExecutionNode::TRAVERSAL: {
-      return new TraversalBlock(this, static_cast<TraversalNode const*>(en));
-    }
-    case ExecutionNode::SHORTEST_PATH: {
-      return new ShortestPathBlock(this,
-                                   static_cast<ShortestPathNode const*>(en));
-    }
-    case ExecutionNode::CALCULATION: {
-      return new CalculationBlock(this,
-                                  static_cast<CalculationNode const*>(en));
-    }
-    case ExecutionNode::FILTER: {
-      return new FilterBlock(this, static_cast<FilterNode const*>(en));
-    }
-    case ExecutionNode::LIMIT: {
-      return new LimitBlock(this, static_cast<LimitNode const*>(en));
-    }
-    case ExecutionNode::SORT: {
-      return new SortBlock(this, static_cast<SortNode const*>(en));
-    }
-    case ExecutionNode::COLLECT: {
-      auto aggregationMethod =
-          static_cast<CollectNode const*>(en)->aggregationMethod();
-
-      if (aggregationMethod ==
-          CollectOptions::CollectMethod::HASH) {
-        return new HashedCollectBlock(this,
-                                      static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::SORTED) {
-        return new SortedCollectBlock(this,
-                                      static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::DISTINCT) {
-        return new DistinctCollectBlock(this,
-                                        static_cast<CollectNode const*>(en));
-      }
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot instantiate CollectBlock with "
-                                     "undetermined aggregation method");
-    }
-    case ExecutionNode::SUBQUERY: {
-      auto es = static_cast<SubqueryNode const*>(en);
-      auto it = cache.find(es->getSubquery());
-
-      TRI_ASSERT(it != cache.end());
-
-      return new SubqueryBlock(this, static_cast<SubqueryNode const*>(en),
-                               it->second);
-    }
-    case ExecutionNode::RETURN: {
-      return new ReturnBlock(this, static_cast<ReturnNode const*>(en));
-    }
-    case ExecutionNode::REMOVE: {
-      return new RemoveBlock(this, static_cast<RemoveNode const*>(en));
-    }
-    case ExecutionNode::INSERT: {
-      return new InsertBlock(this, static_cast<InsertNode const*>(en));
-    }
-    case ExecutionNode::UPDATE: {
-      return new UpdateBlock(this, static_cast<UpdateNode const*>(en));
-    }
-    case ExecutionNode::REPLACE: {
-      return new ReplaceBlock(this, static_cast<ReplaceNode const*>(en));
-    }
-    case ExecutionNode::UPSERT: {
-      return new UpsertBlock(this, static_cast<UpsertNode const*>(en));
-    }
-    case ExecutionNode::NORESULTS: {
-      return new NoResultsBlock(this, static_cast<NoResultsNode const*>(en));
-    }
-    case ExecutionNode::SCATTER: {
-      auto shardIds =
-          static_cast<ScatterNode const*>(en)->collection()->shardIds(
-              includedShards);
-      return new ScatterBlock(this, static_cast<ScatterNode const*>(en),
-                              *shardIds);
-    }
-    case ExecutionNode::DISTRIBUTE: {
-      auto shardIds =
-          static_cast<DistributeNode const*>(en)->collection()->shardIds(
-              includedShards);
-      return new DistributeBlock(
-          this, static_cast<DistributeNode const*>(en), *shardIds,
-          static_cast<DistributeNode const*>(en)->collection());
-    }
-    case ExecutionNode::GATHER: {
-      return new GatherBlock(this, static_cast<GatherNode const*>(en));
-    }
-    case ExecutionNode::REMOTE: {
-      auto remote = static_cast<RemoteNode const*>(en);
-      return new RemoteBlock(this, remote, remote->server(),
-                             remote->ownName(), remote->queryId());
-    }
-  }
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
-}
-
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(Query* query)
     : _stats(),
@@ -375,9 +247,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      std::unique_ptr<ExecutionBlock> eb(engine->createBlock(
-          en, cache, std::unordered_set<std::string>()));
-
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
@@ -388,14 +257,13 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      engine->addBlock(eb.get());
+      static const std::unordered_set<std::string> EMPTY;
+      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
 
       if (!en->hasParent()) {
         // yes. found a new root!
-        root = eb.get();
+        root = block;
       }
-
-      block = eb.release();
     }
 
     TRI_ASSERT(block != nullptr);
@@ -729,4 +597,12 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 
   _blocks.emplace_back(block);
+}
+
+/// @brief add a block to the engine
+ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock>&& block) {
+  TRI_ASSERT(block != nullptr);
+
+  _blocks.emplace_back(block.get());
+  return block.release();
 }

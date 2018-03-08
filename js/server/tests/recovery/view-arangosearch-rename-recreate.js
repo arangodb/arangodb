@@ -42,15 +42,15 @@ function runSetup () {
 
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
-  var v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'DEBUG' });
+  var v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
+  v.properties({ threadsMaxTotal: 17 });
 
   v.rename('UnitTestsRecovery2');
 
-  v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'INFO' });
+  v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
+  v.properties({ threadsMaxTotal: 7 });
 
-  internal.wal.flush(true, true);
+  db.UnitTestsDummy.save({ _key: 'foo' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -71,14 +71,14 @@ function recoverySuite () {
     // / @brief test whether rename and recreate works
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewRenameRecreateWithFlush: function () {
+    testViewRenameRecreate: function () {
       var v, prop;
 
       v = db._view('UnitTestsRecovery1');
-      assertEqual(v.properties().level, 'INFO');
+      assertEqual(v.properties().threadsMaxTotal, 7);
 
       v = db._view('UnitTestsRecovery2');
-      assertEqual(v.properties().level, 'DEBUG');
+      assertEqual(v.properties().threadsMaxTotal, 17);
     }
 
   };

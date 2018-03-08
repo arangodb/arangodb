@@ -54,10 +54,6 @@ class ExecutionEngine {
       std::unordered_set<std::string> const& restrictToShards,
       std::unordered_map<std::string, std::string> const& queryIds);
 
-  TEST_VIRTUAL ExecutionBlock* createBlock(ExecutionNode const* en,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-      std::unordered_set<std::string> const& includedShards);
-
   /// @brief get the root block
   TEST_VIRTUAL ExecutionBlock* root() const {
     TRI_ASSERT(_root != nullptr);
@@ -115,6 +111,10 @@ class ExecutionEngine {
 
   /// @brief add a block to the engine
   TEST_VIRTUAL void addBlock(ExecutionBlock*);
+
+  /// @brief add a block to the engine
+  /// @returns added block
+  ExecutionBlock* addBlock(std::unique_ptr<ExecutionBlock>&&);
 
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister) {

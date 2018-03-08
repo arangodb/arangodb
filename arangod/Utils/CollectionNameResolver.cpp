@@ -314,6 +314,41 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   return name;
 }
 
+std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
+    TRI_voc_cid_t id
+) const noexcept {
+  // db server / standalone
+  if (!ServerState::isRunningInCluster(_serverRole)
+      || ServerState::isDBServer(_serverRole)) {
+    return _vocbase ? _vocbase->lookupDataSource(id) : nullptr;
+  }
+
+  // cluster coordinator
+  auto* ci = ClusterInfo::instance();
+
+  if (!ci) {
+    return nullptr;
+  }
+
+  try {
+    auto name = std::to_string(id);
+    auto cinfo = ci->getCollection(_vocbase->name(), name);
+
+    if (cinfo) {
+      return std::static_pointer_cast<LogicalDataSource>(cinfo);
+    }
+
+    return std::static_pointer_cast<LogicalDataSource>(
+      ci->getView(_vocbase->name(), name)
+    );
+  } catch (...) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      << "caught exception while resolving cluster data-source id: " << id;
+  }
+
+  return nullptr;
+}
+
 std::string CollectionNameResolver::getViewNameCluster(
     TRI_voc_cid_t cid
 ) const {

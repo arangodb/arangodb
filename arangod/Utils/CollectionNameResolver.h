@@ -31,6 +31,7 @@ enum TRI_col_type_e : uint32_t;
 
 namespace arangodb {
 class LogicalCollection;
+class LogicalDataSource;
 
 class CollectionNameResolver {
  public:
@@ -119,6 +120,13 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
 
   std::string getCollectionName(std::string const& nameOrId) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a collection struct for a collection name
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalDataSource> getDataSource(
+    TRI_voc_cid_t id
+  ) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster-wide view name for a cluster-wide view id

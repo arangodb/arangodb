@@ -273,8 +273,10 @@ void IResearchViewNode::getVariablesUsedHere(
   }
 }
 
-aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
-    aql::ExecutionEngine& engine
+std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
@@ -319,7 +321,7 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
 
   if (_sortCondition.empty()) {
     // unordered case
-    return new IResearchViewUnorderedBlock(*reader, engine, *this);
+    return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
   }
 
 //FIXME uncomment when the following method will be there:
@@ -331,7 +333,7 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
 //  }
 
   // generic case
-  return new IResearchViewBlock(*reader, engine, *this);
+  return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
 
 NS_END // iresearch
