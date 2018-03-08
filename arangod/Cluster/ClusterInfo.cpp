@@ -1227,6 +1227,18 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                     << p.key.copyString();
                 }
               }
+              if (plannedServers.empty()) {
+                LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                  << "This should never have happened, Plan empty. Dumping _shards in Plan:";
+                for (auto const& p : _shards) {
+                  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Shard: "
+                    << p.first;
+                  for (auto const& q : *(p.second)) {
+                    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "  Server: " << q;
+                  }
+                }
+                TRI_assert(false);
+              }
               std::vector<ServerID> currentServers;
               VPackSlice servers = p.value.get("servers");
               if (!servers.isArray()) {
