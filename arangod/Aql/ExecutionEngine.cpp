@@ -129,6 +129,9 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 
       if (nodeType == ExecutionNode::DISTRIBUTE ||
           nodeType == ExecutionNode::SCATTER ||
+#ifdef USE_IRESEARCH
+          nodeType == ExecutionNode::SCATTER_IRESEARCH_VIEW ||
+#endif
           nodeType == ExecutionNode::GATHER) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
