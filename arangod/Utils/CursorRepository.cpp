@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CursorRepository.h"
+
+#include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -105,21 +107,41 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 /// @brief creates a cursor and stores it in the registry
 /// the cursor will be returned with the usage flag set to true. it must be
 /// returned later using release()
-/// the cursor will take ownership of both json and extra
+/// the cursor will take ownership and retain the entire QueryResult object
 ////////////////////////////////////////////////////////////////////////////////
 
 Cursor* CursorRepository::createFromQueryResult(
-    aql::QueryResult&& result, size_t batchSize, std::shared_ptr<VPackBuilder> extra,
-    double ttl, bool count) {
+    aql::QueryResult&& result, size_t batchSize,
+    double ttl, bool hasCount) {
   TRI_ASSERT(result.result != nullptr);
 
   CursorId const id = TRI_NewTickServer();
 
-  std::unique_ptr<Cursor> cursor;
-  cursor.reset(new VelocyPackCursor(
-      _vocbase, id, std::move(result), batchSize, extra, ttl, count));
+  std::unique_ptr<Cursor> cursor(new aql::QueryResultCursor(
+      _vocbase, id, std::move(result), batchSize, ttl, hasCount));
   cursor->use();
 
+  return addCursor(std::move(cursor));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cursor and stores it in the registry
+/// the cursor will be returned with the usage flag set to true. it must be
+/// returned later using release()
+/// the cursor will create a query internally and retain it until deleted
+//////////////////////////////////////////////////////////////////////////////
+
+Cursor* CursorRepository::createQueryStream(std::string const& query,
+                                            std::shared_ptr<VPackBuilder> const& binds,
+                                            std::shared_ptr<VPackBuilder> const& opts,
+                                            size_t batchSize, double ttl) {
+  TRI_ASSERT(!query.empty());
+  
+  CursorId const id = TRI_NewTickServer();
+  std::unique_ptr<Cursor> cursor(new aql::QueryStreamCursor(
+        _vocbase, id, query, binds, opts, batchSize, ttl));
+  cursor->use();
+  
   return addCursor(std::move(cursor));
 }
 

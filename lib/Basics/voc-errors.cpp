@@ -46,6 +46,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
+  REG_ERROR(ERROR_HTTP_GATEWAY_TIMEOUT, "gateway timeout");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");

@@ -83,8 +83,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   // the builder is not cleared and thus should be empty before the call.
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
-  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file,
-                                          VPackBuilder* builder);
   void startGarbageCollection();
 
   /// @brief forceContext == -1 means that any free context may be

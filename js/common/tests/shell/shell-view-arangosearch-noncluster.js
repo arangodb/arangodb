@@ -49,7 +49,7 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingBadNameEmpty : function () {
       try {
-        db._createView("", "logger", {});
+        db._createView("", "arangosearch", {});
         fail();
       }
       catch (err) {
@@ -101,8 +101,8 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingBadNameDuplicate : function () {
       try {
-        db._createView("abc", "logger", {});
-        db._createView("abc", "logger", {});
+        db._createView("abc", "arangosearch", {});
+        db._createView("abc", "arangosearch", {});
         fail();
       }
       catch (err) {
@@ -117,8 +117,8 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingRenameDuplicate : function () {
       try {
-        db._createView("abc", "logger", {});
-        var v = db._createView("def", "logger", {});
+        db._createView("abc", "arangosearch", {});
+        var v = db._createView("def", "arangosearch", {});
         v.rename("abc");
         fail();
       }
@@ -136,7 +136,7 @@ function ViewSuite () {
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingRenameIllegal : function () {
       try {
-        var v = db._createView("abc", "logger", {});
+        var v = db._createView("abc", "arangosearch", {});
         v.rename("@bc!");
         fail();
       }
@@ -159,36 +159,32 @@ function ViewSuite () {
     /// @brief modify with unacceptable properties
     ////////////////////////////////////////////////////////////////////////////
     testErrorHandlingModifyUnacceptable : function () {
-      var abc = db._createView("abc", "logger", {});
+      var abc = db._createView("abc", "arangosearch", {threadsMaxTotal:17});
       assertEqual(abc.name(), "abc");
-      try {
-        abc.properties({"bogus": "junk"});
-        fail();
-      }
-      catch (err) {
-        assertEqual(10, err.errorNum);
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, 10);
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-        abc.drop();
-      }
+      assertEqual(abc.properties().threadsMaxTotal, 17);
+      abc.properties({"bogus": "junk", "threadsMaxTotal":7});
+      assertEqual(abc.properties().threadsMaxTotal, 7);
+      abc.drop();
     },
 
     ////////////////////////////////////////////////////////////////////////////
     /// @brief create a couple views and then drop them
     ////////////////////////////////////////////////////////////////////////////
     testAddDrop : function () {
-      db._createView("abc", "logger", {"level": "WARN"});
-      db._createView("def", "logger", {"level": "DEBUG"});
+      db._dropView("abc");
+      db._dropView("def");
+      db._createView("abc", "arangosearch", {"threadsMaxTotal": 10});
+      db._createView("def", "arangosearch", {"threadsMaxTotal": 3});
       var abc = db._view("abc");
       var def = db._view("def");
       var propA = abc.properties();
       var propD = def.properties();
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "logger");
-      assertEqual(propA.level, "WARN");
+      assertEqual(abc.type(), "arangosearch");
+      assertEqual(propA.threadsMaxTotal, 10);
       assertEqual(def.name(), "def");
-      assertEqual(def.type(), "logger");
-      assertEqual(propD.level, "DEBUG");
+      assertEqual(def.type(), "arangosearch");
+      assertEqual(propD.threadsMaxTotal, 3);
       abc.drop();
       def.drop();
       try {
@@ -218,9 +214,9 @@ function ViewSuite () {
     /// @brief retrieve short list of views
     ////////////////////////////////////////////////////////////////////////////
     testShortList : function () {
-      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      var abc = db._createView("abc", "arangosearch", {});
       assertEqual(abc.name(), "abc");
-      var def = db._createView("def", "logger", {"level": "DEBUG"});
+      var def = db._createView("def", "arangosearch", {});
       assertEqual(def.name(), "def");
       var views = db._views();
       assertTrue(Array.isArray(views));
@@ -235,20 +231,20 @@ function ViewSuite () {
     /// @brief modify properties
     ////////////////////////////////////////////////////////////////////////////
     testModifyProperties : function () {
-      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      var abc = db._createView("abc", "arangosearch", {"threadsMaxTotal": 10});
       var props = abc.properties();
 
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "logger");
-      assertEqual(props.level, "WARN");
+      assertEqual(abc.type(), "arangosearch");
+      assertEqual(props.threadsMaxTotal, 10);
 
-      abc.properties({"level": "TRACE"});
+      abc.properties({"threadsMaxTotal": 7});
       abc = db._view("abc");
       props = abc.properties();
 
       assertEqual(abc.name(), "abc");
-      assertEqual(abc.type(), "logger");
-      assertEqual(props.level, "TRACE");
+      assertEqual(abc.type(), "arangosearch");
+      assertEqual(props.threadsMaxTotal, 7);
 
       abc.drop();
     },
@@ -257,7 +253,7 @@ function ViewSuite () {
     /// @brief rename view
     ////////////////////////////////////////////////////////////////////////////
     testRename : function () {
-      var abc = db._createView("abc", "logger", {"level": "WARN"});
+      var abc = db._createView("abc", "arangosearch", {});
       assertEqual(abc.name(), "abc");
 
       abc.rename("def");
