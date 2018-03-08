@@ -113,7 +113,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   return res;
 }
 
-LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
+LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) const {
   TransactionCollection* trxColl = this->trxCollection(cid);
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->collection();

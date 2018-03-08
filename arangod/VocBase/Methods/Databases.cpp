@@ -164,7 +164,7 @@ arangodb::Result Databases::create(std::string const& dbName,
 
   VPackBuilder sanitizedUsers;
   sanitizedUsers.openArray();
-  for (VPackSlice const& user : VPackArrayIterator(users)) {
+  for (VPackSlice user : VPackArrayIterator(users)) {
     sanitizedUsers.openObject();
     if (!user.isObject()) {
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);

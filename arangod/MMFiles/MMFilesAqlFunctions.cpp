@@ -135,24 +135,17 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 /// @brief Load geoindex for collection name
 static arangodb::MMFilesGeoIndex* getGeoIndex(
     transaction::Methods* trx, TRI_voc_cid_t const& cid,
-    std::string const& collectionName) {
+    std::string const& cname) {
   // NOTE:
   // Due to trx lock the shared_index stays valid
   // as long as trx stays valid.
   // It is save to return the Raw pointer.
   // It can only be used until trx is finished.
-  trx->addCollectionAtRuntime(cid, collectionName);
-
-  auto document = trx->documentCollection(cid);
-
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
-  }
+  trx->addCollectionAtRuntime(cid, cname);
 
   arangodb::MMFilesGeoIndex* index = nullptr;
-
-  for (auto const& idx : document->getIndexes()) {
+  auto indexes = trx->indexesForCollection(cname);
+  for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX) {
       index = static_cast<arangodb::MMFilesGeoIndex*>(idx.get());
@@ -162,7 +155,7 @@ static arangodb::MMFilesGeoIndex* getGeoIndex(
 
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
-                                  collectionName.c_str());
+                                  cname.c_str());
   }
 
   trx->pinData(cid);
@@ -216,8 +209,6 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   // add the collection to the query for proper cache handling
   query->collections()->add(cname, AccessMode::Type::READ);
   trx->addCollectionAtRuntime(cid, cname, AccessMode::Type::READ);
-  LogicalCollection const* collection = trx->documentCollection(cid);
-  TRI_ASSERT(collection != nullptr);
 
   // split requested attribute name on '.' character to create a proper
   // vector of AttributeNames
@@ -232,8 +223,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   // We are NOT allowed to delete the index.
   arangodb::MMFilesFulltextIndex* fulltextIndex = nullptr;
 
-
-  auto indexes = collection->getIndexes();
+  auto indexes = trx->indexesForCollection(cname);
   for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {
       // test if index is on the correct field
@@ -274,10 +264,12 @@ AqlValue MMFilesAqlFunctions::Fulltext(
   std::set<TRI_voc_rid_t> queryResult = TRI_QueryMMFilesFulltextIndex(fulltextIndex->internals(), ft);
 
   TRI_ASSERT(trx->isPinned(cid));
+  LogicalCollection const* collection = trx->documentCollection(cid);
+  TRI_ASSERT(collection != nullptr);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
-
+  
   ManagedDocumentResult mmdr;
   for (auto const& it : queryResult) {
     if (collection->readDocument(trx, LocalDocumentId{it}, mmdr)) {
