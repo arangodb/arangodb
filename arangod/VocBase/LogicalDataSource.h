@@ -32,7 +32,9 @@ struct TRI_vocbase_t; // forward declaration
 namespace arangodb {
 
 namespace velocypack {
-  class StringRef; // forward declaration
+
+class StringRef; // forward declaration
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
