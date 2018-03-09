@@ -201,6 +201,31 @@ getExtendedIsoString(std::chrono::system_clock::time_point time_point) {
   return std::string(timeString);
 }
 
+class RepairOperationTypeStringVisitor
+  : public boost::static_visitor<std::string>
+{
+ public:
+  std::string operator()(BeginRepairsOperation const& op) const {
+    return "BeginRepairsOperation";
+  }
+  std::string operator()(FinishRepairsOperation const& op) const {
+    return "FinishRepairsOperation";
+  }
+  std::string operator()(MoveShardOperation const& op) const {
+    return "MoveShardOperation";
+  }
+  std::string operator()(FixServerOrderOperation const& op) const {
+    return "FixServerOrderOperation";
+  }
+};
+
+
+std::string
+cluster_repairs::getTypeAsString(RepairOperation const& op) {
+  return boost::apply_visitor(RepairOperationTypeStringVisitor(), op);
+}
+
+
 VPackBufferPtr
 MoveShardOperation::toVpackTodo(
   uint64_t jobId,

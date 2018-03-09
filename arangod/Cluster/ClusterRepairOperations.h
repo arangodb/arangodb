@@ -122,6 +122,8 @@ using RepairOperation = boost::variant<
   FixServerOrderOperation const
 >;
 
+std::string getTypeAsString(RepairOperation const& op);
+
 std::ostream &operator<<(std::ostream &ostream, RepairOperation const &operation);
 
 // Converts any RepairOperation to a Transaction. If its a job (i.e. put in

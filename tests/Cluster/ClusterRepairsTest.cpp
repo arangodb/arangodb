@@ -94,10 +94,6 @@ void checkAgainstExpectedOperations(
 ) {
   DistributeShardsLikeRepairer repairer;
 
-  // TODO there are more values that might be needed in the preconditions,
-  // like distributeShardsLike / repairingDistributeShardsLike,
-  // or maybe replicationFactor
-
   ResultT<std::list<RepairOperation>> repairOperationsResult
     = repairer.repairDistributeShardsLike(
       VPackSlice(planCollections->data()),
@@ -133,27 +129,6 @@ void checkAgainstExpectedOperations(
     auto const &expectedRepairOpIt = it.get<1>();
 
     REQUIRE(repairOpIt == expectedRepairOpIt);
-  }
-}
-
-void requireTransactionIdsToBeUnique(
-  std::vector<AgencyWriteTransaction> const& transactions
-) {
-  std::set<std::__cxx11::string> transactionClientIds;
-  for (auto const& it : transactions) {
-    bool inserted;
-    tie(std::ignore, inserted) = transactionClientIds.insert(it.clientId);
-    REQUIRE(inserted);
-  }
-}
-
-void overwriteTransactionIdsWith(
-  std::vector<AgencyWriteTransaction>& transactions,
-  std::string const& id
-) {
-  std::set<std::__cxx11::string> transactionClientIds;
-  for (auto& it : transactions) {
-    it.clientId = id;
   }
 }
 

@@ -179,10 +179,7 @@ RestRepairHandler::repairDistributeShardsLike() {
       for (auto const& op : repairOperations) {
         LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
         << "[tg] op type = "
-        << (op.which() == 0 ? "MoveShardOperation" :
-            op.which() == 1 ? "AgencyWriteTransaction" :
-            "(unknown)"
-        );
+        << getTypeAsString(op);
 
         std::stringstream stringstream;
         stringstream << op;
