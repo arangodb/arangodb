@@ -110,7 +110,8 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
-  LogicalCollection* coll = vocbase->lookupCollection(name);
+  auto coll = vocbase->lookupCollection(name);
+
   if (coll != nullptr) {
     // check authentication after ensuring the collection exists
     if (exec != nullptr &&
@@ -118,7 +119,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
       return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
     }
     try {
-      func(coll);
+      func(coll.get());
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {

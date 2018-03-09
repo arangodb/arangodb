@@ -478,7 +478,8 @@ static void resolveInfo(
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {  // single server mode
-    LogicalCollection* lc = vocbase->lookupCollection(collectionID);
+    auto lc = vocbase->lookupCollection(collectionID);
+
     if (lc == nullptr || lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
