@@ -323,7 +323,8 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
           LOG_TOPIC(DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
-          usleep(5000);
+
+          std::this_thread::sleep_for(std::chrono::microseconds(5000));
           break;
         }
 
