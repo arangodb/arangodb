@@ -24,6 +24,7 @@
 #include "SortNode.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/SortBlock.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 
@@ -188,6 +189,15 @@ SortInformation SortNode::getSortInformation(
   }
 
   return result;
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> SortNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<SortBlock>(&engine, this);
 }
 
 /// @brief estimateCost

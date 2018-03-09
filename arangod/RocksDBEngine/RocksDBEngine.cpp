@@ -1645,10 +1645,16 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
+      auto& creator = viewTypesFeature->factory(dataSourceType);
 
-      std::string type = it.get("type").copyString();
-      // will throw if type is invalid
-      ViewCreator& creator = viewTypesFeature->creator(type);
+      if (!creator) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "no handler found for view type"
+        );
+      }
 
       TRI_ASSERT(!it.get("id").isNone());
 

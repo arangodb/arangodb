@@ -55,7 +55,7 @@ void SingleServerTraverser::setStartVertex(std::string const& vid) {
   _startIdBuilder->add(VPackValue(vid));
   VPackSlice idSlice = _startIdBuilder->slice();
 
-  if (!vertexMatchesConditions(idSlice, 0)) {
+  if (!vertexMatchesConditions(StringRef(vid), 0)) {
     // Start vertex invalid
     _done = true;
     return;

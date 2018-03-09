@@ -62,7 +62,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, dou
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _ttl(ttl),
+      _ttl(ttl > 0.0 ? ttl : InitialSyncer::defaultBatchTimeout),
       _expires(TRI_microtime() + _ttl),
       _isDeleted(false),
       _isUsed(true),
@@ -152,15 +152,13 @@ int RocksDBReplicationContext::bindCollection(
 }
 
 // returns inventory
-std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
-RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
-                                        bool includeSystem,
-                                        bool global) {
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
+                                               bool includeSystem,
+                                               bool global,
+                                               VPackBuilder& result) {
   TRI_ASSERT(vocbase != nullptr);
   if (!_trx) {
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
-        std::shared_ptr<VPackBuilder>(nullptr));
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   auto nameFilter = [includeSystem](LogicalCollection const* collection) {
@@ -179,21 +177,15 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
     return true;
   };
 
-  auto tick = TRI_CurrentTickServer();
-
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
   if (global) {
     // global inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    DatabaseFeature::DATABASE->inventory(*builder.get(), tick, nameFilter);
-    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          builder);
+    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    return TRI_ERROR_NO_ERROR;
   } else {
     // database-specific inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    vocbase->inventory(*builder.get(), tick, nameFilter);
-
-    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          builder);
+    vocbase->inventory(result, tick, nameFilter);
+    return TRI_ERROR_NO_ERROR;
   }
 }
 
@@ -524,10 +516,8 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  if (_ttl > 0.0) {
+  if (ttl <= 0.0) {
     ttl = _ttl;
-  } else {
-    ttl = InitialSyncer::defaultBatchTimeout;
   }
   _expires = TRI_microtime() + ttl;
   if (_serverId != 0) {

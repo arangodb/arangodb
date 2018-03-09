@@ -1,16 +1,7 @@
-'use strict';
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check if the version of database is a match
-///
-/// @file
-///
-/// Version check at the start of the server, will optionally perform necessary
-/// upgrades.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,18 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_UTILS_VERSION_TRACKER_H
+#define ARANGOD_UTILS_VERSION_TRACKER_H 1
 
-(function() {
-  try {
-    console.debug("checking database version");
-    return require("@arangodb/database-version").databaseVersion().result;
-  } catch (err) {
-    console.error("database version check failed: " + err);
+#include "Basics/Common.h"
+#include "Logger/Logger.h"
+
+namespace arangodb {
+
+/// @brief a class for tracking a global version number
+/// this version number is increased on every DDL operation, and may be sent
+/// to the agency in order to notify other listeners about DDL changes
+class VersionTracker {
+ public: 
+  VersionTracker() : _value(0) {}
+ 
+  void track(char const*) {
+    ++_value; 
+    // can enable this for tracking things later
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "version updated by " << msg; 
   }
-}());
 
+  uint64_t current() const { return _value; }
 
+ private:
+  std::atomic<uint64_t> _value;
+};
+}
+
+#endif
