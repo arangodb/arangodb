@@ -506,18 +506,21 @@ def generateAQL(testName):
     if not AQLBV in value:
         value[AQLBV] = "{}"
 
+    if not AQLDS in value:
+        value[AQLDS] = ""
+
     print '''
 %s
 /// %s
-(function() {
+(() => {
   internal.startPrettyPrint(true);
   internal.stopColorPrint(true);
-  var testName = '%s';
-  var lineCount = 0;
-  var startLineCount = %d;
-  var outputDir = '%s';
-  var sourceFile = '%s';
-  var startTime = time();
+  const testName = '%s';
+  const lineCount = 0;
+  const startLineCount = %d;
+  const outputDir = '%s';
+  const sourceFile = '%s';
+  const startTime = time();
   output = '';
 ''' % (
         ('/'*80),
@@ -527,13 +530,15 @@ def generateAQL(testName):
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
     )
-    print "  let query = `" + value[AQL] + "`;"
-    print "  let bv = " + value[AQLBV] + ";"
-    print "  let ds = '" + value[AQLDS] + "';"
+    print "  const query = `" + value[AQL] + "`;"
+    print "  const bv = " + value[AQLBV] + ";"
+    print "  const ds = '" + value[AQLDS] + "';"
     print '''
-  exds.%s.removeDS();
-  exds.%s.createDS();
-  let result = db._query(query, bv).toArray();
+  if (ds !== '') {
+    exds[ds].removeDS();
+    exds[ds].createDS();
+  }
+  const result = db._query(query, bv).toArray();
 
   output += "@Q:\\n"
   output += highlight("js", query);
@@ -544,13 +549,15 @@ def generateAQL(testName):
   output += "\\n@R\\n";
   jsonAppender(JSON.stringify(result, null, 2));
 
-  exds.%s.removeDS();
+  if (ds !== '') {
+    exds[ds].removeDS();
+  }
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
   print("[" + (time () - startTime) + "s]  done with  " + testName);
   checkForOrphanTestCollections('not all collections were cleaned up after ' + sourceFile + ' Line[' + startLineCount + '] [' + testName + ']:');
-}());
+})();
 
-''' % (value[AQLDS], value[AQLDS], value[AQLDS])
+'''
 
 ################################################################################
 ### @brief generate arangosh run
