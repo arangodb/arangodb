@@ -1237,7 +1237,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
                     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "  Server: " << q;
                   }
                 }
-                TRI_assert(false);
+                TRI_ASSERT(false);
               }
               std::vector<ServerID> currentServers;
               VPackSlice servers = p.value.get("servers");

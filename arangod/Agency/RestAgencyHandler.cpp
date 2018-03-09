@@ -402,6 +402,60 @@ RestStatus RestAgencyHandler::handleInquire() {
   }
 
   if (ret.accepted) {  // I am leading
+#if 0
+    // Stuff from write: needs adapting:
+    bool found;
+    std::string call_mode = _request->header("x-arangodb-agency-mode", found);
+    if (!found) { call_mode = "waitForCommitted"; }
+    size_t errors = 0;
+    Builder body;
+    body.openObject();
+    Agent::raft_commit_t result = Agent::raft_commit_t::OK;
+
+    if (call_mode != "noWait") {
+      // Note success/error
+      body.add("results", VPackValue(VPackValueType::Array));
+      for (auto const& index : ret.indices) {
+        body.add(VPackValue(index));
+        if (index == 0) {
+          errors++;
+        }
+      }
+      body.close();
+
+      // Wait for commit of highest except if it is 0?
+      if (!ret.indices.empty() && call_mode == "waitForCommitted") {
+        arangodb::consensus::index_t max_index = 0;
+        try {
+          max_index =
+            *std::max_element(ret.indices.begin(), ret.indices.end());
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
+        }
+
+        if (max_index > 0) {
+          result = _agent->waitFor(max_index);
+        }
+
+      }
+    }
+
+    body.close();
+
+    if (result == Agent::raft_commit_t::UNKNOWN) {
+      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+    } else if (result == Agent::raft_commit_t::TIMEOUT) {
+      generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
+    } else {
+      if (errors > 0) { // Some/all requests failed
+        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+      } else {          // All good
+        generateResult(rest::ResponseCode::OK, body.slice());
+      }
+    }
+#endif
+
+    // The following is the old behaviour:
     Builder body;
     bool failed = false;
     { VPackObjectBuilder b(&body);
