@@ -65,7 +65,7 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
   }
 }
       
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, transaction::Methods* trx, bool& isEmptyExpression) {
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
 
   std::string rx;
   
