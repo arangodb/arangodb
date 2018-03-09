@@ -513,9 +513,6 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         auto inst = std::make_unique<CoordinatorInstanciator>(query);
 
-        // TODO optionally restrict query to certain shards
-        // inst->includedShards(query->queryOptions().shardIds);
-
         plan->root()->walk(inst.get());
 
         auto result = inst->buildEngines(queryRegistry, lockedShards.get());
