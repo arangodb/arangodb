@@ -67,17 +67,17 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
  public:
   IResearchViewNode(
-    aql::ExecutionPlan* plan,
+    aql::ExecutionPlan& plan,
     size_t id,
-    TRI_vocbase_t* vocbase,
-    std::shared_ptr<arangodb::LogicalView> const& view,
-    aql::Variable const* outVariable,
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const& view,
+    aql::Variable const& outVariable,
     aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition
   );
 
   IResearchViewNode(
-    aql::ExecutionPlan*,
+    aql::ExecutionPlan&,
     velocypack::Slice const& base
   );
 
@@ -116,18 +116,18 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief return out variable
-  arangodb::aql::Variable const* outVariable() const noexcept {
-    return _outVariable;
+  arangodb::aql::Variable const& outVariable() const noexcept {
+    return *_outVariable;
   }
 
   /// @brief return the database
-  TRI_vocbase_t* vocbase() const noexcept {
-    return _vocbase; 
+  TRI_vocbase_t& vocbase() const noexcept {
+    return *_vocbase;
   }
 
   /// @brief return the view
-  std::shared_ptr<arangodb::LogicalView> view() const noexcept { 
-    return _view;
+  arangodb::LogicalView const& view() const noexcept {
+    return *_view;
   }
 
   /// @brief return the filter condition to pass to the view
@@ -175,7 +175,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   TRI_vocbase_t* _vocbase;
 
   /// @brief collection
-  std::shared_ptr<LogicalView> const _view;
+  LogicalView const* _view;
 
   /// @brief output variable to write to
   aql::Variable const* _outVariable;
@@ -192,15 +192,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 class IResearchViewScatterNode final : public aql::ExecutionNode {
  public:
   IResearchViewScatterNode(
-      aql::ExecutionPlan& plan,
-      size_t id,
-      TRI_vocbase_t& vocbase,
-      std::shared_ptr<LogicalView> const& view
-  ) : ExecutionNode(&plan, id),
-      _vocbase(&vocbase),
-      _view(view) {
-    // FIXME assert view type here
-  }
+    aql::ExecutionPlan& plan,
+    size_t id,
+    TRI_vocbase_t& vocbase,
+    LogicalView const& view
+  );
 
   IResearchViewScatterNode(
     aql::ExecutionPlan&,
@@ -232,7 +228,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
       bool withProperties
   ) const final {
     auto node = std::make_unique<IResearchViewScatterNode>(
-      *plan, _id, *_vocbase, _view
+      *plan, _id, *_vocbase, *_view
     );
 
     cloneHelper(node.get(), withDependencies, withProperties);
@@ -248,8 +244,8 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
     return *_vocbase; 
   }
 
-  std::shared_ptr<LogicalView> view() const noexcept {
-    return _view;
+  LogicalView const& view() const noexcept {
+    return *_view;
   }
 
  private:
@@ -257,7 +253,7 @@ class IResearchViewScatterNode final : public aql::ExecutionNode {
   TRI_vocbase_t* _vocbase;
 
   /// @brief the underlying view
-  std::shared_ptr<LogicalView> const _view;
+  LogicalView const* _view;
 }; // IResearchViewScatterNode
 
 } // iresearch

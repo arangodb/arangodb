@@ -161,24 +161,30 @@ SECTION("construct") {
   auto logicalView = vocbase.createView(createJson->slice(), 0);
   REQUIRE((false == !logicalView));
 
-  auto plan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+  // dummy query
+  arangodb::aql::Query query(
+    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+    arangodb::aql::PART_MAIN
+  );
+  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   arangodb::iresearch::IResearchViewNode node(
-    plan.get(), // plan
+    *query.plan(), // plan
     42, // id
-    &vocbase, // database
-    logicalView, // view
-    &outVariable, // out variable
+    vocbase, // database
+    *logicalView, // view
+    outVariable, // out variable
     nullptr, // no filter condition
     {} // no sort condition
   );
 
   CHECK(arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
-  CHECK(&outVariable == node.outVariable());
-  CHECK(plan.get() == node.plan());
+  CHECK(&outVariable == &node.outVariable());
+  CHECK(query.plan() == node.plan());
   CHECK(42 == node.id());
-  CHECK(logicalView == node.view());
+  CHECK(logicalView.get() == &node.view());
   CHECK(node.sortCondition().empty());
   CHECK(!node.volatile_filter());
   CHECK(!node.volatile_sort());
@@ -209,11 +215,11 @@ SECTION("clone") {
   // no filter condition, no sort condition
   {
     arangodb::iresearch::IResearchViewNode node(
-      query.plan(),
+      *query.plan(),
       42, // id
-      &vocbase, // database
-      logicalView, // view
-      &outVariable,
+      vocbase, // database
+      *logicalView, // view
+      outVariable,
       nullptr, // no filter condition
       {} // no sort condition
     );
@@ -225,13 +231,13 @@ SECTION("clone") {
         *node.clone(query.plan(), true, true)
       );
       CHECK(node.getType() == cloned.getType());
-      CHECK(node.outVariable() != cloned.outVariable()); // different objects
-      CHECK(node.outVariable()->id == cloned.outVariable()->id);
-      CHECK(node.outVariable()->name == cloned.outVariable()->name);
+      CHECK(&node.outVariable() != &cloned.outVariable()); // different objects
+      CHECK(node.outVariable().id == cloned.outVariable().id);
+      CHECK(node.outVariable().name == cloned.outVariable().name);
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
-      CHECK(node.vocbase() == cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.vocbase() == &cloned.vocbase());
+      CHECK(&node.view() == &cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -249,11 +255,11 @@ SECTION("clone") {
         *node.clone(query.plan(), true, false)
       );
       CHECK(node.getType() == cloned.getType());
-      CHECK(node.outVariable() == cloned.outVariable()); // same objects
+      CHECK(&node.outVariable() == &cloned.outVariable()); // same objects
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
-      CHECK(node.vocbase() == cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.vocbase() == &cloned.vocbase());
+      CHECK(&node.view() == &cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -278,13 +284,13 @@ SECTION("clone") {
         *node.clone(otherQuery.plan(), true, true)
       );
       CHECK(node.getType() == cloned.getType());
-      CHECK(node.outVariable() != cloned.outVariable()); // different objects
-      CHECK(node.outVariable()->id == cloned.outVariable()->id);
-      CHECK(node.outVariable()->name == cloned.outVariable()->name);
+      CHECK(&node.outVariable() != &cloned.outVariable()); // different objects
+      CHECK(node.outVariable().id == cloned.outVariable().id);
+      CHECK(node.outVariable().name == cloned.outVariable().name);
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
-      CHECK(node.vocbase() == cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.vocbase() == &cloned.vocbase());
+      CHECK(&node.view() == &cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -310,11 +316,11 @@ SECTION("clone") {
         *node.clone(otherQuery.plan(), true, false)
       );
       CHECK(node.getType() == cloned.getType());
-      CHECK(node.outVariable() == cloned.outVariable()); // same objects
+      CHECK(&node.outVariable() == &cloned.outVariable()); // same objects
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
-      CHECK(node.vocbase() == cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.vocbase() == &cloned.vocbase());
+      CHECK(&node.view() == &cloned.view());
       CHECK(&node.filterCondition() == &cloned.filterCondition());
       CHECK(node.sortCondition() == cloned.sortCondition());
       CHECK(node.volatile_filter() == cloned.volatile_filter());
@@ -347,11 +353,11 @@ SECTION("searialize") {
   // no filter condition, no sort condition
   {
     arangodb::iresearch::IResearchViewNode node(
-      query.plan(),
+      *query.plan(),
       42, // id
-      &vocbase, // database
-      logicalView, // view
-      &outVariable,
+      vocbase, // database
+      *logicalView, // view
+      outVariable,
       nullptr, // no filter condition
       {} // no sort condition
     );
@@ -367,18 +373,18 @@ SECTION("searialize") {
     CHECK(1 == it.size());
     auto nodeSlice = it.value();
 
-    // conststuctor
+    // constructor
     {
       arangodb::iresearch::IResearchViewNode const deserialized(
-        query.plan(), nodeSlice
+        *query.plan(), nodeSlice
       );
       CHECK(node.getType() == deserialized.getType());
-      CHECK(node.outVariable()->id == deserialized.outVariable()->id);
-      CHECK(node.outVariable()->name == deserialized.outVariable()->name);
+      CHECK(node.outVariable().id == deserialized.outVariable().id);
+      CHECK(node.outVariable().name == deserialized.outVariable().name);
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
-      CHECK(node.vocbase() == deserialized.vocbase());
-      CHECK(node.view() == deserialized.view());
+      CHECK(&node.vocbase() == &deserialized.vocbase());
+      CHECK(&node.view() == &deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatile_filter() == deserialized.volatile_filter());
@@ -396,12 +402,12 @@ SECTION("searialize") {
       );
       auto& deserialized = dynamic_cast<arangodb::iresearch::IResearchViewNode&>(*deserializedNode);
       CHECK(node.getType() == deserialized.getType());
-      CHECK(node.outVariable()->id == deserialized.outVariable()->id);
-      CHECK(node.outVariable()->name == deserialized.outVariable()->name);
+      CHECK(node.outVariable().id == deserialized.outVariable().id);
+      CHECK(node.outVariable().name == deserialized.outVariable().name);
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
-      CHECK(node.vocbase() == deserialized.vocbase());
-      CHECK(node.view() == deserialized.view());
+      CHECK(&node.vocbase() == &deserialized.vocbase());
+      CHECK(&node.view() == &deserialized.view());
       CHECK(&node.filterCondition() == &deserialized.filterCondition());
       CHECK(node.sortCondition() == deserialized.sortCondition());
       CHECK(node.volatile_filter() == deserialized.volatile_filter());
@@ -427,20 +433,25 @@ SECTION("construct") {
   auto logicalView = vocbase.createView(createJson->slice(), 0);
   REQUIRE((false == !logicalView));
 
-  auto plan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+  arangodb::aql::Query query(
+    false, &vocbase, arangodb::aql::QueryString("RETURN 1"),
+    nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+    arangodb::aql::PART_MAIN
+  );
+  query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 42);
   arangodb::aql::Variable const outVariable("variable", 0);
 
   arangodb::iresearch::IResearchViewScatterNode node(
-    *plan, // plan
+    *query.plan(), // plan
     42, // id
     vocbase, // database
-    logicalView // view
+    *logicalView // view
   );
 
   CHECK(arangodb::aql::ExecutionNode::SCATTER_IRESEARCH_VIEW == node.getType());
-  CHECK(plan.get() == node.plan());
+  CHECK(query.plan() == node.plan());
   CHECK(42 == node.id());
-  CHECK(logicalView == node.view());
+  CHECK(logicalView.get() == &node.view());
 
   size_t nrItems{};
   CHECK(0. == node.estimateCost(nrItems));
@@ -470,7 +481,7 @@ SECTION("clone") {
       *query.plan(),
       42, // id
       vocbase, // database
-      logicalView // view
+      *logicalView // view
     );
 
     // clone with properties into the same plan
@@ -483,7 +494,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.view() == &cloned.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -500,7 +511,7 @@ SECTION("clone") {
       CHECK(node.plan() == cloned.plan());
       CHECK(nextId + 1 == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.view() == &cloned.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -524,7 +535,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.view() == &cloned.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -549,7 +560,7 @@ SECTION("clone") {
       CHECK(otherQuery.plan() == cloned.plan());
       CHECK(node.id() == cloned.id());
       CHECK(&node.vocbase() == &cloned.vocbase());
-      CHECK(node.view() == cloned.view());
+      CHECK(&node.view() == &cloned.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == cloned.estimateCost(rhsNrItems));
@@ -581,7 +592,7 @@ SECTION("searialize") {
       *query.plan(),
       42, // id
       vocbase, // database
-      logicalView // view
+      *logicalView // view
     );
 
     arangodb::velocypack::Builder builder;
@@ -604,7 +615,7 @@ SECTION("searialize") {
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
       CHECK(&node.vocbase() == &deserialized.vocbase());
-      CHECK(node.view() == deserialized.view());
+      CHECK(&node.view() == &deserialized.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));
@@ -621,7 +632,7 @@ SECTION("searialize") {
       CHECK(node.plan() == deserialized.plan());
       CHECK(node.id() == deserialized.id());
       CHECK(&node.vocbase() == &deserialized.vocbase());
-      CHECK(node.view() == deserialized.view());
+      CHECK(&node.view() == &deserialized.view());
 
       size_t lhsNrItems{}, rhsNrItems{};
       CHECK(node.estimateCost(lhsNrItems) == deserialized.estimateCost(rhsNrItems));

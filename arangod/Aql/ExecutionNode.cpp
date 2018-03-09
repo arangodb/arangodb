@@ -277,7 +277,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       return new ShortestPathNode(plan, slice);
 #ifdef USE_IRESEARCH
     case ENUMERATE_IRESEARCH_VIEW:
-      return new iresearch::IResearchViewNode(plan, slice);
+      return new iresearch::IResearchViewNode(*plan, slice);
     case SCATTER_IRESEARCH_VIEW:
       return new iresearch::IResearchViewScatterNode(*plan, slice);
 #endif

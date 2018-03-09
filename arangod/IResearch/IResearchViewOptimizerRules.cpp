@@ -186,7 +186,7 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       auto sortCondition = buildSort(
         *_plan,
-        *node->outVariable(),
+        node->outVariable(),
         _sorts,
         _variableDefinitions,
         true  // node->isInInnerLoop() // build scorers only in case if we're inside a loop
@@ -199,13 +199,13 @@ bool IResearchViewConditionFinder::before(ExecutionNode* en) {
 
       auto const canUseView = !filterCondition.root() || FilterFactory::filter(
         nullptr,
-        { nullptr, nullptr, nullptr, nullptr, node->outVariable() },
+        { nullptr, nullptr, nullptr, nullptr, &node->outVariable() },
         *filterCondition.root()
       );
 
       if (canUseView) {
         auto newNode = std::make_unique<arangodb::iresearch::IResearchViewNode>(
-          _plan,
+          *_plan,
           _plan->nextId(),
           node->vocbase(),
           node->view(),
@@ -505,15 +505,13 @@ void scatterViewInClusterRule(
     plan->unlinkNode(node, true);
 
     auto& viewNode = static_cast<IResearchViewNode&>(*node);
-    auto* vocbase = viewNode.vocbase();
-    TRI_ASSERT(vocbase);
-    auto view = viewNode.view();
-    TRI_ASSERT(view);
+    auto& vocbase = viewNode.vocbase();
+    auto& view = viewNode.view();
 
     // insert a scatter node
     auto scatterNode = plan->registerNode(
       std::make_unique<IResearchViewScatterNode>(
-        *plan, plan->nextId(), *vocbase, view
+        *plan, plan->nextId(), vocbase, view
     ));
     TRI_ASSERT(!deps.empty());
     scatterNode->addDependency(deps[0]);
@@ -523,7 +521,7 @@ void scatterViewInClusterRule(
       std::make_unique<RemoteNode>(
         plan.get(),
         plan->nextId(),
-        vocbase,
+        &vocbase,
         nullptr, //FIXME collection,
         "", "", ""
     ));
@@ -536,7 +534,7 @@ void scatterViewInClusterRule(
       std::make_unique<RemoteNode>(
         plan.get(),
         plan->nextId(),
-        vocbase,
+        &vocbase,
         nullptr, //FIXME collection,
         "", "", ""
     ));
@@ -548,7 +546,7 @@ void scatterViewInClusterRule(
       std::make_unique<GatherNode>(
         plan.get(),
         plan->nextId(),
-        vocbase,
+        &vocbase,
         nullptr //FIXME collection
     ));
     TRI_ASSERT(remoteNode);

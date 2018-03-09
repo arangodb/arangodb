@@ -123,43 +123,41 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 
 IResearchViewNode::IResearchViewNode(
-    aql::ExecutionPlan* plan,
+    aql::ExecutionPlan& plan,
     size_t id,
-    TRI_vocbase_t* vocbase,
-    std::shared_ptr<arangodb::LogicalView> const& view,
-    arangodb::aql::Variable const* outVariable,
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const& view,
+    arangodb::aql::Variable const& outVariable,
     arangodb::aql::AstNode* filterCondition,
     std::vector<IResearchSort>&& sortCondition)
-  : arangodb::aql::ExecutionNode(plan, id),
-    _vocbase(vocbase),
-    _view(view),
-    _outVariable(outVariable),
+  : arangodb::aql::ExecutionNode(&plan, id),
+    _vocbase(&vocbase),
+    _view(&view),
+    _outVariable(&outVariable),
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(filterCondition ? filterCondition : &ALL),
     _sortCondition(std::move(sortCondition)) {
-  TRI_ASSERT(_vocbase);
-  TRI_ASSERT(_view); // FIXME assert view type here
-  TRI_ASSERT(_outVariable);
+  TRI_ASSERT(IResearchView::type() == _view->type());
 }
 
 IResearchViewNode::IResearchViewNode(
-    aql::ExecutionPlan* plan,
+    aql::ExecutionPlan& plan,
     velocypack::Slice const& base)
-  : aql::ExecutionNode(plan, base),
-    _vocbase(plan->getAst()->query()->vocbase()),
-    _view(_vocbase->lookupView(base.get("view").copyString())),
-    _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, "outVariable")),
+  : aql::ExecutionNode(&plan, base),
+    _vocbase(plan.getAst()->query()->vocbase()),
+    _view(_vocbase->lookupView(base.get("view").copyString()).get()),
+    _outVariable(aql::Variable::varFromVPack(plan.getAst(), base, "outVariable")),
     // in case if filter is not specified
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(&ALL),
-    _sortCondition(fromVelocyPack(plan, base.get("sortCondition"))) {
+    _sortCondition(fromVelocyPack(&plan, base.get("sortCondition"))) {
   auto const filterSlice = base.get("condition");
 
   if (!filterSlice.isEmptyObject()) {
     // AST will own the node
     _filterCondition = new aql::AstNode(
-      plan->getAst(), filterSlice
+      plan.getAst(), filterSlice
     );
   }
 }
@@ -195,7 +193,7 @@ void IResearchViewNode::planNodeRegisters(
 bool IResearchViewNode::volatile_filter() const {
   if (!filterConditionIsEmpty(_filterCondition) && isInInnerLoop()) {
     std::unordered_set<arangodb::aql::Variable const*> vars;
-    return ::hasDependecies(*plan(), *_filterCondition, *outVariable(), vars);
+    return ::hasDependecies(*plan(), *_filterCondition, outVariable(), vars);
   }
 
   return false;
@@ -206,7 +204,7 @@ bool IResearchViewNode::volatile_sort() const {
     std::unordered_set<aql::Variable const*> vars;
 
     for (auto const& sort : _sortCondition) {
-      if (::hasDependecies(*plan(), *sort.node, *outVariable(), vars)) {
+      if (::hasDependecies(*plan(), *sort.node, outVariable(), vars)) {
         return true;
       }
     }
@@ -251,18 +249,20 @@ aql::ExecutionNode* IResearchViewNode::clone(
     bool withDependencies,
     bool withProperties
 ) const {
-  auto outVariable = _outVariable;
+  TRI_ASSERT(plan);
+
+  auto* outVariable = _outVariable;
 
   if (withProperties) {
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
   auto node = std::make_unique<IResearchViewNode>(
-    plan,
+    *plan,
     _id,
-    _vocbase,
-    _view,
-    outVariable,
+    *_vocbase,
+    *_view,
+    *outVariable,
     const_cast<aql::AstNode*>(_filterCondition),
     decltype(_sortCondition)(_sortCondition)
   );
@@ -299,9 +299,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = dynamic_cast<IResearchView*>(view().getImplementation());
 #else
-  auto* impl = static_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = static_cast<IResearchView*>(view().getImplementation());
 #endif
 
   if (!impl) {
@@ -362,11 +362,22 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
 IResearchViewScatterNode::IResearchViewScatterNode(
     aql::ExecutionPlan& plan,
+    size_t id,
+    TRI_vocbase_t& vocbase,
+    LogicalView const& view
+) : ExecutionNode(&plan, id),
+    _vocbase(&vocbase),
+    _view(&view) {
+  TRI_ASSERT(IResearchView::type() == _view->type());
+}
+
+IResearchViewScatterNode::IResearchViewScatterNode(
+    aql::ExecutionPlan& plan,
     arangodb::velocypack::Slice const& base
 ) : ExecutionNode(&plan, base),
     _vocbase(plan.getAst()->query()->vocbase()),
     //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find a view
-    _view(_vocbase->lookupView(base.get("view").copyString())) {
+    _view(_vocbase->lookupView(base.get("view").copyString()).get()) {
 }
 
 /// @brief creates corresponding ExecutionBlock

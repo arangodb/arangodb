@@ -773,7 +773,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
 
     en = registerNode(
       new iresearch::IResearchViewNode(
-        this, nextId(), vocbase, view, v, nullptr, {}
+        *this, nextId(), *vocbase, *view, *v, nullptr, {}
     ));
 #endif
   } else if (expression->type == NODE_TYPE_REFERENCE) {
