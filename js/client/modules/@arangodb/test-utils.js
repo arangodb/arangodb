@@ -235,15 +235,16 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           });
         }
 
-        if (db._graphs.count() !== graphCount) {
+        let graphs = db._collection('_graphs');
+        if (graphs && graphs.count() !== graphCount) {
           results[te] = {
             status: false,
             message: 'Cleanup of graphs missing - found graph definitions: [ ' +
-              JSON.stringify(db._graphs.toArray()) +
+              JSON.stringify(graphs.toArray()) +
               ' ] - Original test status: ' +
               JSON.stringify(results[te])
           };
-          graphCount = db._graphs.count();
+          graphCount = graphs.count();
         }
 
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {

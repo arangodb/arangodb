@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 
@@ -98,6 +99,15 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<RemoveBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -135,6 +145,15 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<InsertBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -180,6 +199,15 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<UpdateBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively
@@ -239,6 +267,15 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<ReplaceBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
                                   bool withProperties) const {
@@ -294,6 +331,15 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
 
   // And close it:
   nodes.close();
+}
+
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<UpsertBlock>(&engine, this);
 }
 
 /// @brief clone ExecutionNode recursively

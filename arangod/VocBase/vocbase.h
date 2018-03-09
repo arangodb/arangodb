@@ -48,6 +48,7 @@ class CollectionKeysRepository;
 class CursorRepository;
 class DatabaseReplicationApplier;
 class LogicalCollection;
+class LogicalDataSource;
 class LogicalView;
 class StorageEngine;
 }
@@ -291,10 +292,23 @@ struct TRI_vocbase_t {
   /// @brief looks up a collection by identifier
   arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id) const;
 
-  /// @brief looks up a view by name
-  std::shared_ptr<arangodb::LogicalView> lookupView(std::string const& name);
+  /// @brief looks up a data-source by identifier
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
+    TRI_voc_cid_t id
+  ) const noexcept;
+  /// @brief looks up a data-source by name or stringified identifier
+  std::shared_ptr<arangodb::LogicalDataSource> lookupDataSource(
+    std::string const& nameOrId
+  ) const noexcept;
+
   /// @brief looks up a view by identifier
-  std::shared_ptr<arangodb::LogicalView> lookupView(TRI_voc_cid_t id);
+  std::shared_ptr<arangodb::LogicalView> lookupView(
+    TRI_voc_cid_t id
+  ) const noexcept;
+  /// @brief looks up a view by name
+  std::shared_ptr<arangodb::LogicalView> lookupView(
+    std::string const& name
+  ) const noexcept;
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes

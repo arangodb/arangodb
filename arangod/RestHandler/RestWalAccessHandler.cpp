@@ -246,26 +246,18 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                   "invalid from/to values");
     return;
   }
-    
-  std::string const& value3 = _request->value("serverId", found);
-
-  TRI_server_id_t serverId = 0;
-  if (found) {
-    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
-  }
+  
+  // check for serverId
+  TRI_server_id_t serverId = _request->parsedValue("serverId", static_cast<TRI_server_id_t>(0));
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
 
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
   }
   
-  // check if a barrier id was specified in request
-  TRI_voc_tid_t barrierId = 0;
-  std::string const& value4 = _request->value("barrier", found);
-  
-  if (found) {
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value4));
-  }
+  grantTemporaryRights();
 
   size_t chunkSize = 1024 * 1024;  
   std::string const& value5 = _request->value("chunkSize", found);
@@ -286,7 +278,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       opts.customTypeHandler = &(it->second);
     }
   };
-
+  
   size_t length = 0;
   if (useVst) {
     result =
@@ -415,5 +407,18 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(r.lastIncludedTick()));
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Grant temporary restore rights
+//////////////////////////////////////////////////////////////////////////////
+void RestWalAccessHandler::grantTemporaryRights() {
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
+      // If you have administrative access on this database,
+      // we grant you everything for restore.
+      ExecContext::CURRENT = nullptr;
+    }
   }
 }

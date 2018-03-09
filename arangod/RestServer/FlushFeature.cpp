@@ -138,6 +138,7 @@ void FlushFeature::executeCallbacks() {
   // execute all callbacks. this will create as many transactions as
   // there are callbacks
   for (auto const& cb : _callbacks) {
+    // copy elision, std::move(..) not required
     transactions.emplace_back(cb.second());
   }
 

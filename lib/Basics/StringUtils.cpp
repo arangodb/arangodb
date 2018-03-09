@@ -1044,7 +1044,7 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
 
   return retStr;
 }
-
+  
 void tolowerInPlace(std::string* str) {
   size_t len = str->length();
 
