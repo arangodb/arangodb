@@ -39,13 +39,11 @@
 namespace arangodb {
 
 namespace aql {
-struct ExecutionBlock;
-struct ExecutionEngine;
 struct Collection;
 class Condition;
 class ExecutionBlock;
+class ExecutionEngine;
 class ExecutionPlan;
-struct Index;
 
 /// @brief class IndexNode
 class IndexNode : public ExecutionNode, public DocumentProducingNode {

@@ -67,13 +67,23 @@ class CursorRepository {
   /// @brief creates a cursor and stores it in the registry
   /// the cursor will be returned with the usage flag set to true. it must be
   /// returned later using release()
-  /// the cursor will retain a shared pointer of both json and extra
+  /// the cursor will take ownership and retain the entire QueryResult object
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createFromQueryResult(
-      aql::QueryResult&&, size_t, std::shared_ptr<arangodb::velocypack::Builder>,
-      double, bool);
-
+  Cursor* createFromQueryResult(aql::QueryResult&&, size_t, double, bool);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates a cursor and stores it in the registry
+  /// the cursor will be returned with the usage flag set to true. it must be
+  /// returned later using release()
+  /// the cursor will create a query internally and retain it until deleted
+  //////////////////////////////////////////////////////////////////////////////
+  
+  Cursor* createQueryStream(std::string const& query,
+                            std::shared_ptr<velocypack::Builder> const& binds,
+                            std::shared_ptr<velocypack::Builder> const& opts,
+                            size_t batchSize, double ttl);
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
   //////////////////////////////////////////////////////////////////////////////

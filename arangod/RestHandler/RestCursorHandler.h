@@ -24,9 +24,9 @@
 #ifndef ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
+#include "Aql/QueryResult.h"
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Aql/QueryResult.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <velocypack/Builder.h>
@@ -105,37 +105,28 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
       arangodb::velocypack::Slice const&) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief builds the "extra" attribute values from the result.
-  /// note that the "extra" object will take ownership from the result for
-  /// several values
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> buildExtra(
-      arangodb::aql::QueryResult&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief append the contents of the cursor into the response body
   //////////////////////////////////////////////////////////////////////////////
 
-  void dumpCursor(arangodb::Cursor*);
+  void generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
   //////////////////////////////////////////////////////////////////////////////
 
-  void createCursor();
+  void createQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the next results from an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  void modifyCursor();
+  void modifyQueryCursor();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispose an existing cursor
   //////////////////////////////////////////////////////////////////////////////
 
-  void deleteCursor();
+  void deleteQueryCursor();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -167,6 +158,14 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief whether or not the finalize operation is allowed to further process
+  /// the request data. this will not work if the original request cannot be
+  /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
+  //////////////////////////////////////////////////////////////////////////////
+  
+  bool _isValidForFinalize;
 };
 }
 
