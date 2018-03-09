@@ -400,9 +400,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // Do nothing
           break;
       }
-
-      if (nodeType == ExecutionNode::REMOTE) {
-      }
     } else {
       _dbserverParts.addNode(en);
 
