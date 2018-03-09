@@ -1040,12 +1040,27 @@ function ahuacatlStringFunctionsTestSuite () {
         [ [ 'this', 'is', 'a', 'test' ], 'this/SEP1/is/SEP2/a/SEP3/test', [ '/SEP1/', '/SEP2/', '/SEP3/' ] ],
         [ [ 'the', 'quick', 'brown', 'foxx' ], 'the quick brown foxx', ' ' ],
         [ [ 'the quick ', ' foxx' ], 'the quick brown foxx', 'brown' ],
-        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', '' ]
+        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', '' ],
+        [ [ 't', 'h', 'e', ' ', 'q', 'u', 'i', 'c', 'k', ' ', 'b', 'r', 'o', 'w', 'n', ' ', 'f', 'o', 'x', 'x' ], 'the quick brown foxx', ['', 'ab'] ],
+        [ [ 'the quick', 'brown foxx' ], 'the quick()brown foxx', '()' ],
+        [ [ 'the quick  brown foxx' ], 'the quick  brown foxx', ' {2}' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '?' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '+' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '*' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '^' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '$' ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', '.' ],
+        [ [ 'the quick7brown foxx' ], 'the quick7brown foxx', '\\d' ],
+        [ [ 'the quick brown foxx' ], "the quick brown foxx", ["[a-f]"] ],
+        [ [ 'the quick brown foxx' ], 'the quick brown foxx', 'u|f' ]
       ];
 
       values.forEach(function (value) {
         var expected = value[0], text = value[1], separator = value[2];
-        assertEqual([ expected ], getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')'), value);
+        var res = getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')');
+        var res2 = getQueryResults('RETURN NOOPT(V8(SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ')))');
+        assertEqual([ expected ], res, JSON.stringify(value));
+        assertEqual(res2, res, JSON.stringify(value));
       });
     },
 
@@ -1069,7 +1084,10 @@ function ahuacatlStringFunctionsTestSuite () {
 
       values.forEach(function (value) {
         var expected = value[0], text = value[1], separator = value[2], limit = value[3];
-        assertEqual([ expected ], getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')'));
+        var res = getQueryResults('RETURN SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')');
+        var res2 = getQueryResults('RETURN NOOPT(V8(SPLIT(' + JSON.stringify(text) + ', ' + JSON.stringify(separator) + ', ' + JSON.stringify(limit) + ')))');
+        assertEqual(res2, res, JSON.stringify(value));
+        assertEqual([ expected ], res, JSON.stringify(value));
       });
     },
 

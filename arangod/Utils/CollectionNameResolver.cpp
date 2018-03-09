@@ -278,12 +278,12 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
   std::string name;
 
   if (ServerState::isDBServer(_serverRole)) {
-    READ_LOCKER(readLocker, _vocbase->_collectionsLock);
+    READ_LOCKER(readLocker, _vocbase->_dataSourceLock);
+    auto it = _vocbase->_dataSourceById.find(cid);
 
-    auto it = _vocbase->_collectionsById.find(cid);
-
-    if (it != _vocbase->_collectionsById.end()) {
-      if ((*it).second->planId() == (*it).second->cid()) {
+    if (it != _vocbase->_dataSourceById.end()
+        && std::dynamic_pointer_cast<LogicalCollection>(it->second)) {
+      if (it->second->planId() == it->second->id()) {
         // DBserver local case
         name = (*it).second->name();
       } else {
@@ -292,7 +292,9 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         std::shared_ptr<LogicalCollection> ci;
         try {
           ci = ClusterInfo::instance()->getCollection(
-              (*it).second->dbName(), name);
+            std::dynamic_pointer_cast<LogicalCollection>(it->second)->dbName(),
+            name
+          );
         }
         catch (...) {
         }

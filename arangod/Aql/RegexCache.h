@@ -25,10 +25,16 @@
 #define ARANGOD_AQL_REGEX_CACHE_H 1
 
 #include "Basics/Common.h"
+#include "Aql/AqlValue.h"
 
 #include <unicode/regex.h>
 
 namespace arangodb {
+
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
 class RegexCache {
@@ -43,6 +49,7 @@ class RegexCache {
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length, bool caseInsensitive);
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length, bool caseInsensitive);
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression);
  
  private: 
   /// @brief clear the specified cache
