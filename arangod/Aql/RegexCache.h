@@ -30,6 +30,11 @@
 #include <unicode/regex.h>
 
 namespace arangodb {
+
+namespace transaction {
+class Methods;
+}
+
 namespace aql {
 
 class RegexCache {
