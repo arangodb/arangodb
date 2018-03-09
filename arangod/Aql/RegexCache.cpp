@@ -83,7 +83,7 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, trans
         rx += '|';
       }
       
-      size_t length;
+      arangodb::velocypack::ValueLength length;
       const char *str = it.getString(length);
       escapeRegexParams(rx, str, length);
     }
