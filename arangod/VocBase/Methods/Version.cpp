@@ -109,12 +109,14 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
       tasks.emplace(pair.key.copyString(), pair.value.getBool());
     }
   } catch (velocypack::Exception const& e) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "Cannot parse VERSION file "
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Cannot parse VERSION '"
+                                    << e.what()
+                                    << "' - file "
                                     << versionInfo;
     return VersionResult{VersionResult::CANNOT_PARSE_VERSION_FILE, 0, 0, tasks};
   }
   TRI_ASSERT(lastVersion != UINT32_MAX);
-  uint32_t serverVersion = Version::current();
+  uint64_t serverVersion = Version::current();
 
   VersionResult res = {VersionResult::NO_VERSION_FILE, serverVersion,
                        lastVersion, tasks};
