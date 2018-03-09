@@ -89,8 +89,8 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, trans
     }
   }
   else if (splitExpression.isString()) {
-    size_t length;
-    const char *str = slice.getString(length);
+    arangodb::velocypack::ValueLength length;
+    const char* str = slice.getString(length);
     escapeRegexParams(rx, str, length);
     if (rx.length() == 0) {
       isEmptyExpression = true;
