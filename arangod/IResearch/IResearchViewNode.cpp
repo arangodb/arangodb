@@ -306,6 +306,24 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
+  if (ServerState::isCoordinator()) {
+    // coordinator in a cluster
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "IResearchView node is not intended to use on a coordinator"
+    );
+  }
+
+  if (ServerState::isDBServer()) {
+    // db server in a cluster
+
+    // FIXME
+    // retrieve master shards from all collections involved
+    // and build up corresponding index reader
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  // single server
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* impl = dynamic_cast<IResearchView*>(view().getImplementation());
 #else
@@ -390,6 +408,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
     basics::StringUtils::uint64(base.get("view").copyString())
   );
 
+  // FIXME how to check properly
   TRI_ASSERT(view && IResearchView::type() == view->type());
   _view = view.get();
 }
@@ -400,10 +419,15 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
     std::unordered_map<ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const& includedShards
 ) const {
-  return nullptr;
-//  return std::make_unique<IResearchViewScatterNode>(
-//    &engine, this, *shardIds
-//  );
+  if (!ServerState::isCoordinator()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "IResearchScatterView node is intended to use on a coordinator only"
+    );
+  }
+
+  // FIXME
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief toVelocyPack, for ScatterNode
