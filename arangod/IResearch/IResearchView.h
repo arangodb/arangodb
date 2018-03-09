@@ -26,7 +26,7 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
-
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/ViewImplementation.h"
 #include "Utils/FlushTransaction.h"
@@ -257,7 +257,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the view type as used when selecting which view to instantiate
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
+  static arangodb::LogicalDataSource::Type const& type() noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief update the view properties via the LogicalView allowing for tracking

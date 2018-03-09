@@ -39,7 +39,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecovery1');
-  var v1 = db._createView('UnitTestsRecovery1', 'logger', {});
+  var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
   db._dropView('UnitTestsRecovery1');
 
   c.save({ _key: 'crashme' }, true);

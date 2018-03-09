@@ -1,7 +1,8 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse */
+/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull, AQL_EXECUTE */
+
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief recovery tests for views
+// / @brief tests for dump/reload
 // /
 // / @file
 // /
@@ -24,7 +25,7 @@
 // / Copyright holder is triAGENS GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -34,19 +35,23 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
+  var v;
 
-  db._drop('UnitTestsRecoveryDummy');
-  var c = db._create('UnitTestsRecoveryDummy');
+  db._drop('UnitTestsDummy');
+  db._create('UnitTestsDummy');
 
   db._dropView('UnitTestsRecovery1');
-  var v1 = db._createView('UnitTestsRecovery1', 'logger', {});
-  v1.properties({level: 'WARN'});
+  db._dropView('UnitTestsRecovery2');
+  v = db._createView('UnitTestsRecovery1', 'arangosearch', {});
+  v.properties({ links: { 'UnitTestsDummy': { includeAllFields: true } } });
+  db._collection('UnitTestsDummy').save({ _key: 'foo', num: 1 }, { waitForSync: true });
 
-  c.save({ _key: 'crashme' }, true);
+  v.rename('UnitTestsRecovery2');
+
+  db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -60,14 +65,16 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
+    // / @brief test whether rename works
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewProperties: function () {
-      var v1 = db._view('UnitTestsRecovery1');
-      assertEqual(v1.name(), 'UnitTestsRecovery1');
-      assertEqual(v1.type(), 'logger');
-      assertEqual(v1.properties().level, 'WARN');
+    testIResearchViewRename: function () {
+      var v, res;
+
+      assertNull(db._view('UnitTestsRecovery1'));
+      assertNotNull(db._view('UnitTestsRecovery2'));
+      res = AQL_EXECUTE('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
+      assertEqual(res.length, 2);
     }
 
   };
