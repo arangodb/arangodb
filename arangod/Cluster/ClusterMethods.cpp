@@ -2571,7 +2571,7 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
 }
 
 #ifndef USE_ENTERPRISE
-std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
+std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
   TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
   bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
   bool enforceReplicationFactor) {
@@ -2589,7 +2589,7 @@ std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 /// @brief Persist collection in Agency and trigger shard creation process
 ////////////////////////////////////////////////////////////////////////////////
 
-std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
+std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
   bool waitForSyncReplication, bool enforceReplicationFactor,
   VPackSlice) {
@@ -2677,8 +2677,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   // We never get a nullptr here because an exception is thrown if the
   // collection does not exist. Also, the create collection should have
   // failed before.
-  TRI_ASSERT(c != nullptr);
-  return c->clone();
+  TRI_ASSERT(c.get() != nullptr);
+  return c;
 }
 
 /// @brief fetch edges from TraverserEngines

@@ -48,7 +48,8 @@ RestCursorHandler::RestCursorHandler(
       _queryLock(),
       _query(nullptr),
       _hasStarted(false),
-      _queryKilled(false) {}
+      _queryKilled(false),
+      _isValidForFinalize(false) {}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
@@ -382,6 +383,11 @@ void RestCursorHandler::createQueryCursor() {
       // error message generated in parseVelocyPackBody
       return;
     }
+    
+    // tell RestCursorHandler::finalizeExecute that the request
+    // could be parsed successfully and that it may look at it
+    _isValidForFinalize = true;
+
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);

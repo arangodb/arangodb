@@ -2086,9 +2086,8 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a view that is still active
       LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
-      std::string type = it.get("type").copyString();
-      auto& dataSourceType =
-        arangodb::LogicalDataSource::Type::emplace(std::move(type));
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
       auto& creator = viewTypesFeature->factory(dataSourceType);
 
       if (!creator) {

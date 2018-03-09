@@ -433,6 +433,26 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   }
 }
 
+arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType type,
+                                     std::vector<std::string> const& fields,
+                                     bool unique, bool sparse) {
+  
+  VPackBuilder props;
+  props.openObject();
+  props.add("type", VPackValue(Index::oldtypeName(type)));
+  props.add("fields", VPackValue(VPackValueType::Array));
+  for (std::string const& field : fields) {
+    props.add(VPackValue(field));
+  }
+  props.close();
+  props.add("unique", VPackValue(unique));
+  props.add("sparse", VPackValue(sparse));
+  props.close();
+  
+  VPackBuilder ignored;
+  return ensureIndex(coll, props.slice(), true, ignored);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if argument is an index identifier
 ////////////////////////////////////////////////////////////////////////////////
