@@ -1014,25 +1014,25 @@ std::string TRI_vocbase_t::viewName(TRI_voc_cid_t id) const {
 }
 
 /// @brief looks up a collection by name or stringified cid or uuid
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollection(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
     std::string const& nameOrId
 ) const noexcept {
   return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
     lookupDataSource(nameOrId)
-  ).get();
+  );
 }
 
 /// @brief looks up a collection by identifier
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollection(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
     TRI_voc_cid_t id
 ) const noexcept {
   return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
     lookupDataSource(id)
-  ).get();
+  );
 }
 
 /// @brief looks up a collection by uuid
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
     std::string const& uuid
 ) const noexcept {
   // otherwise we'll look up the collection by name
@@ -1041,7 +1041,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(
 
   return itr == _dataSourceByUuid.end()
     ? nullptr
-    : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second).get()
+    : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second)
     ;
 }
 
@@ -1468,7 +1468,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
     TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
   auto collection = lookupCollection(cid);
 
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
 
 /// @brief locks a collection for usage by name
@@ -1496,7 +1496,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
     std::string const& uuid, TRI_vocbase_col_status_e& status) {
   auto collection = lookupCollectionByUuid(uuid);
 
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
 
 arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(

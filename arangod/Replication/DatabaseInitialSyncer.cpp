@@ -802,7 +802,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     if (col == nullptr) {
       // not found...
-      col = vocbase()->lookupCollection(masterName);
+      col = vocbase()->lookupCollection(masterName).get();
 
       if (col != nullptr && (col->name() != masterName ||
                              
