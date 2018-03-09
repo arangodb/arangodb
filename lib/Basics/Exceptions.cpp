@@ -169,7 +169,7 @@ Result basics::catchToResult(std::function<Result()> fn, int defaultError) {
     result = fn();
   } catch (arangodb::basics::Exception const& e) {
     result.reset(e.code(), e.message());
-  } catch (std::bad_alloc const& e) {
+  } catch (std::bad_alloc const&) {
     result.reset(TRI_ERROR_OUT_OF_MEMORY);
   } catch (std::exception const& e) {
     result.reset(defaultError, e.what());
