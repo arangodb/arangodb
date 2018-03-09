@@ -73,7 +73,7 @@ class SortNode : public ExecutionNode {
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
-  ) const;
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
