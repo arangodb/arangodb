@@ -43,6 +43,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
  private:
   void allDocuments();
   void allDocumentKeys();
+  void byExample();
 };
 }
 

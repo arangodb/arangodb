@@ -92,6 +92,11 @@ class LogicalCollection: public LogicalDataSource {
  public:
   LogicalCollection() = delete;
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the category representing a logical collection
+  //////////////////////////////////////////////////////////////////////////////
+  static Category const& category() noexcept;
+
   virtual std::unique_ptr<LogicalCollection> clone() {
     return std::unique_ptr<LogicalCollection>(new LogicalCollection(*this));
   }
