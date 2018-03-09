@@ -2850,7 +2850,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
                     TRI_ERROR_QUERY_ARRAY_EXPECTED);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
-  if (geoArray.length() < 4) {
+  if (geoArray.length() < 3) {
     RegisterWarning(query, "GEO_POLYGON",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
