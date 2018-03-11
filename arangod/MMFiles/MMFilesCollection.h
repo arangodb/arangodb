@@ -278,7 +278,10 @@ class MMFilesCollection final : public PhysicalCollection {
   // WARNING: Make sure that this Collection Instance
   // is somehow protected. If it goes out of all scopes
   // or it's indexes are freed the pointer returned will get invalidated.
-  MMFilesPrimaryIndex* primaryIndex() const;
+  MMFilesPrimaryIndex* primaryIndex() const {
+    TRI_ASSERT(_primaryIndex != nullptr);
+    return _primaryIndex;
+  }
 
   inline bool useSecondaryIndexes() const { return _useSecondaryIndexes; }
 
@@ -314,13 +317,13 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
 
-  int lockWrite(bool useDeadlockDetector, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
 
-  int unlockRead(bool useDeadlockDetector);
+  int unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid);
 
-  int unlockWrite(bool useDeadlockDetector);
+  int unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -576,6 +579,7 @@ class MMFilesCollection final : public PhysicalCollection {
   // SECTION: Indexes
 
   size_t _persistentIndexes;
+  MMFilesPrimaryIndex* _primaryIndex;
   uint32_t _indexBuckets;
 
   // whether or not secondary indexes should be filled

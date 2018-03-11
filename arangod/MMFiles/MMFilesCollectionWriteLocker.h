@@ -37,12 +37,14 @@ class MMFilesCollectionWriteLocker {
 
   /// @brief create the locker
   MMFilesCollectionWriteLocker(arangodb::MMFilesCollection* collection,
-                               bool useDeadlockDetector, bool doLock)
+                               bool useDeadlockDetector, TRI_voc_tid_t tid,
+                               bool doLock)
       : _collection(collection),
         _useDeadlockDetector(useDeadlockDetector),
+        _tid(tid),
         _doLock(false) {
     if (doLock) {
-      int res = _collection->lockWrite(_useDeadlockDetector);
+      int res = _collection->lockWrite(_useDeadlockDetector, _tid);
 
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
@@ -58,7 +60,7 @@ class MMFilesCollectionWriteLocker {
   /// @brief release the lock
   inline void unlock() {
     if (_doLock) {
-      _collection->unlockWrite(_useDeadlockDetector);
+      _collection->unlockWrite(_useDeadlockDetector, _tid);
       _doLock = false;
     }
   }
@@ -69,6 +71,8 @@ class MMFilesCollectionWriteLocker {
 
   /// @brief whether or not to use the deadlock detector
   bool const _useDeadlockDetector;
+  
+  TRI_voc_tid_t const _tid;
 
   /// @brief lock flag
   bool _doLock;

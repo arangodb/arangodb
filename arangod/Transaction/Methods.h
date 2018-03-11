@@ -194,6 +194,9 @@ class Methods {
   /// @brief finish a transaction (commit or abort), based on the previous state
   Result finish(int errorNum);
   Result finish(Result const& res);
+  
+  /// @brief return the transaction id
+  TRI_voc_tid_t tid() const;
 
   /// @brief return a collection name
   std::string name(TRI_voc_cid_t cid) const;

@@ -57,6 +57,8 @@ HttpResponse::HttpResponse(ResponseCode code,
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
+
+  TRI_ASSERT(_body != nullptr);
   if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -73,6 +75,7 @@ void HttpResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
+  TRI_ASSERT(_body != nullptr);
   _body->clear();
   _bodySize = 0;
 }
@@ -134,6 +137,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 }
 
 void HttpResponse::headResponse(size_t size) {
+  TRI_ASSERT(_body != nullptr);
   _body->clear();
   _isHeadResponse = true;
   _bodySize = size;
@@ -143,6 +147,7 @@ size_t HttpResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
+  TRI_ASSERT(_body != nullptr);
   return _body->length();
 }
 
