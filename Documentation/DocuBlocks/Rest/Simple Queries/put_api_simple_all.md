@@ -18,13 +18,13 @@ as body with the following attributes:
 - *skip*: The number of documents to skip in the query (optional).
 
 - *limit*: The maximal amount of documents to return. The *skip*
-  is applied before the *limit* restriction. (optional)
+  is applied before the *limit* restriction (optional).
 
-- *batchSize*: The number of documents to return in one go.
+- *batchSize*: The number of documents to return in one go. (optional)
 
 - *ttl*: The time-to-live for the cursor (in seconds, optional). 
 
-- *stream*: Create this cursor as a stream query. (optional)
+- *stream*: Create this cursor as a stream query (optional). 
 
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
