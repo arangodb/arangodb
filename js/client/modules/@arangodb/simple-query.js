@@ -71,12 +71,16 @@ SimpleQueryAll.prototype.execute = function (batchSize) {
       data.batchSize = this._batchSize;
     }
 
+    // for _api/simple/all stream becomes a top-level option
+    data.stream = true;
+
     var requestResult = this._collection._database._connection.PUT(
       '/_api/simple/all', JSON.stringify(data));
 
     arangosh.checkRequestResult(requestResult);
 
-    this._execution = new ArangoQueryCursor(this._collection._database, requestResult);
+    this._execution = new ArangoQueryCursor(this._collection._database, 
+                                            requestResult, true);
 
     if (requestResult.hasOwnProperty('count')) {
       this._countQuery = requestResult.count;
