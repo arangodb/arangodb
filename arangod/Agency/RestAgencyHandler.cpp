@@ -287,9 +287,9 @@ RestStatus RestAgencyHandler::handleWrite() {
     body.close();
 
     if (result == Agent::raft_commit_t::UNKNOWN) {
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
     } else {
       if (errors > 0) { // Some/all requests failed
         generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
@@ -402,78 +402,70 @@ RestStatus RestAgencyHandler::handleInquire() {
   }
 
   if (ret.accepted) {  // I am leading
-#if 0
-    // Stuff from write: needs adapting:
+
     bool found;
     std::string call_mode = _request->header("x-arangodb-agency-mode", found);
-    if (!found) { call_mode = "waitForCommitted"; }
-    size_t errors = 0;
-    Builder body;
-    body.openObject();
+    if (!found) {
+      call_mode = "waitForCommitted";
+    }
+
+    // First possibility: The answer is empty, we have never heard about
+    // these transactions. In this case we say so, regardless what the
+    // "agency-mode" is.
+    // Second possibility: Non-empty answer, but agency-mode is "noWait",
+    // then we simply report our findings, too.
+    // Third possibility, we actually have a non-empty list of indices,
+    // and we need to wait for commit to answer.
+
+    // Handle cases 2 and 3:
     Agent::raft_commit_t result = Agent::raft_commit_t::OK;
-
-    if (call_mode != "noWait") {
-      // Note success/error
-      body.add("results", VPackValue(VPackValueType::Array));
-      for (auto const& index : ret.indices) {
-        body.add(VPackValue(index));
-        if (index == 0) {
-          errors++;
-        }
+    bool allCommitted = true;
+    if (!ret.indices.empty()) {
+      arangodb::consensus::index_t max_index = 0;
+      try {
+        max_index =
+          *std::max_element(ret.indices.begin(), ret.indices.end());
+      } catch (std::exception const& ex) {
+        LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
       }
-      body.close();
 
-      // Wait for commit of highest except if it is 0?
-      if (!ret.indices.empty() && call_mode == "waitForCommitted") {
-        arangodb::consensus::index_t max_index = 0;
-        try {
-          max_index =
-            *std::max_element(ret.indices.begin(), ret.indices.end());
-        } catch (std::exception const& ex) {
-          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
-        }
-
-        if (max_index > 0) {
+      if (max_index > 0) {
+        if (call_mode == "waitForCommitted") {
           result = _agent->waitFor(max_index);
+        } else {
+          allCommitted = _agent->isCommitted(max_index);
         }
-
       }
     }
 
-    body.close();
-
-    if (result == Agent::raft_commit_t::UNKNOWN) {
-      generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateResult(rest::ResponseCode::REQUEST_TIMEOUT, body.slice());
-    } else {
-      if (errors > 0) { // Some/all requests failed
-        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
-      } else {          // All good
-        generateResult(rest::ResponseCode::OK, body.slice());
-      }
-    }
-#endif
-
-    // The following is the old behaviour:
+    // We can now prepare the result:
     Builder body;
     bool failed = false;
     { VPackObjectBuilder b(&body);
-      if (ret.indices.empty()) {
-        body.add("ongoing", VPackValue(true));
-      } else {
-        body.add(VPackValue("results"));
-        { VPackArrayBuilder bb(&body);
-          for (auto const& index : ret.indices) {
-            body.add(VPackValue(index));
-            failed = (failed || index == 0);
-          }}
-
+      body.add(VPackValue("results"));
+      { VPackArrayBuilder bb(&body);
+        for (auto const& index : ret.indices) {
+          body.add(VPackValue(index));
+          failed = (failed || index == 0);
+        }
       }
       body.add("inquired", VPackValue(true));
+      if (!allCommitted) {  // can only happen in agency_mode "noWait"
+        body.add("ongoing", VPackValue(true));
+      }
     }
-    generateResult(failed ? rest::ResponseCode::PRECONDITION_FAILED :
-                   rest::ResponseCode::OK, body.slice());
+
+    if (result == Agent::raft_commit_t::UNKNOWN) {
+      generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
+    } else if (result == Agent::raft_commit_t::TIMEOUT) {
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
+    } else {
+      if (failed > 0) { // Some/all requests failed
+        generateResult(rest::ResponseCode::PRECONDITION_FAILED, body.slice());
+      } else {          // All good (or indeed unknown in case 1)
+        generateResult(rest::ResponseCode::OK, body.slice());
+      }
+    }
   } else {  // Redirect to leader
     if (_agent->leaderID() == NO_LEADER) {
       return reportMessage(rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");

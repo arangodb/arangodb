@@ -255,6 +255,21 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
   return Agent::raft_commit_t::UNKNOWN;
 }
 
+// Check if log is committed up to index.
+bool Agent::isCommitted(index_t index) {
+
+  if (size() == 1) {  // single host agency
+    return true;
+  }
+
+  CONDITION_LOCKER(guard, _waitForCV);
+  if (leading()) {
+    return _commitIndex >= index;
+  } else {
+    return false;
+  }
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
