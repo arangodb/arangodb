@@ -23,6 +23,7 @@
 #include "Version.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
@@ -163,6 +164,5 @@ void Version::write(TRI_vocbase_t* vocbase,
   builder.close();
   builder.close();
   
-  std::string json = builder.slice().toJson();
-  basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+  basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), true);
 }
