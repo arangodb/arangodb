@@ -144,14 +144,15 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-void Version::write(TRI_vocbase_t* vocbase,
-                    std::map<std::string, bool> tasks) {
+Result Version::write(TRI_vocbase_t* vocbase,
+                      std::map<std::string, bool> tasks,
+                      bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
   std::string versionFile = engine->versionFilename(vocbase->id());
   TRI_ASSERT(!versionFile.empty());
-  
+    
   VPackOptions opts;
   opts.buildUnindexedObjects = true;
   VPackBuilder builder(&opts);
@@ -163,6 +164,10 @@ void Version::write(TRI_vocbase_t* vocbase,
   }
   builder.close();
   builder.close();
-  
-  basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), true);
+    
+  if (!basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), sync)) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed: " << TRI_last_error();
+    return Result(TRI_errno(), TRI_last_error());
+  }
+  return Result();
 }
