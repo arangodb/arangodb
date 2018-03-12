@@ -70,7 +70,7 @@ class EngineInfoContainerDBServer {
 
   struct EngineInfo {
    public:
-    EngineInfo(size_t idOfRemoteNode);
+    explicit EngineInfo(size_t idOfRemoteNode);
     ~EngineInfo();
 
     EngineInfo(EngineInfo&) = delete;
