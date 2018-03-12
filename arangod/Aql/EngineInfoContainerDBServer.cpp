@@ -133,10 +133,6 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   // Always Verbose
   plan.root()->toVelocyPack(infoBuilder, true);
-  {
-    VPackBuilder hund;
-    plan.root()->toVelocyPack(hund, true);
-  }
   _collection->resetCurrentShard();
 }
 
