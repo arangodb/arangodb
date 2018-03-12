@@ -533,11 +533,6 @@
 #define __STDC_LIMIT_MACROS 1
 #endif
 
-// for usleep
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
-
 #define ARANGODB_GETRUSAGE_MAXRSS_UNIT 1024
 
 // enabled features
@@ -770,9 +765,6 @@
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 #define TRI_MISSING_MEMRCHR 1
 
-// usleep in POSIX is for microseconds - not milliseconds
-// has been redefined in win-utils.h
-
 typedef int ssize_t;
 
 #ifndef va_copy
@@ -817,7 +809,7 @@ typedef unsigned char bool;
 #define S_IRGRP _S_IREAD
 #define S_IRUSR _S_IREAD
 #define S_IWGRP _S_IWRITE
-#define S_IWUSR _S_IWRITE
+#define S_IWUSR _S_IWRIET
 
 #define TRI_O_CLOEXEC 0
 #define TRI_NOATIME 0
