@@ -34,9 +34,43 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceAction.h"
 #include "Cluster/MaintenanceFeature.h"
+
+//
+// TestProgressHandler lets us know once ApplicationServer is ready
+//
+class TestProgressHandler : public arangodb::application_features::ProgressHandler {
+public:
+  TestProgressHandler() {
+    _serverReady=false;
+
+    using std::placeholders::_1;
+    _state = std::bind(& TestProgressHandler::StateChange, this, _1);
+
+    using std::placeholders::_2;
+    _feature = std::bind(& TestProgressHandler::FeatureChange, this, _1, _2);
+  }
+
+
+  void StateChange(arangodb::application_features::ServerState newState) {
+    if (arangodb::application_features::ServerState::IN_WAIT == newState) {
+      CONDITION_LOCKER(clock, _serverReadyCond);
+      _serverReady = true;
+      _serverReadyCond.broadcast();
+    }
+  }
+
+  void FeatureChange(arangodb::application_features::ServerState newState, std::string const &) {
+  }
+
+  arangodb::basics::ConditionVariable _serverReadyCond;
+  std::atomic_bool _serverReady;
+
+};// class TestProgressHandler
 
 
 //
@@ -56,6 +90,7 @@ public:
 
     // begin with no threads to allow queue validation
     _maintenanceThreadsMax = 0;
+    as->addReporter(_progressHandler);
   };
 
   virtual ~TestMaintenanceFeature() {
@@ -73,6 +108,7 @@ public:
 
 public:
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
+  TestProgressHandler _progressHandler;
 
 };// TestMaintenanceFeature
 
@@ -295,7 +331,8 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     as.addFeature(tf);
     std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
-    tf->setSecondsActionsBlock(0);  // disable retry wait for now
+    //
+    // 1. load up the queue without threads running
     arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"},
                                                      {"result_code","1"}};
     auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
@@ -305,10 +342,65 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
 
-    VPackArrayIterator ai1(tf->toVelocityPack().slice());
-    REQUIRE(1 == ai1.size());
+    //
+    // 2. see if happy about queue prior to threads running
+    {
+      VPackArrayIterator ai1(tf->toVelocityPack().slice());
+      REQUIRE(1 == ai1.size());
 
-    VPackSlice po = *ai1;
+      VPackSlice ma = *ai1;
+      VPackSlice id = ma.get("id");
+      REQUIRE((id.isInteger() && id.getInt() == 1));
+
+      VPackSlice state = ma.get("state");
+      REQUIRE((state.isInteger() && 1 == state.getInt()));
+
+      VPackSlice progress = ma.get("progress");
+      REQUIRE((progress.isInteger() && 0 == progress.getInt()));
+    }
+
+    //
+    // 3. start threads AFTER ApplicationServer known to be running
+    {
+      CONDITION_LOCKER(clock, tf->_progressHandler._serverReadyCond);
+      while(!tf->_progressHandler._serverReady) {
+        tf->_progressHandler._serverReadyCond.wait();
+      } // while
+    }
+
+    tf->setMaintenanceThreadsMax(1);
+
+    //
+    // 4. loop while waiting for threads to complete all actions
+    bool again;
+
+    do {
+      again = false;
+      sleep(1);
+      VPackArrayIterator ai1(tf->toVelocityPack().slice());
+      for (auto ma : ai1 )
+      {
+        VPackSlice state = ma.get("state");
+        again = again || (6 != state.getInt() && 5 != state.getInt());
+      } // for
+    } while(again);
+
+    //
+    // 5. verify completed actions
+    {
+      VPackArrayIterator ai1(tf->toVelocityPack().slice());
+      REQUIRE(1 == ai1.size());
+
+      VPackSlice ma = *ai1;
+      VPackSlice id = ma.get("id");
+      REQUIRE((id.isInteger() && id.getInt() == 1));
+
+      VPackSlice state = ma.get("state");
+      REQUIRE((state.isInteger() && 6 == state.getInt()));
+
+      VPackSlice progress = ma.get("progress");
+      REQUIRE((progress.isInteger() && 100 == progress.getInt()));
+    }
 
     std::string xx = (tf->toVelocityPack()).toJson();
     printf("%s\n", xx.c_str());
