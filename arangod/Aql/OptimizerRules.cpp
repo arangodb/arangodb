@@ -1889,9 +1889,55 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
         auto condNode = root->getMember(0);
 
         if (condNode->isOnlyEqualityMatch()) {
-          // now check if the index fields are the same as the sort condition
-          // fields
+          // now check if the index fields are the same as the sort condition fields
           // e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1, c.value2
+          auto i = index.getIndex();
+          // some special handling for the MMFiles edge index here, which to the outside
+          // world is an index on attributes _from and _to at the same time, but only one
+          // can be queried at a time
+          // this special handling is required in order to prevent lookups by one of the index
+          // attributes (e.g. _from) and a sort clause on the other index attribte (e.g. _to)
+          // to be treated as the same index attribute, e.g.
+          //     FOR doc IN edgeCol FILTER doc._from == ... SORT doc._to ...
+          // can use the index either for lookup or for sorting, but not for both at the same
+          // time. this is because if we do the lookup by _from, the results will be sorted
+          // by _from, and not by _to.
+          if (i->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_EDGE_INDEX && fields.size() == 2) {
+            // looks like MMFiles edge index
+            if (condNode->type == NODE_TYPE_OPERATOR_NARY_AND) {
+              // check all conditions of the index node, and check if we can find _from or _to
+              for (size_t j = 0; j < condNode->numMembers(); ++j) {
+                auto sub = condNode->getMemberUnchecked(j);
+                if (sub->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+                  continue;
+                }
+                auto lhs = sub->getMember(0);
+                if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+                    lhs->getMember(0)->type == NODE_TYPE_REFERENCE && 
+                    lhs->getMember(0)->getData() == outVariable) {
+                  // check if this is either _from or _to
+                  std::string attr = lhs->getString();
+                  if (attr == StaticStrings::FromString || attr == StaticStrings::ToString) {
+                    // reduce index fields to just the attribute we found in the index lookup condition
+                    fields = {{arangodb::basics::AttributeName(attr, false)} };
+                  }
+                } 
+
+                auto rhs = sub->getMember(1);
+                if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
+                    rhs->getMember(0)->type == NODE_TYPE_REFERENCE && 
+                    rhs->getMember(0)->getData() == outVariable) {
+                  // check if this is either _from or _to
+                  std::string attr = rhs->getString();
+                  if (attr == StaticStrings::FromString || attr == StaticStrings::ToString) {
+                    // reduce index fields to just the attribute we found in the index lookup condition
+                    fields = {{arangodb::basics::AttributeName(attr, false)} };
+                  }
+                }
+              }
+            }
+          }
+
           size_t const numCovered =
               sortCondition.coveredAttributes(outVariable, fields);
 
