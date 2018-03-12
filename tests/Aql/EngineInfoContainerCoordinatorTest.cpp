@@ -128,7 +128,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     });
 
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockEngine, createBlocks)).Return();
     When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&rootBlock);
@@ -216,7 +220,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       delete eng;
     });
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
@@ -245,7 +253,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     });
 
     When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
-    When(Method(mockSecondEngine, setLockedShards)).Return();
+    When(Method(mockSecondEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
+
     When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
@@ -408,7 +421,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
 
     When(Method(mockQuery, setEngine)).Do(setEngineCallback);
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
@@ -436,7 +453,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Mock first clone
     When(Method(mockQueryClone, setEngine)).Do(setEngineCallback);
     When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
-    When(Method(mockSecondEngine, setLockedShards)).Return();
+    When(Method(mockSecondEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockSecondEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
@@ -451,7 +472,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Mock second clone
     When(Method(mockQuerySecondClone, setEngine)).Do(setEngineCallback);
     When(Method(mockQuerySecondClone, engine)).Return(&myThirdEngine);
-    When(Method(mockThirdEngine, setLockedShards)).Return();
+    When(Method(mockThirdEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockThirdEngine, createBlocks)).Do([&](
       std::vector<ExecutionNode*> const& nodes,
       std::unordered_set<std::string> const&,
@@ -601,7 +626,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       delete eng;
     });
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockEngine, createBlocks)).AlwaysReturn();
     When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
@@ -616,20 +645,16 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     });
 
     When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
-    When(Method(mockSecondEngine, setLockedShards)).Return();
+    When(Method(mockSecondEngine, setLockedShards)).AlwaysDo([&](std::unordered_set<std::string>* lockedShards) {
+      REQUIRE(lockedShards != nullptr);
+      delete lockedShards; // This is a copy
+      return;
+    });
     When(Method(mockSecondEngine, createBlocks)).AlwaysReturn();
     When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
         .AlwaysReturn(&block);
 
-    // Mock the Registry
-    When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
-      REQUIRE(id != 0);
-      REQUIRE(query != nullptr);
-      REQUIRE(timeout == 600.0);
-      REQUIRE(query == &queryClone);
-      secondId = id;
-    });
-    When(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Do([&]
+   When(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Do([&]
           (std::string const& vocbase, QueryId id, int errorCode) {
       REQUIRE(vocbase == dbname);
       REQUIRE(id == secondId);
@@ -659,7 +684,15 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     testee.closeSnippet();
 
     SECTION("cloning of a query fails") {
-
+      // Mock the Registry
+      When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+        REQUIRE(id != 0);
+        REQUIRE(query != nullptr);
+        REQUIRE(timeout == 600.0);
+        REQUIRE(query == &queryClone);
+        secondId = id;
+      });
+   
       SECTION("it throws an error") {
         // Mock query clone
         When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
@@ -716,8 +749,52 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
     }
 
+    GIVEN("inserting into the Registry fails") {
+      When(Method(mockSecondEngine, getQuery)).Do([&]() -> Query* {
+        return &queryClone;
+      });
+      When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
+        REQUIRE(part == PART_DEPENDENT);
+        REQUIRE(withPlan == false);
+        return &queryClone;
+      });
 
+      When(Dtor(mockQueryClone)).Do([]() { })
+        .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
+      WHEN("it throws an exception") {
+        When(Method(mockRegistry, insert))
+            .Throw(
+                arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
+ 
+      }
+
+      ExecutionEngineResult result = testee.buildEngines(
+        &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+      );
+      REQUIRE(!result.ok());
+      // Make sure we check the right thing here
+      REQUIRE(result.errorNumber() == TRI_ERROR_DEBUG);
+ 
+      // Validate that the path up to intended error was taken
+
+      // Validate that the query is wired up with the engine
+      Verify(Method(mockQuery, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockEngine, createBlocks)).Exactly(1);
+
+      // Validate that the second query is wired up with the second engine
+      Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+      Verify(Method(mockRegistry, insert)).Exactly(1);
+
+      // Assert unregister of second engine.
+      Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(0);
+ 
+    }
   }
 
 }

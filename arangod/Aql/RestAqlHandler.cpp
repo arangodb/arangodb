@@ -87,8 +87,10 @@ bool RestAqlHandler::isDirect() const { return false; }
 // The body is a VelocyPack with the following layout:
 //  {
 //    lockInfo: {
+//      NONE: [<collections to not-lock],
 //      READ: [<collections to read-lock],
-//      WRITE: [<collections to write-lock]
+//      WRITE: [<collections to write-lock],
+//      EXCLUSIVE: [<collections with exclusive-lock]
 //    },
 //    options: { < query options > },
 //    snippets: {

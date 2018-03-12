@@ -67,7 +67,7 @@ class ExecutionEngine {
   }
 
   /// @brief get the query
-  Query* getQuery() const { return _query; }
+  TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) {
