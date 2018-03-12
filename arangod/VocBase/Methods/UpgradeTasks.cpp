@@ -55,22 +55,25 @@ static bool createSystemCollection(TRI_vocbase_t* vocbase,
   Result res = methods::Collections::lookup(vocbase, name,
                                             [](LogicalCollection* coll) {});
   if (res.is(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) {
-    auto cl = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    uint32_t defaultReplFactor = 1;
+    ClusterFeature* cl = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    if (cl != nullptr) {
+      defaultReplFactor = cl->systemReplicationFactor();
+    }
     VPackBuilder bb;
     bb.openObject();
     bb.add("isSystem", VPackSlice::trueSlice());
     bb.add("waitForSync", VPackSlice::falseSlice());
     bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add("replicationFactor", VPackValue(cl->systemReplicationFactor()));
+    bb.add("replicationFactor", VPackValue(defaultReplFactor));
     if (name != "_graphs") {
       bb.add("distributeShardsLike", VPackValue("_graphs"));
     }
     bb.close();
-    res =
-        Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                            /*waitsForSyncReplication*/ true,
-                            /*enforceReplicationFactor*/ true,
-                            [](LogicalCollection* coll) { TRI_ASSERT(coll); });
+    res = Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
+                              /*waitsForSyncReplication*/ true,
+                              /*enforceReplicationFactor*/ true,
+                              [](LogicalCollection* coll) { TRI_ASSERT(coll); });
   }
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -107,12 +110,15 @@ bool UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
                      {"user"},
                      /*unique*/ true, /*sparse*/ true);
 }
-bool UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
-                                   VPackSlice const& params) {
+bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
+                                       VPackSlice const& params) {
   TRI_ASSERT(!vocbase->isSystem());
   TRI_ASSERT(params.isObject());
   VPackSlice users = params.get("users");
-  if (!users.isArray()) {
+  if (users.isNone()) {
+    return true; // exit, no users were specified
+  } else if (!users.isArray()) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "addDefaultUserOther: users is invalid";
     return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -147,6 +153,9 @@ bool UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
 }
 bool UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {
   return createSystemCollection(vocbase, "_modules");
+}
+bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t* vocbase, VPackSlice const& s) {
+  return createSystemCollection(vocbase, "_iresearch_analyzers");
 }
 bool UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
   return createSystemCollection(vocbase, "_routing");

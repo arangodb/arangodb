@@ -154,7 +154,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade) {
     case VersionResult::CANNOT_PARSE_VERSION_FILE:
     case VersionResult::CANNOT_READ_VERSION_FILE:
     case VersionResult::NO_SERVER_VERSION: {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "Error reading version file";
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Error reading version file";
       std::string msg =
           std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
       return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
@@ -192,10 +192,10 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE,
           &UpgradeTasks::createUsersIndex);
-  addTask("addDefaultUsers", "add default users for a new database",
+  addTask("addDefaultUserOther", "add default users for a new database",
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
-          /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUsers);
+          /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
   addTask("updateUserModels",
           "convert documents in _users collection to new format",
           /*system*/ Flags::DATABASE_SYSTEM,
@@ -207,6 +207,12 @@ void methods::Upgrade::registerTasks() {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createModules);
+  // FIXME simon: Determine whether this is still necessary
+  addTask("setupAnalyzers", "setup _iresearch_analyzers collection",
+          /*system*/ Flags::DATABASE_SYSTEM,
+          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
+          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::setupAnalyzers);
   addTask("createRouting", "setup _routing collection",
           /*system*/ Flags::DATABASE_ALL,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,

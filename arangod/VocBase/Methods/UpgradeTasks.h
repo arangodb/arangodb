@@ -36,9 +36,10 @@ struct UpgradeTasks {
   static bool setupGraphs(TRI_vocbase_t*, velocypack::Slice const&);
   static bool setupUsers(TRI_vocbase_t*, velocypack::Slice const&);
   static bool createUsersIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static bool addDefaultUsers(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool addDefaultUserOther(TRI_vocbase_t*, velocypack::Slice const&);
   static bool updateUserModels(TRI_vocbase_t*, velocypack::Slice const&);
   static bool createModules(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupAnalyzers(TRI_vocbase_t*, velocypack::Slice const&);
   static bool createRouting(TRI_vocbase_t*, velocypack::Slice const&);
   static bool insertRedirections(TRI_vocbase_t*, velocypack::Slice const&);
   static bool setupAqlFunctions(TRI_vocbase_t*, velocypack::Slice const&);
