@@ -37,13 +37,27 @@ namespace arangodb {
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   TRI_voc_cid_t id
 ) const noexcept {
-  return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(id));
+  #else
+  auto dataSource = getDataSource(id);
+
+  return dataSource.category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  #endif
 }
 
 std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   std::string const& nameOrId
 ) const noexcept {
-  return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(nameOrId));
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<LogicalCollection>(getDataSource(nameOrId));
+  #else
+  auto dataSource = getDataSource(nameOrId);
+
+  return dataSource.category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  #endif
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -363,13 +377,27 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   TRI_voc_cid_t id
 ) const noexcept {
-  return std::dynamic_pointer_cast<LogicalView>(getDataSource(id));
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<LogicalView>(getDataSource(id));
+  #else
+  auto dataSource = getDataSource(id);
+
+  return dataSource.category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
+  #endif
 }
 
 std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   std::string const& nameOrId
 ) const noexcept {
-  return std::dynamic_pointer_cast<LogicalView>(getDataSource(nameOrId));
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<LogicalView>(getDataSource(nameOrId));
+  #else
+  auto dataSource = getDataSource(nameOrId);
+
+  return dataSource.category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
+  #endif
 }
 
 std::string CollectionNameResolver::getViewNameCluster(
