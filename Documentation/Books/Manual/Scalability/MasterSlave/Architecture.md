@@ -4,6 +4,12 @@ Master/Slave Architecture
 Introduction
 ------------
 
+In a _Master/Slave_ setup one or more ArangoDB _slaves_ asynchronously replicate
+from a _master_. 
+
+The _master_ is the ArangoDB instance where all data-modification operations should
+be directed to. The _slave_ is the ArangoDB instance that replicates the data from
+the master.
 
 Components
 ----------

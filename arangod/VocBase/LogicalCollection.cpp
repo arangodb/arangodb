@@ -56,6 +56,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -144,12 +145,17 @@ arangodb::LogicalDataSource::Type const& ReadType(
     std::string const& key,
     TRI_col_type_e def
 ) {
-  static const auto& document =
-    arangodb::LogicalDataSource::Type::emplace("document");
-  static const auto& edge = arangodb::LogicalDataSource::Type::emplace("edge");
+  static const auto& document = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("document")
+  );
+  static const auto& edge = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("edge")
+  );
 
   // arbitrary system-global value for unknown
-  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace("");
+  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("")
+  );
 
   switch (Helper::readNumericValue<TRI_col_type_e, int>(info, key, def)) {
    case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
@@ -200,17 +206,17 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
   TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
-// @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      VPackSlice const& info,
                                      bool isAStub)
     : LogicalDataSource(
+        category(),
         ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
         vocbase,
         ReadCid(info),
-        ReadPlanId(info, ReadCid(info)),
+        ReadPlanId(info, 0),
         ReadStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
       ),
@@ -414,6 +420,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 }
 
 LogicalCollection::~LogicalCollection() {}
+
+/*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
+  static const Category category;
+
+  return category;
+}
 
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
@@ -1077,6 +1089,11 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(vocbase(), id(), this, doSync);
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("change collection");
+  }
 
   return {};
 }
@@ -1122,7 +1139,14 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(
 std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
                                                       VPackSlice const& info,
                                                       bool& created) {
-  return _physical->createIndex(trx, info, created);
+  auto idx = _physical->createIndex(trx, info, created);
+  if (idx) {
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create index");
+    }
+  }
+  return idx;
 }
 
 /// @brief drops an index, including index file removal and replication
@@ -1132,7 +1156,14 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
   arangodb::aql::QueryCache::instance()->invalidate(vocbase(), name());
-  return _physical->dropIndex(iid);
+  bool result = _physical->dropIndex(iid);
+  if (result) {
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("drop index");
+    }
+  }
+  return result;
 }
 
 /// @brief Persist the connected physical collection.

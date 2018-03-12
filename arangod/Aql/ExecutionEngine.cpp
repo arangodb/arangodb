@@ -24,23 +24,15 @@
 #include "ExecutionEngine.h"
 
 #include "Aql/BasicBlocks.h"
-#include "Aql/CalculationBlock.h"
 #include "Aql/ClusterBlocks.h"
-#include "Aql/CollectBlock.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
-#include "Aql/EnumerateCollectionBlock.h"
-#include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/IndexBlock.h"
-#include "Aql/ModificationBlocks.h"
+#include "Aql/IndexNode.h"
+#include "Aql/ModificationNodes.h"
+#include "Aql/GraphNode.h"
 #include "Aql/Query.h"
-#include "Aql/SortBlock.h"
-#include "Aql/SubqueryBlock.h"
-#include "Aql/TraversalBlock.h"
-#include "Aql/ShortestPathBlock.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
@@ -48,14 +40,12 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "Graph/BaseOptions.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-
-#ifdef USE_IRESEARCH
-#include "IResearch/IResearchViewNode.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -88,128 +78,6 @@ struct TraverserEngineShardLists {
 
 /// Typedef for a complicated mapping used in TraverserEngines.
 typedef std::unordered_map<ServerID, TraverserEngineShardLists> Serv2ColMap;
-
-/// @brief helper function to create a block
-static ExecutionBlock* CreateBlock(
-    ExecutionEngine* engine, ExecutionNode const* en,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
-    std::unordered_set<std::string> const& includedShards) {
-  switch (en->getType()) {
-    case ExecutionNode::SINGLETON: {
-      return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
-    }
-    case ExecutionNode::INDEX: {
-      return new IndexBlock(engine, static_cast<IndexNode const*>(en));
-    }
-    case ExecutionNode::ENUMERATE_COLLECTION: {
-      return new EnumerateCollectionBlock(
-          engine, static_cast<EnumerateCollectionNode const*>(en));
-    }
-    case ExecutionNode::ENUMERATE_LIST: {
-      return new EnumerateListBlock(engine,
-                                    static_cast<EnumerateListNode const*>(en));
-    }
-#ifdef USE_IRESEARCH
-    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-      // FIXME better to replace switch with factory method
-      TRI_ASSERT(engine);
-      auto const* viewNode = static_cast<arangodb::iresearch::IResearchViewNode const*>(en);
-      return viewNode->createExecutionBlock(*engine);
-    }
-#endif
-    case ExecutionNode::TRAVERSAL: {
-      return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
-    }
-    case ExecutionNode::SHORTEST_PATH: {
-      return new ShortestPathBlock(engine, static_cast<ShortestPathNode const*>(en));
-    }
-    case ExecutionNode::CALCULATION: {
-      return new CalculationBlock(engine,
-                                  static_cast<CalculationNode const*>(en));
-    }
-    case ExecutionNode::FILTER: {
-      return new FilterBlock(engine, static_cast<FilterNode const*>(en));
-    }
-    case ExecutionNode::LIMIT: {
-      return new LimitBlock(engine, static_cast<LimitNode const*>(en));
-    }
-    case ExecutionNode::SORT: {
-      return new SortBlock(engine, static_cast<SortNode const*>(en));
-    }
-    case ExecutionNode::COLLECT: {
-      auto aggregationMethod =
-          static_cast<CollectNode const*>(en)->aggregationMethod();
-
-      if (aggregationMethod == CollectOptions::CollectMethod::HASH) {
-        return new HashedCollectBlock(engine,
-                                      static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod == CollectOptions::CollectMethod::SORTED) {
-        return new SortedCollectBlock(engine,
-                                      static_cast<CollectNode const*>(en));
-      } else if (aggregationMethod == CollectOptions::CollectMethod::DISTINCT) {
-        return new DistinctCollectBlock(engine,
-                                      static_cast<CollectNode const*>(en));
-      }
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "cannot instantiate CollectBlock with "
-                                     "undetermined aggregation method");
-    }
-    case ExecutionNode::SUBQUERY: {
-      auto es = static_cast<SubqueryNode const*>(en);
-      auto it = cache.find(es->getSubquery());
-
-      TRI_ASSERT(it != cache.end());
-
-      return new SubqueryBlock(engine, static_cast<SubqueryNode const*>(en),
-                               it->second);
-    }
-    case ExecutionNode::RETURN: {
-      return new ReturnBlock(engine, static_cast<ReturnNode const*>(en));
-    }
-    case ExecutionNode::REMOVE: {
-      return new RemoveBlock(engine, static_cast<RemoveNode const*>(en));
-    }
-    case ExecutionNode::INSERT: {
-      return new InsertBlock(engine, static_cast<InsertNode const*>(en));
-    }
-    case ExecutionNode::UPDATE: {
-      return new UpdateBlock(engine, static_cast<UpdateNode const*>(en));
-    }
-    case ExecutionNode::REPLACE: {
-      return new ReplaceBlock(engine, static_cast<ReplaceNode const*>(en));
-    }
-    case ExecutionNode::UPSERT: {
-      return new UpsertBlock(engine, static_cast<UpsertNode const*>(en));
-    }
-    case ExecutionNode::NORESULTS: {
-      return new NoResultsBlock(engine, static_cast<NoResultsNode const*>(en));
-    }
-    case ExecutionNode::SCATTER: {
-      auto shardIds =
-          static_cast<ScatterNode const*>(en)->collection()->shardIds(includedShards);
-      return new ScatterBlock(engine, static_cast<ScatterNode const*>(en),
-                              *shardIds);
-    }
-    case ExecutionNode::DISTRIBUTE: {
-      auto shardIds =
-          static_cast<DistributeNode const*>(en)->collection()->shardIds(includedShards);
-      return new DistributeBlock(
-          engine, static_cast<DistributeNode const*>(en), *shardIds,
-          static_cast<DistributeNode const*>(en)->collection());
-    }
-    case ExecutionNode::GATHER: {
-      return new GatherBlock(engine, static_cast<GatherNode const*>(en));
-    }
-    case ExecutionNode::REMOTE: {
-      auto remote = static_cast<RemoteNode const*>(en);
-      return new RemoteBlock(engine, remote, remote->server(),
-                             remote->ownName(), remote->queryId());
-    }
-  }
-        
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
-}
 
 /// @brief create the engine
 ExecutionEngine::ExecutionEngine(Query* query)
@@ -256,8 +124,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
-
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
 
@@ -268,14 +134,13 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
             TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
       }
 
-      engine->addBlock(eb.get());
+      static const std::unordered_set<std::string> EMPTY;
+      block = engine->addBlock(en->createBlock(*engine, cache, EMPTY));
 
       if (!en->hasParent()) {
         // yes. found a new root!
-        root = eb.get();
+        root = block;
       }
-
-      block = eb.release();
     }
 
     TRI_ASSERT(block != nullptr);
@@ -783,24 +648,23 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       RemoteNode* remoteNode = nullptr;
 
       for (auto en = info->nodes.begin(); en != info->nodes.end(); ++en) {
-        auto const nodeType = (*en)->getType();
+        auto* node = *en;
+        TRI_ASSERT(node);
+
+        auto const nodeType = node->getType();
 
         if (nodeType == ExecutionNode::REMOTE) {
-          remoteNode = static_cast<RemoteNode*>((*en));
+          remoteNode = static_cast<RemoteNode*>(node);
           continue;
         }
 
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache, _includedShards);
+        auto* eb = engine->addBlock(
+          node->createBlock(*engine, cache, _includedShards)
+        );
+        TRI_ASSERT(eb);
 
-        try {
-          engine.get()->addBlock(eb);
-        } catch (...) {
-          delete eb;
-          throw;
-        }
-
-        for (auto const& dep : (*en)->getDependencies()) {
+        for (auto const& dep : node->getDependencies()) {
           auto d = cache.find(dep);
 
           if (d != cache.end()) {
@@ -819,7 +683,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
           // now we'll create a remote node for each shard and add it to the
           // gather node
-          auto gatherNode = static_cast<GatherNode const*>(*en);
+          auto gatherNode = static_cast<GatherNode const*>(node);
           Collection const* collection = gatherNode->collection();
 
           auto shardIds = collection->shardIds(_includedShards);
@@ -878,7 +742,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         engine->root(eb);
 
         // put it into our cache:
-        cache.emplace(*en, eb);
+        cache.emplace(node, eb);
       }
 
       TRI_ASSERT(engine->root() != nullptr);
@@ -1547,4 +1411,12 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 
   _blocks.emplace_back(block);
+}
+
+/// @brief add a block to the engine
+ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock>&& block) {
+  TRI_ASSERT(block != nullptr);
+
+  _blocks.emplace_back(block.get());
+  return block.release();
 }

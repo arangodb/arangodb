@@ -365,6 +365,7 @@ function build-book-symlinks()
 
 function build-book()
 {
+    python ../Scripts/codeBlockReader.py || exit 1
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
@@ -607,7 +608,6 @@ function build-book-keep-md()
 {
     NAME="$1"
     test -d books || mkdir books
-    python ../Scripts/codeBlockReader.py || exit 1
     build-book "${NAME}"
 }
 
