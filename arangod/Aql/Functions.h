@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_FUNCTIONS_H
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
-
+#include "Basics/datetime.h"
 #include "Basics/Common.h"
 #include "Basics/SmallVector.h"
 #include "Aql/AqlValue.h"
@@ -91,6 +91,13 @@ struct Functions {
                                    transaction::Methods* trx,
                                    VPackFunctionParameters const& parameters,
                                    char const* funcName, bool recursive);
+
+    static bool ParameterToTimePoint(arangodb::aql::Query *const query,
+                                 transaction::Methods *const trx,
+                                 VPackFunctionParameters const& parameters,
+                                 tp_sys_clock_ms& tp,
+                                 std::string const& functionName,
+                                 size_t parameterIndex);
 
   public:
    /// @brief helper function. not callable as a "normal" AQL function
@@ -174,6 +181,57 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue RegexReplace(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+
+
+    // Date
+   static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue DateIso8601(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+   static AqlValue DateTimestamp(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+   static AqlValue IsDatestring(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+   static AqlValue DateDayOfWeek(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+   static AqlValue DateYear(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
+   static AqlValue DateMonth(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+   static AqlValue DateDay(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
+   static AqlValue DateHour(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
+   static AqlValue DateMinute(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+   static AqlValue DateSecond(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+   static AqlValue DateMillisecond(arangodb::aql::Query*, transaction::Methods*,
+                                   VPackFunctionParameters const&);
+   static AqlValue DateDayOfYear(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+   static AqlValue DateIsoWeek(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+    static AqlValue DateLeapYear(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+    static AqlValue DateQuarter(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+    static AqlValue DateDaysInMonth(arangodb::aql::Query*, transaction::Methods*,
+                                    VPackFunctionParameters const&);
+    static AqlValue DateTrunc(arangodb::aql::Query*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+    static AqlValue DateAdd(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
+    static AqlValue DateSubtract(arangodb::aql::Query*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+    static AqlValue DateDiff(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
+    static AqlValue DateCompare(arangodb::aql::Query*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+
+
+
+
    static AqlValue Passthru(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
    static AqlValue Unset(arangodb::aql::Query*, transaction::Methods*,
