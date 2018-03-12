@@ -259,9 +259,9 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         try {
           ci = ClusterInfo::instance()->getCollection(
             #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-              std::dynamic_pointer_cast<LogicalCollection>(it->second)->dbName(),
+              dynamic_cast<LogicalCollection&>((*it->second))->dbName(),
             #else
-              std::static_pointer_cast<LogicalCollection>(it->second)->dbName(),
+              static_cast<LogicalCollection&>((*it->second))->dbName(),
             #endif
             name
           );
@@ -397,6 +397,7 @@ bool CollectionNameResolver::visitCollections(
   if (LogicalCollection::category() == dataSource->category()) {
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto collection = std::dynamic_pointer_cast<LogicalCollection>(dataSource);
+      TRI_ASSERT(collection);
     #else
       auto collection = std::static_pointer_cast<LogicalCollection>(dataSource);
     #endif
