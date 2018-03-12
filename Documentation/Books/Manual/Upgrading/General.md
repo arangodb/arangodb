@@ -20,7 +20,7 @@ Recommended minor upgrade procedure
 To upgrade an existing ArangoDB database to a newer version of ArangoDB 
 (e.g. 3.0 to 3.1, 3.1 to 3.2, 3.2 to 3.3, etc), the following method is recommended:
 
-- Check the [CHANGELOG](../ReleaseNotes/README.md#changelog) and the
+- Check the [CHANGELOG](../ReleaseNotes/README.md#changelogs) and the
   [list of incompatible changes](../ReleaseNotes/README.md#incompatible-changes)
   for API or other changes in the new version of ArangoDB and make sure your applications
   can deal with them
