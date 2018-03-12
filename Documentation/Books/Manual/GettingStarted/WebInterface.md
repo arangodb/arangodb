@@ -21,10 +21,10 @@ The web interface will become available shortly after you started `arangod`.
 You can access it in your browser at http://localhost:8529 - if not, please
 see [Troubleshooting](../Troubleshooting/README.md).
 
-By default, authentication is enabled. The default user is
-`root`. Depending on the installation method used, the installation
-process either prompted for the root password or the default root
-password is empty (see [above](#securing-the-installation)).
+By default, authentication is enabled. The default user is `root`.
+Depending on the installation method used, the installation process either
+prompted for the root password or the default root password is empty
+(see [Securing the installation](Installation.md#securing-the-installation)).
 
 ![Aardvark Login Form](../Administration/WebInterface/images/loginView.png)
 
