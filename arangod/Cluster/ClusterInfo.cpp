@@ -1355,6 +1355,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
 
+      // Update our cache:
+      loadPlan();
     }
   }
 
