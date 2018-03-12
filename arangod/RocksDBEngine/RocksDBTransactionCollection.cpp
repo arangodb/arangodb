@@ -194,7 +194,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       }
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid);
+      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;

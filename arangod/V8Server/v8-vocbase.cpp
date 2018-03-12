@@ -1436,7 +1436,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       auto colCopy = ci->clone();
       collection = colCopy.release();  // will be delete on garbage collection
     } else {
-      collection = vocbase->lookupCollection(std::string(key));
+      collection = vocbase->lookupCollection(std::string(key)).get();
     }
   } catch (...) {
     // do not propagate exception from here
