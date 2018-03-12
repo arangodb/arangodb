@@ -809,7 +809,7 @@ typedef unsigned char bool;
 #define S_IRGRP _S_IREAD
 #define S_IRUSR _S_IREAD
 #define S_IWGRP _S_IWRITE
-#define S_IWUSR _S_IWRIET
+#define S_IWUSR _S_IWRITE
 
 #define TRI_O_CLOEXEC 0
 #define TRI_NOATIME 0
