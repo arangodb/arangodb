@@ -1,5 +1,5 @@
 #!/bin/bash
-ALLBOOKS="HTTP AQL Manual Cookbook"
+ALLBOOKS="HTTP AQL Manual Cookbook Drivers"
 OTHER_MIME="pdf epub mobi"
 
 # shellcheck disable=SC2016
