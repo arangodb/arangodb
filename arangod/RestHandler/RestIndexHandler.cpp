@@ -67,9 +67,10 @@ LogicalCollection* RestIndexHandler::collection(
       } catch (...) {
       }
     } else {
-      return _vocbase->lookupCollection(cName);
+      return _vocbase->lookupCollection(cName).get();
     }
   }
+
   return nullptr;
 }
 

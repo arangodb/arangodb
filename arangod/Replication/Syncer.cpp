@@ -311,15 +311,14 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
                                                    TRI_voc_cid_t cid,
                                                    std::string const& name) {
-  
-  arangodb::LogicalCollection* idCol = vocbase->lookupCollection(cid);
+  auto* idCol = vocbase->lookupCollection(cid).get();
   arangodb::LogicalCollection* nameCol = nullptr;
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = vocbase->lookupCollection(name);
+    nameCol = vocbase->lookupCollection(name).get();
   }
-  
+
   if (idCol != nullptr && nameCol != nullptr) {
     if (idCol->cid() == nameCol->cid()) {
       // found collection by id and name, and both are identical!
@@ -331,16 +330,16 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
       // system collection. always return collection by name when in doubt
       return nameCol;
     }
-    
+
     // no system collection. still prefer local collection
     return nameCol;
   }
-  
+
   if (nameCol != nullptr) {
     TRI_ASSERT(idCol == nullptr);
     return nameCol;
   }
-  
+
   // may be nullptr
   return idCol;
 }
@@ -385,13 +384,14 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
   TRI_voc_cid_t cid = getCid(slice);
   if (!simulate32Client() || cid == 0) {
     VPackSlice uuid;
+
     if ((uuid = slice.get("cuid")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString());
+      return vocbase->lookupCollectionByUuid(uuid.copyString()).get();
     } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString());
+      return vocbase->lookupCollectionByUuid(uuid.copyString()).get();
     }
   }
-  
+
   if (cid == 0) {
     LOG_TOPIC(ERR, Logger::REPLICATION) <<
       TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
@@ -559,23 +559,22 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
     // collection already exists. TODO: compare attributes
     return Result();
   }
-   
+
   bool forceRemoveCid = false;
   if (col != nullptr && simulate32Client()) {
     forceRemoveCid = true;
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "would have got a wrong collection!";
     // go on now and truncate or drop/re-create the collection
   }
-  
+
   // conflicting collections need to be dropped from 3.3 onwards
-  col = vocbase->lookupCollection(name);
+  col = vocbase->lookupCollection(name).get();
+
   if (col != nullptr) {
     if (col->isSystem()) {
       TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
-      
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       col->cid(), AccessMode::Type::WRITE);
-    
       Result res = trx.begin();
       if (!res.ok()) {
         return res;
@@ -590,7 +589,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       vocbase->dropCollection(col, false, -1.0);
     }
   }
-  
+
   VPackSlice uuid = slice.get("globallyUniqueId");
   // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;

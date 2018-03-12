@@ -468,7 +468,7 @@ arangodb::Result updateLinks(
     }
 
     struct State {
-      arangodb::LogicalCollection* _collection = nullptr;
+      std::shared_ptr<arangodb::LogicalCollection> _collection;
       size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
       arangodb::iresearch::IResearchLink const* _link = nullptr;
       size_t _linkDefinitionsOffset;
@@ -554,12 +554,12 @@ arangodb::Result updateLinks(
 //      );
     }
 
-    auto* resolver = trx.resolver();
+    auto* vocbase = trx.vocbase();
 
-    if (!resolver) {
+    if (!vocbase) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to get resolver from transaction while updating while iResearch view '") + std::to_string(view.id()) + "'"
+        std::string("failed to get vocbase from transaction while updating while IResearch view '") + std::to_string(view.id()) + "'"
       );
     }
 
@@ -572,7 +572,7 @@ arangodb::Result updateLinks(
         auto& state = *itr;
         auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-        state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
+        state._collection = vocbase->lookupCollection(collectionName);
 
         if (!state._collection) {
           // remove modification state if removal of non-existant link on non-existant collection
@@ -708,7 +708,7 @@ void validateLinks(
     arangodb::iresearch::IResearchView const& view
 ) {
   for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto* collection = vocbase.lookupCollection(*itr);
+    auto collection = vocbase.lookupCollection(*itr);
 
     if (!collection || !findFirstMatchingLink(*collection, view)) {
       itr = collections.erase(itr);
@@ -2012,7 +2012,7 @@ arangodb::Result IResearchView::updateProperties(
         }
 
         for (auto& cid: meta._collections) {
-          auto* collection = vocbase->lookupCollection(cid);
+          auto collection = vocbase->lookupCollection(cid);
 
           if (collection) {
             _meta._collections.emplace(cid);
