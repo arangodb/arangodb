@@ -1130,6 +1130,32 @@ class KeySpace {
     delete element;
     return false;
   }
+  
+  bool keySet(std::string const& key, double val) {
+    TRI_json_t* json = TRI_CreateNumberJson(val);
+
+    if (json == nullptr) {
+      // OOM
+      return false;
+    }
+    auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(), json);
+    {
+      WRITE_LOCKER(writeLocker, _lock);
+      auto it = _hash.find(key);
+      if (it != _hash.end()) {
+        it->second->json->_value._number = val;
+        return true;
+      } else {
+        auto it2 = _hash.emplace(key, element.get());
+        if (it2.second) {
+          element.release(); // _hash now has ownership
+          return true;
+        }
+      }
+    }
+    // insertion failed
+    return false;
+  }
 
   int keyCas(v8::Isolate* isolate, std::string const& key,
              v8::Handle<v8::Value> const& value,
@@ -2015,6 +2041,31 @@ static void JS_KeySet(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calls global.KEY_SET('queue-control', 'databases-expire', 0);
+////////////////////////////////////////////////////////////////////////////////
+void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase->isSystem());
+  std::string const name = "queue-control";
+  std::string const key = "databases-expire";
+  
+  auto h = &(static_cast<UserStructures*>(vocbase->_userStructures)->hashes);
+  bool result;
+  {
+    READ_LOCKER(readLocker, h->lock);
+    
+    auto hash = GetKeySpace(vocbase, name);
+    if (hash == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    }
+    
+    result = hash->keySet(key, 0);
+  }
+  if (!result) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

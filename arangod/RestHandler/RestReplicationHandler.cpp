@@ -2520,7 +2520,7 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
 //////////////////////////////////////////////////////////////////////////////
 void RestReplicationHandler::grantTemporaryRights() {
   if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->canUseDatabase(_vocbase->name(), auth::Level::RW) ) {
+    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
       // If you have administrative access on this database,
       // we grant you everything for restore.
       ExecContext::CURRENT = nullptr;

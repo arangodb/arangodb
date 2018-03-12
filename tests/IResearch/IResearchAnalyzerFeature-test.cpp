@@ -678,7 +678,6 @@ SECTION("test_persistence") {
     {
       arangodb::OperationOptions options;
       arangodb::ManagedDocumentResult result;
-      TRI_voc_tick_t resultMarkerTick;
       auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
       collection->truncate(nullptr, options);
     }
