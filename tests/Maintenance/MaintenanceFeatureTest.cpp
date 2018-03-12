@@ -324,7 +324,17 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
 
 TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
-  SECTION("Iterate Action 0 times - ok") {
+  // structure used to store expected states of action properties
+  struct Expected {
+    int _id;
+    int _result;
+    int _state;
+    int _progress;
+  };
+
+  SECTION("Populate action queue and validate") {
+    std::vector<Expected> pre_thread, post_thread;
+
     std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
     arangodb::application_features::ApplicationServer as(po, nullptr);
     TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
@@ -333,6 +343,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 1. load up the queue without threads running
+    //   a. 100 iterations then fail
     arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"},
                                                      {"result_code","1"}};
     auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
@@ -341,22 +352,53 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf->addAction(desc_ptr, prop_ptr, false);
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
+    pre_thread.push_back({1,0,1,0});
+    post_thread.push_back({1,1,6,100});
+
+    //   b. 2 iterations then succeed;
+    desc={{"name","TestActionBasic"},{"iterate_count","2"}};
+    desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    prop_ptr = std::make_shared<VPackBuilder>();
+
+    result = tf->addAction(desc_ptr, prop_ptr, false);
+    REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
+    REQUIRE(tf->_recentAction->result().ok());
+    pre_thread.push_back({2,0,1,0});
+    post_thread.push_back({2,0,5,2});
+
+    //   c. duplicate of 'a', should fail to add
+    desc={{"name","TestActionBasic"},{"iterate_count","100"},
+                                                     {"result_code","1"}};
+    desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    prop_ptr = std::make_shared<VPackBuilder>();
+
+    result = tf->addAction(desc_ptr, prop_ptr, false);
+    REQUIRE(!result.ok());   // has not executed, ok() is about parse and list add
+    // _recentAction will NOT contain the aborted object ... don't test it
 
     //
     // 2. see if happy about queue prior to threads running
     {
       VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      REQUIRE(1 == ai1.size());
+      REQUIRE(2 == ai1.size());
+      REQUIRE(ai1.size() == pre_thread.size());
 
-      VPackSlice ma = *ai1;
-      VPackSlice id = ma.get("id");
-      REQUIRE((id.isInteger() && id.getInt() == 1));
+      auto ma = ai1.begin();
+      auto check = pre_thread.begin();
 
-      VPackSlice state = ma.get("state");
-      REQUIRE((state.isInteger() && 1 == state.getInt()));
+      for ( ; ai1.end() != ma && pre_thread.end()!=check; ++ma, ++check) {
+        VPackSlice id = (*ma).get("id");
+        REQUIRE((id.isInteger() && id.getInt() == check->_id));
 
-      VPackSlice progress = ma.get("progress");
-      REQUIRE((progress.isInteger() && 0 == progress.getInt()));
+        VPackSlice result = (*ma).get("result");
+        REQUIRE((result.isInteger() && check->_result == result.getInt()));
+
+        VPackSlice state = (*ma).get("state");
+        REQUIRE((state.isInteger() && check->_state == state.getInt()));
+
+        VPackSlice progress = (*ma).get("progress");
+        REQUIRE((progress.isInteger() && check->_progress == progress.getInt()));
+      } // for
     }
 
     //
@@ -389,21 +431,34 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     // 5. verify completed actions
     {
       VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      REQUIRE(1 == ai1.size());
+      REQUIRE(2 == ai1.size());
+      REQUIRE(ai1.size() == post_thread.size());
 
-      VPackSlice ma = *ai1;
-      VPackSlice id = ma.get("id");
-      REQUIRE((id.isInteger() && id.getInt() == 1));
+      auto ma = ai1.begin();
+      auto check = post_thread.begin();
 
-      VPackSlice state = ma.get("state");
-      REQUIRE((state.isInteger() && 6 == state.getInt()));
+      for ( ; ai1.end() != ma && post_thread.end()!=check; ++ma, ++check) {
+        VPackSlice id = (*ma).get("id");
+        REQUIRE((id.isInteger() && id.getInt() == check->_id));
 
-      VPackSlice progress = ma.get("progress");
-      REQUIRE((progress.isInteger() && 100 == progress.getInt()));
+        VPackSlice result = (*ma).get("result");
+        REQUIRE((result.isInteger() && check->_result == result.getInt()));
+
+        VPackSlice state = (*ma).get("state");
+        REQUIRE((state.isInteger() && check->_state == state.getInt()));
+
+        VPackSlice progress = (*ma).get("progress");
+        REQUIRE((progress.isInteger() && check->_progress == progress.getInt()));
+      } // for
     }
 
+#if 0   // for debugging
     std::string xx = (tf->toVelocityPack()).toJson();
     printf("%s\n", xx.c_str());
+#endif
+
+    //
+    // 6. bring down the ApplicationServer, i.e. clean up
     as.beginShutdown();
     th.join();
   }
