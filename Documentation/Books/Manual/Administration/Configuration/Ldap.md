@@ -127,7 +127,7 @@ options by specifying a single LDAP URL. Here is an example:
 
     --ldap.url ldap://ldap.arangodb.com:1234/dc=arangodb,dc=com?uid?sub
 
-as one option has the combined effect of setting
+This one option has the combined effect of setting the following:
 
     --ldap.server=ldap.arangodb.com \
     --ldap.port=1234 \
@@ -135,7 +135,7 @@ as one option has the combined effect of setting
     --ldap.searchAttribute=uid \
     --ldap.searchScope=sub
 
-That is, the LDAP URL consists of the ldap *server* and *port*, a *basedn*, a
+That is, the LDAP URL consists of the LDAP *server* and *port*, a *basedn*, a
 *search attribute* and a *scope* which can be one of *base*, *one* or
 *sub*. There is also the possibility to use the `ldaps` protocol as in:
 
@@ -150,27 +150,27 @@ as described in the next section.
 ### TLS options
 
 {% hint 'warning' %}
-TLS is not supported under Windows.
+TLS is not supported in the Windows version of ArangoDB!
 {% endhint %}
 
 To configure the usage of encrypted TLS to communicate with the LDAP server
 the following options are available:
 
   - `--ldap.tls` The main switch to active TLS. can either be 
-      `true` => use tls. or `false` => do not use tls. It is switched
+      `true` (use TLS) or `false` (do not use TLS). It is switched
       off by default. If you switch this on and do not use the `ldaps`
-      protocol via the LDAP url (see previous section), then ArangoDB
+      protocol via the [LDAP URL](#ldap-urls), then ArangoDB
       will use the `STARTTLS` protocol to initiate TLS. This is the
       recommended approach.
   - `--ldap.tls-version` the minimal TLS version that ArangoDB should accept.
       Available versions are `1.0`, `1.1` and `1.2`. The default is `1.2`. If
       your LDAP server does not support Version 1.2, you have to change
       this setting.
-  - `--ldap.tls-cert-check-strategy` strategy to validate the ldap server
-     certificate.  Available strategies are `never`, `hard`,
+  - `--ldap.tls-cert-check-strategy` strategy to validate the LDAP server
+      certificate.  Available strategies are `never`, `hard`,
       `demand`, `allow` and `try`. The default is `hard`.
   - `--ldap.tls-cacert-file` A file path to one or more (concatenated)
-      certificate authority certificates in pem format.
+      certificate authority certificates in PEM format.
       As default no file path is configured. This certificate
       is used to validate the server response.
   - `--ldap.tls-cacert-dir` A directory path to certificate authority certificates in
@@ -184,7 +184,7 @@ Assuming you have the TLS CAcert file that is given to the server at
     --ldap.tls true \
     --ldap.tls-cacert-file /path/to/certificate.pem
 
-You can use tls with any of the following authentication mechanisms.
+You can use TLS with any of the following authentication mechanisms.
 
 Authentication methods
 ----------------------
@@ -220,7 +220,7 @@ ArangoDB configuration together with the fundamental configuration:
 
 This method will authenticate an LDAP user with the distinguished name
 `{PREFIX}{USERNAME}{SUFFIX}`, in this case for the arango user `alice`
-it will search for: `uid=alice,dv=arangodb,dc=com`.
+it will search for: `uid=alice,dc=arangodb,dc=com`.
 This distinguished name will be used as `{{USER}}` for the roles later on.
 
 ### Search authentication method
@@ -281,16 +281,17 @@ to ArangoDB at all.
 If a user has multiple roles with different rights
 then the rights will be combined and the `strongest`
 right will win. Example:
-`alice` has the roles `project-a` and `project-b`.
-`project-a` has no access to collection `BData`.
-`project-b` has `rw` access to collection `BData`,
-hence `alice` will have `rw` on `BData`.
+
+- `alice` has the roles `project-a` and `project-b`.
+- `project-a` has no access to collection `BData`.
+- `project-b` has `rw` access to collection `BData`,
+- hence `alice` will have `rw` on `BData`.
 
 Note that the actual database and collection access rights
 will be configured in ArangoDB itself by roles in the users module.
 The role name is always prefixed with `:role:`, e.g.: `:role:project-a`
 and `:role:project-b` respectively. You can use the normal user
-permissions tools in the UI or the `arangosh` to configure these.
+permissions tools in the Web interface or `arangosh` to configure these.
 
 ### Roles attribute
 
@@ -415,12 +416,13 @@ role of `alice`. However we actually want to configure a role name:
 `:role:project-a` which is easier to read and maintain for our
 administrators.
 
-if we now apply the following transformation:
+If we now apply the following transformation:
 
     --ldap.roles-transformation=/^cn=([^,]*),.*$/$1/
 
 The regex will extract out `project-a` resp. `project-b` of the
 `dn` attribute.
+
 In combination with the `superuser-role` we could make all
 `project-a` members arangodb admins by using:
 
