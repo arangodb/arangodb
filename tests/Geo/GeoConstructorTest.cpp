@@ -49,15 +49,14 @@ namespace tests {
 namespace geo_constructors_aql {
 
 namespace geo_point {
-//SCENARIO("Testing GEO_POINT", "[AQL][GEO]") {
-SCENARIO("Testing GEO_POINT", "[geotest]") {
+SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
   fakeit::Mock<Query> queryMock;
   Query& query = queryMock.get();
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx = trxMock.get();
 
-  WHEN("Checking successful combinations of parameters") {
+  WHEN("Checking correct combinations of parameters") {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
 
@@ -196,7 +195,7 @@ SCENARIO("Testing GEO_POINT", "[geotest]") {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
     fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-      REQUIRE(code==1542);
+      REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     });
 
     WHEN("checking bool and positive double") {
@@ -419,6 +418,600 @@ SCENARIO("Testing GEO_POINT", "[geotest]") {
 }
 } // geo_point
 
+// LOG_TOPIC(ERR, Logger::FIXME) << "json: " << json.toString();
+// LOG_TOPIC(ERR, Logger::FIXME) << "result: " << res.slice().toString();
+namespace geo_polygon {
+SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
+
+  fakeit::Mock<Query> queryMock;
+  Query& query = queryMock.get();
+
+  fakeit::Mock<transaction::Methods> trxMock;
+  transaction::Methods& trx = trxMock.get();
+
+  WHEN("Checking correct combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking polygon with 3 positive tupels") {
+      char const* p = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 3);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(2).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).getDouble() == 1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).getDouble() == 2.0);
+      CHECK(res.slice().get("coordinates").at(1).at(0).getDouble() == 3.0);
+      CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
+      CHECK(res.slice().get("coordinates").at(2).at(0).getDouble() == 5.0);
+      CHECK(res.slice().get("coordinates").at(2).at(1).getDouble() == 6.0);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "Polygon");
+    }
+
+    WHEN("checking polygon representing cologne") {
+      char const* p = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 10);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "Polygon");
+    }
+
+    WHEN("checking polygon with 3 negative positions") {
+      char const* p = "[[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 3);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(2).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).getDouble() == -1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).getDouble() == -2.0);
+      CHECK(res.slice().get("coordinates").at(1).at(0).getDouble() == -3.0);
+      CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == -4.0);
+      CHECK(res.slice().get("coordinates").at(2).at(0).getDouble() == -5.0);
+      CHECK(res.slice().get("coordinates").at(2).at(1).getDouble() == -6.0);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "Polygon");
+    }
+  }
+
+  WHEN("Checking negative combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking polygon with 1 positive positions") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[1.0, 2.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 1 negative positions") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[-1.0, -2.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 2 positive tupel") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 2 negative tupel") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[-1.0, -2.0], [-3.0, -4.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with boolean") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      
+      char const* p = "[true]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with booleans") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[true, false]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with nested booleans") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[true], [false], [true], [false]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object with single boolean") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "true";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object with single number") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "123";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object with some data") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "{\"Hello\": true, \"Hellox\": 123}";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+  }
+
+}
+} // geo_polygon
+
+namespace geo_linestring {
+SCENARIO("Testing GEO_LINESTRING", "[AQL][GEOC][GEOLINESTRING]") {
+
+  fakeit::Mock<Query> queryMock;
+  Query& query = queryMock.get();
+
+  fakeit::Mock<transaction::Methods> trxMock;
+  transaction::Methods& trx = trxMock.get();
+  
+  WHEN("Checking correct combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking polygon with 2 positions") {
+      char const* p = "[[1.0, 2.0], [3.0, 4.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).getDouble() == 1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).getDouble() == 2.0);
+      CHECK(res.slice().get("coordinates").at(1).at(0).getDouble() == 3.0);
+      CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "LineString");
+    }
+
+    WHEN("checking linestring representing cologne") {
+      char const* p = "[[6.888427734375,50.91602169392645],[6.9632720947265625,50.87921050161489],[7.013397216796875,50.89480467658874],[7.0731353759765625,50.92424609910128],[7.093048095703125,50.94804539355076],[7.03948974609375,50.9709677364145],[6.985244750976562,51.000360974529464],[6.8891143798828125,50.996471761616284],[6.867828369140624,50.95669666276118],[6.888427734375,50.91602169392645]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 10);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "LineString");
+    }
+  }
+
+  WHEN("Checking negative combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking polygon with 1 position") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[1.0, 2.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with positions and invalid bool") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], false]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with positions and invalid bool") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[true, [1.0, 2.0], [1.0, 2.0], [1.0, 2.0], [1.0, 2.0]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 0 position - nested") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 0 position") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking bool") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "true";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking number") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "123";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "{\"Hello\": true, \"Hellox\": 123}";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+  }
+}
+} // geo_linestring
+
+namespace geo_multilinestring {
+SCENARIO("Testing GEO_MULTILINESTRING", "[AQL][GEOC][GEOMULTILINESTRING]") {
+
+  fakeit::Mock<Query> queryMock;
+  Query& query = queryMock.get();
+
+  fakeit::Mock<transaction::Methods> trxMock;
+  transaction::Methods& trx = trxMock.get();
+
+  WHEN("Checking correct combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking multilinestrings with 2x2 positions") {
+      char const* p = "[ [[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]] ]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == 1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == 2.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == 3.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == 4.0);
+      CHECK(res.slice().get("coordinates").at(1).at(0).at(0).getDouble() == 1.0);
+      CHECK(res.slice().get("coordinates").at(1).at(0).at(1).getDouble() == 2.0);
+      CHECK(res.slice().get("coordinates").at(1).at(1).at(0).getDouble() == 3.0);
+      CHECK(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == 4.0);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "MultiLineString");
+    }
+
+    WHEN("checking multilinestrings with 2x2 positions") {
+      char const* p = "[ [[-1.1, -2.2], [-3.3, -4.4]], [[-1.1, -2.2], [-3.3, -4.4]] ]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.1);
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.2);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.3);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.4);
+      CHECK(res.slice().get("coordinates").at(1).at(0).at(0).getDouble() == -1.1);
+      CHECK(res.slice().get("coordinates").at(1).at(0).at(1).getDouble() == -2.2);
+      CHECK(res.slice().get("coordinates").at(1).at(1).at(0).getDouble() == -3.3);
+      CHECK(res.slice().get("coordinates").at(1).at(1).at(1).getDouble() == -4.4);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "MultiLineString");
+    }
+  }
+
+  WHEN("Checking wrong combinations of parameters") {
+    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    SmallVector<AqlValue> params{arena};
+
+    WHEN("checking object") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "{\"Hello\": true, \"Hellox\": 123}";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 0 position - nested") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[[]]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking polygon with 0 position") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "[]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking bool") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "true";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking number") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "123";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoMultiLinestring(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+  }
+}
+} // geo_multilinestring
 
 }  // geo_constructors_aql
 }  // tests
