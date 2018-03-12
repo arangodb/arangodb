@@ -1,7 +1,7 @@
 #!/bin/bash
 
 
-ALLBOOKS="HTTP AQL Manual Cookbook"
+ALLBOOKS="HTTP AQL Manual Cookbook Drivers"
 
 GITAUTH="$1"
 
