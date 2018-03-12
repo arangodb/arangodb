@@ -114,16 +114,8 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
 EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  switch (node->getType()) {
-    case ExecutionNode::INDEX:
-    case ExecutionNode::ENUMERATE_COLLECTION:
-      // These node types cannot be executed on coordinator side
-      TRI_ASSERT(false);
-    default:
-      break;
-  }
-#endif
+  TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());
   size_t idx = _engineStack.top();
