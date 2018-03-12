@@ -86,8 +86,8 @@ If you are upgrading ArangoDB from an earlier version you need to copy your old
 database directory [to the new default paths](#custom-install-paths). Upgrading
 will keep your old data, password and choice of storage engine as it is.
 Switching to the RocksDB storage engine requires a
-[export](../../Administration/Arangoexport.md) and
-[reimport](../../Administration/Arangoimport.md) of your data.
+[export](../Administration/Arangoexport.md) and
+[reimport](../Administration/Arangoimport.md) of your data.
 
 Starting
 --------
