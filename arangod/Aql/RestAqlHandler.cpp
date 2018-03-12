@@ -94,6 +94,7 @@ bool RestAqlHandler::isDirect() const { return false; }
 //    snippets: {
 //      <queryId: {nodes: [ <nodes>]}>
 //    },
+//    traverserEngines: [ <infos for traverser engines> ],
 //    variables: [ <variables> ]
 //  }
 
