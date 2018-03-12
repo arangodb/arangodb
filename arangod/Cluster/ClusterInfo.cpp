@@ -1356,9 +1356,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
       }
 
     }
-
-    // Update our cache:
-    loadPlan();
   }
 
   if (numberOfShards == 0) {
