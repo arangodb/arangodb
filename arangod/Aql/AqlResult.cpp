@@ -27,12 +27,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionEngineResult::ExecutionEngineResult() : Result() {}
-ExecutionEngineResult::ExecutionEngineResult(int num) : Result(num) {}
+ExecutionEngineResult::ExecutionEngineResult() : Result(), _engine(nullptr) {}
+ExecutionEngineResult::ExecutionEngineResult(int num)
+    : Result(num), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(int num, std::string const& msg)
-    : Result(num, msg) {}
+    : Result(num, msg), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(int num, std::string&& msg)
-    : Result(num, msg) {}
+    : Result(num, msg), _engine(nullptr) {}
 ExecutionEngineResult::ExecutionEngineResult(ExecutionEngine* engine)
     : Result(), _engine(engine) {}
 
