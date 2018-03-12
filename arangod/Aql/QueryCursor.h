@@ -84,7 +84,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
                     std::shared_ptr<velocypack::Builder> opts, size_t,
                     double ttl);
 
-  ~QueryStreamCursor() = default;
+  ~QueryStreamCursor();
 
  public:
   CursorType type() const override final { return CURSOR_VPACK; }
