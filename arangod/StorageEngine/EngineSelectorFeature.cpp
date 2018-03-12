@@ -76,10 +76,10 @@ void EngineSelectorFeature::prepare() {
       LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to read content of 'ENGINE' file '" << _engineFilePath << "': " << ex.what() << ". please make sure the file/directory is readable for the arangod process and user";
       FATAL_ERROR_EXIT();
     }
-  } else {
-    if (_engine == "auto") {
-      _engine = MMFilesEngine::EngineName;
-    }
+  }
+    
+  if (_engine == "auto") {
+    _engine = MMFilesEngine::EngineName;
   }
 
   TRI_ASSERT(_engine != "auto");
@@ -103,10 +103,15 @@ void EngineSelectorFeature::prepare() {
     }
   }
 
-  TRI_ASSERT(ENGINE != nullptr);
+  if (ENGINE == nullptr) {
+    LOG_TOPIC(FATAL, Logger::STARTUP) << "unable to figure out storage engine from selection '" << _engine << "'. please use the '--server.storage-engine' option to select an existing storage engine";
+    FATAL_ERROR_EXIT();
+  }
 }
 
 void EngineSelectorFeature::start() {
+  TRI_ASSERT(ENGINE != nullptr);
+
   // write engine File
   if (!basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
