@@ -183,7 +183,8 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 
   e->connectQueryId(coordinatorEngineId);
   TRI_ASSERT(e->collection() != nullptr);
-  _engines[e->collection()].emplace_back(std::move(e));
+  auto& engine = _engines[e->collection()];
+  engine.emplace_back(std::move(e));
 }
 
 // This first defines the lock required for this collection
