@@ -6,6 +6,7 @@ What's New
 
 For a high level list of changes, please refer to one of the following sections:
 
+- [What's New in 3.4](NewFeatures34.md)
 - [What's New in 3.3](NewFeatures33.md)
 - [What's New in 3.2](NewFeatures32.md)
 - [What's New in 3.1](NewFeatures31.md)

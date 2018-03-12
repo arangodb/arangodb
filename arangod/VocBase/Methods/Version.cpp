@@ -23,6 +23,7 @@
 #include "Version.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
@@ -149,29 +150,24 @@ Result Version::write(TRI_vocbase_t* vocbase,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
-  try {
-    std::string versionFile = engine->versionFilename(vocbase->id());
-    TRI_ASSERT(!versionFile.empty());
+  std::string versionFile = engine->versionFilename(vocbase->id());
+  TRI_ASSERT(!versionFile.empty());
     
-    VPackOptions opts;
-    opts.buildUnindexedObjects = true;
-    VPackBuilder builder(&opts);
-    builder.openObject(true);
-    builder.add("version", VPackValue(Version::current()));
-    builder.add("tasks", VPackValue(VPackValueType::Object));
-    for (auto const& task : tasks) {
-      builder.add(task.first, VPackValue(task.second));
-    }
-    builder.close();
-    builder.close();
+  VPackOptions opts;
+  opts.buildUnindexedObjects = true;
+  VPackBuilder builder(&opts);
+  builder.openObject(true);
+  builder.add("version", VPackValue(Version::current()));
+  builder.add("tasks", VPackValue(VPackValueType::Object));
+  for (auto const& task : tasks) {
+    builder.add(task.first, VPackValue(task.second));
+  }
+  builder.close();
+  builder.close();
     
-    std::string json = builder.slice().toJson();
-    basics::FileUtils::spit(versionFile, json.c_str(), json.length(), sync);
-  } catch(basics::Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed";
-    return Result(ex.code(), ex.message());
-  } catch(...) {
-    return Result(TRI_ERROR_INTERNAL, "could not write VERSION file");
+  if (!basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), sync)) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed: " << TRI_last_error();
+    return Result(TRI_errno(), TRI_last_error());
   }
   return Result();
 }
