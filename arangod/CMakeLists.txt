@@ -490,6 +490,9 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
   VocBase/Methods/Transactions.cpp
+  VocBase/Methods/Upgrade.cpp
+  VocBase/Methods/UpgradeTasks.cpp
+  VocBase/Methods/Version.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp

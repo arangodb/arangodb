@@ -164,8 +164,16 @@ QueryStreamCursor::QueryStreamCursor(TRI_vocbase_t* vocbase, CursorId id,
   }
 }
 
-std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
-  return _query->trx()->transactionContext();
+QueryStreamCursor::~QueryStreamCursor() {
+  if (_query) { // cursor is canceled or timed-out
+    auto prevLockHeaders = CollectionLockState::_noLockHeaders;
+    CollectionLockState::_noLockHeaders = _query->engine()->lockedShards();
+    TRI_DEFER(CollectionLockState::_noLockHeaders = prevLockHeaders);
+    /*QueryResult result;
+    _query->finalize(result);*/
+    // Query destructor will  cleanup plan and abort transaction
+    _query.reset();
+  }
 }
 
 Result QueryStreamCursor::dump(VPackBuilder& builder) {
@@ -239,6 +247,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       if (extra && extra->slice().isObject()) {
         builder.add("extra", extra->slice());
       }
+      _query.reset();
       this->deleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
@@ -264,4 +273,9 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
   }
 
   return TRI_ERROR_NO_ERROR;
+}
+
+
+std::shared_ptr<transaction::Context> QueryStreamCursor::context() const {
+  return _query->trx()->transactionContext();
 }

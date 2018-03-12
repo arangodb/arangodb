@@ -32,7 +32,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
+// using namespace arangodb::rest;
 
 /// @brief check if a name belongs to a collection
 bool EqualCollection(CollectionNameResolver const* resolver,

@@ -23,6 +23,8 @@
 #include "Collections.h"
 #include "Basics/Common.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
@@ -33,10 +35,12 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/V8Context.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
@@ -178,7 +182,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     ExecContext const* exe = ExecContext::CURRENT;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
-      std::unique_ptr<LogicalCollection> col =
+      std::shared_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
               collectionType, vocbase, infoSlice, false,
               createWaitsForSyncReplication, enforceReplicationFactor);
@@ -198,7 +202,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       }
 
       // reload otherwise collection might not be in yet
-      func(col.release());
+      func(col.get());
     } else {
       arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
       TRI_ASSERT(col != nullptr);
@@ -545,4 +549,51 @@ Result Collections::revisionId(TRI_vocbase_t* vocbase,
 
   rid = coll->revision(&trx);
   return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief Helper implementation similar to ArangoCollection.all() in v8
+Result Collections::all(TRI_vocbase_t* vocbase, std::string const& cname,
+                        DocCallback cb) {
+  
+  // Implement it like this to stay close to the original
+  if (ServerState::instance()->isCoordinator()) {
+    auto empty = std::make_shared<VPackBuilder>();
+    std::string q = "FOR r IN @@coll RETURN r";
+    auto binds = std::make_shared<VPackBuilder>();
+    binds->openObject();
+    binds->add("@coll", VPackValue(cname));
+    binds->close();
+    arangodb::aql::Query query(false, vocbase, aql::QueryString(q), binds,
+                               std::make_shared<VPackBuilder>(), arangodb::aql::PART_MAIN);
+    auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
+    TRI_ASSERT(queryRegistry != nullptr);
+    aql::QueryResult queryResult = query.execute(queryRegistry);
+    Result res = queryResult.code;
+    if (queryResult.code == TRI_ERROR_NO_ERROR) {
+      VPackSlice array = queryResult.result->slice();
+      for (VPackSlice doc : VPackArrayIterator(array)) {
+        cb(doc.resolveExternal());
+      }
+    }
+    return res;
+  } else {
+    auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
+    SingleCollectionTransaction trx(ctx, cname, AccessMode::Type::READ);
+    Result res = trx.begin();
+    if (res.fail()) {
+      return res;
+    }
+    
+    // We directly read the entire cursor. so batchsize == limit
+    std::unique_ptr<OperationCursor> opCursor =
+    trx.indexScan(cname, transaction::Methods::CursorType::ALL, false);
+    if (!opCursor->hasMore()) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
+    
+    opCursor->allDocuments([&](LocalDocumentId const& token, VPackSlice doc) {
+      cb(doc.resolveExternal());
+    }, 1000);
+    return trx.finish(res);
+  }
 }
