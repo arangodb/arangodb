@@ -1354,10 +1354,10 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
-
-      // Update our cache:
-      loadPlan();
     }
+
+    // Update our cache:
+    loadPlan();
   }
 
   if (numberOfShards == 0) {
