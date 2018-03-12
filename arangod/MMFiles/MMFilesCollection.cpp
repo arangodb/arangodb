@@ -39,7 +39,6 @@
 #include "Cluster/CollectionLockState.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesCollectionReadLocker.h"
 #include "MMFiles/MMFilesCollectionWriteLocker.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
@@ -1933,10 +1932,15 @@ Result MMFilesCollection::read(transaction::Methods* trx, VPackSlice const& key,
 
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
-  MMFilesCollectionReadLocker collectionLocker(this, useDeadlockDetector, lock);
-
+  if (lock) {
+    int res = lockRead(useDeadlockDetector, trx->tid());
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+  TRI_DEFER(if (lock) { unlockRead(useDeadlockDetector, trx->tid()); });
+  
   Result res = lookupDocument(trx, key, result);
-
   if (res.fail()) {
     return res;
   }
@@ -2445,7 +2449,7 @@ void MMFilesCollection::invokeOnAllElements(
 }
 
 /// @brief read locks a collection, with a timeout (in µseconds)
-int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
+int MMFilesCollection::lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2472,7 +2476,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
       // when we are here, we've got the read lock
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.addReader(
-            _logicalCollection, wasBlocked);
+            tid, _logicalCollection, wasBlocked);
       }
 
       // keep lock and exit loop
@@ -2486,7 +2490,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
           // insert reader
           wasBlocked = true;
           if (_logicalCollection->vocbase()->_deadlockDetector.setReaderBlocked(
-                  _logicalCollection) == TRI_ERROR_DEADLOCK) {
+                  tid, _logicalCollection) == TRI_ERROR_DEADLOCK) {
             // deadlock
             LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
                 << "deadlock detected while trying to acquire read-lock "
@@ -2503,10 +2507,10 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
           TRI_ASSERT(wasBlocked);
           iterations = 0;
           if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(
-                  _logicalCollection, false) == TRI_ERROR_DEADLOCK) {
+                  tid, _logicalCollection, false) == TRI_ERROR_DEADLOCK) {
             // deadlock
             _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(
-                _logicalCollection);
+                tid, _logicalCollection);
             LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
                 << "deadlock detected while trying to acquire read-lock "
                    "on collection '"
@@ -2518,7 +2522,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
         // clean up!
         if (wasBlocked) {
           _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(
-              _logicalCollection);
+              tid, _logicalCollection);
         }
         // always exit
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -2539,7 +2543,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
     if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetReaderBlocked(
-            _logicalCollection);
+            tid, _logicalCollection);
       }
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "timed out after " << timeout
@@ -2560,7 +2564,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
 }
 
 /// @brief write locks a collection, with a timeout
-int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
+int MMFilesCollection::lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2587,7 +2591,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
       // register writer
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.addWriter(
-            _logicalCollection, wasBlocked);
+            tid, _logicalCollection, wasBlocked);
       }
       // keep lock and exit loop
       locker.steal();
@@ -2600,7 +2604,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
           // insert writer
           wasBlocked = true;
           if (_logicalCollection->vocbase()->_deadlockDetector.setWriterBlocked(
-                  _logicalCollection) == TRI_ERROR_DEADLOCK) {
+                  tid, _logicalCollection) == TRI_ERROR_DEADLOCK) {
             // deadlock
             LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
                 << "deadlock detected while trying to acquire "
@@ -2616,10 +2620,10 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
           TRI_ASSERT(wasBlocked);
           iterations = 0;
           if (_logicalCollection->vocbase()->_deadlockDetector.detectDeadlock(
-                  _logicalCollection, true) == TRI_ERROR_DEADLOCK) {
+                  tid, _logicalCollection, true) == TRI_ERROR_DEADLOCK) {
             // deadlock
             _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-                _logicalCollection);
+                tid, _logicalCollection);
             LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
                 << "deadlock detected while trying to acquire "
                    "write-lock on collection '"
@@ -2631,7 +2635,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
         // clean up!
         if (wasBlocked) {
           _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-              _logicalCollection);
+              tid, _logicalCollection);
         }
         // always exit
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -2652,7 +2656,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
     if (now > startTime + timeout) {
       if (useDeadlockDetector) {
         _logicalCollection->vocbase()->_deadlockDetector.unsetWriterBlocked(
-            _logicalCollection);
+            tid, _logicalCollection);
       }
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
           << "timed out after " << timeout
@@ -2673,7 +2677,7 @@ int MMFilesCollection::lockWrite(bool useDeadlockDetector, double timeout) {
 }
 
 /// @brief read unlocks a collection
-int MMFilesCollection::unlockRead(bool useDeadlockDetector) {
+int MMFilesCollection::unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2689,7 +2693,7 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector) {
     // unregister reader
     try {
       _logicalCollection->vocbase()->_deadlockDetector.unsetReader(
-          _logicalCollection);
+          tid, _logicalCollection);
     } catch (...) {
     }
   }
@@ -2702,7 +2706,7 @@ int MMFilesCollection::unlockRead(bool useDeadlockDetector) {
 }
 
 /// @brief write unlocks a collection
-int MMFilesCollection::unlockWrite(bool useDeadlockDetector) {
+int MMFilesCollection::unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid) {
   if (CollectionLockState::_noLockHeaders != nullptr) {
     auto it =
         CollectionLockState::_noLockHeaders->find(_logicalCollection->name());
@@ -2719,7 +2723,7 @@ int MMFilesCollection::unlockWrite(bool useDeadlockDetector) {
     // unregister writer
     try {
       _logicalCollection->vocbase()->_deadlockDetector.unsetWriter(
-          _logicalCollection);
+          tid, _logicalCollection);
     } catch (...) {
       // must go on here to unlock the lock
     }
@@ -2922,7 +2926,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
     try {
       arangodb::MMFilesCollectionWriteLocker collectionLocker(
-          this, useDeadlockDetector, lock);
+          this, useDeadlockDetector, trx->tid(), lock);
 
       try {
         // insert into indexes
@@ -3261,7 +3265,7 @@ Result MMFilesCollection::update(
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, lock);
+      this, useDeadlockDetector, trx->tid(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);
@@ -3402,7 +3406,7 @@ Result MMFilesCollection::replace(
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, lock);
+      this, useDeadlockDetector, trx->tid(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);
@@ -3566,7 +3570,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
   bool const useDeadlockDetector =
       (lock && !trx->isSingleOperationTransaction() && !trx->state()->hasHint(transaction::Hints::Hint::NO_DLD));
   arangodb::MMFilesCollectionWriteLocker collectionLocker(
-      this, useDeadlockDetector, lock);
+      this, useDeadlockDetector, trx->tid(), lock);
 
   // get the previous revision
   Result res = lookupDocument(trx, key, previous);
