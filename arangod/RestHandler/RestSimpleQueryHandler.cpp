@@ -144,16 +144,20 @@ void RestSimpleQueryHandler::allDocuments() {
   data.add("count", VPackValue(true));
 
   // pass on standard options
-  {
-    VPackSlice ttl = body.get("ttl");
-    if (!ttl.isNone()) {
-      data.add("ttl", ttl);
-    }
-
-    VPackSlice batchSize = body.get("batchSize");
-    if (!batchSize.isNone()) {
-      data.add("batchSize", batchSize);
-    }
+  VPackSlice ttl = body.get("ttl");
+  if (!ttl.isNone()) {
+    data.add("ttl", ttl);
+  }
+  
+  VPackSlice batchSize = body.get("batchSize");
+  if (!batchSize.isNone()) {
+    data.add("batchSize", batchSize);
+  }
+  
+  VPackSlice stream = body.get("stream");
+  if (stream.isBool()) {
+    VPackObjectBuilder obj(&data, "options");
+    obj->add("stream", stream);
   }
   data.close();
 
