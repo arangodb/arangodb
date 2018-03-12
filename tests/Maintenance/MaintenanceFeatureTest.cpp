@@ -33,6 +33,7 @@
 #include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceAction.h"
 #include "Cluster/MaintenanceFeature.h"
@@ -40,26 +41,35 @@
 
 //
 // TestFeature wraps MaintenanceFeature to all test specific action objects
-//  by overriding the actionFactory() virtual function
+//  by overriding the actionFactory() virtual function.  Two versions:
+//  1. default constructor for non-threaded actions
+//  2. constructor with ApplicationServer pointer for threaded actions
 //
 class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
 public:
   TestMaintenanceFeature() {
-//    prepare();
-//    start();  ... threads die due to lack of ApplicationServer instance
+
+  };
+
+  TestMaintenanceFeature(arangodb::application_features::ApplicationServer * as)
+    : arangodb::MaintenanceFeature(as) {
+
+    // begin with no threads to allow queue validation
+    _maintenanceThreadsMax = 0;
   };
 
   virtual ~TestMaintenanceFeature() {
-//    beginShutdown();
-//    stop();
-//    unprepare();
-};
+
+  };
 
   virtual arangodb::maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                                       std::shared_ptr<arangodb::maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties) override;
 
   void setSecondsActionsBlock(uint32_t seconds) {_secondsActionsBlock = seconds;};
+
+  /// @brief set thread count, then activate the threads via start().  One time usage only.
+  void setMaintenanceThreadsMax(uint32_t threads) {_maintenanceThreadsMax = threads; start(); }
 
 public:
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
@@ -99,9 +109,33 @@ public:
 
   virtual ~TestActionBasic() {};
 
-  bool first() override {if (0==_iteration) _result.reset(_resultCode); return(0 < _iteration--);};
+  bool first() override {
+    // time to set result?
+    if (0==_iteration) {
+      _result.reset(_resultCode);
+    } // if
 
-  bool next() override {if (0==_iteration) _result.reset(_resultCode); return(0 < _iteration--);};
+    // verify first() called once
+    if (0!=getProgress()) {
+      _result.reset(2);
+    } // if
+
+    return(0 < _iteration-- && _result.ok());
+  };
+
+  bool next() override {
+    // time to set result?
+    if (0==_iteration) {
+      _result.reset(_resultCode);
+    } // if
+
+    // verify next() called properly
+    if (0==getProgress()) {
+      _result.reset(2);
+    } // if
+
+    return(0 < _iteration-- && _result.ok());
+  };
 
   int _iteration;
   int _resultCode;
@@ -127,7 +161,7 @@ arangodb::maintenance::MaintenanceActionPtr_t TestMaintenanceFeature::actionFact
 } // TestMaintenanceFeature::actionFactory
 
 
-TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
+TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
 
   SECTION("Iterate Action 0 times - ok") {
     TestMaintenanceFeature tf;
@@ -250,10 +284,35 @@ TEST_CASE("MaintenanceFeature", "[cluster][maintenance][devel]") {
     REQUIRE(tf._recentAction->done());
     REQUIRE(1==tf._recentAction->id());
   }
+} // MaintenanceFeatureUnthreaded
 
+TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
-  SECTION("Local databases one more empty database should be dropped") {
+  SECTION("Iterate Action 0 times - ok") {
+    std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    as.addFeature(tf);
+    std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
 
+    tf->setSecondsActionsBlock(0);  // disable retry wait for now
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"},
+                                                     {"result_code","1"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
 
+    arangodb::Result result = tf->addAction(desc_ptr, prop_ptr, false);
+    REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
+    REQUIRE(tf->_recentAction->result().ok());
+
+    VPackArrayIterator ai1(tf->toVelocityPack().slice());
+    REQUIRE(1 == ai1.size());
+
+    VPackSlice po = *ai1;
+
+    std::string xx = (tf->toVelocityPack()).toJson();
+    printf("%s\n", xx.c_str());
+    as.beginShutdown();
+    th.join();
   }
-}
+} // MaintenanceFeatureThreaded

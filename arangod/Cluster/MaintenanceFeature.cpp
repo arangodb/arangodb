@@ -38,8 +38,7 @@ namespace arangodb {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
   : ApplicationFeature(server, "Maintenance") {
 
-
-  startsAfter("EngineSelector");    // ??? what should this be
+//  startsAfter("EngineSelector");    // ??? what should this be
 //  startsBefore("StorageEngine");
 
   init();
@@ -345,4 +344,22 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findReadyAction() {
 
 } // MaintenanceFeature::findReadyAction
 
+
+VPackBuilder  MaintenanceFeature::toVelocityPack() const {
+  VPackBuilder vb;
+  READ_LOCKER(rLock, _actionRegistryLock);
+
+  { VPackArrayBuilder ab(&vb);
+    for (auto action : _actionRegistry ) {
+      action->toVelocityPack(vb);
+    } // for
+
+  }
+  return vb;
+
+} // MaintenanceFeature::toVelocityPack
+#if 0
+std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
+} // MaintenanceFeature::toJson
+#endif
 } // namespace arangodb

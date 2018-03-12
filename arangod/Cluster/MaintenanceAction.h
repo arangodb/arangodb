@@ -147,6 +147,9 @@ class MaintenanceAction {
   /// @return uint64_t hash
   uint64_t id() const {return _id;};
 
+  /// @brief add VPackObject to supplied builder with info about this action
+  virtual void toVelocityPack(VPackBuilder & builder);
+
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
 //  virtual Result toJson(/* builder */) {return Result;};

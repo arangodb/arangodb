@@ -84,20 +84,20 @@ protected:
 
   /// @brief actionFactory is a subroutine of createAction().  Its functionality is isolated
   ///   to allow unit tests to quietly add "test actions" via a virtual function
-#if 0
-  virtual void * actionFactory(std::string & name);
-#else
   virtual maintenance::MaintenanceActionPtr_t actionFactory(std::string & name,
                                                             std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                             std::shared_ptr<VPackBuilder> const & properties);
-#endif
+
 public:
   /// @brief This API will attempt to fail an existing Action that is waiting
   ///  or executing.  Will not fail Actions that have already succeeded or failed.
   Result deleteAction(uint64_t id);
 
+  /// @brief Create a VPackBuilder object with snapshot of current action registry
+  VPackBuilder toVelocityPack() const;
+
   /// @brief Returns json array of all MaintenanceActions within the deque
-  Result toJson(/* builder */);
+  Result toJson(VPackBuilder & builder);
 
   /// @brief Return pointer to next ready action, or nullptr
   maintenance::MaintenanceActionPtr_t findReadyAction();
@@ -160,7 +160,7 @@ protected:
   std::deque<maintenance::MaintenanceActionPtr_t> _actionRegistry;
 
   /// @brief lock to protect _actionRegistry and state changes to MaintenanceActions within
-  arangodb::basics::ReadWriteLock _actionRegistryLock;
+  mutable arangodb::basics::ReadWriteLock _actionRegistryLock;
 
   /// @brief condition variable to motivate workers to find new action
   arangodb::basics::ConditionVariable _actionRegistryCond;

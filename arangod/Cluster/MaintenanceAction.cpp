@@ -110,6 +110,30 @@ void MaintenanceAction::endStats() {
 } // MaintenanceAction::endStats
 
 
+void MaintenanceAction::toVelocityPack(VPackBuilder & builder) {
+  VPackObjectBuilder ob(&builder);
+
+  builder.add("id", VPackValue(_id));
+  builder.add("state", VPackValue(_state));
+  builder.add("progress", VPackValue(_progress));
+#if 0  /// hmm, several should be reported as duration instead of time_point
+  builder.add("created", VPackValue(_actionCreated.count()));
+  builder.add("started", VPackValue(_actionStarted.count()));
+  builder.add("lastStat", VPackValue(_actionLastStat.count()));
+  builder.add("done", VPackValue(_actionDone.count()));
+#endif
+  builder.add("result", VPackValue(_result.errorNumber()));
+  builder.add(VPackValue("description"));
+
+  { VPackObjectBuilder desc(&builder);
+    for (auto desc : *(_description.get()) ) {
+      builder.add(desc.first, VPackValue(desc.second));
+    } //for
+  }
+
+} // MaintanceAction::toVelocityPack
+
+
 } // namespace maintenance
 
 } // namespace arangodb
