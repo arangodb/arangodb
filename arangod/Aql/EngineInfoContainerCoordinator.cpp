@@ -183,6 +183,8 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     }
   } catch (basics::Exception const& ex) {
     return {ex.code(), ex.message()};
+  } catch (std::exception const& ex) {
+    return {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
