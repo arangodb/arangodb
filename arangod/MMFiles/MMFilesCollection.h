@@ -317,13 +317,13 @@ class MMFilesCollection final : public PhysicalCollection {
   // -- SECTION Locking --
   ///////////////////////////////////
 
-  int lockRead(bool useDeadlockDetector, double timeout = 0.0);
+  int lockRead(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
 
-  int lockWrite(bool useDeadlockDetector, double timeout = 0.0);
+  int lockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid, double timeout = 0.0);
 
-  int unlockRead(bool useDeadlockDetector);
+  int unlockRead(bool useDeadlockDetector, TRI_voc_tid_t tid);
 
-  int unlockWrite(bool useDeadlockDetector);
+  int unlockWrite(bool useDeadlockDetector, TRI_voc_tid_t tid);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
