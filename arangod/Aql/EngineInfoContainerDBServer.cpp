@@ -43,7 +43,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 static const double SETUP_TIMEOUT = 25.0;
 
-
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode)
     : _idOfRemoteNode(idOfRemoteNode), _otherId(0), _collection(nullptr) {}
 
@@ -146,20 +145,20 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
   switch (node->getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
       handleCollection(
-          static_cast<EnumerateCollectionNode*>(node)->collection(), false,
-          true);
+          static_cast<EnumerateCollectionNode*>(node)->collection(),
+          AccessMode::Type::READ, true);
       break;
     case ExecutionNode::INDEX:
-      handleCollection(static_cast<IndexNode*>(node)->collection(), false,
-                       true);
+      handleCollection(static_cast<IndexNode*>(node)->collection(),
+                       AccessMode::Type::READ, true);
       break;
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
     case ExecutionNode::REPLACE:
     case ExecutionNode::UPSERT:
-      handleCollection(static_cast<ModificationNode*>(node)->collection(), true,
-                       true);
+      handleCollection(static_cast<ModificationNode*>(node)->collection(),
+                       AccessMode::Type::WRITE, true);
       break;
     default:
       // Do nothing
@@ -191,17 +190,16 @@ void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
 // Then we update the collection pointer of the last engine.
 
 #ifndef USE_ENTERPRISE
-void EngineInfoContainerDBServer::handleCollection(Collection const* col,
-                                                   bool isWrite,
-                                                   bool updateCollection) {
+void EngineInfoContainerDBServer::handleCollection(
+    Collection const* col, AccessMode::Type const& accessType,
+    bool updateCollection) {
   auto it = _collections.find(col);
   if (it == _collections.end()) {
-    _collections.emplace(
-        col, (isWrite ? AccessMode::Type::WRITE : AccessMode::Type::READ));
+    _collections.emplace(col, accessType);
   } else {
-    if (isWrite && it->second == AccessMode::Type::READ) {
+    if (it->second < accessType) {
       // We need to upgrade the lock
-      it->second = AccessMode::Type::WRITE;
+      it->second = accessType;
     }
   }
   if (updateCollection) {
@@ -235,18 +233,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.add(VPackValue("lockInfo"));
   infoBuilder.openObject();
   for (auto const& shardLocks : _shardLocking) {
-    switch (shardLocks.first) {
-      case AccessMode::Type::READ:
-      case AccessMode::Type::WRITE:
-        infoBuilder.add(VPackValue(AccessMode::typeString(shardLocks.first)));
-        break;
-      default:
-        // We only have Read and Write Locks in Cluster.
-        // NONE or EXCLUSIVE is impossible
-        TRI_ASSERT(false);
-        continue;
-    }
-
+    infoBuilder.add(VPackValue(AccessMode::typeString(shardLocks.first)));
     infoBuilder.openArray();
     for (auto const& s : shardLocks.second) {
       infoBuilder.add(VPackValue(s));
@@ -616,7 +603,9 @@ void EngineInfoContainerDBServer::buildEngines(
                                headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " respended with " << res->getErrorCode() << " -> " << res->stringifyErrorMessage();
+      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " respended with "
+                                    << res->getErrorCode() << " -> "
+                                    << res->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::AQL) << infoBuilder.toJson();
       // TODO could not register all engines. Need to cleanup.
       THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
@@ -675,7 +664,7 @@ void EngineInfoContainerDBServer::buildEngines(
 void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
   // Add all Edge Collections to the Transactions, Traversals do never write
   for (auto const& col : node->edgeColls()) {
-    handleCollection(col.get(), false, false);
+    handleCollection(col.get(), AccessMode::Type::READ, false);
   }
 
   // Add all Vertex Collections to the Transactions, Traversals do never write
@@ -686,11 +675,11 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
     std::map<std::string, Collection*>* cs =
         query->collections()->collections();
     for (auto const& col : *cs) {
-      handleCollection(col.second, false, false);
+      handleCollection(col.second, AccessMode::Type::READ, false);
     }
   } else {
     for (auto const& col : node->vertexColls()) {
-      handleCollection(col.get(), false, false);
+      handleCollection(col.get(), AccessMode::Type::READ, false);
     }
   }
 

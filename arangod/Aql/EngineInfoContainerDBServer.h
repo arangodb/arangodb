@@ -166,7 +166,7 @@ class EngineInfoContainerDBServer {
   void addGraphNode(Query* query, GraphNode* node);
 
  private:
-  void handleCollection(Collection const* col, bool isWrite,
+  void handleCollection(Collection const* col, AccessMode::Type const& accessType,
                         bool updateCollection);
 
   // @brief Helper to create DBServerInfos and sort collections/shards into
