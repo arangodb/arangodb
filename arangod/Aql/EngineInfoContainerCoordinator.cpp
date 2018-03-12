@@ -60,7 +60,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
   _nodes.emplace_back(en);
 }
 
-void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
+Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
@@ -92,10 +92,12 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   if (_id != 0) {
     try {
       queryRegistry->insert(_id, query, 600.0);
+    } catch (basics::Exception const& e) {
+      return {e.code(), e.message()};
+    } catch (std::exception const& e) {
+      return {TRI_ERROR_INTERNAL, e.what()};
     } catch (...) {
-      delete engine->getQuery();
-      // This deletes the new query as well as the engine
-      throw;
+      return {TRI_ERROR_INTERNAL};
     }
 
     std::string queryId = arangodb::basics::StringUtils::itoa(_id);
@@ -103,6 +105,8 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
         arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
     queryIds.emplace(theID, queryId);
   }
+
+  return {TRI_ERROR_NO_ERROR};
 }
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
@@ -169,15 +173,26 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
         }
       }
       try {
-        info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
-                         lockedShards);
+        auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
+                                    lockedShards);
+        if (!res.ok()) {
+          if (!first) {
+            // We need to clean up this query.
+            // It is not in the registry.
+            delete localQuery;
+          }
+          return {res.errorNumber(), res.errorMessage()};
+        }
       } catch (...) {
-        // ?? Double free?
-        localQuery->releaseEngine();
+        // We do not catch any other error here.
+        // All errors we throw are handled by the result
+        // above
         if (!first) {
+          // We need to clean up this query.
+          // It is not in the registry.
           delete localQuery;
         }
-        throw;
+        return {TRI_ERROR_INTERNAL};
       }
       first = false;
     }

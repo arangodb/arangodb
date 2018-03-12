@@ -56,11 +56,11 @@ class EngineInfoContainerCoordinator {
 
     void addNode(ExecutionNode* en);
 
-    void buildEngine(Query* query, QueryRegistry* queryRegistry,
-                     std::string const& dbname,
-                     std::unordered_set<std::string> const& restrictToShards,
-                     std::unordered_map<std::string, std::string>& queryIds,
-                     std::unordered_set<ShardID> const* lockedShards) const;
+    Result buildEngine(Query* query, QueryRegistry* queryRegistry,
+                       std::string const& dbname,
+                       std::unordered_set<std::string> const& restrictToShards,
+                       std::unordered_map<std::string, std::string>& queryIds,
+                       std::unordered_set<ShardID> const* lockedShards) const;
 
     QueryId queryId() const {
       return _id;
