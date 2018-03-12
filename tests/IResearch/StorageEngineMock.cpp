@@ -26,11 +26,13 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#ifdef USE_IRESEARCH
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
-#include "IResearch/VelocyPackHelper.h"
+#endif
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
@@ -41,7 +43,7 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
-NS_LOCAL
+namespace {
 
 /// @brief hard-coded vector of the index attributes
 /// note that the attribute names must be hard-coded here to avoid an init-order
@@ -142,9 +144,12 @@ class EdgeIndexMock final : public arangodb::Index {
       return nullptr;
     }
 
-    auto const type = arangodb::iresearch::getStringRef(typeSlice);
+    auto const type = arangodb::basics::VelocyPackHelper::getStringRef(
+      typeSlice,
+      arangodb::velocypack::StringRef()
+    );
 
-    if (type != "edge") {
+    if (type.compare("edge") != 0) {
       return nullptr;
     }
 
@@ -491,7 +496,30 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   uint64_t _end;
 }; // AllIteratorMock
 
-NS_END
+bool mergeSlice(
+    arangodb::velocypack::Builder& builder,
+    arangodb::velocypack::Slice const& slice
+) {
+  if (builder.isOpenArray()) {
+    if (slice.isArray()) {
+      builder.add(arangodb::velocypack::ArrayIterator(slice));
+    } else {
+      builder.add(slice);
+    }
+
+    return true;
+  }
+
+  if (builder.isOpenObject() && slice.isObject()) {
+    builder.add(arangodb::velocypack::ObjectIterator(slice));
+
+    return true;
+  }
+
+  return false;
+}
+
+}
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
@@ -540,14 +568,19 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     }
   }
 
-  auto const type = arangodb::iresearch::getStringRef(info.get("type"));
+  auto const type = arangodb::basics::VelocyPackHelper::getStringRef(
+    info.get("type"),
+    arangodb::velocypack::StringRef()
+  );
 
   std::shared_ptr<arangodb::Index> index;
 
-  if (type == "edge") {
+  if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
-  } else if (arangodb::iresearch::IResearchFeature::type() == type) {
+#ifdef USE_IRESEARCH
+  } else if (0 == type.compare(arangodb::iresearch::IResearchFeature::type())) {
     index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+#endif
   }
 
   if (!index) {
@@ -603,15 +636,15 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
   before();
 
   if (reverse) {
-    return irs::memory::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+    return std::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
   }
 
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx) const {
   before();
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
@@ -879,7 +912,7 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
 
       builder.openObject();
 
-      if (!arangodb::iresearch::mergeSlice(builder, newSlice)) {
+      if (!mergeSlice(builder, newSlice)) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
 
@@ -1161,7 +1194,7 @@ TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const
     return nullptr;
   }
 
-  auto vocbase = irs::memory::make_unique<TRI_vocbase_t>(
+  auto vocbase = std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
     vocbases.size(),
     args.get("name").copyString()
