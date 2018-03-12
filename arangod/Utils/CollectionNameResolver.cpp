@@ -62,7 +62,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(
   arangodb::LogicalCollection const* collection = getCollectionStruct(name);
 
   if (collection != nullptr) {
-    return collection->cid();
+    return collection->id();
   }
 
   auto view = _vocbase->lookupView(name);
@@ -105,7 +105,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(
     auto cinfo = ci->getCollection(_vocbase->name(), name);
 
     if (cinfo) {
-      return cinfo->cid();
+      return cinfo->id();
     }
 
     auto vinfo = ci->getView(_vocbase->name(), name);
@@ -259,9 +259,9 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         try {
           ci = ClusterInfo::instance()->getCollection(
             #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-              dynamic_cast<LogicalCollection&>((*it->second))->dbName(),
+              dynamic_cast<LogicalCollection*>(it->second.get())->dbName(),
             #else
-              static_cast<LogicalCollection&>((*it->second))->dbName(),
+              static_cast<LogicalCollection*>(it->second.get())->dbName(),
             #endif
             name
           );
@@ -301,7 +301,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   if (!ServerState::isCoordinator(_serverRole)) {
     ptr = _vocbase ? _vocbase->lookupDataSource(id) : nullptr;
   } else {
-    ptr = getDataSource(getCollectionName(id));
+    ptr = getDataSource(std::to_string(id));
   }
 
   if (ptr) {
@@ -326,9 +326,9 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   if (!ServerState::isCoordinator(_serverRole)) {
     ptr = _vocbase ? _vocbase->lookupDataSource(nameOrId) : nullptr;
   } else if (nameOrId[0] >= '0' && nameOrId[0] <= '9') {
-    ptr = getDataSource(getCollectionName(NumberUtils::atoi_zero<TRI_voc_cid_t>(
+    ptr = getDataSource(NumberUtils::atoi_zero<TRI_voc_cid_t>(
       nameOrId.data(), nameOrId.data() + nameOrId.size()
-    )));
+    ));
   } else {
     // cluster coordinator
     auto* ci = ClusterInfo::instance();
