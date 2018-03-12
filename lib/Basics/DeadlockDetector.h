@@ -27,12 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/Thread.h"
 
 namespace arangodb {
 namespace basics {
 
-template <typename T>
+template <typename TID, typename T>
 class DeadlockDetector {
  public:
   explicit DeadlockDetector(bool enabled) : _enabled(enabled) {};
@@ -40,43 +39,42 @@ class DeadlockDetector {
 
   DeadlockDetector(DeadlockDetector const&) = delete;
   DeadlockDetector& operator=(DeadlockDetector const&) = delete;
-
+  
  public:
   /// @brief add a thread to the list of blocked threads
-  int detectDeadlock(T const* value, bool isWrite) {
-    auto tid = Thread::currentThreadId();
+  int detectDeadlock(TID tid, T const* value, bool isWrite) {
 
     MUTEX_LOCKER(mutexLocker, _lock);
-    return detectDeadlock(value, tid, isWrite);
+    return detectDeadlockNoLock(tid, value, isWrite);
   }
 
   /// @brief add a reader to the list of blocked readers
-  int setReaderBlocked(T const* value) { return setBlocked(value, false); }
+  int setReaderBlocked(TID tid, T const* value) { return setBlocked(tid, value, false); }
 
   /// @brief add a writer to the list of blocked writers
-  int setWriterBlocked(T const* value) { return setBlocked(value, true); }
+  int setWriterBlocked(TID tid, T const* value) { return setBlocked(tid, value, true); }
 
   /// @brief remove a reader from the list of blocked readers
-  void unsetReaderBlocked(T const* value) { unsetBlocked(value, false); }
+  void unsetReaderBlocked(TID tid, T const* value) { unsetBlocked(tid, value, false); }
 
   /// @brief remove a writer from the list of blocked writers
-  void unsetWriterBlocked(T const* value) { unsetBlocked(value, true); }
+  void unsetWriterBlocked(TID tid, T const* value) { unsetBlocked(tid, value, true); }
 
   /// @brief add a reader to the list of active readers
-  void addReader(T const* value, bool wasBlockedBefore) {
-    addActive(value, false, wasBlockedBefore);
+  void addReader(TID tid, T const* value, bool wasBlockedBefore) {
+    addActive(tid, value, false, wasBlockedBefore);
   }
 
   /// @brief add a writer to the list of active writers
-  void addWriter(T const* value, bool wasBlockedBefore) {
-    addActive(value, true, wasBlockedBefore);
+  void addWriter(TID tid, T const* value, bool wasBlockedBefore) {
+    addActive(tid, value, true, wasBlockedBefore);
   }
 
   /// @brief unregister a reader from the list of active readers
-  void unsetReader(T const* value) { unsetActive(value, false); }
+  void unsetReader(TID tid, T const* value) { unsetActive(tid, value, false); }
 
   /// @brief unregister a writer from the list of active writers
-  void unsetWriter(T const* value) { unsetActive(value, true); }
+  void unsetWriter(TID tid, T const* value) { unsetActive(tid, value, true); }
 
   /// @brief enable / disable
   void enabled(bool value) {
@@ -92,21 +90,21 @@ class DeadlockDetector {
 
  private:
   /// @brief add a thread to the list of blocked threads
-  int detectDeadlock(T const* value, TRI_tid_t tid, bool isWrite) const {
+  int detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
     }
 
     struct StackValue {
-      StackValue(T const* value, TRI_tid_t tid, bool isWrite)
-          : value(value), tid(tid), isWrite(isWrite) {}
+      StackValue(TID tid, T const* value, bool isWrite)
+          : tid(tid), value(value), isWrite(isWrite) {}
+      TID tid;
       T const* value;
-      TRI_tid_t tid;
       bool isWrite;
     };
 
-    std::unordered_set<TRI_tid_t> visited;
-    std::vector<StackValue> stack{ StackValue(value, tid, isWrite) };
+    std::unordered_set<TID> visited;
+    std::vector<StackValue> stack{ StackValue(tid, value, isWrite) };
 
     while (!stack.empty()) {
       StackValue top = stack.back();  // intentionally copy StackValue
@@ -115,42 +113,42 @@ class DeadlockDetector {
       auto it = _active.find(top.value);
         
       if (it != _active.end()) {
-	if (!top.isWrite) {
-	  // we are a reader
-	  bool other = (*it).second.second;
+        if (!top.isWrite) {
+          // we are a reader
+          bool other = (*it).second.second;
 
-	  if (other) {
-	    // other is a writer
-	    TRI_tid_t otherTid = *((*it).second.first.begin());
+          if (other) {
+            // other is a writer
+            TID otherTid = *((*it).second.first.begin());
 
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, other);
-	    }
-	  }
-	} else {
-	  // we are a writer
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(otherTid, (*it2).second.first, other);
+            }
+          }
+        } else {
+          // we are a writer
 
-	  // other is either a reader or a writer
-	  for (auto const& otherTid : (*it).second.first) {
-	    if (visited.find(otherTid) != visited.end()) {
-	      return TRI_ERROR_DEADLOCK;
-	    }
+          // other is either a reader or a writer
+          for (auto const& otherTid : (*it).second.first) {
+            if (visited.find(otherTid) != visited.end()) {
+              return TRI_ERROR_DEADLOCK;
+            }
 
-	    auto it2 = _blocked.find(otherTid);
+            auto it2 = _blocked.find(otherTid);
 
-	    if (it2 != _blocked.end()) {
-	      // writer thread is blocking...
-	      stack.emplace_back((*it2).second.first, otherTid, (*it).second.second);
-	    }
-	  }
-	}
+            if (it2 != _blocked.end()) {
+              // writer thread is blocking...
+              stack.emplace_back(otherTid, (*it2).second.first, (*it).second.second);
+            }
+          }
+        }
       }
 
       visited.emplace(top.tid);
@@ -161,9 +159,7 @@ class DeadlockDetector {
   }
 
   /// @brief add a thread to the list of blocked threads
-  int setBlocked(T const* value, bool isWrite) {
-    auto tid = Thread::currentThreadId();
-
+  int setBlocked(TID tid, T const* value, bool isWrite) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (!_enabled) {
@@ -178,7 +174,7 @@ class DeadlockDetector {
     }
 
     try {
-      int res = detectDeadlock(value, tid, isWrite);
+      int res = detectDeadlockNoLock(tid, value, isWrite);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up
@@ -196,9 +192,8 @@ class DeadlockDetector {
   }
 
   /// @brief remove a thread from the list of blocked threads
-  void unsetBlocked(T const* value, bool isWrite) {
-    auto tid = Thread::currentThreadId();
-
+  void unsetBlocked(TID tid, T const* value, bool isWrite) {
+    
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (!_enabled) {
@@ -210,9 +205,7 @@ class DeadlockDetector {
   }
 
   /// @brief unregister a thread from the list of active threads
-  void unsetActive(T const* value, bool isWrite) {
-    auto tid = Thread::currentThreadId();
-
+  void unsetActive(TID tid, T const* value, bool isWrite) {
     MUTEX_LOCKER(mutexLocker, _lock); // note: this lock is expensive when many threads compete
 
     if (!_enabled) {
@@ -271,11 +264,10 @@ class DeadlockDetector {
   }
 
   /// @brief add a reader/writer to the list of active threads
-  void addActive(T const* value, bool isWrite, bool wasBlockedBefore) {
-    auto tid = Thread::currentThreadId();
-
+  void addActive(TID tid, T const* value, bool isWrite, bool wasBlockedBefore) {
+    
     MUTEX_LOCKER(mutexLocker, _lock); // note: this lock is expensive when many threads compete
-
+    
     if (!_enabled) {
       return;
     }
@@ -284,8 +276,7 @@ class DeadlockDetector {
 
     if (it == _active.end()) {
       // no one else there. simply register us
-      _active.emplace(
-          value, std::make_pair(std::unordered_set<TRI_tid_t>({tid}), isWrite));
+      _active.emplace(value, std::make_pair(std::unordered_set<TID>({tid}), isWrite));
     } else {
       // someone else is already there
       // we're expecting one or many readers
@@ -311,10 +302,10 @@ class DeadlockDetector {
   arangodb::Mutex _lock;
 
   /// @brief threads currently blocked
-  std::unordered_map<TRI_tid_t, std::pair<T const*, bool>> _blocked;
+  std::unordered_map<TID, std::pair<T const*, bool>> _blocked;
 
   /// @brief threads currently holding locks
-  std::unordered_map<T const*, std::pair<std::unordered_set<TRI_tid_t>, bool>>
+  std::unordered_map<T const*, std::pair<std::unordered_set<TID>, bool>>
       _active;
 
   /// @brief whether or not the detector is enabled

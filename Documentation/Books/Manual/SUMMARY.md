@@ -2,23 +2,31 @@
 # Summary
 
 * [Introduction](README.md)
+* [Highlights](Highlights.md)
 
 ## GETTING FAMILIAR 
 
 * [Getting Started](GettingStarted/README.md)
-  * [Installing](GettingStarted/Installing/README.md)
-    * [Linux](GettingStarted/Installing/Linux.md)
-    * [Mac OS X](GettingStarted/Installing/MacOSX.md)
-    * [Windows](GettingStarted/Installing/Windows.md)
-    * [Compiling](GettingStarted/Installing/Compiling.md)
+  * [Installation](GettingStarted/Installation.md) 
   * [Authentication](GettingStarted/Authentication.md)
-  * [Accessing the Web Interface](GettingStarted/WebInterface.md)
+  * [Web Interface](GettingStarted/WebInterface.md) 
+  * [Databases, Collections and Documents](GettingStarted/DatabasesCollectionsDocuments.md)   
+  * [Querying the Database](GettingStarted/QueryingTheDatabase.md)   
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
+  * [Next Steps](GettingStarted/NextSteps.md) 
+* [Tutorials](Tutorials/README.md)  
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
-* [Highlights](Highlights.md)
+* [ArangoDB Programs](Programs/README.md)
+#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
+  * [ArangoDB Starter](Programs/Starter/README.md)
+    * [Options](Programs/Starter/options.md)
+    * [Security](Programs/Starter/security.md)
+
+## CORE TOPICS	
+
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
   * [Databases](DataModeling/Databases/README.md)
@@ -40,14 +48,6 @@
     * [Collection Names](DataModeling/NamingConventions/CollectionNames.md)
     * [Document Keys](DataModeling/NamingConventions/DocumentKeys.md)
     * [Attribute Names](DataModeling/NamingConventions/AttributeNames.md)
-* [ArangoDB Programs](Programs/README.md)
-#   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](Programs/Starter/README.md)
-    * [Options](Programs/Starter/options.md)
-    * [Security](Programs/Starter/security.md)
-
-## CORE TOPICS	
-
 * [Indexing](Indexing/README.md)
   * [Index Basics](Indexing/IndexBasics.md)
   * [Which index to use when](Indexing/WhichIndex.md)
@@ -150,6 +150,11 @@
 
 ## OPERATIONS		
 
+* [Installation](Installation/README.md)
+  * [Linux](Installation/Linux.md)
+  * [Mac OS X](Installation/MacOSX.md)
+  * [Windows](Installation/Windows.md)
+  * [Compiling](Installation/Compiling.md)
 * [Deployment](Deployment/README.md)
   * [Single instance](Deployment/SingleInstance/README.md)
   * [Master/Slave](Deployment/MasterSlave/README.md)
@@ -251,6 +256,7 @@
 ---
 
 * [Release notes](ReleaseNotes/README.md)
+  * [Whats New in 3.4](ReleaseNotes/NewFeatures34.md)
   * [Incompatible changes in 3.4](ReleaseNotes/UpgradingChanges34.md)
   * [Whats New in 3.3](ReleaseNotes/NewFeatures33.md)
   * [Incompatible changes in 3.3](ReleaseNotes/UpgradingChanges33.md)

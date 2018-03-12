@@ -65,7 +65,7 @@ static void escapeRegexParams(std::string &out, const char* ptr, size_t length) 
   }
 }
       
-icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, transaction::Methods* trx, bool& isEmptyExpression) {
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
 
   std::string rx;
   
@@ -83,14 +83,14 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, trans
         rx += '|';
       }
       
-      size_t length;
+      arangodb::velocypack::ValueLength length;
       const char *str = it.getString(length);
       escapeRegexParams(rx, str, length);
     }
   }
   else if (splitExpression.isString()) {
-    size_t length;
-    const char *str = slice.getString(length);
+    arangodb::velocypack::ValueLength length;
+    const char* str = slice.getString(length);
     escapeRegexParams(rx, str, length);
     if (rx.length() == 0) {
       isEmptyExpression = true;

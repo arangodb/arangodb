@@ -45,7 +45,7 @@ std::vector<Upgrade::Task> Upgrade::_tasks;
 
 /// corresponding to cluster-bootstrap.js
 UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t* system) {
-  uint32_t cc = Version::current(); // not actually used here
+  uint64_t cc = Version::current(); // not actually used here
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   uint32_t clusterFlag = Flags::CLUSTER_COORDINATOR_GLOBAL;
   if (ServerState::instance()->isDBServer()) {
@@ -86,7 +86,7 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t* vocbase,
   params.close();
 
   // will write version file with this number
-  uint32_t cc = Version::current();
+  uint64_t cc = Version::current();
   VersionResult vinfo = {VersionResult::VERSION_MATCH, cc, cc, {}};
   return runTasks(vocbase, vinfo, params.slice(), clusterFlag,
                   Upgrade::Flags::DATABASE_INIT);
