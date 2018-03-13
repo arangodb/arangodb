@@ -339,10 +339,6 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
   // db server / standalone
   if (!ServerState::isCoordinator(_serverRole)) {
     ptr = _vocbase ? _vocbase->lookupDataSource(nameOrId) : nullptr;
-  } else if (nameOrId[0] >= '0' && nameOrId[0] <= '9') {
-    ptr = getDataSource(NumberUtils::atoi_zero<TRI_voc_cid_t>(
-      nameOrId.data(), nameOrId.data() + nameOrId.size()
-    ));
   } else {
     // cluster coordinator
     auto* ci = ClusterInfo::instance();
