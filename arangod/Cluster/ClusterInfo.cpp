@@ -1380,6 +1380,8 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         return setErrormsg(TRI_ERROR_CLUSTER_TIMEOUT, errorMsg);
       }
 
+      // account for changes to plan in meantime (supervision and other)
+      loadPlan();
       agencyCallback->executeByCallbackOrTimeout(interval);
     }
   }

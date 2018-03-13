@@ -1,3 +1,9 @@
+v3.2.13 (XXXX-XX-XX)
+--------------------
+
+* fixed the bahaviour of clusterinfo when waiting for current to catch
+  up with plan in create collection.
+
 v3.2.12 (2018-02-27)
 --------------------
 
