@@ -241,7 +241,6 @@ SET(ARANGOD_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
-  Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp

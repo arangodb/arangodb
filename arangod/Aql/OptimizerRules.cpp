@@ -126,7 +126,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     // expression
     auto s = static_cast<CalculationNode*>(setter);
     auto filterExpression = s->expression();
-    auto const* inNode = filterExpression->node();
+    auto* inNode = filterExpression->nodeForModification();
 
     TRI_ASSERT(inNode != nullptr);
 
@@ -140,7 +140,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto rhs = inNode->getMember(1);
 
-    if (rhs->type != NODE_TYPE_REFERENCE) {
+    if (rhs->type != NODE_TYPE_REFERENCE && rhs->type != NODE_TYPE_ARRAY) {
       continue;
     }
 
@@ -149,6 +149,21 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
     if (loop == nullptr) {
       // FILTER is not used inside a loop. so it will be used at most once
       // not need to sort the IN values then
+      continue;
+    }
+      
+    if (rhs->type == NODE_TYPE_ARRAY) {
+      if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
+        // number of values is below threshold or array is already sorted
+        continue;
+      }
+    
+      auto ast = plan->getAst();
+      auto args = ast->createNodeArray();
+      args->addMember(rhs);
+      auto sorted = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
+      inNode->changeMember(1, sorted);
+      modified = true;
       continue;
     }
 

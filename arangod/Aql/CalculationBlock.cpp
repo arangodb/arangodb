@@ -155,7 +155,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
   TRI_ASSERT(_expression != nullptr);
 
-  if (!_expression->isV8()) {
+  if (!_expression->willUseV8()) {
     // an expression that does not require V8
     executeExpression(result);
   } else {
