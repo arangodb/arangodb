@@ -83,18 +83,42 @@ bool MaintenanceAction::done() const {
 
 
 /// @brief Initiate a new action that will start immediately, pausing this action
-void MaintenanceAction::startPreAction(std::shared_ptr<ActionDescription_t> const & description,
+void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> const & description,
                                        std::shared_ptr<VPackBuilder> const & properties) {
 
   _preAction = _feature.preAction(description, properties);
 
-  if (!_preAction) {
+  // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
+  //  workers from picking it up
+  if (_preAction) {
+    setState(WAITINGPRE);
+  } else {
     _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
-  } // if
+  } // else
 
   return;
 
-} // MaintenanceAction::startPreAction
+} // MaintenanceAction::createPreAction
+
+
+/// @brief Create a new action that will start after this action successfully completes
+void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+                                       std::shared_ptr<VPackBuilder> const & properties) {
+
+  // preAction() sets up what we need
+  _postAction = _feature.preAction(description, properties);
+
+  // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
+  //  workers from picking it up
+  if (_postAction) {
+    setState(WAITINGPOST);
+  } else {
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters for _postAction.");
+  } // else
+
+  return;
+
+} // MaintenanceAction::createPostAction
 
 
 void MaintenanceAction::startStats() {

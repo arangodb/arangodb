@@ -168,6 +168,24 @@ public:
 
   } // verifyRegistryState
 
+
+  /// @brief poll registry until all actions finish
+  void waitRegistryComplete() {
+    bool again;
+
+    do {
+      again = false;
+      sleep(1);
+      VPackArrayIterator registry(toVelocityPack().slice());
+      for (auto action : registry )
+      {
+        VPackSlice state = action.get("state");
+        again = again || (arangodb::maintenance::MaintenanceAction::COMPLETE != state.getInt()
+                          && arangodb::maintenance::MaintenanceAction::FAILED != state.getInt());
+      } // for
+    } while(again);
+  } // waitRegistryComplete
+
 public:
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
   TestProgressHandler _progressHandler;
@@ -233,7 +251,7 @@ public:
     // a pre action needs to push before setting _result
     if (_preDesc) {
       std::shared_ptr<VPackBuilder> blank_builder;
-      startPreAction(_preDesc, blank_builder);
+      createPreAction(_preDesc, blank_builder);
     } else if (0==_iteration) {
       // time to set result?
       _result.reset(_resultCode);
@@ -244,7 +262,7 @@ public:
       _result.reset(2);
     } // if
 
-    return(0 < _iteration-- && _result.ok());
+    return(iteratorEndTest());
   };
 
   bool next() override {
@@ -258,9 +276,31 @@ public:
       _result.reset(2);
     } // if
 
-    return(0 < _iteration-- && _result.ok());
+    return(iteratorEndTest());
   };
 
+
+protected:
+  bool iteratorEndTest() {
+    bool more;
+
+    //
+    if (_result.ok()) {
+      more = 0 < _iteration--;
+
+      // if going to stop, see if a postAction is needed
+      if (!more && _postDesc) {
+        std::shared_ptr<VPackBuilder> blank_builder;
+        createPostAction(_postDesc, blank_builder);
+      } // if
+    } else {
+      // !ok() ... always stop iteration
+      more = false;
+    }
+    return more;
+  } // iteratorEndTest
+
+public:
   int _iteration;
   int _resultCode;
   std::shared_ptr<arangodb::maintenance::ActionDescription_t> _preDesc;
@@ -434,8 +474,8 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf->addAction(desc_ptr, prop_ptr, false);
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
-    pre_thread.push_back({1,0,1,0});
-    post_thread.push_back({1,1,6,100});
+    pre_thread.push_back({1,0,arangodb::maintenance::MaintenanceAction::READY,0});
+    post_thread.push_back({1,1,arangodb::maintenance::MaintenanceAction::FAILED,100});
 
     //   b. 2 iterations then succeed;
     desc={{"name","TestActionBasic"},{"iterate_count","2"}};
@@ -445,8 +485,8 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     result = tf->addAction(desc_ptr, prop_ptr, false);
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
-    pre_thread.push_back({2,0,1,0});
-    post_thread.push_back({2,0,5,2});
+    pre_thread.push_back({2,0,arangodb::maintenance::MaintenanceAction::READY,0});
+    post_thread.push_back({2,0,arangodb::maintenance::MaintenanceAction::COMPLETE,2});
 
     //   c. duplicate of 'a', should fail to add
     desc={{"name","TestActionBasic"},{"iterate_count","100"},
@@ -468,18 +508,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 4. loop while waiting for threads to complete all actions
-    bool again;
-
-    do {
-      again = false;
-      sleep(1);
-      VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      for (auto ma : ai1 )
-      {
-        VPackSlice state = ma.get("state");
-        again = again || (6 != state.getInt() && 5 != state.getInt());
-      } // for
-    } while(again);
+    tf->waitRegistryComplete();
 
     //
     // 5. verify completed actions
@@ -517,9 +546,9 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
     arangodb::Result result = tf->addAction(desc_ptr, prop_ptr, false);
     REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
     REQUIRE(tf->_recentAction->result().ok());
-    pre_thread.push_back({1,0,1,0});
-    post_thread.push_back({1,0,5,100});
-    post_thread.push_back({2,0,5,100});  // preaction results
+    pre_thread.push_back({1,0,arangodb::maintenance::MaintenanceAction::READY,0});
+    post_thread.push_back({1,0,arangodb::maintenance::MaintenanceAction::COMPLETE,100});
+    post_thread.push_back({2,0,arangodb::maintenance::MaintenanceAction::COMPLETE,100});  // preaction results
 
     //
     // 2. see if happy about queue prior to threads running
@@ -531,18 +560,59 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 4. loop while waiting for threads to complete all actions
-    bool again;
+    tf->waitRegistryComplete();
 
-    do {
-      again = false;
-      sleep(1);
-      VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      for (auto ma : ai1 )
-      {
-        VPackSlice state = ma.get("state");
-        again = again || (6 != state.getInt() && 5 != state.getInt());
-      } // for
-    } while(again);
+    //
+    // 5. verify completed actions
+    REQUIRE(tf->verifyRegistryState(post_thread));
+
+#if 0   // for debugging
+    std::string xx = (tf->toVelocityPack()).toJson();
+    printf("%s\n", xx.c_str());
+#endif
+
+    //
+    // 6. bring down the ApplicationServer, i.e. clean up
+    as.beginShutdown();
+    th.join();
+  }
+
+
+  SECTION("Action that generates a post-action") {
+    std::vector<Expected> pre_thread, post_thread;
+
+    std::shared_ptr<arangodb::options::ProgramOptions> po = std::make_shared<arangodb::options::ProgramOptions>("test", std::string(), std::string(), "path");
+    arangodb::application_features::ApplicationServer as(po, nullptr);
+    TestMaintenanceFeature * tf = new TestMaintenanceFeature(&as);
+    as.addFeature(tf);
+    std::thread th(&arangodb::application_features::ApplicationServer::run, &as, 0, nullptr);
+
+    //
+    // 1. load up the queue without threads running
+    //   a. 100 iterations then fail
+    arangodb::maintenance::ActionDescription_t desc={{"name","TestActionBasic"},{"iterate_count","100"},
+                                                     {"postaction_result_code","0"}};
+    auto desc_ptr = std::make_shared<arangodb::maintenance::ActionDescription_t>(desc);
+    auto prop_ptr = std::make_shared<VPackBuilder>();
+
+    arangodb::Result result = tf->addAction(desc_ptr, prop_ptr, false);
+    REQUIRE(result.ok());   // has not executed, ok() is about parse and list add
+    REQUIRE(tf->_recentAction->result().ok());
+    pre_thread.push_back({1,0,arangodb::maintenance::MaintenanceAction::READY,0});
+    post_thread.push_back({1,0,arangodb::maintenance::MaintenanceAction::COMPLETE,100});
+    post_thread.push_back({2,0,arangodb::maintenance::MaintenanceAction::COMPLETE,100});  // postaction results
+
+    //
+    // 2. see if happy about queue prior to threads running
+    REQUIRE(tf->verifyRegistryState(pre_thread));
+
+    //
+    // 3. start threads AFTER ApplicationServer known to be running
+    tf->setMaintenanceThreadsMax(1);
+
+    //
+    // 4. loop while waiting for threads to complete all actions
+    tf->waitRegistryComplete();
 
     //
     // 5. verify completed actions
