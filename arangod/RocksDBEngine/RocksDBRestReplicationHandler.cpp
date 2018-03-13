@@ -389,10 +389,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool isGlobal = false;
   getApplier(isGlobal);
   
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
+  VPackBuilder result = ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
+  if (result.isEmpty()) { // happens if batch was not created properly
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "inventory could not be created");
     return;
   }
@@ -400,7 +399,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  VPackSlice const inventory = result.slice();
   if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
@@ -715,12 +714,14 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   grantTemporaryRights();
   
   uint64_t chunkSize = determineChunkSize();
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder vpb(buffer, ctx->getVPackOptions());
+  size_t reserve = std::max<size_t>(chunkSize, 8192);
   
   if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
     LOG_TOPIC(WARN, Logger::FIXME) << "Dumping VPack";
+    
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder vpb(buffer, context->getVPackOptions());
+    buffer.reserve(reserve); // avoid reallocs
     
     auto cb = [&]() -> bool {
       return buffer.byteSize() < chunkSize;
@@ -756,15 +757,16 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     
     // hardcode response to be JSON Lines
     auto response = dynamic_cast<HttpResponse*>(_response.get());
-    StringBuffer dump(8192, false);
+    StringBuffer dump(reserve, false);
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
     }
     
     // note: we need the CustomTypeHandler here
     arangodb::basics::VPackStringBufferAdapter adapter(dump.stringBuffer());
-    VPackDumper dumper(&adapter, ctx->getVPackOptions());
+    VPackDumper dumper(&adapter, context->getVPackOptions());
     
+    VPackBuilder vpb;
     auto cb = [&]() -> bool { // called after each document
       if (!vpb.isEmpty()) {
         TRI_ASSERT(vpb.slice().isObject());

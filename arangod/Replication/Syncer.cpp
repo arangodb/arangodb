@@ -79,8 +79,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   }
  
   if (_configuration._chunkSize == 0) {
-    _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MB
-  } else if (_configuration._chunkSize < 16 * 1024) {
+    _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MiB
+  } else if (_configuration._chunkSize < 16 * 1024) { // 16 KiB
     _configuration._chunkSize = 16 * 1024;
   }
 

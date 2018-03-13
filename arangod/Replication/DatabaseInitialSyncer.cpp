@@ -63,7 +63,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-size_t const DatabaseInitialSyncer::MaxChunkSize = 32 * 1024 * 1024;
+size_t const DatabaseInitialSyncer::MaxChunkSize = 16 * 1024 * 1024;
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
                                              ReplicationApplierConfiguration const& configuration)
@@ -583,7 +583,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     // increase chunk size for next fetch
     if (chunkSize < MaxChunkSize) {
-      chunkSize = static_cast<uint64_t>(chunkSize * 1.5);
+      chunkSize = static_cast<uint64_t>(chunkSize * 1.25);
       if (chunkSize > MaxChunkSize) {
         chunkSize = MaxChunkSize;
       }

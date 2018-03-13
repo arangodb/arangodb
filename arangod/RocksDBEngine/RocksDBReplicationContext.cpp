@@ -103,6 +103,9 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
     auto ctx = transaction::StandaloneContext::Create(vocbase);
     _trx.reset(new transaction::UserTransaction(ctx, {}, {}, {},
                                                 transactionOptions));
+    _customTypeHandler = ctx->orderCustomTypeHandler();
+    _vpackOptions.customTypeHandler = _customTypeHandler.get();
+    
     auto state = RocksDBTransactionState::toState(_trx.get());
     if (snap != nullptr) {
       state->donateSnapshot(snap);
@@ -163,15 +166,13 @@ int RocksDBReplicationContext::bindCollection(
 }
 
 // returns inventory
-std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
+VPackBuilder
 RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
                                         bool includeSystem,
                                         bool global) {
   TRI_ASSERT(vocbase != nullptr);
   if (!_trx) {
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
-        std::shared_ptr<VPackBuilder>(nullptr));
+    return VPackBuilder();
   }
 
   auto nameFilter = [includeSystem](LogicalCollection const* collection) {
@@ -191,21 +192,14 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
   };
 
   auto tick = TRI_CurrentTickServer();
-
-  if (global) {
-    // global inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    DatabaseFeature::DATABASE->inventory(*builder.get(), tick, nameFilter);
-    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          builder);
-  } else {
-    // database-specific inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    vocbase->inventory(*builder.get(), tick, nameFilter);
-
-    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          builder);
+  
+  VPackBuilder builder(&_vpackOptions);
+  if (global) { // global inventory
+    DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
+  } else { // database-specific inventory
+    vocbase->inventory(builder, tick, nameFilter);
   }
+  return builder;
 }
 
 // iterates over at most 'limit' documents in the collection specified,
@@ -229,8 +223,8 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   
   VPackOptions const* opts = builder.options;
   VPackCustomTypeHandler* ch = builder.options->customTypeHandler;
-  auto cb = [this, &builder, useExt, ch, opts](LocalDocumentId const& documentId,
-                                               VPackSlice const& doc) {
+  bool canContinue = true;
+  auto cb = [&](LocalDocumentId const& documentId, VPackSlice const& doc) {
 
     builder.openObject(true);
     // set type
@@ -259,16 +253,14 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       builder.close();
     }
     builder.close();
+    canContinue = afterDocCb();
   };
   
   TRI_ASSERT(_iter);
 
-  while (_hasMore) {
+  while (_hasMore && canContinue) {
     try {
       _hasMore = _iter->nextDocument(cb, 1);
-      if (!afterDocCb()) {
-        break;
-      }
     } catch (basics::Exception const& ex) {
       _hasMore = false;
       return RocksDBReplicationResult(ex.code(), ex.what(), 0);

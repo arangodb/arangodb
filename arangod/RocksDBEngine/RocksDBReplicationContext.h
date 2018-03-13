@@ -70,7 +70,7 @@ class RocksDBReplicationContext {
   }
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
+  velocypack::Builder
   getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
 
   // iterates over at most 'limit' documents in the collection specified,
@@ -102,6 +102,8 @@ class RocksDBReplicationContext {
   /// remove use flag
   void release();
 
+  velocypack::Options const* getVPackOptions() const { return &_vpackOptions; }
+  
  private:
   
   int bindCollection(TRI_vocbase_t*, std::string const& collIdent, bool sorted);
@@ -115,6 +117,9 @@ class RocksDBReplicationContext {
   uint64_t _currentTick; // shows how often dump was called
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
+  
+  std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
+  velocypack::Options _vpackOptions;
   
   /// @brief Collection used in dump and incremental sync
   LogicalCollection* _collection;
