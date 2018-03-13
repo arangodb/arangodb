@@ -107,6 +107,7 @@ add_executable(
   Cluster/ClusterHelpersTest.cpp
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
+  Geo/GeoConstructorTest.cpp
   Geo/NearUtilsTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp

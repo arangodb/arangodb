@@ -2944,6 +2944,324 @@ AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintBool(loop.Contains(latLng.ToPoint())));
 }
 
+/// @brief geo constructors
+
+/// @brief function GEO_POINT
+AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POINT", 2, 2);
+  
+  size_t const n = parameters.size();
+
+  if (n < 2) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue lon1 = ExtractFunctionParameterValue(parameters, 0);
+  AqlValue lat1 = ExtractFunctionParameterValue(parameters, 1);
+
+  // non-numeric input
+  if (!lat1.isNumber() || !lon1.isNumber()) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  bool failed;
+  bool error = false;
+  double lon1Value = lon1.toDouble(trx, failed);
+  error |= failed;
+  double lat1Value = lat1.toDouble(trx, failed);
+  error |= failed;
+  
+  if (error) {
+    RegisterWarning(query, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("Point"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+  b.add(VPackValue(lon1Value));
+  b.add(VPackValue(lat1Value));
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_POLYGON
+AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_POLYGON", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_POLYGON",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("Polygon"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray() && v.length() > 2) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else if (coord.isArray()) {
+          if (coord.length() < 2) {
+            RegisterWarning(query, "GEO_POLYGON", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "a position needs at least two numeric values"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          } else {
+            b.openArray();
+            for (auto const& innercord : VPackArrayIterator(coord)) {
+              if (innercord.isNumber()) {
+                b.add(VPackValue(innercord.getNumber<double>()));
+              } else if (innercord.isArray()) {
+                if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+                  b.openArray();
+                  b.add(VPackValue(innercord.at(0).getNumber<double>()));
+                  b.add(VPackValue(innercord.at(1).getNumber<double>()));
+                  b.close();
+                } else {
+                  RegisterWarning(query, "GEO_POLYGON", Result(
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                        "not a number"));
+                  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+                }
+              } else {
+                RegisterWarning(query, "GEO_POLYGON", Result(
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                      "not an array describing a position"));
+                return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+              }
+            }
+            b.close();
+          }
+        } else {
+          RegisterWarning(query, "GEO_POLYGON", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not an array containing positions"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else if (v.isArray() && v.length() == 2) {
+        if (s.length() > 2) {
+        b.openArray();
+        for (auto const& innercord : VPackArrayIterator(v)) {
+          if (innercord.isNumber()) {
+            b.add(VPackValue(innercord.getNumber<double>()));
+          } else if (innercord.isArray()) {
+            if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
+              b.openArray();
+              b.add(VPackValue(innercord.at(0).getNumber<double>()));
+              b.add(VPackValue(innercord.at(1).getNumber<double>()));
+              b.close();
+            } else {
+              RegisterWarning(query, "GEO_POLYGON", Result(
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                    "not a number"));
+              return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            }
+          } else {
+            RegisterWarning(query, "GEO_POLYGON", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "not a numeric value"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+        b.close();
+      } else {
+        RegisterWarning(query, "GEO_POLYGON", Result(
+              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+              "a polygon needs at least three positions"));
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      }
+    } else {
+      RegisterWarning(query, "GEO_POLYGON", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_LINESTRING
+AqlValue Functions::GeoLinestring(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_LINESTRING", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_LINESTRING",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 2) {
+    RegisterWarning(query, "GEO_LINESTRING", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a linestring needs at least two positions"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("LineString"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else {
+          RegisterWarning(query, "GEO_LINESTRING", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not a numeric value"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else {
+      RegisterWarning(query, "GEO_LINESTRING", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
+/// @brief function GEO_MULTILINESTRING
+AqlValue Functions::GeoMultiLinestring(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_MULTILINESTRING", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_MULTILINESTRING",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 1) {
+    RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a multilinestring needs at least one array of linestrings"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("MultiLineString"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      if (v.length() > 1) {
+        b.openArray();
+        for (auto const& inner : VPackArrayIterator(v)) {
+          if (inner.isArray()) {
+            b.openArray();
+            for (auto const& coord : VPackArrayIterator(inner)) {
+              if (coord.isNumber()) {
+                b.add(VPackValue(coord.getNumber<double>()));
+              } else {
+                RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                      "not a numeric value"));
+                return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+              }
+            }
+            b.close();
+          } else {
+            RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+                  TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                  "not an array containing positions"));
+            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+          }
+        }
+        b.close();
+      } else {
+        RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+              TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+              "not an array containing linestrings"));
+        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      }
+    } else {
+      RegisterWarning(query, "GEO_MULTILINESTRING", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
 /// @brief function FLATTEN
 AqlValue Functions::Flatten(arangodb::aql::Query* query,
                             transaction::Methods* trx,
