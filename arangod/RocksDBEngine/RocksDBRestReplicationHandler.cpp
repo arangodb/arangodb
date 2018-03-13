@@ -757,8 +757,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     
     // hardcode response to be JSON lines
     HttpResponse* response = dynamic_cast<HttpResponse*>(_response.get());
-    StringBuffer& buffer = response->body();
-    buffer.reserve(reserve);
+    StringBuffer buffer(reserve, false);
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
     }
