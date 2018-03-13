@@ -2789,7 +2789,7 @@ AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
   
   size_t const n = parameters.size();
 
-  if (n < 1) {
+  if (n < 2) {
     // no parameters
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
@@ -2869,7 +2869,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
           if (coord.length() < 2) {
             RegisterWarning(query, "GEO_POLYGON", Result(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "a polygon needs at least three positions"));
+                  "a position needs at least two numeric values"));
             return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
           } else {
             b.openArray();
@@ -2877,21 +2877,21 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
               if (innercord.isNumber()) {
                 b.add(VPackValue(innercord.getNumber<double>()));
               } else if (innercord.isArray()) {
-                if (innercord.at(0).isDouble() &&innercord.at(1).isDouble()) {
+                if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
                   b.openArray();
-                  b.add(VPackValue(innercord.at(0).getDouble()));
-                  b.add(VPackValue(innercord.at(1).getDouble()));
+                  b.add(VPackValue(innercord.at(0).getNumber<double>()));
+                  b.add(VPackValue(innercord.at(1).getNumber<double>()));
                   b.close();
                 } else {
                   RegisterWarning(query, "GEO_POLYGON", Result(
                         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                        "not an array"));
+                        "not a number"));
                   return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
                 }
               } else {
                 RegisterWarning(query, "GEO_POLYGON", Result(
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                      "not a numeric value"));
+                      "not an array describing a position"));
                 return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
               }
             }
@@ -2912,15 +2912,15 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
           if (innercord.isNumber()) {
             b.add(VPackValue(innercord.getNumber<double>()));
           } else if (innercord.isArray()) {
-            if (innercord.at(0).isDouble() &&innercord.at(1).isDouble()) {
+            if (innercord.at(0).isNumber() && innercord.at(1).isNumber()) {
               b.openArray();
-              b.add(VPackValue(innercord.at(0).getDouble()));
-              b.add(VPackValue(innercord.at(1).getDouble()));
+              b.add(VPackValue(innercord.at(0).getNumber<double>()));
+              b.add(VPackValue(innercord.at(1).getNumber<double>()));
               b.close();
             } else {
               RegisterWarning(query, "GEO_POLYGON", Result(
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                    "not an array"));
+                    "not a number"));
               return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
             }
           } else {

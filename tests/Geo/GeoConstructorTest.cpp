@@ -212,6 +212,40 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
       CHECK(res.slice().isNull());
     }
 
+    WHEN("checking null") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "null";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking string") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      });
+
+      char const* p = "\"hallowelt\"";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPoint(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
     WHEN("checking positive int and bool") {
       VPackBuilder foo;
       foo(VPackValue(VPackValueType::Object))
@@ -568,6 +602,23 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       CHECK(res.slice().isNull());
     }
 
+    WHEN("checking polygon with empty input") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      
+      char const* p = "\"\"";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
     WHEN("checking polygon with boolean") {
       fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
         REQUIRE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
@@ -639,6 +690,38 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       });
 
       char const* p = "123";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object with string") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "\"hallowelt\"";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.slice().isNull());
+    }
+
+    WHEN("checking object with null") {
+      fakeit::When(Method(queryMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+        REQUIRE(code == TRI_ERROR_QUERY_ARRAY_EXPECTED);
+      });
+
+      char const* p = "null";
       size_t l = strlen(p);
 
       std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
