@@ -57,7 +57,7 @@ function appendHeader() {
     '    <li>\n' +
     '      <a href="#" data-book="Manual">Manual</a>\n' +
     '    </li>\n' +
-    '    <li class="active-tab">\n' +
+    '    <li>\n' +
     '      <a href="#" data-book="AQL">AQL</a>\n' +
     '    </li>\n' +
     '    <li>\n' +
@@ -65,6 +65,9 @@ function appendHeader() {
     '    </li>\n' +
     '    <li>\n' +
     '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
+    '    </li>\n' +
+    '    <li class="active-tab">\n' +
+    '      <a href="#" data-book="Drivers">Drivers</a>\n' +
     '    </li>\n' +
     '    <li class="downloadIcon" title="Download">\n' +
     '      <a href="https://www.arangodb.com/download-arangodb-docs" target="_blank">\n' +
