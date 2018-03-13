@@ -723,7 +723,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     VPackBuilder vpb(buffer, context->getVPackOptions());
     buffer.reserve(reserve); // avoid reallocs
     
-    auto cb = [&]() -> bool {
+    auto cb = [&buffer, chunkSize]() -> bool {
       return buffer.byteSize() < chunkSize;
     };
     
@@ -767,7 +767,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     VPackDumper dumper(&adapter, context->getVPackOptions());
     
     VPackBuilder vpb;
-    auto cb = [&]() -> bool { // called after each document
+    auto cb = [&buffer, &dumper, &vpb, chunkSize]() -> bool { // called after each document
       dumper.dump(vpb.slice());
       buffer.appendChar('\n');
       vpb.clear();
