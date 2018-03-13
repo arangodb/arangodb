@@ -43,7 +43,7 @@ var j;
 
 const exds = require("@arangodb/examples/examples").Examples;
 
-const AU = require('ansi-up');
+const AU = require('ansi_up');
 const ansi_up = new AU.default;
 
 const hljs = require('highlightjs');
