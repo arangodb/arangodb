@@ -185,10 +185,10 @@ exception from the GPL license:
 * Project Home: https://github.com/chalk/ansi-styles#readme
 * License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/chalk/node_modules/ansi-styles/package.json)
 
-#### ansi-styles
+#### ansi_up
 
-* Project Home: https://github.com/chalk/ansi-styles#readme
-* License: [MIT License](https://github.com/arangodb/arangodb/blob/devel/js/node/node_modules/eslint/node_modules/ansi-styles/package.json)
+* Project Home: https://github.com/drudru/ansi_up
+* License: [MIT License](https://github.com/drudru/ansi_up#license)
 
 #### aqb
 
