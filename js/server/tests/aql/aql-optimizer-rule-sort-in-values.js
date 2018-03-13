@@ -127,8 +127,8 @@ function optimizerRuleTestSuite () {
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER LENGTH(i.a) >= 3 FILTER i.a IN values RETURN i",
         "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", 
         "LET values = NOOPT([ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ]) FOR i IN 1..100 FILTER i IN values RETURN i", 
-        "LET values = SPLIT('foo,bar,foobar,qux', ',') FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
-        "LET values = SPLIT('foo,bar,foobar,qux', ',') FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
+        "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
+        "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
       ];
 
       queries.forEach(function(query) {

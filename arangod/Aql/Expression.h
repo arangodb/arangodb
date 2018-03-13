@@ -270,16 +270,11 @@ class Expression {
                                            transaction::Methods*,
                                            bool& mustDestroy);
   
-  /// @brief execute an expression of type SIMPLE with FCALL, V8 variant
-  AqlValue executeSimpleExpressionFCallV8(AstNode const*,
+  /// @brief execute an expression of type SIMPLE with FCALL, JavaScript variant
+  AqlValue executeSimpleExpressionFCallJS(AstNode const*,
                                           transaction::Methods*,
                                           bool& mustDestroy);
   
-  /// @brief execute an expression of type SIMPLE with FCALL_USER
-  AqlValue executeSimpleExpressionFCallUser(AstNode const*,
-                                            transaction::Methods*,
-                                            bool& mustDestroy);
-
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(AstNode const*,
                                         transaction::Methods*,

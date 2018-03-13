@@ -441,7 +441,7 @@ AqlValue Expression::executeSimpleExpression(
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, mustDestroy);
     case NODE_TYPE_FCALL_USER:
-      return executeSimpleExpressionFCallUser(node, trx, mustDestroy);
+      return executeSimpleExpressionFCallJS(node, trx, mustDestroy);
     case NODE_TYPE_RANGE:
       return executeSimpleExpressionRange(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
@@ -844,7 +844,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
   if (func->implementation != nullptr && (!func->condition || func->condition())) {
     return executeSimpleExpressionFCallCxx(node, trx, mustDestroy);
   }
-  return executeSimpleExpressionFCallV8(node, trx, mustDestroy);
+  return executeSimpleExpressionFCallJS(node, trx, mustDestroy);
 }
   
 /// @brief execute an expression of type SIMPLE with FCALL, CXX version
@@ -909,40 +909,66 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   }
 }
 
-/// @brief execute an expression of type SIMPLE with FCALL, V8 version
-AqlValue Expression::executeSimpleExpressionFCallV8(
+/// @brief execute an expression of type SIMPLE, JavaScript variant
+AqlValue Expression::executeSimpleExpressionFCallJS(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
   prepareV8Context();
-
+  
+  auto member = node->getMemberUnchecked(0);
+  TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
+    
   mustDestroy = false;
-  auto func = static_cast<Function*>(node->getData());
   
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
   TRI_ASSERT(isolate != nullptr);
 
-  auto member = node->getMemberUnchecked(0);
-  TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
-    
-  size_t const n = member->numMembers();
-  
   {
+
     v8::HandleScope scope(isolate); 
     
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(n); 
+    std::string jsName;
+    size_t const n = member->numMembers();
+    size_t const callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
 
-    for (size_t i = 0; i < n; ++i) {
-      auto arg = member->getMemberUnchecked(i);
+    if (node->type == NODE_TYPE_FCALL_USER) {
+      // a call to a user-defined function
+      jsName = "FCALL_USER";
+      v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
 
-      if (arg->type == NODE_TYPE_COLLECTION) {
-        // parameter conversion for NODE_TYPE_COLLECTION here
-        args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(), arg->getStringLength());
-      } else {
+      for (size_t i = 0; i < n; ++i) {
+        auto arg = member->getMemberUnchecked(i);
+
         bool localMustDestroy;
         AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
         AqlValueGuard guard(a, localMustDestroy);
 
-        args[i] = a.toV8(isolate, trx);
+        params->Set(static_cast<uint32_t>(i), a.toV8(isolate, trx));
+      }
+
+      // function name
+      args[0] = TRI_V8_STD_STRING(isolate, node->getString());
+      // call parameters
+      args[1] = params;
+    } else {
+      // a call to a built-in V8 function
+      auto func = static_cast<Function*>(node->getData());
+      jsName = "AQL_" + func->nonAliasedName;
+
+      for (size_t i = 0; i < n; ++i) {
+        auto arg = member->getMemberUnchecked(i);
+
+        if (arg->type == NODE_TYPE_COLLECTION) {
+          // parameter conversion for NODE_TYPE_COLLECTION here
+          args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(), arg->getStringLength());
+        } else {
+          bool localMustDestroy;
+          AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
+          AqlValueGuard guard(a, localMustDestroy);
+
+          args[i] = a.toV8(isolate, trx);
+        }
       }
     }
 
@@ -958,102 +984,14 @@ AqlValue Expression::executeSimpleExpressionFCallV8(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find global _AQL module");
     }
 
-    std::string jsName("AQL_");
-    jsName.append(func->nonAliasedName);
-
     v8::Handle<v8::Value> function = v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
     if (function.IsEmpty() || !function->IsFunction()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function '") + func->nonAliasedName + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function '") + jsName + "'");
     }
 
     // actually call the V8 function
     v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, n, args.get()); 
-    
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-
-    if (result.IsEmpty() || result->IsUndefined()) {
-      return AqlValue(AqlValueHintNull());
-    }
-
-    transaction::BuilderLeaser builder(trx);
-    
-    int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  
-    mustDestroy = true; // builder = dynamic data
-    return AqlValue(builder.get());
-  }   
-}
-
-/// @brief execute an expression of type SIMPLE with FCALL_USER
-AqlValue Expression::executeSimpleExpressionFCallUser(
-    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
-
-  // a V8 context must have been entered by the query beforehand in order
-  // for this to work
-  if (!_ast->query()->hasEnteredContext()) {
-    _ast->query()->enterContext();
-  }
-
-  prepareV8Context();
-
-  mustDestroy = false;
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_ASSERT(isolate != nullptr);
-
-  auto member = node->getMemberUnchecked(0);
-  TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
-    
-  size_t const n = member->numMembers();
-
-  {
-    v8::HandleScope scope(isolate); 
-    
-    v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
-
-    for (size_t i = 0; i < n; ++i) {
-      auto arg = member->getMemberUnchecked(i);
-
-      bool localMustDestroy;
-      AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
-      AqlValueGuard guard(a, localMustDestroy);
-
-      params->Set(static_cast<uint32_t>(i), a.toV8(isolate, trx));
-    }
-
-    v8::Handle<v8::Value> args[2];
-    // function name
-    args[0] = TRI_V8_STD_STRING(isolate, node->getString());
-    // call parameters
-    args[1] = params;
-
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
-    auto old = v8g->_query;
-    v8g->_query = static_cast<void*>(_ast->query());
-    TRI_DEFER(v8g->_query = old);
-
-    auto current = isolate->GetCurrentContext()->Global();
-
-    v8::Handle<v8::Value> module = current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL")); 
-    if (module.IsEmpty() || !module->IsObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find global _AQL module");
-    }
-
-    std::string jsName("FCALL_USER");
-    
-    v8::Handle<v8::Value> function = v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
-    if (function.IsEmpty() || !function->IsFunction()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function 'FCALL_USER'"));
-    }
-
-    // actually call the V8 function
-    v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, 2, &args[0]);
+    v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, callArgs, args.get()); 
     
     V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
 
