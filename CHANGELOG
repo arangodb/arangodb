@@ -1,3 +1,9 @@
+v3.3.5 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #4827: COLLECT on edge _to field doesn't group distinct values as expected (MMFiles)
+
+
 v3.3.4 (2018-03-01)
 -------------------
 
