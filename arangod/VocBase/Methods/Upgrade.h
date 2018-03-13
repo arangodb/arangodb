@@ -63,7 +63,7 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 9)
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
+  typedef std::function<bool(TRI_vocbase_t*, velocypack::Slice const&)>
       TaskFunction;
   struct Task {
     std::string name;

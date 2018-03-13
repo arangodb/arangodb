@@ -48,7 +48,6 @@ if (USE_IRESEARCH)
   add_library(${LIB_ARANGO_IRESEARCH}
     STATIC
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
-    IResearch/AttributeScorer.cpp IResearch/AttributeScorer.h
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h

@@ -187,7 +187,6 @@ void slurp(std::string const& filename, StringBuffer& result) {
 
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  /*int res = */ TRI_errno();
 
   std::string message("write failed for file '" + filename + "': " + TRI_last_error());
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
