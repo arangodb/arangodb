@@ -168,6 +168,8 @@ struct Functions {
    static AqlValue RTrim(arangodb::aql::Query*,
                          transaction::Methods*,
                          VPackFunctionParameters const&);
+   static AqlValue Split(arangodb::aql::Query*, transaction::Methods*,
+                         VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
@@ -356,6 +358,10 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue Assert(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+   static AqlValue Warn(arangodb::aql::Query*, transaction::Methods*,
+                        VPackFunctionParameters const&);
 };
   
 }

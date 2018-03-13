@@ -98,17 +98,15 @@ struct NearIterator final : public IndexIterator {
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
                ManagedDocumentResult* mmdr, MMFilesGeoS2Index const* index,
                geo::QueryParams&& params)
-      : IndexIterator(collection, trx, mmdr, index),
+      : IndexIterator(collection, trx, index),
         _index(index),
         _near(std::move(params)),
+        _mmdr(mmdr),
         _scans{0} {
     estimateDensity();
   }
 
-  ~NearIterator() {
-    LOG_TOPIC(WARN, Logger::FIXME)
-        << "near iterator performed " << _scans << " scans";
-  }
+  ~NearIterator() {}
 
   char const* typeName() const override { return "s2-index-iterator"; }
 
@@ -286,6 +284,7 @@ struct NearIterator final : public IndexIterator {
  private:
   MMFilesGeoS2Index const* _index;
   geo_index::NearUtils<CMP, SEEN> _near;
+  ManagedDocumentResult* _mmdr;
   size_t _scans; // TODO remove later
 };
 typedef NearIterator<geo_index::DocumentsAscending,

@@ -24,13 +24,14 @@
 #include "IResearchOrderFactory.h"
 
 #include "AqlHelper.h"
-#include "AttributeScorer.h"
 #include "IResearchAttributes.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+
+#include "search/scorers.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies
@@ -88,7 +89,7 @@ bool makeScorer(
       break;
     case 1: {
       // ArangoDB, for API consistency, only supports scorers configurable via jSON
-      scorer = irs::scorers::get(name, irs::text_format::json, irs::string_ref::nil);
+      scorer = irs::scorers::get(name, irs::text_format::json, irs::string_ref::NIL);
 
       if (!scorer) {
         // ArangoDB, for API consistency, only supports scorers configurable via jSON
@@ -283,7 +284,7 @@ NS_BEGIN(iresearch)
 
   // create scorer with default arguments
   // ArangoDB, for API consistency, only supports scorers configurable via jSON
-  *comparer = irs::scorers::get(scorerName, irs::text_format::json, irs::string_ref::nil);
+  *comparer = irs::scorers::get(scorerName, irs::text_format::json, irs::string_ref::NIL);
 
   return bool(*comparer);
 }

@@ -27,6 +27,7 @@
 #include "Aql/AstNode.h"
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "MMFiles/MMFilesSkiplist.h"
@@ -43,6 +44,7 @@ class SortCondition;
 struct Variable;
 }
 
+class ManagedDocumentResult;
 class MMFilesSkiplistIndex;
 namespace transaction {
 class Methods;
@@ -172,6 +174,8 @@ class MMFilesSkiplistIterator final : public IndexIterator {
 
  private:
   TRI_Skiplist const* _skiplistIndex;
+  ManagedDocumentResult* _mmdr;
+  IndexLookupContext _context;
   size_t _numPaths;
   bool _reverse;
   Node* _cursor;

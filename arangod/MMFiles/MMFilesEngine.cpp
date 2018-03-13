@@ -2086,9 +2086,16 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a view that is still active
       LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
-      std::string type = it.get("type").copyString();
-      // will throw if type is invalid
-      ViewCreator& creator = viewTypesFeature->creator(type);
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
+      auto& creator = viewTypesFeature->factory(dataSourceType);
+
+      if (!creator) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "no handler found for view type"
+        );
+      }
 
       TRI_ASSERT(!it.get("id").isNone());
 
@@ -2138,12 +2145,10 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, false);
+        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
-      // The vocbase has taken over control
-      uniqCol.release();
+      StorageEngine::registerCollection(vocbase.get(), uniqCol);
 
       auto physical =
           static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -3589,3 +3594,7 @@ WalAccess const* MMFilesEngine::walAccess() const {
   TRI_ASSERT(_walAccess);
   return _walAccess.get();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

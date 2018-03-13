@@ -122,9 +122,8 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
 
-  LocalDocumentId lookupKey(
-      transaction::Methods* trx,
-      arangodb::velocypack::Slice const& key) override;
+  LocalDocumentId lookupKey(transaction::Methods* trx,
+                            velocypack::Slice const& key) const override;
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
@@ -189,7 +188,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void compact();
   void estimateSize(velocypack::Builder& builder);
 
-  bool hasGeoIndex() { return _hasGeoIndex; }
+  bool hasGeoIndex() const { return _numberOfGeoIndexes > 0; }
 
   std::pair<Result, rocksdb::SequenceNumber> serializeIndexEstimates(
     rocksdb::Transaction*, rocksdb::SequenceNumber) const;
@@ -228,19 +227,19 @@ class RocksDBCollection final : public PhysicalCollection {
     return _primaryIndex;
   }
 
-  arangodb::RocksDBOperationResult insertDocument(
+  arangodb::Result insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult removeDocument(
+  arangodb::Result removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc, OperationOptions& options) const;
 
-  arangodb::RocksDBOperationResult lookupDocument(
+  arangodb::Result lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
       ManagedDocumentResult& result) const;
 
-  arangodb::RocksDBOperationResult updateDocument(
+  arangodb::Result updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
       arangodb::velocypack::Slice const& oldDoc,
       LocalDocumentId const& newDocumentId,
@@ -272,8 +271,8 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<uint64_t> _numberDocuments;
   std::atomic<TRI_voc_rid_t> _revisionId;
 
-  /// upgrade write locks to exclusive locks if this flag is set
-  bool _hasGeoIndex;
+  /// upgrade write locks to exclusive locks if this is > 0
+  uint32_t _numberOfGeoIndexes;
   /// cache the primary index for performance, do not delete
   RocksDBPrimaryIndex* _primaryIndex;
 

@@ -43,8 +43,8 @@ using namespace arangodb::rocksdbengine;
 
 RocksDBGeoIndexIterator::RocksDBGeoIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBGeoIndex const* index,
-    geo::QueryParams&& params) : IndexIterator(collection, trx, mmdr, index),
+    RocksDBGeoIndex const* index,
+    geo::QueryParams&& params) : IndexIterator(collection, trx, index),
       _index(index),
       _cursor(nullptr),
       _coor(),
@@ -186,7 +186,7 @@ void RocksDBGeoIndexIterator::createCursor(double lat, double lon) {
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -202,7 +202,7 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   TRI_ASSERT(params.minDistance == 0);
   TRI_ASSERT(params.filterType == geo::FilterType::NONE);
 
-  return new RocksDBGeoIndexIterator(_collection, trx, mmdr, this, std::move(params));
+  return new RocksDBGeoIndexIterator(_collection, trx, this, std::move(params));
 }
 
 void RocksDBGeoIndexIterator::reset() { replaceCursor(nullptr); }

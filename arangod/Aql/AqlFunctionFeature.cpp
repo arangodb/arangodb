@@ -114,7 +114,7 @@ void AqlFunctionFeature::prepare() {
   addDateFunctions();
   addMiscFunctions();
   addStorageEngineFunctions();
-  
+
   add({"PREGEL_RESULT", ".", false, true,
     true, true, &Functions::PregelResult, NotInCoordinator});
 }
@@ -123,7 +123,7 @@ void AqlFunctionFeature::unprepare() {
   // Just unlink nothing more todo
   AQLFUNCTIONS = nullptr;
 }
-  
+
 /// @brief returns a reference to a built-in function
 Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
   TRI_ASSERT(AQLFUNCTIONS != nullptr);
@@ -141,7 +141,7 @@ void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& o
   TRI_ASSERT(it != _functionNames.end());
 
   // intentionally copy original function, as we want to give it another name
-  Function aliasFunction = (*it).second; 
+  Function aliasFunction = (*it).second;
   aliasFunction.name = alias;
 
   add(aliasFunction);
@@ -258,7 +258,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"RTRIM", ".|.", true, false, true, true, &Functions::RTrim});
   add({"FIND_FIRST", ".,.|.,.", true, false, true, true, &Functions::FindFirst});
   add({"FIND_LAST", ".,.|.,.", true, false, true, true, &Functions::FindLast});
-  add({"SPLIT", ".|.,.", true, false, true, true});
+  add({"SPLIT", ".|.,.", true, false, true, true, &Functions::Split});
   add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
@@ -432,7 +432,7 @@ void AqlFunctionFeature::addGeoFunctions() {
 void AqlFunctionFeature::addDateFunctions() {
   // date functions
   add({"DATE_NOW", "", false, false, true, true});
-  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", 
+  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.",
        true, false, true, true});
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
        false, true, true});
@@ -494,10 +494,12 @@ void AqlFunctionFeature::addMiscFunctions() {
        false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true,
        false, true, &Functions::CollectionCount});
+  add({"ASSERT", ".,.", false, true, true, true, &Functions::Assert});
+  add({"WARN", ".,.", false, false, true, true, &Functions::Warn});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {
-  StorageEngine* engine = EngineSelectorFeature::ENGINE; 
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr); // Engine not loaded. Startup broken
   engine->addAqlFunctions();
 }

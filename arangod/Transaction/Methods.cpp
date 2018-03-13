@@ -84,12 +84,12 @@ std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
 arangodb::Result applyStateRegistrationCallbacks(
-    TRI_voc_cid_t cid,
+    LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
   for (auto& callback: getStateRegistrationCallbacks()) {
     try {
-      auto res = callback(cid, state);
+      auto res = callback(dataSource, state);
 
       if (!res.ok()) {
         return res;
@@ -829,6 +829,12 @@ Result transaction::Methods::finish(Result const& res) {
   return res;
 }
 
+/// @brief return the transaction id
+TRI_voc_tid_t transaction::Methods::tid() const {
+  TRI_ASSERT(_state != nullptr);
+  return _state->id();
+}
+
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
@@ -910,7 +916,13 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = applyStateRegistrationCallbacks(cid, *_state);
+    auto dataSource = resolver()->getDataSource(cid);
+
+    if (!dataSource) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
 
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION(result.errorNumber());
@@ -1360,6 +1372,9 @@ OperationResult transaction::Methods::insert(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return insertCoordinator(collectionName, value, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return insertLocal(collectionName, value, optionsCopy);
 }
@@ -1464,9 +1479,9 @@ OperationResult transaction::Methods::insertLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
-
     if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!result.empty());
+
       StringRef keyString(transaction::helpers::extractKeyFromDocument(
           VPackSlice(result.vpack())));
 
@@ -1640,6 +1655,9 @@ OperationResult transaction::Methods::update(std::string const& collectionName,
   if (_state->isCoordinator()) {
     return updateCoordinator(collectionName, newValue, optionsCopy);
   }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
+  }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
                      TRI_VOC_DOCUMENT_OPERATION_UPDATE);
@@ -1689,6 +1707,9 @@ OperationResult transaction::Methods::replace(std::string const& collectionName,
 
   if (_state->isCoordinator()) {
     return replaceCoordinator(collectionName, newValue, optionsCopy);
+  }
+  if (_state->isDBServer()) {
+    optionsCopy.silent = false;
   }
 
   return modifyLocal(collectionName, newValue, optionsCopy,
@@ -1804,10 +1825,9 @@ OperationResult transaction::Methods::modifyLocal(
       return res;
     }
 
-    TRI_ASSERT(!result.empty());
-    TRI_ASSERT(!previous.empty());
-
     if (!options.silent || _state->isDBServer()) {
+      TRI_ASSERT(!previous.empty());
+      TRI_ASSERT(!result.empty());
       StringRef key(newVal.get(StaticStrings::KeyString));
       buildDocumentIdentity(collection, resultBuilder, cid, key,
                             TRI_ExtractRevisionId(VPackSlice(result.vpack())),
@@ -2871,7 +2891,15 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
+          auto dataSource = resolver()->getDataSource(ccid);
+
+          if (!dataSource) {
+            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+
+            return false; // break on error
+          }
+
+          res = applyStateRegistrationCallbacks(*dataSource, *_state);
           visited |= cid == ccid;
 
           return res.ok(); // add the remaining collections (or break on error)
@@ -2885,7 +2913,15 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
+          auto dataSource = resolver()->getDataSource(ccid);
+
+          if (!dataSource) {
+            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+
+            return false; // break on error
+          }
+
+          res = applyStateRegistrationCallbacks(*dataSource, *_state);
           visited |= cid == ccid;
 
           return res.ok(); // add the remaining collections (or break on error)
@@ -2898,11 +2934,17 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   }
 
   // skip provided 'cid' if it was already done by the visitor
-  if (!visited) {
-    res = applyStateRegistrationCallbacks(cid, *_state);
+  if (visited) {
+    return res;
   }
 
-  return res;
+  auto dataSource = resolver()->getDataSource(cid);
+
+  if (!dataSource) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+
+  return applyStateRegistrationCallbacks(*dataSource, *_state);
 }
 
 /// @brief add a collection by id, with the name supplied

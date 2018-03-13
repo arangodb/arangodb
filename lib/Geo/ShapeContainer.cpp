@@ -486,7 +486,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      contains(other); // same
+      return contains(other); // same
     }
       
     case ShapeContainer::Type::EMPTY:

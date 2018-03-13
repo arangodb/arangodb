@@ -29,6 +29,7 @@
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
@@ -42,6 +43,7 @@ namespace basics {
 class LocalTaskQueue;
 }
 
+class ManagedDocumentResult;
 class MMFilesEdgeIndex;
 
 struct MMFilesEdgeIndexHelper {
@@ -128,6 +130,8 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
 
  private:
   TRI_MMFilesEdgeIndexHash_t const* _index;
+  ManagedDocumentResult* _mmdr;
+  IndexLookupContext _context;
   std::unique_ptr<arangodb::velocypack::Builder> _keys;
   arangodb::velocypack::ArrayIterator _iterator;
   std::vector<MMFilesSimpleIndexElement> _buffer;

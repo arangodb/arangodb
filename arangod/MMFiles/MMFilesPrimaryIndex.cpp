@@ -444,7 +444,7 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -468,7 +468,7 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode);
   } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
@@ -476,7 +476,7 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
       return new EmptyIndexIterator(_collection, trx, this);
     }
 
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -493,7 +493,7 @@ arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* MMFilesPrimaryIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
@@ -525,7 +525,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* MMFilesPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?

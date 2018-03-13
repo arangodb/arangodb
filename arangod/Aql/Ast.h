@@ -469,13 +469,9 @@ class Ast {
   /// @brief create a number node for an arithmetic result, double
   AstNode* createArithmeticResultNode(double);
 
-  /// @brief executes an expression with constant parameters in V8
-  AstNode* executeConstExpressionV8(AstNode const*);
-
   /// @brief optimizes the unary operators + and -
   /// the unary plus will be converted into a simple value node if the operand
-  /// of
-  /// the operation is a constant number
+  /// of the operation is a constant number
   AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
 
   /// @brief optimizes the unary operator NOT with a non-constant expression

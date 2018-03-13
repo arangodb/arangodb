@@ -218,7 +218,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; | grep -v data-filepath)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; -print | grep -v data-filepath)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -365,6 +365,7 @@ function build-book-symlinks()
 
 function build-book()
 {
+    python ../Scripts/codeBlockReader.py || exit 1
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
@@ -549,7 +550,7 @@ function check-docublocks()
     grep -R '@startDocuBlockInline' --include "*.h" --include "*.cpp" --include "*.js" --include "*.md" . |\
         grep -v ppbook |\
         grep -v allComments.txt |\
-        grep -v Makefile |\
+        grep -v build.sh |\
         grep -v '.*~:.*' |\
         grep -v '.*#.*:.*' \
              >> /tmp/rawinprog.txt
@@ -607,7 +608,6 @@ function build-book-keep-md()
 {
     NAME="$1"
     test -d books || mkdir books
-    python ../Scripts/codeBlockReader.py || exit 1
     build-book "${NAME}"
 }
 
@@ -738,6 +738,14 @@ case "$VERB" in
         fi
         build-book "$NAME"
         ;;
+    check-book)
+	check-summary "${NAME}"
+    	book-check-leftover-docublocks "${NAME}"
+    	book-check-restheader-leftovers "${NAME}"
+    	ppbook-check-directory-link "${NAME}"
+    	book-check-images-referenced "${NAME}"
+	book-check-markdown-leftovers "${NAME}"
+	;;
     build-dist-books)
         build-dist-books
         ;;

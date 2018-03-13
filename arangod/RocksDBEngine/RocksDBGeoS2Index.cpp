@@ -51,8 +51,9 @@ class RDBNearIterator final : public IndexIterator {
   RDBNearIterator(LogicalCollection* collection, transaction::Methods* trx,
                   ManagedDocumentResult* mmdr, RocksDBGeoS2Index const* index,
                   geo::QueryParams&& params)
-      : IndexIterator(collection, trx, mmdr, index),
+      : IndexIterator(collection, trx, index),
         _index(index),
+        _mmdr(mmdr),
         _near(std::move(params)) {
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->readOptions();
@@ -222,10 +223,9 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        TRI_voc_rid_t rid = RocksDBKey::revisionId(
+        LocalDocumentId documentId = RocksDBKey::documentId(
             RocksDBEntryType::S2IndexValue, _iter->key());
-        _near.reportFound(LocalDocumentId(rid),
-                          RocksDBValue::centroid(_iter->value()));
+        _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
     }
@@ -238,7 +238,7 @@ class RDBNearIterator final : public IndexIterator {
     S2CellId cell = S2CellId(_near.origin());
 
     RocksDBKeyLeaser key(_trx);
-    key->constructS2IndexValue(_index->objectId(), cell.id(), 1);
+    key->constructS2IndexValue(_index->objectId(), cell.id(), LocalDocumentId(1));
     _iter->Seek(key->string());
     if (!_iter->Valid()) {
       _iter->SeekForPrev(key->string());
@@ -251,6 +251,7 @@ class RDBNearIterator final : public IndexIterator {
 
  private:
   RocksDBGeoS2Index const* _index;
+  ManagedDocumentResult* _mmdr;
   geo_index::NearUtils<CMP, SEEN> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
@@ -438,8 +439,7 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    // LOG_TOPIC(ERR, Logger::FIXME) << "[Insert] " << cell;
-    key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
+    key->constructS2IndexValue(_objectId, cell.id(), documentId);
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
       return r;
@@ -470,8 +470,7 @@ Result RocksDBGeoS2Index::removeInternal(transaction::Methods* trx,
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    // LOG_TOPIC(INFO, Logger::FIXME) << "[Remove] " << cell;
-    key->constructS2IndexValue(_objectId, cell.id(), documentId.id());
+    key->constructS2IndexValue(_objectId, cell.id(), documentId);
     Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (r.fail()) {
       return r;

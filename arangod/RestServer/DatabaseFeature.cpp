@@ -45,7 +45,6 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -53,11 +52,9 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/CursorRepository.h"
-#include "Utils/Events.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-query.h"
 #include "V8Server/v8-vocbase.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -248,12 +245,16 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("Scheduler");
   startsAfter("StorageEngine");
+  
+  DATABASE = nullptr;
 }
 
 DatabaseFeature::~DatabaseFeature() {
   // clean up
   auto p = _databasesLists.load();
   delete p;
+  
+  DATABASE = nullptr;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -674,6 +675,11 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
   result = vocbase.release();
   events::CreateDatabase(name, res);
+    
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create database");
+  }
 
   return res;
 }
@@ -791,6 +797,12 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
   }
 
   events::DropDatabase(name, res);
+  
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop database");
+  }
+
   return res;
 }
 
@@ -916,7 +928,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+  AuthenticationFeature* af = AuthenticationFeature::instance();
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -928,9 +940,9 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      if (authentication->isActive()) {
-        auto level = authentication->authInfo()->canUseDatabase(username, vocbase->name());
-        if (level == AuthLevel::NONE) {
+      if (af->isActive()) {
+        auto level = af->userManager()->databaseAuthLevel(username, vocbase->name());
+        if (level == auth::Level::NONE) { // hide dbs without access
           continue;
         }
       }

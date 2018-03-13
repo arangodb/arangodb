@@ -88,9 +88,9 @@ void RocksDBEdgeIndexWarmupTask::run() {
 
 RocksDBEdgeIndexIterator::RocksDBEdgeIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::RocksDBEdgeIndex const* index,
+    arangodb::RocksDBEdgeIndex const* index,
     std::unique_ptr<VPackBuilder>& keys, std::shared_ptr<cache::Cache> cache)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _keys(keys.get()),
       _keysIterator(_keys->slice()),
       _index(index),
@@ -344,8 +344,8 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    LocalDocumentId const documentId = LocalDocumentId(RocksDBKey::revisionId(
-        RocksDBEntryType::EdgeIndexValue, _iterator->key()));
+    LocalDocumentId const documentId = RocksDBKey::documentId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key());
 
     // adding revision ID and _from or _to value
     _builder.add(VPackValue(documentId.id()));
@@ -453,7 +453,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -486,7 +486,7 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId);
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -525,7 +525,7 @@ void RocksDBEdgeIndex::batchInsert(
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
     RocksDBKeyLeaser key(trx);
-    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first.id());
+    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
 
     blackListKey(fromToRef);
     Result r = mthds->Put(_cf, key.ref(),
@@ -549,7 +549,7 @@ bool RocksDBEdgeIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -574,7 +574,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode);
   }
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -583,7 +583,7 @@ IndexIterator* RocksDBEdgeIndex::iteratorForCondition(
       // a.b IN non-array
       return new EmptyIndexIterator(_collection, trx, this);
     }
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -842,7 +842,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      LocalDocumentId const documentId(RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key));
+      LocalDocumentId const documentId = RocksDBKey::documentId(RocksDBEntryType::EdgeIndexValue, key);
       if (rocksColl->readDocument(trx, documentId, mmdr)) {
         builder.add(VPackValue(documentId.id()));
 
@@ -894,7 +894,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -908,13 +908,12 @@ IndexIterator* RocksDBEdgeIndex::createEqIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
 }
 
 /// @brief create the iterator
 IndexIterator* RocksDBEdgeIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // lease builder, but immediately pass it to the unique_ptr so we don't leak
@@ -935,8 +934,7 @@ IndexIterator* RocksDBEdgeIndex::createInIterator(
   }
   keys->close();
 
-  return new RocksDBEdgeIndexIterator(_collection, trx, mmdr, this, keys,
-                                      _cache);
+  return new RocksDBEdgeIndexIterator(_collection, trx, this, keys, _cache);
 }
 
 /// @brief add a single value node to the iterator's keys

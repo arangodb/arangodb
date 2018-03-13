@@ -47,7 +47,6 @@ class MMFilesGeoIndexIterator final : public IndexIterator {
   /// @brief Construct an MMFilesGeoIndexIterator based on Ast Conditions
   MMFilesGeoIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           MMFilesGeoIndex const* index,
                           geo::QueryParams&&);
 

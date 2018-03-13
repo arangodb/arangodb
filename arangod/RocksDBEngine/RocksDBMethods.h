@@ -45,8 +45,7 @@ class RocksDBTransactionState;
 
 class RocksDBSavePoint {
  public:
-  RocksDBSavePoint(RocksDBMethods* trx, bool handled,
-                   std::function<void()> const& rollbackCallback);
+  RocksDBSavePoint(RocksDBMethods* trx, bool handled);
   ~RocksDBSavePoint();
 
   void commit();
@@ -56,7 +55,6 @@ class RocksDBSavePoint {
 
  private:
   RocksDBMethods* _trx;
-  std::function<void()> const _rollbackCallback;
   bool _handled;
 };
 

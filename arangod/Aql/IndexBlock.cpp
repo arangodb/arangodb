@@ -24,6 +24,7 @@
 
 #include "IndexBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
@@ -145,8 +146,8 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression;
 
     bool mustDestroy;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions], mustDestroy);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions], _inRegs[posInExpressions]);
+    AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);
@@ -190,7 +191,7 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->willUseV8();
 
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);

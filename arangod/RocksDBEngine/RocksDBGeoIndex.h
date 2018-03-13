@@ -48,7 +48,6 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   RocksDBGeoIndexIterator(LogicalCollection* collection,
                           transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
                           RocksDBGeoIndex const* index,
                           geo::QueryParams&& params);
 

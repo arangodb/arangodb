@@ -23,6 +23,7 @@
 
 #include "CalculationBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
@@ -123,7 +124,8 @@ void CalculationBlock::executeExpression(AqlItemBlock* result) {
 
     // execute the expression
     bool mustDestroy;
-    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, mustDestroy);
+    BaseExpressionContext ctx(i, result, _inVars, _inRegs);
+    AqlValue a = _expression->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -153,7 +155,7 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
 
   TRI_ASSERT(_expression != nullptr);
 
-  if (!_expression->isV8()) {
+  if (!_expression->willUseV8()) {
     // an expression that does not require V8
     executeExpression(result);
   } else {

@@ -20,4 +20,4 @@ For a more detailed description of how transactions work in ArangoDB please
 refer to [Transactions](../../Manual/Transactions/index.html). 
 
 <!-- js/actions/api-transaction.js -->
-@startDocuBlock JSF_post_api_transaction
+@startDocuBlock post_api_transaction

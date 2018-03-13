@@ -43,6 +43,7 @@ namespace aql {
 struct Collection;
 class Condition;
 class ExecutionBlock;
+class ExecutionEngine;
 class ExecutionPlan;
 
 /// @brief class IndexNode
@@ -81,6 +82,13 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

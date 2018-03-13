@@ -75,9 +75,9 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
 
 RocksDBPrimaryIndexIterator::RocksDBPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, RocksDBPrimaryIndex* index,
+    RocksDBPrimaryIndex* index,
     std::unique_ptr<VPackBuilder>& keys)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _index(index),
       _keys(keys.get()),
       _iterator(_keys->slice()) {
@@ -174,7 +174,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
-      return LocalDocumentId(RocksDBValue::revisionId(s));
+      return RocksDBValue::documentId(s);
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
@@ -213,7 +213,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  return LocalDocumentId(RocksDBValue::revisionId(value));
+  return RocksDBValue::documentId(value);
 }
 
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
@@ -224,7 +224,7 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
+  auto value = RocksDBValue::PrimaryIndexValue(documentId);
 
   if (mthd->Exists(_cf, key.ref())) {
     std::string existingId(slice.get(StaticStrings::KeyString).copyString());
@@ -254,7 +254,7 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId.id());
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId);
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
@@ -293,7 +293,7 @@ bool RocksDBPrimaryIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -315,7 +315,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode);
   } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
@@ -323,7 +323,7 @@ IndexIterator* RocksDBPrimaryIndex::iteratorForCondition(
       return new EmptyIndexIterator(_collection, trx, this);
     }
 
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -340,7 +340,7 @@ arangodb::aql::AstNode* RocksDBPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* RocksDBPrimaryIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) {
   // _key or _id?
@@ -367,12 +367,12 @@ IndexIterator* RocksDBPrimaryIndex::createInIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* RocksDBPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) {
   // _key or _id?
@@ -390,7 +390,7 @@ IndexIterator* RocksDBPrimaryIndex::createEqIterator(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   keys->close();
-  return new RocksDBPrimaryIndexIterator(_collection, trx, mmdr, this, keys);
+  return new RocksDBPrimaryIndexIterator(_collection, trx, this, keys);
 }
 
 /// @brief add a single value node to the iterator's keys

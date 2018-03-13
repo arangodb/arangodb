@@ -639,7 +639,7 @@ irs::string_ref splitFreq(const std::string& text) {
     return irs::string_ref(&*(res[1].first), std::distance(res[1].first, res[1].second));
   }
 
-  return irs::string_ref::nil;
+  return irs::string_ref::NIL;
 }
 
 irs::filter::prepared::ptr prepareFilter(
@@ -1137,7 +1137,7 @@ int search(const cmdline::parser& args) {
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
   const auto scorer = args.get<std::string>(SCORER);
-  const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::nil;
+  const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::NIL;
   const auto scorer_arg_format = args.get<std::string>(SCORER_ARG_FMT);
   const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 

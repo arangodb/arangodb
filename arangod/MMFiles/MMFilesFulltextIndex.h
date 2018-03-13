@@ -113,10 +113,9 @@ class MMFilesFulltextIndexIterator : public IndexIterator {
  public:
   MMFilesFulltextIndexIterator(LogicalCollection* collection,
                                transaction::Methods* trx,
-                               ManagedDocumentResult* mmdr,
                                MMFilesFulltextIndex const* index,
                                std::set<TRI_voc_rid_t>&& docs)
-      : IndexIterator(collection, trx, mmdr, index),
+      : IndexIterator(collection, trx, index),
         _docs(std::move(docs)),
         _pos(_docs.begin()) {}
 

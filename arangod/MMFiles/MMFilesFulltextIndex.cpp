@@ -232,7 +232,7 @@ void MMFilesFulltextIndex::unload() {
 }
 
 IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mdr,
+    transaction::Methods* trx, ManagedDocumentResult*, 
     aql::AstNode const* condNode, aql::Variable const* var,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
@@ -268,8 +268,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results =
       TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
-  return new MMFilesFulltextIndexIterator(_collection, trx, mdr, this,
-                                          std::move(results));
+  return new MMFilesFulltextIndexIterator(_collection, trx, this, std::move(results));
 }
 
 /// @brief callback function called by the fulltext index to determine the

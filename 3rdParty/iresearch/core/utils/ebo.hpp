@@ -229,15 +229,22 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
     return *this;
   }
 
-  const first_type& first() const { return first_compressed_t::get(); }
-  first_type& first() { 
+  const first_type& first() const NOEXCEPT {
+    return first_compressed_t::get();
+  }
+
+  first_type& first() NOEXCEPT {
     // force the c++11 compiler to choose constexpr version of "get"
     return const_cast<first_type&>(
       const_cast<const compact_pair&>(*this).first()
     );
   }
-  const second_type& second() const { return second_compressed_t::get(); }
-  second_type& second() { 
+
+  const second_type& second() const NOEXCEPT {
+    return second_compressed_t::get();
+  }
+
+  second_type& second() NOEXCEPT {
     // force the c++11 compiler to choose constexpr version of "get"
     return const_cast<second_type&>(
       const_cast<const compact_pair&>(*this).second()

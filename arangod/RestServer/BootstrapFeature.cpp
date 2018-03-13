@@ -34,7 +34,9 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
+#include "VocBase/Methods/Upgrade.h"
 #include "V8Server/V8DealerFeature.h"
+
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -118,29 +120,23 @@ static void raceForClusterBootstrap() {
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
-
-    auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
-    VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(
-        vocbase, "server/bootstrap/cluster-bootstrap.js", &builder);
-
-    VPackSlice jsresult = builder.slice();
-    if (!jsresult.isTrue()) {
+    
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
+    if (upgradeRes.fail()) {
       LOG_TOPIC(ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
-        << "marking as not successful.";
-      if (!jsresult.isNone()) {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Returned value: "
-          << jsresult.toJson();
-      } else {
-        LOG_TOPIC(ERR, Logger::STARTUP) << "Empty returned value.";
-      }
+      << "marking as not successful.";
       agency.removeValues(boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
     
+    // become Foxxmater, ignore result
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Write Foxxmaster";
+    agency.setValue("Current/Foxxmaster", b.slice(), 0);
+    
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
-    AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+    AuthenticationFeature::instance()->userManager()->createRootUser();
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -204,9 +200,13 @@ void BootstrapFeature::start() {
         }
       }
     } else if (ServerState::isDBServer(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
-      // only run the JavaScript in V8 context #0.
-      V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running bootstrap";
+
+      auto upgradeRes = methods::Upgrade::clusterBootstrap(vocbase);
+      if (upgradeRes.fail()) {
+        LOG_TOPIC(ERR, Logger::STARTUP) << "Problem during startup";
+      }
+    
     } else {
       TRI_ASSERT(false);
     }
@@ -258,10 +258,9 @@ void BootstrapFeature::start() {
     // Agency is not allowed to call this
     if (ServerState::isSingleServer(role)) {
       // only creates root user if it does not exist, will be overwritten on slaves
-      AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+      AuthenticationFeature::instance()->userManager()->createRootUser();
     }
   }
-  
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: is set to correct value in the heartbeat thread

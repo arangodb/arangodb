@@ -507,8 +507,10 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
                       MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _skiplistIndex(skiplist),
+      _mmdr(mmdr),
+      _context(trx, collection, _mmdr, index->fields().size()),
       _numPaths(numPaths),
       _reverse(reverse),
       _cursor(nullptr),

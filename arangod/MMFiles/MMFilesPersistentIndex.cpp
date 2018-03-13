@@ -69,11 +69,11 @@ using namespace arangodb;
 
 MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
-    ManagedDocumentResult* mmdr, arangodb::MMFilesPersistentIndex const* index,
+    arangodb::MMFilesPersistentIndex const* index,
     arangodb::MMFilesPrimaryIndex* primaryIndex,
     rocksdb::OptimisticTransactionDB* db, bool reverse, VPackSlice const& left,
     VPackSlice const& right)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _primaryIndex(primaryIndex),
       _db(db),
       _reverse(reverse),
@@ -479,7 +479,7 @@ int MMFilesPersistentIndex::drop() {
 /// Warning: who ever calls this function is responsible for destroying
 /// the MMFilesPersistentIndexIterator* results
 MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx,
     VPackSlice const searchValues, bool reverse) const {
   TRI_ASSERT(searchValues.isArray());
   TRI_ASSERT(searchValues.length() <= _fields.size());
@@ -578,7 +578,7 @@ MMFilesPersistentIndexIterator* MMFilesPersistentIndex::lookup(
   auto idx = physical->primaryIndex();
   auto db = MMFilesPersistentIndexFeature::instance()->db();
   return new MMFilesPersistentIndexIterator(
-      _collection, trx, mmdr, this, idx, db, reverse, leftBorder, rightBorder);
+      _collection, trx, this, idx, db, reverse, leftBorder, rightBorder);
 }
 
 bool MMFilesPersistentIndex::accessFitsIndex(
@@ -869,7 +869,7 @@ bool MMFilesPersistentIndex::supportsSortCondition(
 }
 
 IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
@@ -1034,7 +1034,7 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
     std::vector<IndexIterator*> iterators;
     try {
       for (VPackSlice val : VPackArrayIterator(expandedSlice)) {
-        auto iterator = lookup(trx, mmdr, val, !opts.ascending);
+        auto iterator = lookup(trx, val, !opts.ascending);
         try {
           iterators.push_back(iterator);
         } catch (...) {
@@ -1052,13 +1052,13 @@ IndexIterator* MMFilesPersistentIndex::iteratorForCondition(
       }
       throw;
     }
-    return new MultiIndexIterator(_collection, trx, mmdr, this, iterators);
+    return new MultiIndexIterator(_collection, trx, this, iterators);
   }
 
   VPackSlice searchSlice = searchValues.slice();
   TRI_ASSERT(searchSlice.length() == 1);
   searchSlice = searchSlice.at(0);
-  return lookup(trx, mmdr, searchSlice, !opts.ascending);
+  return lookup(trx, searchSlice, !opts.ascending);
 }
 
 /// @brief specializes the condition for use with the index

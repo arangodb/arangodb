@@ -86,10 +86,7 @@ bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
 
-    TRI_voc_rid_t revisionId =
-        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(revisionId));
-
+    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()));
     --limit;
     _iterator->Next();
 
@@ -113,8 +110,8 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t documentId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(documentId), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()),
+       VPackSlice(_iterator->value().data()));
     --limit;
     _iterator->Next();
     
@@ -171,7 +168,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
     auto initialKey = RocksDBKey();
     initialKey.constructDocument(
       static_cast<RocksDBCollection*>(col->getPhysical())->objectId(),
-      RandomGenerator::interval(UINT64_MAX)
+      LocalDocumentId(RandomGenerator::interval(UINT64_MAX))
     );
     _iterator->Seek(initialKey.string());
 
@@ -221,9 +218,7 @@ bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId =
-        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(revisionId));
+    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -250,8 +245,8 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t documentId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(LocalDocumentId(documentId), VPackSlice(_iterator->value().data()));
+    cb(RocksDBKey::documentId(RocksDBEntryType::Document, _iterator->key()),
+       VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -311,8 +306,7 @@ bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t li
   }
 
   while (limit > 0) {
-    LocalDocumentId documentId(RocksDBValue::revisionId(_iterator->value()));
-    cb(documentId);
+    cb(RocksDBValue::documentId(_iterator->value()));
 
     --limit;
 
