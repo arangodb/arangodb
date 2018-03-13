@@ -2328,8 +2328,6 @@ OperationResult transaction::Methods::allLocal(
   
   resultBuilder.close();
 
-  resultBuilder.close();
-
   return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
 
@@ -2394,8 +2392,6 @@ OperationResult transaction::Methods::truncateLocal(
     return OperationResult(lockResult);
   }
   
-  TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
-
   TRI_ASSERT(isLocked(collection, AccessMode::Type::WRITE));
 
   try {
@@ -2569,8 +2565,6 @@ OperationResult transaction::Methods::countLocal(
     return OperationResult(lockResult);
   }
   
-  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
-
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
   uint64_t num = collection->numberDocuments(this);
