@@ -56,6 +56,7 @@ RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase, dou
       _lastTick(0),
       _currentTick(0),
       _trx(),
+      _vpackOptions(VPackOptions::Defaults),
       _collection(nullptr),
       _iter(),
       _sortedIterator(false),

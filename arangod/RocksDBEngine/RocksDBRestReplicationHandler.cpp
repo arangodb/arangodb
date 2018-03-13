@@ -755,32 +755,30 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   } else {
     LOG_TOPIC(WARN, Logger::FIXME) << "Dumping JSON";
     
-    // hardcode response to be JSON Lines
-    auto response = dynamic_cast<HttpResponse*>(_response.get());
-    StringBuffer dump(reserve, false);
+    // hardcode response to be JSON lines
+    HttpResponse* response = dynamic_cast<HttpResponse*>(_response.get());
+    StringBuffer& buffer = response->body();
+    buffer.reserve(reserve);
     if (response == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
     }
     
     // note: we need the CustomTypeHandler here
-    arangodb::basics::VPackStringBufferAdapter adapter(dump.stringBuffer());
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     VPackDumper dumper(&adapter, context->getVPackOptions());
     
     VPackBuilder vpb;
     auto cb = [&]() -> bool { // called after each document
-      if (!vpb.isEmpty()) {
-        TRI_ASSERT(vpb.slice().isObject());
-        dumper.dump(vpb.slice());
-        dump.appendChar('\n');
-        vpb.clear();
-      }
-      return dump.length() < chunkSize;
+      dumper.dump(vpb.slice());
+      buffer.appendChar('\n');
+      vpb.clear();
+      return buffer.length() < chunkSize;
     };
     // do the work!
     auto result = context->dump(_vocbase, cname, vpb, /*useExt*/true, cb);
     
     // generate the result
-    if (dump.length() == 0) {
+    if (buffer.length() == 0) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
       resetResponse(rest::ResponseCode::OK);
@@ -793,11 +791,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            (context->more() ? "true" : "false"));
     
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                           StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
+                           StringUtils::itoa((buffer.length() == 0) ? 0 : result.maxTick()));
     
     // transfer ownership of the buffer contents
-    response->body().set(dump.stringBuffer());
+    response->body().set(buffer.stringBuffer());
     // avoid double freeing
-    TRI_StealStringBuffer(dump.stringBuffer());
+    TRI_StealStringBuffer(buffer.stringBuffer());
   }
 }
