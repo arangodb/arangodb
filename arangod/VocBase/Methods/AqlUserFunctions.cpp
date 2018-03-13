@@ -179,8 +179,9 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t* vocbase,
 
 Result arangodb::registerUserFunction(TRI_vocbase_t* vocbase,
                                       velocypack::Slice userFunction,
-                                      bool& replacedExisting
-                                      ) {
+                                      bool& replacedExisting) {
+  replacedExisting = false;
+
   Result res;
   std::string name;
   try{
