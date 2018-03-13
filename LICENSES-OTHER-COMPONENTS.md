@@ -1,12 +1,12 @@
 # Other Licenses
 
-## [C/C++ Libraries](#cc-libraries)
-## [Programs](#programs)
-## [JavaScript](#javascript)
-### [Node core modules](#node-core-modules)
-### [Bundled NPM modules](#bundled-npm-modules)
-### [Backend libraries](#backend-libraries)
-### [Frontend libraries](#frontend-libraries)
+## [1. C/C++ Libraries licenses](#cc-libraries)
+## [Program licenses](#programs)
+## [JavaScript licenses](#javascript)
+### [Node core module licenses](#node-core-modules)
+### [Bundled NPM module licenses](#bundled-npm-modules)
+### [Backend librarie licenses](#backend-libraries)
+### [Frontend librarie licenses](#frontend-libraries)
 
 ## C/C++ Libraries
 
