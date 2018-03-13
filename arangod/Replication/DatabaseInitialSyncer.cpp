@@ -63,7 +63,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-size_t const DatabaseInitialSyncer::MaxChunkSize = 64 * 1024 * 1024;
+size_t const DatabaseInitialSyncer::MaxChunkSize = 32 * 1024 * 1024;
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
                                              ReplicationApplierConfiguration const& configuration)
@@ -224,6 +224,9 @@ Result DatabaseInitialSyncer::sendFlush() {
   return Result();
 }
 
+static std::string const kTypeString = "type";
+static std::string const kDataString = "data";
+
 /// @brief handle a single dump marker
 Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& trx,
                                                         LogicalCollection* coll,
@@ -236,32 +239,27 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   TRI_replication_operation_e type = REPLICATION_INVALID;
   VPackSlice doc;
   
-  std::string const typeString("type");
-  std::string const dataString("data");
   for (auto const& it : VPackObjectIterator(marker, true)) {
-    if (it.key.isEqualString(typeString)) {
+    if (it.key.isEqualString(kTypeString)) {
       if (it.value.isNumber()) {
         type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
       }
-    } else if (it.key.isEqualString(dataString)) {
+    } else if (it.key.isEqualString(kDataString)) {
       if (it.value.isObject()) {
         doc = it.value;
       }
     }
-  }
-  
-  char const* key = nullptr;
-  VPackValueLength keyLength = 0;
-  
-  if (!doc.isNone()) {
-    VPackSlice value = doc.get(StaticStrings::KeyString);
-    if (value.isString()) {
-      key = value.getString(keyLength);
+    if (type != REPLICATION_INVALID && doc.isObject()) {
+      break;
     }
   }
   
-  // key must not be empty, but doc can be empty
-  if (key == nullptr || keyLength == 0) {
+  if (!doc.isObject()) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  // key must not be empty, but doc can otherwise be empty
+  VPackSlice key = doc.get(StaticStrings::KeyString);
+  if (!key.isString() || key.getStringLength() == 0) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
@@ -287,7 +285,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     VPackOptions options;
     options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
     //options.customTypeHandler = customTypeHandler.get();
-    options.validateUtf8Strings = true;
+    //options.validateUtf8Strings = false;
     VPackValidator validator(&options);
     
     try {
@@ -314,7 +312,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     // buffer must end with a NUL byte
     TRI_ASSERT(*end == '\0');
     
-    auto builder = std::make_shared<VPackBuilder>();
+    VPackBuilder builder;
     while (p < end) {
       char const* q = strchr(p, '\n');
       if (q == nullptr) {
@@ -328,7 +326,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       
       TRI_ASSERT(q <= end);
       try {
-        builder->clear();
+        builder.clear();
         VPackParser parser(builder);
         parser.parse(p, static_cast<size_t>(q - p));
       } catch (velocypack::Exception const& e) {
@@ -338,8 +336,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       
       p = q + 1;
       
-      VPackSlice const slice = builder->slice();
-      Result r = parseCollectionDumpMarker(trx, coll, slice);
+      Result r = parseCollectionDumpMarker(trx, coll, builder.slice());
       if (r.fail()) {
         return r;
       }
@@ -538,8 +535,8 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     // to turn off waitForSync!
     trx.addHint(transaction::Hints::Hint::RECOVERY);
     // smaller batch sizes should work better here
-    trx.state()->options().intermediateCommitCount = 64;
-    trx.state()->options().intermediateCommitSize = 8 * 1024 * 1024;
+    trx.state()->options().intermediateCommitCount = 128;
+    trx.state()->options().intermediateCommitSize = 16 * 1024 * 1024;
 
     Result res = trx.begin();
 
