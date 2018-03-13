@@ -28,7 +28,7 @@
 
 #include "catch.hpp"
 
-//#include <map>
+#include <iostream>
 
 #include <velocypack/vpack.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,6 +39,18 @@
 #include "Basics/Result.h"
 #include "Cluster/MaintenanceAction.h"
 #include "Cluster/MaintenanceFeature.h"
+
+//
+// structure used to store expected states of action properties
+//
+struct Expected {
+  int _id;
+  int _result;
+  int _state;
+  int _progress;
+};
+
+typedef std::vector<Expected> ExpectedVec_t;
 
 //
 // TestProgressHandler lets us know once ApplicationServer is ready
@@ -103,12 +115,69 @@ public:
 
   void setSecondsActionsBlock(uint32_t seconds) {_secondsActionsBlock = seconds;};
 
+
   /// @brief set thread count, then activate the threads via start().  One time usage only.
-  void setMaintenanceThreadsMax(uint32_t threads) {_maintenanceThreadsMax = threads; start(); }
+  ///   Code waits until background ApplicationServer known to have fully started.
+  void setMaintenanceThreadsMax(uint32_t threads) {
+    CONDITION_LOCKER(clock, _progressHandler._serverReadyCond);
+    while(!_progressHandler._serverReady) {
+      _progressHandler._serverReadyCond.wait();
+    } // while
+
+    _maintenanceThreadsMax = threads;
+    start();
+  } // setMaintenanceThreadsMax
+
+
+  bool verifyRegistryState(ExpectedVec_t & expected) {
+    bool good(true);
+
+    VPackArrayIterator registry(toVelocityPack().slice());
+    REQUIRE(registry.size() == expected.size());
+
+    auto action = registry.begin();
+    auto check = expected.begin();
+
+    for ( ; registry.end() != action && expected.end()!=check; ++action, ++check) {
+      VPackSlice id = (*action).get("id");
+      if (!(id.isInteger() && id.getInt() == check->_id)) {
+        std::cerr << "Id mismatch: action has " << id.getInt() << " expected " << check->_id << std::endl;
+        good = false;
+      } // if
+
+      VPackSlice result = (*action).get("result");
+      if (!(result.isInteger() && check->_result == result.getInt())) {
+        std::cerr << "Result mismatch: action has " << result.getInt() << " expected " << check->_result << std::endl;
+        good = false;
+      } // if
+
+      VPackSlice state = (*action).get("state");
+      if (!(state.isInteger() && check->_state == state.getInt())) {
+        std::cerr << "State mismatch: action has " << state.getInt() << " expected " << check->_state << std::endl;
+        good = false;
+      } // if
+
+      VPackSlice progress = (*action).get("progress");
+      if (!(progress.isInteger() && check->_progress == progress.getInt())) {
+        std::cerr << "Progress mismatch: action has " << progress.getInt() << " expected " << check->_progress << std::endl;
+        good = false;
+      } // if
+    } // for
+
+    return good;
+
+  } // verifyRegistryState
+
+
 
 public:
   arangodb::maintenance::MaintenanceActionPtr_t _recentAction;
   TestProgressHandler _progressHandler;
+
+
+
+
+
 
 };// TestMaintenanceFeature
 
@@ -324,14 +393,6 @@ TEST_CASE("MaintenanceFeatureUnthreaded", "[cluster][maintenance][devel]") {
 
 TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
-  // structure used to store expected states of action properties
-  struct Expected {
-    int _id;
-    int _result;
-    int _state;
-    int _progress;
-  };
-
   SECTION("Populate action queue and validate") {
     std::vector<Expected> pre_thread, post_thread;
 
@@ -378,38 +439,10 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 2. see if happy about queue prior to threads running
-    {
-      VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      REQUIRE(2 == ai1.size());
-      REQUIRE(ai1.size() == pre_thread.size());
-
-      auto ma = ai1.begin();
-      auto check = pre_thread.begin();
-
-      for ( ; ai1.end() != ma && pre_thread.end()!=check; ++ma, ++check) {
-        VPackSlice id = (*ma).get("id");
-        REQUIRE((id.isInteger() && id.getInt() == check->_id));
-
-        VPackSlice result = (*ma).get("result");
-        REQUIRE((result.isInteger() && check->_result == result.getInt()));
-
-        VPackSlice state = (*ma).get("state");
-        REQUIRE((state.isInteger() && check->_state == state.getInt()));
-
-        VPackSlice progress = (*ma).get("progress");
-        REQUIRE((progress.isInteger() && check->_progress == progress.getInt()));
-      } // for
-    }
+    REQUIRE(tf->verifyRegistryState(pre_thread));
 
     //
     // 3. start threads AFTER ApplicationServer known to be running
-    {
-      CONDITION_LOCKER(clock, tf->_progressHandler._serverReadyCond);
-      while(!tf->_progressHandler._serverReady) {
-        tf->_progressHandler._serverReadyCond.wait();
-      } // while
-    }
-
     tf->setMaintenanceThreadsMax(1);
 
     //
@@ -429,28 +462,7 @@ TEST_CASE("MaintenanceFeatureThreaded", "[cluster][maintenance][devel]") {
 
     //
     // 5. verify completed actions
-    {
-      VPackArrayIterator ai1(tf->toVelocityPack().slice());
-      REQUIRE(2 == ai1.size());
-      REQUIRE(ai1.size() == post_thread.size());
-
-      auto ma = ai1.begin();
-      auto check = post_thread.begin();
-
-      for ( ; ai1.end() != ma && post_thread.end()!=check; ++ma, ++check) {
-        VPackSlice id = (*ma).get("id");
-        REQUIRE((id.isInteger() && id.getInt() == check->_id));
-
-        VPackSlice result = (*ma).get("result");
-        REQUIRE((result.isInteger() && check->_result == result.getInt()));
-
-        VPackSlice state = (*ma).get("state");
-        REQUIRE((state.isInteger() && check->_state == state.getInt()));
-
-        VPackSlice progress = (*ma).get("progress");
-        REQUIRE((progress.isInteger() && check->_progress == progress.getInt()));
-      } // for
-    }
+    REQUIRE(tf->verifyRegistryState(post_thread));
 
 #if 0   // for debugging
     std::string xx = (tf->toVelocityPack()).toJson();
