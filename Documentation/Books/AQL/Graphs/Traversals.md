@@ -424,13 +424,26 @@ Now let's have a look what the optimizer does behind the curtain and inspect
 traversal queries using [the explainer](../ExecutionAndPerformance/Optimizer.md):
 
     @startDocuBlockInline GRAPHTRAV_07_traverse_7
-    @EXAMPLE_ARANGOSH_OUTPUT{GRAPHTRAV_07_traverse_7}
-    ~examples.loadGraph("traversalGraph");
-    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' LET localScopeVar = RAND() > 0.5 FILTER p.edges[0].theTruth != localScopeVar RETURN v._key", {}, {colors: false});
-    db._explain("FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph' FILTER p.edges[0].label == 'right_foo' RETURN v._key", {}, {colors: false});
-    ~examples.dropGraph("traversalGraph");
-    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @EXAMPLE_AQL{GRAPHTRAV_07_traverse_7}
+    @DATASET{traversalGraph}
+    @EXPLAIN{TRUE}
+    FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+      LET localScopeVar = RAND() > 0.5
+      FILTER p.edges[0].theTruth != localScopeVar
+    RETURN v._key
+    @END_EXAMPLE_AQL
     @endDocuBlock GRAPHTRAV_07_traverse_7
+
+
+    @startDocuBlockInline GRAPHTRAV_07_traverse_8
+    @EXAMPLE_AQL{GRAPHTRAV_07_traverse_8}
+    @DATASET{traversalGraph}
+    @EXPLAIN{TRUE}
+    FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH 'traversalGraph'
+    FILTER p.edges[0].label == 'right_foo'
+    RETURN v._key
+    @END_EXAMPLE_AQL
+    @endDocuBlock GRAPHTRAV_07_traverse_8
 
 We now see two queries: In one we add a variable *localScopeVar*, which is outside
 the scope of the traversal itself - it is not known inside of the traverser.
