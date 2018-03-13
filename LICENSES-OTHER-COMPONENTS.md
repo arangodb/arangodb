@@ -1,5 +1,13 @@
 # Other Licenses
 
+## [C/C++ Libraries](#cc-libraries)
+## [Programs](#programs)
+## [JavaScript](#javascript)
+### [Node core modules](#node-core-modules)
+### [Bundled NPM modules](#bundled-npm-modules)
+### [Backend libraries](#backend-libraries)
+### [Frontend libraries](#frontend-libraries)
+
 ## C/C++ Libraries
 
 ### Boost 1.62
