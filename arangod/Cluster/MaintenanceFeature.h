@@ -77,6 +77,10 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
                    bool executeNow=false);
 
 
+  /// @brief Internal API that allows existing actions to create pre and post actions
+  maintenance::MaintenanceActionPtr_t preAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                std::shared_ptr<VPackBuilder> const & properties);
+
 protected:
   maintenance::MaintenanceActionPtr_t createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
                                                    std::shared_ptr<VPackBuilder> const & properties,

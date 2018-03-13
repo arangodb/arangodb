@@ -133,6 +133,10 @@ class MaintenanceAction {
   /// @brief Retrieve pointer to action that should run before this one
   MaintenanceActionPtr_t getPreAction() {return _preAction;};
 
+  /// @brief Initiate a preAction
+  void startPreAction(std::shared_ptr<ActionDescription_t> const & description,
+                      std::shared_ptr<VPackBuilder> const & properties);
+
   /// @brief Retrieve pointer to action that should run directly after this one
   MaintenanceActionPtr_t getNextAction() {return _nextAction;};
 

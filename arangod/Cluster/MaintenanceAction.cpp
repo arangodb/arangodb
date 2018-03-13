@@ -82,6 +82,21 @@ bool MaintenanceAction::done() const {
 } // MaintenanceAction::done
 
 
+/// @brief Initiate a new action that will start immediately, pausing this action
+void MaintenanceAction::startPreAction(std::shared_ptr<ActionDescription_t> const & description,
+                                       std::shared_ptr<VPackBuilder> const & properties) {
+
+  _preAction = _feature.preAction(description, properties);
+
+  if (!_preAction) {
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
+  } // if
+
+  return;
+
+} // MaintenanceAction::startPreAction
+
+
 void MaintenanceAction::startStats() {
 
   _actionStarted = std::chrono::system_clock::now();
