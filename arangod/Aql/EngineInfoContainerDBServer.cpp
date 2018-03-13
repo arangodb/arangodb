@@ -606,7 +606,7 @@ void EngineInfoContainerDBServer::buildEngines(
       LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " respended with "
                                     << res->getErrorCode() << " -> "
                                     << res->stringifyErrorMessage();
-      LOG_TOPIC(ERR, Logger::AQL) << infoBuilder.toJson();
+      LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
       // TODO could not register all engines. Need to cleanup.
       THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
                                      res->stringifyErrorMessage());
