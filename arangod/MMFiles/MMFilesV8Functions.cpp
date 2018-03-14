@@ -472,8 +472,7 @@ static void JS_WaitCollectorWal(
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-
-  arangodb::LogicalCollection* col = vocbase->lookupCollection(name);
+  auto col = vocbase->lookupCollection(name);
 
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

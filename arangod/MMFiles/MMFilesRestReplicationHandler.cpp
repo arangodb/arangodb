@@ -372,7 +372,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -661,7 +661,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -990,7 +990,8 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
-  LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
+
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
