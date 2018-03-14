@@ -1496,17 +1496,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(
           connection.get(), method, conTimeout, url, b.toJson());
 
-      // Inquire returns a body like write or if the write is still ongoing
-      // We check, if the operation is still ongoing then body is {"ongoing:true"}
+      // Inquire returns a body like write, if the transactions are not known,
+      // the list of results is empty.
       // _statusCode can be 200 or 412
       if (result.successful() || result._statusCode == 412) {
         std::shared_ptr<VPackBuilder> resultBody
           = VPackParser::fromJson(result._body);
         VPackSlice outer = resultBody->slice();
-        // If the operation is still ongoing, simply ask again later:
-        if (outer.isObject() && outer.hasKey("ongoing")) {
-          continue;
-        }
 
         // If we get an answer, and it contains a "results" key,
         // we release the connection and break out of the loop letting the
