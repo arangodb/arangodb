@@ -279,17 +279,17 @@ struct TRI_vocbase_t {
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief looks up a collection by identifier
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     TRI_voc_cid_t id
   ) const noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     std::string const& nameOrId
   ) const noexcept;
 
   /// @brief looks up a collection by uuid
-  arangodb::LogicalCollection* lookupCollectionByUuid(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
     std::string const& uuid
   ) const noexcept;
 
