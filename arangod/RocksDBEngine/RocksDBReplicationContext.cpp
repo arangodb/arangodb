@@ -106,6 +106,8 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
                                                 transactionOptions));
     _customTypeHandler = ctx->orderCustomTypeHandler();
     _vpackOptions.customTypeHandler = _customTypeHandler.get();
+    _vpackOptions.buildUnindexedObjects = true;
+    _vpackOptions.buildUnindexedArrays = true;
     
     auto state = RocksDBTransactionState::toState(_trx.get());
     if (snap != nullptr) {
@@ -222,12 +224,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   }
   TRI_ASSERT(!_sortedIterator && dynamic_cast<RocksDBAllIndexIterator*>(_iter.get()));
   
-  VPackOptions const* opts = builder.options;
-  VPackCustomTypeHandler* ch = builder.options->customTypeHandler;
   bool canContinue = true;
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice const& doc) {
+    VPackCustomTypeHandler* ch = _vpackOptions.customTypeHandler;
 
-    builder.openObject(true);
+    builder.openObject(!useExt);
     // set type
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     if (useExt) { // types will be converted outside
@@ -239,14 +240,14 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
                                                        builder, builder.options, true, true, true);*/
       // Fast object sanitization only on first level (effectively only on _id)
       TRI_ASSERT(doc.isObject());
-      builder.add("data", VPackValue(VPackValueType::Object, true));
+      builder.add("data", VPackValue(VPackValueType::Object, !useExt));
       for (auto const& it : VPackObjectIterator(doc, true)) {
         TRI_ASSERT(!it.value.isExternal());
         VPackValueLength l;
         char const* p = it.key.getString(l);
         builder.add(VPackValuePair(p, l, VPackValueType::String));
         if (it.value.isCustom()) {
-          builder.add(VPackValue(ch->toString(it.value, opts, doc)));
+          builder.add(VPackValue(ch->toString(it.value, &_vpackOptions, doc)));
         } else {
           builder.add(it.value);
         }

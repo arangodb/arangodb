@@ -769,8 +769,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     VPackBuilder vpb;
     auto cb = [&buffer, &dumper, &vpb, chunkSize]() -> bool { // called after each document
       dumper.dump(vpb.slice());
-      buffer.appendChar('\n');
       vpb.clear();
+      buffer.appendChar('\n');
       return buffer.length() < chunkSize;
     };
     // do the work!
