@@ -421,6 +421,100 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
   }
 }
 
+bool ShapeContainer::equals(Coordinate const* cc) const {
+  geo::Coordinate centroid1 = this->centroid();
+  double lat1 = centroid1.latitude;
+  double lon1 = centroid1.longitude;
+
+  double lat2 = cc->latitude;
+  double lon2 = cc->longitude;
+
+  if (lat1 == lat2 && lon1 == lon2) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ShapeContainer::equals(double lat2, double lon2) const {
+ // TODO sth. wrong here 
+  geo::Coordinate centroid1 = this->centroid();
+  double lat1 = centroid1.latitude;
+  double lon1 = centroid1.longitude;
+
+  if (lat1 == lat2 && lon1 == lon2) {
+    return true;
+  }
+
+  return false;
+}
+
+bool ShapeContainer::equals(S2Polyline const* other) const {
+  S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
+  return ll->Equals(other);
+}
+
+bool ShapeContainer::equals(S2LatLngRect const* other) const {
+  S2LatLngRect const* llrect = static_cast<S2LatLngRect const*>(_data);
+  return llrect->ApproxEquals(*other);
+}
+
+bool ShapeContainer::equals(S2Polygon const* other) const {
+  S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
+  return poly->Equals(other);
+}
+
+bool ShapeContainer::equals(ShapeContainer const* cc) const {
+  bool result = false;
+
+  // equals function will only trigger for equal types
+  // if types are not equal, result is false
+  if (cc->_type != _type) {
+    return result;
+  }
+
+  switch (cc->_type) {
+    case ShapeContainer::Type::S2_POINT: {
+      S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
+      return(S2LatLng::Latitude(p).degrees(), S2LatLng::Longitude(p).degrees());
+    }
+    case ShapeContainer::Type::S2_POLYLINE: {
+      return equals(static_cast<S2Polyline const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_LATLNGRECT: {
+      return equals(static_cast<S2LatLngRect const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_POLYGON: {
+      return equals(static_cast<S2Polygon const*>(cc->_data));
+    }
+    case ShapeContainer::Type::S2_MULTIPOINT: {
+      // ### TODO ###
+      /*
+      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
+      for (int k = 0; k < pts->num_points(); k++) {
+        if (!_data->Equals(pts->point(k))) {
+          return false;
+        }
+      }*/
+      return false;
+    }
+    case ShapeContainer::Type::S2_MULTIPOLYLINE: {
+      // ### TODO ###
+      auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
+      for (size_t k = 0; k < lines->num_lines(); k++) {
+        if (!this->equals(&(lines->line(k)))) {
+          return false;
+        }
+      }
+      return true;
+    }
+
+    case ShapeContainer::Type::EMPTY:
+      TRI_ASSERT(false);
+      return false;
+  }
+}
+
 bool ShapeContainer::intersects(geo::Coordinate const* cc) const {
   return contains(cc);  // same
 }

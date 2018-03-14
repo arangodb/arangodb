@@ -2884,6 +2884,41 @@ AqlValue Functions::GeoIntersects(arangodb::aql::Query* query,
   return GeoContainsIntersect(query, trx, parameters, "GEO_INTERSECTS", false);
 }
 
+/// @brief function GEO_EQUALS
+AqlValue Functions::GeoEquals(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "GEO_EQUALS", 2, 2);
+
+  AqlValue p1 = Functions::ExtractFunctionParameterValue(parameters, 0);
+  AqlValue p2 = Functions::ExtractFunctionParameterValue(parameters, 1);
+
+  if (!p1.isObject() || !p2.isObject()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", Result(
+      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "Expecting GeoJSON object"));
+    return AqlValue(AqlValueHintNull());
+  }
+
+  AqlValueMaterializer mat1(trx);
+  AqlValueMaterializer mat2(trx);
+
+  geo::ShapeContainer first, second;
+  Result res1 = geo::geojson::parseRegion(mat1.slice(p1, true), first);
+  Result res2 = geo::geojson::parseRegion(mat2.slice(p2, true), second);
+
+  if (res1.fail()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", res1);
+    return AqlValue(AqlValueHintNull());
+  }
+  if (res2.fail()) {
+    Functions::RegisterWarning(query, "GEO_EQUALS", res2);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  bool result = first.equals(&second);
+  return AqlValue(AqlValueHintBool(result));
+}
+
 
 /// @brief function IS_IN_POLYGON
 AqlValue Functions::IsInPolygon(arangodb::aql::Query* query,
@@ -3024,6 +3059,18 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
 
   AqlValueMaterializer materializer(trx);
   VPackSlice s = materializer.slice(geoArray, false);
+
+  // check if nested or not
+  bool unnested = false;
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray() && v.length() == 2) {
+      unnested = true;
+    }
+  }
+  if (unnested) {
+    b.openArray();
+  }
+
   for (auto const& v : VPackArrayIterator(s)) {
     if (v.isArray() && v.length() > 2) {
       b.openArray();
@@ -3112,6 +3159,10 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
 
   b.close();
   b.close();
+
+  if (unnested) {
+    b.close();
+  }
 
   return AqlValue(b);
 }

@@ -428,6 +428,8 @@ void AqlFunctionFeature::addGeoFunctions() {
     true, &Functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true,
     true, &Functions::GeoIntersects});
+  add({"GEO_EQUALS", ".,.", true, false, true,
+    true, &Functions::GeoEquals});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {

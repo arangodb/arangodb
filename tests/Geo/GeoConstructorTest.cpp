@@ -478,16 +478,16 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
-      CHECK(res.slice().get("coordinates").length() == 3);
-      CHECK(res.slice().get("coordinates").at(0).isArray());
-      CHECK(res.slice().get("coordinates").at(1).isArray());
-      CHECK(res.slice().get("coordinates").at(2).isArray());
-      CHECK(res.slice().get("coordinates").at(0).at(0).getDouble() == 1.0);
-      CHECK(res.slice().get("coordinates").at(0).at(1).getDouble() == 2.0);
-      CHECK(res.slice().get("coordinates").at(1).at(0).getDouble() == 3.0);
-      CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == 4.0);
-      CHECK(res.slice().get("coordinates").at(2).at(0).getDouble() == 5.0);
-      CHECK(res.slice().get("coordinates").at(2).at(1).getDouble() == 6.0);
+      CHECK(res.slice().get("coordinates").at(0).length() == 3);
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(2).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == 1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == 2.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == 3.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == 4.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == 5.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == 6.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
     }
@@ -503,7 +503,9 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
-      CHECK(res.slice().get("coordinates").length() == 10);
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).length() == 10);
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
     }
@@ -519,16 +521,49 @@ SCENARIO("Testing GEO_POLYGON", "[AQL][GEOC][GEOPOLYGON]") {
       AqlValue res = Functions::GeoPolygon(&query, &trx, params);
       CHECK(res.isObject());
       CHECK(res.slice().get("coordinates").isArray());
-      CHECK(res.slice().get("coordinates").length() == 3);
       CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).length() == 3);
+      CHECK(res.slice().get("coordinates").at(0).at(0).length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).at(1).length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).at(2).length() == 2);
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(2).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == -5.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
+      CHECK(res.slice().get("type").isString());
+      CHECK(res.slice().get("type").copyString() == "Polygon");
+    }
+
+    WHEN("checking polygon with 2x3 negative positions") {
+      char const* p = "[ [[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]], [[-1.0, -2.0], [-3.0, -4.0], [-5.0, -6.0]] ]";
+      size_t l = strlen(p);
+
+      std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(p, l);
+      VPackSlice json = builder->slice();
+      params.emplace_back(json);
+
+      // TODO check also at 1 position
+      AqlValue res = Functions::GeoPolygon(&query, &trx, params);
+      CHECK(res.isObject());
+      CHECK(res.slice().get("coordinates").isArray());
+      CHECK(res.slice().get("coordinates").at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).length() == 3);
       CHECK(res.slice().get("coordinates").at(1).isArray());
-      CHECK(res.slice().get("coordinates").at(2).isArray());
-      CHECK(res.slice().get("coordinates").at(0).at(0).getDouble() == -1.0);
-      CHECK(res.slice().get("coordinates").at(0).at(1).getDouble() == -2.0);
-      CHECK(res.slice().get("coordinates").at(1).at(0).getDouble() == -3.0);
-      CHECK(res.slice().get("coordinates").at(1).at(1).getDouble() == -4.0);
-      CHECK(res.slice().get("coordinates").at(2).at(0).getDouble() == -5.0);
-      CHECK(res.slice().get("coordinates").at(2).at(1).getDouble() == -6.0);
+      CHECK(res.slice().get("coordinates").at(1).length() == 3);
+      CHECK(res.slice().get("coordinates").at(0).at(0).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(1).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(2).isArray());
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(0).getDouble() == -1.0);
+      CHECK(res.slice().get("coordinates").at(0).at(0).at(1).getDouble() == -2.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(0).getDouble() == -3.0);
+      CHECK(res.slice().get("coordinates").at(0).at(1).at(1).getDouble() == -4.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(0).getDouble() == -5.0);
+      CHECK(res.slice().get("coordinates").at(0).at(2).at(1).getDouble() == -6.0);
       CHECK(res.slice().get("type").isString());
       CHECK(res.slice().get("type").copyString() == "Polygon");
     }
