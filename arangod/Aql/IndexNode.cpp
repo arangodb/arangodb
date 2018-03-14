@@ -69,8 +69,13 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
   TRI_ASSERT(_collection != nullptr);
 
   _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
-  _options.ascending = !basics::VelocyPackHelper::readBooleanValue(base, "reverse", false);
+  _options.ascending = basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
   _options.evaluateFCalls = basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
+  _options.fullRange = basics::VelocyPackHelper::readBooleanValue(base, "fullRange", false);
+  _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
+  if (_options.sorted && base.isObject() && base.get("reverse").isBool()) { // legacy
+    _options.ascending = !(base.get("reverse").getBool());
+  }
 
   if (_collection == nullptr) {
     std::string msg("collection '");
@@ -126,8 +131,11 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
   nodes.add("sorted", VPackValue(_options.sorted));
-  nodes.add("reverse", VPackValue(!_options.ascending));
+  nodes.add("ascending", VPackValue(_options.ascending));
+  nodes.add("reverse", VPackValue(!_options.ascending)); // legacy
   nodes.add("evalFCalls", VPackValue(_options.evaluateFCalls));
+  nodes.add("fullRange", VPackValue(_options.fullRange));
+  nodes.add("limit", VPackValue(_options.limit));
 
   // And close it:
   nodes.close();

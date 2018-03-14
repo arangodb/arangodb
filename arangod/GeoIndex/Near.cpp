@@ -28,6 +28,8 @@
 #include <s2/s2region_coverer.h>
 #include <s2/s2region_intersection.h>
 
+#include <s2/s2distance_target.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -40,11 +42,19 @@
 namespace arangodb {
 namespace geo_index {
 
+  
+// micro-optimize conversion to avoid going through S2LatLng
+static inline S2Point toPoint(geo::Coordinate const& cc) {
+  double phi = (geo::kPi / 180.0) * cc.latitude;
+  double theta = (geo::kPi / 180.0) * cc.longitude;
+  double cosphi = std::cos(phi);
+  return S2Point(std::cos(theta) * cosphi, std::sin(theta) * cosphi, std::sin(phi));
+}
+  
 template <typename CMP, typename SEEN>
 NearUtils<CMP, SEEN>::NearUtils(geo::QueryParams&& qp) noexcept
     : _params(std::move(qp)),
-      _origin(S2LatLng::FromDegrees(qp.origin.latitude, qp.origin.longitude)
-                  .ToPoint()),
+      _origin(toPoint(qp.origin)),
       _minBound(_params.minDistanceRad()),
       _maxBound(_params.maxDistanceRad()),
       _coverer(qp.cover.regionCovererOpts()) {
@@ -74,11 +84,12 @@ void NearUtils<CMP, SEEN>::reset() {
     _buffer.pop();
   }
 
+  const int mL = S2::kMaxDiag.GetClosestLevel(500 / geo::kEarthRadiusInMeters);
+  
   if (_boundDelta <= 0) {  // do not reset everytime
     int level = std::max(1, _params.cover.bestIndexedLevel - 2);
     // Level 15 == 474.142m
-    level = std::min(
-        level, S2::kMaxDiag.GetClosestLevel(500 / geo::kEarthRadiusInMeters));
+    level = std::min(level, mL);
     _boundDelta = S2::kMaxDiag.GetValue(level);  // in radians
     TRI_ASSERT(_boundDelta * geo::kEarthRadiusInMeters >= 450);
   }
@@ -98,14 +109,19 @@ std::vector<geo::Interval> NearUtils<CMP, SEEN>::intervals() {
   TRI_ASSERT(!_params.ascending || _innerBound != _maxBound);
 
   TRI_ASSERT(_boundDelta >= S2::kMaxEdge.GetValue(S2::kMaxCellLevel - 2));
-  estimateDelta();
-  if (isAscending()) {
+  
+  if (_params.fullRange) {
+    _innerBound = _minBound;
+    _outerBound = _maxBound;
+  } else if (isAscending()) {
+    estimateDelta();
     _innerBound = _outerBound;  // initially _outerBounds == _innerBounds
     _outerBound = std::min(_outerBound + _boundDelta, _maxBound);
     if (_innerBound == _maxBound && _outerBound == _maxBound) {
       return {};  // search is finished
     }
   } else if (isDescending()) {
+    estimateDelta();
     _outerBound = _innerBound;  // initially _outerBounds == _innerBounds
     _innerBound = std::max(_innerBound - _boundDelta, _minBound);
     if (_outerBound == _minBound && _innerBound == _minBound) {
@@ -179,17 +195,12 @@ std::vector<geo::Interval> NearUtils<CMP, SEEN>::intervals() {
   return intervals;
 }
 
-// micro-optimize conversion
-static inline S2Point toPoint(geo::Coordinate const& cc) {
-  double phi = (geo::kPi / 180.0) * cc.latitude;
-  double theta = (geo::kPi / 180.0) * cc.longitude;
-  double cosphi = std::cos(phi);
-  return S2Point(std::cos(theta) * cosphi, std::sin(theta) * cosphi, std::sin(phi));
-}
-
 template <typename CMP, typename SEEN>
 void NearUtils<CMP, SEEN>::reportFound(LocalDocumentId lid,
                                  geo::Coordinate const& center) {
+  /*S1ChordAngle angle(_origin, toPoint(center));
+  double rad = angle.radians();*/
+  
   double rad = _origin.Angle(toPoint(center));  // distance in radians
   /*LOG_TOPIC(INFO, Logger::FIXME)
   << "[Found] " << rid << " at " << (center.toString())
@@ -224,14 +235,14 @@ void NearUtils<CMP, SEEN>::reportFound(LocalDocumentId lid,
 
 template <typename CMP, typename SEEN>
 void NearUtils<CMP, SEEN>::estimateDensity(geo::Coordinate const& found) {
+  if (_params.fullRange) {
+    return; // skip in any case
+  }
+  
   double const minBound = S2::kAvgDiag.GetValue(S2::kMaxCellLevel - 3);
-  S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
-  double multiplier =
-      std::max(2.0 * std::sqrt(static_cast<double>(_params.limit) / M_PI), 4.0);
-  double delta = _params.fullRange
-                     ? _params.maxDistanceRad()
-                     : _origin.Angle(cords.ToPoint()) * multiplier;
-  if (minBound < delta && delta < M_PI) {
+  double fac = std::max(2.0 * std::sqrt(static_cast<double>(_params.limit) / M_PI), 4.0);
+  double delta = _origin.Angle(toPoint(found)) * fac;
+  if (minBound < delta && delta <= geo::kMaxRadiansBetweenPoints) {
     _boundDelta = delta;
     // only call after reset
     TRI_ASSERT(!isAscending() || (_innerBound == _minBound && _buffer.empty()));

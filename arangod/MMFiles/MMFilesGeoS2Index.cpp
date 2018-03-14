@@ -41,56 +41,6 @@
 
 using namespace arangodb;
 
-/*struct SimpleIterator final : public IndexIterator {
-  char const* typeName() const override { return "s2-index-iterator"; }
-
-  /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  SimpleIterator(LogicalCollection* collection, transaction::Methods* trx,
-                 ManagedDocumentResult* mmdr, MMFilesGeoS2Index const* index,
-                 geo::QueryParams&& params)
-  : IndexIterator(collection, trx, mmdr, index),
-  _index(index),
-  _params(std::move(params)) {
-
-  }
-
-  /// internal retrieval loop
-  inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
-                        size_t limit) {
-    if (_iter == _intervals.end()) {
-      // we already know that no further results will be returned by the index
-      return false;
-    }
-
-    while (limit > 0 && _iter != _intervals.end()) {
-      TRI_ASSERT(<#expr#>)
-      /while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest().document)) {
-          limit--;
-        }
-        _near.popNearest();
-      }
-      // need to fetch more geo results
-      if (limit > 0 && !_near.isDone()) {
-        TRI_ASSERT(!_near.hasNearest());
-        performScan();
-      }*
-      _iter++;
-    }
-    return _iter != _intervals.end();
-  }
-
-
-  void reset() override {  }
-
-private:
-  MMFilesGeoS2Index const* _index;
-  geo::QueryParams const _params;
-  std::vector<geo::Interval> _intervals;
-  std::vector<geo::Interval>::const_iterator _iter;
-  std::unordered_set<LocalDocumentId> _seen;
-};*/
-
 template <typename CMP = geo_index::DocumentsAscending,
           typename SEEN = geo_index::Deduplicator>
 struct NearIterator final : public IndexIterator {
@@ -226,8 +176,8 @@ struct NearIterator final : public IndexIterator {
 
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    if (!_near.isDone()) {
-      // TODO TRI_ASSERT(scan.size() > 0);
+    if (!scan.empty()) {
+      TRI_ASSERT(_near.isDone());
       ++_scans;
     };
     // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();

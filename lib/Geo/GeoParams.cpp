@@ -24,6 +24,7 @@
 
 #include <s2/s1angle.h>
 #include <s2/s2cap.h>
+#include <s2/s2earth.h>
 #include <s2/s2metrics.h>
 #include <s2/s2region_coverer.h>
 
@@ -37,11 +38,9 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 RegionCoverParams::RegionCoverParams()
-    : maxNumCoverCells(20),
-      worstIndexedLevel(
-          S2::kAvgEdge.GetClosestLevel(2000 * 1000.0 / kEarthRadiusInMeters)),
-      bestIndexedLevel(
-          S2::kAvgEdge.GetClosestLevel(105.0 / kEarthRadiusInMeters)) {
+    : maxNumCoverCells(kMaxNumCoverCellsDefault),
+      worstIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::KmToRadians(600))),
+      bestIndexedLevel(S2::kAvgEdge.GetClosestLevel(S2Earth::MetersToRadians(100.0))) {
   // optimize levels for buildings, points are converted without S2RegionCoverer
 }
 
