@@ -41,7 +41,7 @@ function ahuacatlDynamicAttributesTestSuite () {
 
     q = "RETURN NOOPT(V8(" + query + "))";
     assertEqual(expected, AQL_EXECUTE(q).json[0]);
-    assertEqual("v8", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
+    assertEqual("simple", AQL_EXPLAIN(q).plan.nodes[1].expressionType);
     
     q = "RETURN NOOPT(" + query + ")";
     assertEqual(expected, AQL_EXECUTE(q).json[0]);

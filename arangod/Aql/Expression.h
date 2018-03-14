@@ -50,12 +50,11 @@ class Ast;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
-struct V8Expression;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
  public:
-  enum ExpressionType : uint32_t { UNPROCESSED, JSON, V8, SIMPLE, ATTRIBUTE_SYSTEM, ATTRIBUTE_DYNAMIC };
+  enum ExpressionType : uint32_t { UNPROCESSED, JSON, SIMPLE, ATTRIBUTE_SYSTEM, ATTRIBUTE_DYNAMIC };
 
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
@@ -104,6 +103,14 @@ class Expression {
     }
     return _isDeterministic;
   }
+  
+  /// @brief whether or not the expression will use V8
+  inline bool willUseV8() {
+    if (_type == UNPROCESSED) {
+      initExpression();
+    }
+    return _willUseV8;
+  }
 
   /// @brief clone the expression, needed to clone execution plans
   Expression* clone(ExecutionPlan* plan, Ast* ast) {
@@ -132,14 +139,6 @@ class Expression {
     return _type == JSON;
   }
 
-  /// @brief check whether this is a V8 expression
-  inline bool isV8() {
-    if (_type == UNPROCESSED) {
-      initExpression();
-    }
-    return _type == V8;
-  }
-
   /// @brief get expression type as string
   std::string typeString() {
     if (_type == UNPROCESSED) {
@@ -154,8 +153,6 @@ class Expression {
       case ATTRIBUTE_SYSTEM:
       case ATTRIBUTE_DYNAMIC:
         return "attribute";
-      case V8:
-        return "v8";
       case UNPROCESSED: {
       }
     }
@@ -195,7 +192,7 @@ class Expression {
   void replaceAttributeAccess(Variable const*, std::vector<std::string> const& attribute);
 
   /// @brief invalidates an expression
-  /// this only has an effect for V8-based functions, which need to be created,
+  /// this only has an effect for V8-using functions, which need to be created,
   /// used and destroyed in the same context. when a V8 function is used across
   /// multiple V8 contexts, it must be invalidated in between
   void invalidate();
@@ -220,7 +217,6 @@ class Expression {
 
   void initConstantExpression();
   void initSimpleExpression();
-  void initV8Expression();
 
   /// @brief analyze the expression (determine its type etc.)
   void initExpression();
@@ -264,11 +260,21 @@ class Expression {
                                             bool& mustDestroy,
                                             bool);
 
-  /// @brief execute an expression of type SIMPLE with FCALL
+  /// @brief execute an expression of type SIMPLE with FCALL, dispatcher
   AqlValue executeSimpleExpressionFCall(AstNode const*,
                                         transaction::Methods*,
                                         bool& mustDestroy);
-
+  
+  /// @brief execute an expression of type SIMPLE with FCALL, CXX variant
+  AqlValue executeSimpleExpressionFCallCxx(AstNode const*,
+                                           transaction::Methods*,
+                                           bool& mustDestroy);
+  
+  /// @brief execute an expression of type SIMPLE with FCALL, JavaScript variant
+  AqlValue executeSimpleExpressionFCallJS(AstNode const*,
+                                          transaction::Methods*,
+                                          bool& mustDestroy);
+  
   /// @brief execute an expression of type SIMPLE with RANGE
   AqlValue executeSimpleExpressionRange(AstNode const*,
                                         transaction::Methods*,
@@ -331,6 +337,11 @@ class Expression {
       AstNode const*, transaction::Methods*, 
       bool& mustDestroy);
 
+  /// @brief prepare a V8 context for execution for this expression
+  /// this needs to be called once before executing any V8 function in this
+  /// expression
+  void prepareV8Context();
+
  private:
   /// @brief the query execution plan. note: this may be a nullptr for expressions
   /// created in the early optimization stage!
@@ -342,10 +353,8 @@ class Expression {
   /// @brief the AST node that contains the expression to execute
   AstNode* _node;
 
-  /// @brief a v8 function that will be executed for the expression
   /// if the expression is a constant, it will be stored as plain JSON instead
   union {
-    V8Expression* _func;
     uint8_t* _data;
     AttributeAccessor* _accessor;
   };
@@ -362,9 +371,13 @@ class Expression {
   /// @brief whether or not the expression is deterministic
   bool _isDeterministic;
 
-  /// @brief whether or not the top-level attributes of the expression were
-  /// determined
-  bool _hasDeterminedAttributes;
+  /// @brief whether or not the expression will make use of V8
+  bool _willUseV8;
+
+  /// @brief whether or not the preparation routine for V8 contexts was run
+  /// once for this expression
+  /// it needs to be run once before any V8-based function is called
+  bool _preparedV8Context;
 
   /// @brief the top-level attributes used in the expression, grouped
   /// by variable name

@@ -29,7 +29,6 @@
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
-#include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
@@ -2683,28 +2682,6 @@ AstNode* Ast::createArithmeticResultNode(double value) {
   return createNodeValueDouble(value);
 }
 
-/// @brief executes an expression with constant parameters in V8
-AstNode* Ast::executeConstExpressionV8(AstNode const* node) {
-  // must enter v8 before we can execute any expression
-  _query->enterContext();
-  ISOLATE;
-  v8::HandleScope scope(isolate);  // do not delete this!
-
-  TRI_ASSERT(_query->trx() != nullptr);
-  transaction::BuilderLeaser builder(_query->trx());
-
-  int res = _query->v8Executor()->executeExpression(_query, node, *builder.get());
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // context is not left here, but later
-  // this allows re-using the same context for multiple expressions
-
-  return nodeFromVPack(builder->slice(), true);
-}
-
 /// @brief optimizes the unary operators + and -
 /// the unary plus will be converted into a simple value node if the operand of
 /// the operation is a constant number
@@ -2944,17 +2921,12 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
   Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
-  // execute the expression using the C++ variant
+  
   AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);
 
-  // we cannot create slices from types Range and Docvec easily
-  if (!a.isRange() && !a.isDocvec()) {
-    return nodeFromVPack(a.slice(), true);
-  }
-
-  // simply fall through to V8 now
-  return executeConstExpressionV8(node);
+  AqlValueMaterializer materializer(_query->trx());
+  return nodeFromVPack(materializer.slice(a, false), true);
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
@@ -3225,24 +3197,22 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   // place. note that the transaction has not necessarily been
   // started yet...
   TRI_ASSERT(_query->trx() != nullptr);
-
-  if (func->hasImplementation() && node->isSimple()) {
-    Expression exp(nullptr, this, node);
-    FixedVarExpressionContext context;
-    bool mustDestroy;
-    // execute the expression using the C++ variant
-    AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
-    AqlValueGuard guard(a, mustDestroy);
-
-    // we cannot create slices from types Range and Docvec easily
-    if (!a.isRange() && !a.isDocvec()) {
-      return nodeFromVPack(a.slice(), true);
-    }
-    // simply fall through to V8 now
+  
+  if (node->willUseV8()) {
+    // if the expression is going to use V8 internally, we do not
+    // bother to optimize it here
+    return node;
   }
 
-  // execute the expression using V8
-  return executeConstExpressionV8(node);
+  Expression exp(nullptr, this, node);
+  FixedVarExpressionContext context;
+  bool mustDestroy;
+ 
+  AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  AqlValueMaterializer materializer(_query->trx());
+  return nodeFromVPack(materializer.slice(a, false), true);
 }
 
 /// @brief optimizes a reference to a variable
