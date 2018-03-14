@@ -1,19 +1,19 @@
 shell> curl --dump - http://localhost:8529/_api/collection/products/checksum?withRevisions=false&withData=true
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
-x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
 location: <span class="hljs-regexp">/_api/</span>collection/products/checksum
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hE2F144F58407/11527"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h4B150768F36C/11544"</span>, 
+  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11544"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_WeZkQ2a--_"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"15918833875153807872"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11527"</span>, 
-  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
-  <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span> 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_WgE63U6--_"</span>, 
+  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"16512796348050512657"</span>, 
+  <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span> 
 }

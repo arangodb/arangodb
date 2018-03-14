@@ -559,7 +559,9 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
-    col = vocbase->lookupCollection(collection.get("oldName").copyString());
+    col =
+     vocbase->lookupCollection(collection.get("oldName").copyString()).get();
+
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }

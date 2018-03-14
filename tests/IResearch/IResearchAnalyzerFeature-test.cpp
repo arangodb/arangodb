@@ -532,10 +532,10 @@ SECTION("test_persistence") {
 
   // ensure there is an empty configuration collection
   {
-    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+    auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection, true, -1);
+      vocbase->dropCollection(collection.get(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -678,7 +678,8 @@ SECTION("test_persistence") {
     {
       arangodb::OperationOptions options;
       arangodb::ManagedDocumentResult result;
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      TRI_voc_tick_t resultMarkerTick;
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
       collection->truncate(nullptr, options);
     }
 
@@ -833,10 +834,10 @@ SECTION("test_start") {
   {
     // ensure no configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -868,10 +869,10 @@ SECTION("test_start") {
   {
     // ensure no configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -906,10 +907,10 @@ SECTION("test_start") {
   {
     // ensure there is an empty configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -947,10 +948,10 @@ SECTION("test_start") {
   {
     // ensure there is an empty configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -990,10 +991,10 @@ SECTION("test_start") {
   {
     // ensure no configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1022,10 +1023,10 @@ SECTION("test_start") {
   {
     // ensure no configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1056,10 +1057,10 @@ SECTION("test_start") {
 
     // ensure there is an empty configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1094,10 +1095,10 @@ SECTION("test_start") {
   {
     // ensure there is an empty configuration collection
     {
-      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
       if (collection) {
-        vocbase->dropCollection(collection, true, -1);
+        vocbase->dropCollection(collection.get(), true, -1);
       }
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1155,10 +1156,10 @@ SECTION("test_tokens") {
 
   // ensure there is no configuration collection
   {
-    auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+    auto collection = vocbase->lookupCollection("_iresearch_analyzers");
 
     if (collection) {
-      vocbase->dropCollection(collection, true, -1);
+      vocbase->dropCollection(collection.get(), true, -1);
     }
 
     collection = vocbase->lookupCollection("_iresearch_analyzers");

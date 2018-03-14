@@ -1953,7 +1953,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
     } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      LogicalCollection *coll = vocbase->lookupCollection(name);
+      auto coll = vocbase->lookupCollection(name);
+
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
           || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
@@ -1992,7 +1993,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      LogicalCollection *coll = vocbase->lookupCollection(name);
+      auto coll = vocbase->lookupCollection(name);
+
       if (coll == nullptr || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
@@ -2126,10 +2128,11 @@ static arangodb::LogicalCollection* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-    return vocbase->lookupCollection(cid);
+
+    return vocbase->lookupCollection(cid).get();
   }
 
-  return vocbase->lookupCollection(TRI_ObjectToString(val));
+  return vocbase->lookupCollection(TRI_ObjectToString(val)).get();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

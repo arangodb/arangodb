@@ -240,7 +240,7 @@ void TRI_vocbase_t::registerCollection(
     std::shared_ptr<arangodb::LogicalCollection> const& collection
 ) {
   std::string name = collection->name();
-  TRI_voc_cid_t cid = collection->cid();
+  TRI_voc_cid_t cid = collection->id();
   {
     RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, doLock);
 
@@ -264,7 +264,7 @@ void TRI_vocbase_t::registerCollection(
 
       if (!it2.second) {
         std::string msg;
-        msg.append(std::string("duplicate collection identifier ") + std::to_string(collection->cid()) + " for name '" + name + "'");
+        msg.append(std::string("duplicate collection identifier ") + std::to_string(collection->id()) + " for name '" + name + "'");
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
@@ -507,7 +507,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
                                   TRI_vocbase_col_status_e& status,
                                   bool setStatus) {
-  TRI_ASSERT(collection->cid() != 0);
+  TRI_ASSERT(collection->id() != 0);
 
   // read lock
   // check if the collection is already loaded
@@ -758,7 +758,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       if (!collection->deleted()) {
         collection->deleted(true);
         try {
-          engine->changeCollection(this, collection->cid(), collection, doSync);
+          engine->changeCollection(this, collection->id(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -796,7 +796,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       VPackBuilder builder;
-      engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
+      engine->getCollectionInfo(this, collection->id(), builder, false, 0);
       arangodb::Result res = collection->updateProperties(
           builder.slice().get("parameters"), doSync);
 
@@ -959,7 +959,7 @@ void TRI_vocbase_t::inventory(
 
     // In cluster case cids are not created by ticks but by cluster uniqIds
     if (!ServerState::instance()->isRunningInCluster() &&
-        collection->cid() > maxTick) {
+        collection->id() > maxTick) {
       // collection is too new
       continue;
     }
@@ -974,7 +974,7 @@ void TRI_vocbase_t::inventory(
       continue;
     }
 
-    if (collection->cid() <= maxTick) { 
+    if (collection->id() <= maxTick) {
       result.openObject();
 
       result.add(VPackValue("indexes"));
@@ -1013,36 +1013,57 @@ std::string TRI_vocbase_t::viewName(TRI_voc_cid_t id) const {
   return view ? view->name() : StaticStrings::Empty;
 }
 
-/// @brief looks up a collection by name or stringified cid or uuid
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollection(
-    std::string const& nameOrId
-) const noexcept {
-  return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
-    lookupDataSource(nameOrId)
-  ).get();
-}
-
 /// @brief looks up a collection by identifier
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollection(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
     TRI_voc_cid_t id
 ) const noexcept {
-  return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
-    lookupDataSource(id)
-  ).get();
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
+      lookupDataSource(id)
+    );
+  #else
+  auto dataSource = lookupDataSource(id);
+
+  return dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  #endif
+}
+
+/// @brief looks up a collection by name or stringified cid or uuid
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
+    std::string const& nameOrId
+) const noexcept {
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
+      lookupDataSource(nameOrId)
+    );
+  #else
+  auto dataSource = lookupDataSource(nameOrId);
+
+  return dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  #endif
 }
 
 /// @brief looks up a collection by uuid
-arangodb::LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
     std::string const& uuid
 ) const noexcept {
   // otherwise we'll look up the collection by name
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceByUuid.find(uuid);
 
-  return itr == _dataSourceByUuid.end()
-    ? nullptr
-    : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second).get()
-    ;
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return itr == _dataSourceByUuid.end()
+      ? nullptr
+      : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second)
+      ;
+  #else
+    return itr == _dataSourceByUuid.end()
+           || itr->second->category() != LogicalCollection::category()
+      ? nullptr
+      : std::static_pointer_cast<LogicalCollection>(itr->second);
+  #endif
 }
 
 /// @brief looks up a data-source by identifier
@@ -1468,7 +1489,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
     TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
   auto collection = lookupCollection(cid);
 
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
 
 /// @brief locks a collection for usage by name
@@ -1496,7 +1517,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
     std::string const& uuid, TRI_vocbase_col_status_e& status) {
   auto collection = lookupCollectionByUuid(uuid);
 
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
 
 arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(
