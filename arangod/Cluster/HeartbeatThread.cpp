@@ -385,7 +385,7 @@ void HeartbeatThread::runDBServer() {
 
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
-          planAgencyCallback->refetchAndUpdate(true);
+          planAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased

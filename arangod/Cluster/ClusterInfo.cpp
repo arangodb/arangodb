@@ -371,6 +371,8 @@ void ClusterInfo::loadPlan() {
   uint64_t storedVersion = _planProt.wantedVersion;  // this is the version
                                                      // we will set in the end
 
+  LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: wantedVersion="
+    << storedVersion << ", doneVersion=" << _planProt.doneVersion;
   if (_planProt.doneVersion == storedVersion) {
     // Somebody else did, what we intended to do, so just return
     return;
@@ -396,6 +398,8 @@ void ClusterInfo::loadPlan() {
         } catch (...) {
         }
       }
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "loadPlan: newPlanVersion="
+        << newPlanVersion;
       if (newPlanVersion == 0) {
         LOG_TOPIC(WARN, Logger::CLUSTER)
           << "Attention: /arango/Plan/Version in the agency is not set or not "
@@ -1210,13 +1214,30 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
             // wait that all followers have created our new collection
             if (tmpError.empty() && waitForReplication) {
+              
               std::vector<ServerID> plannedServers;
               {
                 READ_LOCKER(readLocker, _planProt.lock);
                 auto it = _shardServers.find(p.key.copyString());
                 if (it != _shardServers.end()) {
                   plannedServers = (*it).second;
+                } else {
+                  LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                    << "Strange, did not find shard in _shardServers: "
+                    << p.key.copyString();
                 }
+              }
+              if (plannedServers.empty()) {
+                LOG_TOPIC(DEBUG, Logger::CLUSTER)
+                  << "This should never have happened, Plan empty. Dumping _shards in Plan:";
+                for (auto const& p : _shards) {
+                  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Shard: "
+                    << p.first;
+                  for (auto const& q : *(p.second)) {
+                    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "  Server: " << q;
+                  }
+                }
+                TRI_ASSERT(false);
               }
               std::vector<ServerID> currentServers;
               VPackSlice servers = p.value.get("servers");
@@ -1333,7 +1354,6 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
           name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
         return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
       }
-
     }
 
     // Update our cache:

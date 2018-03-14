@@ -41,11 +41,11 @@ AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
                                bool needsValue, bool needsInitialValue)
     : key(key), _agency(agency), _cb(cb), _needsValue(needsValue) {
   if (_needsValue && needsInitialValue) {
-    refetchAndUpdate(true);
+    refetchAndUpdate(true, false);
   }
 }
 
-void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
+void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
   if (!_needsValue) {
     // no need to pass any value to the callback
     if (needToAcquireMutex) {
@@ -74,19 +74,21 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex) {
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
-    checkValue(newData);
+    checkValue(newData, forceCheck);
   } else {
-    checkValue(newData);
+    checkValue(newData, forceCheck);
   }
 }
 
-void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData) {
+void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData,
+                                bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !_lastData->slice().equals(newData->slice())) {
+  if (!_lastData || !_lastData->slice().equals(newData->slice()) || forceCheck) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER) << "AgencyCallback: Got new value "
                                       << newData->slice().typeName() << " "
-                                      << newData->toJson();
+                                      << newData->toJson()
+                                      << " forceCheck=" << forceCheck;
     if (execute(newData)) {
       _lastData = newData;
     } else {
@@ -125,6 +127,6 @@ void AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
     LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Waiting done and nothing happended. Refetching to be sure";
     // mop: watches have not triggered during our sleep...recheck to be sure
-    refetchAndUpdate(false);
+    refetchAndUpdate(false, true);  // Force a check
   }
 }
