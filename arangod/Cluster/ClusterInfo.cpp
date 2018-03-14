@@ -1840,7 +1840,6 @@ int ClusterInfo::createViewCoordinator(std::string const& databaseName,
         + viewID + " does not yet exist failed. Cannot create view.";
 
       // Dump agency plan:
-      auto result = res.slice();
       AgencyCommResult ag = ac.getValues("/");
       if (ag.successful()) {
         LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
@@ -1909,7 +1908,7 @@ int ClusterInfo::dropViewCoordinator(
   // Update our own cache:
   loadPlan();
 
-  events::DropView(collectionID, TRI_ERROR_NO_ERROR);
+  events::DropView(viewID, TRI_ERROR_NO_ERROR);
   return TRI_ERROR_NO_ERROR;
 }
 
