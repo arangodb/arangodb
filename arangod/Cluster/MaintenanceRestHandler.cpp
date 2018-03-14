@@ -51,6 +51,7 @@ RestStatus MaintenanceRestHandler::execute() {
 
     // retrieve list of all actions
     case rest::RequestType::GET:
+      getAction();
       break;
 
     // add an action to the list (or execute it directly)
@@ -146,6 +147,17 @@ bool MaintenanceRestHandler::parsePutBody(VPackSlice const & parameters) {
   return good;
 
 } // MaintenanceRestHandler::parsePutBody
+
+
+void MaintenanceRestHandler::getAction() {
+  // build the action
+  auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+
+  VPackBuilder registry = maintenance->toVelocityPack();
+
+  _response->addPayload(registry.slice());
+
+} // MaintenanceRestHandler::getAction
 
 
 #if 0

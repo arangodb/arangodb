@@ -62,6 +62,9 @@ protected:
   /// @brief PUT method adds an Action to the worklist (or executes action directly)
   void putAction();
 
+  /// @brief GET method returns worklist
+  void getAction();
+
 
   /// @brief internal routine to convert PUT body into _actionDesc and _actionProp
   bool parsePutBody(VPackSlice const & parameters);
