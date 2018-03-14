@@ -1,4 +1,8 @@
-Outline:
+Upgrading a cluster
+===================
+
+Preparations
+------------
 
 * Make sure the cluster-instances of arangod and the usual standalone-instance
   from the package are independent, especially:
@@ -21,9 +25,24 @@ Outline:
   * The init script
     - The script `/etc/init.d/arangodb3` should be the default one
       installed by the package. A custom script should be named differently.
+
+
+Install the new version
+-----------------------
+
 * Install the package (especially, replace the files)
+
+
+Stop standalone instance
+------------------------
+
 * (optional) Stop the standalone instance
 * (optional) Remove the standalone init-script from the runlevels
+
+
+Restart arangod processes
+-------------------------
+
 * Restart the agency process (e.g. kill it and let the starter restart it)
 * Restart the DBServer process
   * If necessary, upgrade the database before/when starting the process
