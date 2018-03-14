@@ -117,6 +117,7 @@ STATE_ARANGOSH_RUN = 'ARANGOSH_OUTPUT'
 STATE_AQL = 'AQL'
 STATE_AQL_DS = 'AQL_DS'
 STATE_AQL_BIND = 'AQL_BV'
+STATE_AQL_EXPLAIN = 'AQL_EXPLAIN'
 
 ################################################################################
 ### @brief option states
@@ -148,6 +149,7 @@ regularStartLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_OUTPUT{([^}]*)}')
 runLine = re.compile(r'^(/// )? *@EXAMPLE_ARANGOSH_RUN{([^}]*)}')
 aqlLine = re.compile(r'^(/// )? *@EXAMPLE_AQL{([^}]*)}')
 aqlDataSetLine = re.compile(r'^(/// )? *@DATASET{([^}]*)}')
+aqlExplainLine = re.compile(r'^(/// )? *@EXPLAIN{(TRUE|FALSE)}')
 aqlBindvaluesLine = re.compile(r'^(/// )? *@BV (.*)')
 
 def matchStartLine(line, filename):
@@ -222,6 +224,13 @@ def matchAqlLine(line, filename, oldState):
         name = m.group(2)
         return (name, STATE_AQL_DS)
 
+    m = aqlExplainLine.match(line)
+
+    if m:
+        strip = m.group(1)
+        TRUExorFALSE = m.group(2)
+        return (TRUExorFALSE, STATE_AQL_EXPLAIN)
+
     m = aqlBindvaluesLine.match(line)
 
     if m:
@@ -242,6 +251,7 @@ STRING="string"
 AQL="aql"
 AQLDS="aql_dataset"
 AQLBV="aql_bindvalues"
+AQLEXPLAIN="aql_explain"
 
 ################################################################################
 ### @brief loop over the lines of one input file
@@ -290,6 +300,11 @@ def analyzeFile(f, filename):
             if aqlState == STATE_AQL_BIND:
                 RunTests[name][AQLBV] = data
                 state = aqlState
+                continue
+            if aqlState == STATE_AQL_EXPLAIN:
+                RunTests[name][AQLEXPLAIN] = data
+                # flip back to aql - query will come.
+                state = STATE_AQL
                 continue
             if aqlState == STATE_AQL_DS:
                 RunTests[name][AQLDS] = data
@@ -506,6 +521,12 @@ def generateAQL(testName):
     if not AQLBV in value:
         value[AQLBV] = "{}"
 
+    if not AQLDS in value:
+        value[AQLDS] = ""
+
+    if not AQLEXPLAIN in value:
+        value[AQLEXPLAIN] = 'false'
+
     print '''
 %s
 /// %s
@@ -527,13 +548,15 @@ def generateAQL(testName):
         escapeBS.sub(doubleBS, OutputDir),
         escapeBS.sub(doubleBS, MapSourceFiles[testName])
     )
-    print "  let query = `" + value[AQL] + "`;"
-    print "  let bv = " + value[AQLBV] + ";"
-    print "  let ds = '" + value[AQLDS] + "';"
+    print "  const query = `" + value[AQL] + "`;"
+    print "  const bv = " + value[AQLBV] + ";"
+    print "  const ds = '" + value[AQLDS] + "';"
+    print "  const explainAql = " + value[AQLEXPLAIN].lower() + ";"
     print '''
-  exds.%s.removeDS();
-  exds.%s.createDS();
-  let result = db._query(query, bv).toArray();
+  if (ds !== '') {
+    exds[ds].removeDS();
+    exds[ds].createDS();
+  }
 
   output += "@Q:\\n"
   output += highlight("js", query);
@@ -542,7 +565,14 @@ def generateAQL(testName):
     jsonAppender(JSON.stringify(bv, null, 2));
   }
   output += "\\n@R\\n";
-  jsonAppender(JSON.stringify(result, null, 2));
+
+  if (explainAql) {
+    const explainResult =  require('@arangodb/aql/explainer').explain({bindVars:bv, query:query}, {}, false);
+    ansiAppender(explainResult);
+  } else {
+    const result = db._query(query, bv).toArray();
+    jsonAppender(JSON.stringify(result, null, 2));
+  }
 
   exds.%s.removeDS();
   fs.write(outputDir + fs.pathSeparator + testName + '.generated', output);
