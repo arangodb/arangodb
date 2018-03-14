@@ -11,8 +11,8 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/load
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h12A586481BA8/11909"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11909"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h4B150768F36C/11918"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"11918"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span> 
 }

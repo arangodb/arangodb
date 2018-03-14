@@ -14,20 +14,20 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13182"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13182"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgDI736--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13215"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13215"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgE8Mp---_"</span>, 
       <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13186"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13186"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgDI74---_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"13211"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13211"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgE8Mo6--_"</span>, 
       <span class="hljs-string">"a"</span> : { 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
@@ -44,7 +44,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filtered"</span> : <span class="hljs-number">2</span>, 
       <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0005178451538085938</span> 
+      <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0004773139953613281</span> 
     }, 
     <span class="hljs-string">"warnings"</span> : [ ] 
   }, 
