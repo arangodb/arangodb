@@ -183,7 +183,7 @@ arangodb::Result MMFilesCollection::persistProperties() {
         {"path", "statusString"}, true, true);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION,
                                    _logicalCollection->vocbase()->id(),
-                                   _logicalCollection->cid(),
+                                   _logicalCollection->id(),
                                    infoBuilder.slice());
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
@@ -588,9 +588,12 @@ int MMFilesCollection::close() {
           application_features::ApplicationServer::getFeature<DatabaseFeature>(
               "Database")
               ->forceSyncProperties();
-      engine->changeCollection(_logicalCollection->vocbase(),
-                               _logicalCollection->cid(), _logicalCollection,
-                               doSync);
+      engine->changeCollection(
+        _logicalCollection->vocbase(),
+        _logicalCollection->id(),
+        _logicalCollection,
+        doSync
+      );
     }
   }
 
@@ -1054,7 +1057,7 @@ MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
   MMFilesDatafileHelper::InitMarker(
       reinterpret_cast<MMFilesMarker*>(&cm), TRI_DF_MARKER_COL_HEADER,
       sizeof(MMFilesCollectionHeaderMarker), static_cast<TRI_voc_tick_t>(fid));
-  cm._cid = _logicalCollection->cid();
+  cm._cid = _logicalCollection->id();
 
   res = datafile->writeCrcElement(position, &cm.base, false);
 
@@ -1744,7 +1747,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   VPackBuilder builder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto vocbase = _logicalCollection->vocbase();
-  auto cid = _logicalCollection->cid();
+  auto cid = _logicalCollection->id();
   engine->getCollectionInfo(vocbase, cid, builder, true, 0);
 
   VPackSlice initialCount =
@@ -1838,9 +1841,12 @@ void MMFilesCollection::open(bool ignoreErrors) {
             "Database")
             ->forceSyncProperties();
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->changeCollection(_logicalCollection->vocbase(),
-                             _logicalCollection->cid(), _logicalCollection,
-                             doSync);
+    engine->changeCollection(
+      _logicalCollection->vocbase(),
+      _logicalCollection->id(),
+      _logicalCollection,
+      doSync
+    );
   }
 }
 
@@ -2232,8 +2238,9 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
   auto vocbase = _logicalCollection->vocbase();
-  auto collectionId = _logicalCollection->cid();
+  auto collectionId = _logicalCollection->id();
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -2368,7 +2375,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
     return false;
   }
 
-  auto cid = _logicalCollection->cid();
+  auto cid = _logicalCollection->id();
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->dropIndex(vocbase, cid, iid);
   {
@@ -3178,9 +3185,14 @@ Result MMFilesCollection::deleteSecondaryIndexes(
 int MMFilesCollection::detectIndexes(transaction::Methods* trx) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder;
-  engine->getCollectionInfo(_logicalCollection->vocbase(),
-                            _logicalCollection->cid(), builder, true,
-                            UINT64_MAX);
+
+  engine->getCollectionInfo(
+    _logicalCollection->vocbase(),
+    _logicalCollection->id(),
+    builder,
+    true,
+    UINT64_MAX
+  );
 
   // iterate over all index files
   for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {

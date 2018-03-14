@@ -110,9 +110,6 @@ class LogicalView final: public LogicalDataSource {
                            arangodb::velocypack::Slice const& parameters,
                            bool isNew);
 
-  static bool IsAllowedName(velocypack::Slice parameters);
-  static bool IsAllowedName(std::string const& name);
-
  private:
   // SECTION: Meta Information
   std::unique_ptr<PhysicalView> _physical;

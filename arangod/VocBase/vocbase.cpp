@@ -1135,7 +1135,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     VPackSlice parameters) {
   // check that the name does not contain any strange characters
-  if (!LogicalCollection::IsAllowedName(parameters)) {
+  if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1300,7 +1300,7 @@ int TRI_vocbase_t::renameView(
     return TRI_ERROR_NO_ERROR;
   }
 
-  if (!LogicalView::IsAllowedName(newName)) {
+  if (!IsAllowedName(IsSystemName(newName), arangodb::velocypack::StringRef(newName))) {
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1367,20 +1367,19 @@ int TRI_vocbase_t::renameCollection(
   }
 
   if (!doOverride) {
-    bool isSystem;
-    isSystem = LogicalCollection::IsSystemName(oldName);
+    auto isSystem = IsSystemName(oldName);
 
-    if (isSystem && !LogicalCollection::IsSystemName(newName)) {
+    if (isSystem && !IsSystemName(newName)) {
       // a system collection shall not be renamed to a non-system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
-    } else if (!isSystem && LogicalCollection::IsSystemName(newName)) {
+    } else if (!isSystem && IsSystemName(newName)) {
       // a non-system collection shall not be renamed to a system collection
       // name
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
 
-    if (!LogicalCollection::IsAllowedName(isSystem, newName)) {
+    if (!IsAllowedName(isSystem, arangodb::velocypack::StringRef(newName))) {
       return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     }
   }
@@ -1550,7 +1549,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
       parameters, "name", "");
 
   // check that the name does not contain any strange characters
-  if (!LogicalView::IsAllowedName(name)) {
+  if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1764,14 +1763,27 @@ std::string TRI_vocbase_t::path() const {
   return engine->databasePath(this);
 }
 
+bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
+  return !slice.isObject()
+    ? false
+    : IsAllowedName(
+        arangodb::basics::VelocyPackHelper::readBooleanValue(slice, "isSystem", false),
+        arangodb::basics::VelocyPackHelper::getStringRef(slice, "name", "")
+      )
+    ;
+}
+
 /// @brief checks if a database name is allowed
 /// returns true if the name is allowed and false otherwise
-bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
+bool TRI_vocbase_t::IsAllowedName(
+    bool allowSystem,
+    arangodb::velocypack::StringRef const& name
+) noexcept {
   size_t length = 0;
 
   // check allow characters: must start with letter or underscore if system is
   // allowed
-  for (char const* ptr = name.c_str(); *ptr; ++ptr) {
+  for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
     bool ok;
     if (length == 0) {
       if (allowSystem) {
@@ -1788,8 +1800,6 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
     if (!ok) {
       return false;
     }
-
-    ++length;
   }
 
   // invalid name length
@@ -1798,6 +1808,11 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
   }
 
   return true;
+}
+
+/// @brief determine whether a collection name is a system collection name
+/*static*/ bool TRI_vocbase_t::IsSystemName(std::string const& name) noexcept {
+  return !name.empty() && name[0] == '_';
 }
 
 void TRI_vocbase_t::addReplicationApplier() {

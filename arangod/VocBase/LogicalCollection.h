@@ -106,14 +106,6 @@ class LogicalCollection: public LogicalDataSource {
   /// @brief current version for collections
   static constexpr uint32_t currentVersion() { return VERSION_33; }
 
-  /// @brief determine whether a collection name is a system collection name
-  static bool IsSystemName(std::string const& name) {
-    return (!name.empty() && name[0] == '_');
-  }
-
-  static bool IsAllowedName(velocypack::Slice parameters);
-  static bool IsAllowedName(bool isSystem, std::string const& name);
-
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
 
@@ -123,9 +115,8 @@ class LogicalCollection: public LogicalDataSource {
 
   inline TRI_voc_cid_t cid() const { return id(); }
 
+  /// @deprecated only required/used for ShardDistributionReporterTest (do not use)
   virtual std::string cid_as_string() const;
-
-  std::string planId_as_string() const;
 
   TRI_col_type_e type() const;
 
