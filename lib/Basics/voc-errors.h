@@ -945,6 +945,12 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 
+/// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
+/// "could not create view in plan"
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new view in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.

@@ -1774,6 +1774,146 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create view in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly. One possible error
+/// is a timeout, a timeout of 0.0 means no timeout.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::createViewCoordinator(std::string const& databaseName,
+                                       std::string const& viewID,
+                                       VPackSlice const& json,
+                                       std::string& errorMsg) {
+  using arangodb::velocypack::Slice;
+
+  AgencyComm ac;
+
+  std::string const name =
+      arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
+
+  {
+    // check if a view with the same name is already planned
+    loadPlan();
+
+    READ_LOCKER(readLocker, _planProt.lock);
+    AllViews::const_iterator it = _plannedViews.find(databaseName);
+    if (it != _plannedViews.end()) {
+      DatabaseViews::const_iterator it2 = (*it).second.find(name);
+
+      if (it2 != (*it).second.end()) {
+        // view already exists!
+        events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+        return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+      }
+    }
+  }
+
+  // mop: why do these ask the agency instead of checking cluster info?
+  if (!ac.exists("Plan/Databases/" + databaseName)) {
+    events::CreateView(name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    return setErrormsg(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, errorMsg);
+  }
+
+  if (ac.exists("Plan/Views/" + databaseName + "/" + viewID)) {
+    events::CreateView(name, TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS);
+    return setErrormsg(TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS, errorMsg);
+  }
+
+  std::vector<AgencyOperation> opers (
+    { AgencyOperation("Plan/Views/" + databaseName + "/" + viewID,
+                      AgencyValueOperationType::SET, json),
+      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP)});
+
+  std::vector<AgencyPrecondition> precs;
+  precs.emplace_back(
+    AgencyPrecondition("Plan/Views/" + databaseName + "/" + viewID,
+                       AgencyPrecondition::Type::EMPTY, true));
+
+  AgencyWriteTransaction transaction(opers, precs);
+
+  auto res = ac.sendTransactionWithFailover(transaction);
+
+  // Only if not precondition failed
+  if (!res.successful()) {
+    if (res.httpCode() ==
+        (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      errorMsg += std::string("Precondition that view ") + name + " with ID "
+        + viewID + " does not yet exist failed. Cannot create view.";
+
+      // Dump agency plan:
+      auto result = res.slice();
+      AgencyCommResult ag = ac.getValues("/");
+      if (ag.successful()) {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                        << ag.slice().toJson();
+      } else {
+        LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+      }
+
+      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN;
+    } else {
+      errorMsg += std::string("file: ") + __FILE__ +
+                  " line: " + std::to_string(__LINE__);
+      errorMsg += " HTTP code: " + std::to_string(res.httpCode());
+      errorMsg += " error message: " + res.errorMessage();
+      errorMsg += " error details: " + res.errorDetails();
+      errorMsg += " body: " + res.body();
+      events::CreateCollection(
+        name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
+      return TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN;
+    }
+  }
+
+  // Update our cache:
+  loadPlan();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop view in coordinator, the return value is an ArangoDB
+/// error code and the errorMsg is set accordingly.
+////////////////////////////////////////////////////////////////////////////////
+
+int ClusterInfo::dropViewCoordinator(
+  std::string const& databaseName, std::string const& viewID,
+  std::string& errorMsg) {
+
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  // Transact to agency
+  AgencyOperation delPlanCollection(
+      "Plan/Views/" + databaseName + "/" + viewID,
+      AgencySimpleOperationType::DELETE_OP);
+  AgencyOperation incrementVersion("Plan/Version",
+                                   AgencySimpleOperationType::INCREMENT_OP);
+  AgencyPrecondition precondition = AgencyPrecondition(
+      "Plan/Databases/" + databaseName, AgencyPrecondition::Type::EMPTY, false);
+  AgencyPrecondition pre2 = AgencyPrecondition(
+      "Plan/Views/" + databaseName + "/" + viewID,
+      AgencyPrecondition::Type::EMPTY, false);
+  AgencyWriteTransaction trans({delPlanCollection, incrementVersion},
+      {precondition, pre2});
+  res = ac.sendTransactionWithFailover(trans);
+
+  if (!res.successful()) {
+    AgencyCommResult ag = ac.getValues("");
+    if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                      << ag.slice().toJson();
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+    }
+  }
+
+  // Update our own cache:
+  loadPlan();
+
+  events::DropView(collectionID, TRI_ERROR_NO_ERROR);
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set collection status in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
