@@ -85,12 +85,14 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     // extract collection
     std::string const& value2 = _request->value("collection", found);
     if (found) {
-      LogicalCollection* c = _vocbase->lookupCollection(value2);
+      auto c = _vocbase->lookupCollection(value2);
+
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
         return false;
       }
+
       filter.collection = c->cid();
     }
   }

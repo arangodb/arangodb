@@ -229,28 +229,30 @@ void TRI_vocbase_t::signalCleanup() {
 }
 
 void TRI_vocbase_t::checkCollectionInvariants() const {
-  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+  TRI_ASSERT(_dataSourceByName.size() == _dataSourceById.size());
+  TRI_ASSERT(_dataSourceByUuid.size() <= _dataSourceById.size()); // does not contain views
 }
 
 /// @brief adds a new collection
-/// caller must hold _collectionsLock in write mode or set doLock
+/// caller must hold _dataSourceLock in write mode or set doLock
 void TRI_vocbase_t::registerCollection(
-    bool doLock, arangodb::LogicalCollection* collection) {
+    bool doLock,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection
+) {
   std::string name = collection->name();
-  TRI_voc_cid_t cid = collection->cid();
+  TRI_voc_cid_t cid = collection->id();
   {
-    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner, doLock);
+    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, doLock);
 
     checkCollectionInvariants();
     TRI_DEFER(checkCollectionInvariants());
 
     // check name
-    auto it = _collectionsByName.emplace(name, collection);
+    auto it = _dataSourceByName.emplace(name, collection);
 
     if (!it.second) {
       std::string msg;
-      msg.append(std::string("duplicate entry for collection name '") + name + "'. collection id " + std::to_string(cid) + " has same name as already added collection " + std::to_string(_collectionsByName[name]->cid()));
+      msg.append(std::string("duplicate entry for collection name '") + name + "'. collection id " + std::to_string(cid) + " has same name as already added collection " + std::to_string(_dataSourceByName[name]->id()));
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
@@ -258,22 +260,22 @@ void TRI_vocbase_t::registerCollection(
 
     // check collection identifier
     try {
-      auto it2 = _collectionsById.emplace(cid, collection);
+      auto it2 = _dataSourceById.emplace(cid, collection);
 
       if (!it2.second) {
         std::string msg;
-        msg.append(std::string("duplicate collection identifier ") + std::to_string(collection->cid()) + " for name '" + name + "'");
+        msg.append(std::string("duplicate collection identifier ") + std::to_string(collection->id()) + " for name '" + name + "'");
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
     } catch (...) {
-      _collectionsByName.erase(name);
+      _dataSourceByName.erase(name);
       throw;
     }
-    
+
     try {
-      auto it2 = _collectionsByUuid.emplace(collection->globallyUniqueId(), collection);
+      auto it2 = _dataSourceByUuid.emplace(collection->globallyUniqueId(), collection);
 
       if (!it2.second) {
         std::string msg;
@@ -283,17 +285,17 @@ void TRI_vocbase_t::registerCollection(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
     } catch (...) {
-      _collectionsByName.erase(name);
-      _collectionsById.erase(cid);
+      _dataSourceByName.erase(name);
+      _dataSourceById.erase(cid);
       throw;
     }
-    
+
     try {
       _collections.emplace_back(collection);
     } catch (...) {
-      _collectionsByName.erase(name);
-      _collectionsById.erase(cid);
-      _collectionsByUuid.erase(collection->globallyUniqueId());
+      _dataSourceByName.erase(name);
+      _dataSourceById.erase(cid);
+      _dataSourceByUuid.erase(collection->globallyUniqueId());
       throw;
     }
 
@@ -303,23 +305,28 @@ void TRI_vocbase_t::registerCollection(
 
 /// @brief removes a collection name from the global list of collections
 /// This function is called when a collection is dropped.
-/// NOTE: You need a writelock on _collectionsLock
+/// NOTE: You need a writelock on _dataSourceLock
 bool TRI_vocbase_t::unregisterCollection(
     arangodb::LogicalCollection* collection) {
   TRI_ASSERT(collection != nullptr);
-  std::string const colName(collection->name());
 
   // pre-condition
   checkCollectionInvariants();
 
+  auto itr = _dataSourceById.find(collection->id());
+
+  if (itr == _dataSourceById.end()
+      || !std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second)) {
+    return true; // no such collection
+  }
+
   // only if we find the collection by its id, we can delete it by name
-  if (_collectionsById.erase(collection->cid()) > 0) {
+  _dataSourceById.erase(itr);
+
     // this is because someone else might have created a new collection with the
     // same name, but with a different id
-    _collectionsByName.erase(colName);
-  }
-  
-  _collectionsByUuid.erase(collection->globallyUniqueId());
+  _dataSourceByName.erase(collection->name());
+  _dataSourceByUuid.erase(collection->globallyUniqueId());
 
   // post-condition
   checkCollectionInvariants();
@@ -329,32 +336,34 @@ bool TRI_vocbase_t::unregisterCollection(
 
 /// @brief adds a new view
 /// caller must hold _viewLock in write mode or set doLock
-void TRI_vocbase_t::registerView(bool doLock,
-                                 std::shared_ptr<arangodb::LogicalView> view) {
+void TRI_vocbase_t::registerView(
+    bool doLock,
+    std::shared_ptr<arangodb::LogicalView> const& view
+) {
   std::string const name = view->name();
   TRI_voc_cid_t const id = view->id();
   {
-    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _viewsLock, _viewsLockWriteOwner, doLock);
+    RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, doLock);
 
     // check name
-    auto it = _viewsByName.emplace(name, view);
+    auto it = _dataSourceByName.emplace(name, view);
 
     if (!it.second) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "duplicate entry for view name '" << name << "'";
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "view id " << id << " has same name as already added view "
-          << _viewsByName[name]->id();
+          << _dataSourceByName[name]->id();
 
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
     // check id
     try {
-      auto it2 = _viewsById.emplace(id, view);
+      auto it2 = _dataSourceById.emplace(id, view);
 
       if (!it2.second) {
-        _viewsByName.erase(name);
+        _dataSourceByName.erase(name);
 
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "duplicate view identifier " << view->id() << " for name '"
@@ -363,34 +372,40 @@ void TRI_vocbase_t::registerView(bool doLock,
         THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
       }
     } catch (...) {
-      _viewsByName.erase(name);
+      _dataSourceByName.erase(name);
       throw;
     }
 
-    TRI_ASSERT(_viewsByName.size() == _viewsById.size());
+    checkCollectionInvariants();
   }
 }
 
 /// @brief removes a views name from the global list of views
 /// This function is called when a view is dropped.
-/// NOTE: You need a writelock on _viewsLock
+/// NOTE: You need a writelock on _dataSourceLock
 bool TRI_vocbase_t::unregisterView(
     std::shared_ptr<arangodb::LogicalView> view) {
   TRI_ASSERT(view != nullptr);
-  std::string const name(view->name());
 
   // pre-condition
-  TRI_ASSERT(_viewsByName.size() == _viewsById.size());
+  checkCollectionInvariants();
 
-  // only if we find the collection by its id, we can delete it by name
-  if (_viewsById.erase(view->id()) > 0) {
-    // this is because someone else might have created a new view with the
-    // same name, but with a different id
-    _viewsByName.erase(name);
+  auto itr = _dataSourceById.find(view->id());
+
+  if (itr == _dataSourceById.end()
+      || !std::dynamic_pointer_cast<arangodb::LogicalView>(itr->second)) {
+    return true; // no such view
   }
 
+  // only if we find the collection by its id, we can delete it by name
+  _dataSourceById.erase(itr);
+
+    // this is because someone else might have created a new view with the
+    // same name, but with a different id
+  _dataSourceByName.erase(view->name());
+
   // post-condition
-  TRI_ASSERT(_viewsByName.size() == _viewsById.size());
+  checkCollectionInvariants();
 
   return true;
 }
@@ -414,28 +429,35 @@ bool TRI_vocbase_t::DropCollectionCallback(
   TRI_vocbase_t* vocbase = collection->vocbase();
 
   {
-    RECURSIVE_WRITE_LOCKER(vocbase->_collectionsLock, vocbase->_collectionsLockWriteOwner);
+    RECURSIVE_WRITE_LOCKER(vocbase->_dataSourceLock, vocbase->_dataSourceLockWriteOwner);
+    auto it = vocbase->_collections.begin();
 
-    auto it = std::find(vocbase->_collections.begin(),
-                        vocbase->_collections.end(), collection);
+    for (auto end = vocbase->_collections.end(); it != end; ++it) {
+      if (it->get() == collection) {
+        break;
+      }
+    }
 
     if (it != vocbase->_collections.end()) {
-      vocbase->_collections.erase(it);
-    }
+      auto col = *it;
 
-    // we need to clean up the pointers later so we insert it into this vector
-    try {
-      vocbase->_deadCollections.emplace_back(collection);
-    } catch (...) {
+      vocbase->_collections.erase(it);
+
+      // we need to clean up the pointers later so we insert it into this vector
+      try {
+        vocbase->_deadCollections.emplace_back(col);
+      } catch (...) {
+      }
     }
   }
+
   collection->drop();
 
   return true;
 }
 
 /// @brief creates a new collection, worker function
-arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWorker(
     VPackSlice parameters) {
   std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
       parameters, "name", "");
@@ -443,24 +465,24 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 
   // Try to create a new collection. This is not registered yet
 
-  std::unique_ptr<arangodb::LogicalCollection> collection =
+  std::shared_ptr<arangodb::LogicalCollection> collection =
       std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
-  RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // reserve room for the new collection
   _collections.reserve(_collections.size() + 1);
   _deadCollections.reserve(_deadCollections.size() + 1);
 
-  auto it = _collectionsByName.find(name);
+  auto it = _dataSourceByName.find(name);
 
-  if (it != _collectionsByName.end()) {
+  if (it != _dataSourceByName.end()) {
     events::CreateCollection(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
-  registerCollection(basics::ConditionalLocking::DoNotLock, collection.get());
+  registerCollection(basics::ConditionalLocking::DoNotLock, collection);
 
   try {
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
@@ -471,7 +493,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
     collection->persistPhysicalCollection();
 
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
-    return collection.release();
+
+    return collection;
   } catch (...) {
     unregisterCollection(collection.get());
     throw;
@@ -484,7 +507,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
 int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
                                   TRI_vocbase_col_status_e& status,
                                   bool setStatus) {
-  TRI_ASSERT(collection->cid() != 0);
+  TRI_ASSERT(collection->id() != 0);
 
   // read lock
   // check if the collection is already loaded
@@ -661,8 +684,12 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
   double startTime = TRI_microtime();
 
   // do not acquire these locks instantly
-  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner,
-                           basics::ConditionalLocking::DoNotLock);
+  RECURSIVE_WRITE_LOCKER_NAMED(
+    writeLocker,
+    _dataSourceLock,
+    _dataSourceLockWriteOwner,
+    basics::ConditionalLocking::DoNotLock
+  );
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock,
                            basics::ConditionalLocking::DoNotLock);
 
@@ -731,7 +758,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       if (!collection->deleted()) {
         collection->deleted(true);
         try {
-          engine->changeCollection(this, collection->cid(), collection, doSync);
+          engine->changeCollection(this, collection->id(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -769,7 +796,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       VPackBuilder builder;
-      engine->getCollectionInfo(this, collection->cid(), builder, false, 0);
+      engine->getCollectionInfo(this, collection->id(), builder, false, 0);
       arangodb::Result res = collection->updateProperties(
           builder.slice().get("parameters"), doSync);
 
@@ -811,10 +838,10 @@ void TRI_vocbase_t::shutdown() {
   // soon
   _collectionKeys->garbageCollect(true);
 
-  std::vector<arangodb::LogicalCollection*> collections;
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
 
   {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
   }
 
@@ -823,7 +850,8 @@ void TRI_vocbase_t::shutdown() {
 
   // starts unloading of collections
   for (auto& collection : collections) {
-    unloadCollection(collection, true);
+    collection->close(); // required to release indexes
+    unloadCollection(collection.get(), true);
   }
 
   // this will signal the compactor thread to do one last iteration
@@ -837,28 +865,22 @@ void TRI_vocbase_t::shutdown() {
   setState(TRI_vocbase_t::State::SHUTDOWN_CLEANUP);
 
   {
-    RECURSIVE_WRITE_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
-    
-    checkCollectionInvariants();
+    RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-    _collectionsByName.clear();
-    _collectionsById.clear();
-    _collectionsByUuid.clear();
-  
+    checkCollectionInvariants();
+    _dataSourceByName.clear();
+    _dataSourceById.clear();
+    _dataSourceByUuid.clear();
     checkCollectionInvariants();
   }
 
-  // free dead collections (already dropped but pointers still around)
-  for (auto& collection : _deadCollections) {
-    delete collection;
-  }
   _deadCollections.clear();
 
   // free collections
   for (auto& collection : _collections) {
     collection->getPhysical()->close();
-    delete collection;
   }
+
   _collections.clear();
 }
 
@@ -866,11 +888,17 @@ void TRI_vocbase_t::shutdown() {
 std::vector<std::string> TRI_vocbase_t::collectionNames() {
   std::vector<std::string> result;
 
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-  result.reserve(_collectionsByName.size());
-  for (auto const& it : _collectionsByName) {
-    result.emplace_back(it.first);
+  result.reserve(_dataSourceByName.size());
+
+  for (auto& entry: _dataSourceByName) {
+    auto collection =
+      std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
+
+    if (collection) {
+      result.emplace_back(entry.first);
+    }
   }
 
   return result;
@@ -890,48 +918,54 @@ void TRI_vocbase_t::inventory(
 
   // cycle on write-lock
   WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
-  
-  std::vector<arangodb::LogicalCollection*> collections;
+
+  std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     collections = _collections;
   }
-  
+
   if (collections.size() > 1) {
     // sort by type first and then only name
     // sorting by type ensures that document collections are reported before edge collections
-    std::sort(collections.begin(), collections.end(), [](LogicalCollection const* lhs,
-                                                         LogicalCollection const* rhs) {
+    std::sort(
+      collections.begin(),
+      collections.end(),
+      [](
+        std::shared_ptr<LogicalCollection> const& lhs,
+        std::shared_ptr<LogicalCollection> const& rhs
+      )->bool {
       if (lhs->type() != rhs->type()) {
         return lhs->type() < rhs->type();
       }
-      
+
       return lhs->name() < rhs->name();
     });
   }
-  
+
   ExecContext const* exec = ExecContext::CURRENT;
   result.openArray();
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
-    
+
     if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
         collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
       // we do not need to care about deleted or corrupted collections
       continue;
     }
-    
+
     // In cluster case cids are not created by ticks but by cluster uniqIds
     if (!ServerState::instance()->isRunningInCluster() &&
-        collection->cid() > maxTick) {
+        collection->id() > maxTick) {
       // collection is too new
       continue;
     }
-    
+
     // check if we want this collection
-    if (!nameFilter(collection)) {
+    if (!nameFilter(collection.get())) {
       continue;
     }
 
@@ -940,9 +974,9 @@ void TRI_vocbase_t::inventory(
       continue;
     }
 
-    if (collection->cid() <= maxTick) { 
+    if (collection->id() <= maxTick) {
       result.openObject();
-      
+
       result.add(VPackValue("indexes"));
       collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
         // we have to exclude the primary and the edge index here, because otherwise
@@ -953,7 +987,7 @@ void TRI_vocbase_t::inventory(
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString" }, true, false);
       result.close();
-      
+
       result.close();
     }
   }
@@ -965,184 +999,149 @@ void TRI_vocbase_t::inventory(
 /// the name is fetched under a lock to make this thread-safe.
 /// returns empty string if the collection does not exist.
 std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+  auto collection = lookupCollection(id);
 
-  auto it = _collectionsById.find(id);
-
-  if (it == _collectionsById.end()) {
-    return StaticStrings::Empty;
-  }
-
-  return (*it).second->name();
+  return collection ? collection->name() : StaticStrings::Empty;
 }
 
 /// @brief gets a view name by a view id
 /// the name is fetched under a lock to make this thread-safe.
 /// returns empty string if the view does not exist.
 std::string TRI_vocbase_t::viewName(TRI_voc_cid_t id) const {
-  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+  auto view = lookupView(id);
 
-  auto it = _viewsById.find(id);
-
-  if (it == _viewsById.end()) {
-    return StaticStrings::Empty;
-  }
-
-  return (*it).second->name();
-}
-
-/// @brief looks up a collection by uuid
-LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
-  // otherwise we'll look up the collection by name
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
-
-  auto it = _collectionsByUuid.find(uuid);
-  if (it == _collectionsByUuid.end()) {
-    return nullptr;
-  }
-  return (*it).second;
-}
-
-/// @brief looks up a collection by name, identifier (cid) or uuid
-LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) const {
-  if (name.empty()) {
-    return nullptr;
-  }
-
-  // if collection name is passed as a stringified id, we'll use the
-  // lookupbyid function
-  // this is safe because collection names must not start with a digit
-  if (name[0] >= '0' && name[0] <= '9') {
-    return lookupCollection(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
-  }
-  
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
-
-  // otherwise we'll look up the collection by name
-  auto it = _collectionsByName.find(name);
-  if (it != _collectionsByName.end()) {
-    return (*it).second;
-  }
-  
-  // otherwise try the UUID
-  auto it2 = _collectionsByUuid.find(name);
-  if (it2 != _collectionsByUuid.end()) {
-    return (*it2).second;
-  }
-  
-  return nullptr;
-}
-
-/// @brief looks up a collection by name
-LogicalCollection* TRI_vocbase_t::lookupCollectionNoLock(
-    std::string const& name) const {
-  if (name.empty()) {
-    return nullptr;
-  }
-
-  // if collection name is passed as a stringified id, we'll use the lookupbyid
-  // function
-  // this is safe because collection names must not start with a digit
-  if (name[0] >= '0' && name[0] <= '9') {
-    TRI_voc_cid_t id = NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
-    auto it = _collectionsById.find(id);
-
-    if (it == _collectionsById.end()) {
-      return nullptr;
-    }
-    return (*it).second;
-  }
-
-  // otherwise we'll look up the collection by name
-  auto it = _collectionsByName.find(name);
-
-  if (it == _collectionsByName.end()) {
-    return nullptr;
-  }
-  return (*it).second;
+  return view ? view->name() : StaticStrings::Empty;
 }
 
 /// @brief looks up a collection by identifier
-LogicalCollection* TRI_vocbase_t::lookupCollection(TRI_voc_cid_t id) const {
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
+    TRI_voc_cid_t id
+) const noexcept {
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
+      lookupDataSource(id)
+    );
+  #else
+  auto dataSource = lookupDataSource(id);
 
-  auto it = _collectionsById.find(id);
-  if (it == _collectionsById.end()) {
-    return nullptr;
-  }
-  return (*it).second;
+  return dataSource && dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource)
+    : nullptr;
+  #endif
+}
+
+/// @brief looks up a collection by name or stringified cid or uuid
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
+    std::string const& nameOrId
+) const noexcept {
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalCollection>(
+      lookupDataSource(nameOrId)
+    );
+  #else
+  auto dataSource = lookupDataSource(nameOrId);
+
+  return dataSource && dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource)
+    : nullptr;
+  #endif
+}
+
+/// @brief looks up a collection by uuid
+std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
+    std::string const& uuid
+) const noexcept {
+  // otherwise we'll look up the collection by name
+  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  auto itr = _dataSourceByUuid.find(uuid);
+
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return itr == _dataSourceByUuid.end()
+      ? nullptr
+      : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second);
+  #else
+    return itr == _dataSourceByUuid.end()
+           || itr->second->category() != LogicalCollection::category()
+      ? nullptr
+      : std::static_pointer_cast<LogicalCollection>(itr->second);
+  #endif
 }
 
 /// @brief looks up a data-source by identifier
 std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
     TRI_voc_cid_t id
 ) const noexcept {
-  // FIXME TODO use a common map for collection and view
-  auto* collection = lookupCollection(id);
+  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+  auto itr = _dataSourceById.find(id);
 
-  if (collection) {
-    return std::shared_ptr<arangodb::LogicalDataSource>(
-      collection, [](arangodb::LogicalDataSource*)->void{}
-    );
-  }
-
-  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(id));
+  return itr == _dataSourceById.end() ? nullptr : itr->second;
 }
 
 /// @brief looks up a data-source by name
 std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
     std::string const& nameOrId
 ) const noexcept {
-  // FIXME TODO use a common map for collection and view
-  auto* collection = lookupCollection(nameOrId);
-
-  if (collection) {
-    return std::shared_ptr<arangodb::LogicalDataSource>(
-      collection, [](arangodb::LogicalDataSource*)->void{}
-    );
+  if (nameOrId.empty()) {
+    return nullptr;
   }
 
-  return std::static_pointer_cast<arangodb::LogicalDataSource>(lookupView(nameOrId));
+  // lookup by id if the data-source name is passed as a stringified id
+  bool success = false;
+  auto id = arangodb::NumberUtils::atoi<TRI_voc_cid_t>(
+    nameOrId.data(), nameOrId.data() + nameOrId.size(), success
+  );
+
+  if (success) {
+    return lookupDataSource(id);
+  }
+
+  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+
+  // otherwise look up the data-source by name
+  auto itr = _dataSourceByName.find(nameOrId);
+
+  if (itr != _dataSourceByName.end()) {
+    return itr->second;
+  }
+
+  // otherwise look up the data-source by UUID
+  auto itrUuid = _dataSourceByUuid.find(nameOrId);
+
+  return itrUuid == _dataSourceByUuid.end() ? nullptr : itrUuid->second;
 }
 
 /// @brief looks up a view by identifier
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
-    TRI_voc_cid_t id
+std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
+  TRI_voc_cid_t id
 ) const noexcept {
-  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalView>(
+      lookupDataSource(id)
+    );
+  #else
+  auto dataSource = lookupDataSource(id);
 
-  auto it = _viewsById.find(id);
-
-  if (it == _viewsById.end()) {
-    return std::shared_ptr<LogicalView>();
-  }
-  return (*it).second;
+  return dataSource && dataSource->category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource)
+    : nullptr;
+  #endif
 }
 
-/// @brief looks up a view by name
-std::shared_ptr<LogicalView> TRI_vocbase_t::lookupView(
-    std::string const& name
-) const noexcept {
-  if (name.empty()) {
-    return std::shared_ptr<LogicalView>();
-  }
+/// @brief looks up a view by name or stringified cid or uuid
+std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
+  std::string const& nameOrId
+) const noexcept{
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalView>(
+      lookupDataSource(nameOrId)
+    );
+  #else
+  auto dataSource = lookupDataSource(nameOrId);
 
-  // if view name is passed as a stringified id, we'll use the lookupbyid
-  // function
-  // this is safe because view names must not start with a digit
-  if (name[0] >= '0' && name[0] <= '9') {
-    return lookupView(NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size()));
-  }
-
-  // otherwise we'll look up the view by name
-  RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
-
-  auto it = _viewsByName.find(name);
-
-  if (it == _viewsByName.end()) {
-    return std::shared_ptr<LogicalView>();
-  }
-  return (*it).second;
+  return dataSource && dataSource->category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource)
+    : nullptr;
+  #endif
 }
 
 /// @brief creates a new collection from parameter set
@@ -1172,23 +1171,23 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: cid may be modified by this function call
-  arangodb::LogicalCollection* collection = createCollectionWorker(parameters);
+  auto collection = createCollectionWorker(parameters);
 
   if (collection == nullptr) {
     // something went wrong... must not continue
     return nullptr;
   }
 
-  arangodb::Result res2 = engine->persistCollection(this, collection);
+  arangodb::Result res2 = engine->persistCollection(this, collection.get());
   // API compatibility, we always return the collection, even if creation
   // failed.
-  
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("create collection");
   }
 
-  return collection;
+  return collection.get();
 }
 
 /// @brief unloads a collection
@@ -1304,9 +1303,10 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
 }
 
 /// @brief renames a view
-int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
-                              std::string const& newName) {
-
+int TRI_vocbase_t::renameView(
+    std::shared_ptr<arangodb::LogicalView> const& view,
+    std::string const& newName
+) {
   // lock collection because we are going to copy its current name
   std::string oldName = view->name();
 
@@ -1323,18 +1323,26 @@ int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  RECURSIVE_WRITE_LOCKER(_viewsLock, _viewsLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   // Check for duplicate name
-  auto it = _viewsByName.find(newName);
+  auto it = _dataSourceByName.find(newName);
 
-  if (it != _viewsByName.end()) {
+  if (it != _dataSourceByName.end()) {
     // new name already in use
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
   }
 
-  _viewsByName.emplace(newName, view);
-  _viewsByName.erase(oldName);
+  // get the original pointer and ensure it's a LogicalView
+  auto itr1 = _dataSourceByName.find(oldName);
+
+  if (itr1 == _dataSourceByName.end()
+      || !std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second)) {
+    return TRI_ERROR_ARANGO_VIEW_NOT_FOUND;
+  }
+
+  _dataSourceByName.emplace(newName, view);
+  _dataSourceByName.erase(oldName);
 
   // stores the parameters on disk
   auto* databaseFeature =
@@ -1356,9 +1364,11 @@ int TRI_vocbase_t::renameView(std::shared_ptr<arangodb::LogicalView> view,
 }
 
 /// @brief renames a collection
-int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
-                                    std::string const& newName,
-                                    bool doOverride) {
+int TRI_vocbase_t::renameCollection(
+    arangodb::LogicalCollection* collection,
+    std::string const& newName,
+    bool doOverride
+) {
   if (collection->isSystem()) {
     return TRI_set_errno(TRI_ERROR_FORBIDDEN);
   }
@@ -1394,7 +1404,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
   READ_LOCKER(readLocker, _inventoryLock);
 
-  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _collectionsLock, _collectionsLockWriteOwner, false);
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner, false);
   CONDITIONAL_WRITE_LOCKER(locker, collection->_lock, false);
 
   while (true) {
@@ -1427,10 +1437,18 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   TRI_ASSERT(locker.isLocked());
 
   // Check for duplicate name
-  auto other = lookupCollectionNoLock(newName);
+  auto itr = _dataSourceByName.find(newName);
 
-  if (other != nullptr) {
+  if (itr != _dataSourceByName.end()) {
     return TRI_ERROR_ARANGO_DUPLICATE_NAME;
+  }
+
+  // get the original pointer and ensure it's a LogicalCollection
+  auto itr1 = _dataSourceByName.find(oldName);
+
+  if (itr1 == _dataSourceByName.end()
+      || !std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr1->second)) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
   auto* databaseFeature =
@@ -1444,21 +1462,20 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   }
 
   // The collection is renamed. Now swap cache entries.
-  auto it2 = _collectionsByName.emplace(newName, collection);
+  auto it2 = _dataSourceByName.emplace(newName, itr1->second);
   TRI_ASSERT(it2.second);
 
   try {
-    _collectionsByName.erase(oldName);
+    _dataSourceByName.erase(oldName);
   } catch (...) {
-    _collectionsByName.erase(newName);
+    _dataSourceByName.erase(newName);
     throw;
   }
-  TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-  ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
+  checkCollectionInvariants();
   locker.unlock();
   writeLocker.unlock();
-  
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("rename collection");
@@ -1472,7 +1489,8 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
   // Tell the engine.
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  arangodb::Result res2 = engine->renameCollection(this, collection, oldName);
+  arangodb::Result res2 =
+    engine->renameCollection(this, collection, oldName);
 
   return res2.errorNumber();
 }
@@ -1486,19 +1504,9 @@ int TRI_vocbase_t::useCollection(arangodb::LogicalCollection* collection,
 /// @brief locks a (document) collection for usage by id
 arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
     TRI_voc_cid_t cid, TRI_vocbase_col_status_e& status) {
-  // check that we have an existing name
-  arangodb::LogicalCollection* collection = nullptr;
-  {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+  auto collection = lookupCollection(cid);
 
-    auto it = _collectionsById.find(cid);
-
-    if (it != _collectionsById.end()) {
-      collection = (*it).second;
-    }
-  }
-  
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
 
 /// @brief locks a collection for usage by name
@@ -1508,37 +1516,27 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
   arangodb::LogicalCollection* collection = nullptr;
 
   {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-    auto it = _collectionsByName.find(name);
+    auto it = _dataSourceByName.find(name);
 
-    if (it != _collectionsByName.end()) {
-      collection = (*it).second;
+    if (it != _dataSourceByName.end()) {
+      collection =
+        std::dynamic_pointer_cast<arangodb::LogicalCollection>(it->second).get();
     }
   }
-  
+
   return useCollectionInternal(collection, status);
 }
 
 /// @brief locks a collection for usage by name
 arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
     std::string const& uuid, TRI_vocbase_col_status_e& status) {
-  // check that we have an existing name
-  arangodb::LogicalCollection* collection = nullptr;
+  auto collection = lookupCollectionByUuid(uuid);
 
-  {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
-
-    auto it = _collectionsByUuid.find(uuid);
-
-    if (it != _collectionsByUuid.end()) {
-      collection = (*it).second;
-    }
-  }
-
-  return useCollectionInternal(collection, status);
+  return useCollectionInternal(collection.get(), status);
 }
-  
+
 arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(
     arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status) {
   if (collection == nullptr) {
@@ -1601,11 +1599,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
       std::make_shared<arangodb::LogicalView>(this, parameters);
   TRI_ASSERT(view != nullptr);
 
-  RECURSIVE_WRITE_LOCKER(_viewsLock, _viewsLockWriteOwner);
+  RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
-  auto it = _viewsByName.find(name);
+  auto it = _dataSourceByName.find(name);
 
-  if (it != _viewsByName.end()) {
+  if (it != _dataSourceByName.end()) {
     events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
@@ -1686,7 +1684,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
   READ_LOCKER(readLocker, _inventoryLock);
 
   // do not acquire these locks instantly
-  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _viewsLock, _viewsLockWriteOwner,
+  RECURSIVE_WRITE_LOCKER_NAMED(writeLocker, _dataSourceLock, _dataSourceLockWriteOwner,
                            basics::ConditionalLocking::DoNotLock);
   CONDITIONAL_WRITE_LOCKER(locker, view->_lock,
                            basics::ConditionalLocking::DoNotLock);
@@ -1731,7 +1729,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   locker.unlock();
   writeLocker.unlock();
-  
+
   events::DropView(view->name(), TRI_ERROR_NO_ERROR);
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1774,7 +1772,7 @@ TRI_vocbase_t::~TRI_vocbase_t() {
 
   // do a final cleanup of collections
   for (auto& it : _collections) {
-    delete it;
+    it->close(); // required to release indexes
   }
 }
 
@@ -1920,49 +1918,70 @@ std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
-    RECURSIVE_READ_LOCKER(_viewsLock, _viewsLockWriteOwner);
-    views.reserve(_viewsById.size());
-    for (auto const& it : _viewsById) {
-      views.emplace_back(it.second);
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
+    views.reserve(_dataSourceById.size());
+
+    for (auto& entry: _dataSourceById) {
+      auto view =
+        std::dynamic_pointer_cast<arangodb::LogicalView>(entry.second);
+
+      if (view) {
+        views.emplace_back(view);
+      }
     }
   }
+
   return views;
 }
 
 void TRI_vocbase_t::processCollections(
     std::function<void(LogicalCollection*)> const& cb, bool includeDeleted) {
-  RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+  RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   if (includeDeleted) {
     for (auto const& it : _collections) {
-      cb(it);
+      cb(it.get());
     }
   } else {
-    for (auto const& it : _collectionsById) {
-      cb(it.second);
+    for (auto& entry: _dataSourceById) {
+      auto collection =
+        std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
+
+      if (collection) {
+        cb(collection.get());
+      }
     }
   }
 }
 
 std::vector<arangodb::LogicalCollection*> TRI_vocbase_t::collections(
-    bool includeDeleted) {
+    bool includeDeleted
+) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   {
-    RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockWriteOwner);
+    RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
     if (includeDeleted) {
       // return deleted collections as well. the cleanup thread needs them
       collections.reserve(_collections.size());
+
       for (auto const& it : _collections) {
-        collections.emplace_back(it);
+        collections.emplace_back(it.get());
       }
     } else {
-      collections.reserve(_collectionsById.size());
-      for (auto const& it : _collectionsById) {
-        collections.emplace_back(it.second);
+      collections.reserve(_dataSourceById.size());
+
+      for (auto& entry: _dataSourceById) {
+        auto collection =
+          std::dynamic_pointer_cast<arangodb::LogicalCollection>(entry.second);
+
+        if (collection) {
+          collections.emplace_back(collection.get());
+        }
       }
     }
   }
+
   return collections;
 }
 

@@ -560,7 +560,6 @@ void TraversalNode::prepareOptions() {
       it.second->addMember(jt);
     }
     opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
-    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
     auto cond =
@@ -569,7 +568,6 @@ void TraversalNode::prepareOptions() {
       cond->addMember(it);
     }
     opts->_baseVertexExpression = new Expression(_plan, ast, cond);
-    TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

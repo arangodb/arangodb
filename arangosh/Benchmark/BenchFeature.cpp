@@ -115,6 +115,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_waitForSync));
 
   std::unordered_set<std::string> cases = {"version",
+                                           "stream-cursor",
                                            "document",
                                            "collection",
                                            "import-document",

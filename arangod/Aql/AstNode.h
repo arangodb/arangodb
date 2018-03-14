@@ -52,35 +52,26 @@ typedef uint32_t AstNodeFlagsType;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED = 1,    // node is a list and its members are sorted asc.
-  DETERMINED_CONSTANT = 2,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =
-      4,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_THROWS = 8,  // node can throw an exception
-  DETERMINED_NONDETERMINISTIC =
-      16,  // node produces non-deterministic result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =
-      32,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS = 64,  // object's keys must be checked for uniqueness
+  DETERMINED_SORTED =            0x0000001,  // node is a list and its members are sorted asc.
+  DETERMINED_CONSTANT =          0x0000002,  // node value is constant (i.e. not dynamic)
+  DETERMINED_SIMPLE =            0x0000004,  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_THROWS =            0x0000008,  // node can throw an exception
+  DETERMINED_NONDETERMINISTIC =  0x0000010,  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_RUNONDBSERVER =     0x0000020,  // node can run on the DB server in a cluster setup
+  DETERMINED_CHECKUNIQUENESS =   0x0000040,  // object's keys must be checked for uniqueness
+  DETERMINED_V8 =                0x0000080,  // node will use V8 internally
 
-  VALUE_SORTED = 128,    // node is a list and its members are sorted asc.
-  VALUE_CONSTANT = 256,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =
-      512,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_THROWS = 1024,            // node can throw an exception
-  VALUE_NONDETERMINISTIC = 2048,  // node produces non-deterministic result
-                                  // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =
-      4096,                  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS = 8192,  // object's keys must be checked for uniqueness
-
-  FLAG_KEEP_VARIABLENAME = 16384,  // node is a reference to a variable name,
-                                   // not the variable value (used in KEEP
-                                   // nodes)
-  FLAG_BIND_PARAMETER = 32768,  // node was created from a bind parameter
-  FLAG_FINALIZED = 65536,       // node has been finalized and should not be
-                                // modified; only set and checked in
-                                // maintainer mode
+  VALUE_SORTED =                 0x0000100,  // node is a list and its members are sorted asc.
+  VALUE_CONSTANT =               0x0000200,  // node value is constant (i.e. not dynamic)
+  VALUE_SIMPLE =                 0x0000400,  // node value is simple (i.e. for use in a simple expression)
+  VALUE_THROWS =                 0x0000800,  // node can throw an exception
+  VALUE_NONDETERMINISTIC =       0x0001000,  // node produces non-deterministic result (e.g. function call nodes)
+  VALUE_RUNONDBSERVER =          0x0002000,  // node can run on the DB server in a cluster setup
+  VALUE_CHECKUNIQUENESS =        0x0004000,  // object's keys must be checked for uniqueness
+  VALUE_V8 =                     0x0008000,  // node will use V8 internally
+  FLAG_KEEP_VARIABLENAME =       0x0010000,  // node is a reference to a variable name,  not the variable value (used in KEEP nodes)
+  FLAG_BIND_PARAMETER =          0x0020000,  // node was created from a bind parameter
+  FLAG_FINALIZED =               0x0040000,  // node has been finalized and should not be modified; only set and checked in maintainer mode
 };
 
 /// @brief enumeration of AST node value types
@@ -483,6 +474,10 @@ struct AstNode {
   /// @brief whether or not a node has a constant value
   /// this may also set the FLAG_CONSTANT or the FLAG_DYNAMIC flags for the node
   bool isConstant() const;
+  
+  /// @brief whether or not a node will use V8 internally
+  /// this may also set the FLAG_V8 flag for the node
+  bool willUseV8() const;
 
   /// @brief whether or not a node is a simple comparison operator
   bool isSimpleComparisonOperator() const;

@@ -33,22 +33,23 @@ namespace methods {
 /// Code to create and initialize databases
 /// Replaces ugrade-database.js for good
 struct UpgradeTasks {
-  static void setupGraphs(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupUsers(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createUsersIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static void addDefaultUsers(TRI_vocbase_t*, velocypack::Slice const&);
-  static void updateUserModels(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createModules(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createRouting(TRI_vocbase_t*, velocypack::Slice const&);
-  static void insertRedirections(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupAqlFunctions(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createFrontend(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupQueues(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupJobs(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createJobsIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupApps(TRI_vocbase_t*, velocypack::Slice const&);
-  static void createAppsIndex(TRI_vocbase_t*, velocypack::Slice const&);
-  static void setupAppBundles(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupGraphs(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupUsers(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createUsersIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool addDefaultUserOther(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool updateUserModels(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createModules(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupAnalyzers(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createRouting(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool insertRedirections(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupAqlFunctions(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createFrontend(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupQueues(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupJobs(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createJobsIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupApps(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool createAppsIndex(TRI_vocbase_t*, velocypack::Slice const&);
+  static bool setupAppBundles(TRI_vocbase_t*, velocypack::Slice const&);
 };
 }
 }

@@ -35,7 +35,6 @@
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/V8Executor.h"
-#include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
@@ -44,11 +43,15 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "V8/v8-globals.h"
+#include "V8/v8-vpack.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <v8.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -87,12 +90,12 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
     : _plan(plan),
       _ast(ast),
       _node(node),
-      _func(nullptr), // this will reset all pointers in the union
       _type(UNPROCESSED),
       _canThrow(true),
       _canRunOnDBServer(false),
       _isDeterministic(false),
-      _hasDeterminedAttributes(false),
+      _willUseV8(false),
+      _preparedV8Context(false),
       _attributes(),
       _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
@@ -120,7 +123,7 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
 
   TRI_ASSERT(_type != UNPROCESSED);
   _expressionContext = ctx;
-
+ 
   // and execute
   switch (_type) {
     case JSON: {
@@ -143,12 +146,6 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
       return _accessor->getDynamic(trx, ctx, mustDestroy);
     }
 
-    case V8: {
-      TRI_ASSERT(_func != nullptr);
-      ISOLATE;
-      return _func->execute(isolate, _ast->query(), trx, ctx, mustDestroy);
-    }
-
     case UNPROCESSED: {
       // fall-through to exception
     }
@@ -168,7 +165,7 @@ void Expression::replaceVariables(
   
   if ((_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC) && _accessor != nullptr) {
     _accessor->replaceVariable(replacements);
-  } else if (_type == V8) {
+  } else {
     freeInternals();
   }
 }
@@ -210,11 +207,6 @@ void Expression::freeInternals() noexcept {
       break;
     }
 
-    case V8:
-      delete _func;
-      _func = nullptr;
-      break;
-
     case SIMPLE:
     case UNPROCESSED: {
       // nothing to do
@@ -225,7 +217,7 @@ void Expression::freeInternals() noexcept {
 
 /// @brief reset internal attributes after variables in the expression were changed
 void Expression::invalidateAfterReplacements() {
-  if (_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC || _type == SIMPLE || _type == V8) {
+  if (_type == ATTRIBUTE_SYSTEM || _type == ATTRIBUTE_DYNAMIC || _type == SIMPLE) {
     freeInternals();
     // must even set back the expression type so the expression will be analyzed
     // again
@@ -235,7 +227,6 @@ void Expression::invalidateAfterReplacements() {
 
   const_cast<AstNode*>(_node)->clearFlags();
   _attributes.clear();
-  _hasDeterminedAttributes = false;
 }
 
 /// @brief invalidates an expression
@@ -243,10 +234,11 @@ void Expression::invalidateAfterReplacements() {
 /// used and destroyed in the same context. when a V8 function is used across
 /// multiple V8 contexts, it must be invalidated in between
 void Expression::invalidate() {
-  if (_type == V8) {
-    // V8 expressions need a special handling
-    freeInternals();
-  } 
+  // context may change next time, so "prepare for re-preparation"
+  _preparedV8Context = false;
+
+  // V8 expressions need a special handling
+  freeInternals();
   // we do not need to invalidate the other expression type
   // expression data will be freed in the destructor
 }
@@ -340,6 +332,7 @@ void Expression::initConstantExpression() {
   _canThrow = false;
   _canRunOnDBServer = true;
   _isDeterministic = true;
+  _willUseV8 = false;
   _data = nullptr;
   
   _type = JSON;
@@ -349,6 +342,7 @@ void Expression::initSimpleExpression() {
   _canThrow = _node->canThrow();
   _canRunOnDBServer = _node->canRunOnDBServer();
   _isDeterministic = _node->isDeterministic();
+  _willUseV8 = _node->willUseV8();
   
   _type = SIMPLE;
 
@@ -392,36 +386,6 @@ void Expression::initSimpleExpression() {
   }
 }
 
-void Expression::initV8Expression() {
-  _canThrow = _node->canThrow();
-  _canRunOnDBServer = _node->canRunOnDBServer();
-  _isDeterministic = _node->isDeterministic();
-  _func = nullptr;
-  
-  _type = V8;
-
-  if (_hasDeterminedAttributes) {
-    return;
-  }
-
-  // determine all top-level attributes used in expression only once
-  // as this might be expensive
-  bool isSafeForOptimization;
-  _attributes =
-      Ast::getReferencedAttributes(_node, isSafeForOptimization);
-
-  if (!isSafeForOptimization) {
-    _attributes.clear();
-    // unfortunately there are not only top-level attribute accesses but
-    // also other accesses, e.g. the index values or accesses of the whole
-    // value.
-    // for example, we cannot optimize LET x = a +1 or LET x = a[0], but LET
-    // x = a._key
-  }
-  
-  _hasDeterminedAttributes = true;
-}
-
 /// @brief analyze the expression (determine its type etc.)
 void Expression::initExpression() {
   TRI_ASSERT(_type == UNPROCESSED);
@@ -429,13 +393,10 @@ void Expression::initExpression() {
   if (_node->isConstant()) {
     // expression is a constant value
     initConstantExpression();
-  } else if (_node->isSimple()) {
+  } else {
     // expression is a simple expression
     initSimpleExpression();
-  } else {
-    // expression is a V8 expression
-    initV8Expression();
-  }
+  } 
   
   TRI_ASSERT(_type != UNPROCESSED);
 }
@@ -455,16 +416,7 @@ void Expression::buildExpression(transaction::Methods* trx) {
 
     _data = new uint8_t[static_cast<size_t>(builder->size())];
     memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
-  } else if (_type == V8 && _func == nullptr) {
-    // generate a V8 expression
-    _func = _ast->query()->v8Executor()->generateExpression(_node);
-
-    // optimizations for the generated function
-    if (_func != nullptr && !_attributes.empty()) {
-      // pass which variables do not need to be fully constructed
-      _func->setAttributeRestrictions(_attributes);
-    }
-  }
+  } 
 }
 
 /// @brief execute an expression of type SIMPLE, the convention is that
@@ -488,6 +440,8 @@ AqlValue Expression::executeSimpleExpression(
       return executeSimpleExpressionReference(node, trx, mustDestroy, doCopy);
     case NODE_TYPE_FCALL:
       return executeSimpleExpressionFCall(node, trx, mustDestroy);
+    case NODE_TYPE_FCALL_USER:
+      return executeSimpleExpressionFCallJS(node, trx, mustDestroy);
     case NODE_TYPE_RANGE:
       return executeSimpleExpressionRange(node, trx, mustDestroy);
     case NODE_TYPE_OPERATOR_UNARY_NOT:
@@ -880,13 +834,24 @@ AqlValue Expression::executeSimpleExpressionRange(
   return AqlValue(resultLow.toInt64(trx), resultHigh.toInt64(trx));
 }
 
-/// @brief execute an expression of type SIMPLE with FCALL
+/// @brief execute an expression of type SIMPLE with FCALL, dispatcher
 AqlValue Expression::executeSimpleExpressionFCall(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
-  mustDestroy = false;
   // only some functions have C++ handlers
   // check that the called function actually has one
+  auto func = static_cast<Function*>(node->getData());
+  if (func->implementation != nullptr && (!func->condition || func->condition())) {
+    return executeSimpleExpressionFCallCxx(node, trx, mustDestroy);
+  }
+  return executeSimpleExpressionFCallJS(node, trx, mustDestroy);
+}
+  
+/// @brief execute an expression of type SIMPLE with FCALL, CXX version
+AqlValue Expression::executeSimpleExpressionFCallCxx(
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
+
+  mustDestroy = false;
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func->implementation != nullptr);
 
@@ -916,8 +881,7 @@ AqlValue Expression::executeSimpleExpressionFCall(
         destroyParameters.push_back(1);
       } else {
         bool localMustDestroy;
-        AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
-        parameters.emplace_back(a);
+        parameters.emplace_back(executeSimpleExpression(arg, trx, localMustDestroy, false));
         destroyParameters.push_back(localMustDestroy ? 1 : 0);
       }
     }
@@ -943,6 +907,109 @@ AqlValue Expression::executeSimpleExpressionFCall(
     }
     throw;
   }
+}
+
+/// @brief execute an expression of type SIMPLE, JavaScript variant
+AqlValue Expression::executeSimpleExpressionFCallJS(
+    AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
+
+  prepareV8Context();
+  
+  auto member = node->getMemberUnchecked(0);
+  TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
+    
+  mustDestroy = false;
+  
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_ASSERT(isolate != nullptr);
+
+  {
+
+    v8::HandleScope scope(isolate); 
+    
+    std::string jsName;
+    size_t const n = member->numMembers();
+    size_t const callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
+
+    if (node->type == NODE_TYPE_FCALL_USER) {
+      // a call to a user-defined function
+      jsName = "FCALL_USER";
+      v8::Handle<v8::Array> params = v8::Array::New(isolate, static_cast<int>(n));
+
+      for (size_t i = 0; i < n; ++i) {
+        auto arg = member->getMemberUnchecked(i);
+
+        bool localMustDestroy;
+        AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
+        AqlValueGuard guard(a, localMustDestroy);
+
+        params->Set(static_cast<uint32_t>(i), a.toV8(isolate, trx));
+      }
+
+      // function name
+      args[0] = TRI_V8_STD_STRING(isolate, node->getString());
+      // call parameters
+      args[1] = params;
+    } else {
+      // a call to a built-in V8 function
+      auto func = static_cast<Function*>(node->getData());
+      jsName = "AQL_" + func->nonAliasedName;
+
+      for (size_t i = 0; i < n; ++i) {
+        auto arg = member->getMemberUnchecked(i);
+
+        if (arg->type == NODE_TYPE_COLLECTION) {
+          // parameter conversion for NODE_TYPE_COLLECTION here
+          args[i] = TRI_V8_ASCII_PAIR_STRING(isolate, arg->getStringValue(), arg->getStringLength());
+        } else {
+          bool localMustDestroy;
+          AqlValue a = executeSimpleExpression(arg, trx, localMustDestroy, false);
+          AqlValueGuard guard(a, localMustDestroy);
+
+          args[i] = a.toV8(isolate, trx);
+        }
+      }
+    }
+
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+    auto old = v8g->_query;
+    v8g->_query = static_cast<void*>(_ast->query());
+    TRI_DEFER(v8g->_query = old);
+
+    auto current = isolate->GetCurrentContext()->Global();
+
+    v8::Handle<v8::Value> module = current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL")); 
+    if (module.IsEmpty() || !module->IsObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find global _AQL module");
+    }
+
+    v8::Handle<v8::Value> function = v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
+    if (function.IsEmpty() || !function->IsFunction()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function '") + jsName + "'");
+    }
+
+    // actually call the V8 function
+    v8::TryCatch tryCatch;
+    v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, callArgs, args.get()); 
+    
+    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
+
+    if (result.IsEmpty() || result->IsUndefined()) {
+      return AqlValue(AqlValueHintNull());
+    }
+
+    transaction::BuilderLeaser builder(trx);
+    
+    int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  
+    mustDestroy = true; // builder = dynamic data
+    return AqlValue(builder.get());
+  }   
 }
 
 /// @brief execute an expression of type SIMPLE with NOT
@@ -1586,4 +1653,32 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   
   // this will convert NaN, +inf & -inf to null
   return AqlValue(AqlValueHintDouble(result));
+}
+
+/// @brief prepare a V8 context for execution for this expression
+/// this needs to be called once before executing any V8 function in this
+/// expression
+void Expression::prepareV8Context() {
+  if (_preparedV8Context) {
+    // already done
+    return;
+  }
+  
+  TRI_ASSERT(_ast->query()->trx() != nullptr);
+
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  TRI_ASSERT(isolate != nullptr);
+
+  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
+  
+  {
+    v8::HandleScope scope(isolate); 
+    v8::Handle<v8::Script> compiled = v8::Script::Compile(
+        TRI_V8_STD_STRING(isolate, body), TRI_V8_ASCII_STRING(isolate, "--script--"));
+  
+    if (!compiled.IsEmpty()) {
+      v8::Handle<v8::Value> func(compiled->Run());
+      _preparedV8Context = true;
+    }
+  }
 }

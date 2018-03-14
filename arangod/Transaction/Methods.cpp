@@ -829,6 +829,12 @@ Result transaction::Methods::finish(Result const& res) {
   return res;
 }
 
+/// @brief return the transaction id
+TRI_voc_tid_t transaction::Methods::tid() const {
+  TRI_ASSERT(_state != nullptr);
+  return _state->id();
+}
+
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
@@ -966,10 +972,9 @@ bool transaction::Methods::isDocumentCollection(
 /// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(
     std::string const& collectionName) const {
-  if (_state->isCoordinator()) {
-    return resolver()->getCollectionTypeCluster(collectionName);
-  }
-  return resolver()->getCollectionType(collectionName);
+  auto collection = resolver()->getCollection(collectionName);
+
+  return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
 /// @brief return the name of a collection
@@ -2878,46 +2883,30 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   Result res;
   bool visited = false;
   auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionEmbedded(ccid, name, type);
+    ? std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionEmbedded(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = resolver()->getDataSource(ccid);
-
-          if (!dataSource) {
-            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(*dataSource, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
       )
-    : std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionToplevel(ccid, name, type);
+    : std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionToplevel(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          auto dataSource = resolver()->getDataSource(ccid);
-
-          if (!dataSource) {
-            res = TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-
-            return false; // break on error
-          }
-
-          res = applyStateRegistrationCallbacks(*dataSource, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
@@ -2925,6 +2914,14 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     ;
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
+    // trigger exception as per the original behaviour (tests depend on this)
+    if (res.ok() && !visited) {
+      res = _state->isEmbeddedTransaction()
+          ? addCollectionEmbedded(cid, name, type)
+          : addCollectionToplevel(cid, name, type)
+          ;
+    }
+
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
   }
 
@@ -2935,11 +2932,10 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
 
   auto dataSource = resolver()->getDataSource(cid);
 
-  if (!dataSource) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
-
-  return applyStateRegistrationCallbacks(*dataSource, *_state);
+  return dataSource
+    ? applyStateRegistrationCallbacks(*dataSource, *_state)
+    : Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)
+    ;
 }
 
 /// @brief add a collection by id, with the name supplied
