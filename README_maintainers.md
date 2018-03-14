@@ -744,6 +744,7 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
    which the users can also invoke to generate the data in their installation. 
    This sort of example consists of three parts: 
     - @DATASET{datasetName} - the name of the dataset in the above mentioned `examples.js` to be instanciated before executing this query. 
+    - @EXPLAIN{TRUE|FALSE} - print execution plan of the AQL query. The default is `FALSE`.
     - A following AQL query which may either end at the end of the comment block, or at the optional next section:
     - @BV - verbatim object containing the bind parameters to be passed into the query. Will also be put into the generated snippet.
 
