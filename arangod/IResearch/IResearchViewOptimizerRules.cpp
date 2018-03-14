@@ -250,13 +250,12 @@ bool IResearchViewConditionFinder::handleFilterCondition(
         // expressions represented by the variables
         var = it.second->clone(_plan->getAst());
 
-        auto func = [&](AstNode* node, void* data) -> AstNode* {
+        auto func = [this](AstNode* node) -> AstNode* {
           if (node->type == NODE_TYPE_REFERENCE) {
-            auto plan = static_cast<ExecutionPlan*>(data);
             auto variable = static_cast<Variable*>(node->getData());
 
             if (variable != nullptr) {
-              auto setter = plan->getVarSetBy(variable->id);
+              auto setter = _plan->getVarSetBy(variable->id);
 
               if (setter != nullptr && setter->getType() == EN::CALCULATION) {
                 auto s = static_cast<CalculationNode*>(setter);
@@ -272,7 +271,7 @@ bool IResearchViewConditionFinder::handleFilterCondition(
           return node;
         };
 
-        var = Ast::traverseAndModify(var, func, _plan);
+        var = Ast::traverseAndModify(var, func);
       }
       condition.andCombine(var);
       foundCondition = true;
