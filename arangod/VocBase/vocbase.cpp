@@ -1024,7 +1024,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
   auto dataSource = lookupDataSource(id);
 
-  return dataSource.category() == LogicalCollection::category()
+  return dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -1040,7 +1040,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
   auto dataSource = lookupDataSource(nameOrId);
 
-  return dataSource.category() == LogicalCollection::category()
+  return dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -1060,9 +1060,9 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
       ;
   #else
     return itr == _dataSourceByUuid.end()
-           || dataSource.category() != LogicalCollection::category()
+           || itr->second->category() != LogicalCollection::category()
       ? nullptr
-      : std::static_pointer_cast<LogicalCollection>(dataSource)
+      : std::static_pointer_cast<LogicalCollection>(itr->second);
   #endif
 }
 
