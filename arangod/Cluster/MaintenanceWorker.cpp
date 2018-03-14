@@ -111,7 +111,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(MaintenanceAction::WAITING);
         tempPtr=_curAction;
         _curAction=_curAction->getPreAction();
-        _curAction->setNextAction(tempPtr);
+        _curAction->setPostAction(tempPtr);
         _loopState = eRUN_FIRST;
       } // if
     } else {
@@ -131,8 +131,8 @@ void MaintenanceWorker::nextState(bool actionMore) {
         _curAction->setState(MaintenanceAction::COMPLETE);
 
         // continue execution with "next" action tied to this one
-        if (_curAction->getNextAction()) {
-          _curAction = _curAction->getNextAction();
+        if (_curAction->getPostAction()) {
+          _curAction = _curAction->getPostAction();
           _curAction->clearPreAction();
           _loopState = (MaintenanceAction::WAITING == _curAction->getState() ? eRUN_NEXT : eRUN_FIRST);
           _curAction->setState(MaintenanceAction::EXECUTING);
@@ -147,7 +147,7 @@ void MaintenanceWorker::nextState(bool actionMore) {
         do {
           failAction->setState(MaintenanceAction::FAILED);
           failAction->endStats();
-          failAction=failAction->getNextAction();
+          failAction=failAction->getPostAction();
         } while(failAction);
         _loopState = (_directAction ? eSTOP : eFIND_ACTION);
       } // else

@@ -98,9 +98,11 @@ class MaintenanceAction {
     READY = 1,     // waiting for a worker on the deque
     EXECUTING = 2, // user or worker thread currently executing
     WAITING = 3,   // initiated a pre-task, waiting for its completion
-    PAUSED = 4,    // (not implemented) user paused task
-    COMPLETE = 5,  // task completed successfully
-    FAILED = 6,    // task failed, no longer executing
+    WAITINGPRE = 4,// parent task created, about to execute on parent's thread
+    WAITINGPOST = 5,// parent task created, will execute after parent's success
+    PAUSED = 6,    // (not implemented) user paused task
+    COMPLETE = 7,  // task completed successfully
+    FAILED = 8,    // task failed, no longer executing
   };
 
   /// @brief execution finished successfully or failed ... and race timer expired
@@ -133,11 +135,19 @@ class MaintenanceAction {
   /// @brief Retrieve pointer to action that should run before this one
   MaintenanceActionPtr_t getPreAction() {return _preAction;};
 
+  /// @brief Initiate a preAction
+  void createPreAction(std::shared_ptr<ActionDescription_t> const & description,
+                      std::shared_ptr<VPackBuilder> const & properties);
+
+  /// @brief Initiate a postAction
+  void createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+                      std::shared_ptr<VPackBuilder> const & properties);
+
   /// @brief Retrieve pointer to action that should run directly after this one
-  MaintenanceActionPtr_t getNextAction() {return _nextAction;};
+  MaintenanceActionPtr_t getPostAction() {return _postAction;};
 
   /// @brief Save pointer to successor action
-  void setNextAction(MaintenanceActionPtr_t next) {_nextAction=next;}
+  void setPostAction(MaintenanceActionPtr_t post) {_postAction=post;}
 
   /// @brief hash value of ActionDescription_t
   /// @return uint64_t hash
@@ -146,6 +156,9 @@ class MaintenanceAction {
   /// @brief hash value of ActionDescription_t
   /// @return uint64_t hash
   uint64_t id() const {return _id;};
+
+  /// @brief add VPackObject to supplied builder with info about this action
+  virtual void toVelocityPack(VPackBuilder & builder);
 
   /// @brief Returns json array of object contents for status reports
   ///  Thread safety of this function is questionable for some member objects
@@ -172,9 +185,9 @@ protected:
 
   std::atomic<ActionState> _state;
 
-  // NOTE: preAction should only be set within first() or next(), not construction
+  // NOTE: preAction should only be set within first() or post(), not construction
   MaintenanceActionPtr_t _preAction;
-  MaintenanceActionPtr_t _nextAction;
+  MaintenanceActionPtr_t _postAction;
 
   // times for user reporting (and _actionDone used by done() to prevent
   //  race conditions of same task executing twice

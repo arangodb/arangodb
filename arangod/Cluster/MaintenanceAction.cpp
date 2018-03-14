@@ -82,6 +82,45 @@ bool MaintenanceAction::done() const {
 } // MaintenanceAction::done
 
 
+/// @brief Initiate a new action that will start immediately, pausing this action
+void MaintenanceAction::createPreAction(std::shared_ptr<ActionDescription_t> const & description,
+                                       std::shared_ptr<VPackBuilder> const & properties) {
+
+  _preAction = _feature.preAction(description, properties);
+
+  // shift from EXECUTING to WAITINGPRE ... EXECUTING is set to block other
+  //  workers from picking it up
+  if (_preAction) {
+    setState(WAITINGPRE);
+  } else {
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters.");
+  } // else
+
+  return;
+
+} // MaintenanceAction::createPreAction
+
+
+/// @brief Create a new action that will start after this action successfully completes
+void MaintenanceAction::createPostAction(std::shared_ptr<ActionDescription_t> const & description,
+                                       std::shared_ptr<VPackBuilder> const & properties) {
+
+  // preAction() sets up what we need
+  _postAction = _feature.preAction(description, properties);
+
+  // shift from EXECUTING to WAITINGPOST ... EXECUTING is set to block other
+  //  workers from picking it up
+  if (_postAction) {
+    setState(WAITINGPOST);
+  } else {
+    _result.reset(TRI_ERROR_BAD_PARAMETER, "preAction rejected parameters for _postAction.");
+  } // else
+
+  return;
+
+} // MaintenanceAction::createPostAction
+
+
 void MaintenanceAction::startStats() {
 
   _actionStarted = std::chrono::system_clock::now();
@@ -108,6 +147,30 @@ void MaintenanceAction::endStats() {
   return;
 
 } // MaintenanceAction::endStats
+
+
+void MaintenanceAction::toVelocityPack(VPackBuilder & builder) {
+  VPackObjectBuilder ob(&builder);
+
+  builder.add("id", VPackValue(_id));
+  builder.add("state", VPackValue(_state));
+  builder.add("progress", VPackValue(_progress));
+#if 0  /// hmm, several should be reported as duration instead of time_point
+  builder.add("created", VPackValue(_actionCreated.count()));
+  builder.add("started", VPackValue(_actionStarted.count()));
+  builder.add("lastStat", VPackValue(_actionLastStat.count()));
+  builder.add("done", VPackValue(_actionDone.count()));
+#endif
+  builder.add("result", VPackValue(_result.errorNumber()));
+  builder.add(VPackValue("description"));
+
+  { VPackObjectBuilder desc(&builder);
+    for (auto desc : *(_description.get()) ) {
+      builder.add(desc.first, VPackValue(desc.second));
+    } //for
+  }
+
+} // MaintanceAction::toVelocityPack
 
 
 } // namespace maintenance

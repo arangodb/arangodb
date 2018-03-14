@@ -38,8 +38,7 @@ namespace arangodb {
 MaintenanceFeature::MaintenanceFeature(application_features::ApplicationServer* server)
   : ApplicationFeature(server, "Maintenance") {
 
-
-  startsAfter("EngineSelector");    // ??? what should this be
+//  startsAfter("EngineSelector");    // ??? what should this be
 //  startsBefore("StorageEngine");
 
   init();
@@ -143,12 +142,12 @@ void MaintenanceFeature::stop() {
 } // MaintenanceFeature::stop
 
 
-  /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
-  ///  not yet:  ActionDescription parameter will be MOVED to new object.
-  Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
-                                       std::shared_ptr<VPackBuilder> const & properties,
-                                       bool executeNow) {
+/// @brief This is the  API for creating an Action and executing it.
+///  Execution can be immediate by calling thread, or asynchronous via thread pool.
+///  not yet:  ActionDescription parameter will be MOVED to new object.
+Result MaintenanceFeature::addAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                     std::shared_ptr<VPackBuilder> const & properties,
+                                     bool executeNow) {
   Result result;
 
   // the underlying routines are believed to be safe and throw free,
@@ -194,6 +193,14 @@ void MaintenanceFeature::stop() {
   return result;
 
 } // MaintenanceFeature::addAction
+
+
+maintenance::MaintenanceActionPtr_t MaintenanceFeature::preAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
+                                                                  std::shared_ptr<VPackBuilder> const & properties) {
+
+  return createAction(description, properties, true);
+
+} // MaintenanceFeature::preAction
 
 
 maintenance::MaintenanceActionPtr_t MaintenanceFeature::createAction(std::shared_ptr<maintenance::ActionDescription_t> const & description,
@@ -345,4 +352,22 @@ maintenance::MaintenanceActionPtr_t MaintenanceFeature::findReadyAction() {
 
 } // MaintenanceFeature::findReadyAction
 
+
+VPackBuilder  MaintenanceFeature::toVelocityPack() const {
+  VPackBuilder vb;
+  READ_LOCKER(rLock, _actionRegistryLock);
+
+  { VPackArrayBuilder ab(&vb);
+    for (auto action : _actionRegistry ) {
+      action->toVelocityPack(vb);
+    } // for
+
+  }
+  return vb;
+
+} // MaintenanceFeature::toVelocityPack
+#if 0
+std::string MaintenanceFeature::toJson(VPackBuilder & builder) {
+} // MaintenanceFeature::toJson
+#endif
 } // namespace arangodb
