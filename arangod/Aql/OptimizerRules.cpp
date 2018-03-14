@@ -4704,7 +4704,7 @@ static bool applyFulltextOptimization(EnumerateListNode* elnode,
     coll = colls->add(name, AccessMode::Type::READ);
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(vocbase->lookupCollection(name));
+      coll->setCollection(vocbase->lookupCollection(name).get());
       // FIXME: does this need to happen in the coordinator?
       plan->getAst()->query()->trx()->addCollectionAtRuntime(name);
     }
