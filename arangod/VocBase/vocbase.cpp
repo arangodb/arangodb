@@ -1024,8 +1024,9 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
   auto dataSource = lookupDataSource(id);
 
-  return dataSource->category() == LogicalCollection::category()
-    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  return dataSource && dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource)
+    : nullptr;
   #endif
 }
 
@@ -1040,8 +1041,9 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
   #else
   auto dataSource = lookupDataSource(nameOrId);
 
-  return dataSource->category() == LogicalCollection::category()
-    ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
+  return dataSource && dataSource->category() == LogicalCollection::category()
+    ? std::static_pointer_cast<LogicalCollection>(dataSource)
+    : nullptr;
   #endif
 }
 
@@ -1056,8 +1058,7 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return itr == _dataSourceByUuid.end()
       ? nullptr
-      : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second)
-      ;
+      : std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second);
   #else
     return itr == _dataSourceByUuid.end()
            || itr->second->category() != LogicalCollection::category()
@@ -1113,18 +1114,34 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const noexcept {
-  return std::dynamic_pointer_cast<arangodb::LogicalView>(
-    lookupDataSource(id)
-  );
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalView>(
+      lookupDataSource(id)
+    );
+  #else
+  auto dataSource = lookupDataSource(id);
+
+  return dataSource && dataSource->category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource)
+    : nullptr;
+  #endif
 }
 
 /// @brief looks up a view by name or stringified cid or uuid
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const noexcept{
-  return std::dynamic_pointer_cast<arangodb::LogicalView>(
-    lookupDataSource(nameOrId)
-  );
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    return std::dynamic_pointer_cast<arangodb::LogicalView>(
+      lookupDataSource(nameOrId)
+    );
+  #else
+  auto dataSource = lookupDataSource(nameOrId);
+
+  return dataSource && dataSource->category() == LogicalView::category()
+    ? std::static_pointer_cast<LogicalView>(dataSource)
+    : nullptr;
+  #endif
 }
 
 /// @brief creates a new collection from parameter set
