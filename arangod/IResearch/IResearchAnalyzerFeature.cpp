@@ -943,7 +943,7 @@ void IResearchAnalyzerFeature::start() {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to get system database while starting feature 'IResearchAnalyzer'";
       // assume configuration collection exists
     } else {
-      auto* collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
+      auto collection = vocbase->lookupCollection(ANALYZER_COLLECTION_NAME);
 
       if (!collection) {
         auto* engine = arangodb::EngineSelectorFeature::ENGINE;

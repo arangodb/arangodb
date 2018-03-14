@@ -129,7 +129,8 @@ int RocksDBReplicationContext::bindCollection(
       ((_collection->name() != collectionIdentifier) &&
        std::to_string(_collection->cid()) != collectionIdentifier &&
        _collection->globallyUniqueId() != collectionIdentifier)) {
-    _collection = _trx->vocbase()->lookupCollection(collectionIdentifier);
+    _collection = _trx->vocbase()->lookupCollection(collectionIdentifier).get();
+
     if (_collection == nullptr) {
       return TRI_ERROR_BAD_PARAMETER;
     }
