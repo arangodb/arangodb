@@ -1407,11 +1407,9 @@ struct StreamCursorTest : public BenchmarkOperation {
     
     size_t const mod = globalCounter % 2;
 
-    if (mod == 0) {
+    if (globalCounter == 0) {
       TRI_AppendStringStringBuffer(buffer,
-                                  "{\"query\":\"INSERT { _key: \\\"test");
-      TRI_AppendInt64StringBuffer(buffer, (int64_t)globalCounter);
-      TRI_AppendStringStringBuffer(buffer, "\\\"");
+                                  "{\"query\":\"FOR i IN 1..500 INSERT { _key: TO_STRING(i)");
 
       uint64_t const n = ARANGOBENCH->complexity();
       for (uint64_t i = 1; i <= n; ++i) {
@@ -1422,7 +1420,21 @@ struct StreamCursorTest : public BenchmarkOperation {
 
       TRI_AppendStringStringBuffer(buffer, " } INTO ");
       TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
-      TRI_AppendStringStringBuffer(buffer, "\"}");
+      TRI_AppendStringStringBuffer(buffer, "\"}"); //OPTIONS { ignoreErrors: true }");
+    } else if (mod == 0) {
+      TRI_AppendStringStringBuffer(buffer,
+                                  "{\"query\":\"UPDATE { _key: \\\"1\\\" } WITH { \\\"foo\\\":1");
+
+      uint64_t const n = ARANGOBENCH->complexity();
+      for (uint64_t i = 1; i <= n; ++i) {
+        TRI_AppendStringStringBuffer(buffer, ",\\\"value");
+        TRI_AppendUInt64StringBuffer(buffer, i);
+        TRI_AppendStringStringBuffer(buffer, "\\\":true");
+      }
+
+      TRI_AppendStringStringBuffer(buffer, " } INTO ");
+      TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
+      TRI_AppendStringStringBuffer(buffer, " OPTIONS { ignoreErrors: true }\"}");
     } else {
       TRI_AppendStringStringBuffer(buffer,
                                   "{\"query\":\"FOR doc IN ");
