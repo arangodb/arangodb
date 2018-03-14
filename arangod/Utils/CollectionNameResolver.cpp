@@ -42,7 +42,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   #else
   auto dataSource = getDataSource(id);
 
-  return dataSource.category() == LogicalCollection::category()
+  return dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -55,7 +55,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   #else
   auto dataSource = getDataSource(nameOrId);
 
-  return dataSource.category() == LogicalCollection::category()
+  return dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -378,7 +378,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   #else
   auto dataSource = getDataSource(id);
 
-  return dataSource.category() == LogicalView::category()
+  return dataSource->category() == LogicalView::category()
     ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }
@@ -391,7 +391,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   #else
   auto dataSource = getDataSource(nameOrId);
 
-  return dataSource.category() == LogicalView::category()
+  return dataSource->category() == LogicalView::category()
     ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }
