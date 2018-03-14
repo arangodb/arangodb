@@ -103,10 +103,13 @@ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief refetch the value, and call the callback function with it, 
   /// this is called whenever an HTTP request is received from the agency
-  /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry).
+  /// (see RestAgencyCallbacksHandler and AgencyCallbackRegistry). If the
+  /// forceCheck flag is set, a check is initiated even if the value has
+  /// not changed. This is needed in case other outside conditions could
+  /// have changed (like a Plan change).
   //////////////////////////////////////////////////////////////////////////////
 
-  void refetchAndUpdate(bool needToAcquireMutex = true);
+  void refetchAndUpdate(bool needToAcquireMutex, bool forceCheck);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wait until a callback is received or a timeout has happened
@@ -131,7 +134,7 @@ private:
 
   // Compare last value and newly read one and call execute if the are
   // different:
-  void checkValue(std::shared_ptr<VPackBuilder>);
+  void checkValue(std::shared_ptr<VPackBuilder>, bool forceCheck);
 };
 
 }
