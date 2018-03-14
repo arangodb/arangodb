@@ -228,7 +228,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice const& doc) {
     VPackCustomTypeHandler* ch = _vpackOptions.customTypeHandler;
 
-    builder.openObject(!useExt);
+    builder.openObject(true);
     // set type
     builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
     if (useExt) { // types will be converted outside
@@ -240,7 +240,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
                                                        builder, builder.options, true, true, true);*/
       // Fast object sanitization only on first level (effectively only on _id)
       TRI_ASSERT(doc.isObject());
-      builder.add("data", VPackValue(VPackValueType::Object, !useExt));
+      builder.add("data", VPackValue(VPackValueType::Object, true));
       for (auto const& it : VPackObjectIterator(doc, true)) {
         TRI_ASSERT(!it.value.isExternal());
         VPackValueLength l;
