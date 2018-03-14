@@ -65,6 +65,11 @@ const benchTodos = [{
   'test-case': 'version',
   'async': 'true'
 }, {
+  'requests': '10000',
+  'concurrency': '3',
+  'test-case': 'stream-cursor',
+  'complexity': '4'
+}, {
   'requests': '100000',
   'concurrency': '2',
   'test-case': 'shapes',
