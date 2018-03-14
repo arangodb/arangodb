@@ -1397,6 +1397,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: called";
+
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
@@ -1422,6 +1424,7 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: found logfile id: " << logfile->id();
         return logfile;
       }
 
