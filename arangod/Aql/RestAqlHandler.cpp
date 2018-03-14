@@ -385,30 +385,16 @@ void RestAqlHandler::createQueryFromString() {
 // "shutdown".
 // The body must be a Json with the following attributes:
 // For the "getSome" operation one has to give:
-//   "atLeast":
-//   "atMost": both must be positive integers, the cursor returns never
-//             more than "atMost" items and tries to return at least
-//             "atLeast". Note that it is possible to return fewer than
-//             "atLeast", for example if there are only fewer items
-//             left. However, the implementation may return fewer items
-//             than "atLeast" for internal reasons, for example to avoid
-//             excessive copying. The result is the JSON representation of an
-//             AqlItemBlock.
-//             If "atLeast" is not given it defaults to 1, if "atMost" is not
-//             given it defaults to ExecutionBlock::DefaultBatchSize.
+//   "atMost": must be a positive integer, the cursor returns never
+//             more than "atMost" items. The result is the JSON representation 
+//             of an AqlItemBlock.
+//             If "atMost" is not given it defaults to ExecutionBlock::DefaultBatchSize.
 // For the "skipSome" operation one has to give:
-//   "atLeast":
-//   "atMost": both must be positive integers, the cursor skips never
-//             more than "atMost" items and tries to skip at least
-//             "atLeast". Note that it is possible to skip fewer than
-//             "atLeast", for example if there are only fewer items
-//             left. However, the implementation may skip fewer items
-//             than "atLeast" for internal reasons, for example to avoid
-//             excessive copying. The result is a JSON object with a
+//   "atMost": must be a positive integer, the cursor skips never
+//             more than "atMost" items. The result is a JSON object with a
 //             single attribute "skipped" containing the number of
 //             skipped items.
-//             If "atLeast" is not given it defaults to 1, if "atMost" is not
-//             given it defaults to ExecutionBlock::DefaultBatchSize.
+//             If "atMost" is not given it defaults to ExecutionBlock::DefaultBatchSize.
 // For the "skip" operation one should give:
 //   "number": must be a positive integer, the cursor skips as many items,
 //             possibly exhausting the cursor.
@@ -731,20 +717,18 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
-        auto atLeast =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
-          items.reset(query->engine()->getSome(atLeast, atMost));
+          items.reset(query->engine()->getSome(atMost));
         } else {
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
               block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
           }
-          items.reset(block->getSomeForShard(atLeast, atMost, shardId));
+          items.reset(block->getSomeForShard(atMost, shardId));
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
@@ -760,14 +744,12 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         }
       } else if (operation == "skipSome") {
-        auto atLeast =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         try {
           if (shardId.empty()) {
-            skipped = query->engine()->skipSome(atLeast, atMost);
+            skipped = query->engine()->skipSome(atMost);
           } else {
             auto block =
                 static_cast<BlockWithClients*>(query->engine()->root());
@@ -775,7 +757,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                 block->getPlanNode()->getType() != ExecutionNode::DISTRIBUTE) {
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected node type");
             }
-            skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+            skipped = block->skipSomeForShard(atMost, shardId);
           }
         } catch (std::exception const& ex) {
           generateError(rest::ResponseCode::SERVER_ERROR,

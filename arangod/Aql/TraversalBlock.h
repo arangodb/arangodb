@@ -53,12 +53,10 @@ class TraversalBlock final : public ExecutionBlock {
   int shutdown(int errorCode) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
-  // skip between atLeast and atMost, returns the number actually skipped . . .
-  // will only return less than atLeast if there aren't atLeast many
-  // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  // skip atMost documents, returns the number actually skipped . . .
+  size_t skipSome(size_t atMost) override final;
 
  private:
 

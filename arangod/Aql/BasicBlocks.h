@@ -64,7 +64,7 @@ class SingletonBlock final : public ExecutionBlock {
 
   void buildWhitelist();
 
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _inputRegisterValues
@@ -86,9 +86,9 @@ class FilterBlock final : public ExecutionBlock {
   bool takeItem(AqlItemBlock* items, size_t index) const;
 
   /// @brief internal function to get another block
-  bool getBlock(size_t atLeast, size_t atMost);
+  bool getBlock(size_t atMost);
 
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   bool hasMore() override final;
@@ -126,7 +126,7 @@ class LimitBlock final : public ExecutionBlock {
 
   int initializeCursor(AqlItemBlock* items, size_t pos) override final;
 
-  virtual int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  virtual int getOrSkipSome(size_t atMost, bool skipping,
                             AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief _offset
@@ -153,7 +153,7 @@ class ReturnBlock final : public ExecutionBlock {
   ~ReturnBlock() {}
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
   /// @brief make the return block return the results inherited from above,
   /// without creating new blocks
@@ -186,7 +186,7 @@ class NoResultsBlock final : public ExecutionBlock {
   int64_t remaining() override final { return 0; }
 
  private:
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 };
 
