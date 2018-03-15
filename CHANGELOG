@@ -1,8 +1,11 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
-* fixed the bahaviour of clusterinfo when waiting for current to catch
+* fixed issue #4843: Query-Result has more Docs than the Collection itself  
+
+* fixed the behavior of ClusterInfo when waiting for current to catch
   up with plan in create collection.
+
 * fixed issue #4827: COLLECT on edge _to field doesn't group distinct values as expected (MMFiles)
 
 
