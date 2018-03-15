@@ -27,12 +27,11 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
-#include "Geo/Shapes.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/LocalDocumentId.h"
 
 #include <rocksdb/slice.h>
-
+#include <s2/s2point.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -55,7 +54,7 @@ class RocksDBValue {
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
-  static RocksDBValue S2Value(geo::Coordinate const& c);
+  static RocksDBValue S2Value(S2Point const& c);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -102,7 +101,7 @@ class RocksDBValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
-  static geo::Coordinate centroid(rocksdb::Slice const&);
+  static S2Point centroid(rocksdb::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -135,7 +134,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
-  RocksDBValue(RocksDBEntryType type, double lat, double lon);
+  RocksDBValue(S2Point const&);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);

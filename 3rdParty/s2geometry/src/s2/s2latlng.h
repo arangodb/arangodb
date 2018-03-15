@@ -122,6 +122,12 @@ class S2LatLng {
   bool operator>(const S2LatLng& o) const { return coords_ > o.coords_; }
   bool operator<=(const S2LatLng& o) const { return coords_ <= o.coords_; }
   bool operator>=(const S2LatLng& o) const { return coords_ >= o.coords_; }
+  
+  S2LatLng& operator=(S2LatLng const& other) {
+    coords_.x(other.coords_.x());
+    coords_.y(other.coords_.y());
+    return *this;
+  }
 
   bool ApproxEquals(const S2LatLng& o,
                     S1Angle max_error = S1Angle::Radians(1e-15)) const {

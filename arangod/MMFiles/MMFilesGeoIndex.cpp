@@ -108,7 +108,8 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
 
 bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
-    createCursor(_params.origin.latitude, _params.origin.longitude);
+    createCursor(_params.origin.lat().degrees(),
+                 _params.origin.lng().degrees());
 
     if (!_cursor) {
       // actually validate that we got a valid cursor
@@ -198,7 +199,7 @@ IndexIterator* MMFilesGeoIndex::iteratorForCondition(
   params.sorted = true;
   params.ascending = true;
   geo_index::Index::parseCondition(node, reference, params);
-  TRI_ASSERT(params.origin.isValid());
+  TRI_ASSERT(params.origin.is_valid());
   TRI_ASSERT(params.minDistance == 0);
   TRI_ASSERT(params.filterType == geo::FilterType::NONE);
 

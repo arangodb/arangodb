@@ -25,6 +25,7 @@
 
 #include <cmath>
 
+#include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
 #include "Geo/ShapeContainer.h"
@@ -91,7 +92,7 @@ struct RegionCoverParams {
 
 struct QueryParams {
   QueryParams() noexcept
-      : origin(geo::Coordinate::Invalid()),
+      : origin(S2LatLng::Invalid()),
         cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
   /// This query only needs to support points no polygons etc
@@ -116,7 +117,7 @@ struct QueryParams {
   bool ascending = true;
 
   /// @brief Centroid from which to sort by distance
-  geo::Coordinate origin;
+  S2LatLng origin;
 
   // =================== Hints ===================
 
@@ -146,9 +147,9 @@ struct QueryParams {
   double maxDistanceRad() const noexcept;
 
   /// some defaults for queries
+  static constexpr int queryMaxCoverCells = 20;
   static constexpr int queryWorstLevel = 4;
   static constexpr int queryBestLevel = 23;  // about 1m
-  static constexpr int queryMaxCoverCells = 20;
 };
 
 }  // namespace geo

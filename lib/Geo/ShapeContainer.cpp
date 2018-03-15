@@ -85,27 +85,19 @@ void ShapeContainer::resetCoordinates(double lat, double lon) {
   _data = new S2PointRegion(S2LatLng::FromDegrees(lat, lon).ToPoint());
 }
 
-geo::Coordinate ShapeContainer::centroid() const noexcept {
+S2Point ShapeContainer::centroid() const noexcept {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
-      S2Point const& c = (static_cast<S2PointRegion const*>(_data))->point();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      return (static_cast<S2PointRegion const*>(_data))->point();
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      S2Point const& c = (static_cast<S2Polyline const*>(_data))->GetCentroid();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      return (static_cast<S2Polyline const*>(_data))->GetCentroid();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2Point const& c = static_cast<S2LatLngRect const*>(_data)->GetCentroid();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      return static_cast<S2LatLngRect const*>(_data)->GetCentroid();
     }
     case ShapeContainer::Type::S2_POLYGON: {
-      S2Point c = (static_cast<S2Polygon const*>(_data))->GetCentroid();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      return (static_cast<S2Polygon const*>(_data))->GetCentroid();
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion const* pts =
@@ -114,9 +106,9 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
       for (int k = 0; k < pts->num_points(); k++) {
         c += pts->point(k);
       }
-      c /= pts->num_points();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      c = (c / pts->num_points());
+      c.Norm();
+      return c; // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* lines =
@@ -126,13 +118,13 @@ geo::Coordinate ShapeContainer::centroid() const noexcept {
         c += lines->line(k).GetCentroid();
       }
       c /= lines->num_lines();
-      return Coordinate(S2LatLng::Latitude(c).degrees(),
-                        S2LatLng::Longitude(c).degrees());
+      c.Norm();
+      return c;
     }
 
     case ShapeContainer::Type::EMPTY:
-      LOG_TOPIC(ERR, Logger::FIXME) << "Invalid GeoShape usage";
-      return geo::Coordinate::Invalid();
+      TRI_ASSERT(false);
+      return S2Point();
   }
 }
 
@@ -182,18 +174,8 @@ std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
   return cover;
 }
 
-double ShapeContainer::distanceFrom(geo::Coordinate const& other) const
-    noexcept {
-  geo::Coordinate centroid = this->centroid();
-  double p1 = centroid.latitude * (M_PI / 180.0);
-  double p2 = other.latitude * (M_PI / 180.0);
-  double d1 = (other.latitude - centroid.latitude) * (M_PI / 180.0);
-  double d2 = (other.longitude - centroid.longitude) * (M_PI / 180.0);
-  double a =
-      std::sin(d1 / 2.0) * std::sin(d1 / 2.0) +
-      std::cos(p1) * std::cos(p2) * std::sin(d2 / 2.0) * std::sin(d2 / 2.0);
-  double c = 2.0 * std::atan2(std::sqrt(a), std::sqrt(1.0 - a));
-  return c * geo::kEarthRadiusInMeters;
+double ShapeContainer::distanceFrom(S2Point const& other) const noexcept {
+  return centroid().Angle(other) * geo::kEarthRadiusInMeters;
 }
 
 /// @brief may intersect cell
@@ -207,22 +189,22 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   if (_data == nullptr) {
     return;
   }
+  
+  S2Point origin = this->centroid();
   S2LatLngRect rect = _data->GetRectBound();
-  geo::Coordinate orig = centroid();
-  S2LatLng ll = S2LatLng::FromDegrees(orig.latitude, orig.longitude);
+  S2LatLng ll(origin);
   S1Angle a1(ll, rect.lo());
   S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
   S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
   S1Angle a4(ll, rect.hi());
 
-  qp.origin = orig;
+  qp.origin = ll;
   qp.maxDistance = std::max(std::max(a1.radians(), a2.radians()),
                             std::max(a3.radians(), a4.radians())) *
                    kEarthRadiusInMeters;
 }
 
-bool ShapeContainer::contains(Coordinate const* cc) const {
-  S2Point pp = S2LatLng::FromDegrees(cc->latitude, cc->longitude).ToPoint();
+bool ShapeContainer::contains(S2Point const& pp) const {
   if (_type == ShapeContainer::Type::EMPTY) {
     return false;
   }
@@ -419,10 +401,6 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
       TRI_ASSERT(false);
       return false;
   }
-}
-
-bool ShapeContainer::intersects(geo::Coordinate const* cc) const {
-  return contains(cc);  // same
 }
 
 bool ShapeContainer::intersects(S2Polyline const* other) const {

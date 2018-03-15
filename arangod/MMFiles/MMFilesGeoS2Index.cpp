@@ -61,7 +61,7 @@ struct NearIterator final : public IndexIterator {
   char const* typeName() const override { return "s2-index-iterator"; }
 
   /// internal retrieval loop
-  inline bool nextToken(std::function<bool(LocalDocumentId token)>&& cb,
+  inline bool nextToken(std::function<bool(geo_index::Document const& gdoc)>&& cb,
                         size_t limit) {
     if (_near.isDone()) {
       // we already know that no further results will be returned by the index
@@ -71,33 +71,7 @@ struct NearIterator final : public IndexIterator {
 
     while (limit > 0 && !_near.isDone()) {
       while (limit > 0 && _near.hasNearest()) {
-        if (cb(_near.nearest().document)) {
-          limit--;
-        }
-        _near.popNearest();
-      }
-      // need to fetch more geo results
-      if (limit > 0 && !_near.isDone()) {
-        TRI_ASSERT(!_near.hasNearest());
-        performScan();
-      }
-    }
-    return !_near.isDone();
-  }
-
-  inline bool nextTokenWithDistance(
-      std::function<bool(LocalDocumentId token, double distRad)>&& cb,
-      size_t limit) {
-    if (_near.isDone()) {
-      // we already know that no further results will be returned by the index
-      TRI_ASSERT(!_near.hasNearest());
-      return false;
-    }
-
-    while (limit > 0 && !_near.isDone()) {
-      while (limit > 0 && _near.hasNearest()) {
-        auto nearest = _near.nearest();
-        if (cb(nearest.document, nearest.distRad)) {
+        if (cb(_near.nearest())) {
           limit--;
         }
         _near.popNearest();
@@ -113,8 +87,8 @@ struct NearIterator final : public IndexIterator {
 
   bool nextDocument(DocumentCallback const& cb, size_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& token) -> bool {
-          if (!_collection->readDocument(_trx, token, *_mmdr)) {
+        [this, &cb](geo_index::Document const& gdoc) -> bool {
+          if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
             return false;  // skip
           }
           VPackSlice doc(_mmdr->vpack());
@@ -133,7 +107,7 @@ struct NearIterator final : public IndexIterator {
               return false;  // skip
             }
           }
-          cb(token, doc);  // return result
+          cb(gdoc.token, doc);  // return result
           return true;
         },
         limit);
@@ -141,12 +115,12 @@ struct NearIterator final : public IndexIterator {
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     return nextToken(
-        [this, &cb](LocalDocumentId const& token) -> bool {
+        [this, &cb](geo_index::Document const& gdoc) -> bool {
           geo::FilterType const ft = _near.filterType();
           if (ft != geo::FilterType::NONE) {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
-            if (!_collection->readDocument(_trx, token, *_mmdr)) {
+            if (!_collection->readDocument(_trx, gdoc.token, *_mmdr)) {
               return false;
             }
             geo::ShapeContainer test;
@@ -159,7 +133,7 @@ struct NearIterator final : public IndexIterator {
               return false;
             }
           }
-          cb(token);  // return result
+          cb(gdoc.token);  // return result
           return true;
         },
         limit);
@@ -177,9 +151,9 @@ struct NearIterator final : public IndexIterator {
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
     if (!scan.empty()) {
-      TRI_ASSERT(_near.isDone());
       ++_scans;
     };
+
     // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
@@ -351,16 +325,16 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
-  geo::Coordinate centroid(-1.0, -1.0);
+  S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
+  
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
-  TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
-             std::abs(centroid.longitude) <= 180.0);
+  TRI_ASSERT(!cells.empty());
   IndexValue value(documentId, std::move(centroid));
 
   for (S2CellId cell : cells) {
@@ -375,17 +349,16 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
-  geo::Coordinate centroid(-1, -1);
-
+  S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
+  
   if (res.fail()) {  // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   // LOG_TOPIC(ERR, Logger::FIXME) << "Removing #cells " << cells.size() << "
   // doc: " << doc.toJson();
-  TRI_ASSERT(!cells.empty() && std::abs(centroid.latitude) <= 90.0 &&
-             std::abs(centroid.longitude) <= 180.0);
+  TRI_ASSERT(!cells.empty());
 
   for (S2CellId cell : cells) {
     for (auto it = _tree.lower_bound(cell);
@@ -426,7 +399,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   }
   //        </Optimize away>
 
-  TRI_ASSERT(!opts.sorted || params.origin.isValid());
+  TRI_ASSERT(!opts.sorted || params.origin.is_valid());
   // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
   // is not necessary, > would be missing entries.
   params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
@@ -464,7 +437,7 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
                   double lat, double lon, double radius, size_t count,
                   std::string const& attributeName, VPackBuilder& builder) {
   geo::QueryParams params;
-  params.origin = {lat, lon};
+  params.origin = S2LatLng::FromDegrees(lat, lon);
   params.sorted = true;
   if (radius > 0.0) {
     params.maxDistance = radius;
@@ -477,19 +450,19 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
   ManagedDocumentResult mmdr;
   LogicalCollection* collection = index.collection();
   LegacyIterator iter(collection, trx, &mmdr, &index, std::move(params));
-  auto fetchDoc = [&](LocalDocumentId const& token, double distRad) -> bool {
-    bool read = collection->readDocument(trx, token, mmdr);
+  auto fetchDoc = [&](geo_index::Document const& gdoc) -> bool {
+    bool read = collection->readDocument(trx, gdoc.token, mmdr);
     if (!read) {
       return false;
     }
     VPackSlice doc(mmdr.vpack());
     // add to builder results
     if (!attributeName.empty()) {
-      double distance = distRad * geo::kEarthRadiusInMeters;
+      double distance = gdoc.distAngle.radians() * geo::kEarthRadiusInMeters;
       // We have to copy the entire document
       VPackObjectBuilder docGuard(&builder);
       builder.add(attributeName, VPackValue(distance));
-      for (auto const& entry : VPackObjectIterator(doc)) {
+      for (auto const& entry : VPackObjectIterator(doc, true)) {
         std::string key = entry.key.copyString();
         if (key != attributeName) {
           builder.add(key, entry.value);
@@ -502,7 +475,7 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
     return true;
   };
 
-  bool more = iter.nextTokenWithDistance(fetchDoc, limit);
+  bool more = iter.nextToken(fetchDoc, limit);
   TRI_ASSERT(count > 0 || !more);
 }
 }  // namespace

@@ -29,6 +29,7 @@
 #include "GeoIndex/Near.h"
 #include "VocBase/voc-types.h"
 
+#include <cmath>
 #include <s2/s1angle.h>
 #include <s2/s2metrics.h>
 #include <s2/s2latlng.h>
@@ -41,25 +42,18 @@ using namespace arangodb::basics;
 // -----------------------------------------------------------------------------
 
 typedef std::multimap<S2CellId, LocalDocumentId> index_t;
-typedef std::map<LocalDocumentId, geo::Coordinate> coords_t;
+typedef std::map<LocalDocumentId, S2LatLng> coords_t;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-struct CoordAscCompare {
-  inline bool operator() (const geo::Coordinate& val1, const geo::Coordinate& val2) {
-    return val1.latitude < val2.latitude ||
-           (val1.latitude == val2.latitude && val1.longitude < val2.longitude);
-  }
-};
-
 /// Perform indexx scan
 template<typename CMP, typename SEEN>
 static std::vector<LocalDocumentId> nearSearch(index_t const& index,
-                                             coords_t const& coords,
-                                             geo_index::NearUtils<CMP, SEEN>& near,
-                                             size_t limit) {
+                                               coords_t const& coords,
+                                               geo_index::NearUtils<CMP, SEEN>& near,
+                                               size_t limit) {
   std::vector<LocalDocumentId> result;
 
   while (!near.isDone()) {
@@ -70,14 +64,16 @@ static std::vector<LocalDocumentId> nearSearch(index_t const& index,
 
       while (it != index.end() && it->first <= interval.max) {
         REQUIRE(it->first >= interval.min);
-        near.reportFound(it->second, coords.at(it->second));
+        
+        S2Point center = coords.at(it->second).ToPoint();
+        near.reportFound(it->second, center);
         it++;
       }
     }
 
     while (near.hasNearest()) {
       geo_index::Document doc = near.nearest();
-      result.push_back(doc.document);
+      result.push_back(doc.token);
       near.popNearest();
 
       if (result.size() >= limit) {
@@ -91,9 +87,9 @@ static std::vector<LocalDocumentId> nearSearch(index_t const& index,
   return result;
 }
 
-static std::vector<geo::Coordinate> convert(coords_t const& coords,
-                                            std::vector<LocalDocumentId> const& docs) {
-  std::vector<geo::Coordinate> result;
+static std::vector<S2LatLng> convert(coords_t const& coords,
+                                    std::vector<LocalDocumentId> const& docs) {
+  std::vector<S2LatLng> result;
   for (LocalDocumentId rid : docs) {
     result.push_back(coords.at(rid));
   }
@@ -132,16 +128,12 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
   for (double lat=-90; lat <=90 ; ++lat) {
     for (double lon=-180; lon <= 180; ++lon) {
       //geocol.insert({lat,lon});
-      geo::Coordinate cc(lat, lon);
-
-      std::vector<S2CellId> cells;
-      Result res = geo::GeoUtils::indexCells(cc, cells);
-      REQUIRE(res.ok());
-      REQUIRE(cells.size() == 1);
-      REQUIRE(cells[0].level() == S2::kMaxCellLevel);
+      S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
+      S2CellId cell(cc.ToPoint());
+      REQUIRE(cell.level() == S2::kMaxCellLevel);
 
       LocalDocumentId rev(counter++);
-      index.emplace(cells[0], rev);
+      index.emplace(cell, rev);
       docs.emplace(rev, cc);
     }
   }
@@ -151,7 +143,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 
   geo::QueryParams params;
   params.sorted = true;
-  params.origin = geo::Coordinate(0,0);
+  params.origin = S2LatLng::FromDegrees(0,0);
 
   SECTION("query all sorted ascending") {
     params.ascending = true;
@@ -168,11 +160,11 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
       unique.insert(rev);
 
       // check sort order
-      geo::Coordinate const& cc = docs.at(rev);
-      S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
+      S2LatLng const& cords = docs.at(rev);
       S2Point pp = cords.ToPoint();
       double rad = near.origin().Angle(pp);
-      REQUIRE(rad >= lastRad);
+      bool eq = rad > lastRad || std::fabs(rad - lastRad) <= geo::kRadEps;
+      REQUIRE(eq); // rad >= lastRad
       lastRad = rad;
     }
     REQUIRE(lastRad != 0);
@@ -185,13 +177,13 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 5);
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
-    std::sort(coords.begin(), coords.end(), CoordAscCompare());
-    REQUIRE(coords[0] == geo::Coordinate(-1,0));
-    REQUIRE(coords[1] == geo::Coordinate(0,-1));
-    REQUIRE(coords[2] == geo::Coordinate(0,0));
-    REQUIRE(coords[3] == geo::Coordinate(0,1));
-    REQUIRE(coords[4] == geo::Coordinate(1,0));
+    std::vector<S2LatLng> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end());
+    REQUIRE(coords[0] == S2LatLng::FromDegrees(-1,0));
+    REQUIRE(coords[1] == S2LatLng::FromDegrees(0,-1));
+    REQUIRE(coords[2] == S2LatLng::FromDegrees(0,0));
+    REQUIRE(coords[3] == S2LatLng::FromDegrees(0,1));
+    REQUIRE(coords[4] == S2LatLng::FromDegrees(1,0));
   }
 
   SECTION("query sorted ascending with limit and max distance") {
@@ -202,13 +194,13 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
-    std::sort(coords.begin(), coords.end(), CoordAscCompare());
-    REQUIRE(coords[0] == geo::Coordinate(-1,0));
-    REQUIRE(coords[1] == geo::Coordinate(0,-1));
-    REQUIRE(coords[2] == geo::Coordinate(0,0));
-    REQUIRE(coords[3] == geo::Coordinate(0,1));
-    REQUIRE(coords[4] == geo::Coordinate(1,0));
+    std::vector<S2LatLng> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end());
+    REQUIRE(coords[0] == S2LatLng::FromDegrees(-1,0));
+    REQUIRE(coords[1] == S2LatLng::FromDegrees(0,-1));
+    REQUIRE(coords[2] == S2LatLng::FromDegrees(0,0));
+    REQUIRE(coords[3] == S2LatLng::FromDegrees(0,1));
+    REQUIRE(coords[4] == S2LatLng::FromDegrees(1,0));
   }
 
   SECTION("query sorted ascending with different inital delta") {
@@ -216,18 +208,18 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     params.maxDistance = 111200;
     AscIterator near(std::move(params));
 
-    near.estimateDensity(geo::Coordinate(0,1));
+    near.estimateDensity(S2LatLng::FromDegrees(0,1).ToPoint());
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
-    std::sort(coords.begin(), coords.end(), CoordAscCompare());
-    REQUIRE(coords[0] == geo::Coordinate(-1,0));
-    REQUIRE(coords[1] == geo::Coordinate(0,-1));
-    REQUIRE(coords[2] == geo::Coordinate(0,0));
-    REQUIRE(coords[3] == geo::Coordinate(0,1));
-    REQUIRE(coords[4] == geo::Coordinate(1,0));
+    std::vector<S2LatLng> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end());
+    REQUIRE(coords[0] == S2LatLng::FromDegrees(-1,0));
+    REQUIRE(coords[1] == S2LatLng::FromDegrees(0,-1));
+    REQUIRE(coords[2] == S2LatLng::FromDegrees(0,0));
+    REQUIRE(coords[3] == S2LatLng::FromDegrees(0,1));
+    REQUIRE(coords[4] == S2LatLng::FromDegrees(1,0));
   }
 
   SECTION("query sorted ascending with different inital delta") {
@@ -235,18 +227,18 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     params.maxDistance = 111200;
     AscIterator near(std::move(params));
 
-    near.estimateDensity(geo::Coordinate(0,1));
+    near.estimateDensity(S2LatLng::FromDegrees(0,1).ToPoint());
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 1000);
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
-    std::sort(coords.begin(), coords.end(), CoordAscCompare());
-    REQUIRE(coords[0] == geo::Coordinate(-1,0));
-    REQUIRE(coords[1] == geo::Coordinate(0,-1));
-    REQUIRE(coords[2] == geo::Coordinate(0,0));
-    REQUIRE(coords[3] == geo::Coordinate(0,1));
-    REQUIRE(coords[4] == geo::Coordinate(1,0));
+    std::vector<S2LatLng> coords = convert(docs, result);
+    std::sort(coords.begin(), coords.end());
+    REQUIRE(coords[0] == S2LatLng::FromDegrees(-1,0));
+    REQUIRE(coords[1] == S2LatLng::FromDegrees(0,-1));
+    REQUIRE(coords[2] == S2LatLng::FromDegrees(0,0));
+    REQUIRE(coords[3] == S2LatLng::FromDegrees(0,1));
+    REQUIRE(coords[4] == S2LatLng::FromDegrees(1,0));
   }
 
   SECTION("query all sorted descending") {
@@ -264,11 +256,10 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
       unique.insert(rev);
 
       // check sort order
-      geo::Coordinate const& cc = docs.at(rev);
-      S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
-      S2Point pp = cords.ToPoint();
-      double rad = near.origin().Angle(pp);
-      REQUIRE(rad <= lastRad);
+      S2LatLng const& coords = docs.at(rev);
+      double rad = near.origin().Angle(coords.ToPoint());
+      bool eq = rad < lastRad || std::fabs(rad - lastRad) <= geo::kRadEps;
+      REQUIRE(eq); // rad <= lastRad
       lastRad = rad;
     }
     REQUIRE(lastRad == 0);
@@ -282,11 +273,11 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
+    std::vector<S2LatLng> coords = convert(docs, result);
     // [0,180], [0,-180] in any order
     for (size_t i = 0; i < 2; i++) {
-      REQUIRE(coords[i].latitude == 0.0);
-      REQUIRE(std::abs(coords[i].longitude) == 180.0);
+      REQUIRE(coords[i].lat().degrees() == 0.0);
+      REQUIRE(std::abs(coords[i].lng().degrees()) == 180.0);
     }
   }
 
@@ -299,12 +290,12 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
     std::set<LocalDocumentId> unique;
     REQUIRE(result.size() == 5);
 
-    std::vector<geo::Coordinate> coords = convert(docs, result);
-    REQUIRE(coords[4] == geo::Coordinate(0,0));
+    std::vector<S2LatLng> coords = convert(docs, result);
+    REQUIRE(coords[4] == S2LatLng::FromDegrees(0,0));
 
     for (size_t i = 0; i < 4; i++) {
-      double lat = std::abs(coords[i].latitude),
-             lng = std::abs(coords[i].longitude);
+      double lat = std::abs(coords[i].lat().degrees()),
+             lng = std::abs(coords[i].lng().degrees());
       REQUIRE(lat + lng == 1); // lat == 1 => lng == 0, etc
     }
   }
@@ -327,16 +318,13 @@ TEST_CASE("Query point around", "[geo][s2index]") {
     double lon = 17.0;
     for(int j=0;j<10;j++) {
       //geocol.insert({lat,lon});
-      geo::Coordinate cc(lat, lon);
+      S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
 
-      std::vector<S2CellId> cells;
-      Result res = geo::GeoUtils::indexCells(cc, cells);
-      REQUIRE(res.ok());
-      REQUIRE(cells.size() == 1);
-      REQUIRE(cells[0].level() == S2::kMaxCellLevel);
+      S2CellId cell(cc);
+      REQUIRE(cell.level() == S2::kMaxCellLevel);
 
       LocalDocumentId rev(counter++);
-      index.emplace(cells[0], rev);
+      index.emplace(cell, rev);
       docs.emplace(rev, cc);
       lon += 1.0;
     }
@@ -352,8 +340,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
     double lastRad = 0;
     for (LocalDocumentId const& rev : result) {
       // check sort order
-      geo::Coordinate const& cc = docs.at(rev);
-      S2LatLng cords = S2LatLng::FromDegrees(cc.latitude, cc.longitude);
+      S2LatLng const& cords = docs.at(rev);
       double rad = origin.Angle(cords.ToPoint());
       REQUIRE(rad >= lastRad);
       lastRad = rad;
@@ -362,7 +349,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
   };
 
   SECTION("southpole (1)") {
-    params.origin = geo::Coordinate(-83.2, 19.2);
+    params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
     AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 7);
@@ -371,7 +358,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
   }
 
   SECTION("southpole (2)") {
-    params.origin = geo::Coordinate(-83.2, 19.2);
+    params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
     AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
@@ -380,7 +367,7 @@ TEST_CASE("Query point around", "[geo][s2index]") {
   }
 
   SECTION("southpole (3)") {
-    params.origin = geo::Coordinate(-89.9, 0);
+    params.origin = S2LatLng::FromDegrees(-89.9, 0);
     AscIterator near(std::move(params));
 
     std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);

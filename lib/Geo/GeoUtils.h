@@ -64,11 +64,7 @@ class GeoUtils {
   /// Generate a cover cell from an array [lat, lng] or [lng, lat]
   static Result indexCellsLatLng(velocypack::Slice const& data, bool isGeoJson,
                                  std::vector<S2CellId>& cells,
-                                 geo::Coordinate& centroid);
-
-  /// convert lat, lng pair into cell id. Always uses max level
-  static Result indexCells(geo::Coordinate const& c,
-                           std::vector<S2CellId>& cells);
+                                 S2Point& centroid);
 
   /// generate intervalls of list of intervals to scan
   static void scanIntervals(QueryParams const& params,

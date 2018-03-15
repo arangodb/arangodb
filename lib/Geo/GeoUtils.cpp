@@ -38,7 +38,7 @@ using namespace arangodb::geo;
 
 Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
                                   std::vector<S2CellId>& cells,
-                                  geo::Coordinate& centroid) {
+                                  S2Point& centroid) {
   if (!data.isArray() || data.length() < 2) {
     return TRI_ERROR_BAD_PARAMETER;
   }
@@ -48,21 +48,13 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   if (!lat.isNumber() || !lat.isNumber()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
-  centroid.latitude = lat.getNumericValue<double>();
-  centroid.longitude = lon.getNumericValue<double>();
-  if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+  S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
+                                      lon.getNumericValue<double>());
+  if (!ll.is_valid()) {
     return TRI_ERROR_BAD_PARAMETER;
   }
-  S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
-  cells.emplace_back(ll);
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// convert lat, lng pair into cell id. Always uses max level
-Result GeoUtils::indexCells(geo::Coordinate const& c,
-                            std::vector<S2CellId>& cells) {
-  S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
-  cells.emplace_back(ll);
+  centroid = ll.ToPoint();
+  cells.emplace_back(centroid);
   return TRI_ERROR_NO_ERROR;
 }
 

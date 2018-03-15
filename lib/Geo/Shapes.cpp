@@ -30,3 +30,7 @@ using namespace arangodb::geo;
 Coordinate Coordinate::fromLatLng(S2LatLng const& ll) noexcept {
   return Coordinate(ll.lat().degrees(), ll.lng().degrees());
 }
+
+S2Point Coordinate::toPoint() const noexcept {
+  return S2LatLng::FromDegrees(latitude, longitude).ToPoint();
+}

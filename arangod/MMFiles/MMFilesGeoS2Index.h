@@ -29,8 +29,9 @@
 #include "MMFiles/MMFilesIndex.h"
 #include "VocBase/LocalDocumentId.h"
 
-#include <btree/btree_map.h>
 #include <s2/s2cell_id.h>
+#include <s2/s2point.h>
+#include <s2/util/gtl/btree_map.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
@@ -45,14 +46,14 @@ class MMFilesGeoS2Index final : public MMFilesIndex, public geo_index::Index {
 
  public:
   struct IndexValue {
-    IndexValue() : documentId(0), centroid(-1, -1) {}
-    IndexValue(LocalDocumentId lid, geo::Coordinate&& c)
+    IndexValue() : documentId(0), centroid(0,0,0) {}
+    IndexValue(LocalDocumentId lid, S2Point&& c)
         : documentId(lid), centroid(c) {}
     LocalDocumentId documentId;
-    geo::Coordinate centroid;
+    S2Point centroid;
   };
 
-  typedef btree::btree_multimap<S2CellId, IndexValue> IndexTree;
+  typedef gtl::btree_multimap<S2CellId, IndexValue> IndexTree;
 
  public:
   IndexType type() const override {
