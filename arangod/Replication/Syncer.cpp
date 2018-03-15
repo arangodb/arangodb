@@ -320,7 +320,7 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
   }
 
   if (idCol != nullptr && nameCol != nullptr) {
-    if (idCol->cid() == nameCol->cid()) {
+    if (idCol->id() == nameCol->id()) {
       // found collection by id and name, and both are identical!
       return idCol;
     }
@@ -576,6 +576,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       col->cid(), AccessMode::Type::WRITE);
       Result res = trx.begin();
+
       if (!res.ok()) {
         return res;
       }
@@ -674,9 +675,11 @@ Result Syncer::createIndex(VPackSlice const& slice) {
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
 
   try {
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                    col->cid(), AccessMode::Type::WRITE);
-
+    SingleCollectionTransaction trx(
+      transaction::StandaloneContext::Create(vocbase),
+      col->id(),
+      AccessMode::Type::WRITE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {

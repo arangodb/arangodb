@@ -1394,7 +1394,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
       TRI_vocbase_col_status_e status = collection->status();
-      TRI_voc_cid_t cid = collection->cid();
+      TRI_voc_cid_t cid = collection->id();
       uint32_t internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
