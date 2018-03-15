@@ -592,14 +592,14 @@ arangodb::Result updateLinks(
         // remove modification state if removal of non-existant link
         if (!state._link // links currently does not exist
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          view.drop(state._collection->cid()); // drop any stale data for the specified collection
+          view.drop(state._collection->id()); // drop any stale data for the specified collection
           itr = linkModifications.erase(itr);
           continue;
         }
 
         if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          auto cid = state._collection->cid();
+          auto cid = state._collection->id();
 
           // remove duplicate removal requests (e.g. by name + by CID)
           if (collectionsToRemove.find(cid) != collectionsToRemove.end()) { // removal previously requested
@@ -612,7 +612,7 @@ arangodb::Result updateLinks(
 
         if (state._link // links currently exists
             && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
-          collectionsToUpdate.emplace(state._collection->cid());
+          collectionsToUpdate.emplace(state._collection->id());
         }
 
         ++itr;
@@ -625,7 +625,7 @@ arangodb::Result updateLinks(
         // remove modification if removal request with an update request also present
         if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
-            && collectionsToUpdate.find(state._collection->cid()) != collectionsToUpdate.end()) { // also has a reindex request
+            && collectionsToUpdate.find(state._collection->id()) != collectionsToUpdate.end()) { // also has a reindex request
           itr = linkModifications.erase(itr);
           continue;
         }
@@ -633,7 +633,7 @@ arangodb::Result updateLinks(
         // remove modification state if no change on existing link or
         if (state._link // links currently exists
             && state._linkDefinitionsOffset < linkDefinitions.size() // link creation request
-            && collectionsToRemove.find(state._collection->cid()) == collectionsToRemove.end() // not a reindex request
+            && collectionsToRemove.find(state._collection->id()) == collectionsToRemove.end() // not a reindex request
             && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) { // link meta not modified
           itr = linkModifications.erase(itr);
           continue;
@@ -646,7 +646,7 @@ arangodb::Result updateLinks(
     // execute removals
     for (auto& state: linkModifications) {
       if (state._link) { // link removal or recreate request
-        modified.emplace(state._collection->cid());
+        modified.emplace(state._collection->id());
         state._valid = state._collection->dropIndex(state._link->id());
       }
     }
@@ -657,7 +657,7 @@ arangodb::Result updateLinks(
         bool isNew = false;
         auto linkPtr = state._collection->createIndex(&trx, linkDefinitions[state._linkDefinitionsOffset].first.slice(), isNew);
 
-        modified.emplace(state._collection->cid());
+        modified.emplace(state._collection->id());
         state._valid = linkPtr && isNew;
       }
     }

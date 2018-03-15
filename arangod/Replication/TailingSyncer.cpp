@@ -352,7 +352,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
-    trx->addCollectionAtRuntime(coll->cid(), coll->name(), AccessMode::Type::EXCLUSIVE);
+    trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     Result r = applyCollectionDumpMarker(*trx, coll, type, old, doc);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -369,8 +369,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // standalone operation
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
-      AccessMode::Type::EXCLUSIVE);
+    transaction::StandaloneContext::Create(vocbase),
+    coll->id(),
+    AccessMode::Type::EXCLUSIVE
+  );
 
   if (_supportsSingleOperations) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

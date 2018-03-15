@@ -185,7 +185,15 @@ struct TRI_vocbase_t {
  public:
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
-  static bool IsAllowedName(bool allowSystem, std::string const& name);
+  static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
+  static bool IsAllowedName(
+    bool allowSystem,
+    arangodb::velocypack::StringRef const& name
+  ) noexcept;
+
+  /// @brief determine whether a data-source name is a system data-source name
+  static bool IsSystemName(std::string const& name) noexcept;
+
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;

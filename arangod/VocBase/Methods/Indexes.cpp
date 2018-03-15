@@ -141,7 +141,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(collection->vocbase()),
-        collection->cid(), AccessMode::Type::READ);
+        collection->id(),
+        AccessMode::Type::READ
+    );
 
     // we actually need this hint here, so that the collection is not
     // loaded if it has status unloaded.
@@ -249,7 +251,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection->cid(),
+      collection->id(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -304,7 +306,7 @@ Result Indexes::ensureIndexCoordinator(
     bool create, VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
   std::string const dbName = collection->dbName();
-  std::string const cid = collection->cid_as_string();
+  auto cid = std::to_string(collection->id());
   std::string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
@@ -548,7 +550,7 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
     return Indexes::dropCoordinatorEE(collection, iid);
 #else
     std::string const databaseName(collection->dbName());
-    std::string const cid = collection->cid_as_string();
+    auto cid = std::to_string(collection->id());
     std::string errorMsg;
     int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
                                                           iid, errorMsg, 0.0);
@@ -559,9 +561,11 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-        collection->cid(), AccessMode::Type::EXCLUSIVE);
-
+        collection->id(),
+        AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }

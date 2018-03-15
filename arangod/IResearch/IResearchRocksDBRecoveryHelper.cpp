@@ -325,7 +325,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     auto doc = RocksDBValue::data(value);
 
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
+      transaction::StandaloneContext::Create(vocbase), coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 
@@ -367,7 +367,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
 
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
+      transaction::StandaloneContext::Create(vocbase), coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 
