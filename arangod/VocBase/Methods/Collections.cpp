@@ -236,13 +236,16 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(coll->vocbase());
+
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(coll->dbName(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_LOADED);
+    return ULColCoordinatorEnterprise(
+      coll->vocbase()->name(),
+      std::to_string(coll->id()),
+      TRI_VOC_COL_STATUS_LOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
-
-    TRI_ASSERT(coll->vocbase());
 
     return ci->setCollectionStatusCoordinator(
       coll->vocbase()->name(),
@@ -265,15 +268,18 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(vocbase->name(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_UNLOADED);
+    return ULColCoordinatorEnterprise(
+      vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
+
     return ci->setCollectionStatusCoordinator(
       vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
     );
 #endif
   }
+
   return vocbase->unloadCollection(coll, false);
 }
 
