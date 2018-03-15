@@ -1,9 +1,3 @@
-# Notes
-
-* As of know, this file is specific to Linux
-* As of know, this file is specific to Ubuntu & Debian
-* As of know, this file is specific to SystemV compatible init systems
-
 Upgrading a cluster
 ===================
 
