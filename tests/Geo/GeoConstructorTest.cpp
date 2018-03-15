@@ -60,7 +60,6 @@ SCENARIO("Testing GEO_POINT", "[AQL][GEOC][GEOPOINT]") {
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> params{arena};
 
-    // LOG_TOPIC(ERR, Logger::FIXME) << "HASS 3";
     // LOG_TOPIC(ERR, Logger::FIXME) << "result: " << res.slice().toString();
     WHEN("checking two positive integer values") {
       VPackBuilder foo;
