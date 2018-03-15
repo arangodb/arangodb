@@ -2642,7 +2642,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     if (dbServers.size() < replicationFactor) {
       LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Do not have enough DBServers for requested replicationFactor,"
-        << " nrDBServers: " << _dbServers.size()
+        << " nrDBServers: " << dbServers.size()
         << " replicationFactor: " << replicationFactor;
       if (enforceReplicationFactor) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
@@ -2655,7 +2655,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Do not have enough DBServers for requested replicationFactor,"
           << " (after considering avoid list),"
-          << " nrDBServers: " << _dbServers.size()
+          << " nrDBServers: " << dbServers.size()
           << " replicationFactor: " << replicationFactor
           << " avoid list size: " << avoid.size();
         // Not enough DBServers left
