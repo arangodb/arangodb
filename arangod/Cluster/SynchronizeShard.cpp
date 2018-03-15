@@ -28,6 +28,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -46,7 +48,8 @@ constexpr auto WAIT_FOR_SYNC_REPL = "waitForSyncReplication";
 constexpr auto ENF_REPL_FACT = "enforceReplicationFactor";
 constexpr auto REPL_HOLD_READ_LOCK = "/_api/replication/holdReadLockCollection";
 
-std::string const DB = "/_db/";
+std::string const READ_LOCK_TIMEOUT("startReadLockOnLeader: giving up");
+std::string const DB("/_db/");
 
 SynchronizeShard::SynchronizeShard(ActionDescription const& d) :
   ActionBase(d, arangodb::maintenance::FOREGROUND) {
@@ -59,7 +62,8 @@ SynchronizeShard::SynchronizeShard(ActionDescription const& d) :
 }
 
 arangodb::Result getReadLockid (
-  std::string const& endpoint, std::string const& database, uint64_t& id) {
+  std::string const& endpoint, std::string const& database, double timeout,
+  uint64_t& id) {
 
   std::string error("startReadLockOnLeader: Failed to get read lock - ");
   
@@ -74,33 +78,27 @@ arangodb::Result getReadLockid (
     DB + database + REPL_HOLD_READ_LOCK, std::string(),
     std::unordered_map<std::string, std::string>(), timeout);
   
-  if (comres->status == CL_COMM_SENT) {
-    auto result = comres->result;
-    if (result != nullptr) { 
-      if (result->getHttpReturnCode() == rest::ResponseCode::OK) {
-        auto const idv = comres->result->getBodyVelocyPack();
-        auto const& idSlice = idv->slice();
-        TRI_ASSERT(idSlice.isObject());
-        TRI_ASSERT(idSlice.hasKey(ID));
-        try {
-          id = idSlice.get(ID)->getNumber<uint64_t>();
-        } catch (std::exception const& e) {
-          error += " expecting id to be int64_t ";
-          error += idSlice.toJson();
-          return arangodb::Result(TRI_ERROR_INTERNAL, error);
-        }
-      } else {
-        error += result->getHttpReturnMessage();
+  auto result = comres->result;
+  if (result != nullptr) { 
+    if (result->getHttpReturnCode() == rest::ResponseCode::OK) {
+      auto const idv = comres->result->getBodyVelocyPack();
+      auto const& idSlice = idv->slice();
+      TRI_ASSERT(idSlice.isObject());
+      TRI_ASSERT(idSlice.hasKey(ID));
+      try {
+        id = idSlice.get(ID)->getNumber<uint64_t>();
+      } catch (std::exception const& e) {
+        error += " expecting id to be int64_t ";
+        error += idSlice.toJson();
         return arangodb::Result(TRI_ERROR_INTERNAL, error);
       }
     } else {
-      error += "NULL result"
+      error += result->getHttpReturnMessage();
       return arangodb::Result(TRI_ERROR_INTERNAL, error);
     }
   } else {
-    return arangodb::Result(
-      ERROR_SHUTTING_DOWN,
-      "startReadLockOnLeader: Failed to get read lock - GET request never sent ");
+    error += "NULL result"
+      return arangodb::Result(TRI_ERROR_INTERNAL, error);
   }
   
   return arangodb::Result();
@@ -108,7 +106,11 @@ arangodb::Result getReadLockid (
 }
 
 
-arangodb::Result getReadLock(std::string const& endpoint, std::string const& ) {
+arangodb::Result getReadLock(
+  std::string const& endpoint, std::string const& database,
+  uint64_t rlid) {
+
+  auto start = std::chrono::steady_clock::now();
 
   auto comm = ClusterComm::instance();
   if (cc == nullptr) { // nullptr only happens during controlled shutdown
@@ -125,56 +127,55 @@ arangodb::Result getReadLock(std::string const& endpoint, std::string const& ) {
 
   auto hf =
     std::make_unique<std::unordered_map<std::string, std::string>>();
+
+  auto url = DB + database + REPL_HOLD_READ_LOCK;
   
   auto postres = cc->asyncRequest(
     std::hash(_description), 2, endpoint, rest::RequestType::POST,
-    REPL_HOLD_READ_LOCK, b.toJson(), hf,
-    std::make_shared<SynchronizeShardCallback>(this), 1.0, true, 0.5);
-
+    url, b.toJson(), hf, std::make_shared<SynchronizeShardCallback>(this), 1.0,
+    true, 0.5);
+  
   // Intentionally do not look at the outcome, even in case of an error
   // we must make sure that the read lock on the leader is not active!
   // This is done automatically below.
-
+  
+  decltype(postres) putres;
   size_t count = 0;
   while (++count < 20) { // wait for some time until read lock established:
     // Now check that we hold the read lock:
-    r = request({ url: url + '/_api/replication/holdReadLockCollection',
-                  body: JSON.stringify(body), method: 'PUT' });
-
-    comre
+    putres = cc->syncRequest(
+      std::hash(_description), 1, endpoint, rest::RequestType::PUT, url,
+      b.toJson(), std::unordered_map<std::string, std::string>(), timeout);
     
-    if (r.status === 200) {
-      let ansBody = {};
-      try {
-        ansBody = JSON.parse(r.body);
-      } catch (err) {
+    auto result = putres->result; 
+    if (result->getHttpReturnCode() == rest::ResponseCode::OK) {
+      auto const vp = putres->result->getBodyVelocyPack();
+      auto const& slice = vp->slice();
+      TRI_ASSERT(slice.isObject());
+      if (slice.hasKey("lockHeld") && slice.get("lockHeld").isBoolean()) {
+        if (slice.get("lockHeld").getBool()) {
+          return arangodb::Result();
+        }
       }
-      if (ansBody.lockHeld) {
-        return id;
-      } else {
-        console.topic('heartbeat=debug', 'startReadLockOnLeader: Lock not yet acquired...');
-      }
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "startReadLockOnLeader: Lock not yet acquired...";
     } else {
-      console.topic('heartbeat=debug', 'startReadLockOnLeader: Do not see read lock yet...');
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "startReadLockOnLeader: Do not see read lock yet...";
     }
-    wait(0.5);
-  }
-  console.topic('heartbeat=error', 'startReadLockOnLeader: giving up');
-  try {
-    r = request({ url: url + '/_api/replication/holdReadLockCollection',
-                  body: JSON.stringify({'id': id}), method: 'DELETE' });
-  } catch (err2) {
-    console.topic('heartbeat=error', 'startReadLockOnLeader: expection in cancel:',
-                  JSON.stringify(err2));
-  }
-  if (r.status !== 200) {
-    console.topic('heartbeat=error', 'startReadLockOnLeader: cancelation error for shard',
-                  collName, r);
-  }
-  return false;
 
+    std::this_thread::sleep_for(std::chrono::duration(.5));
+    if ((std::chrono::steady_clock::now() - start).count() > timeout) {
+      LOG_TOPIC(ERR, Logger::MAINTENANCE) << READ_LOCK_TIMEOUT;
+      return arangodb::Result(TRI_ERROR_CLUSTER_TIMEOUT, READ_LOCK_TIMEOUT);
+    }
+    
+  }
 }
 
+bool isStopping() {
+  return application_features::ApplicationServer::isStopping();
+}
 
 arangodb::Result startReadLockOnLeader(
   std::string const& endpoint, std::string const& database,
@@ -195,6 +196,95 @@ arangodb::Result startReadLockOnLeader(
   auto elapsed = (std::chrono::steady_clock::now() - start).count();
 
   return result;
+  
+}
+
+
+arangodb::Result terminateAndStartOther() {
+  return arangodb::Result;
+}
+
+
+arangodb::Result synchroniseOneShard(
+  std::string const& database, std::string const& shard,
+  std::string const& planId, std::string const& leader) {
+
+  auto* clusterInfo = ClusterInfo::instance();
+  auto const ourselves = clusterInfo
+  auto const startTime = std::chrono::system_clock::now();
+  
+  while(true) {
+
+    if (isStopping()) {
+      terminateAndStartOther();
+      return arangodb::Result();
+    }
+
+    std::vector<std::string> planned;
+    auto result = clusterInfo->shards(shard, planned);
+    if (!result.successful() ||
+        std::find(planned.begin(), planned.end(), ourselves) != planned.end() ||
+        planned.front() != leader) {
+      // Things have changed again, simply terminate:
+      terminateAndStartOther();
+      auto const endTime = std::chrono::system_clock::now();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: cancelled, " << database << "/" << shard
+        << ", " << database << "/" << planId << ", started "
+        << TimepointToString(startTime) << ", ended " << TimepointToString(endTime);
+      return arangodb::Result(ERROR_FAILED, "synchronizeOneShard: cancelled");
+    }
+
+    std::shared_ptr<LogicalCollection> ci =
+      clusterInfo->getCollection(database, planId);
+    TRI_ASSERT(ci != nullptr);
+
+    std::string const cid = ci->cid_as_string();
+    std::string const& name = ci->name();
+    std::shared_ptr<CollectionInfoCurrent> cic =
+      ClusterInfo::instance()->getCollectionCurrent(database, cid);
+    auto const current = cic->servers(shardID);
+
+    TRI_ASSERT(!current.empty());
+    if (current.front() == leader) {
+      if (std::find(current.begin(), current.end(), ourselves) == current.end()) {
+        break; // start synchronization work
+      }
+      // We are already there, this is rather strange, but never mind:
+      terminateAndStartOther();
+      auto const endTime = std::chrono::system_clock::now();
+      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        << "synchronizeOneShard: already done, " << database << "/" << shard
+        << ", " << database << "/" << planId << ", started "
+        << TimepointToString(startTime) << ", ended " << TimepointToString(endTime);
+      return arangodb::Result(ERROR_FAILED, "synchronizeOneShard: cancelled");
+    }
+
+    std::this_thread::wait_for(std::chrono::duration(0.2));
+    
+  }
+
+  // Once we get here, we know that the leader is ready for sync, so
+  // we give it a try:
+
+  bool ok = false;
+  auto ep = clusterInfo->getServerEndpoint(leader);
+  if (db._collection(shard).count() === 0) {
+    // We try a short cut:
+    console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
+    try {
+      let ok = addShardFollower(ep, database, shard);
+      if (ok) {
+        terminateAndStartOther();
+        let endTime = new Date();
+        console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
+          database, shard, database, planId, startTime.toString(), endTime.toString());
+        db._collection(shard).setTheLeader(leader);
+        return;
+      }
+    } catch (dummy) { }
+  }
+
   
 }
 
