@@ -3030,6 +3030,70 @@ AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
   return AqlValue(b);
 }
 
+/// @brief function GEO_MULTIPOINT
+AqlValue Functions::GeoMultiPoint(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+
+  ValidateParameters(parameters, "GEO_MULTIPOINT", 1, 1);
+
+  size_t const n = parameters.size();
+
+  if (n < 1) {
+    // no parameters
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
+
+  if (!geoArray.isArray()) {
+    RegisterWarning(query, "GEO_MULTIPOINT",
+                    TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+  if (geoArray.length() < 2) {
+    RegisterWarning(query, "GEO_MULTIPOINT", Result(
+          TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+          "a MultiPoint needs at least two positions"));
+    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  }
+
+  VPackBuilder b;
+
+  b.add(VPackValue(VPackValueType::Object));
+  b.add("type", VPackValue("MultiPoint"));
+  b.add("coordinates", VPackValue(VPackValueType::Array));
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice s = materializer.slice(geoArray, false);
+  for (auto const& v : VPackArrayIterator(s)) {
+    if (v.isArray()) {
+      b.openArray();
+      for (auto const& coord : VPackArrayIterator(v)) {
+        if (coord.isNumber()) {
+          b.add(VPackValue(coord.getNumber<double>()));
+        } else {
+          RegisterWarning(query, "GEO_MULTIPOINT", Result(
+                TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                "not a numeric value"));
+          return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        }
+      }
+      b.close();
+    } else {
+      RegisterWarning(query, "GEO_MULTIPOINT", Result(
+            TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+            "not an array containing positions"));
+      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    }
+  }
+
+  b.close();
+  b.close();
+
+  return AqlValue(b);
+}
+
 /// @brief function GEO_POLYGON
 AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
                              transaction::Methods* trx,
@@ -3081,7 +3145,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
           if (coord.length() < 2) {
             RegisterWarning(query, "GEO_POLYGON", Result(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                  "a position needs at least two numeric values"));
+                  "a Position needs at least two numeric values"));
             return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
           } else {
             b.openArray();
@@ -3146,7 +3210,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
       } else {
         RegisterWarning(query, "GEO_POLYGON", Result(
               TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-              "a polygon needs at least three positions"));
+              "a Polygon needs at least three positions"));
         return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
       }
     } else {
@@ -3191,7 +3255,7 @@ AqlValue Functions::GeoLinestring(arangodb::aql::Query* query,
   if (geoArray.length() < 2) {
     RegisterWarning(query, "GEO_LINESTRING", Result(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a linestring needs at least two positions"));
+          "a LineString needs at least two positions"));
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 
@@ -3255,7 +3319,7 @@ AqlValue Functions::GeoMultiLinestring(arangodb::aql::Query* query,
   if (geoArray.length() < 1) {
     RegisterWarning(query, "GEO_MULTILINESTRING", Result(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          "a multilinestring needs at least one array of linestrings"));
+          "a MultiLineString needs at least one array of linestrings"));
     return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
   }
 

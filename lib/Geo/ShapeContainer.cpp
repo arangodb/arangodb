@@ -436,8 +436,15 @@ bool ShapeContainer::equals(Coordinate const* cc) const {
   return false;
 }
 
+bool ShapeContainer::equals(Coordinate const point, Coordinate const other) const {
+  if (point.latitude == other.latitude && point.longitude == other.longitude) {
+    return true;
+  }
+ 
+  return false;
+}
+
 bool ShapeContainer::equals(double lat2, double lon2) const {
- // TODO sth. wrong here 
   geo::Coordinate centroid1 = this->centroid();
   double lat1 = centroid1.latitude;
   double lon1 = centroid1.longitude;
@@ -452,6 +459,10 @@ bool ShapeContainer::equals(double lat2, double lon2) const {
 bool ShapeContainer::equals(S2Polyline const* other) const {
   S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
   return ll->Equals(other);
+}
+
+bool ShapeContainer::equals(S2Polyline const* poly, S2Polyline const* other) const {
+  return poly->Equals(other);
 }
 
 bool ShapeContainer::equals(S2LatLngRect const* other) const {
@@ -476,7 +487,7 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
-      return(S2LatLng::Latitude(p).degrees(), S2LatLng::Longitude(p).degrees());
+      return equals(S2LatLng::Latitude(p).degrees(), S2LatLng::Longitude(p).degrees());
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return equals(static_cast<S2Polyline const*>(cc->_data));
@@ -488,21 +499,35 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
       return equals(static_cast<S2Polygon const*>(cc->_data));
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
-      // ### TODO ###
-      /*
-      auto pts = static_cast<S2MultiPointRegion const*>(cc->_data);
-      for (int k = 0; k < pts->num_points(); k++) {
-        if (!_data->Equals(pts->point(k))) {
+      auto pts1 = static_cast<S2MultiPointRegion const*>(_data);
+      auto pts2 = static_cast<S2MultiPointRegion const*>(cc->_data);
+
+      if (pts1->num_points() != pts2->num_points()) {
+        return false;
+      }
+
+      for (int k = 0; k < pts1->num_points(); k++) {
+        if (!equals(
+              Coordinate(S2LatLng::Latitude(pts1->point(k)).degrees(),
+                         S2LatLng::Longitude(pts1->point(k)).degrees()),
+              Coordinate(S2LatLng::Latitude(pts2->point(k)).degrees(),
+                         S2LatLng::Longitude(pts2->point(k)).degrees())
+              )) {
           return false;
         }
-      }*/
-      return false;
+      }
+      return true;
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      // ### TODO ###
-      auto lines = static_cast<S2MultiPolyline const*>(cc->_data);
-      for (size_t k = 0; k < lines->num_lines(); k++) {
-        if (!this->equals(&(lines->line(k)))) {
+      auto lines1 = static_cast<S2MultiPolyline const*>(_data);
+      auto lines2 = static_cast<S2MultiPolyline const*>(cc->_data);
+
+      if (lines1->num_lines() != lines2->num_lines()) {
+        return false;
+      }
+
+      for (size_t k = 0; k < lines2->num_lines(); k++) {
+        if (!this->equals(&(lines1->line(k)), &(lines2->line(k)))) {
           return false;
         }
       }

@@ -248,6 +248,8 @@ struct Functions {
                                VPackFunctionParameters const&);
    static AqlValue GeoPoint(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+   static AqlValue GeoMultiPoint(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
    static AqlValue GeoPolygon(arangodb::aql::Query*, transaction::Methods*,
                               VPackFunctionParameters const&);
    static AqlValue GeoLinestring(arangodb::aql::Query*, transaction::Methods*,
