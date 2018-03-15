@@ -2639,13 +2639,25 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
-    if (enforceReplicationFactor && dbServers.size() < replicationFactor) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+    if (dbServers.size() < replicationFactor) {
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "Do not have enough DBServers for requested replicationFactor,"
+        << " nrDBServers: " << dbServers.size()
+        << " replicationFactor: " << replicationFactor;
+      if (enforceReplicationFactor) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+      }
     }
 
     if (!avoid.empty()) {
       // We need to remove all servers that are in the avoid list
       if (dbServers.size() - avoid.size() < replicationFactor) {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Do not have enough DBServers for requested replicationFactor,"
+          << " (after considering avoid list),"
+          << " nrDBServers: " << dbServers.size()
+          << " replicationFactor: " << replicationFactor
+          << " avoid list size: " << avoid.size();
         // Not enough DBServers left
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
       }
