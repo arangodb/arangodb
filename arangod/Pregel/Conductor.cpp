@@ -478,13 +478,14 @@ static void resolveInfo(
     std::vector<ShardID>& allShards) {
   ServerState* ss = ServerState::instance();
   if (!ss->isRunningInCluster()) {  // single server mode
-    LogicalCollection* lc = vocbase->lookupCollection(collectionID);
+    auto lc = vocbase->lookupCollection(collectionID);
+
     if (lc == nullptr || lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
 
-    collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
+    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
@@ -497,10 +498,10 @@ static void resolveInfo(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                                      collectionID);
     }
-    collectionPlanIdMap.emplace(collectionID, lc->planId_as_string());
+    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
-        ci->getShardList(lc->cid_as_string());
+      ci->getShardList(std::to_string(lc->id()));
     allShards.insert(allShards.end(), shardIDs->begin(), shardIDs->end());
 
     for (auto const& shard : *shardIDs) {

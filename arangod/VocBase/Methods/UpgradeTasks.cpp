@@ -21,8 +21,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UpgradeTasks.h"
-#include "Basics/Common.h"
 #include "Agency/AgencyComm.h"
+#include "Basics/Common.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
@@ -49,33 +49,40 @@ using basics::VelocyPackHelper;
 
 // Note: this entire file should run with superuser rights
 
-static void createSystemCollection(TRI_vocbase_t* vocbase,
+/// create a collection if it does not exists.
+static bool createSystemCollection(TRI_vocbase_t* vocbase,
                                    std::string const& name) {
   Result res = methods::Collections::lookup(vocbase, name,
                                             [](LogicalCollection* coll) {});
   if (res.is(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) {
-    auto cl = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    uint32_t defaultReplFactor = 1;
+    ClusterFeature* cl = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    if (cl != nullptr) {
+      defaultReplFactor = cl->systemReplicationFactor();
+    }
     VPackBuilder bb;
     bb.openObject();
     bb.add("isSystem", VPackSlice::trueSlice());
     bb.add("waitForSync", VPackSlice::falseSlice());
     bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add("replicationFactor", VPackValue(cl->systemReplicationFactor()));
+    bb.add("replicationFactor", VPackValue(defaultReplFactor));
     if (name != "_graphs") {
       bb.add("distributeShardsLike", VPackValue("_graphs"));
     }
     bb.close();
     res = Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                            /*waitsForSyncReplication*/ true,
-                            /*enforceReplicationFactor*/ true,
-                            [](LogicalCollection* coll) { TRI_ASSERT(coll); });
+                              /*waitsForSyncReplication*/ true,
+                              /*enforceReplicationFactor*/ true,
+                              [](LogicalCollection* coll) { TRI_ASSERT(coll); });
   }
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  return true;
 }
 
-static void createIndex(TRI_vocbase_t* vocbase, std::string const& name,
+/// create an index if it does not exist
+static bool createIndex(TRI_vocbase_t* vocbase, std::string const& name,
                         Index::IndexType type,
                         std::vector<std::string> const& fields, bool unique,
                         bool sparse) {
@@ -89,25 +96,30 @@ static void createIndex(TRI_vocbase_t* vocbase, std::string const& name,
   if (res1.fail() || res2.fail()) {
     THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
   }
+  return true;
 }
-void UpgradeTasks::setupGraphs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_graphs");
+bool UpgradeTasks::setupGraphs(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_graphs");
 }
-void UpgradeTasks::setupUsers(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_users");
+bool UpgradeTasks::setupUsers(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_users");
 }
-void UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
+bool UpgradeTasks::createUsersIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
   TRI_ASSERT(vocbase->isSystem());
-  createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-              /*unique*/ true, /*sparse*/ true);
+  return createIndex(vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX,
+                     {"user"},
+                     /*unique*/ true, /*sparse*/ true);
 }
-void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
-                                   VPackSlice const& params) {
+bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t* vocbase,
+                                       VPackSlice const& params) {
   TRI_ASSERT(!vocbase->isSystem());
   TRI_ASSERT(params.isObject());
   VPackSlice users = params.get("users");
-  if (!users.isArray()) {
-    return;
+  if (users.isNone()) {
+    return true; // exit, no users were specified
+  } else if (!users.isArray()) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "addDefaultUserOther: users is invalid";
+    return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   TRI_ASSERT(um != nullptr);
@@ -120,7 +132,8 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
     std::string passwd = VelocyPackHelper::getStringValue(slice, "passwd", "");
     bool active = VelocyPackHelper::getBooleanValue(slice, "active", true);
     VPackSlice extra = slice.get("extra");
-    Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
+    Result res =
+        um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
       LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user "
                                        << user;
@@ -131,24 +144,30 @@ void UpgradeTasks::addDefaultUsers(TRI_vocbase_t* vocbase,
       });
     }
   }
+  return true;
 }
-void UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
+bool UpgradeTasks::updateUserModels(TRI_vocbase_t* vocbase, VPackSlice const&) {
   TRI_ASSERT(vocbase->isSystem());
   // TODO isn't this done on the fly ?
+  return true;
 }
-void UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {
-  createSystemCollection(vocbase, "_modules");
+bool UpgradeTasks::createModules(TRI_vocbase_t* vocbase, VPackSlice const& s) {
+  return createSystemCollection(vocbase, "_modules");
 }
-void UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_routing");
+bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t* vocbase, VPackSlice const& s) {
+  return createSystemCollection(vocbase, "_iresearch_analyzers");
 }
-void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
+bool UpgradeTasks::createRouting(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_routing");
+}
+bool UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
                                       VPackSlice const&) {
-  std::vector<std::string> toRemove; // remove in a different trx
-  auto cb = [&toRemove] (VPackSlice const& doc) {
+  std::vector<std::string> toRemove;  // remove in a different trx
+  auto cb = [&toRemove](VPackSlice const& doc) {
     TRI_ASSERT(doc.isObject());
     VPackSlice url = doc.get("url"), action = doc.get("action");
-    if (url.isObject() && action.isObject() && action.get("options").isObject()) {
+    if (url.isObject() && action.isObject() &&
+        action.get("options").isObject()) {
       VPackSlice v = action.get("options").get("destination");
       if (v.isString()) {
         std::string path = v.copyString();
@@ -163,7 +182,7 @@ void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-  
+
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, "_routing", AccessMode::Type::WRITE);
   res = trx.begin();
@@ -174,12 +193,12 @@ void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
   opts.waitForSync = true;
   for (std::string const& key : toRemove) {
     VPackBuilder b;
-    b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-    trx.remove("_routing", b.slice(), opts); // check results
+    b(VPackValue(VPackValueType::Object))(StaticStrings::KeyString,
+                                          VPackValue(key))();
+    trx.remove("_routing", b.slice(), opts);  // check results
   }
 
-  std::vector<std::string> paths = {"/", "/_admin/html",
-                                    "/_admin/html/index.html"};
+  std::vector<std::string> paths = {"/", "/_admin/html", "/_admin/html/index.html"};
   std::string dest = "/_db/" + vocbase->name() + "/_admin/aardvark/index.html";
   OperationResult opres;
   for (std::string const& path : paths) {
@@ -204,21 +223,27 @@ void UpgradeTasks::insertRedirections(TRI_vocbase_t* vocbase,
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+  return true;
 }
-void UpgradeTasks::setupAqlFunctions(TRI_vocbase_t* vocbase,
+
+bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t* vocbase,
                                      VPackSlice const&) {
-  createSystemCollection(vocbase, "_aqlfunctions");
+  return createSystemCollection(vocbase, "_aqlfunctions");
 }
-void UpgradeTasks::createFrontend(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_frontend");
+
+bool UpgradeTasks::createFrontend(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_frontend");
 }
-void UpgradeTasks::setupQueues(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_queues");
+
+bool UpgradeTasks::setupQueues(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_queues");
 }
-void UpgradeTasks::setupJobs(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_jobs");
+
+bool UpgradeTasks::setupJobs(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_jobs");
 }
-void UpgradeTasks::createJobsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
+
+bool UpgradeTasks::createJobsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
   createSystemCollection(vocbase, "_jobs");
   createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
               {"queue", "status", "delayUntil"},
@@ -226,14 +251,18 @@ void UpgradeTasks::createJobsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
   createIndex(vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
               {"status", "queue", "delayUntil"},
               /*unique*/ true, /*sparse*/ true);
+  return true;
 }
-void UpgradeTasks::setupApps(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_apps");
+
+bool UpgradeTasks::setupApps(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_apps");
 }
-void UpgradeTasks::createAppsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"},
-              /*unique*/ true, /*sparse*/ true);
+
+bool UpgradeTasks::createAppsIndex(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createIndex(vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX,
+                     {"mount"}, /*unique*/ true, /*sparse*/ true);
 }
-void UpgradeTasks::setupAppBundles(TRI_vocbase_t* vocbase, VPackSlice const&) {
-  createSystemCollection(vocbase, "_appbundles");
+
+bool UpgradeTasks::setupAppBundles(TRI_vocbase_t* vocbase, VPackSlice const&) {
+  return createSystemCollection(vocbase, "_appbundles");
 }

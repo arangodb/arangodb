@@ -365,8 +365,9 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool useVst = false) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping collection " << collection->cid() << ", tick range "
-             << dataMin << " - " << dataMax;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    << "dumping collection " << collection->id()
+    << ", tick range " << dataMin << " - " << dataMax;
 
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
@@ -460,8 +461,15 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
     MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
-      res = DumpCollection(dump, collection, collection->vocbase()->id(),
-                           collection->cid(), dataMin, dataMax, withTicks);
+      res = DumpCollection(
+        dump,
+        collection,
+        collection->vocbase()->id(),
+        collection->id(),
+        dataMin,
+        dataMax,
+        withTicks
+      );
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }

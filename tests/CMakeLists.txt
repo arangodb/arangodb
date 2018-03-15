@@ -44,11 +44,11 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryAggregate-test.cpp
     IResearch/IResearchQueryTraversal-test.cpp
     IResearch/ExpressionFilter-test.cpp
-    IResearch/StorageEngineMock.cpp
     IResearch/ExecutionBlockMock.cpp
     IResearch/ExpressionContextMock.cpp
     IResearch/VelocyPackHelper-test.cpp
     IResearch/ExecutionBlockMock-test.cpp
+    VocBase/LogicalDataSource-test.cpp
   )
 endif ()
 
@@ -114,7 +114,7 @@ add_executable(
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
   SimpleHttpClient/CommunicatorTest.cpp
-  VocBase/LogicalDataSource-test.cpp
+  IResearch/StorageEngineMock.cpp
   ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )

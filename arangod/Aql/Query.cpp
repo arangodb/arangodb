@@ -28,7 +28,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/V8Executor.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/PlanCache.h"
@@ -203,8 +202,6 @@ Query::~Query() {
       << " this: " << (uintptr_t) this;
   }
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
-
-  _v8Executor.reset();
 
   exitContext();
 
@@ -1003,17 +1000,6 @@ void Query::setEngine(ExecutionEngine* engine) {
 
 void Query::releaseEngine() {
   _engine.release();
-}
-
-/// @brief get v8 executor
-V8Executor* Query::v8Executor() {
-  if (_v8Executor == nullptr) {
-    // the executor is a singleton per query
-    _v8Executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
-  }
-
-  TRI_ASSERT(_v8Executor != nullptr);
-  return _v8Executor.get();
 }
 
 /// @brief enter a V8 context

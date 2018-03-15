@@ -183,6 +183,9 @@ class Agent : public arangodb::Thread,
   /// @brief Wait for slaves to confirm appended entries
   AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
 
+  /// @brief Check if everything up to a given index has been committed:
+  bool isCommitted(index_t last_entry) override;
+
   /// @brief Convencience size of agency
   size_t size() const;
 

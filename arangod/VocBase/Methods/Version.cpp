@@ -23,6 +23,7 @@
 #include "Version.h"
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Rest/Version.h"
@@ -143,14 +144,15 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
   return res;
 }
 
-void Version::write(TRI_vocbase_t* vocbase,
-                    std::map<std::string, bool> tasks) {
+Result Version::write(TRI_vocbase_t* vocbase,
+                      std::map<std::string, bool> tasks,
+                      bool sync) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   
   std::string versionFile = engine->versionFilename(vocbase->id());
   TRI_ASSERT(!versionFile.empty());
-  
+    
   VPackOptions opts;
   opts.buildUnindexedObjects = true;
   VPackBuilder builder(&opts);
@@ -162,7 +164,10 @@ void Version::write(TRI_vocbase_t* vocbase,
   }
   builder.close();
   builder.close();
-  
-  std::string json = builder.slice().toJson();
-  basics::FileUtils::spit(versionFile, json.c_str(), json.length());
+    
+  if (!basics::VelocyPackHelper::velocyPackToFile(versionFile, builder.slice(), sync)) {
+    LOG_TOPIC(ERR, Logger::STARTUP) << "Writing the version file failed: " << TRI_last_error();
+    return Result(TRI_errno(), TRI_last_error());
+  }
+  return Result();
 }

@@ -547,7 +547,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     return false;
   }
-  
+
   LogicalCollection* loadCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid != 0);
     if (_vocbase != nullptr) {
@@ -555,12 +555,15 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       if (it != _collectionCache.end()) {
         return it->second.collection();
       }
-      LogicalCollection* collection = _vocbase->lookupCollection(cid);
+
+      auto* collection = _vocbase->lookupCollection(cid).get();
+
       if (collection != nullptr) {
         _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
         return collection;
       }
     }
+
     return nullptr;
   }
 
