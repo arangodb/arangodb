@@ -32,7 +32,6 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a general cursor from an array
@@ -70,7 +69,6 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() >= 2) {
     int64_t maxValue = TRI_ObjectToInt64(args[1]);
-
     if (maxValue > 0 && maxValue < (int64_t)UINT32_MAX) {
       batchSize = static_cast<uint32_t>(maxValue);
     }
@@ -86,7 +84,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create a cursor
-  auto cursors = vocbase->cursorRepository();
+  CursorRepository* cursors = vocbase->cursorRepository();
 
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.result = builder;
@@ -97,10 +95,11 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   try {
     arangodb::Cursor* cursor = cursors->createFromQueryResult(
-        std::move(result), static_cast<size_t>(batchSize), nullptr, ttl, true);
+        std::move(result), static_cast<size_t>(batchSize), ttl, true);
 
     TRI_ASSERT(cursor != nullptr);
-    auto id = cursor->id(); // need to fetch id before release() as release() will delete the cursor
+    // need to fetch id before release() as release() might delete the cursor
+    CursorId id = cursor->id();
     cursors->release(cursor);
 
     auto result = TRI_V8UInt64String<TRI_voc_tick_t>(isolate, id);
@@ -138,7 +137,8 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(cursors != nullptr);
 
   bool busy;
-  auto cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
+  Cursor* cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
+  TRI_DEFER(cursors->release(cursor));
 
   if (cursor == nullptr) {
     if (busy) {
@@ -147,59 +147,21 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_CURSOR_NOT_FOUND);
   }
+  
+  auto cth = cursor->context()->orderCustomTypeHandler();
+  VPackOptions opts = VPackOptions::Defaults;
+  opts.customTypeHandler = cth.get();
 
-  try {
-    auto result = v8::Object::New(isolate);
-
-    // build documents
-    auto docs = v8::Array::New(isolate);
-    size_t const n = cursor->batchSize();
-
-    for (size_t i = 0; i < n; ++i) {
-      if (!cursor->hasNext()) {
-        break;
-      }
-
-      auto row = cursor->next();
-
-      if (row.isNone()) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
-      docs->Set(static_cast<uint32_t>(i), TRI_VPackToV8(isolate, row));
-    }
-
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "result"), docs);
-
-    bool hasCount = cursor->hasCount();
-    size_t count = cursor->count();
-    bool hasNext = cursor->hasNext();
-    VPackSlice const extra = cursor->extra();
-
-    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "hasMore"),
-                     v8::Boolean::New(isolate, hasNext));
-
-    if (hasNext) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "id"),
-                       TRI_V8UInt64String<TRI_voc_tick_t>(isolate, cursor->id()));
-    }
-
-    if (hasCount) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "count"),
-                       v8::Number::New(isolate, static_cast<double>(count)));
-    }
-    if (!extra.isNone()) {
-      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "extra"),
-                       TRI_VPackToV8(isolate, extra));
-    }
-
-    cursors->release(cursor);
-
-    TRI_V8_RETURN(result);
-  } catch (...) {
-    cursors->release(cursor);
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  VPackBuilder builder(&opts);
+  builder.openObject(true); // conversion uses sequential iterator, no indexing
+  Result r = cursor->dump(builder);
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MEMORY(); // for compatibility
   }
+  builder.close();
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 

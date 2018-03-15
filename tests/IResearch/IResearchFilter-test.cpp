@@ -44,6 +44,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/ExecutionPlan.h"
@@ -156,6 +157,7 @@ struct IResearchFilterSetup {
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::ViewTypesFeature(&server), false); // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);

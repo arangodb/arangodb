@@ -1645,10 +1645,16 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
+      auto& creator = viewTypesFeature->factory(dataSourceType);
 
-      std::string type = it.get("type").copyString();
-      // will throw if type is invalid
-      ViewCreator& creator = viewTypesFeature->creator(type);
+      if (!creator) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "no handler found for view type"
+        );
+      }
 
       TRI_ASSERT(!it.get("id").isNone());
 
@@ -1689,13 +1695,11 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(
-          vocbase.get(), it, false);
+      auto uniqCol =
+        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
-      // The vocbase has taken over control
-      uniqCol.release();
+      StorageEngine::registerCollection(vocbase.get(), uniqCol);
 
       auto physical =
           static_cast<RocksDBCollection*>(collection->getPhysical());

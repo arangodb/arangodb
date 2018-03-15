@@ -146,7 +146,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
       u.setActive(TRI_ObjectToBoolean(args[2]));
     }
     if (!extras.isEmpty()) {
-      u.setConfigData(std::move(extras));
+      u.setUserData(std::move(extras));
     }
     return TRI_ERROR_NO_ERROR;
   });
