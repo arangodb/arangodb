@@ -42,7 +42,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   #else
   auto dataSource = getDataSource(id);
 
-  return dataSource->category() == LogicalCollection::category()
+  return dataSource && dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -55,7 +55,7 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(
   #else
   auto dataSource = getDataSource(nameOrId);
 
-  return dataSource->category() == LogicalCollection::category()
+  return dataSource && dataSource->category() == LogicalCollection::category()
     ? std::static_pointer_cast<LogicalCollection>(dataSource) : nullptr;
   #endif
 }
@@ -270,18 +270,16 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         // DBserver case of a shard:
         name = arangodb::basics::StringUtils::itoa((*it).second->planId());
         std::shared_ptr<LogicalCollection> ci;
+
         try {
+          TRI_ASSERT(it->second->vocbase());
           ci = ClusterInfo::instance()->getCollection(
-            #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-              dynamic_cast<LogicalCollection*>(it->second.get())->dbName(),
-            #else
-              static_cast<LogicalCollection*>(it->second.get())->dbName(),
-            #endif
-            name
+            it->second->vocbase()->name(), name
           );
         }
         catch (...) {
         }
+
         if (ci == nullptr) {
           name = ""; // collection unknown
         } else {
@@ -378,7 +376,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   #else
   auto dataSource = getDataSource(id);
 
-  return dataSource->category() == LogicalView::category()
+  return dataSource && dataSource->category() == LogicalView::category()
     ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }
@@ -391,7 +389,7 @@ std::shared_ptr<LogicalView> CollectionNameResolver::getView(
   #else
   auto dataSource = getDataSource(nameOrId);
 
-  return dataSource->category() == LogicalView::category()
+  return dataSource && dataSource->category() == LogicalView::category()
     ? std::static_pointer_cast<LogicalView>(dataSource) : nullptr;
   #endif
 }

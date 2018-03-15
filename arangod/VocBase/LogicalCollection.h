@@ -113,14 +113,7 @@ class LogicalCollection: public LogicalDataSource {
 
   uint32_t internalVersion() const;
 
-  inline TRI_voc_cid_t cid() const { return id(); }
-
-  /// @deprecated only required/used for ShardDistributionReporterTest (do not use)
-  virtual std::string cid_as_string() const;
-
   TRI_col_type_e type() const;
-
-  std::string dbName() const;
 
   std::string globallyUniqueId() const;
 
@@ -163,7 +156,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  using LogicalDataSource::deleted; // required by TRI_vocbase_t
   bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;

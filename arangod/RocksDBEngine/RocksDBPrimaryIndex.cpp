@@ -420,7 +420,7 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!_isRunningInCluster && cid != _collection->cid()) {
+    if (!_isRunningInCluster && cid != _collection->id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;

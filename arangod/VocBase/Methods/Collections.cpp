@@ -236,13 +236,21 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(coll->vocbase());
+
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(coll->dbName(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_LOADED);
+    return ULColCoordinatorEnterprise(
+      coll->vocbase()->name(),
+      std::to_string(coll->id()),
+      TRI_VOC_COL_STATUS_LOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
+
     return ci->setCollectionStatusCoordinator(
-      coll->dbName(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_LOADED
+      coll->vocbase()->name(),
+      std::to_string(coll->id()),
+      TRI_VOC_COL_STATUS_LOADED
     );
 #endif
   }
@@ -260,15 +268,18 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(vocbase->name(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_UNLOADED);
+    return ULColCoordinatorEnterprise(
+      vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
+
     return ci->setCollectionStatusCoordinator(
       vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
     );
 #endif
   }
+
   return vocbase->unloadCollection(coll, false);
 }
 
@@ -335,7 +346,12 @@ Result Collections::updateProperties(LogicalCollection* coll,
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
-    auto info = ci->getCollection(coll->dbName(), std::to_string(coll->id()));
+
+    TRI_ASSERT(coll->vocbase());
+
+    auto info =
+      ci->getCollection(coll->vocbase()->name(), std::to_string(coll->id()));
+
     return info->updateProperties(props, false);
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
@@ -434,7 +450,8 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  std::string const databaseName(collection->dbName());
+  TRI_ASSERT(collection->vocbase());
+  auto& databaseName = collection->vocbase()->name();
   auto cid = std::to_string(collection->id());
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
@@ -466,7 +483,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  std::string const dbname = coll->dbName();
+  TRI_ASSERT(coll->vocbase());
+  auto& dbname = coll->vocbase()->name();
   std::string const collName = coll->name();
 
   Result res;
@@ -534,9 +552,9 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::revisionId(TRI_vocbase_t* vocbase,
                                LogicalCollection* coll,
                                TRI_voc_rid_t& rid) {
-
   TRI_ASSERT(coll != nullptr);
-  std::string const databaseName(coll->dbName());
+  TRI_ASSERT(coll->vocbase());
+  auto& databaseName = coll->vocbase()->name();
   auto cid = std::to_string(coll->id());
 
   if (ServerState::instance()->isCoordinator()) {

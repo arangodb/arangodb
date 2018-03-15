@@ -91,9 +91,6 @@ class LogicalView final: public LogicalDataSource {
   virtual Result rename(std::string&& newName, bool doSync) override;
 
   // SECTION: Serialization
-  velocypack::Builder toVelocyPack(bool includeProperties = false,
-                                   bool includeSystem = false) const;
-
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;
 

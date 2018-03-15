@@ -552,8 +552,9 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
   TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
-  std::shared_ptr<LogicalCollection> other =
-    ci->getCollection(col->dbName(), cidString);
+  TRI_ASSERT(col->vocbase());
+  auto other = ci->getCollection(col->vocbase()->name(), cidString);
+
   // The function guarantees that no nullptr is returned
   TRI_ASSERT(other != nullptr);
 
@@ -2685,9 +2686,11 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
+  TRI_ASSERT(col->vocbase());
+  auto& dbName = col->vocbase()->name();
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
-      col->dbName(),
+      dbName,
       std::to_string(col->id()),
       col->numberOfShards(), col->replicationFactor(),
       waitForSyncReplication, velocy.slice(), errorMsg, 240.0);
@@ -2698,9 +2701,10 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(myerrno, errorMsg);
   }
+
   ci->loadPlan();
 
-  auto c = ci->getCollection(col->dbName(), std::to_string(col->id()));
+  auto c = ci->getCollection(dbName, std::to_string(col->id()));
   // We never get a nullptr here because an exception is thrown if the
   // collection does not exist. Also, the create collection should have
   // failed before.

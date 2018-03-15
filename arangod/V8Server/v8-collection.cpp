@@ -2386,7 +2386,8 @@ static void JS_StatusVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -2399,7 +2400,7 @@ static void JS_StatusVocbaseCol(
     }
   }
   // intentionally falls through
-  
+
   TRI_vocbase_col_status_e status = collection->status();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
@@ -2467,7 +2468,8 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName = collection->dbName();
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =

@@ -290,11 +290,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* coll = resolveCollection(vocbase, slice);
+
+  auto* coll = resolveCollection(vocbase, slice).get();
+
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  
+
   bool isSystem = coll->isSystem();
   // extract "data"
   VPackSlice const doc = slice.get("data");
@@ -554,9 +556,12 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
   arangodb::LogicalCollection* col = nullptr;
+
   if (slice.hasKey("cuid")) {
-    col = resolveCollection(vocbase, slice);
+    col = resolveCollection(vocbase, slice).get();
+
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
     }
@@ -605,13 +610,16 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
     }
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+
+  auto* col = resolveCollection(vocbase, slice).get();
+
   if (col == nullptr) {
     if (isDeleted) {
       // not a problem if a collection that is going to be deleted anyway
       // does not exist on slave
       return Result();
     }
+
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
