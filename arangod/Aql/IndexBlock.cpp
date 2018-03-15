@@ -33,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -519,7 +520,22 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // position _returned:
 
   IndexIterator::DocumentCallback callback;
-  if (_indexes.size() > 1) {
+
+  size_t expansions = 0;
+  {
+    // count how many attributes in the index are expanded (array index)
+    // if more than a single attribute, we always need to deduplicate the
+    // result later on
+    auto mainIndex = _indexes[0].getIndex();
+    auto const& fields = mainIndex->fields();
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (mainIndex->isAttributeExpanded(i)) {
+        ++expansions;
+      }
+    }
+  }
+
+  if (_indexes.size() > 1 || expansions > 1) {
     // Activate uniqueness checks
     callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res != nullptr);
