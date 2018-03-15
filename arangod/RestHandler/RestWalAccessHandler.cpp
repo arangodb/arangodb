@@ -93,7 +93,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
         return false;
       }
 
-      filter.collection = c->cid();
+      filter.collection = c->id();
     }
   }
 

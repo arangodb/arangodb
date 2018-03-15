@@ -266,7 +266,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);

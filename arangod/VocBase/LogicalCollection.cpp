@@ -460,10 +460,6 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
 
-std::string LogicalCollection::cid_as_string() const {
-  return std::to_string(id());
-}
-
 TRI_col_type_e LogicalCollection::type() const { return _type; }
 
 std::string LogicalCollection::globallyUniqueId() const {
@@ -488,11 +484,6 @@ std::vector<std::string> const& LogicalCollection::avoidServers() const {
 
 void LogicalCollection::avoidServers(std::vector<std::string> const& a) {
   _avoidServers = a;
-}
-
-std::string LogicalCollection::dbName() const {
-  TRI_ASSERT(vocbase());
-  return vocbase()->name();
 }
 
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
@@ -1021,7 +1012,10 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() cons
     auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();
     builder->close();
-    int res = figuresOnCoordinator(dbName(), std::to_string(id()), builder);
+    TRI_ASSERT(vocbase());
+
+    int res =
+      figuresOnCoordinator(vocbase()->name(), std::to_string(id()), builder);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);

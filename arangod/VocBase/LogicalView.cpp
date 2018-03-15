@@ -165,15 +165,6 @@ void LogicalView::drop() {
   _physical->drop();
 }
 
-VPackBuilder LogicalView::toVelocyPack(bool includeProperties,
-                                       bool includeSystem) const {
-  VPackBuilder builder;
-  builder.openObject();
-  toVelocyPack(builder, includeProperties, includeSystem);
-  builder.close();
-  return builder;
-}
-
 void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
                                bool includeSystem) const {
   // We write into an open object
