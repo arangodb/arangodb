@@ -48,7 +48,9 @@ if (USE_IRESEARCH)
     IResearch/ExpressionContextMock.cpp
     IResearch/VelocyPackHelper-test.cpp
     IResearch/ExecutionBlockMock-test.cpp
+    Utils/CollectionNameResolver-test.cpp
     VocBase/LogicalDataSource-test.cpp
+    VocBase/vocbase-test.cpp
   )
 endif ()
 

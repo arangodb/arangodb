@@ -3332,11 +3332,17 @@ Result MMFilesCollection::update(
                           *builder.get(), options.isRestore, revisionId);
 
     if (_isDBServer) {
+      TRI_ASSERT(_logicalCollection->vocbase());
       // Need to check that no sharding keys have changed:
-      if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                     trx->resolver()->getCollectionNameCluster(
-                                         _logicalCollection->planId()),
-                                     oldDoc, builder->slice(), false)) {
+      if (arangodb::shardKeysChanged(
+            _logicalCollection->vocbase()->name(),
+            trx->resolver()->getCollectionNameCluster(
+              _logicalCollection->planId()
+            ),
+            oldDoc,
+            builder->slice(),
+            false
+         )) {
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
     }
@@ -3465,11 +3471,17 @@ Result MMFilesCollection::replace(
                       options.isRestore, revisionId);
 
   if (_isDBServer) {
+    TRI_ASSERT(_logicalCollection->vocbase());
     // Need to check that no sharding keys have changed:
-    if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
-                                   trx->resolver()->getCollectionNameCluster(
-                                       _logicalCollection->planId()),
-                                   oldDoc, builder->slice(), false)) {
+    if (arangodb::shardKeysChanged(
+          _logicalCollection->vocbase()->name(),
+          trx->resolver()->getCollectionNameCluster(
+            _logicalCollection->planId()
+          ),
+          oldDoc,
+          builder->slice(),
+          false
+       )) {
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }

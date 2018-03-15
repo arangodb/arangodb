@@ -700,13 +700,14 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         auto other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
-          if (other->cid() == collection->cid()) {
+          if (other->id() == collection->id()) {
             LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "collection " << collectionId << " in database "
               << databaseId << " already renamed; moving on";
             break;
           } else {
-            TRI_voc_cid_t otherCid = other->cid();
+            auto otherCid = other->id();
+
             state->releaseCollection(otherCid);
             vocbase->dropCollection(other.get(), true, -1.0);
           }
@@ -1073,7 +1074,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           collection = vocbase->lookupCollection(name).get();
 
           if (collection != nullptr) {
-            TRI_voc_cid_t otherCid = collection->cid();
+            auto otherCid = collection->id();
 
             state->releaseCollection(otherCid);
             vocbase->dropCollection(collection, true, -1.0);
@@ -1609,9 +1610,9 @@ int MMFilesWalRecoverState::fillIndexes() {
     physical->useSecondaryIndexes(true);
 
     auto ctx = transaction::StandaloneContext::Create(collection->vocbase());
-    arangodb::SingleCollectionTransaction trx(ctx, collection->cid(),
-                                              AccessMode::Type::WRITE);
-
+    arangodb::SingleCollectionTransaction trx(
+      ctx, collection->id(), AccessMode::Type::WRITE
+    );
     int res = physical->fillAllIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {

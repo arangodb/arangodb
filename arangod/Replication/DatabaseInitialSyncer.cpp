@@ -798,7 +798,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       // not found...
@@ -918,7 +918,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string const progress = "dumping data for " + collectionMsg;
     setProgress(progress);
 
-    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
+    auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") +
@@ -926,8 +926,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     Result res;
-    
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : StringUtils::itoa(masterCid);
+
     if (incremental && getSize(col) > 0) {
       res = handleCollectionSync(col, masterColl, _masterInfo._lastLogTick);
     } else {

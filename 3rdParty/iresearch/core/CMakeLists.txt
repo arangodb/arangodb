@@ -289,7 +289,7 @@ if(MSVC)
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     COMMAND ${CMAKE_COMMAND} -E make_directory iql
-    COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND ${CMAKE_COMMAND} -E compare_files ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy || bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy iql/parser.yy
   )
 else()
@@ -298,7 +298,7 @@ else()
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
     COMMAND ${CMAKE_COMMAND} -E make_directory iql
-    COMMAND bison --graph --report=all -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
+    COMMAND bison --graph --report=all -Wnone -o iql/parser.cc ${CMAKE_CURRENT_SOURCE_DIR}/iql/parser.yy
   )
 endif()
 

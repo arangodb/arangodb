@@ -127,7 +127,7 @@ int RocksDBReplicationContext::bindCollection(
   
   if ((_collection == nullptr) ||
       ((_collection->name() != collectionIdentifier) &&
-       std::to_string(_collection->cid()) != collectionIdentifier &&
+       std::to_string(_collection->id()) != collectionIdentifier &&
        _collection->globallyUniqueId() != collectionIdentifier)) {
     _collection = _trx->vocbase()->lookupCollection(collectionIdentifier).get();
 
