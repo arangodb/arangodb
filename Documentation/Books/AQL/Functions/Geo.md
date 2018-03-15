@@ -21,6 +21,34 @@ return GEO_POINT(1.0, 2.0)
 // }
 ```
 
+### GEO_MULTIPOINT()
+
+`GEO_MULTIPOINT(array) → GeoJSON LineString`
+
+Returns a valid GeoJSON LineString. Needs at least two longitude/latitude pairs.
+
+- **array** (points): array of points e.g. longitude/latitude pairs
+
+```js
+return GEO_MULTIPOINT([
+  [35, 10], [45, 45]
+])
+
+//  {
+//    "coordinates": [
+//      [
+//        35,
+//        10
+//      ],
+//      [
+//        45,
+//        45
+//      ]
+//    ],
+//    "type": "MultiPoint"
+//  }
+```
+
 ### GEO_POLYGON()
 
 `GEO_POLYGON(array) → GeoJSON Polygon`
@@ -29,7 +57,7 @@ Returns a valid GeoJSON Polygon. Needs at least three longitude/latitude pairs.
 
 - **array** (points): array of longitude/latitude pairs
 
-Simple Polygon:
+Simple Polygon Builder:
 
 ```js
 return GEO_POLYGON([
@@ -39,23 +67,25 @@ return GEO_POLYGON([
 // {
 //   "coordinates": [
 //     [
-//       1,
-//       2
-//     ],
-//     [
-//       3,
-//       4
-//     ],
-//     [
-//       5,
-//       6
+//       [
+//         1,
+//         2
+//       ],
+//       [
+//         3,
+//         4
+//       ],
+//       [
+//         5,
+//         6
+//       ]
 //     ]
 //   ],
 //   "type": "Polygon"
 //  }
 ```
 
-Advanced Polygon with a hole inside:
+Advanced Polygon Builder with a hole inside:
 
 ```js
 return GEO_POLYGON([
@@ -222,10 +252,41 @@ Return the distance between two GeoJSON objects, measured from the **centroid** 
 - returns **double**: the distance between the centroid points of the two objects.
 
 ```js
-LET polygon = {type:"Polygon", coordinates: [[[-11.5, 23.5], [-10.5, 26.1], [-11.5, 23.5]]] }
+LET polygon = {type:"Polygon", coordinates: [[[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]]] }
 FOR doc IN collectionName
   LET distance = GEO_DISTANCE(doc.geometry, polygon) // calculates the distance
   RETURN distance
+```
+
+### GEO_EQUALS()
+
+`GEO_EQUALS(geoJSONA, geoJSONB) → bool`
+
+Checks whether two GeoJSON objects are equal or not. 
+(For a list of supported Types see [geo index page](../../Manual/Indexing/Geo.html#GeoJSON)).
+
+- **geoJSONA** first GeoJSON object
+- **geoJSONB** second GeoJSON object.
+- returns **bool**: true for equality.
+
+```js
+LET polygonA = GEO_POLYGON([[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]])
+LET polygonB = GEO_POLYGON([[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]])
+  RETURN GEO_EQUALS(polygonA, polygonB)
+```
+
+```
+// true
+```
+
+```js
+LET polygonA = GEO_POLYGON([[-11.1, 24.0], [-10.5, 26.1], [-11.2, 27.1], [-11.1, 24.0]])
+LET polygonB = GEO_POLYGON([[-11.5, 23.5], [-10.5, 26.1], [-11.2, 27.1], [-11.5, 23.5]])
+  RETURN GEO_EQUALS(polygonA, polygonB)
+```
+
+```
+// false
 ```
 
 ### IS_IN_POLYGON()
