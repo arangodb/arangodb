@@ -436,7 +436,7 @@ bool ShapeContainer::equals(Coordinate const* cc) const {
   return false;
 }
 
-bool ShapeContainer::equals(Coordinate const point, Coordinate const other) const {
+bool ShapeContainer::equals(Coordinate const& point, Coordinate const& other) const {
   if (point.latitude == other.latitude && point.longitude == other.longitude) {
     return true;
   }

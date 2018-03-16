@@ -2991,7 +2991,7 @@ AqlValue Functions::GeoPoint(arangodb::aql::Query* query,
 
   if (n < 2) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue lon1 = ExtractFunctionParameterValue(parameters, 0);
@@ -3041,7 +3041,7 @@ AqlValue Functions::GeoMultiPoint(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
@@ -3104,7 +3104,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
@@ -3242,7 +3242,7 @@ AqlValue Functions::GeoLinestring(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
@@ -3306,7 +3306,7 @@ AqlValue Functions::GeoMultiLinestring(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue geoArray = ExtractFunctionParameterValue(parameters, 0);
