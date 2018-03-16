@@ -588,6 +588,7 @@ else ()
   set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 endif()
 
+set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 set(ICU_DT "${ICU_BASEDIR}/common/icudtl.dat")
 set(ICU_DT ${ICU_DT} PARENT_SCOPE)
 set(ICU_DT_DEST "icudtl.dat" )

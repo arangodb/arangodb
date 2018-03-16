@@ -247,6 +247,7 @@ while [ $# -gt 0 ];  do
         --sanitize)
             TAR_SUFFIX="-sanitize"
             SANITIZE=1
+	    USE_JEMALLOC=0
             shift
             ;;
 
@@ -412,8 +413,13 @@ while [ $# -gt 0 ];  do
 
         --maintainer)
             shift
+            MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=on"
             ;;
 
+        --debugV8)
+            shift
+            CONFIGURE_OPTIONS+=(-DUSE_DEBUG_V8=ON)
+            ;;
         --retryPackages)
             shift
             RETRY_N_TIMES=$1
