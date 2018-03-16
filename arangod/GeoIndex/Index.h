@@ -23,6 +23,7 @@
 #ifndef ARANGOD_GEO_INDEX_H
 #define ARANGOD_GEO_INDEX_H 1
 
+#include <s2/s2latlng.h>
 #include <s2/s2cell_id.h>
 
 #include "Basics/Result.h"
@@ -71,7 +72,7 @@ struct Index {
  public:
   /// @brief Parse document and return cells to index
   Result indexCells(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
-                    geo::Coordinate& centroid) const;
+                    S2Point& centroid) const;
 
   Result shape(velocypack::Slice const& doc, geo::ShapeContainer& shape) const;
 
@@ -84,10 +85,10 @@ struct Index {
   Variant variant() const { return _variant; }
 
  private:
-  static geo::Coordinate parseGeoDistance(aql::AstNode const* node,
+  static S2LatLng parseGeoDistance(aql::AstNode const* node,
                                           aql::Variable const* ref);
 
-  static geo::Coordinate parseDistFCall(aql::AstNode const* node,
+  static S2LatLng parseDistFCall(aql::AstNode const* node,
                                         aql::Variable const* ref);
   static void handleNode(aql::AstNode const* node, aql::Variable const* ref,
                          geo::QueryParams& params);

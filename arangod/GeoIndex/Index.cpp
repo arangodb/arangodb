@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 
+#include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
 #include <velocypack/Slice.h>
@@ -77,7 +78,7 @@ Index::Index(VPackSlice const& info,
   }
 }
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
-                         geo::Coordinate& centroid) const {
+                         S2Point& centroid) const {
   using geo::GeoUtils;
 
   if (_variant == Variant::GEOJSON) {
@@ -91,7 +92,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
       S2RegionCoverer coverer(_coverParams.regionCovererOpts());
       cells = shape.covering(&coverer);
       centroid = shape.centroid();
-      if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+      if (!S2LatLng(centroid).is_valid()) {
         return TRI_ERROR_BAD_PARAMETER;
       }
     }
@@ -105,12 +106,14 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     if (!lat.isNumber() || !lon.isNumber()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    centroid.latitude = lat.getNumericValue<double>();
-    centroid.longitude = lon.getNumericValue<double>();
-    if (std::abs(centroid.latitude) > 90.0 || std::abs(centroid.longitude) > 180.0) {
+    S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
+                                        lon.getNumericValue<double>());
+    if (!ll.is_valid()) {
       return TRI_ERROR_BAD_PARAMETER;
     }
-    return GeoUtils::indexCells(centroid, cells);
+    centroid = ll.ToPoint();
+    cells.emplace_back(centroid);
+    return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_INTERNAL;
 }
@@ -142,8 +145,8 @@ Result Index::shape(velocypack::Slice const& doc,
 }
 
 // Handle GEO_DISTANCE(<something>, doc.field)
-geo::Coordinate Index::parseGeoDistance(aql::AstNode const* args,
-                                        aql::Variable const* ref) {
+S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
+                                 aql::Variable const* ref) {
   // aql::AstNode* dist = node->getMemberUnchecked(0);
   TRI_ASSERT(args->numMembers() == 2);
   if (args->numMembers() != 2) {
@@ -164,8 +167,8 @@ geo::Coordinate Index::parseGeoDistance(aql::AstNode const* args,
   Result res;
   if (cc->type == aql::NODE_TYPE_ARRAY) {  // [lng, lat] is valid input
     TRI_ASSERT(cc->numMembers() == 2);
-    return geo::Coordinate(/*lat*/ cc->getMember(1)->getDoubleValue(),
-                           /*lon*/ cc->getMember(0)->getDoubleValue());
+    return S2LatLng::FromDegrees(/*lat*/ cc->getMember(1)->getDoubleValue(),
+                                 /*lon*/ cc->getMember(0)->getDoubleValue());
   } else {
     Result res;
     VPackBuilder jsonB;
@@ -180,12 +183,12 @@ geo::Coordinate Index::parseGeoDistance(aql::AstNode const* args,
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-    return shape.centroid();
+    return S2LatLng(shape.centroid());
   }
 }
 
 // either GEO_DISTANCE or DISTANCE
-geo::Coordinate Index::parseDistFCall(aql::AstNode const* node,
+S2LatLng Index::parseDistFCall(aql::AstNode const* node,
                                       aql::Variable const* ref) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_FCALL);
   aql::AstNode* args = node->getMemberUnchecked(0);
@@ -193,7 +196,7 @@ geo::Coordinate Index::parseDistFCall(aql::AstNode const* node,
   TRI_ASSERT(func != nullptr);
   if (func->name == "GEO_DISTANCE") {
     return Index::parseGeoDistance(args, ref);
-  }
+  } // no need to handle DISTANCE anymore
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
 }
@@ -244,14 +247,11 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       qp.maxInclusive = true;
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
-      geo::Coordinate c =
-          Index::parseDistFCall(node->getMemberUnchecked(0), ref);
-      if (qp.origin.isValid() && qp.origin != c) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+      if (!qp.origin.is_valid()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid coordinates");
       }
-      // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
 
-      qp.origin = std::move(c);
       aql::AstNode const* max = node->getMemberUnchecked(1);
       TRI_ASSERT(max->type == aql::NODE_TYPE_VALUE);
       if (!max->isValueType(aql::VALUE_TYPE_STRING)) {
@@ -263,16 +263,14 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       qp.minInclusive = true;
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
-      geo::Coordinate c =
-          Index::parseDistFCall(node->getMemberUnchecked(0), ref);
-      if (qp.origin.isValid() && qp.origin != c) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+      qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
+      if (!qp.origin.is_valid()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid coordinates");
       }
       // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);
-      qp.origin = c;
       qp.minDistance = min->getDoubleValue();
       break;
     }

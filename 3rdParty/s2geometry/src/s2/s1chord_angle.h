@@ -153,6 +153,7 @@ class S1ChordAngle {
   friend S1ChordAngle operator-(S1ChordAngle a, S1ChordAngle b);
   S1ChordAngle& operator+=(S1ChordAngle a);
   S1ChordAngle& operator-=(S1ChordAngle a);
+  S1ChordAngle& operator=(S1ChordAngle a);
 
   // Trigonmetric functions.  It is more accurate and efficient to call these
   // rather than first converting to an S1Angle.
@@ -352,6 +353,12 @@ inline S1ChordAngle& S1ChordAngle::operator+=(S1ChordAngle a) {
 inline S1ChordAngle& S1ChordAngle::operator-=(S1ChordAngle a) {
   return (*this = *this - a);
 }
+
+inline S1ChordAngle& S1ChordAngle::operator=(S1ChordAngle a) {
+  length2_ = a.length2_;
+  return *this;
+}
+
 
 // Outputs the chord angle as the equivalent S1Angle.
 std::ostream& operator<<(std::ostream& os, S1ChordAngle a);

@@ -81,13 +81,13 @@ class ShapeContainer final {
   bool isAreaType() const noexcept { return _type == Type::S2_POLYGON; }
 
   /// @brief centroid of this shape
-  geo::Coordinate centroid() const noexcept;
+  S2Point centroid() const noexcept;
 
   /// @brief generate a cell covering
   std::vector<S2CellId> covering(S2RegionCoverer*) const noexcept;
 
   /// @brief distance from center in meters
-  double distanceFrom(geo::Coordinate const&) const noexcept;
+  double distanceFrom(S2Point const&) const noexcept;
 
   /// @brief may intersect the cell
   bool mayIntersect(S2CellId) const noexcept;
@@ -96,7 +96,7 @@ class ShapeContainer final {
   void updateBounds(QueryParams& qp) const noexcept;
 
   /// contains this region the coordinate
-  bool contains(Coordinate const*) const;
+  bool contains(S2Point const&) const;
   bool contains(S2Polyline const*) const;
   bool contains(S2LatLngRect const*) const;
   bool contains(S2Polygon const*) const;
@@ -104,6 +104,9 @@ class ShapeContainer final {
 
   /// intersects this region the coordinate
   bool intersects(Coordinate const*) const;
+  bool intersects(S2Point const& p) const {
+    return contains(p); // same thing
+  }
   bool intersects(S2Polyline const*) const;
   bool intersects(S2LatLngRect const*) const;
   bool intersects(S2Polygon const*) const;

@@ -68,9 +68,8 @@ RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
-RocksDBValue RocksDBValue::S2Value(geo::Coordinate const& c) {
-  return RocksDBValue(RocksDBEntryType::S2IndexValue,
-                      c.latitude, c.longitude);
+RocksDBValue RocksDBValue::S2Value(S2Point const& p) {
+  return RocksDBValue(p);
 }
 
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
@@ -117,10 +116,11 @@ uint64_t RocksDBValue::keyValue(std::string const& s) {
   return keyValue(s.data(), s.size());
 }
 
-geo::Coordinate RocksDBValue::centroid(rocksdb::Slice const& s) {
-  TRI_ASSERT(s.size() == sizeof(double) * 2);
-  return geo::Coordinate(intToDouble(uint64FromPersistent(s.data())),// lat
-       intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))));// lon
+S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
+  TRI_ASSERT(s.size() == sizeof(double) * 3);
+  return S2Point(intToDouble(uint64FromPersistent(s.data())),
+                 intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
+                 intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -177,19 +177,12 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
   }
 }
 
-RocksDBValue::RocksDBValue(RocksDBEntryType type, double lat, double lon)
-  : _type(type), _buffer() {
-  switch (_type) {
-    case RocksDBEntryType::S2IndexValue: {
-      _buffer.reserve(sizeof(double) * 2);
-      uint64ToPersistent(_buffer, rocksutils::doubleToInt(lat));
-      uint64ToPersistent(_buffer, rocksutils::doubleToInt(lon));
-      break;
-    }
-      
-    default:
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
+RocksDBValue::RocksDBValue(S2Point const& p)
+  : _type(RocksDBEntryType::S2IndexValue), _buffer() {
+      _buffer.reserve(sizeof(uint64_t) * 3);
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.x()));
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.y()));
+  uint64ToPersistent(_buffer, rocksutils::doubleToInt(p.z()));
 }
 
 LocalDocumentId RocksDBValue::documentId(char const* data, uint64_t size) {

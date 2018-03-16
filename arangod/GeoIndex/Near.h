@@ -46,22 +46,23 @@ namespace geo_index {
 
 /// result of a geospatial index query. distance may or may not be set
 struct Document {
-  Document(LocalDocumentId d, double rad) : document(d), distRad(rad) {}
+  Document(LocalDocumentId d, S1ChordAngle angle)
+    : token(d), distAngle(angle) {}
   /// @brief LocalDocumentId
-  LocalDocumentId document;
+  LocalDocumentId token;
   /// @brief distance from centroids on the unit sphere
-  double distRad;
+  S1ChordAngle distAngle;
 };
 
 struct DocumentsAscending {
   bool operator()(Document const& a, Document const& b) {
-    return a.distRad > b.distRad;
+    return a.distAngle > b.distAngle;
   }
 };
 
 struct DocumentsDescending {
   bool operator()(Document const& a, Document const& b) {
-    return a.distRad < b.distRad;
+    return a.distAngle < b.distAngle;
   }
 };
   
@@ -118,30 +119,33 @@ class NearUtils {
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
-    TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
-    TRI_ASSERT(_outerBound <= _maxBound &&
-               _maxBound <= geo::kMaxRadiansBetweenPoints);
-    return _buffer.empty() && allIntervalsCovered();
+    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() && _innerAngle <= _outerAngle);
+    TRI_ASSERT(_outerAngle <= _maxAngle &&
+               _maxAngle <= S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
+    return _buffer.empty() && _allIntervalsCovered;
   }
 
   /// @brief has buffered results
   inline bool hasNearest() const {
-    if (allIntervalsCovered()) {  // special case when almost done
+    if (_allIntervalsCovered) {  // special case when almost done
       return !_buffer.empty();
     }
     // we need to not return results in the search area
-    // between _innerBound and _maxBound. Otherwise results may appear
+    // between _innerAngle and _maxAngle. Otherwise results may appear
     // too early in the result list
     return !_buffer.empty() &&
-           ((isAscending() && _buffer.top().distRad <= _innerBound) ||
-            (isDescending() && _buffer.top().distRad >= _outerBound));
+           ((isAscending() && _buffer.top().distAngle <= _innerAngle) ||
+            (isDescending() && _buffer.top().distAngle >= _outerAngle));
   }
 
   /// @brief closest buffered result
   geo_index::Document const& nearest() const {
-    TRI_ASSERT((isAscending() && (isFilterIntersects() ||
-                                  _buffer.top().distRad <= _innerBound)) ||
-               (isDescending() && _buffer.top().distRad >= _outerBound));
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!_allIntervalsCovered) {
+      TRI_ASSERT(!isAscending() || isFilterIntersects() || _buffer.top().distAngle <= _innerAngle);
+      TRI_ASSERT(!isDescending() || _buffer.top().distAngle >= _outerAngle);
+    }
+#endif
     return _buffer.top();
   }
 
@@ -157,11 +161,11 @@ class NearUtils {
   std::vector<geo::Interval> intervals();
 
   /// buffer and sort results
-  void reportFound(LocalDocumentId lid, geo::Coordinate const& center);
+  void reportFound(LocalDocumentId lid, S2Point const& center);
 
   /// aid density estimation by reporting a result close
   /// to the target coordinates
-  void estimateDensity(geo::Coordinate const& found);
+  void estimateDensity(S2Point const& found);
 
  private:
   /// @brief adjust the bounds delta
@@ -169,15 +173,8 @@ class NearUtils {
 
   /// @brief make isDone return true
   void invalidate() {
-    _innerBound = _maxBound;
-    _outerBound = _maxBound;
-  }
-
-  /// @brief returns true if all possible scan intervals are covered
-  inline bool allIntervalsCovered() const noexcept {
-    return (isAscending() && _innerBound == _maxBound &&
-            _outerBound == _maxBound) ||
-           (isDescending() && _innerBound == 0 && _outerBound == 0);
+    _innerAngle = _maxAngle;
+    _outerAngle = _maxAngle;
   }
 
   inline bool isFilterNone() const noexcept {
@@ -199,18 +196,20 @@ class NearUtils {
   S2Point const _origin;
 
   /// min distance in radians on the unit sphere
-  double const _minBound = 0;
+  S1ChordAngle const _minAngle = S1ChordAngle::Zero();
   /// max distance in radians on the unit sphere
-  double const _maxBound = geo::kMaxRadiansBetweenPoints;
+  S1ChordAngle const _maxAngle = S1ChordAngle::Straight();
 
-  /// Amount to increment by (in radians on unit sphere)
-  double _boundDelta = 0.0;
-  /// inner limit (in radians on unit sphere) of search area
-  double _innerBound = 0.0;
-  /// outer limit (in radians on unit sphere) of search area
-  double _outerBound = 0.0;
+  /// Are all intervals covered
+  bool _allIntervalsCovered;
+  /// Amount to increment by
+  S1ChordAngle _deltaAngle;
+  /// inner limit of search area
+  S1ChordAngle _innerAngle;
+  /// outer limit of search area
+  S1ChordAngle _outerAngle;
 
-  /// for adjusting _boundDelta on the fly
+  /// for adjusting _deltaAngle on the fly
   size_t _statsFoundLastInterval = 0;
 
   /// buffer of found documents
