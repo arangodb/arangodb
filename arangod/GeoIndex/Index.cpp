@@ -155,9 +155,9 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args,
   // either doc.geo or [doc.lng, doc.lat]
   aql::AstNode const* var = args->getMember(1);
   TRI_ASSERT(var->isAttributeAccessForVariable(ref, true) ||
-             var->isArray() &&
+             (var->isArray() &&
                  var->getMember(0)->isAttributeAccessForVariable(ref, true) &&
-                 var->getMember(1)->isAttributeAccessForVariable(ref, true));
+                 var->getMember(1)->isAttributeAccessForVariable(ref, true)));
   aql::AstNode* cc = args->getMemberUnchecked(0);
   TRI_ASSERT(cc->type != aql::NODE_TYPE_ATTRIBUTE_ACCESS);
   if (cc->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
@@ -219,9 +219,9 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       aql::AstNode const* symbol = args->getMemberUnchecked(1);
       // geojson or array with variables
       TRI_ASSERT(symbol->isAttributeAccessForVariable(ref, true) ||
-                 symbol->isArray() && symbol->numMembers() == 2 &&
+                 (symbol->isArray() && symbol->numMembers() == 2 &&
                  symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
-                 symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr);
+                 symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
 
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
@@ -245,6 +245,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     // Handle GEO_DISTANCE(<something>, doc.field) [<|<=|=>|>] <constant>
     case aql::NODE_TYPE_OPERATOR_BINARY_LE:
       qp.maxInclusive = true;
+      break;
     case aql::NODE_TYPE_OPERATOR_BINARY_LT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
@@ -261,6 +262,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
     }
     case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       qp.minInclusive = true;
+      break;
     case aql::NODE_TYPE_OPERATOR_BINARY_GT: {
       TRI_ASSERT(node->numMembers() == 2);
       qp.origin = Index::parseDistFCall(node->getMemberUnchecked(0), ref);
