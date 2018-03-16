@@ -404,9 +404,9 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
 }
 
 bool ShapeContainer::equals(Coordinate const* cc) const {
-  geo::Coordinate centroid1 = this->centroid();
-  double lat1 = centroid1.latitude;
-  double lon1 = centroid1.longitude;
+  S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
+  double lat1 = S2LatLng::Latitude(p).degrees();
+  double lon1 = S2LatLng::Longitude(p).degrees();
 
   double lat2 = cc->latitude;
   double lon2 = cc->longitude;
@@ -427,9 +427,9 @@ bool ShapeContainer::equals(Coordinate const& point, Coordinate const& other) co
 }
 
 bool ShapeContainer::equals(double lat2, double lon2) const {
-  geo::Coordinate centroid1 = this->centroid();
-  double lat1 = centroid1.latitude;
-  double lon1 = centroid1.longitude;
+  S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
+  double lat1 = S2LatLng::Latitude(p).degrees();
+  double lon1 = S2LatLng::Longitude(p).degrees();
 
   if (lat1 == lat2 && lon1 == lon2) {
     return true;
@@ -520,10 +520,6 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
       TRI_ASSERT(false);
       return false;
   }
-}
-
-bool ShapeContainer::intersects(geo::Coordinate const* cc) const {
-  return contains(cc);  // same
 }
 
 bool ShapeContainer::intersects(S2Polyline const* other) const {
