@@ -179,13 +179,11 @@ void RocksDBIndex::destroyCache() {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
+  TRI_ASSERT(_cacheEnabled || _cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(

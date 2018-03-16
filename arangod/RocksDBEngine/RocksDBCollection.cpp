@@ -170,7 +170,8 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice,
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();
-  } else if (useCache()) {
+  } else {
+    // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
   }
@@ -2057,13 +2058,11 @@ void RocksDBCollection::destroyCache() const {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
+  TRI_ASSERT(_cacheEnabled || _cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 // blacklist given key from transactional cache
