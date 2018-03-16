@@ -1335,6 +1335,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
+  // Invalid bound collection name
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection FILTER d.seq == x.seq RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"@collection\": \"invlaidCollectionName\" }")
+    );
+
+    REQUIRE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
+  }
+
   // dependent sort condition in inner loop + custom scorer
   // (must recreate view iterator each loop iteration)
   //

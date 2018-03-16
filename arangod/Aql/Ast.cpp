@@ -1446,9 +1446,8 @@ void Ast::injectBindParameters(BindParameters& parameters) {
           }
 
           if (!dataSource) {
-            // FIXME use TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
-            THROW_ARANGO_EXCEPTION_PARAMS(
-              TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
               value.copyString().c_str()
             );
           }

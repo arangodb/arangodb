@@ -324,7 +324,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-  std::string const& nameOrId
+    std::string const& nameOrId
 ) const noexcept {
   auto itr = _dataSourceByName.find(nameOrId);
 
@@ -361,7 +361,11 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
     }
   }
 
-  return nullptr;
+  if (ptr) {
+    _dataSourceByName.emplace(nameOrId, ptr);
+  }
+
+  return ptr;
 }
 
 std::shared_ptr<LogicalView> CollectionNameResolver::getView(

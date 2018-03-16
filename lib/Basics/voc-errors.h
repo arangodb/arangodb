@@ -532,6 +532,12 @@ constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED                            
 /// needed.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_REV_BAD                                 = 1239;
 
+/// 1240: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+/// "data source not found"
+/// Will be raised when a data source (view or collection) with the given
+/// identifier or name is unknown.
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1240;
+
 /// 1300: ERROR_ARANGO_DATAFILE_FULL
 /// "datafile full"
 /// Will be raised when the datafile reaches its limit.
