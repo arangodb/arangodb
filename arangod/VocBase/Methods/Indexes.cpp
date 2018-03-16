@@ -100,8 +100,8 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
   VPackBuilder tmp;
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
-    //std::string const cid = collection->cid_as_string();
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
     std::string const& cid = collection->name();
 
     // add code for estimates here
@@ -141,7 +141,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
   } else {
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(collection->vocbase()),
-        collection->cid(), AccessMode::Type::READ);
+        collection->id(),
+        AccessMode::Type::READ
+    );
 
     // we actually need this hint here, so that the collection is not
     // loaded if it has status unloaded.
@@ -249,7 +251,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
 
   SingleCollectionTransaction trx(
       transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-      collection->cid(),
+      collection->id(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
   Result res = trx.begin();
@@ -303,8 +305,9 @@ Result Indexes::ensureIndexCoordinator(
     arangodb::LogicalCollection const* collection, VPackSlice const& indexDef,
     bool create, VPackBuilder& resultBuilder) {
   TRI_ASSERT(collection != nullptr);
-  std::string const dbName = collection->dbName();
-  std::string const cid = collection->cid_as_string();
+  TRI_ASSERT(collection->vocbase());
+  auto& dbName = collection->vocbase()->name();
+  auto cid = std::to_string(collection->id());
   std::string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
@@ -341,9 +344,11 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
     return Result(res);
   }
 
-  std::string const dbname(collection->dbName());
+  TRI_ASSERT(collection->vocbase());
+  auto& dbname = collection->vocbase()->name();
   std::string const collname(collection->name());
   VPackSlice indexDef = defBuilder.slice();
+
   if (ServerState::instance()->isCoordinator()) {
     TRI_ASSERT(indexDef.isObject());
 
@@ -547,8 +552,9 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 #ifdef USE_ENTERPRISE
     return Indexes::dropCoordinatorEE(collection, iid);
 #else
-    std::string const databaseName(collection->dbName());
-    std::string const cid = collection->cid_as_string();
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
+    auto cid = std::to_string(collection->id());
     std::string errorMsg;
     int r = ClusterInfo::instance()->dropIndexCoordinator(databaseName, cid,
                                                           iid, errorMsg, 0.0);
@@ -559,9 +565,11 @@ arangodb::Result Indexes::drop(LogicalCollection const* collection,
 
     SingleCollectionTransaction trx(
         transaction::V8Context::CreateWhenRequired(collection->vocbase(), false),
-        collection->cid(), AccessMode::Type::EXCLUSIVE);
-
+        collection->id(),
+        AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }

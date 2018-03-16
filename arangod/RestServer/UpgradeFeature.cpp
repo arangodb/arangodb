@@ -49,9 +49,8 @@ UpgradeFeature::UpgradeFeature(
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("CheckVersion");
-  startsAfter("Cluster");
   startsAfter("Database");
-  startsAfter("V8Dealer");
+  startsAfter("Cluster");
   startsAfter("Aql");
 }
 
@@ -181,27 +180,19 @@ void UpgradeFeature::upgradeDatabase() {
     methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade);
     if (res.fail()) {
       char const* typeName = "initialization";
-      switch (res.type) {
-        case methods::VersionResult::VERSION_MATCH:
-        case methods::VersionResult::DOWNGRADE_NEEDED:
-        case methods::VersionResult::NO_VERSION_FILE:
-          // initialization
-          break;
-        case methods::VersionResult::UPGRADE_NEEDED:
-          typeName = "upgrade";
-          if (!_upgrade) {
-            LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-            << "Database '" << vocbase->name()
-            << "' needs upgrade. Please start the server with the "
-            "--database.auto-upgrade option";
-          }
-          break;
-        default:
-          break;
+      if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
+        typeName = "upgrade"; // an upgrade failed or is required
+        if (!_upgrade) {
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Database '" << vocbase->name() << "' needs upgrade. "
+          << "Please start the server with --database.auto-upgrade";
+        }
       }
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Database '" << vocbase->name()
       << "' " << typeName << " failed (" << res.errorMessage() << "). "
-      "Please inspect the logs from the " << typeName << " procedure";
+      << "Please inspect the logs from the " << typeName << " procedure"
+      << " and try starting the server again.";
+      
       FATAL_ERROR_EXIT();
     }
   }

@@ -483,7 +483,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       aql::QueryOptions opts = query->queryOptions();
       TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
       opts.inaccessibleCollections.insert(shardId);
-      opts.inaccessibleCollections.insert(collection->getCollection()->cid_as_string());
+      opts.inaccessibleCollections.insert(std::to_string(collection->getCollection()->id()));
       opts.toVelocyPack(result, true);
     } else {
       // the toVelocyPack will open & close the "options" object
@@ -832,7 +832,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
               TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
               TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
-              pair->second.inaccessibleShards.insert(collection.second->getCollection()->cid_as_string());
+              pair->second.inaccessibleShards.insert(std::to_string(collection.second->getCollection()->id()));
             }
 #endif
           }
@@ -860,7 +860,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           if (trx->isInaccessibleCollectionId(it->getPlanId())) {
             TRI_ASSERT(trxOps.skipInaccessibleCollections);
             pair->second.inaccessibleShards.insert(shard);
-            pair->second.inaccessibleShards.insert(it->getCollection()->cid_as_string());
+            pair->second.inaccessibleShards.insert(std::to_string(it->getCollection()->id()));
           }
 #endif
         }

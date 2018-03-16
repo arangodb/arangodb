@@ -10,11 +10,11 @@ shell> curl -X POST --header 'x-arango-async: store' --data-binary @- --dump - h
 EOF
 
 HTTP/1.1 202 Accepted
-x-content-type-options: nosniff
-x-arango-async-id: 152053415234836
 content-type: text/plain; charset=utf-8
+x-content-type-options: nosniff
+x-arango-async-id: 152098435649405
 
-shell> curl --dump - http://localhost:8529/_api/job/152053415234836
+shell> curl --dump - http://localhost:8529/_api/job/152098435649405
 
 HTTP/1.1 204 No Content
 content-type: text/plain; charset=utf-8

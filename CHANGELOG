@@ -152,6 +152,7 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
+* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

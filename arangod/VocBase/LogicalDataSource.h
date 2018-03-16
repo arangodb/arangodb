@@ -115,7 +115,7 @@ class LogicalDataSource {
   inline Category const& category() const noexcept { return _category; }
   inline bool deleted() const noexcept { return _deleted; }
   virtual void drop() = 0;
-  inline TRI_voc_cid_t id() const noexcept { return _id; }
+  inline TRI_voc_cid_t const& id() const noexcept { return _id; } // reference required for ShardDistributionReporterTest
   inline std::string const& name() const noexcept { return _name; }
   inline TRI_voc_cid_t planId() const noexcept { return _planId; }
   virtual Result rename(std::string&& newName, bool doSync) = 0;

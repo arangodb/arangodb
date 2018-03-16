@@ -55,7 +55,7 @@ function ahuacatlFailureSuite () {
       fail();
     }
     catch (err) {
-      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
     }
   };
 
@@ -478,13 +478,6 @@ function ahuacatlFailureSuite () {
     },
 
     testIndexBlock6 : function () {
-      c.ensureHashIndex("value");
-      internal.debugSetFailAt("IndexBlock::executeV8");
-      // DATE_NOW is an arbitrary v8 function and can be replaced
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value == NOOPT(PASSTHRU(DATE_NOW())) RETURN i");
-    },
-
-    testIndexBlock7 : function () {
       c.ensureHashIndex("value");
       internal.debugSetFailAt("IndexBlock::executeExpression");
       // CONCAT  is an arbitrary non v8 function and can be replaced
