@@ -1,6 +1,8 @@
 Upgrading a cluster on Debian & Ubuntu
 ======================================
 
+Please note that this procedure is not guaranteed to work for upgrades between minor versions, e.g. from `3.2.x` to `3.3.x`, but only for upgrades between patch versions, e.g. from `3.2.6` to `3.2.12`.
+
 Preparations
 ------------
 
