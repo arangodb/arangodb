@@ -102,6 +102,8 @@ class ShapeContainer final {
   bool contains(S2Polygon const*) const;
   bool contains(ShapeContainer const*) const;
 
+  /// intersects this region the coordinate
+  bool intersects(Coordinate const*) const;
   bool intersects(S2Point const& p) const {
     return contains(p); // same thing
   }
@@ -109,6 +111,16 @@ class ShapeContainer final {
   bool intersects(S2LatLngRect const*) const;
   bool intersects(S2Polygon const*) const;
   bool intersects(ShapeContainer const*) const;
+
+  /// equals this region the coordinate
+  bool equals(Coordinate const*) const;
+  bool equals(Coordinate const&, Coordinate const&) const;
+  bool equals(double lat1, double lon1) const;
+  bool equals(S2Polyline const*) const;
+  bool equals(S2Polyline const*, S2Polyline const*) const;
+  bool equals(S2LatLngRect const*) const;
+  bool equals(S2Polygon const*) const;
+  bool equals(ShapeContainer const*) const;
 
  private:
   S2Region* _data;

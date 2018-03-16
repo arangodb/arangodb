@@ -428,12 +428,16 @@ void AqlFunctionFeature::addGeoFunctions() {
     true, &Functions::GeoContains});
   add({"GEO_INTERSECTS", ".,.", true, false, true,
     true, &Functions::GeoIntersects});
+  add({"GEO_EQUALS", ".,.", true, false, true,
+    true, &Functions::GeoEquals});
 }
 
 void AqlFunctionFeature::addGeometryConstructors() {
   // geometry types
   add({"GEO_POINT", ".,.", true, false, true, true,
        &Functions::GeoPoint});
+  add({"GEO_MULTIPOINT", ".", true, false, true, true,
+       &Functions::GeoMultiPoint});
   add({"GEO_POLYGON", ".", true, false, true, true,
        &Functions::GeoPolygon});
   add({"GEO_LINESTRING", ".", true, false, true, true,

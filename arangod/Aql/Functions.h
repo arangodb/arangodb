@@ -242,16 +242,20 @@ struct Functions {
                                 VPackFunctionParameters const&);
    static AqlValue GeoIntersects(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
+   static AqlValue GeoEquals(arangodb::aql::Query*, transaction::Methods*,
+                             VPackFunctionParameters const&);
    static AqlValue IsInPolygon(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+                               VPackFunctionParameters const&);
    static AqlValue GeoPoint(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+                            VPackFunctionParameters const&);
+   static AqlValue GeoMultiPoint(arangodb::aql::Query*, transaction::Methods*,
+                            VPackFunctionParameters const&);
    static AqlValue GeoPolygon(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+                              VPackFunctionParameters const&);
    static AqlValue GeoLinestring(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+                                 VPackFunctionParameters const&);
    static AqlValue GeoMultiLinestring(arangodb::aql::Query*, transaction::Methods*,
-                                VPackFunctionParameters const&);
+                                      VPackFunctionParameters const&);
    static AqlValue Flatten(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
    static AqlValue Zip(arangodb::aql::Query*, transaction::Methods*,
