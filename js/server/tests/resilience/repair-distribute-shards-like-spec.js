@@ -61,29 +61,60 @@ const waitForPlanEqualCurrent = function (collection) {
 };
 
 const waitForAgencyJob = function (jobId) {
-// TODO This is neither finished, nor does it work as far as its written
-/*
-      "Target/ToDo/" + jobId,
-      "Target/Pending/" + jobId,
-      "Target/Finished/" + jobId,
-      "Target/Failed/" + jobId,
- */
-  const result = global.ArangoAgency.read([[
+  const prefix = global.ArangoAgency.prefix();
+  const paths = [
     "Target/ToDo/" + jobId,
     "Target/Pending/" + jobId,
     "Target/Finished/" + jobId,
     "Target/Failed/" + jobId,
-  ]]);
+  ].map(p => `${prefix}/${p}`);
 
-  internal.print(`=== Fetching job info of job ${jobId}:`);
-  internal.print(result);
-  // Output was:
-  /*
-=== Fetching job info of job 1010127:
-[ { "Target" : { } } ]
-=== Fetching job info of job 1010128:
-[ { "Target" : { } } ]
-   */
+  const waitTime = 1.0;
+  const maxTime = 60;
+
+  let jobStopped = false;
+  let success = false;
+
+  const start = Date.now();
+
+  while(! jobStopped) {
+    const duration = (Date.now() - start) / 1000;
+    const result = global.ArangoAgency.read([paths]);
+    const target = result[0][prefix]["Target"];
+
+    if (duration > maxTime) {
+      console.error(`Timeout after waiting for ${duration}s on job "${jobId}"`);
+      jobStopped = true;
+      success = true;
+    }
+    else if (jobId in target["Finished"]) {
+      jobStopped = true;
+      success = true;
+    }
+    else if (jobId in target["Failed"]) {
+      const reason = target["Failed"][jobId].reason;
+      console.error(`Job "${jobId}" failed with: ${reason}`);
+      jobStopped = true;
+      success = false;
+    }
+    else if (jobId in target["ToDo"]) {
+      jobStopped = false;
+      success = false;
+    }
+    else if (jobId in target["Pending"]) {
+      jobStopped = false;
+      success = false;
+    }
+    else {
+      console.error(`Job "${jobId}" vanished`);
+      jobStopped = true;
+      success = false;
+    }
+
+    wait(waitTime);
+  }
+
+  return success;
 };
 
 
@@ -187,7 +218,7 @@ describe('Collections with distributeShardsLike', function () {
       return id;
     };
 
-    const freeDbServer = freeDbServers[0];
+    const freeDbServer = freeDbServers[0].serverId;
     const leaderDbServer = dbServerIdByName[shardInfo.leader];
     const followerDbServer = dbServerIdByName[shardInfo.followers[0]];
 
