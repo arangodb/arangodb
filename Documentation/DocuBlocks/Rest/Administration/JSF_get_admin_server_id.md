@@ -12,10 +12,10 @@ server is not running in cluster mode.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Is returned in all cases.
+Is returned in when the server is running in cluster mode.
 @endDocuBlock
 
 @RESTRETURNCODE{500}
-Is returned when the server is not running in cluster mode
+Is returned when the server is not running in cluster mode.
 @endDocuBlock
 
