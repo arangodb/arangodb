@@ -155,6 +155,7 @@ void MaintenanceRestHandler::getAction() {
 
   VPackBuilder registry = maintenance->toVelocityPack();
 
+  _response->setContentType( rest::ContentType::VPACK );
   _response->addPayload(registry.slice());
 
 } // MaintenanceRestHandler::getAction

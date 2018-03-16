@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/MaintenanceRestHandler.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
 #include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -229,7 +230,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     vocbase->release();
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
   request->setRequestContext(VocbaseContext::create(request, vocbase), true);
 
@@ -350,8 +351,8 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::BATCH_PATH,
       RestHandlerCreator<RestBatchHandler>::createNoData);
-  
-  
+
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::COLLECTION_PATH,
       RestHandlerCreator<RestCollectionHandler>::createNoData);
@@ -418,7 +419,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
@@ -444,7 +445,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
@@ -489,7 +490,7 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
       "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
@@ -501,6 +502,9 @@ void GeneralServerFeature::defineHandlers() {
   // ...........................................................................
   // /_admin
   // ...........................................................................
+
+  _handlerFactory->addHandler(
+      "/_admin/actions", RestHandlerCreator<MaintenanceRestHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
@@ -542,11 +546,11 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
     "/_admin/server",
     RestHandlerCreator<arangodb::RestAdminServerHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
-  
+
   _handlerFactory->addHandler(
     "/_admin/statistics-description",
     RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
