@@ -100,6 +100,8 @@ static void CreateAgencyException(
 static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -161,6 +163,8 @@ static void JS_CreateDirectoryAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -208,6 +212,8 @@ static void JS_IncreaseVersionAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
@@ -232,6 +238,8 @@ static void JS_IncreaseVersionAgency(
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
@@ -338,6 +346,8 @@ static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
@@ -368,6 +378,8 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
@@ -405,6 +417,8 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("agency()");
@@ -455,6 +469,8 @@ static void JS_EndpointsAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
@@ -485,7 +501,7 @@ static void JS_EndpointsAgency(
 static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   std::string const prefix = AgencyCommManager::path();
 
   TRI_V8_RETURN_STD_STRING(prefix);
@@ -499,6 +515,8 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
@@ -534,6 +552,8 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
