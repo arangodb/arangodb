@@ -530,7 +530,15 @@ class ClusterInfo {
   std::unordered_map<ServerID, std::string> getServers();
 
   virtual std::unordered_map<ServerID, std::string> getServerAliases();
-  
+
+  /**
+   * @brief Get sorted list of DB server, which serve a shard
+   *
+   * @param shardId  The id of said shard
+   * @return         List of DB servers serving the shard
+   */
+  arangodb::Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+    
  private:
 
   void loadClusterId();
