@@ -65,7 +65,6 @@ class ExecutionPlan;
 class Query;
 struct QueryProfile;
 class QueryRegistry;
-class V8Executor;
 
 /// @brief equery part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -77,10 +76,12 @@ class Query {
   Query& operator=(Query const&) = delete;
 
  public:
+  /// Used to construct a full query
   Query(bool contextOwnedByExterior, TRI_vocbase_t*, QueryString const& queryString,
         std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
+  /// Used to put together query snippets in RestAqlHandler
   Query(bool contextOwnedByExterior, TRI_vocbase_t*,
         std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
@@ -186,6 +187,11 @@ class Query {
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
+  
+  /// @brief Enter finalization phase and do cleanup.
+  /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
+  /// Only use directly for a streaming query, rather use `execute(...)`
+  void finalize(QueryResult&);
 
   /// @brief parse an AQL query
   QueryResult parse();
@@ -193,9 +199,6 @@ class Query {
   /// @brief explain an AQL query
   QueryResult explain();
 
-  /// @brief get v8 executor
-  V8Executor* v8Executor();
-  
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
 
@@ -221,6 +224,11 @@ class Query {
 
   /// @brief exits a V8 context
   void exitContext();
+
+  /// @brief check if the query has a V8 context ready for use
+  bool hasEnteredContext() const {
+    return (_contextOwnedByExterior || _context != nullptr);
+  }
 
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
@@ -255,7 +263,7 @@ class Query {
   /// execute calls it internally. The purpose of this separate method is
   /// to be able to only prepare a query from VelocyPack and then store it in the
   /// QueryRegistry.
-  ExecutionPlan* prepare();
+  ExecutionPlan* preparePlan();
 
   void setExecutionTime();
 
@@ -283,6 +291,10 @@ class Query {
 
   /// @brief returns the next query id
   static TRI_voc_tick_t NextId();
+  
+ public:
+  
+  constexpr static uint64_t DontCache = 0;
 
  private:
   /// @brief query id
@@ -296,9 +308,6 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t* _vocbase;
-
-  /// @brief V8 code executor
-  std::unique_ptr<V8Executor> _v8Executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;

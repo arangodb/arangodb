@@ -887,7 +887,7 @@ Result RestReplicationHandler::processRestoreCollection(
   }
 
   grantTemporaryRights();
-  LogicalCollection* col = _vocbase->lookupCollection(name);
+  auto* col = _vocbase->lookupCollection(name).get();
 
   // drop an existing collection if it exists
   if (col != nullptr) {
@@ -2422,13 +2422,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-
   arangodb::LogicalCollection* col = nullptr;
+
   if (!uuid.empty()) {
-    col = _vocbase->lookupCollectionByUuid(uuid);
+    col = _vocbase->lookupCollectionByUuid(uuid).get();
   }
+
   if (col != nullptr) {
-    col = _vocbase->lookupCollection(name);
+    col = _vocbase->lookupCollection(name).get();
   }
 
   if (col != nullptr && col->type() == type) {

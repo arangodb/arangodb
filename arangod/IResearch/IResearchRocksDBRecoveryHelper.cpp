@@ -58,7 +58,7 @@ std::pair<TRI_vocbase_t*, arangodb::LogicalCollection*> lookupDatabaseAndCollect
     return std::make_pair(nullptr, nullptr);
   }
 
-  return std::make_pair(vocbase, vocbase->lookupCollection(pair.second));
+  return std::make_pair(vocbase, vocbase->lookupCollection(pair.second).get());
 }
 
 std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
@@ -82,7 +82,7 @@ arangodb::iresearch::IResearchLink* lookupLink(
     TRI_voc_cid_t cid,
     TRI_idx_iid_t iid
 ) {
-  auto* col = vocbase.lookupCollection(cid);
+  auto col = vocbase.lookupCollection(cid);
 
   if (!col) {
     // invalid cid
@@ -166,7 +166,7 @@ void ensureLink(
     return;
   }
 
-  auto* col = vocbase->lookupCollection(cid);
+  auto col = vocbase->lookupCollection(cid);
 
   if (!col) {
     // if the underlying collection gone, we can go on
@@ -211,7 +211,7 @@ void dropCollectionFromAllViews(
   if (vocbase) {
     // iterate over vocbase views
     for (auto logicalView : vocbase->views()) {
-      if (arangodb::iresearch::IResearchView::type() != logicalView->type().name()) {
+      if (arangodb::iresearch::IResearchView::type() != logicalView->type()) {
         continue;
       }
 
@@ -246,7 +246,7 @@ void dropCollectionFromView(
   auto* vocbase = db.useDatabase(dbId);
 
   if (vocbase) {
-    auto* logicalCollection = vocbase->lookupCollection(collectionId);
+    auto logicalCollection = vocbase->lookupCollection(collectionId);
 
     if (!logicalCollection) {
       LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -267,7 +267,7 @@ void dropCollectionFromView(
 
     auto logicalView = vocbase->lookupView(viewId);
 
-    if (!logicalView || arangodb::iresearch::IResearchView::type() != logicalView->type().name()) {
+    if (!logicalView || arangodb::iresearch::IResearchView::type() != logicalView->type()) {
       LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "error looking up view '" << viewId << "': no such view";
       return;

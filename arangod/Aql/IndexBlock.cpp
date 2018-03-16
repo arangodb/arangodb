@@ -179,7 +179,7 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->willUseV8();
 
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);

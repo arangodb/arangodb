@@ -71,6 +71,8 @@ class Builder;
 class Slice;
 }
 
+class Index;
+
 namespace aql {
 class Ast;
 struct Collection;
@@ -79,7 +81,6 @@ class ExecutionBlock;
 class ExecutionEngine;
 class TraversalBlock;
 class ExecutionPlan;
-struct Index;
 class RedundantCalculationsReplacer;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
@@ -450,6 +451,16 @@ class ExecutionNode {
       ids.emplace(it->id);
     }
     return ids;
+  }
+  
+  /// @brief tests whether the node sets one of the passed variables
+  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+    for (auto const& v : getVariablesSetHere()) {
+      if (which.find(v) != which.end()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// @brief setVarsUsedLater

@@ -173,7 +173,12 @@ ArangoStatement.prototype.execute = function () {
 
   arangosh.checkRequestResult(requestResult);
 
-  return new ArangoQueryCursor(this._database, requestResult);
+  let isStream = false;
+  if (this._options && this._options.stream) {
+    isStream = this._options.stream;
+  }
+
+  return new ArangoQueryCursor(this._database, requestResult, isStream);
 };
 
 exports.ArangoStatement = ArangoStatement;

@@ -23,20 +23,32 @@
 
 #include <mutex>
 
+#include "velocypack/StringRef.h"
+
 #include "LogicalDataSource.h"
 
 namespace arangodb {
 
 /*static*/ LogicalDataSource::Type const& LogicalDataSource::Type::emplace(
-    std::string&& name
+    arangodb::velocypack::StringRef const& name
 ) {
+  struct Less {
+    bool operator()(
+        arangodb::velocypack::StringRef const& lhs,
+        arangodb::velocypack::StringRef const& rhs
+    ) const noexcept {
+      return lhs.compare(rhs) < 0;
+    }
+  };
   static std::mutex mutex;
-  static std::map<std::string, LogicalDataSource::Type> types;
+  static std::map<arangodb::velocypack::StringRef, LogicalDataSource::Type, Less> types;
   std::lock_guard<std::mutex> lock(mutex);
-  auto itr = types.emplace(std::move(name), Type());
+  auto itr = types.emplace(name, Type());
 
   if (itr.second) {
-    itr.first->second._name = &(itr.first->first); // point '_name' at key
+    const_cast<std::string&>(itr.first->second._name) = name.toString(); // update '_name'
+    const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
+      itr.first->second.name(); // point key at value stored in '_name'
   }
 
   return itr.first->second;

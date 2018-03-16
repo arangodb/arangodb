@@ -47,6 +47,7 @@
     "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
     "ERROR_HTTP_SERVICE_UNAVAILABLE" : { "code" : 503, "message" : "service unavailable" },
+    "ERROR_HTTP_GATEWAY_TIMEOUT"   : { "code" : 504, "message" : "gateway timeout" },
     "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" },
     "ERROR_HTTP_SUPERFLUOUS_SUFFICES" : { "code" : 601, "message" : "superfluous URL suffices" },
     "ERROR_ARANGO_ILLEGAL_STATE"   : { "code" : 1000, "message" : "illegal state" },

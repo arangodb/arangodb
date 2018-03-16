@@ -1,6 +1,8 @@
 devel
 -----
 
+* added new query option `stream` to enable streaming query execution via the `POST /_api/cursor` rest interface.
+
 * fix issue #4698: databases within the UI are now displayed in a sorted order.
 
 * fix issue #4657: fixed incomplete content type header
@@ -150,6 +152,7 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
+* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

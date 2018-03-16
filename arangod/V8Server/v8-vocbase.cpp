@@ -806,9 +806,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // bind parameters
   std::shared_ptr<VPackBuilder> bindVars;
 
-  // options
-  auto options = std::make_shared<VPackBuilder>();
-
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
@@ -823,12 +820,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
+  // options
+  auto options = std::make_shared<VPackBuilder>();
   if (args.Length() > 2) {
     // we have options! yikes!
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-
+    
     int res = TRI_V8ToVPack(isolate, *options, args[2], false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1437,7 +1436,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       auto colCopy = ci->clone();
       collection = colCopy.release();  // will be delete on garbage collection
     } else {
-      collection = vocbase->lookupCollection(std::string(key));
+      collection = vocbase->lookupCollection(std::string(key)).get();
     }
   } catch (...) {
     // do not propagate exception from here
@@ -1921,57 +1920,6 @@ static void JS_LdapEnabled(
 #endif  
 
   TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run version check
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_UpgradeDatabase(TRI_vocbase_t* vocbase,
-                         v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/upgrade-database.js");
-
-  bool ok = TRI_ObjectToBoolean(result);
-
-  if (!ok) {
-    vocbase->setState(TRI_vocbase_t::State::FAILED_VERSION);
-  }
-
-  v8g->_vocbase = orig;
-
-  return ok;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief run upgrade check
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_CheckDatabaseVersion(TRI_vocbase_t* vocbase,
-                             v8::Handle<v8::Context> context) {
-  auto isolate = context->GetIsolate();
-  v8::HandleScope scope(isolate);
-  TRI_GET_GLOBALS();
-  TRI_vocbase_t* orig = v8g->_vocbase;
-  v8g->_vocbase = vocbase;
-
-  auto startupLoader = V8DealerFeature::DEALER->startupLoader();
-  v8::Handle<v8::Value> result = startupLoader->executeGlobalScript(
-      isolate, isolate->GetCurrentContext(), "server/check-version.js");
-  int code = (int)TRI_ObjectToInt64(result);
-
-  v8g->_vocbase = orig;
-
-  return code;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -85,11 +85,6 @@ const irs::string_ref IRESEARCH_STORE_FORMAT("1_0");
 ////////////////////////////////////////////////////////////////////////////////
 const std::string LINKS_FIELD("links");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the view type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& VIEW_TYPE = arangodb::iresearch::IResearchFeature::type();
-
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -231,9 +226,11 @@ struct ViewState: public arangodb::TransactionState::Cookie {
 /// @brief generates user-friendly description of the specified view
 ////////////////////////////////////////////////////////////////////////////////
 std::string toString(arangodb::iresearch::IResearchView const& view) {
-  std::string str(arangodb::iresearch::IResearchView::type());
+  std::string str(arangodb::iresearch::IResearchView::type().name());
+
   str += ":";
   str += std::to_string(view.id());
+
   return str;
 }
 
@@ -471,7 +468,7 @@ arangodb::Result updateLinks(
     }
 
     struct State {
-      arangodb::LogicalCollection* _collection = nullptr;
+      std::shared_ptr<arangodb::LogicalCollection> _collection;
       size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
       arangodb::iresearch::IResearchLink const* _link = nullptr;
       size_t _linkDefinitionsOffset;
@@ -557,12 +554,12 @@ arangodb::Result updateLinks(
 //      );
     }
 
-    auto* resolver = trx.resolver();
+    auto* vocbase = trx.vocbase();
 
-    if (!resolver) {
+    if (!vocbase) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to get resolver from transaction while updating while iResearch view '") + std::to_string(view.id()) + "'"
+        std::string("failed to get vocbase from transaction while updating while IResearch view '") + std::to_string(view.id()) + "'"
       );
     }
 
@@ -575,7 +572,7 @@ arangodb::Result updateLinks(
         auto& state = *itr;
         auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-        state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
+        state._collection = vocbase->lookupCollection(collectionName);
 
         if (!state._collection) {
           // remove modification state if removal of non-existant link on non-existant collection
@@ -711,7 +708,7 @@ void validateLinks(
     arangodb::iresearch::IResearchView const& view
 ) {
   for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto* collection = vocbase.lookupCollection(*itr);
+    auto collection = vocbase.lookupCollection(*itr);
 
     if (!collection || !findFirstMatchingLink(*collection, view)) {
       itr = collections.erase(itr);
@@ -1619,7 +1616,7 @@ arangodb::Result IResearchView::link(
   static std::string subPath("databases");
 
   dataPath /= subPath;
-  dataPath /= arangodb::iresearch::IResearchView::type();
+  dataPath /= arangodb::iresearch::IResearchView::type().name();
   dataPath += "-";
   dataPath += std::to_string(view->id());
 
@@ -1928,8 +1925,12 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   return false;
 }
 
-/*static*/ std::string const& IResearchView::type() noexcept {
-  return VIEW_TYPE;
+/*static*/ arangodb::LogicalDataSource::Type const& IResearchView::type() noexcept {
+  static auto& type = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef(IResearchFeature::type())
+  );
+
+  return type;
 }
 
 arangodb::Result IResearchView::updateLogicalProperties(
@@ -2011,7 +2012,7 @@ arangodb::Result IResearchView::updateProperties(
         }
 
         for (auto& cid: meta._collections) {
-          auto* collection = vocbase->lookupCollection(cid);
+          auto collection = vocbase->lookupCollection(cid);
 
           if (collection) {
             _meta._collections.emplace(cid);
@@ -2192,7 +2193,7 @@ void IResearchView::verifyKnownCollections() {
       virtual arangodb::Result commitTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual bool hasFailedOperations() const { return false; }
+      virtual bool hasFailedOperations() const override { return false; }
     };
 
     State state;
