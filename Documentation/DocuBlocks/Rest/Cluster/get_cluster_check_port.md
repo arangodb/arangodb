@@ -8,7 +8,8 @@
 
 @RESTQUERYPARAM{port,integer,required}
 
-@RESTDESCRIPTION Checks whether the requested port is usable.
+@RESTDESCRIPTION
+Checks whether the requested port is usable.
 
 @RESTRETURNCODES
 

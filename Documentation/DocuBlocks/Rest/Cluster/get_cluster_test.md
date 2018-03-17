@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/cluster-test, Execute cluster roundtrip}
 
 @RESTDESCRIPTION
-
 Executes a cluster roundtrip from a coordinator to a DB server and
 back. This call only works in a coordinator node in a cluster.
 One can and should append an arbitrary path to the URL and the

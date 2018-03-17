@@ -7,6 +7,7 @@
 @RESTURLPARAMETERS
 
 @RESTDESCRIPTION
+TBD
 
 @RESTURLPARAM{view-name,string,required}
 The name of the view.

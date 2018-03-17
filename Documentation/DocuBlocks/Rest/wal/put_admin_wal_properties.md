@@ -5,7 +5,6 @@
 @RESTHEADER{PUT /_admin/wal/properties, Configures the write-ahead log}
 
 @RESTDESCRIPTION
-
 Configures the behavior of the write-ahead log. The body of the request
 must be a JSON object with the following attributes:
 - *allowOversizeEntries*: whether or not operations that are bigger than a
