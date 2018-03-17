@@ -651,7 +651,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 
   if (col == nullptr) {
     if (reportError) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     return Result();
@@ -680,7 +680,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   auto col = resolveCollection(vocbase, slice);
 
   if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection for index");
   }
 
@@ -742,7 +742,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     auto* col = resolveCollection(vocbase, slice).get();
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     try {
@@ -764,7 +764,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
   Result r = cb(slice);
   if (r.fail() &&
-      (r.is(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) ||
+      (r.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) ||
        r.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND))) {
     // if dropping an index for a non-existing database or collection fails, this is not a real problem
     return Result();

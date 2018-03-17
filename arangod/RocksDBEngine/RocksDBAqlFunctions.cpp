@@ -93,7 +93,7 @@ AqlValue RocksDBAqlFunctions::Fulltext(
 
   TRI_voc_cid_t cid = trx->resolver()->getCollectionIdLocal(cname);
   if (cid == 0) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "%s",
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "%s",
                                   cname.c_str());
   }
   // add the collection to the query for proper cache handling
@@ -192,7 +192,7 @@ static arangodb::RocksDBGeoIndex* getGeoIndex(
 
   auto document = trx->documentCollection(cid);
   if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "'%s'",
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "'%s'",
                                   collectionName.c_str());
   }
 

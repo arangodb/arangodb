@@ -822,7 +822,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollection(
     loadPlan();
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
       "Collection not found: " + collectionID + " in database " + databaseID);
 }
 
@@ -1581,7 +1581,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
   res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
 
   if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   velocypack::Slice collection = res.slice()[0].get(
@@ -1589,7 +1589,7 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
                                 "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   VPackBuilder temp;
@@ -1635,7 +1635,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(
   res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
 
   if (!res.successful()) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   VPackSlice col = res.slice()[0].get(
@@ -1643,7 +1643,7 @@ Result ClusterInfo::setCollectionStatusCoordinator(
                                 "Collections", databaseName, collectionID}));
 
   if (!col.isObject()) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   TRI_vocbase_col_status_e old = static_cast<TRI_vocbase_col_status_e>(
@@ -1809,7 +1809,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
                                 "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
-    return setErrormsg(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, errorMsg);
+    return setErrormsg(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, errorMsg);
   }
 
   loadPlan();
@@ -2116,8 +2116,8 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
                                 "Collections", databaseName, collectionID}));
   if (!previous.isObject()) {
     events::DropIndex(collectionID, idString,
-                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   TRI_ASSERT(VPackObjectIterator(previous).size() > 0);
@@ -2750,7 +2750,7 @@ std::shared_ptr<std::vector<ShardID>> ClusterInfo::getShardList(
 /// values for some of the sharding attributes is silently ignored
 /// and treated as if these values were `null`. In the second mode
 /// (`docComplete`==false) leads to an error which is reported by
-/// returning TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, which is the only
+/// returning TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, which is the only
 /// error code that can be returned.
 ///
 /// In either case, if the collection is found, the variable
@@ -2806,7 +2806,7 @@ int ClusterInfo::getResponsibleShard(LogicalCollection* collInfo,
   }
 
   if (!found) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   int error = TRI_ERROR_NO_ERROR;

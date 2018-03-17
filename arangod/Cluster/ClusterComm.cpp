@@ -988,7 +988,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           VPackSlice payload = res.answer->payload();
           VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
-              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+              errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;
             // This is a fake, but it will lead to a retry. If we timeout
             // here and now, then the customer will get this result.
