@@ -8,7 +8,6 @@
 Contains the query.
 
 @RESTDESCRIPTION
-
 Returns all documents of a collections. The call expects a JSON object
 as body with the following attributes:
 
