@@ -125,11 +125,9 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
     uint64_t fixedSize = 0;
     switch (type) {
       case CacheType::Plain:
-        LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating plain cache";
         fixedSize = PlainCache::allocationSize(enableWindowedStats);
         break;
       case CacheType::Transactional:
-        LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating transactional cache";
         fixedSize = TransactionalCache::allocationSize(enableWindowedStats);
         break;
       default:
@@ -162,7 +160,6 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
 }
 
 void Manager::destroyCache(std::shared_ptr<Cache> cache) {
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying cache";
   Cache::destroy(cache);
 }
 
