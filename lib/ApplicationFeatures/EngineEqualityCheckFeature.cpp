@@ -23,6 +23,10 @@
 #include "EngineEqualityCheckFeature.h"
 #include "Logger/Logger.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterComm.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
 
@@ -35,12 +39,24 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
 }
 
 bool equalStorageEngines(){
-  //check if dbservers use same storage engine
-  return true;
+  std::string engineName = EngineSelectorFeature::engineName();
+  auto allEqual = true;
+  auto ci = ClusterInfo::instance();
+  auto cc = ClusterComm::instance();
+
+
+  auto serverIdVector = ci->getCurrentDBServers();
+
+  for(auto const& id : serverIdVector){
+    if(id == engineName && false) {
+      allEqual = false;
+    }
+  }
+  return allEqual;
 }
 
 void EngineEqualityCheckFeature::prepare() {
   if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "The usage of different storage engines is not allowed in the cluster";
   }
-}
+ }
