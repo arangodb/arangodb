@@ -44,14 +44,47 @@ bool equalStorageEngines(){
   auto ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
 
-
+  // get db servers
   auto serverIdVector = ci->getCurrentDBServers();
 
+  // prepare requests
+  std::vector<ClusterCommRequest> requests;
+  auto bodyToSend = std::make_shared<std::string>();
+  std::string const url = "/_api/version";
   for(auto const& id : serverIdVector){
-    if(id == engineName && false) {
+    requests.emplace_back(id, rest::RequestType::POST, url, bodyToSend);
+  }
+
+  // send requests
+  std::size_t requestsDone = 0;
+  auto successful = cc->performRequests(requests, 60.0 /*double timeout*/, requestsDone
+                                       ,Logger::FIXME
+                                       ,false);
+
+  if (successful != requests.size()){
+    LOG_TOPIC(WARN, Logger::FIXME) << "could not reach all dbservers for engine check";
+    return false;
+  }
+
+  // check answers
+  for (auto const& request : requests){
+    auto const& result = request.result;
+    if(result.status == CL_COMM_RECEIVED) {
+      httpclient::SimpleHttpResult const& simpleResult = *request.result.result;
+      std::string body = simpleResult.getBody().toString();
+
+      //FIXME extract engine from body
+      LOG_DEVEL << body;
+      auto dbserverEngine = engineName;
+
+      if(dbserverEngine != engineName) {
+        allEqual = false;
+      }
+    } else {
       allEqual = false;
     }
   }
+
   return allEqual;
 }
 
