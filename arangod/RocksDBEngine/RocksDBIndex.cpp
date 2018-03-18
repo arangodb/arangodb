@@ -180,7 +180,6 @@ void RocksDBIndex::destroyCache() {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled || _cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
   LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying index cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
