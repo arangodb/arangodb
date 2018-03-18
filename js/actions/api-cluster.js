@@ -1,6 +1,5 @@
 /* jshint strict: false, unused: false */
-/* global AQL_EXECUTE, SYS_CLUSTER_TEST
-  ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
+/* global AQL_EXECUTE, ArangoServerState, ArangoClusterComm, ArangoClusterInfo, ArangoAgency */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief cluster actions
@@ -128,91 +127,6 @@ actions.defineHttp({
 
     Current/Databases/YYY/XXX
     */
-  }
-});
-
-actions.defineHttp({
-  url: '_admin/cluster-test',
-  prefix: true,
-
-  callback: function (req, res) {
-    var path;
-    if (req.hasOwnProperty('suffix') && req.suffix.length !== 0) {
-      path = '/' + req.suffix.join('/');
-    } else {
-      path = '/_admin/version';
-    }
-    var params = '';
-    var shard = '';
-    var p;
-
-    for (p in req.parameters) {
-      if (req.parameters.hasOwnProperty(p)) {
-        if (params === '') {
-          params = '?';
-        } else {
-          params += '&';
-        }
-        params += p + '=' + encodeURIComponent(String(req.parameters[p]));
-      }
-    }
-    if (params !== '') {
-      path += params;
-    }
-    var headers = {};
-    var transID = '';
-    var timeout = 24 * 3600.0;
-    var asyncMode = true;
-
-    for (p in req.headers) {
-      if (req.headers.hasOwnProperty(p)) {
-        if (p === 'x-client-transaction-id') {
-          transID = req.headers[p];
-        } else if (p === 'x-timeout') {
-          timeout = parseFloat(req.headers[p]);
-          if (isNaN(timeout)) {
-            timeout = 24 * 3600.0;
-          }
-        } else if (p === 'x-synchronous-mode') {
-          asyncMode = false;
-        } else if (p === 'x-shard-id') {
-          shard = req.headers[p];
-        } else {
-          headers[p] = req.headers[p];
-        }
-      }
-    }
-
-    var body;
-    if (req.requestBody === undefined || typeof req.requestBody !== 'string') {
-      body = '';
-    } else {
-      body = req.requestBody;
-    }
-
-    var r;
-    if (typeof SYS_CLUSTER_TEST === 'undefined') {
-      actions.resultError(req, res, actions.HTTP_NOT_FOUND,
-        'Not compiled for cluster operation');
-    } else {
-      try {
-        r = SYS_CLUSTER_TEST(req, res, shard, path, transID,
-          headers, body, timeout, asyncMode);
-        if (r.timeout || typeof r.errorMessage === 'string') {
-          res.responseCode = actions.HTTP_OK;
-          res.contentType = 'application/json; charset=utf-8';
-          var s = JSON.stringify(r);
-          res.body = s;
-        } else {
-          res.responseCode = actions.HTTP_OK;
-          res.contentType = r.headers.contentType;
-          res.headers = r.headers;
-          res.body = r.body;
-        }
-      } catch (err) {
-        actions.resultError(req, res, actions.HTTP_FORBIDDEN, String(err));
-      }
-    }
   }
 });
 
