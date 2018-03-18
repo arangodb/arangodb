@@ -1,6 +1,9 @@
 devel
 -----
 
+* added new collection property `cacheEnabled` which enables in-memory caching for
+  documents and primary index entries. Available only when using RocksDB
+
 * added new query option `stream` to enable streaming query execution via the `POST /_api/cursor` rest interface.
 
 * fix issue #4698: databases within the UI are now displayed in a sorted order.
