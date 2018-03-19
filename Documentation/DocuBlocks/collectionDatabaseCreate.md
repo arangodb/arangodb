@@ -70,7 +70,7 @@ to the [naming conventions](../NamingConventions/README.md).
 
  *cacheEnabled* (optional, default is *false*, **rocksdb-only**, from v. 3.4): Enable in-memory
   caching for documents and primary index entries. This can potentially speed up point-lookups significantly,
-  especially if your collections has a subset of frequently accessed keys. Please test this feature
+  especially if your collection has a subset of frequently accessed keys. Please test this feature
   carefully to ensure that it does not adversely affect the performance of your system.
 
 * *isVolatile* (optional, default is *false*, **mmfiles-only**): If *true* then the
