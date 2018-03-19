@@ -154,9 +154,7 @@ void MaintenanceRestHandler::getAction() {
   auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
 
   VPackBuilder registry = maintenance->toVelocityPack();
-
-  _response->setContentType( rest::ContentType::VPACK );
-  _response->addPayload(registry.slice());
+  generateResult(rest::ResponseCode::OK, registry.slice());
 
 } // MaintenanceRestHandler::getAction
 
