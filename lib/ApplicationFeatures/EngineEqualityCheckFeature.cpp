@@ -39,7 +39,6 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
 }
 
 bool equalStorageEngines(){
-  LOG_TOPIC(ERR, Logger::FIXME) << "enter check equal";
   std::string engineName = EngineSelectorFeature::engineName();
   auto allEqual = true;
   auto ci = ClusterInfo::instance();
@@ -51,9 +50,9 @@ bool equalStorageEngines(){
   // prepare requests
   std::vector<ClusterCommRequest> requests;
   auto bodyToSend = std::make_shared<std::string>();
-  std::string const url = "/_api/version";
+  std::string const url = "/_api/engine";
   for(auto const& id : serverIdVector){
-    requests.emplace_back(id, rest::RequestType::POST, url, bodyToSend);
+    requests.emplace_back("server:" + id, rest::RequestType::GET, url, bodyToSend);
   }
 
   // send requests
@@ -72,17 +71,23 @@ bool equalStorageEngines(){
     auto const& result = request.result;
     if(result.status == CL_COMM_RECEIVED) {
       httpclient::SimpleHttpResult const& simpleResult = *request.result.result;
-      std::string body = simpleResult.getBody().toString();
 
-      //FIXME extract engine from body
-      LOG_DEVEL << body;
-      auto dbserverEngine = engineName;
+      // extract engine from body
+      auto vpack = simpleResult.getBodyVelocyPack();
+      auto dbserverEngine = vpack->slice().get("name").copyString();
 
       if(dbserverEngine != engineName) {
+        LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "this coordinator is using the '" << engineName
+          << "' engine while the dbserver at '" << request.destination
+          << "' uses the '" << dbserverEngine << "' engine";
+
         allEqual = false;
+        break;
       }
     } else {
       allEqual = false;
+      break;
     }
   }
 
@@ -90,8 +95,7 @@ bool equalStorageEngines(){
 }
 
 void EngineEqualityCheckFeature::start() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "enter equal engines feature";
   if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "The usage of different storage engines is not allowed in the cluster";
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "the usage of different storage engines is not allowed in the cluster";
   }
  }
