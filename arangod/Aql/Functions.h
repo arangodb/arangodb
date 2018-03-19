@@ -151,6 +151,9 @@ struct Functions {
    static AqlValue Substring(arangodb::aql::Query*,
                               transaction::Methods*,
                               VPackFunctionParameters const&);
+   static AqlValue Substitute(arangodb::aql::Query*,
+                              transaction::Methods*,
+                              VPackFunctionParameters const&);
    static AqlValue Left(arangodb::aql::Query*,
                          transaction::Methods*,
                          VPackFunctionParameters const&);

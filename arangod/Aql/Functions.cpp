@@ -1236,8 +1236,8 @@ AqlValue Functions::Lower(arangodb::aql::Query* query,
 
 /// @brief function UPPER
 AqlValue Functions::Upper(arangodb::aql::Query* query,
-                                    transaction::Methods* trx,
-                                    VPackFunctionParameters const& parameters) {
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "UPPER", 1, 1);
 
   std::string utf8;
@@ -1257,8 +1257,8 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
 
 /// @brief function SUBSTRING
 AqlValue Functions::Substring(arangodb::aql::Query* query,
-                                    transaction::Methods* trx,
-                                    VPackFunctionParameters const& parameters) {
+                              transaction::Methods* trx,
+                              VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "SUBSTRING", 2, 3);
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
@@ -1286,6 +1286,232 @@ AqlValue Functions::Substring(arangodb::aql::Query* query,
   unicodeStr.tempSubString(offset, unicodeStr.moveIndex32(offset, length) - offset)
   .toUTF8String(utf8);
 
+  return AqlValue(utf8);
+}
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Substitute(arangodb::aql::Query* query,
+                               transaction::Methods* trx,
+                               VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SUBSTITUTE", 2, 4);
+
+  AqlValue Search = ExtractFunctionParameterValue(parameters, 1);
+  int64_t limit = -1;
+  AqlValueMaterializer materializer(trx);
+  std::vector<UnicodeString> match;
+  std::vector<UnicodeString> replace;
+  bool replaceWasPlainString = false;
+  
+  if (Search.isObject()) {
+    if (parameters.size() > 3) {
+      RegisterWarning(query, "SUBSTITUTE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (parameters.size() == 3) {
+      limit = ExtractFunctionParameterValue(parameters, 2).toInt64(trx);
+    }
+    VPackSlice slice = materializer.slice(Search, false);
+    match.reserve(slice.length());
+    replace.reserve(slice.length());
+    for (auto const& it : VPackObjectIterator(slice)) {
+      arangodb::velocypack::ValueLength length;
+      const char *str = it.key.getString(length);
+      match.push_back(UnicodeString(str, length));
+      if (!it.value.isString()) {
+        RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
+        return AqlValue(AqlValueHintNull());
+      }
+      str = it.value.getString(length);
+      replace.push_back(UnicodeString(str, length));
+    }
+  }
+  else {
+    if (parameters.size() < 2) {
+      RegisterWarning(query, "SUBSTITUTE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
+      return AqlValue(AqlValueHintNull());
+    }
+    if (parameters.size() == 4) {
+      limit = ExtractFunctionParameterValue(parameters, 3).toInt64(trx);
+    }
+    
+    VPackSlice slice = materializer.slice(Search, false);
+    if (Search.isArray()) {
+      for (auto const& it : VPackArrayIterator(slice)) {
+        if (!it.isString()) {
+          RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
+          return AqlValue(AqlValueHintNull());
+        }
+        arangodb::velocypack::ValueLength length;
+        const char *str = it.getString(length);
+        match.push_back(UnicodeString(str, length));
+      }
+    }
+    else {
+      if (!Search.isString()) {
+        RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
+        return AqlValue(AqlValueHintNull());
+      }
+      arangodb::velocypack::ValueLength length;
+      const char *str = slice.getString(length);
+      match.push_back(UnicodeString(str, length));
+    }
+    if (parameters.size() > 2) {
+      AqlValue Replace = ExtractFunctionParameterValue(parameters, 2);
+      VPackSlice rslice = materializer.slice(Replace, false);
+      if (Replace.isArray()) {
+        for (auto const& it : VPackArrayIterator(rslice)) {
+          if (!it.isString()) {
+            RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
+            return AqlValue(AqlValueHintNull());
+          }
+          arangodb::velocypack::ValueLength length;
+          const char *str = it.getString(length);
+          replace.push_back(UnicodeString(str, length));
+        }
+      }
+      else if (Replace.isString()) {
+        // If we have a string as replacement,
+        // it counts in for all found values.
+        replaceWasPlainString = true;
+        arangodb::velocypack::ValueLength length;
+        const char *str = rslice.getString(length);
+        replace.push_back(UnicodeString(str, length));
+      }
+      else {
+        RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
+        return AqlValue(AqlValueHintNull());
+      }
+    }
+  }
+
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+  if ((limit == 0) || (match.size() == 0)) {
+    // if the limit is 0, or we don't have any match pattern, return the source string.
+    return AqlValue(value);
+  }
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+  UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+
+  auto locale = LanguageFeature::instance()->getLocale();
+  std::vector<std::unique_ptr<StringSearch>> searchVec;
+  searchVec.reserve(match.size());
+  UErrorCode status = U_ZERO_ERROR;
+  for (auto const& searchStr : match) {
+    // create a vector of string searches
+    searchVec.push_back(std::make_unique<StringSearch>(searchStr, unicodeStr, locale, nullptr, status));
+  }
+  
+  std::vector<std::pair<int32_t, int32_t>> srchResultPtrs;
+  std::string utf8;
+  srchResultPtrs.reserve(match.size());
+  for (auto& search : searchVec) {
+    // We now find the first hit for each search string. 
+    auto pos = search->first(status);
+    int32_t len;
+    if (pos != USEARCH_DONE) {
+      len = search->getMatchedLength();
+    }
+    srchResultPtrs.push_back(std::make_pair(pos, len));
+  }
+
+  UnicodeString result;  
+  int32_t lastStart = 0;
+  int64_t count = 0;
+  while (true) {
+    int which = -1;
+    int32_t pos = USEARCH_DONE;
+    int32_t mLen = 0;
+    int i = 0;
+    for (auto resultPair : srchResultPtrs) {
+      // We locate the nearest matching search result.
+      int32_t thisPos;
+      thisPos = resultPair.first;
+      if ((pos == USEARCH_DONE) || (pos > thisPos)) {
+        if (thisPos != USEARCH_DONE) {
+          pos = thisPos;
+          which = i;
+          mLen = resultPair.second;
+        }
+      }
+      i++;
+    }
+    if (which == -1) {
+      break;
+    }
+    // from last match to this match, copy the original string.
+    result.append(unicodeStr, lastStart, pos - lastStart);
+    if (replace.size() != 0) {
+      if (replace.size() > (size_t) which) {
+        result.append(replace[which]);
+      }
+      else if (replaceWasPlainString) {
+        result.append(replace[0]);
+      }
+    }
+    
+    // lastStart is the place up to we searched the source string 
+    lastStart = pos + mLen;
+
+    // we try to search the next occurance of this string
+    auto& search = searchVec[which];
+    pos = search->next(status);
+    if (pos != USEARCH_DONE) {
+      mLen = search->getMatchedLength();
+    }
+    else {
+      mLen = -1;
+    }
+    srchResultPtrs[which] = std::make_pair(pos, mLen);
+
+    which = 0;
+    for (auto searchPair : srchResultPtrs) {
+      // now we invalidate all search results that overlap with
+      // our last search result and see whether we can find the
+      // overlapped pattern again.
+      // However, that mustn't overlap with the current lastStart
+      // position either.
+      int32_t thisPos;
+      thisPos = searchPair.first;
+      if ((thisPos != USEARCH_DONE) && (thisPos < lastStart)) {
+        auto &search = searchVec[which];
+        pos = thisPos;
+        while ((pos < lastStart) && (pos != USEARCH_DONE)) {
+          pos = search->next(status);
+          if (pos != USEARCH_DONE) {
+            mLen = search->getMatchedLength();
+          }
+          srchResultPtrs[which] = std::make_pair(pos, mLen);
+        }
+      }
+      which++;
+    }
+    
+    count ++;
+    if ((limit != -1) && (count >= limit)) {
+      // Do we have a limit count?
+      break;
+    }
+    // check whether none of our search objects has any more results
+    bool allFound = true;
+    for (auto resultPair : srchResultPtrs) {
+      if (resultPair.first != USEARCH_DONE) {
+        allFound = false;
+        break;
+      }
+    }
+    if (allFound) {
+      break;
+    }
+  }
+  // Append from the last found:
+  result.append(unicodeStr, lastStart, unicodeStr.length() - lastStart);
+  
+  result.toUTF8String(utf8);
   return AqlValue(utf8);
 }
 
