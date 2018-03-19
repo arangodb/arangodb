@@ -41,8 +41,7 @@
 
 using namespace arangodb;
 
-template <typename CMP = geo_index::DocumentsAscending,
-          typename SEEN = geo_index::Deduplicator>
+template <typename CMP = geo_index::DocumentsAscending>
 struct NearIterator final : public IndexIterator {
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
   NearIterator(LogicalCollection* collection, transaction::Methods* trx,
@@ -51,8 +50,7 @@ struct NearIterator final : public IndexIterator {
       : IndexIterator(collection, trx, index),
         _index(index),
         _near(std::move(params)),
-        _mmdr(mmdr),
-        _scans{0} {
+        _mmdr(mmdr) {
     estimateDensity();
   }
 
@@ -150,10 +148,6 @@ struct NearIterator final : public IndexIterator {
 
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    if (!scan.empty()) {
-      ++_scans;
-    };
-
     // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
@@ -207,12 +201,10 @@ struct NearIterator final : public IndexIterator {
 
  private:
   MMFilesGeoS2Index const* _index;
-  geo_index::NearUtils<CMP, SEEN> _near;
+  geo_index::NearUtils<CMP> _near;
   ManagedDocumentResult* _mmdr;
-  size_t _scans; // TODO remove later
 };
-typedef NearIterator<geo_index::DocumentsAscending,
-                     geo_index::NoopDeduplicator> LegacyIterator;
+typedef NearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
 MMFilesGeoS2Index::MMFilesGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
@@ -410,19 +402,9 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
   
   // why does this have to be shit?
   if (params.ascending) {
-    if (params.pointsOnly) {
-      return new NearIterator<geo_index::DocumentsAscending,
-                              geo_index::NoopDeduplicator>(_collection, trx, mmdr,
-                                                           this, std::move(params));
-    }
     return new NearIterator<geo_index::DocumentsAscending>(_collection, trx, mmdr,
                                  this, std::move(params));
   } else {
-    if (params.pointsOnly) {
-      return new NearIterator<geo_index::DocumentsDescending,
-      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
-                                   this, std::move(params));
-    }
     return new NearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
   }

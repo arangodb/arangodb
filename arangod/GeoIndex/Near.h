@@ -66,31 +66,11 @@ struct DocumentsDescending {
   }
 };
   
-struct Deduplicator {
-  bool operator()(LocalDocumentId const& lid) {
-    auto const& it = _seen.find(lid);
-    if (it != _seen.end()) {
-      return true;
-    }
-    _seen.emplace(lid);
-    return false;
-  }
-  void clear() { _seen.clear(); };
-  
-  std::unordered_set<LocalDocumentId> _seen;
-};
-  
-struct NoopDeduplicator {
-  bool operator()(LocalDocumentId const& lid) const { return false; }
-  void clear() {};
-};
-
 /// @brief Helper class to build a simple near query iterator.
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on rsesult points and
 /// search intervals). Should be storage engine agnostic
-template <typename CMP = DocumentsAscending,
-          typename SEEN = Deduplicator>
+template <typename CMP = DocumentsAscending>
 class NearUtils {
   static_assert(std::is_same<CMP, DocumentsAscending>::value ||
                     std::is_same<CMP, DocumentsDescending>::value,
@@ -108,6 +88,7 @@ class NearUtils {
       GeoDocumentsQueue;
 
   NearUtils(geo::QueryParams&& params) noexcept;
+  ~NearUtils();
 
  public:
   /// @brief get cell covering target coordinate (at max level)
@@ -150,7 +131,9 @@ class NearUtils {
   }
 
   /// @brief remove closest buffered result
-  void popNearest() { _buffer.pop(); }
+  void popNearest() {
+    _buffer.pop();
+  }
 
   /// @brief reset query to inital state
   void reset();
@@ -166,6 +149,9 @@ class NearUtils {
   /// aid density estimation by reporting a result close
   /// to the target coordinates
   void estimateDensity(S2Point const& found);
+  
+  size_t _rejection = 0;
+  size_t _scans = 0;
 
  private:
   /// @brief adjust the bounds delta
@@ -215,9 +201,9 @@ class NearUtils {
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
   
-  // deduplication routine
-  SEEN _deduplicator;
-
+  // deduplication filter
+  std::unordered_set<uint64_t> _seenDocs;
+  
   /// Track the already scanned region
   S2CellUnion _scannedCells;
   /// Coverer instance to use

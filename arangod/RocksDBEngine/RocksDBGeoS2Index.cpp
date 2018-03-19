@@ -43,8 +43,7 @@
 
 using namespace arangodb;
 
-template <typename CMP = geo_index::DocumentsAscending,
-          typename SEEN = geo_index::Deduplicator>
+template <typename CMP = geo_index::DocumentsAscending>
 class RDBNearIterator final : public IndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
@@ -225,11 +224,10 @@ class RDBNearIterator final : public IndexIterator {
  private:
   RocksDBGeoS2Index const* _index;
   ManagedDocumentResult* _mmdr;
-  geo_index::NearUtils<CMP, SEEN> _near;
+  geo_index::NearUtils<CMP> _near;
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
-typedef RDBNearIterator<geo_index::DocumentsAscending,
-                        geo_index::NoopDeduplicator> LegacyIterator;
+typedef RDBNearIterator<geo_index::DocumentsAscending> LegacyIterator;
 
 RocksDBGeoS2Index::RocksDBGeoS2Index(TRI_idx_iid_t iid,
                                      LogicalCollection* collection,
@@ -372,19 +370,9 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
   
   
   if (params.ascending) {
-    if (params.pointsOnly) {
-      return new RDBNearIterator<geo_index::DocumentsAscending,
-      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
-                                   this, std::move(params));
-    }
     return new RDBNearIterator<geo_index::DocumentsAscending>(
         _collection, trx, mmdr, this, std::move(params));
   } else {
-    if (params.pointsOnly) {
-      return new RDBNearIterator<geo_index::DocumentsDescending,
-      geo_index::NoopDeduplicator>(_collection, trx, mmdr,
-                                   this, std::move(params));
-    }
     return new RDBNearIterator<geo_index::DocumentsDescending>(
         _collection, trx, mmdr, this, std::move(params));
   }

@@ -79,7 +79,10 @@ void GeoUtils::scanIntervals(QueryParams const& params,
   if (cover.empty()) {
     return;
   }
-
+  // reserve some space
+  int pl = std::max(cover[0].level() - params.cover.worstIndexedLevel,0);
+  sortedIntervals.reserve(cover.size() + pl * cover.size());
+  
   // prefix matches
   for (S2CellId const& prefix : cover) {
     if (prefix.is_leaf()) {

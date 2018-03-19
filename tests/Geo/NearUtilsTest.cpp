@@ -49,10 +49,10 @@ typedef std::map<LocalDocumentId, S2LatLng> coords_t;
 // -----------------------------------------------------------------------------
 
 /// Perform indexx scan
-template<typename CMP, typename SEEN>
+template<typename CMP>
 static std::vector<LocalDocumentId> nearSearch(index_t const& index,
                                                coords_t const& coords,
-                                               geo_index::NearUtils<CMP, SEEN>& near,
+                                               geo_index::NearUtils<CMP>& near,
                                                size_t limit) {
   std::vector<LocalDocumentId> result;
 
@@ -112,10 +112,8 @@ static std::vector<S2LatLng> convert(coords_t const& coords,
 
 /***********************************/
 
-typedef geo_index::NearUtils<geo_index::DocumentsAscending,
-                             geo_index::NoopDeduplicator> AscIterator;
-typedef geo_index::NearUtils<geo_index::DocumentsDescending,
-                             geo_index::NoopDeduplicator> DescIterator;
+typedef geo_index::NearUtils<geo_index::DocumentsAscending> AscIterator;
+typedef geo_index::NearUtils<geo_index::DocumentsDescending> DescIterator;
 
 TEST_CASE("Simple near queries", "[geo][s2index]") {
 
