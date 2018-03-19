@@ -31,7 +31,7 @@ class EngineEqualityCheckFeature final : public application_features::Applicatio
   explicit EngineEqualityCheckFeature(application_features::ApplicationServer* server);
 
  public:
-  void prepare() override final;
+  void start() override final;
 };
 }
 

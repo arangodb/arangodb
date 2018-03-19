@@ -35,10 +35,11 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
     : ApplicationFeature(server, "EngineEqualityCheck") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Logger");
+  startsAfter("Cluster");
 }
 
 bool equalStorageEngines(){
+  LOG_TOPIC(ERR, Logger::FIXME) << "enter check equal";
   std::string engineName = EngineSelectorFeature::engineName();
   auto allEqual = true;
   auto ci = ClusterInfo::instance();
@@ -62,7 +63,7 @@ bool equalStorageEngines(){
                                        ,false);
 
   if (successful != requests.size()){
-    LOG_TOPIC(WARN, Logger::FIXME) << "could not reach all dbservers for engine check";
+    LOG_TOPIC(ERR, Logger::FIXME) << "could not reach all dbservers for engine check";
     return false;
   }
 
@@ -88,7 +89,8 @@ bool equalStorageEngines(){
   return allEqual;
 }
 
-void EngineEqualityCheckFeature::prepare() {
+void EngineEqualityCheckFeature::start() {
+  LOG_TOPIC(ERR, Logger::FIXME) << "enter equal engines feature";
   if (ServerState::instance()->isCoordinator() && !equalStorageEngines()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "The usage of different storage engines is not allowed in the cluster";
   }

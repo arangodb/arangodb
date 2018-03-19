@@ -30,6 +30,7 @@
 #include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/EngineEqualityCheckFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/JemallocFeature.h"
@@ -37,9 +38,9 @@
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PageSizeFeature.h"
+#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/RocksDBOptionFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -117,7 +118,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
   try {
     context.installSegv();
     context.runStartupChecks();
-    
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<options::ProgramOptions>(
@@ -129,7 +130,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     std::vector<std::string> nonServerFeatures = {
         "Action",        "Agency",
         "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer", 
+        "FoxxQueues",    "GeneralServer",
         "Greetings",     "LoggerBufferFeature",
         "Server",        "SslServer",
         "Statistics",    "Supervisor"};
@@ -138,20 +139,18 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
 
     server.addFeature(new ActionFeature(&server));
     server.addFeature(new AgencyFeature(&server));
-    server.addFeature(new aql::AqlFunctionFeature(&server));
-    server.addFeature(new aql::OptimizerRulesFeature(&server));
-    server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new AqlFeature(&server));
+    server.addFeature(new AuthenticationFeature(&server));
     server.addFeature(new BootstrapFeature(&server));
     server.addFeature(new CacheManagerFeature(&server));
-    server.addFeature(
-        new CheckVersionFeature(&server, &ret, nonServerFeatures));
+    server.addFeature(new CheckVersionFeature(&server, &ret, nonServerFeatures));
     server.addFeature(new ClusterFeature(&server));
     server.addFeature(new ConfigFeature(&server, name));
     server.addFeature(new ConsoleFeature(&server));
     server.addFeature(new DatabaseFeature(&server));
     server.addFeature(new DatabasePathFeature(&server));
     server.addFeature(new EndpointFeature(&server));
+    server.addFeature(new EngineEqualityCheckFeature(&server));
     server.addFeature(new EngineSelectorFeature(&server));
     server.addFeature(new EnvironmentFeature(&server));
     server.addFeature(new FileDescriptorsFeature(&server));
@@ -169,12 +168,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new MaxMapCountFeature(&server));
     server.addFeature(new NonceFeature(&server));
     server.addFeature(new PageSizeFeature(&server));
-    server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
+    server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new RandomFeature(&server));
     server.addFeature(new ReplicationFeature(&server));
     server.addFeature(new ReplicationTimeoutFeature(&server));
-    server.addFeature(new QueryRegistryFeature(&server));
+    server.addFeature(new RocksDBOptionFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));
     server.addFeature(new ServerFeature(&server, &ret));
@@ -193,7 +192,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new VersionFeature(&server));
     server.addFeature(new ViewTypesFeature(&server));
     server.addFeature(new WorkMonitorFeature(&server));
-    server.addFeature(new RocksDBOptionFeature(&server));
+    server.addFeature(new aql::AqlFunctionFeature(&server));
+    server.addFeature(new aql::OptimizerRulesFeature(&server));
+    server.addFeature(new pregel::PregelFeature(&server));
 
 #ifdef ARANGODB_HAVE_FORK
     server.addFeature(new DaemonFeature(&server));
