@@ -61,14 +61,8 @@ if (USE_PRECOMPILED_V8)
     IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
   )
 
-  add_library(libev-static IMPORTED STATIC)
-  set_target_properties(libev-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${libev_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${libev_BINARY_DIR}/libev.a"
-  )
-
   set(ICU_LIBS
-    libicui18n-static libicuuc-static libev-static
+    libicui18n-static libicuuc-static
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -91,6 +85,7 @@ else ()
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 endif ()
 
 ################################################################################
@@ -127,14 +122,14 @@ if (USE_IRESEARCH)
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_LIBRARY_DIR}/libicuuc.a")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
