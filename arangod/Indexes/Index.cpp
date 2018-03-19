@@ -407,7 +407,7 @@ void Index::toVelocyPack(VPackBuilder& builder, bool withFigures, bool) const {
   }
   builder.close();
 
-  if (hasSelectivityEstimate() && !ServerState::instance()->isCoordinator()) {
+  if (hasSelectivityEstimate()) { 
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
   }
 
