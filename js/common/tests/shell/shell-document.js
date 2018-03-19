@@ -1604,7 +1604,7 @@ function DatabaseDocumentSuite () {
         db._exists("UnitTestsNonExistingCollection/1");
       }
       catch (err1) {
-        assertEqual(ERRORS.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err1.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err1.errorNum);
       }
 
       // invalid key pattern
