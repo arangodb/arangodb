@@ -90,7 +90,7 @@ the database (e.g. `_id`, `_key`, `_rev`).
 
 
 ```js
-INSERT document IN collection options RETURN NEW
+INSERT document IN collection RETURN NEW
 ```
 
 Following is an example using a variable named `inserted` to return the inserted
