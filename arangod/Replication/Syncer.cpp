@@ -308,19 +308,19 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
-LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
-                                                   TRI_voc_cid_t cid,
-                                                   std::string const& name) {
-  auto* idCol = vocbase->lookupCollection(cid).get();
-  arangodb::LogicalCollection* nameCol = nullptr;
+std::shared_ptr<LogicalCollection> Syncer::getCollectionByIdOrName(
+    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, std::string const& name
+) {
+  auto idCol = vocbase->lookupCollection(cid);
+  std::shared_ptr<LogicalCollection> nameCol;
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = vocbase->lookupCollection(name).get();
+    nameCol = vocbase->lookupCollection(name);
   }
 
   if (idCol != nullptr && nameCol != nullptr) {
-    if (idCol->cid() == nameCol->cid()) {
+    if (idCol->id() == nameCol->id()) {
       // found collection by id and name, and both are identical!
       return idCol;
     }
@@ -377,18 +377,20 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   }
 }
 
-arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
-                                                       VPackSlice const& slice) {
+std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
+    TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& slice
+) {
   TRI_ASSERT(vocbase != nullptr);
   // extract "cid"
   TRI_voc_cid_t cid = getCid(slice);
+
   if (!simulate32Client() || cid == 0) {
     VPackSlice uuid;
 
     if ((uuid = slice.get("cuid")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString()).get();
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
     } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-      return vocbase->lookupCollectionByUuid(uuid.copyString()).get();
+      return vocbase->lookupCollectionByUuid(uuid.copyString());
     }
   }
 
@@ -397,11 +399,14 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
       TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
     return nullptr;
   }
+
   // extract optional "cname"
   std::string cname = getCName(slice);
+
   if (cname.empty()) {
     cname = arangodb::basics::VelocyPackHelper::getStringValue(slice, "name", "");
   }
+
   return getCollectionByIdOrName(vocbase, cid, cname);
 }
 
@@ -551,7 +556,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
       slice, "type", TRI_COL_TYPE_DOCUMENT));
 
   // resolve collection by uuid, name, cid (in that order of preference)
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+  auto* col = resolveCollection(vocbase, slice).get();
 
   if (col != nullptr && 
       col->type() == type && 
@@ -573,17 +578,24 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   if (col != nullptr) {
     if (col->isSystem()) {
       TRI_ASSERT(!simulate32Client() || col->globallyUniqueId() == col->name());
-      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                      col->cid(), AccessMode::Type::WRITE);
+      SingleCollectionTransaction trx(
+        transaction::StandaloneContext::Create(vocbase),
+        col->id(),
+        AccessMode::Type::WRITE
+      );
       Result res = trx.begin();
+
       if (!res.ok()) {
         return res;
       }
+
       OperationOptions opts;
       OperationResult opRes = trx.truncate(col->name(), opts);
+
       if (opRes.fail()) {
         return opRes.result;
       }
+
       return trx.finish(opRes.result);
     } else {
       vocbase->dropCollection(col, false, -1.0);
@@ -630,10 +642,13 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 /// @brief drops a collection, based on the VelocyPack provided
 Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+
+  auto* col = resolveCollection(vocbase, slice).get();
+
   if (col == nullptr) {
     if (reportError) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -641,7 +656,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 
     return Result();
   }
-    
+
   return Result(vocbase->dropCollection(col, true, -1.0));
 }
 
@@ -651,21 +666,24 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
   }
-  
+
   if (!indexSlice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "index slice is not an object");
   }
 
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+
+  auto col = resolveCollection(vocbase, slice);
+
   if (col == nullptr) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection for index");
   }
-  
+
   VPackBuilder s;
   s.openObject();
   s.add("objectId", VPackSlice::nullSlice());
@@ -674,9 +692,11 @@ Result Syncer::createIndex(VPackSlice const& slice) {
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
 
   try {
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
-                                    col->cid(), AccessMode::Type::WRITE);
-
+    SingleCollectionTransaction trx(
+      transaction::StandaloneContext::Create(vocbase),
+      col->id(),
+      AccessMode::Type::WRITE
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -707,7 +727,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     } else {
       id = VelocyPackHelper::getStringValue(slice, "id", "");
     }
-    
+
     if (id.empty()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "id not found in index drop slice");
     }
@@ -718,7 +738,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     if (vocbase == nullptr) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+
+    auto* col = resolveCollection(vocbase, slice).get();
+
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }

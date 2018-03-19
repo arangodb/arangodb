@@ -110,7 +110,7 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
       ),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
   TRI_ASSERT(_physical != nullptr);
-  if (!IsAllowedName(info)) {
+  if (!TRI_vocbase_t::IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -124,44 +124,6 @@ LogicalView::~LogicalView() {}
   static const Category category;
 
   return category;
-}
-
-bool LogicalView::IsAllowedName(VPackSlice parameters) {
-  std::string name =
-    arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
-
-  return IsAllowedName(name);
-}
-
-bool LogicalView::IsAllowedName(std::string const& name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (ptr = name.c_str(); *ptr; ++ptr) {
-    if (length == 0) {
-      ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-           ('A' <= *ptr && *ptr <= 'Z');
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
 }
 
 Result LogicalView::rename(std::string&& newName, bool doSync) {
@@ -201,15 +163,6 @@ void LogicalView::drop() {
   // engine->destroyView(_vocbase, this);
 
   _physical->drop();
-}
-
-VPackBuilder LogicalView::toVelocyPack(bool includeProperties,
-                                       bool includeSystem) const {
-  VPackBuilder builder;
-  builder.openObject();
-  toVelocyPack(builder, includeProperties, includeSystem);
-  builder.close();
-  return builder;
 }
 
 void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,

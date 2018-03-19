@@ -2964,7 +2964,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
     return false;
   }
 
-  TransactionCollection* trxColl = trxCollection(document->cid(), type);
+  TransactionCollection* trxColl = trxCollection(document->id(), type);
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->isLocked(type, _state->nestingLevel());
 }

@@ -502,7 +502,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
                                                TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(true, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -560,7 +560,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
                                     TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }

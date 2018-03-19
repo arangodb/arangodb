@@ -106,14 +106,6 @@ class LogicalCollection: public LogicalDataSource {
   /// @brief current version for collections
   static constexpr uint32_t currentVersion() { return VERSION_33; }
 
-  /// @brief determine whether a collection name is a system collection name
-  static bool IsSystemName(std::string const& name) {
-    return (!name.empty() && name[0] == '_');
-  }
-
-  static bool IsAllowedName(velocypack::Slice parameters);
-  static bool IsAllowedName(bool isSystem, std::string const& name);
-
   // SECTION: Meta Information
   uint32_t version() const { return _version; }
 
@@ -121,15 +113,7 @@ class LogicalCollection: public LogicalDataSource {
 
   uint32_t internalVersion() const;
 
-  inline TRI_voc_cid_t cid() const { return id(); }
-
-  virtual std::string cid_as_string() const;
-
-  std::string planId_as_string() const;
-
   TRI_col_type_e type() const;
-
-  std::string dbName() const;
 
   std::string globallyUniqueId() const;
 
@@ -172,7 +156,6 @@ class LogicalCollection: public LogicalDataSource {
   // SECTION: Properties
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool isLocal() const;
-  using LogicalDataSource::deleted; // required by TRI_vocbase_t
   bool isSystem() const;
   bool waitForSync() const;
   bool isSmart() const;

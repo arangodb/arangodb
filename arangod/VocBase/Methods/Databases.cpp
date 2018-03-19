@@ -215,7 +215,7 @@ arangodb::Result Databases::create(std::string const& dbName,
 
   UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
-    if (!TRI_vocbase_t::IsAllowedName(false, dbName)) {
+    if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(dbName))) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     }
 
