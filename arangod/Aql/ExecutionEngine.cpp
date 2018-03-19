@@ -140,6 +140,10 @@ static ExecutionBlock* CreateBlock(
                  CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
         return new DistinctCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod ==
+                 CollectOptions::CollectMethod::COLLECT_METHOD_COUNT) {
+        return new CountCollectBlock(engine,
+                                     static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
