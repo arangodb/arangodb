@@ -322,7 +322,7 @@ V8Context* V8DealerFeature::addContext() {
 
     // no other thread can use the context when we are here, as the
     // context has not been added to the global list of contexts yet
-    loadJavaScriptFileInContext(database->systemDatabase(), "server/initialize.js", context, nullptr);
+    loadJavaScriptFileInContextNoLock(database->systemDatabase(), "server/initialize.js", context);
     return context; 
   } catch (...) {
     delete context;
@@ -1342,6 +1342,31 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   return true;
 }
 
+bool V8DealerFeature::loadJavaScriptFileInContextNoLock(TRI_vocbase_t* vocbase,
+    std::string const& file, V8Context* context) {
+  TRI_ASSERT(vocbase != nullptr);
+  TRI_ASSERT(context != nullptr);
+
+  if (_stopping) {
+    return false;
+  }
+  
+  if (!vocbase->use()) {
+    return false;
+  }
+
+  prepareLockedContext(vocbase, context, true);
+
+  try {
+    loadJavaScriptFileInternal(file, context, nullptr);
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::V8) << "caught exception while executing JavaScript file '" << file << "' in context #" << context->id();
+    throw;
+  }
+  
+  return true;
+}
+
 void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Context* context, VPackBuilder* builder) {
   v8::HandleScope scope(context->_isolate);
   auto localContext =
@@ -1367,6 +1392,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
         break;
     }
   }
+  
+  localContext->Exit();
   
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->id();
 }
