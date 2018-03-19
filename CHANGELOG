@@ -1,6 +1,9 @@
 devel
 -----
 
+* removed remainders of dysfunctional `/_admin/cluster-test` and `/_admin/clusterCheckPort`
+  API endpoints and removed them from documentation
+
 * added new query option `stream` to enable streaming query execution via the `POST /_api/cursor` rest interface.
 
 * fix issue #4698: databases within the UI are now displayed in a sorted order.
