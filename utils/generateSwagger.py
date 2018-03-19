@@ -391,7 +391,7 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
-        self.TRIPPLENEWLINEATSTART = re.compile('^\n\n\n')
+        self.TRIPLENEWLINEATSTART = re.compile('^\n\n\n')
 
 ################################################################################
 ### @brief checks for end of comment
@@ -870,7 +870,7 @@ def restdescription(cargo, r=Regexen()):
                                 swagger['paths'][httpPath][method],
                                 'description')
 
-    if r.TRIPPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
         (fp, last) = cargo
         print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
         exit(1)
