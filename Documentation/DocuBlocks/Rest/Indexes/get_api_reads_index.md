@@ -10,7 +10,6 @@
 The index-handle.
 
 @RESTDESCRIPTION
-
 The result is an object describing the index. It has at least the following
 attributes:
 
