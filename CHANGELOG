@@ -1,6 +1,10 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
+* added "collect-in-cluster" optimizer rule to have COLLECT WITH COUNT queries
+  without grouping being executed on the DB servers and the coordinator only summing
+  up the counts from the individual shards
+
 * fixed issue #4843: Query-Result has more Docs than the Collection itself  
 
 * fixed the behavior of ClusterInfo when waiting for current to catch
