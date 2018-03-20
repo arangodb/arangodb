@@ -31,8 +31,15 @@
 enum TRI_col_type_e : uint32_t;
 
 namespace arangodb {
-class LogicalCollection;
 
+class LogicalCollection;
+class LogicalDataSource;
+class LogicalView; // forward declaration
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief data-source id/name resolver and cache (single-server and cluster)
+/// @note not thread-safe
+////////////////////////////////////////////////////////////////////////////////
 class CollectionNameResolver {
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -54,6 +61,22 @@ class CollectionNameResolver {
   ~CollectionNameResolver() = default;
 
  public:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a collection struct for a collection id
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalCollection> getCollection(
+    TRI_voc_cid_t id
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a collection struct for a
+  ///        collection name, stringified id (or uuid for dbserver / standalone)
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalCollection> getCollection(
+    std::string const& nameOrId
+  ) const noexcept;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection id for a collection name (local case),
   /// use this if you know you are on a single server or on a DBserver
@@ -81,24 +104,10 @@ class CollectionNameResolver {
   TRI_voc_cid_t getCollectionId(std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection type for a collection name (local case)
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_col_type_e getCollectionType(std::string const& name) const;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a collection name
   //////////////////////////////////////////////////////////////////////////////
 
   arangodb::LogicalCollection const* getCollectionStruct(std::string const& name) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a cluster collection type for a cluster collection name on
-  /// the
-  ///        coordinator and for a shard name on the db server
-  //////////////////////////////////////////////////////////////////////////////
-
-  TRI_col_type_e getCollectionTypeCluster(std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
@@ -124,14 +133,52 @@ class CollectionNameResolver {
   std::string getCollectionName(std::string const& nameOrId) const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief invoke visitor on all collections that map to the specified 'cid'
+  /// @brief look up a data-source struct for a data-source id
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalDataSource> getDataSource(
+    TRI_voc_cid_t id
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a data-source struct for a
+  ///        data-source name, stringified id (or uuid for dbserver/standalone)
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalDataSource> getDataSource(
+    std::string const& nameOrId
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a view struct for a view id
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalView> getView(TRI_voc_cid_t id) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a view struct for a
+  ///        view name, stringified id (or uuid for dbserver / standalone)
+  //////////////////////////////////////////////////////////////////////////////
+  std::shared_ptr<LogicalView> getView(
+    std::string const& nameOrId
+  ) const noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief look up a cluster-wide view name for a cluster-wide view id
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::string getViewNameCluster(TRI_voc_cid_t cid) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that map to the specified 'id'
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
+
   bool visitCollections(
-    std::function<bool(TRI_voc_cid_t)> const& visitor, TRI_voc_cid_t cid
+    std::function<bool(LogicalCollection&)> const& visitor,
+    TRI_voc_cid_t id
   ) const;
 
  private:
+  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById; // cached data-source by id
+  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName; // cached data-source by name
 
   std::string localNameLookup(TRI_voc_cid_t cid) const;
 

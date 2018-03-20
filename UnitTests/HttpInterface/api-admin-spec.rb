@@ -54,65 +54,6 @@ describe ArangoDB do
     end
 
 ################################################################################
-## /_admin/echo
-################################################################################
-
-    context "checks /_admin/echo" do
-
-      prefix = "api-system"
-
-      it "using GET" do
-        cmd = "/_admin/echo"
-        doc = ArangoDB.log_get("#{prefix}-echo", cmd)
-
-        doc.code.should eq(200)
-        doc.parsed_response['url'].should eq("/_admin/echo")
-        doc.parsed_response['path'].should eq("/")
-        doc.parsed_response['parameters'].should eq({})
-        doc.parsed_response['requestType'].should eq("GET")
-      end
-      
-      it "using GET, with query parameter" do
-        cmd = "/_admin/echo?a=1"
-        doc = ArangoDB.log_get("#{prefix}-echo", cmd)
-
-        doc.code.should eq(200)
-        doc.parsed_response['url'].should eq("/_admin/echo?a=1")
-        doc.parsed_response['path'].should eq("/")
-        doc.parsed_response['parameters'].should eq({ "a" => "1" })
-        doc.parsed_response['requestType'].should eq("GET")
-      end
-      
-      it "using POST, with query parameters" do
-        cmd = "/_admin/echo?a=1&b=2&foo[]=bar&foo[]=baz"
-        body = "{\"foo\": \"bar\", \"baz\": { \"bump\": true, \"moo\": [ ] } }"
-        doc = ArangoDB.log_post("#{prefix}-echo", cmd, :body => body)
-
-        doc.code.should eq(200)
-        doc.parsed_response['url'].should eq("/_admin/echo?a=1&b=2&foo[]=bar&foo[]=baz")
-        doc.parsed_response['path'].should eq("/")
-        doc.parsed_response['parameters'].should eq( { "a"=>"1", "b"=>"2", "foo"=>["bar", "baz"] } )
-        doc.parsed_response['requestType'].should eq("POST")
-        doc.parsed_response['requestBody'].should eq("{\"foo\": \"bar\", \"baz\": { \"bump\": true, \"moo\": [ ] } }")
-      end
-      
-      it "using PUT, with headers" do
-        cmd = "/_admin/echo?"
-        body = "{ }"
-        headers = { "X-Foo" => "Bar", "x-meow" => "mOO" }
-        doc = ArangoDB.log_put("#{prefix}-echo", cmd, :body => body, :headers => headers)
-
-        doc.code.should eq(200)
-        doc.parsed_response['url'].should eq("/_admin/echo?")
-        doc.parsed_response['path'].should eq("/")
-        doc.parsed_response['parameters'].should eq({ })
-        doc.parsed_response['requestType'].should eq("PUT")
-        doc.parsed_response['requestBody'].should eq("{ }") 
-      end
-      
-    end
-
-################################################################################
 ## check whether admin interface is accessible
 ################################################################################
   

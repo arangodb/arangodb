@@ -277,6 +277,15 @@ exports.permission = function (username, dbName, coll) {
   return arangosh.checkRequestResult(requestResult).result;
 };
 
+// return the full list of permissions and collections
+exports.permissionFull = function (username) {
+  let db = internal.db;
+  let uri  = '_api/user/' + encodeURIComponent(username)
+      + '/database?full=true';
+  let requestResult = db._connection.GET(uri);
+  return arangosh.checkRequestResult(requestResult).result;
+};
+
 exports.exists = function (username) {
   try {
     exports.document(username);

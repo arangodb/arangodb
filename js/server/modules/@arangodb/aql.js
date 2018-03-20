@@ -840,7 +840,7 @@ function FCALL_USER (name, parameters) {
   try {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply({ name: name }, parameters));
   } catch (err) {
-    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
+    THROW(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }
@@ -5613,6 +5613,32 @@ function AQL_DATE_FORMAT (value, format) {
   }
 }
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief assert an expression
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_ASSERT (expression, message) {
+  'use strict';
+  if(!AQL_TO_BOOL(expression)) {
+    THROW('', INTERNAL.errors.ERROR_QUERY_USER_ASSERT, message);
+  }
+  return true;
+}
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief warn on expression that evalutates to false
+// //////////////////////////////////////////////////////////////////////////////
+
+function AQL_WARN (expression, message) {
+  'use strict';
+  if(!AQL_TO_BOOL(expression)) {
+    WARN('', INTERNAL.errors.ERROR_QUERY_USER_WARN, message);
+    return false;
+  }
+  return true;
+}
+
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;
 exports.GET_INDEX = GET_INDEX;
@@ -5804,6 +5830,8 @@ exports.AQL_DATE_DIFF = AQL_DATE_DIFF;
 exports.AQL_DATE_COMPARE = AQL_DATE_COMPARE;
 exports.AQL_DATE_FORMAT = AQL_DATE_FORMAT;
 exports.AQL_PREGEL_RESULT = AQL_PREGEL_RESULT;
+exports.AQL_ASSERT = AQL_ASSERT;
+exports.AQL_WARN = AQL_WARN;
 
 exports.reload = reloadUserFunctions;
 exports.clearCaches = clearCaches;

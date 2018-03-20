@@ -26,6 +26,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Replication/common-defines.h"
+#include "Replication/InitialSyncer.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
@@ -84,13 +85,15 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     // extract collection
     std::string const& value2 = _request->value("collection", found);
     if (found) {
-      LogicalCollection* c = _vocbase->lookupCollection(value2);
+      auto c = _vocbase->lookupCollection(value2);
+
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
         return false;
       }
-      filter.collection = c->cid();
+
+      filter.collection = c->id();
     }
   }
 
@@ -246,24 +249,23 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
+  // check for serverId
+  TRI_server_id_t serverId = _request->parsedValue("serverId", static_cast<TRI_server_id_t>(0));
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = _request->parsedValue("barrier", static_cast<TRI_voc_tid_t>(0));
+
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
   }
+
+  grantTemporaryRights();
 
   size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
     chunkSize = std::min((size_t)128 * 1024 * 1024, chunkSize);
-  }
-
-  // check if a barrier id was specified in request
-  TRI_voc_tid_t barrierId = 0;
-  std::string const& value3 = _request->value("barrier", found);
-
-  if (found) {
-    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value3));
   }
 
   WalAccessResult result;
@@ -330,6 +332,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   _response->setHeaderNC(
       StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa(result.lastIncludedTick()));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(result.lastScannedTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(result.latestTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
@@ -338,24 +342,17 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   if (length > 0) {
     _response->setResponseCode(rest::ResponseCode::OK);
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-
-    TRI_server_id_t serverId = 0;
-    if (found) {
-      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-    }
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
-    });
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Wal tailing after " << tickStart
-    << ", lastIncludedTick " << result.lastIncludedTick()
-    << ", fromTickIncluded " << result.fromTickIncluded();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "WAL tailing after " << tickStart
+      << ", lastIncludedTick " << result.lastIncludedTick()
+      << ", fromTickIncluded " << result.fromTickIncluded();
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "No more data in WAL after " << tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
+
+  DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+    vocbase->updateReplicationClient(serverId, tickStart, InitialSyncer::defaultBatchTimeout);
+  });
 }
 
 void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
@@ -412,5 +409,18 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa(r.lastIncludedTick()));
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Grant temporary restore rights
+//////////////////////////////////////////////////////////////////////////////
+void RestWalAccessHandler::grantTemporaryRights() {
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->databaseAuthLevel() == auth::Level::RW) {
+      // If you have administrative access on this database,
+      // we grant you everything for restore.
+      ExecContext::CURRENT = nullptr;
+    }
   }
 }

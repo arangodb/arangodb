@@ -77,7 +77,7 @@ of the *db* variable.
 
 After the collection has been created you can easily access it using
 the path *db.example*. The collection currently shows as *loaded*,
-meaning that it's loaded into memory. If you restart the server and
+meaning that it is loaded into memory. If you restart the server and
 access the collection again it will now show as *unloaded*. You can
 also manually unload a collection.
 

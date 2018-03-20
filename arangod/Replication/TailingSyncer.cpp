@@ -290,11 +290,13 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-  arangodb::LogicalCollection* coll = resolveCollection(vocbase, slice);
+
+  auto* coll = resolveCollection(vocbase, slice).get();
+
   if (coll == nullptr) {
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  
+
   bool isSystem = coll->isSystem();
   // extract "data"
   VPackSlice const doc = slice.get("data");
@@ -313,14 +315,18 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // extract "rev"
   VPackSlice const rev = doc.get(StaticStrings::RevString);
 
-  if (!rev.isString()) {
+  if (!rev.isNone() && !rev.isString()) {
+    // _rev is an optional attribute
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document revision format");
   }
 
   _documentBuilder.clear();
   _documentBuilder.openObject();
   _documentBuilder.add(StaticStrings::KeyString, key);
-  _documentBuilder.add(StaticStrings::RevString, rev);
+  if (rev.isString()) {
+    // _rev is an optional attribute
+    _documentBuilder.add(StaticStrings::RevString, rev);
+  }
   _documentBuilder.close();
 
   VPackSlice const old = _documentBuilder.slice();
@@ -348,7 +354,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
-    trx->addCollectionAtRuntime(coll->cid(), coll->name(), AccessMode::Type::EXCLUSIVE);
+    trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
     Result r = applyCollectionDumpMarker(*trx, coll, type, old, doc);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -365,8 +371,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // standalone operation
   // update the apply tick for all standalone operations
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
-      AccessMode::Type::EXCLUSIVE);
+    transaction::StandaloneContext::Create(vocbase),
+    coll->id(),
+    AccessMode::Type::EXCLUSIVE
+  );
 
   if (_supportsSingleOperations) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -548,14 +556,19 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+
   arangodb::LogicalCollection* col = nullptr;
+
   if (slice.hasKey("cuid")) {
-    col = resolveCollection(vocbase, slice);
+    col = resolveCollection(vocbase, slice).get();
+
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
-    col = vocbase->lookupCollection(collection.get("oldName").copyString());
+    col =
+     vocbase->lookupCollection(collection.get("oldName").copyString()).get();
+
     if (col == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
     }
@@ -575,23 +588,39 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection slice is no object");
   }
-  
-  TRI_vocbase_t* vocbase = resolveVocbase(slice);
-  if (vocbase == nullptr) {
-    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
 
   VPackSlice data = slice.get("collection");
   if (!data.isObject()) {
     data = slice.get("data");
   }
-
+  
   if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "data slice is no object");
+  }
+
+  VPackSlice d = data.get("deleted");
+  bool const isDeleted = (d.isBool() && d.getBool());
+
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    if (isDeleted) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  auto* col = resolveCollection(vocbase, slice).get();
+
+  if (col == nullptr) {
+    if (isDeleted) {
+      // not a problem if a collection that is going to be deleted anyway
+      // does not exist on slave
+      return Result();
+    }
+
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
@@ -840,7 +869,22 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 }
 
 /// @brief run method, performs continuous synchronization
+/// catches exceptions
 Result TailingSyncer::run() {
+  try {
+    return runInternal();
+  } catch (arangodb::basics::Exception const& ex) {
+    return Result(ex.code(), std::string("continuous synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, std::string("continuous synchronization for database '") + _databaseName + "' failed with exception: " + ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, std::string("continuous synchronization for database '") + _databaseName + "' failed with unknown exception");
+  }
+}
+
+/// @brief run method, performs continuous synchronization
+/// internal method, may throw exceptions
+Result TailingSyncer::runInternal() {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
@@ -1014,7 +1058,7 @@ retry:
       
       // start initial synchronization
       try {
-        std::unique_ptr<InitialSyncer> syncer = initialSyncer();
+        std::unique_ptr<InitialSyncer> syncer = _applier->buildInitialSyncer();
         Result r = syncer->run(_configuration._incremental);
         if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
@@ -1039,7 +1083,7 @@ retry:
     return res;
   }
   
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief get local replication apply state
@@ -1062,8 +1106,10 @@ void TailingSyncer::getLocalState() {
     return;
   }
  
+  // a _masterInfo._serverId value of 0 may occur if no proper connection could be
+  // established to the master initially
   if (_masterInfo._serverId != _applier->_state._serverId &&
-      _applier->_state._serverId != 0) {
+      _applier->_state._serverId != 0 && _masterInfo._serverId != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE,
                                    std::string("encountered wrong master id in replication state file. found: ") +
                                    StringUtils::itoa(_masterInfo._serverId) + ", expected: " +
@@ -1341,24 +1387,23 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
-  StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
-  StringUtils::itoa(_barrierId);
+    StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
+    StringUtils::itoa(_barrierId);
   
   TRI_voc_tick_t const originalFetchTick = fetchTick;
   worked = false;
   
   std::string const url = baseUrl + "&from=" + StringUtils::itoa(fetchTick) +
-  "&firstRegular=" +
-  StringUtils::itoa(firstRegularTick) + "&serverId=" +
-  _localServerIdString + "&includeSystem=" +
-  (_configuration._includeSystem ? "true" : "false");
+    "&firstRegular=" + StringUtils::itoa(firstRegularTick) + "&serverId=" +
+    _localServerIdString + "&includeSystem=" + (_configuration._includeSystem ? "true" : "false");
   
   // send request
   std::string const progress =
-  "fetching master log from tick " + StringUtils::itoa(fetchTick) +
-  ", first regular tick " + StringUtils::itoa(firstRegularTick) +
-  ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
-  std::to_string(_ongoingTransactions.size());
+    "fetching master log from tick " + StringUtils::itoa(fetchTick) +
+    ", first regular tick " + StringUtils::itoa(firstRegularTick) +
+    ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
+    std::to_string(_ongoingTransactions.size()) + ", chunk size " + std::to_string(_configuration._chunkSize);
+   
   setProgress(progress);
   
   std::string body;
@@ -1410,6 +1455,12 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   if (found) {
     active = StringUtils::boolean(header);
   }
+
+  TRI_voc_tick_t lastScannedTick = 0;
+  header = response->getHeaderField(StaticStrings::ReplicationHeaderLastScanned, found);
+  if (found) {
+    lastScannedTick = StringUtils::uint64(header);
+  }
   
   header = response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
   if (!found) {
@@ -1420,6 +1471,11 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
   
+  if (lastIncludedTick == 0 && lastScannedTick > 0 && lastScannedTick > fetchTick) {
+    // master did not have any news for us  
+    // still we can move forward the place from which to tail the WAL files
+    fetchTick = lastScannedTick - 1;
+  }
   if (lastIncludedTick > fetchTick) {
     fetchTick = lastIncludedTick;
     worked = true;

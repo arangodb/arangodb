@@ -50,7 +50,6 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
  public:
   RocksDBEdgeIndexIterator(LogicalCollection* collection,
                            transaction::Methods* trx,
-                           ManagedDocumentResult* mmdr,
                            arangodb::RocksDBEdgeIndex const* index,
                            std::unique_ptr<VPackBuilder>& keys,
                            std::shared_ptr<cache::Cache>);
@@ -125,6 +124,9 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
 
+  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
+  bool needToPersistEstimate() const override;
+
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   void batchInsert(
@@ -157,7 +159,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   void warmup(arangodb::transaction::Methods* trx,
               std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
-  void serializeEstimate(std::string& output, uint64_t seq) const override;
+  rocksdb::SequenceNumber serializeEstimate(
+      std::string& output, rocksdb::SequenceNumber seq) const override;
 
   bool deserializeEstimate(arangodb::RocksDBSettingsManager* mgr) override;
 
@@ -173,18 +176,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                         arangodb::velocypack::Slice const&,
                         OperationMode mode) override;
 
-  virtual std::pair<RocksDBCuckooIndexEstimator<uint64_t>*, uint64_t> estimator() const override;
-
-  virtual void applyCommitedEstimates(std::vector<uint64_t> const& inserts,
-                                      std::vector<uint64_t> const& removes) override;
-
  private:
   /// @brief create the iterator
-  IndexIterator* createEqIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createEqIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
-  IndexIterator* createInIterator(transaction::Methods*, ManagedDocumentResult*,
+  IndexIterator* createInIterator(transaction::Methods*,
                                   arangodb::aql::AstNode const*,
                                   arangodb::aql::AstNode const*) const;
 
@@ -204,7 +202,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
   std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
-  mutable uint64_t _estimatorSerializedSeq;
 };
 }  // namespace arangodb
 

@@ -1,9 +1,0 @@
-#!/bin/bash
-
-verb=$1
-shift
-if test "$verb" == "create"; then
-    @HDIUTIL_EXECUTABLE@ $verb -megabytes @CMAKE_DMG_SIZE@ $@
-else
-    @HDIUTIL_EXECUTABLE@ $verb $@
-fi

@@ -71,14 +71,16 @@ class Builder;
 class Slice;
 }
 
+class Index;
+
 namespace aql {
 class Ast;
 struct Collection;
 class Condition;
 class ExecutionBlock;
+class ExecutionEngine;
 class TraversalBlock;
 class ExecutionPlan;
-struct Index;
 class RedundantCalculationsReplacer;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
@@ -373,6 +375,13 @@ class ExecutionNode {
     _dependencies.clear();
   }
 
+  /// @brief creates corresponding ExecutionBlock
+  virtual std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
+    std::unordered_set<std::string> const& includedShards
+  ) const = 0;
+
   /// @brief clone execution Node recursively, this makes the class abstract
   virtual ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                                bool withProperties) const = 0;
@@ -442,6 +451,16 @@ class ExecutionNode {
       ids.emplace(it->id);
     }
     return ids;
+  }
+  
+  /// @brief tests whether the node sets one of the passed variables
+  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+    for (auto const& v : getVariablesSetHere()) {
+      if (which.find(v) != which.end()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// @brief setVarsUsedLater
@@ -680,6 +699,13 @@ class SingletonNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final {
@@ -723,6 +749,13 @@ class EnumerateCollectionNode : public ExecutionNode, public DocumentProducingNo
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -787,6 +820,13 @@ class EnumerateListNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -848,6 +888,13 @@ class LimitNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -920,6 +967,13 @@ class CalculationNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1028,6 +1082,13 @@ class SubqueryNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -1102,6 +1163,13 @@ class FilterNode : public ExecutionNode {
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
@@ -1202,6 +1270,13 @@ class ReturnNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -1246,6 +1321,12 @@ class NoResultsNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,

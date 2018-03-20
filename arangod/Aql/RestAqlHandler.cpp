@@ -728,8 +728,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         }
 
-        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add("code", VPackValue(res));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
         auto atLeast =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
@@ -836,8 +836,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                         "initialize lead to an exception");
           return;
         }
-        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add("code", VPackValue(static_cast<double>(res)));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<double>(res)));
       } else if (operation == "initializeCursor") {
         auto pos =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
@@ -863,8 +863,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                         "initializeCursor lead to an exception");
           return;
         }
-        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add("code", VPackValue(static_cast<double>(res)));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add(StaticStrings::Code, VPackValue(static_cast<double>(res)));
       } else if (operation == "shutdown") {
         int res = TRI_ERROR_INTERNAL;
         int errorCode = VelocyPackHelper::getNumericValue<int>(
@@ -898,8 +898,8 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
                         "shutdown lead to an exception");
           return;
         }
-        answerBuilder.add("error", VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add("code", VPackValue(res));
+        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
+        answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_NOT_FOUND);

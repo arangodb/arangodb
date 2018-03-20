@@ -254,6 +254,9 @@ arangosh is similar, however, you can only run tests which are intended to be ra
 mocha tests
 -----------
 All tests with -spec in their names are using the [mochajs.org](https://mochajs.org) framework.
+To run those tests, e.g. in the arangosh, use this:
+`const runTest = require("@arangodb/mocha-runner");`
+`runTest(<filepath>, true)`
 
 Javascript framework
 --------------------
@@ -534,6 +537,48 @@ Dependencies to build documentation:
 
   Run the installer and follow the instructions.
 
+Add / Synchronize external documentation
+========================================
+We maintain documentation along with their respective git repositories of their component - 
+be it a driver or another utility which shouldn't be directly in sync to the ArangoDB core documentation.
+The maintainer of the respective component can alter the documentation, and once a good point in 
+time is reached, it can be sync'ed over via `Documentation/Scripts/fetchRefs.sh`, which spiders 
+the `SUMMARY.md` files of all books, creates a clone of the external resource, adds a `don't edit this here` note to the files, and copies them over. 
+
+The syntax of the `SUMMARY.md` integration are special comment lines that contain `git` in them in a semicolon separated value list:
+
+ - The git repository - the gitrepository containing the documentation - we will clone this; If authentification is required, prepend an `@` to `gituhb.com`
+ - The directory name where to clone it under `Documentation/Books/repos` (so several integration points can share a working copy)
+ - Subdirectory - the sub-directory inside of the git repository to integrate
+ - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories
+ - Destination - may be empty if the sub-directory on the remote repo should be mapped into the book the `SUMMARY.md` is located in; else specify a file or directory.
+ 
+If private repositories with authentification need to be cloned, the integrator can specify a username/password pair to the script. He/She can also create a clone in the `Documentation/Books/repos/$1` directory - where the script would clone it. 
+
+The script will reset & pull the repos. 
+
+For testing the user can checkout other remote branches in that directory.
+
+Below the integration lines regular lines referencing the integrated .md's have to be put to add the .md's to the books summary.
+
+Please note that the SUMMARY.md integration checks will fail if unreferenced .md's are present, or .md's are missing. 
+
+The fetched .md's should be committed along with the changes of the `SUMMARY.md`
+
+An example integrating an authentificated directory structure:
+
+    #   https://@github.com/arangodb/arangosync.git;arangosync;doc-integration/Manual;;/
+      * [Datacenter to datacenter replication](Scalability/DC2DC/README.md)
+        * [Introduction](Scalability/DC2DC/Introduction.md)
+        * [Applicability](Scalability/DC2DC/Applicability.md)
+        * [Requirements](Scalability/DC2DC/Requirements.md)
+
+Another example, integrating a single README.md from an unauthentificated repo mapping it into `Drivers/js/`:
+
+    * [Drivers](Drivers/README.md)
+    # https://github.com/arangodb/arangojs.git;arangojs;;README.md;Drivers/js/
+      * [Javascript](Drivers/js/README.md)
+
 Generate users documentation
 ============================
 If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
@@ -655,8 +700,8 @@ Here is how its details work:
   - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
   You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
-OUTPUT and RUN specifics
----------------------------
+OUTPUT, RUN and AQL specifics
+-----------------------------
 By default, Examples should be self contained and thus not depend on each other. They should clean up the collections they create.
 Building will fail if resources aren't cleaned.
 However, if you intend a set of OUTPUT and RUN to demonstrate interactively and share generated *ids*, you have to use an alphabetical
@@ -694,6 +739,14 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
     * output the plain text to dump to the user: `logRawResponse(response);`
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
+ - AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.
+   Usually this query references an example dataset generator in `js/common/modules/@arangodb/examples/examples.js`
+   which the users can also invoke to generate the data in their installation. 
+   This sort of example consists of three parts: 
+    - @DATASET{datasetName} - the name of the dataset in the above mentioned `examples.js` to be instanciated before executing this query. 
+    - @EXPLAIN{TRUE|FALSE} - print execution plan of the AQL query. The default is `FALSE`.
+    - A following AQL query which may either end at the end of the comment block, or at the optional next section:
+    - @BV - verbatim object containing the bind parameters to be passed into the query. Will also be put into the generated snippet.
 
 Swagger integration
 ===================

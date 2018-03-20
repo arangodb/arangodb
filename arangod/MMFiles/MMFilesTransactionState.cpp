@@ -274,9 +274,11 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
 
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(
-            _vocbase->id(), collection->cid(), 
+            _vocbase->id(),
+            collection->id(),
             marker, wakeUpSynchronizer,
             localWaitForSync, waitForTick);
+
     if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
       // some error occurred
       return slotInfo.errorCode;
@@ -330,16 +332,16 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     physical->increaseUncollectedLogfileEntries(1);
   } else {
     // operation is buffered and might be rolled back
-    TransactionCollection* trxCollection = this->collection(collection->cid(), AccessMode::Type::WRITE);
-    
+    TransactionCollection* trxCollection =
+      this->collection(collection->id(), AccessMode::Type::WRITE);
     std::unique_ptr<MMFilesDocumentOperation> copy(operation.clone());
-   
+
     TRI_IF_FAILURE("TransactionOperationPushBack") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
     }
-      
+
     static_cast<MMFilesTransactionCollection*>(trxCollection)->addOperation(copy.get());
-    
+
     TRI_IF_FAILURE("TransactionOperationPushBack2") {
       copy.release();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG); 
@@ -349,7 +351,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
     copy.release();
     operation.swapped();
     _hasOperations = true;
-    
+
     arangodb::aql::QueryCache::instance()->invalidate(
         _vocbase, collection->name());
   }

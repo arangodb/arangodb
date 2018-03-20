@@ -1,6 +1,7 @@
 
 
 # Summary
+* [Introduction](README.md)
 * [Tutorial](Tutorial/README.md)
   * [Basic CRUD](Tutorial/CRUD.md)
   * [Matching documents](Tutorial/Filter.md)
@@ -46,7 +47,7 @@
   * [Fulltext](Functions/Fulltext.md)
   * [Miscellaneous](Functions/Miscellaneous.md)
 * [Views](Views/README.md)
-  * [ArangoSearch](Views/IResearch.md)
+  * [ArangoSearch](Views/ArangoSearch.md)
 * [Graphs](Graphs/README.md)
   * [Traversals explained](Graphs/TraversalsExplained.md)
   * [Traversals](Graphs/Traversals.md)

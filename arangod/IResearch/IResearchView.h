@@ -26,7 +26,7 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
-
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/ViewImplementation.h"
 #include "Utils/FlushTransaction.h"
@@ -35,9 +35,11 @@
 #include "index/index_writer.hpp"
 #include "index/directory_reader.hpp"
 #include "utils/async_utils.hpp"
+#include "utils/utf8_path.hpp"
 
 NS_BEGIN(arangodb)
 
+class TransactionState; // forward declaration
 class ViewIterator; // forward declaration
 
 NS_BEGIN(aql)
@@ -74,70 +76,16 @@ struct IResearchLinkMeta;
 ///////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief index reader implementation over multiple directory readers
+/// @brief index reader implementation with a cached primary-key reader lambda
 ////////////////////////////////////////////////////////////////////////////////
-class CompoundReader final : public irs::index_reader {
+class PrimaryKeyIndexReader: public irs::index_reader {
  public:
-  CompoundReader(CompoundReader&& other) noexcept;
-  irs::sub_reader const& operator[](size_t subReaderId) const noexcept {
-    return *(_subReaders[subReaderId].first);
-  }
-  void add(irs::directory_reader const& reader);
-  virtual reader_iterator begin() const override;
-  virtual uint64_t docs_count(const irs::string_ref& field) const override;
-  virtual uint64_t docs_count() const override;
-  virtual reader_iterator end() const override;
-  virtual uint64_t live_docs_count() const override;
-
-  irs::columnstore_reader::values_reader_f const& pkColumn(
-      size_t subReaderId
-  ) const noexcept {
-    return _subReaders[subReaderId].second;
-  }
-
-  virtual size_t size() const noexcept override {
-    return _subReaders.size();
-  }
-
- private:
-  CompoundReader(irs::async_utils::read_write_mutex& mutex);
-
-  friend class IResearchView;
-
-  typedef std::vector<
-    std::pair<irs::sub_reader*, irs::columnstore_reader::values_reader_f>
-  > SubReadersType;
-
-  class IteratorImpl final : public irs::index_reader::reader_iterator_impl {
-   public:
-    explicit IteratorImpl(SubReadersType::const_iterator const& itr)
-      : _itr(itr) {
-    }
-
-    virtual void operator++() noexcept override {
-      ++_itr;
-    }
-    virtual reference operator*() noexcept override {
-      return *(_itr->first);
-    }
-    virtual const_reference operator*() const noexcept override {
-      return *(_itr->first);
-    }
-    virtual bool operator==(const reader_iterator_impl& other) noexcept override {
-      return static_cast<IteratorImpl const&>(other)._itr == _itr;
-    }
-
-   private:
-    SubReadersType::const_iterator _itr;
-  };
-
-  typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-
-  // order is important
-  ReadMutex _mutex;
-  std::unique_lock<ReadMutex> _lock;
-  std::vector<irs::directory_reader> _readers;
-  SubReadersType _subReaders;
+  virtual irs::sub_reader const& operator[](
+    size_t subReaderId
+  ) const noexcept = 0;
+  virtual irs::columnstore_reader::values_reader_f const& pkColumn(
+    size_t subReaderId
+  ) const noexcept = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -179,6 +127,11 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief destructor to clean up resources
   ///////////////////////////////////////////////////////////////////////////////
   virtual ~IResearchView();
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief apply any changes to 'state' required by this view
+  ///////////////////////////////////////////////////////////////////////////////
+  void apply(arangodb::TransactionState& state);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief persist the specified WAL file into permanent storage
@@ -239,6 +192,15 @@ class IResearchView final: public arangodb::ViewImplementation,
     IResearchLinkMeta const& meta
   );
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief link the specified 'cid' to the view using the specified 'link'
+  ///        definition (!link.isObject() == remove only)
+  ////////////////////////////////////////////////////////////////////////////////
+  arangodb::Result link(
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Slice const link
+  );
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -277,10 +239,12 @@ class IResearchView final: public arangodb::ViewImplementation,
   AsyncSelf::ptr self() const;
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief get an index reader containing the currently commited datastore
-  ///        record snapshot
+  /// @return pointer to an index reader containing the datastore record snapshot
+  ///         associated with 'state'
+  ///         (nullptr == no view snapshot associated with the specified state)
+  ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  CompoundReader snapshot();
+  PrimaryKeyIndexReader* snapshot(TransactionState& state, bool force = false);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores
@@ -293,7 +257,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief the view type as used when selecting which view to instantiate
   ////////////////////////////////////////////////////////////////////////////////
-  static std::string const& type() noexcept;
+  static arangodb::LogicalDataSource::Type const& type() noexcept;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief update the view properties via the LogicalView allowing for tracking
@@ -326,6 +290,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
+    std::atomic<size_t> _segmentCount{}; // total number of segments in the writer
     irs::index_writer::ptr _writer;
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
@@ -340,32 +305,12 @@ class IResearchView final: public arangodb::ViewImplementation,
     MemoryStore(); // initialize _directory and _writer during allocation
   };
 
-  struct SyncState {
-    struct PolicyState {
-      size_t _intervalCount;
-      size_t _intervalStep;
-
-      std::shared_ptr<irs::index_writer::consolidation_policy_t> _policy;
-      PolicyState(
-        size_t intervalStep,
-        const std::shared_ptr<irs::index_writer::consolidation_policy_t>& policy
-      );
-    };
-
-    size_t _cleanupIntervalCount;
-    size_t _cleanupIntervalStep;
-    std::vector<PolicyState> _consolidationPolicies;
-
-    SyncState() noexcept;
-    explicit SyncState(IResearchViewMeta::CommitMeta const& meta);
+  struct PersistedStore: public DataStore {
+    const irs::utf8_path _path;
+    PersistedStore(irs::utf8_path&& path);
   };
 
   struct TidStore {
-    TidStore(
-      transaction::Methods& trx,
-      std::function<void(transaction::Methods*)> const& trxCallback
-    );
-
     mutable std::mutex _mutex; // for use with '_removals' (allow use in const functions)
     std::vector<std::shared_ptr<irs::filter>> _removals; // removal filters to be applied to during merge
     MemoryStore _store;
@@ -390,16 +335,9 @@ class IResearchView final: public arangodb::ViewImplementation,
 
   IResearchView(
     arangodb::LogicalView*,
-    arangodb::velocypack::Slice const& info
+    arangodb::velocypack::Slice const& info,
+    irs::utf8_path&& persistedPath
   );
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief run cleaners on data directories to remove unused files
-  /// @param maxMsec try not to exceed the specified time, casues partial cleanup
-  ///                0 == full cleanup
-  /// @return success
-  ///////////////////////////////////////////////////////////////////////////////
-  bool cleanup(size_t maxMsec = 0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
@@ -410,15 +348,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief process a finished transaction and release resources held by it
   ////////////////////////////////////////////////////////////////////////////////
   int finish(TRI_voc_tid_t tid, bool commit);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for a flush of all index data to its respective stores
-  /// @param meta configuraton to use for sync
-  /// @param maxMsec try not to exceed the specified time, casues partial sync
-  ///                0 == full sync
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  bool sync(SyncState& state, size_t maxMsec = 0);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief registers a callback for flush feature
@@ -439,10 +368,11 @@ class IResearchView final: public arangodb::ViewImplementation,
   MemoryStoreNode* _memoryNode; // points to the current memory store
   MemoryStoreNode* _toFlush; // points to memory store to be flushed
   MemoryStoreByTid _storeByTid;
-  DataStore _storePersisted;
+  PersistedStore _storePersisted;
   FlushCallback _flushCallback; // responsible for flush callback unregistration
   irs::async_utils::thread_pool _threadPool;
-  std::function<void(transaction::Methods* trx)> _transactionCallback;
+  std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
+  std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 };
 

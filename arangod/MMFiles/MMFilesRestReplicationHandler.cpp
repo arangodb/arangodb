@@ -29,6 +29,7 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -66,11 +67,12 @@ void MMFilesRestReplicationHandler::insertClient(
     TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
 
     if (serverId > 0) {
-      _vocbase->updateReplicationClient(serverId, lastServedTick);
+      _vocbase->updateReplicationClient(serverId, lastServedTick, InitialSyncer::defaultBatchTimeout);
     }
   }
 }
 
+// prevents datafiles from beeing removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -90,12 +92,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->insertCompactionBlocker(_vocbase, expires, id);
+    int res = engine->insertCompactionBlocker(_vocbase, ttl, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -104,6 +106,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(id)));
+    b.add("lastTick", VPackValue("0")); // not known yet
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -123,12 +126,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->extendCompactionBlocker(_vocbase, id, expires);
+    int res = engine->extendCompactionBlocker(_vocbase, id, ttl);
 
     if (res == TRI_ERROR_NO_ERROR) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -361,13 +364,15 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -375,7 +380,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   if (barrierId > 0) {
@@ -425,6 +430,8 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                          StringUtils::itoa(dump._lastFoundTick));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick,
                          StringUtils::itoa(state.lastCommittedTick));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned,
+                         StringUtils::itoa(dump._lastScannedTick));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
   _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          dump._fromTickIncluded ? "true" : "false");
@@ -455,10 +462,19 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       // to avoid double freeing
       TRI_StealStringBuffer(dump._buffer);
     }
-    insertClient(dump._lastFoundTick);
   }
-  // if no error
+
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  insertClient(tickStart == 0 ? tickStart : tickStart - 1);
 }
+
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not
@@ -645,7 +661,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -653,7 +669,8 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  auto guard = std::make_unique<arangodb::CollectionGuard>(_vocbase, c->cid(), false);
+  auto guard =
+    std::make_unique<arangodb::CollectionGuard>(_vocbase, c->id(), false);
 
   arangodb::LogicalCollection* col = guard->collection();
   TRI_ASSERT(col != nullptr);
@@ -899,8 +916,8 @@ void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
@@ -974,10 +991,19 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
-  LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
+
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), c->name(), auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -991,12 +1017,12 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     // additionally wait for the collector
     if (flushWait > 0) {
       MMFilesLogfileManager::instance()->waitForCollectorQueue(
-          c->cid(), static_cast<double>(flushWait));
+        c->id(), static_cast<double>(flushWait)
+      );
     }
   }
 
-  arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-
+  arangodb::CollectionGuard guard(_vocbase, c->id(), false);
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 

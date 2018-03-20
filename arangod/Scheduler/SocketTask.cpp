@@ -255,13 +255,13 @@ void SocketTask::writeWriteBuffer() {
 
 StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   _lock.assertLockedByCurrentThread();
-  
+
   StringBuffer* buffer = nullptr;
   if (!_stringBuffers.empty()) {
     buffer = _stringBuffers.back();
     TRI_ASSERT(buffer != nullptr);
     TRI_ASSERT(buffer->length() == 0);
-    
+
     size_t const n = buffer->capacity();
     if (n < length) {
       if (buffer->reserve(length) != TRI_ERROR_NO_ERROR) {
@@ -272,14 +272,14 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
   } else {
     buffer = new StringBuffer(length, false);
   }
-  
+
   TRI_ASSERT(buffer != nullptr);
-  
+
   // still check for safety reasons
   if (buffer->capacity() >= length) {
     return buffer;
   }
-  
+
   delete buffer;
   THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
 }
@@ -287,13 +287,13 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
 void SocketTask::returnStringBuffer(StringBuffer* buffer) {
   TRI_ASSERT(buffer != nullptr);
   _lock.assertLockedByCurrentThread();
-  
+
   if (_stringBuffers.size() > 4 || buffer->capacity() >= 4 * 1024 * 1024) {
     // don't keep too many buffers around and don't hog too much memory
     delete buffer;
     return;
   }
-  
+
   try {
     buffer->reset();
     _stringBuffers.emplace_back(buffer);
@@ -483,9 +483,9 @@ bool SocketTask::processAll() {
   Result res;
   bool rv = true;
   while (rv) {
-    try {
+    res = catchVoidToResult([&]() -> void {
       rv = processRead(startTime);
-    } CATCH_TO_RESULT(res, TRI_ERROR_INTERNAL)
+    });
 
     if (_abandoned) {
       return false;

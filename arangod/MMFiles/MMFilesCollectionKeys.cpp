@@ -74,8 +74,8 @@ MMFilesCollectionKeys::~MMFilesCollectionKeys() {
 
 void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
   MMFilesLogfileManager::instance()->waitForCollectorQueue(
-      _collection->cid(), 30.0);
-  
+    _collection->id(), 30.0
+  );
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
@@ -94,7 +94,9 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
   // copy all document tokens into the result under the read-lock
   {
     auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
-    SingleCollectionTransaction trx(ctx, _collection->cid(), AccessMode::Type::READ);
+    SingleCollectionTransaction trx(
+      ctx, _collection->id(), AccessMode::Type::READ
+    );
 
     // already locked by _guard
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);

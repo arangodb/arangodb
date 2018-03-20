@@ -46,12 +46,6 @@ struct Function {
   /// @brief destroy the function
   ~Function();
 
-  /// @brief checks if the function has been deprecated
-  inline bool isDeprecated() const {
-    // currently there are no deprecated functions
-    return false;
-  }
-
   inline bool hasImplementation() const {
     return implementation != nullptr;
   }
@@ -118,8 +112,7 @@ struct Function {
 
   /// @brief condition under which the C++ implementation of the function is
   /// executed (if returns false, the function will be executed as its
-  /// JavaScript
-  /// variant)
+  /// JavaScript variant)
   ExecutionCondition condition;
 
   /// @brief function argument conversion information

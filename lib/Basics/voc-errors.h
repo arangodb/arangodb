@@ -210,6 +210,12 @@ constexpr int TRI_ERROR_HTTP_SERVER_ERROR                                       
 /// Will be raised when a service is temporarily unavailable.
 constexpr int TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                = 503;
 
+/// 504: ERROR_HTTP_GATEWAY_TIMEOUT
+/// "gateway timeout"
+/// Will be raised when a service contacted by ArangoDB does not respond in a
+/// timely manner.
+constexpr int TRI_ERROR_HTTP_GATEWAY_TIMEOUT                                    = 504;
+
 /// 600: ERROR_HTTP_CORRUPTED_JSON
 /// "invalid JSON object"
 /// Will be raised when a string representation of a JSON object is corrupt.
@@ -1166,6 +1172,16 @@ constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         
 /// Will be raised when an Id of a query is found by the HTTP API but the query
 /// is in use.
 constexpr int TRI_ERROR_QUERY_IN_USE                                            = 1592;
+
+/// 1593: ERROR_QUERY_USER_ASSERT
+/// "%s"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       = 1593;
+
+/// 1594: ERROR_QUERY_USER_WARN
+/// "%s"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"

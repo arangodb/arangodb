@@ -123,6 +123,13 @@ class CollectNode : public ExecutionNode {
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
 
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
+
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
                        bool withProperties) const override final;
@@ -171,6 +178,21 @@ class CollectNode : public ExecutionNode {
   void setExpressionVariable(Variable const* variable) {
     TRI_ASSERT(!hasExpressionVariable());
     _expressionVariable = variable;
+  }
+  
+  /// @brief return whether or not the collect has keep variables
+  bool hasKeepVariables() const {
+    return !_keepVariables.empty();
+  }
+  
+  /// @brief return the keep variables
+  std::vector<Variable const*> const& keepVariables() const {
+    return _keepVariables;
+  }
+  
+  /// @brief set list of variables to keep if INTO is used
+  void setKeepVariables(std::vector<Variable const*>&& variables) {
+    _keepVariables = std::move(variables);
   }
 
   /// @brief return the variable map

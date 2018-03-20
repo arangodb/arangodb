@@ -22,12 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationContext.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
+#include "Replication/InitialSyncer.h"
 #include "Replication/common-defines.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -41,6 +42,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
@@ -49,27 +51,31 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-double const RocksDBReplicationContext::DefaultTTL = 300.0;  // seconds
-
 namespace {
 TRI_voc_cid_t normalizeIdentifier(transaction::Methods const& trx,
                                   std::string const& identifier) {
   TRI_voc_cid_t id{0};
-  LogicalCollection* logical{trx.vocbase()->lookupCollection(identifier)};
+  std::shared_ptr<LogicalCollection> logical{
+      trx.vocbase()->lookupCollection(identifier)};
   if (logical) {
-    id = logical->cid();
+    id = logical->id();
   }
   return id;
 }
 }  // namespace
 
-RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
-    : _id{TRI_NewTickServer()},
+RocksDBReplicationContext::RocksDBReplicationContext(TRI_vocbase_t* vocbase,
+                                                     double ttl,
+                                                     TRI_server_id_t serverId)
+    : _vocbase{vocbase},
+      _serverId{serverId},
+      _id{TRI_NewTickServer()},
       _lastTick{0},
       _trx{},
       _collection{nullptr},
       _lastIteratorOffset{0},
-      _expires{TRI_microtime() + ttl},
+      _ttl{ttl > 0.0 ? ttl : InitialSyncer::defaultBatchTimeout},
+      _expires{TRI_microtime() + _ttl},
       _isDeleted{false},
       _exclusive{true},
       _users{1} {}
@@ -108,7 +114,8 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   internalBind(vocbase);
 }
 
-void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase, bool allowChange) {
+void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase,
+                                             bool allowChange) {
   if (!_trx || !_guard || (_guard->database() != vocbase)) {
     TRI_ASSERT(allowChange);
     rocksdb::Snapshot const* snap = nullptr;
@@ -154,7 +161,7 @@ int RocksDBReplicationContext::bindCollection(
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  if ((nullptr == _collection) || (id != _collection->logical.cid())) {
+  if ((nullptr == _collection) || (id != _collection->logical.id())) {
     if (_collection) {
       _collection->release();
     }
@@ -168,14 +175,12 @@ int RocksDBReplicationContext::bindCollection(
 }
 
 // returns inventory
-std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
-RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
-                                        bool includeSystem, bool global) const {
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
+                                               bool includeSystem, bool global,
+                                               VPackBuilder& result) {
   TRI_ASSERT(vocbase != nullptr);
   if (!_trx) {
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
-        std::shared_ptr<VPackBuilder>(nullptr));
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
   auto nameFilter = [includeSystem](LogicalCollection const* collection) {
@@ -194,21 +199,15 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
     return true;
   };
 
-  auto tick = TRI_CurrentTickServer();
-
+  TRI_voc_tick_t tick = TRI_CurrentTickServer();
   if (global) {
     // global inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    DatabaseFeature::DATABASE->inventory(*builder.get(), tick, nameFilter);
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick), builder);
+    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    return TRI_ERROR_NO_ERROR;
   } else {
     // database-specific inventory
-    auto builder = std::make_shared<VPackBuilder>();
-    vocbase->inventory(*builder.get(), tick, nameFilter);
-
-    return std::make_pair(
-        RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick), builder);
+    vocbase->inventory(result, tick, nameFilter);
+    return TRI_ERROR_NO_ERROR;
   }
 }
 
@@ -241,7 +240,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
   }
-  //MUTEX_LOCKER(readLocker, _contextLock);
+  // MUTEX_LOCKER(readLocker, _contextLock);
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
@@ -601,16 +600,19 @@ bool RocksDBReplicationContext::use(double ttl, bool exclusive) {
 
   if (_exclusive || (exclusive && _users > 0)) {
     // can't get lock
-    TRI_LogBacktrace();
     return false;
   }
 
   ++_users;
   _exclusive = exclusive;
   if (ttl <= 0.0) {
-    ttl = DefaultTTL;
+    ttl = _ttl;
   }
   _expires = TRI_microtime() + ttl;
+
+  if (_serverId != 0) {
+    _vocbase->updateReplicationClient(_serverId, ttl);
+  }
   return true;
 }
 
@@ -620,6 +622,17 @@ void RocksDBReplicationContext::release() {
   --_users;
   if (0 == _users) {
     _exclusive = false;
+  }
+  if (_serverId != 0) {
+    double ttl;
+    if (_ttl > 0.0) {
+      // use TTL as configured
+      ttl = _ttl;
+    } else {
+      // none configuration. use default
+      ttl = InitialSyncer::defaultBatchTimeout;
+    }
+    _vocbase->updateReplicationClient(_serverId, ttl);
   }
 }
 
@@ -648,7 +661,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   // we are getting into trouble during the dumping of "_users"
   // this workaround avoids the auth check in addCollectionAtRuntime
   ExecContext const* old = ExecContext::CURRENT;
-  if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
+  if (old != nullptr && old->systemAuthLevel() == auth::Level::RW) {
     ExecContext::CURRENT = nullptr;
   }
   TRI_DEFER(ExecContext::CURRENT = old);
@@ -680,7 +693,8 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid) {
     }
   } else {
     // try to create one
-    LogicalCollection* logical{_trx->vocbase()->lookupCollection(cid)};
+    std::shared_ptr<LogicalCollection> logical{
+        _trx->vocbase()->lookupCollection(cid)};
     if (nullptr != logical) {
       TRI_ASSERT(nullptr != logical);
       TRI_ASSERT(nullptr != _trx);

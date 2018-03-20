@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ShardDistributionReporter.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -78,12 +77,12 @@ static void CreateAgencyException(
     return;
   }
 
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "code"),
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Code),
                    v8::Number::New(isolate, result.httpCode()));
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                    v8::Number::New(isolate, result.errorCode()));
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"), errorMessage);
-  errorObject->Set(TRI_V8_ASCII_STRING(isolate, "error"), v8::True(isolate));
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage);
+  errorObject->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::True(isolate));
 
   TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
   v8::Handle<v8::Value> proto = ArangoErrorTempl->NewInstance();
@@ -701,7 +700,7 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   // First some stuff from Plan for which Current does not make sense:
-  std::string const cid = ci->cid_as_string();
+  auto cid = std::to_string(ci->id());
   std::string const& name = ci->name();
   result->Set(TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cid));
   result->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
@@ -721,12 +720,12 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
 
   // Finally, report any possible error:
   bool error = cic->error(shardID);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "error"), v8::Boolean::New(isolate, error));
+  result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::Error), v8::Boolean::New(isolate, error));
   if (error) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
                 v8::Number::New(isolate, cic->errorNum(shardID)));
     std::string const errorMessage = cic->errorMessage(shardID);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+    result->Set(TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, errorMessage));
   }
   auto servers = cic->servers(shardID);
@@ -1068,6 +1067,30 @@ static void JS_getFoxxmasterQueueupdate(
   } else {
     TRI_V8_RETURN_FALSE();
   }
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_setFoxxmasterQueueupdate(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("setFoxxmasterQueueupdate(bool)");
+  }
+  
+  bool queueUpdate = TRI_ObjectToBoolean(args[0]);
+  ServerState::instance()->setFoxxmasterQueueupdate(queueUpdate);
+
+  if (AgencyCommManager::isEnabled()) {
+    AgencyComm comm;
+    std::string key = "Current/FoxxmasterQueueupdate";
+    VPackSlice val = queueUpdate ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    AgencyCommResult result = comm.setValue(key, val, 0.0);
+    if (!result.successful()) {
+      THROW_AGENCY_EXCEPTION(result);
+    }
+  }
+  
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1852,8 +1875,8 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af != nullptr && af->isActive()) {
     // mop: really quick and dirty
     v8::Handle<v8::Object> options = v8::Object::New(isolate);
     v8::Handle<v8::Object> headers = v8::Object::New(isolate);
@@ -1867,13 +1890,10 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
     options->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
     
-    auto af = AuthenticationFeature::INSTANCE;
-    if (af != nullptr) {
-      // nullptr happens only during controlled shutdown
-      std::string authorization = "bearer " + af->jwtToken();
-      v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
-      headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
-    }
+    std::string authorization = "bearer " + af->tokenCache()->jwtToken();
+    v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
+    headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
+    
     args[2] = options;
   }
   TRI_V8_TRY_CATCH_END
@@ -2055,6 +2075,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_isFoxxmaster);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setFoxxmasterQueueupdate"),
+                       JS_setFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
                        JS_IdOfPrimaryServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),

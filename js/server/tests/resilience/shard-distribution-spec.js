@@ -29,7 +29,10 @@ const internal = require('internal');
 const download = require('internal').download;
 const colName = "UnitTestDistributionTest";
 const _ = require("lodash");
+const wait = require("internal").wait;
 const request = require('@arangodb/request');
+const endpointToURL = require("@arangodb/cluster").endpointToURL;
+const coordinatorName = "Coordinator0001";
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
@@ -87,7 +90,6 @@ describe('Shard distribution', function () {
             serverCount += 1;
           }
         }
-        console.log("Found health records:", serverCount, health.Health, count);
         if (serverCount >= dbServerCount) {
           break;
         }
@@ -152,6 +154,184 @@ describe('Shard distribution', function () {
       });
       expect(leaders.size).to.equal(Math.min(dbServerCount, nrShards));
     });
+
+  });
+
+  describe("using distributeShardsLike", function () {
+    const followCollection = 'UnitTestDistributionFollower';
+    const numberOfShards = 12;
+
+    const cleanUp = function () {
+      internal.db._drop(followCollection);
+    };
+
+    const shardNumber = function (shard) {
+      // Each shard starts with 's'
+      expect(shard[0]).to.equal('s');
+      // And is followed by a numeric value
+      const nr = parseInt(shard.slice(1));
+      expect(nr).to.be.above(0);
+      return nr;
+    };
+
+    const sortShardsNumericly = function (l, r) {
+      return shardNumber(l) - shardNumber(r);
+    };
+
+    const compareDistributions = function() {
+      const all = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
+      const dist = JSON.parse(all.body).results;
+      const orig = dist[colName].Current;
+      const fol = dist[followCollection].Current;
+      const origShards = Object.keys(orig).sort(sortShardsNumericly);
+      const folShards = Object.keys(fol).sort(sortShardsNumericly);
+      // Now we have all shard names sorted in alphabetical ordering.
+      // It needs to be guaranteed that leader + follower of each shard in this ordering is identical.
+      expect(origShards).to.have.length.of(folShards.length);
+      for (let i = 0; i < origShards.length; ++i) {
+        const oneOrigShard = orig[origShards[i]];
+        const oneFolShard = fol[folShards[i]];
+        // Leader has to be identical
+        expect(oneOrigShard.leader).to.equal(oneFolShard.leader);
+        // Follower Order does not matter, but needs to be the same servers
+        expect(oneOrigShard.followers.sort()).to.deep.equal(oneFolShard.followers.sort());
+      }
+    };
+
+    describe("without replication", function () {
+      const replicationFactor = 1;
+
+
+      beforeEach(function () {
+        cleanUp();
+        internal.db._create(colName, {replicationFactor, numberOfShards});
+      });
+
+      afterEach(cleanUp);
+
+      it("should create all shards on identical servers", function () {
+        internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+        compareDistributions();
+      });
+    });
+
+    describe("with replication", function () {
+      const replicationFactor = 3;
+      // Note here: We have to make sure that numberOfShards * replicationFactor is not disible by the number of DBServers
+
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief order the cluster to clean out a server:
+      ////////////////////////////////////////////////////////////////////////////////
+
+      const cleanOutServer = function (id) {
+        var coordEndpoint =
+            global.ArangoClusterInfo.getServerEndpoint(coordinatorName);
+        var url = endpointToURL(coordEndpoint);
+        var body = {"server": id};
+        try {
+          return request({ method: "POST",
+                           url: url + "/_admin/cluster/cleanOutServer",
+                           body: JSON.stringify(body) });
+        } catch (err) {
+          console.error(
+            "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+          return false;
+        }
+      };
+
+      const getCleanedOutServers = function () {
+        const coordEndpoint =
+            global.ArangoClusterInfo.getServerEndpoint(coordinatorName);
+        const url = endpointToURL(coordEndpoint);
+        
+        try {
+          const envelope = 
+              { method: "GET", url: url + "/_admin/cluster/numberOfServers" };
+          let res = request(envelope);
+          var body = res.body;
+          if (typeof body === "string") {
+            body = JSON.parse(body);
+          }
+          return body;
+        } catch (err) {
+          console.error(
+            "Exception for POST /_admin/cluster/cleanOutServer:", err.stack);
+          return {};
+        }
+      };
+
+      const waitForCleanout = function (id) {
+        let count = 600;
+        while (--count > 0) {
+          let obj = getCleanedOutServers();
+          if (obj.cleanedServers.indexOf(id) >= 0) {
+            console.info(
+              "Success: Server " + id + " cleaned out after " + (600-count) + " seconds");
+            return true;
+          }
+          wait(1.0);
+        }
+        console.error(
+          "Failed: Server " + id + " not cleaned out after 600 seconds");
+        return false;
+      };
+
+      const waitForSynchronousReplication = function (collection) {
+        global.ArangoClusterInfo.flush();
+        var cinfo = global.ArangoClusterInfo.getCollectionInfo(
+          "_system", collection);
+        var shards = Object.keys(cinfo.shards);
+        var replFactor = cinfo.shards[shards[0]].length;
+        var count = 0;
+        while (++count <= 600) {
+          var ccinfo = shards.map(
+            s => global.ArangoClusterInfo.getCollectionInfoCurrent(
+              "_system", collection, s)
+          );
+          let replicas = ccinfo.map(s => s.servers);
+          if (_.every(replicas, x => x.length === replFactor)) {
+            return true;
+          }
+          if (count % 60 === 0) {
+            console.info("waitForSynchronousReplication: cinfo:",
+                JSON.stringify(cinfo), ", replicas: ",
+                JSON.stringify(replicas));
+          }
+          wait(0.5);
+          global.ArangoClusterInfo.flush();
+        }
+        console.error(`Collection "${collection}" failed to get all followers in sync after 600 sec`);
+        return false;
+      };
+ 
+     
+      beforeEach(function () {
+        cleanUp();
+        internal.db._create(colName, {replicationFactor, numberOfShards});
+        expect(waitForSynchronousReplication(colName)).to.equal(true);
+      });
+
+      afterEach(cleanUp);
+
+      it("should create all shards and followers on identical servers", function () {
+        internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+        expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+        compareDistributions();
+      });
+
+      it("should be resilient to a failover in the original collection", function () {
+        var server = global.ArangoClusterInfo.getDBServers()[1].serverId;
+        // Clean out the server that is scheduled second.
+        expect(cleanOutServer(server)).to.not.equal(false);
+        expect(waitForCleanout(server)).to.equal(true);
+        expect(waitForSynchronousReplication(colName)).to.equal(true);
+        // Now we have moved around some shards.
+        internal.db._create(followCollection, {replicationFactor, numberOfShards, distributeShardsLike: colName});
+        expect(waitForSynchronousReplication(followCollection)).to.equal(true);
+        compareDistributions();
+      });
+    });
+
 
   });
 

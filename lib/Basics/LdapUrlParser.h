@@ -50,6 +50,7 @@ struct LdapUrlParseResultComponent {
 struct LdapUrlParseResult {
   LdapUrlParseResult() : valid(false) {}
 
+  LdapUrlParseResultComponent protocol;
   LdapUrlParseResultComponent host;
   LdapUrlParseResultComponent port;
   LdapUrlParseResultComponent basedn;

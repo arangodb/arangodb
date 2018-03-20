@@ -507,8 +507,10 @@ MMFilesSkiplistIterator::MMFilesSkiplistIterator(
                       MMFilesSkiplistIndexElement const*,
                       MMFilesSkiplistCmpType)> const& CmpElmElm,
     bool reverse, MMFilesBaseSkiplistLookupBuilder* builder)
-    : IndexIterator(collection, trx, mmdr, index),
+    : IndexIterator(collection, trx, index),
       _skiplistIndex(skiplist),
+      _mmdr(mmdr),
+      _context(trx, collection, _mmdr, index->fields().size()),
       _numPaths(numPaths),
       _reverse(reverse),
       _cursor(nullptr),
@@ -1463,6 +1465,10 @@ arangodb::aql::AstNode* MMFilesSkiplistIndex::specializeCondition(
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
   matchAttributes(node, reference, found, values, nonNullAttributes, false);
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(node);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;

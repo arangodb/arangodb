@@ -174,6 +174,8 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     result = nullptr;
 
     if (tries++ >= _params._maxRetries) {
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _params._retryMessage
+      << " - no retries left";
       break;
     }
     
@@ -186,6 +188,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
+    // 1 microsecond == 10^-6 seconds
     std::this_thread::sleep_for(std::chrono::microseconds(_params._retryWaitTime));
   }
 
@@ -319,8 +322,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          _state = DEAD;
-          setErrorMessage("Request timeout reached");
+          LOG_TOPIC(DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
+
+          std::this_thread::sleep_for(std::chrono::microseconds(5000));
           break;
         }
 
@@ -341,15 +345,15 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             processHeader();
           }
 
-          if (_state == IN_READ_BODY && !_result->hasContentLength()) {
-            // If we are reading the body and no content length was
-            // found in the header, then we must read until no more
-            // progress is made (but without an error), this then means
-            // that the server has closed the connection and we must
-            // process the body one more time:
-            _result->setContentLength(_readBuffer.length() - _readBufferOffset);
-            processBody();
-          } else if (_state == IN_READ_BODY) {
+          if (_state == IN_READ_BODY) {
+            if (!_result->hasContentLength()) {
+              // If we are reading the body and no content length was
+              // found in the header, then we must read until no more
+              // progress is made (but without an error), this then means
+              // that the server has closed the connection and we must
+              // process the body one more time:
+              _result->setContentLength(_readBuffer.length() - _readBufferOffset);
+            }
             processBody();
           }
 
@@ -401,6 +405,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   if (_state < FINISHED && _errorMessage.empty()) {
     setErrorMessage("Request timeout reached");
+    _result->setHttpReturnCode(TRI_ERROR_HTTP_GATEWAY_TIMEOUT);
   }
 
   // set result type in getResult()
@@ -903,8 +908,8 @@ std::string SimpleHttpClient::getHttpErrorMessage(
 
     VPackSlice slice = builder->slice();
     if (slice.isObject()) {
-      VPackSlice msg = slice.get("errorMessage");
-      int errorNum = slice.get("errorNum").getNumericValue<int>();
+      VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+      int errorNum = slice.get(StaticStrings::ErrorNum).getNumericValue<int>();
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
         if (errorCode != nullptr) {

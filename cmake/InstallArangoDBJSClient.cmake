@@ -37,7 +37,6 @@ install(
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX "^.*/eslint"                                       EXCLUDE
   REGEX "^.*/.npmignore"                                   EXCLUDE
-  REGEX "^.*/expect.js$"                                   EXCLUDE
   REGEX "^.*/.bin"                                         EXCLUDE
   REGEX "^.*/_admin/aardvark/APP/frontend/html/"           EXCLUDE
   REGEX "^.*/_admin/aardvark/APP/frontend/img/"            EXCLUDE

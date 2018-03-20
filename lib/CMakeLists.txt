@@ -81,13 +81,15 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-)
+  )
+
+add_definitions ("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   if (DARWIN)
     set(LIB_ASM_SOURCES Basics/crc1.S)
   else()
-    set(LIB_ASM_SOURCES Basics/crc4.S)
+    set(LIB_ASM_SOURCES Basics/crc5.S)
   endif()
 
   add_definitions("-DENABLE_ASM_CRC32=1")

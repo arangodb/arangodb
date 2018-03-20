@@ -273,8 +273,10 @@ void IResearchViewNode::getVariablesUsedHere(
   }
 }
 
-aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
-    aql::ExecutionEngine& engine
+std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
@@ -282,24 +284,44 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
   auto* impl = static_cast<IResearchView*>(view()->getImplementation());
 #endif
 
+  if (!impl) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get view implementation while creating IResearchView ExecutionBlock";
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get view implementation while creating IResearchView ExecutionBlock"
+    );
+  }
+
   auto* trx = engine.getQuery()->trx();
 
-  if (!impl || !trx) {
-    // FIXME better to return `NoResultsNode`
-    return nullptr;
+  if (!trx || !(trx->state())) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get transaction state while creating IResearchView ExecutionBlock";
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get transaction state while creating IResearchView ExecutionBlock"
+    );
   }
 
-  if (trx->state() && trx->state()->waitForSync() && !impl->sync()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "failed to sync while creating snapshot for IResearch view '" << impl->id()
-      << "', previous snapshot will be used instead";
-  }
+  auto& state = *(trx->state());
+  auto* reader = impl->snapshot(state);
 
-  auto reader = impl->snapshot();
+  if (!reader) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView"
+    );
+  }
 
   if (_sortCondition.empty()) {
     // unordered case
-    return new IResearchViewUnorderedBlock(std::move(reader), engine, *this);
+    return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
   }
 
 //FIXME uncomment when the following method will be there:
@@ -307,11 +329,11 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
 //
 //  if (!isInInnerLoop()) {
 //    // optimized execution for simple queries
-//    return new IResearchViewOrderedBlock(std::move(reader), engine, *this);
+//    return new IResearchViewOrderedBlock(*reader, engine, *this);
 //  }
 
   // generic case
-  return new IResearchViewBlock(std::move(reader), engine, *this);
+  return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
 
 NS_END // iresearch

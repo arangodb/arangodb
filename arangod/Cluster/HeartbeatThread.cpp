@@ -48,7 +48,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -386,7 +385,7 @@ void HeartbeatThread::runDBServer() {
 
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
-          planAgencyCallback->refetchAndUpdate(true);
+          planAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -408,26 +407,6 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
-/// CAS a key in the agency, works only if it does not exist, result should
-/// contain the value of the written key.
-static AgencyCommResult CasWithResult(
-  AgencyComm agency, std::string const& key, VPackSlice const& oldValue,
-  VPackSlice const& newJson, double timeout) {
-  AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
-  write._ttl = 0; // no ttl
-  if (oldValue.isNone()) { // for some reason this doesn't work
-    // precondition: the key must be empty
-    AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
-    AgencyGeneralTransaction trx(write, pre);
-    return agency.sendTransactionWithFailover(trx, timeout);
-  } else {
-    // precondition: the key must equal old value
-    AgencyPrecondition pre(key, AgencyPrecondition::Type::VALUE, oldValue);
-    AgencyGeneralTransaction trx(write, pre);
-    return agency.sendTransactionWithFailover(trx, timeout);
-  }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
 ////////////////////////////////////////////////////////////////////////////////
@@ -435,20 +414,21 @@ static AgencyCommResult CasWithResult(
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
   double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  TRI_ASSERT(auth != nullptr);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
-  if (!replication->isAutomaticFailoverEnabled()) {
+  if (!replication->isActiveFailoverEnabled()) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Automatic failover is disabled, yet "
       << "the heartbeat thread is running on a single server. "
-      << "Please add --replication.automatic-failover true";
+      << "Please add --replication.active-failover true";
     return;
   }
   GlobalReplicationApplier* applier = replication->globalReplicationApplier();
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
-  
+ 
+  uint64_t lastSentVersion = 0;
   double start = 0; // no wait time initially
   while (!isStopping()) {
     double remain = interval - (TRI_microtime() - start);
@@ -465,15 +445,34 @@ void HeartbeatThread::runSingleServer() {
     }
     start = TRI_microtime();
     
+    if (isStopping()) {
+      break;
+    }
+
     try {
       // send our state to the agency.
       // we don't care if this fails
-      sendState();
-      if (isStopping()) {
-        break;
+      double const timeout = 1.0;
+
+      // check current local version of database objects version, and bump
+      // the global version number in the agency in case it changed. this
+      // informs other listeners about our local DDL changes
+      uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
+      
+      if (currentVersion != lastSentVersion) {
+        AgencyOperation incrementVersion("Plan/Version",
+                                         AgencySimpleOperationType::INCREMENT_OP);
+        AgencyWriteTransaction trx(incrementVersion);
+        AgencyCommResult res = _agency.sendTransactionWithFailover(trx, timeout);
+
+        if (res.successful()) {
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "successfully increased plan version in agency";
+        } else {
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "could not increase version number in agency";
+        }
       }
 
-      double const timeout = 1.0;
+      lastSentVersion = currentVersion;
 
       AgencyReadTransaction trx(
         std::vector<std::string>({
@@ -488,7 +487,7 @@ void HeartbeatThread::runSingleServer() {
             << result._statusCode << ", incriminating body: " 
             << result.bodyRef() << ", timeout: " << timeout;
         
-        if (!applier->isRunning()) {
+        if (!applier->isActive()) { // assume agency and leader are gone
           ServerState::instance()->setFoxxmaster(_myId);
           ServerState::setServerMode(ServerState::Mode::DEFAULT);
         }
@@ -508,45 +507,44 @@ void HeartbeatThread::runSingleServer() {
       
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" << _myId;
       handleStateChange(result);
-      
+            
       // performing failover checks
-      VPackSlice asyncReplication =
-      response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
-      if (!asyncReplication.isObject()) {
+      VPackSlice async = response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      if (!async.isObject()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-          << "Heartbeat: Could not read async-repl metadata from agency!";
+          << "Heartbeat: Could not read async-replication metadata from agency!";
         continue;
       }
-      std::string const leaderPath = "/Plan/AsyncReplication/Leader";
       
-      VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
+      VPackSlice leader = async.get("Leader");
+      if (!leader.isString() || leader.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-        result = CasWithResult(_agency, leaderPath, /*oldJson*/leaderSlice,
-                               /*newJson*/myIdBuilder.slice(), /*timeout*/5.0);
+        std::string const leaderPath = "Plan/AsyncReplication/Leader";
+        if (leader.isNone()) {
+          result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+        } else {
+          result = _agency.casValue(leaderPath, /*old*/leader, /*new*/myIdBuilder.slice(),
+                                    /*ttl*/ 0, /*timeout*/ 5.0);
+        }
         
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          leaderSlice = myIdBuilder.slice();
+          leader = myIdBuilder.slice();
           // intentionally falls through to case 2
-
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
-          VPackSlice const res = result.slice();
-          TRI_ASSERT(res.length() == 1 && res[0].isObject());
-          leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
-          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, current leader is: " << leaderSlice.copyString();
-          // intentionally falls through to case 3
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader";
+          continue;
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
           << "code: " << result.httpCode() << " msg: " << result.errorMessage();
@@ -555,10 +553,10 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 2: Current server is leader
-      if (leaderSlice.compareString(_myId) == 0) {
+      if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
         
-        if (applier->isRunning()) {
+        if (applier->isActive()) {
           applier->stopAndJoin();
         }
         
@@ -569,12 +567,12 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 3: Current server is follower, should not get here otherwise
-      std::string const leader = leaderSlice.copyString();
-      TRI_ASSERT(!leader.empty());
+      std::string const leaderStr = leader.copyString();
+      TRI_ASSERT(!leaderStr.empty());
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following " << leader;
       
-      ServerState::instance()->setFoxxmaster(leader);
-      std::string endpoint = ci->getServerEndpoint(leader);
+      ServerState::instance()->setFoxxmaster(leaderStr);
+      std::string endpoint = ci->getServerEndpoint(leaderStr);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue; // try again next time
@@ -600,48 +598,32 @@ void HeartbeatThread::runSingleServer() {
       
       if (applier->endpoint() != endpoint) {
         // configure applier for new endpoint
-        if (applier->isRunning()) {
+        if (applier->isActive()) {
           applier->stopAndJoin();
         }
-        while (applier->isShuttingDown()) {
+        while (applier->isShuttingDown() && !isStopping()) {
           std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
         }
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = auth->jwtToken();
+          config._jwt = af->tokenCache()->jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
-        config._autoResyncRetries = 3;
+        config._autoResyncRetries = 2;
         // TODO: how do we initially configure the applier
         
-        // start initial synchronization
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         TRI_ASSERT(!config._skipCreateDrop);
-        GlobalInitialSyncer syncer(config);
-        // sync incrementally on failover to other follower,
-        // but not initially
-        Result r = syncer.run(false);
-        if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader "
-          << "failed: " << r.errorMessage();
-          continue; // try again next time
-        }
-        
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "initial sync from leader finished";
-        // steal the barrier from the syncer
-        TRI_voc_tick_t barrierId = syncer.stealBarrier();
-        TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
 
         // forget about any existing replication applier configuration
         applier->forget();
-        
         applier->reconfigure(config);
-        LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "now starting the applier from initial tick " << lastLogTick;
-        applier->start(lastLogTick, true, barrierId);
+        applier->startReplication();
         
-      } else if (!applier->isRunning() && !applier->isShuttingDown()) {
+      } else if (!applier->isActive() && !applier->isShuttingDown()) {
         // try to restart the applier
         if (applier->hasState()) {
           Result error = applier->lastError();
@@ -659,7 +641,7 @@ void HeartbeatThread::runSingleServer() {
             builder.close();
             LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << builder.slice().toJson();
 
-            applier->start(0, false, 0);
+            applier->startTailing(0, false, 0);
             continue; // check again next time
           } 
         }
@@ -715,6 +697,8 @@ void HeartbeatThread::runCoordinator() {
   uint64_t lastPlanVersionNoticed = 0;
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
+  // For periodic update of the current DBServer list:
+  int DBServerUpdateCounter = 0;
 
   while (!isStopping()) {
     try {
@@ -843,7 +827,8 @@ void HeartbeatThread::runCoordinator() {
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
             if (authentication->isActive()) {
-              authentication->authInfo()->outdate();
+              authentication->userManager()->outdate();
+              authentication->tokenCache()->invalidateBasicCache();
             }
           }
         }
@@ -909,6 +894,12 @@ void HeartbeatThread::runCoordinator() {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
       }
       invalidateCoordinators = !invalidateCoordinators;
+
+      // Periodically update the list of DBServers:
+      if (++DBServerUpdateCounter >= 60) {
+        ClusterInfo::instance()->loadCurrentDBServers();
+        DBServerUpdateCounter = 0;
+      }
 
       double remain = interval - (TRI_microtime() - start);
 

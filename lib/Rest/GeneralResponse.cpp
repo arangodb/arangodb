@@ -412,6 +412,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_DEBUG:
     case TRI_ERROR_OUT_OF_MEMORY:
     case TRI_ERROR_INTERNAL:
+    case TRI_ERROR_TRANSACTION_INTERNAL:
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:
@@ -433,7 +434,6 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
 
 GeneralResponse::GeneralResponse(ResponseCode responseCode)
     : _responseCode(responseCode),
-      _headers(),
       _contentType(ContentType::UNSET),
       _connectionType(ConnectionType::C_NONE),
       _options(velocypack::Options::Defaults),

@@ -23,13 +23,8 @@
 
 #include "tests_shared.hpp"
 
-#ifdef _WIN32
-  #include <boost/locale/encoding.hpp> // for boost::locale::conv::utf_to_utf()
-#endif
-
 #include "directory_test_case.hpp"
 #include "store/mmap_directory.hpp"
-#include "utils/locale_utils.hpp"
 
 #include <fstream>
 
@@ -37,20 +32,9 @@ class mmap_directory_test : public directory_test_case,
   public test_base {
   public:
   explicit mmap_directory_test(const std::string& name = "directory") {
-    static auto utf8_locale = iresearch::locale_utils::locale("", true);
-
     test_base::SetUp();
-    codecvt_ = &std::use_facet<boost::filesystem::path::codecvt_type>(utf8_locale);
     path_ = test_case_dir();
-#ifdef _WIN32
-    // convert utf8->ucs2
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      name.c_str(), name.c_str() + name.size()
-    );
-    path_.append(std::move(native_name));
-#else
-    path_.append(name);
-#endif
+    path_ /= name;
   }
 
   void check_files() {
@@ -59,7 +43,9 @@ class mmap_directory_test : public directory_test_case,
     // create empty file
     {
       auto file = path_;
-      file.append(file_name);
+
+      file /= file_name;
+
       std::ofstream f(file.native());
     }
 
@@ -75,26 +61,23 @@ class mmap_directory_test : public directory_test_case,
   }
 
   virtual void SetUp() override {
-    auto str = path_.string(*codecvt_);
-
-    dir_ = irs::directory::make<irs::mmap_directory>(str);
-    iresearch::mmap_directory::remove_directory(str);
-    iresearch::mmap_directory::create_directory(str);
+    dir_ = irs::directory::make<irs::mmap_directory>(path_.utf8());
+    path_.remove();
+    path_.mkdir();
   }
 
   virtual void TearDown() override {
-    iresearch::mmap_directory::remove_directory(path_.string(*codecvt_));
+    path_.remove();
   }
 
   virtual void TestBody() override {}
 
-  const boost::filesystem::path& path() const {
+  const irs::utf8_path& path() const {
     return path_;
   }
 
   private:
-  const boost::filesystem::path::codecvt_type* codecvt_;
-  boost::filesystem::path path_;
+  irs::utf8_path path_;
 };
 
 TEST_F(mmap_directory_test, read_multiple_streams) {
@@ -124,7 +107,6 @@ TEST_F(mmap_directory_test, index_io) {
 TEST_F(mmap_directory_test, lock_obtain_release) {
   lock_obtain_release();
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

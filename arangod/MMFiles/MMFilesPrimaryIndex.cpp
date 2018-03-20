@@ -174,16 +174,21 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
       _total(0) {}
 
 bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
-  while (limit > 0) {
+  if (limit == 0) {
+    return false;
+  }
+  
+  do {
     MMFilesSimpleIndexElement element =
         _index->findRandom(nullptr, _initial, _position, _step, _total);
-    if (element) {
-      cb(LocalDocumentId{element.localDocumentId()});
-      --limit;
-    } else {
+    if (!element) {
       return false;
     }
-  }
+    
+    cb(LocalDocumentId{element.localDocumentId()});
+    --limit;
+  } while (limit > 0);
+
   return true;
 }
 
@@ -453,7 +458,7 @@ bool MMFilesPrimaryIndex::supportsFilterCondition(
 
 /// @brief creates an IndexIterator for the given Condition
 IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, ManagedDocumentResult*,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
@@ -475,7 +480,7 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
 
   if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
-    return createEqIterator(trx, mmdr, attrNode, valNode);
+    return createEqIterator(trx, attrNode, valNode);
   } else if (comp->type == aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     // a.b IN values
     if (!valNode->isArray()) {
@@ -483,7 +488,7 @@ IndexIterator* MMFilesPrimaryIndex::iteratorForCondition(
       return new EmptyIndexIterator(_collection, trx, this);
     }
 
-    return createInIterator(trx, mmdr, attrNode, valNode);
+    return createInIterator(trx, attrNode, valNode);
   }
 
   // operator type unsupported
@@ -500,7 +505,7 @@ arangodb::aql::AstNode* MMFilesPrimaryIndex::specializeCondition(
 
 /// @brief create the iterator, for a single attribute, IN operator
 IndexIterator* MMFilesPrimaryIndex::createInIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx, 
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
@@ -532,7 +537,7 @@ IndexIterator* MMFilesPrimaryIndex::createInIterator(
 
 /// @brief create the iterator, for a single attribute, EQ operator
 IndexIterator* MMFilesPrimaryIndex::createEqIterator(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    transaction::Methods* trx,
     arangodb::aql::AstNode const* attrNode,
     arangodb::aql::AstNode const* valNode) const {
   // _key or _id?
@@ -580,7 +585,8 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(key != nullptr);
 
     bool const isInCluster = trx->state()->isRunningInCluster();
-    if (!isInCluster && cid != _collection->cid()) {
+
+    if (!isInCluster && cid != _collection->id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;

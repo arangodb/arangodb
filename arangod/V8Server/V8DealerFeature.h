@@ -83,8 +83,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   // the builder is not cleared and thus should be empty before the call.
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
-  void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file,
-                                          VPackBuilder* builder);
   void startGarbageCollection();
 
   /// @brief forceContext == -1 means that any free context may be
@@ -165,6 +163,23 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*>> _contextUpdates;
 };
+
+
+// enters and exits a context and provides an isolate
+// in case the passed in isolate is a nullptr
+class V8ContextDealerGuard {
+ public:
+  explicit V8ContextDealerGuard(Result&, v8::Isolate*&, TRI_vocbase_t*, bool allowModification);
+  V8ContextDealerGuard(V8ContextDealerGuard const&) = delete;
+  V8ContextDealerGuard& operator=(V8ContextDealerGuard const&) = delete;
+  ~V8ContextDealerGuard();
+
+ private:
+  v8::Isolate*& _isolate;
+  V8Context* _context;
+  bool _active;
+};
+
 }
 
 #endif

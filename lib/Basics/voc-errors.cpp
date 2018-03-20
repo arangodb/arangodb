@@ -47,6 +47,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_SERVICE_UNAVAILABLE, "service unavailable");
+  REG_ERROR(ERROR_HTTP_GATEWAY_TIMEOUT, "gateway timeout");
   REG_ERROR(ERROR_HTTP_CORRUPTED_JSON, "invalid JSON object");
   REG_ERROR(ERROR_HTTP_SUPERFLUOUS_SUFFICES, "superfluous URL suffices");
   REG_ERROR(ERROR_ARANGO_ILLEGAL_STATE, "illegal state");
@@ -218,6 +219,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
+  REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
+  REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
   REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");

@@ -71,7 +71,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice const newSlice, arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options, TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_tick_t& revisionId) override;
   virtual void invokeOnAllElements(arangodb::transaction::Methods* trx, std::function<bool(arangodb::LocalDocumentId const&)> callback) override;
   virtual std::shared_ptr<arangodb::Index> lookupIndex(arangodb::velocypack::Slice const&) const override;
-  virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) override;
+  virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
   virtual void open(bool ignoreErrors) override;
@@ -214,6 +214,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   virtual bool useRawDocumentPointers() override { return false; }
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
+  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
   virtual void waitForSyncTimeout(double maxWait) override;
   virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;

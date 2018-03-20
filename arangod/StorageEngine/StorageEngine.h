@@ -36,6 +36,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
+
 namespace arangodb {
 class DatabaseInitialSyncer;
 class LogicalCollection;
@@ -159,6 +161,8 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   virtual Result flushWal(bool waitForSync = false, bool waitForCollector = false,
                           bool writeShutdownFile = false) = 0;
+
+  virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) = 0;
 
   //// operations on databasea
 
@@ -413,22 +417,23 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void releaseTick(TRI_voc_tick_t) = 0;
 
  protected:
-  void registerCollection(TRI_vocbase_t* vocbase,
-                          arangodb::LogicalCollection* collection) {
+  void registerCollection(
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection
+  ) {
     vocbase->registerCollection(true, collection);
   }
 
-  void registerView(TRI_vocbase_t* vocbase,
-                    std::shared_ptr<arangodb::LogicalView> view) {
+  void registerView(
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalView> const& view
+  ) {
     vocbase->registerView(true, view);
   }
 
  private:
-
   std::unique_ptr<IndexFactory> const _indexFactory;
-
   std::string const _typeName;
-
 };
 
 }

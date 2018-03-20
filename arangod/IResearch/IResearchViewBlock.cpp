@@ -124,13 +124,13 @@ AqlValue ViewExpressionContext::getVariableValue(
 // -----------------------------------------------------------------------------
 
 IResearchViewBlockBase::IResearchViewBlockBase(
-    CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     ExecutionEngine& engine,
     IResearchViewNode const& en)
   : ExecutionBlock(&engine, &en),
     _filterCtx(1), // arangodb::iresearch::ExpressionExecutionContext
     _ctx(getViewNode(*this)),
-    _reader(std::move(reader)),
+    _reader(reader),
     _filter(irs::filter::prepared::empty()),
     _execCtx(*_trx, _ctx),
     _hasMore(true), // has more data initially
@@ -144,16 +144,18 @@ IResearchViewBlockBase::IResearchViewBlockBase(
 
 int IResearchViewBlockBase::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-    const int res = ExecutionBlock::initializeCursor(items, pos);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
+  const int res = ExecutionBlock::initializeCursor(items, pos);
 
-    _hasMore = true; // has more data initially
-  DEBUG_END_BLOCK();
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  _hasMore = true; // has more data initially
 
   return TRI_ERROR_NO_ERROR;
+
+  DEBUG_END_BLOCK();
 }
 
 void IResearchViewBlockBase::reset() {
@@ -387,10 +389,10 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
 // -----------------------------------------------------------------------------
 
 IResearchViewBlock::IResearchViewBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
-) : IResearchViewUnorderedBlock(std::move(reader), engine, node),
+): IResearchViewUnorderedBlock(reader, engine, node),
     _scr(&irs::score::no_score()) {
   _volatileSort = true;
 }
@@ -408,7 +410,7 @@ void IResearchViewBlock::resetIterator() {
     _scrVal = _scr->value();
   } else {
     _scr = &irs::score::no_score();
-    _scrVal = irs::bytes_ref::nil;
+    _scrVal = irs::bytes_ref::NIL;
   }
 }
 
@@ -511,11 +513,10 @@ size_t IResearchViewBlock::skip(size_t limit) {
 // -----------------------------------------------------------------------------
 
 IResearchViewUnorderedBlock::IResearchViewUnorderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
-) : IResearchViewBlockBase(std::move(reader), engine, node),
-    _readerOffset(0) {
+): IResearchViewBlockBase(reader, engine, node), _readerOffset(0) {
   _volatileSort = false; // do not evaluate sort
 }
 
@@ -610,10 +611,10 @@ size_t IResearchViewUnorderedBlock::skip(size_t limit) {
 // -----------------------------------------------------------------------------
 
 IResearchViewOrderedBlock::IResearchViewOrderedBlock(
-    arangodb::iresearch::CompoundReader&& reader,
+    PrimaryKeyIndexReader const& reader,
     aql::ExecutionEngine& engine,
     IResearchViewNode const& node
-) : IResearchViewBlockBase(std::move(reader), engine, node) {
+): IResearchViewBlockBase(reader, engine, node) {
 }
 
 bool IResearchViewOrderedBlock::next(
@@ -642,7 +643,7 @@ bool IResearchViewOrderedBlock::next(
     if (!score) {
       LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
-      IR_STACK_TRACE();
+      IR_LOG_STACK_TRACE();
 
       continue; // if here then there is probably a bug in IResearchView while querying
     }

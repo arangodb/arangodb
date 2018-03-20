@@ -31,12 +31,6 @@
 #include "VocBase/voc-types.h"
 
 NS_BEGIN(arangodb)
-
-class LogicalView; // forward declaration
-
-NS_END // arangodb
-
-NS_BEGIN(arangodb)
 NS_BEGIN(velocypack)
 
 class Builder; // forward declarations
@@ -74,21 +68,21 @@ struct IResearchViewMeta {
         FILL,  // {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})
       };
 
-      ConsolidationPolicy(Type type, size_t intervalStep, float threshold);
+      ConsolidationPolicy(Type type, size_t segmentThreshold, float threshold);
       ConsolidationPolicy(ConsolidationPolicy const& other);
       ConsolidationPolicy(ConsolidationPolicy&& other) noexcept;
       ConsolidationPolicy& operator=(ConsolidationPolicy const& other);
       ConsolidationPolicy& operator=(ConsolidationPolicy&& other) noexcept;
       bool operator==(ConsolidationPolicy const& other) const noexcept;
       static const ConsolidationPolicy& DEFAULT(Type type); // default values for a given type
-      size_t intervalStep() const noexcept;
       irs::index_writer::consolidation_policy_t const& policy() const noexcept;
+      size_t segmentThreshold() const noexcept;
       float threshold() const noexcept;
       Type type() const noexcept;
 
      private:
-      size_t _intervalStep; // apply consolidation policy with every Nth commit (0 == disable)
       irs::index_writer::consolidation_policy_t _policy;
+      size_t _segmentThreshold; // apply policy if number of segments is >= value (0 == disable)
       float _threshold; // consolidation policy threshold
       Type _type;
     };
@@ -107,7 +101,6 @@ struct IResearchViewMeta {
   struct Mask {
     bool _collections;
     bool _commit;
-    bool _dataPath;
     bool _locale;
     bool _threadsMaxIdle;
     bool _threadsMaxTotal;
@@ -116,7 +109,6 @@ struct IResearchViewMeta {
 
   std::unordered_set<TRI_voc_cid_t> _collections; // collection links added to this view via view property modification (may contain no-longer valid cids)
   CommitMeta _commit;
-  std::string _dataPath; // data file path
   std::locale _locale; // locale used for ordering processed attribute names
   size_t _threadsMaxIdle; // maximum idle number of threads for single-run tasks
   size_t _threadsMaxTotal; // maximum total number of threads for single-run tasks
@@ -154,7 +146,6 @@ struct IResearchViewMeta {
   bool init(
     arangodb::velocypack::Slice const& slice,
     std::string& errorField,
-    arangodb::LogicalView const& viewDefaults,
     IResearchViewMeta const& defaults = DEFAULT(),
     Mask* mask = nullptr
   ) noexcept;

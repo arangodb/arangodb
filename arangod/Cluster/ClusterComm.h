@@ -270,13 +270,12 @@ struct ClusterCommResult {
         dynamic_cast<HttpResponse*>(response.get())->body().c_str(),
         dynamic_cast<HttpResponse*>(response.get())->body().length(), std::unordered_map<std::string,std::string>());
 
-    auto headers = response->headers();
+    auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
       request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader("x-arango-response-code",
-                       GeneralResponse::responseString(answer_code));
+    request->setHeader(StaticStrings::ResponseCode, GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(

@@ -66,15 +66,20 @@
 }
 
 .ajax-upload-dragdrop {
-  border: 1px dotted $c-neutral;
+  border: 1px solid rgba(0, 0, 0, .2);
   color: $c-neutral-hover;
+  margin: 10px 10px 10px;
   padding: 10px 10px 0;
   text-align: left;
   vertical-align: middle;
-  width: 506px;
+  width: auto;
 
   span {
     position: relative;
     top: -22px;
+  }
+
+  _::-webkit-full-page-media, _:future, span {
+    top: 0px;
   }
 }

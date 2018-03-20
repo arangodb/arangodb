@@ -27,6 +27,7 @@
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
+#include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -72,10 +73,18 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
-                                                           RocksDBReplicationContext::DefaultTTL);
-    // create transaction+snapshot
-    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+
+    bool found;
+    std::string const& value = _request->value("serverId", found);
+    TRI_server_id_t serverId = 0;
+
+    if (found && !value.empty() && value != "none") {
+      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
+    }
+
+    // create transaction+snapshot, ttl will be 300 if `ttl == 0``
+    RocksDBReplicationContext* ctx = _manager->createContext(_vocbase, ttl, serverId);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     ctx->bind(_vocbase);
 
@@ -85,24 +94,17 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     b.add("lastTick", VPackValue(std::to_string(ctx->lastTick())));
     b.close();
 
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-    if (!found) {
-      LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
+    if (serverId == 0) {
+      serverId = ctx->id();
     }
 
-    if (!found || (!value.empty() && value != "none")) {
-      TRI_server_id_t serverId = 0;
+    // we are inserting the current tick (WAL sequence number) here.
+    // this is ok because the batch creation is the first operation done
+    // for initial synchronization. the inventory request and collection
+    // dump requests will all happen after the batch creation, so the
+    // current tick value here is good
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
 
-      if (found) {
-        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      } else {
-        serverId = ctx->id();
-      }
-
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
-    }
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
   }
@@ -120,12 +122,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
+    // extract ttl. Context uses initial ttl from batch creation, if `ttl == 0`
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
-    RocksDBReplicationContext* ctx = _manager->find(id, busy, false, expires);
+    RocksDBReplicationContext* ctx = _manager->find(id, busy, false, ttl);
     RocksDBReplicationContextGuard guard(_manager, ctx);
     if (busy) {
       res = TRI_ERROR_CURSOR_BUSY;
@@ -144,17 +146,16 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       LOG_TOPIC(DEBUG, Logger::FIXME) << "no serverId parameter found in request to " << _request->fullUrl();
     }
 
-    if (!found || (!value.empty() && value != "none")) {
-      TRI_server_id_t serverId = 0;
-
-      if (found) {
-        serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      } else {
-        serverId = ctx->id();
-      }
-
-      _vocbase->updateReplicationClient(serverId, ctx->lastTick());
+    TRI_server_id_t serverId = ctx->id();
+    if (!value.empty() && value != "none") {
+      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
+
+    // last tick value in context should not have changed compared to the
+    // initial tick value used in the context (it's only updated on bind()
+    // call, which is only executed when a batch is initially created)
+    _vocbase->updateReplicationClient(serverId, ctx->lastTick(), ttl);
+
     resetResponse(rest::ResponseCode::NO_CONTENT);
     return;
   }
@@ -228,6 +229,14 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     return;
   }
 
+  // add client
+  std::string const& value3 = _request->value("serverId", found);
+
+  TRI_server_id_t serverId = 0;
+  if (!found || (!value3.empty() && value3 != "none")) {
+    serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value3));
+  }
+
   bool includeSystem = true;
   std::string const& value4 = _request->value("includeSystem", found);
 
@@ -241,11 +250,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
 
+  grantTemporaryRights();
+
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -253,7 +264,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
@@ -294,6 +305,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       StaticStrings::ReplicationHeaderLastIncluded,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderLastTick, StringUtils::itoa(latest));
+  _response->setHeaderNC(StaticStrings::ReplicationHeaderLastScanned, StringUtils::itoa(result.lastScannedTick()));
   _response->setHeaderNC(StaticStrings::ReplicationHeaderActive, "true");
   _response->setHeaderNC(StaticStrings::ReplicationHeaderFromPresent,
                          result.minTickIncluded() ? "true" : "false");
@@ -322,15 +334,17 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
         //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
       }
     }
-    // add client
-    bool found;
-    std::string const& value = _request->value("serverId", found);
-
-    if (!found || (!value.empty() && value != "none")) {
-      TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-      _vocbase->updateReplicationClient(serverId, result.maxTick());
-    }
   }
+
+  // insert the start tick (minus 1 to be on the safe side) as the
+  // minimum tick we need to keep on the master. we cannot be sure
+  // the master's response makes it to the slave safely, so we must
+  // not insert the maximum of the WAL entries we sent. if we did,
+  // and the response does not make it to the slave, the master will
+  // note a higher tick than the slave will have received, which may
+  // lead to the master eventually deleting a WAL section that the
+  // slave will still request later
+  _vocbase->updateReplicationClient(serverId, tickStart == 0 ? 0 : tickStart - 1, InitialSyncer::defaultBatchTimeout);
 }
 
 /// @brief run the command that determines which transactions were open at
@@ -366,24 +380,18 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   }
 
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
-
   // include system collections?
-  bool includeSystem = true;
-  {
-    std::string const& value = _request->value("includeSystem", found);
-    if (found) {
-      includeSystem = StringUtils::boolean(value);
-    }
-  }
+  bool includeSystem = _request->parsedValue("includeSystem", true);
 
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
 
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
+  VPackBuilder inventoryBuilder;
+  Result res = ctx->getInventory(this->_vocbase, includeSystem,
+                                 isGlobal, inventoryBuilder);
+  if (res.fail()) {
+    generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   "inventory could not be created");
     return;
   }
@@ -391,7 +399,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  VPackSlice const inventory = inventoryBuilder.slice();
   if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
@@ -646,8 +654,8 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
-  resultBuilder.add("error", VPackValue(false));
-  resultBuilder.add("code",
+  resultBuilder.add(StaticStrings::Error, VPackValue(false));
+  resultBuilder.add(StaticStrings::Code,
                     VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
   resultBuilder.close();
 
@@ -713,6 +721,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
 
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), collection, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
+    return;
+  }
   // do the work!
   auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
 

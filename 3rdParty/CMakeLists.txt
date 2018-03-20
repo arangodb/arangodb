@@ -61,14 +61,8 @@ if (USE_PRECOMPILED_V8)
     IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
   )
 
-  add_library(libev-static IMPORTED STATIC)
-  set_target_properties(libev-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${libev_INCLUDE_DIR}"
-    IMPORTED_LOCATION "${libev_BINARY_DIR}/libev.a"
-  )
-
   set(ICU_LIBS
-    libicui18n-static libicuuc-static libev-static
+    libicui18n-static libicuuc-static
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -91,6 +85,7 @@ else ()
   add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/V8)
   set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
   set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
+  set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
 endif ()
 
 ################################################################################
@@ -101,7 +96,7 @@ if (USE_IRESEARCH)
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
-    IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
+    IMPORTED_LOCATION "boost_locale;boost_system;boost_thread"
   )
 
   set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
@@ -127,21 +122,33 @@ if (USE_IRESEARCH)
     add_library(icu-shared STATIC IMPORTED GLOBAL) # empty unused library to satisfy IResearch shared dependencies
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicui18n.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.492.77/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${ICU_LIBRARY_DIR}/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${ICU_LIBRARY_DIR}/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${ICU_LIBRARY_DIR}/libicuuc.a")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  endif()
+
+  if(NOT PERL_FOUND)
+    set(PERL_FOUND TRUE) # suppress error for Perl not-found
+
+    # MSVC will execute ADD_CUSTOM_COMMAND even though OUTPUT is already present
+    if(MSVC)
+      set(PERL_EXECUTABLE echo)
+    endif()
   endif()
 
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
-  set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL
+
+  if(MSVC)
+    set(USE_IQL OFF CACHE BOOL "Use IQL" FORCE) # skip IQL on MSVC until IResearch upstream is updated
+  endif()
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
@@ -151,6 +158,8 @@ if (USE_IRESEARCH)
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
+
+  file(COPY "${IRESEARCH_ROOT}.build/" DESTINATION "${IRESEARCH_BUILD_DIR}" FILES_MATCHING PATTERN "*")
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
@@ -183,7 +192,8 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
 set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.57.0)
+set(CURL_CONFIG_HAS_BEEN_RUN_BEFORE true PARENT_SCOPE)
 
 ################################################################################
 ## SNAPPY

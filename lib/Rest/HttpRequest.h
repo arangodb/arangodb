@@ -34,7 +34,6 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class HttpCommTask;
-class HttpsCommTask;
 }
 
 namespace velocypack {
@@ -44,7 +43,6 @@ struct Options;
 
 class HttpRequest final : public GeneralRequest {
   friend class rest::HttpCommTask;
-  friend class rest::HttpsCommTask;
   friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 

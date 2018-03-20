@@ -162,13 +162,13 @@ bool initCommitMeta(
         }
 
         static const ConsolidationPolicy& defaultPolicy = ConsolidationPolicy::DEFAULT(policyItr->second);
-        size_t intervalStep = 0;
+        size_t segmentThreshold = 0;
 
         {
           // optional size_t
-          static const std::string subFieldName("intervalStep");
+          static const std::string subFieldName("segmentThreshold");
 
-          if (!arangodb::iresearch::getNumber(intervalStep, value, subFieldName, tmpSeen, defaultPolicy.intervalStep())) {
+          if (!arangodb::iresearch::getNumber(segmentThreshold, value, subFieldName, tmpSeen, defaultPolicy.segmentThreshold())) {
             errorField = fieldName + "=>" + name + "=>" + subFieldName;
 
             return false;
@@ -189,8 +189,8 @@ bool initCommitMeta(
         }
 
         // add only enabled policies
-        if (intervalStep) {
-          meta._consolidationPolicies.emplace_back(policyItr->second, intervalStep, threshold);
+        if (segmentThreshold) {
+          meta._consolidationPolicies.emplace_back(policyItr->second, segmentThreshold, threshold);
         }
       }
     }
@@ -226,7 +226,7 @@ bool jsonCommitMeta(
     arangodb::velocypack::ObjectBuilder subBuilderWrapper(&subBuilder);
 
     for (auto& policy: meta._consolidationPolicies) {
-      if (!policy.intervalStep()) {
+      if (!policy.segmentThreshold()) {
         continue; // do not output disabled consolidation policies
       }
 
@@ -238,7 +238,7 @@ bool jsonCommitMeta(
         {
           arangodb::velocypack::ObjectBuilder policyBuilderWrapper(&policyBuilder);
 
-          policyBuilderWrapper->add("intervalStep", arangodb::velocypack::Value(policy.intervalStep()));
+          policyBuilderWrapper->add("segmentThreshold", arangodb::velocypack::Value(policy.segmentThreshold()));
           policyBuilderWrapper->add("threshold", arangodb::velocypack::Value(policy.threshold()));
         }
 
@@ -260,11 +260,11 @@ NS_BEGIN(iresearch)
 size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& value
 ) const {
-  auto step = value.intervalStep();
+  auto segmentThreshold = value.segmentThreshold();
   auto threshold = value.threshold();
   auto type = value.type();
 
-  return std::hash<decltype(step)>{}(step)
+  return std::hash<decltype(segmentThreshold)>{}(segmentThreshold)
     ^ std::hash<decltype(threshold)>{}(threshold)
     ^ std::hash<size_t>{}(size_t(type))
     ;
@@ -272,9 +272,9 @@ size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::Hash::operator()(
 
 IResearchViewMeta::CommitMeta::ConsolidationPolicy::ConsolidationPolicy(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy::Type type,
-    size_t intervalStep,
+    size_t segmentThreshold,
     float threshold
-): _intervalStep(intervalStep), _threshold(threshold), _type(type) {
+): _segmentThreshold(segmentThreshold), _threshold(threshold), _type(type) {
   switch (type) {
    case Type::BYTES:
     _policy = irs::index_utils::consolidate_bytes(_threshold);
@@ -311,7 +311,7 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) {
   if (this != &other) {
-    _intervalStep = other._intervalStep;
+    _segmentThreshold = other._segmentThreshold;
     _policy = other._policy;
     _threshold = other._threshold;
     _type = other._type;
@@ -324,7 +324,7 @@ IResearchViewMeta::CommitMeta::ConsolidationPolicy& IResearchViewMeta::CommitMet
     IResearchViewMeta::CommitMeta::ConsolidationPolicy&& other
 ) noexcept {
   if (this != &other) {
-    _intervalStep = std::move(other._intervalStep);
+    _segmentThreshold = std::move(other._segmentThreshold);
     _policy = std::move(other._policy);
     _threshold = std::move(other._threshold);
     _type = std::move(other._type);
@@ -337,7 +337,7 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
     IResearchViewMeta::CommitMeta::ConsolidationPolicy const& other
 ) const noexcept {
   return _type == other._type
-    && _intervalStep == other._intervalStep
+    && _segmentThreshold == other._segmentThreshold
     && _threshold == other._threshold
     ;
 }
@@ -348,22 +348,22 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
   switch (type) {
     case Type::BYTES:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::BYTES_ACCUM:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::COUNT:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   case Type::FILL:
     {
-      static const ConsolidationPolicy policy(type, 10, 0.85f);
+      static const ConsolidationPolicy policy(type, 300, 0.85f);
       return policy;
     }
   default:
@@ -373,8 +373,8 @@ bool IResearchViewMeta::CommitMeta::ConsolidationPolicy::operator==(
   }
 }
 
-size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::intervalStep() const noexcept {
-  return _intervalStep;
+size_t IResearchViewMeta::CommitMeta::ConsolidationPolicy::segmentThreshold() const noexcept {
+  return _segmentThreshold;
 }
 
 irs::index_writer::consolidation_policy_t const& IResearchViewMeta::CommitMeta::ConsolidationPolicy::policy() const noexcept {
@@ -407,15 +407,13 @@ bool IResearchViewMeta::CommitMeta::operator!=(
 IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
   : _collections(mask),
     _commit(mask),
-    _dataPath(mask),
     _locale(mask),
     _threadsMaxIdle(mask),
     _threadsMaxTotal(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
-  : _dataPath(""),
-    _locale(std::locale::classic()),
+  : _locale(std::locale::classic()),
     _threadsMaxIdle(5),
     _threadsMaxTotal(5) {
   _commit._cleanupIntervalStep = 10;
@@ -439,7 +437,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
   if (this != &other) {
     _collections = std::move(other._collections);
     _commit = std::move(other._commit);
-    _dataPath = std::move(other._dataPath);
     _locale = std::move(other._locale);
     _threadsMaxIdle = std::move(other._threadsMaxIdle);
     _threadsMaxTotal = std::move(other._threadsMaxTotal);
@@ -452,7 +449,6 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
   if (this != &other) {
     _collections = other._collections;
     _commit = other._commit;
-    _dataPath = other._dataPath;
     _locale = other._locale;
     _threadsMaxIdle = other._threadsMaxIdle;
     _threadsMaxTotal = other._threadsMaxTotal;
@@ -467,10 +463,6 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   }
 
   if (_commit != other._commit) {
-    return false; // values do not match
-  }
-
-  if (_dataPath != other._dataPath) {
     return false; // values do not match
   }
 
@@ -506,7 +498,6 @@ bool IResearchViewMeta::operator!=(
 bool IResearchViewMeta::init(
   arangodb::velocypack::Slice const& slice,
   std::string& errorField,
-  arangodb::LogicalView const& viewDefaults,
   IResearchViewMeta const& defaults /*= DEFAULT()*/,
   Mask* mask /*= nullptr*/
 ) noexcept {
@@ -578,23 +569,6 @@ bool IResearchViewMeta::init(
 
         return false;
       }
-    }
-  }
-
-  {
-    // optional string
-    static const std::string fieldName("dataPath");
-
-    if (!getString(_dataPath, slice, fieldName, mask->_dataPath, defaults._dataPath)) {
-      errorField = fieldName;
-
-      return false;
-    }
-
-    // empty data path always means path relative to the ArangoDB data directory
-    // with a constant prefix and a view id suffix
-    if (_dataPath.empty()) {
-      _dataPath = viewDefaults.type() + "-" + std::to_string(viewDefaults.id());
     }
   }
 
@@ -692,10 +666,6 @@ bool IResearchViewMeta::json(
     builder.add("commit", subBuilder.slice());
   }
 
-  if ((!ignoreEqual || _dataPath != ignoreEqual->_dataPath) && (!mask || mask->_dataPath) && !_dataPath.empty()) {
-    builder.add("dataPath", arangodb::velocypack::Value(_dataPath));
-  }
-
   if ((!ignoreEqual || _locale != ignoreEqual->_locale) && (!mask || mask->_locale)) {
     builder.add("locale", arangodb::velocypack::Value(irs::locale_utils::name(_locale)));
   }
@@ -723,7 +693,6 @@ size_t IResearchViewMeta::memory() const {
   auto size = sizeof(IResearchViewMeta);
 
   size += sizeof(TRI_voc_cid_t) * _collections.size();
-  size += _dataPath.size();
 
   return size;
 }

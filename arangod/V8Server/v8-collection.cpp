@@ -29,7 +29,6 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
@@ -46,7 +45,6 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -175,7 +173,7 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
       return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
     }
     // we use the current collection's name
-    collectionName = resolver->getCollectionNameCluster(collection->cid());
+    collectionName = resolver->getCollectionNameCluster(collection->id());
   } else {
     // we read a collection name from the document id
     // check cross-collection requests
@@ -247,7 +245,7 @@ static int V8ToVPackNoKeyRevId(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get all cluster collections
+/// @brief get all cluster collections cloned, caller needs to cleanupb
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<LogicalCollection*> GetCollectionsCluster(
@@ -994,8 +992,11 @@ static void JS_FiguresVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  SingleCollectionTransaction trx(transaction::V8Context::Create(collection->vocbase(), true), collection->cid(),
-                                  AccessMode::Type::READ);
+  SingleCollectionTransaction trx(
+    transaction::V8Context::Create(collection->vocbase(), true),
+    collection->id(),
+    AccessMode::Type::READ
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -1346,7 +1347,7 @@ static void JS_PlanIdVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()));
+    TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()));
   }
 
   TRI_V8_RETURN(TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->planId()));
@@ -1923,17 +1924,17 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     VPackSlice storeSlice = paramBuilder.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
     for (std::string const& ec : paramVertices) {
-      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
-      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : paramEdges) {
-      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
-      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      bool canWrite = exec->canUseCollection(ec, auth::Level::RW);
+      bool canRead = exec->canUseCollection(ec, auth::Level::RO);
       if ((storeResults && !canWrite) || !canRead) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
   }
@@ -1955,7 +1956,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
     } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      LogicalCollection *coll = vocbase->lookupCollection(name);
+      auto coll = vocbase->lookupCollection(name);
+
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
           || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
@@ -1994,7 +1996,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
-      LogicalCollection *coll = vocbase->lookupCollection(name);
+      auto coll = vocbase->lookupCollection(name);
+
       if (coll == nullptr || coll->deleted()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
       }
@@ -2128,10 +2131,11 @@ static arangodb::LogicalCollection* GetCollectionFromArgument(
   // number
   if (val->IsNumber() || val->IsNumberObject()) {
     uint64_t cid = TRI_ObjectToUInt64(val, true);
-    return vocbase->lookupCollection(cid);
+
+    return vocbase->lookupCollection(cid).get();
   }
 
-  return vocbase->lookupCollection(TRI_ObjectToString(val));
+  return vocbase->lookupCollection(TRI_ObjectToString(val)).get();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2273,9 +2277,10 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   // load collection
   auto transactionContext =
       std::make_shared<transaction::V8Context>(collection->vocbase(), true);
+  SingleCollectionTransaction trx(
+    transactionContext, collection->id(), AccessMode::Type::WRITE
+  );
 
-  SingleCollectionTransaction trx(transactionContext, collection->cid(),
-                                  AccessMode::Type::WRITE);
   if (!payloadIsArray) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -2381,19 +2386,21 @@ static void JS_StatusVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =
-          ClusterInfo::instance()->getCollection(databaseName,
-                                                 collection->cid_as_string());
+          ClusterInfo::instance()->getCollection(
+            databaseName, std::to_string(collection->id())
+          );
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->status()));
     } catch (...) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
   // intentionally falls through
-  
+
   TRI_vocbase_col_status_e status = collection->status();
 
   TRI_V8_RETURN(v8::Number::New(isolate, (int)status));
@@ -2421,9 +2428,11 @@ static void JS_TruncateVocbaseCol(
   }
 
   auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
-  SingleCollectionTransaction trx(ctx, collection->cid(), AccessMode::Type::EXCLUSIVE);
-
+  SingleCollectionTransaction trx(
+    ctx, collection->id(), AccessMode::Type::EXCLUSIVE
+  );
   Result res = trx.begin();
+
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -2459,12 +2468,14 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName = collection->dbName();
+    TRI_ASSERT(collection->vocbase());
+    auto& databaseName = collection->vocbase()->name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =
-          ClusterInfo::instance()->getCollection(databaseName,
-                                                 collection->cid_as_string());
+          ClusterInfo::instance()->getCollection(
+            databaseName, std::to_string(collection->id())
+          );
       TRI_V8_RETURN(v8::Number::New(isolate, (int)ci->type()));
     } catch (...) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
@@ -2567,7 +2578,7 @@ static void JS_CollectionVocbase(
 
   // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RO)) {
+      !ExecContext::CURRENT->canUseCollection(collection->name(), auth::Level::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") + name + "'");
   }
@@ -2636,7 +2647,7 @@ static void JS_CollectionsVocbase(
 
     if (ExecContext::CURRENT != nullptr &&
         !ExecContext::CURRENT->canUseCollection(vocbase->name(),
-                                                collection->name(), AuthLevel::RO)) {
+                                                collection->name(), auth::Level::RO)) {
       continue;
     }
 

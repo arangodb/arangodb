@@ -67,7 +67,7 @@ namespace tests {
       std::locale locale;
       iresearch::bstring value_buf;
       bool value_nil;
-      iresearch::iql::function_arg arg(iresearch::bytes_ref::nil);
+      iresearch::iql::function_arg arg(iresearch::bytes_ref::NIL);
       auto wrapped = iresearch::iql::function_arg::wrap(arg);
 
       ASSERT_FALSE(wrapped.branch(branch_buf, locale, nullptr));

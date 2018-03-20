@@ -23,7 +23,7 @@ if ! test -d 3rdParty/arangodb-starter; then
 fi
 
 ./Installation/Jenkins/build.sh \
-    maintainer \
+    debug \
     --failure-tests \
     --rpath \
     --parallel ${CPU_CORES} \

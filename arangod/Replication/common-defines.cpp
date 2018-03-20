@@ -62,8 +62,9 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
   }
 
   if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
-      name == "_apps" || name == "_configuration" ||
+      name == "_configuration" || name == "_frontend" ||
       name == "_cluster_kickstarter_plans" ||
+      name == "_routing" || name == "_fishbowl" ||
       name == "_foxxlog" || name == "_jobs" ||
       name == "_queues" || name == "_sessions") {
     // these system collections will always be excluded

@@ -213,7 +213,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       _collection = _transaction->vocbase()->useCollection(_cid, status);
     } else {
       // use without usage-lock (lock already set externally)
-      _collection = _transaction->vocbase()->lookupCollection(_cid);
+      _collection = _transaction->vocbase()->lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
         return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -352,10 +352,10 @@ int MMFilesTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
   int res;
   if (!AccessMode::isWriteOrExclusive(type)) {
     LOG_TRX(_transaction, nestingLevel) << "read-locking collection " << _cid;
-    res = physical->lockRead(useDeadlockDetector, timeout);
+    res = physical->lockRead(useDeadlockDetector, _transaction->id(), timeout);
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
-    res = physical->lockWrite(useDeadlockDetector, timeout);
+    res = physical->lockWrite(useDeadlockDetector, _transaction->id(), timeout);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -423,10 +423,10 @@ int MMFilesTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   if (!AccessMode::isWriteOrExclusive(_lockType)) {
     LOG_TRX(_transaction, nestingLevel) << "read-unlocking collection " << _cid;
-    physical->unlockRead(useDeadlockDetector);
+    physical->unlockRead(useDeadlockDetector, _transaction->id());
   } else { // WRITE or EXCLUSIVE
     LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
-    physical->unlockWrite(useDeadlockDetector);
+    physical->unlockWrite(useDeadlockDetector, _transaction->id());
   }
 
   _lockType = AccessMode::Type::NONE;

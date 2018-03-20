@@ -50,7 +50,8 @@ FOR u IN users
     INSERT { _from: u._id, _to: p._id } IN recommendations
 ```
 
-### Setting query options
+Setting query options
+---------------------
 
 *options* can be used to suppress query errors that may occur when violating unique
 key constraints:
@@ -76,7 +77,8 @@ FOR i IN 1..1000
   } INTO users OPTIONS { waitForSync: true }
 ```
 
-### Returning the inserted documents
+Returning the inserted documents
+--------------------------------
 
 The inserted documents can also be returned by the query. In this case, the `INSERT` 
 statement can be a `RETURN` statement (intermediate `LET` statements are allowed, too).
@@ -88,7 +90,7 @@ the database (e.g. `_id`, `_key`, `_rev`).
 
 
 ```js
-INSERT document IN collection options RETURN NEW
+INSERT document IN collection RETURN NEW
 ```
 
 Following is an example using a variable named `inserted` to return the inserted

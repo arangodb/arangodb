@@ -26,11 +26,13 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#ifdef USE_IRESEARCH
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
-#include "IResearch/VelocyPackHelper.h"
+#endif
 #include "Transaction/Methods.h"
 #include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
@@ -41,7 +43,7 @@
 #include "Transaction/Helpers.h"
 #include "Aql/AstNode.h"
 
-NS_LOCAL
+namespace {
 
 /// @brief hard-coded vector of the index attributes
 /// note that the attribute names must be hard-coded here to avoid an init-order
@@ -78,11 +80,10 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
   EdgeIndexIteratorMock(
       arangodb::LogicalCollection* collection,
       arangodb::transaction::Methods* trx,
-      arangodb::ManagedDocumentResult* mmdr,
       arangodb::Index const* index,
       Map const& map,
       std::unique_ptr<VPackBuilder>&& keys
-  ) : IndexIterator(collection, trx, mmdr, index),
+  ) : IndexIterator(collection, trx, index),
       _map(map),
       _begin(_map.begin()),
       _end(_map.end()),
@@ -94,7 +95,7 @@ class EdgeIndexIteratorMock final : public arangodb::IndexIterator {
     return "edge-index-iterator-mock";
   }
 
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) {
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
     while (limit && _begin != _end && _keysIt.valid()) {
       auto key = _keysIt.value();
 
@@ -143,9 +144,12 @@ class EdgeIndexMock final : public arangodb::Index {
       return nullptr;
     }
 
-    auto const type = arangodb::iresearch::getStringRef(typeSlice);
+    auto const type = arangodb::basics::VelocyPackHelper::getStringRef(
+      typeSlice,
+      arangodb::velocypack::StringRef()
+    );
 
-    if (type != "edge") {
+    if (type.compare("edge") != 0) {
       return nullptr;
     }
 
@@ -175,7 +179,7 @@ class EdgeIndexMock final : public arangodb::Index {
       VPackBuilder& builder,
       bool withFigures,
       bool forPersistence
-  ) const {
+  ) const override {
     builder.openObject();
     Index::toVelocyPack(builder, withFigures, forPersistence);
     // hard-coded
@@ -184,7 +188,7 @@ class EdgeIndexMock final : public arangodb::Index {
     builder.close();
   }
 
-  void toVelocyPackFigures(VPackBuilder& builder) const {
+  void toVelocyPackFigures(VPackBuilder& builder) const override {
     Index::toVelocyPackFigures(builder);
 
     builder.add("from", VPackValue(VPackValueType::Object));
@@ -201,7 +205,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const& documentId,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -229,7 +233,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::LocalDocumentId const&,
       arangodb::velocypack::Slice const& doc,
       OperationMode
-  ) {
+  ) override {
     if (!doc.isObject()) {
       return { TRI_ERROR_INTERNAL };
     }
@@ -258,7 +262,7 @@ class EdgeIndexMock final : public arangodb::Index {
       size_t itemsInIndex,
       size_t& estimatedItems,
       double& estimatedCost
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.matchOne(
@@ -272,7 +276,7 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const*,
       bool
-  ) {
+  ) override {
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
     TRI_ASSERT(node->numMembers() == 1);
@@ -311,7 +315,7 @@ class EdgeIndexMock final : public arangodb::Index {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference
-  ) const {
+  ) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
 
     return matcher.specializeOne(this, node, reference);
@@ -348,7 +352,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)
@@ -385,7 +388,6 @@ class EdgeIndexMock final : public arangodb::Index {
     return new EdgeIndexIteratorMock(
       _collection,
       trx,
-      mmdr,
       this,
       isFrom ? _edgesFrom : _edgesTo,
       std::move(keys)
@@ -494,11 +496,34 @@ class AllIteratorMock final : public arangodb::IndexIterator {
   uint64_t _end;
 }; // AllIteratorMock
 
-NS_END
+bool mergeSlice(
+    arangodb::velocypack::Builder& builder,
+    arangodb::velocypack::Slice const& slice
+) {
+  if (builder.isOpenArray()) {
+    if (slice.isArray()) {
+      builder.add(arangodb::velocypack::ArrayIterator(slice));
+    } else {
+      builder.add(slice);
+    }
+
+    return true;
+  }
+
+  if (builder.isOpenObject() && slice.isObject()) {
+    builder.add(arangodb::velocypack::ObjectIterator(slice));
+
+    return true;
+  }
+
+  return false;
+}
+
+}
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
-    pinned.emplace(collection->cid());
+    pinned.emplace(collection->id());
   }
 }
 
@@ -543,14 +568,19 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     }
   }
 
-  auto const type = arangodb::iresearch::getStringRef(info.get("type"));
+  auto const type = arangodb::basics::VelocyPackHelper::getStringRef(
+    info.get("type"),
+    arangodb::velocypack::StringRef()
+  );
 
   std::shared_ptr<arangodb::Index> index;
 
-  if (type == "edge") {
+  if (0 == type.compare("edge")) {
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
-  } else if (arangodb::iresearch::IResearchFeature::type() == type) {
+#ifdef USE_IRESEARCH
+  } else if (0 == type.compare(arangodb::iresearch::IResearchFeature::type())) {
     index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+#endif
   }
 
   if (!index) {
@@ -606,15 +636,15 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
   before();
 
   if (reverse) {
-    return irs::memory::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+    return std::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx);
   }
 
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx) const {
   before();
-  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
+  return std::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx);
 }
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
@@ -646,7 +676,6 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
     newSlice,
     fromSlice,
     toSlice,
-    arangodb::LocalDocumentId(),
     isEdgeCollection,
     builder,
     options.isRestore,
@@ -690,7 +719,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::lookupIndex(arangodb::v
   return nullptr;
 }
 
-arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) {
+arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
   before();
   TRI_ASSERT(false);
   return arangodb::LocalDocumentId();
@@ -883,7 +912,7 @@ arangodb::Result PhysicalCollectionMock::update(arangodb::transaction::Methods* 
 
       builder.openObject();
 
-      if (!arangodb::iresearch::mergeSlice(builder, newSlice)) {
+      if (!mergeSlice(builder, newSlice)) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
       }
 
@@ -1165,7 +1194,7 @@ TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const
     return nullptr;
   }
 
-  auto vocbase = irs::memory::make_unique<TRI_vocbase_t>(
+  auto vocbase = std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
     vocbases.size(),
     args.get("name").copyString()
@@ -1241,6 +1270,10 @@ void StorageEngineMock::unloadCollection(TRI_vocbase_t* vocbase, arangodb::Logic
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {
   TRI_ASSERT(false);
   return std::string();
+}
+
+void StorageEngineMock::waitForEstimatorSync(std::chrono::milliseconds) {
+  TRI_ASSERT(false);
 }
 
 void StorageEngineMock::waitForSyncTick(TRI_voc_tick_t tick) {
@@ -1345,10 +1378,8 @@ arangodb::Result TransactionStateMock::abortTransaction(arangodb::transaction::M
   ++abortTransactionCount;
   updateStatus(arangodb::transaction::Status::ABORTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 
@@ -1366,10 +1397,8 @@ arangodb::Result TransactionStateMock::commitTransaction(arangodb::transaction::
   ++commitTransactionCount;
   updateStatus(arangodb::transaction::Status::COMMITTED);
   unuseCollections(_nestingLevel);
-  trx->registerCallback([](arangodb::transaction::Methods* trx)->void {
-    // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
-    static_cast<TransactionStateMock*>(trx->state())->_id = 0;
-  });
+  _id = 0; // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+
   return arangodb::Result();
 }
 

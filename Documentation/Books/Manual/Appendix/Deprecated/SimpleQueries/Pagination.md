@@ -17,7 +17,9 @@ result pages with 10 result documents per page, you can use <i>skip(n *
 10).limit(10)</i> to access the 10 documents on the *n*th page. This result
 should be sorted, so that the pagination works in a predicable way.
 
-### Limit
+Limit
+-----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -51,7 +53,9 @@ unclear which documents will be included in the result set.
 
 
 
-### Skip
+Skip
+----
+
 <!-- js/common/modules/@arangodb/simple-query-common.js -->
 
 
@@ -115,5 +119,3 @@ Counting any limit or skip:
     ~ db._drop("five")
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock cursorCountLimit
-
-

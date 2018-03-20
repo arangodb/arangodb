@@ -41,10 +41,6 @@ namespace arangodb {
 class DatabaseGuard;
 
 class RocksDBReplicationContext {
- public:
-  /// default time-to-live for contexts
-  static double const DefaultTTL;
-
  private:
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
@@ -69,7 +65,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  explicit RocksDBReplicationContext(double ttl);
+  RocksDBReplicationContext(TRI_vocbase_t* vocbase, double ttl, TRI_server_id_t server_id);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -83,8 +79,8 @@ class RocksDBReplicationContext {
   int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global) const;
+  Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
+                      bool global, velocypack::Builder&);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -122,6 +118,9 @@ class RocksDBReplicationContext {
 
  private:
   mutable Mutex _contextLock;
+  TRI_vocbase_t* _vocbase;
+  TRI_server_id_t const _serverId;
+
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   std::unique_ptr<DatabaseGuard> _guard;
@@ -133,7 +132,7 @@ class RocksDBReplicationContext {
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
-
+  double const _ttl;
   double _expires;
   bool _isDeleted;
   bool _exclusive;

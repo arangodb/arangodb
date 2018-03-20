@@ -13,7 +13,8 @@ meaning that an optimization should not modify the result of a query. A notable 
 to this is that the optimizer is allowed to change the order of results for queries that
 do not explicitly specify how results should be sorted.
 
-### Execution plans
+Execution plans
+---------------
 
 The `explain` command can be used to query the optimal executed plan or even all plans
 the optimizer has generated. Additionally, `explain` can reveal some more information
@@ -211,7 +212,8 @@ Note that some optimizations are already done at parse time (i.e. evaluate simpl
 calculation as `1 + 1`)
 
 
-### Turning specific optimizer rules off
+Turning specific optimizer rules off
+------------------------------------
 
 Optimizer rules can also be turned on or off individually, using the `rules` attribute.
 This can be used to enable or disable one or multiple rules. Rules that shall be enabled
@@ -248,7 +250,8 @@ The maximum number of plans created by the optimizer can also be limited using t
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock AQLEXP_09_explainMaxNumberOfPlans
 
-### Optimizer statistics
+Optimizer statistics
+--------------------
 
 The optimizer will return statistics as a part of an `explain` result.
 
@@ -259,7 +262,8 @@ The following attributes will be returned in the `stats` attribute of an `explai
   indicate a plan was actually modified by a rule)
 - `rulesSkipped`: number of rules skipped by the optimizer
 
-### Warnings
+Warnings
+--------
 
 For some queries, the optimizer may produce warnings. These will be returned in
 the `warnings` attribute of the `explain` result:
@@ -277,7 +281,9 @@ There is an upper bound on the number of warning a query may produce. If that
 bound is reached, no further warnings will be returned.
 
 
-### Things to consider for optimizing queries
+Things to consider for optimizing queries
+-----------------------------------------
+
 While the optimizer can fix some things in queries, its not allowed to take some assumptions,
 that you, the user, knowing what queries are intended to do can take. It may pull calculations
 to the front of the execution, but it may not cross certain borders.
@@ -302,7 +308,8 @@ of the query, which will then only give us one V8 expression at the very start o
 
 Next to bringing better performance, this also obeys the [DRY principle](https://en.wikipedia.org/wiki/Don't_repeat_yourself).
 
-### Optimization in a cluster
+Optimization in a cluster
+-------------------------
 
 When you're running AQL in the cluster, the parsing of the query is done on the
 coordinator. The coordinator then chops the query into snipets, which are to
@@ -323,7 +330,8 @@ If in doubt, you should modify your query to reduce the number interconnections 
 
 When optimizing your query you may want to look at simpler parts of it first.
 
-### List of execution nodes
+List of execution nodes
+-----------------------
 
 The following execution node types will appear in the output of `explain`:
 
@@ -376,7 +384,8 @@ For queries in the cluster, the following nodes may appear in execution plans:
   So, all of the above cluster relevant nodes will be accompanied by a *RemoteNode*.
 
 
-### List of optimizer rules
+List of optimizer rules
+-----------------------
 
 The following optimizer rules may appear in the `rules` attribute of a plan:
 

@@ -1,5 +1,6 @@
 
 # Summary
+* [Introduction](README.md)
 * [General HTTP Handling](General/README.md)
 * [HTTP Interface](Api/README.md)
 * [Databases](Database/README.md)
@@ -45,14 +46,13 @@
   * [Creating](Views/Creating.md)
   * [Modifying](Views/Modifying.md)
   * [Retrieving](Views/Getting.md)
-  * [ArangoSearch Views](Views/IResearch.md)
+  * [ArangoSearch Views](Views/ArangoSearch.md)
 * [Transactions](Transaction/README.md)
 * [Replication](Replications/README.md)
   * [Replication Dump](Replications/ReplicationDump.md)
   * [Replication Logger](Replications/ReplicationLogger.md)
   * [Replication Applier](Replications/ReplicationApplier.md)
   * [Other Replication Commands](Replications/OtherReplication.md)
-* [Sharding](ShardingInterface/README.md)
 * [Monitoring](AdministrationAndMonitoring/README.md)
 * [Endpoints](Endpoints/README.md)
 * [Foxx Services](Foxx/README.md)

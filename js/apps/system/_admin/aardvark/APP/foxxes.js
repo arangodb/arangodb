@@ -29,10 +29,9 @@ const joi = require('joi');
 const dd = require('dedent');
 const internal = require('internal');
 const crypto = require('@arangodb/crypto');
-const marked = require('marked');
-const highlightAuto = require('highlightjs').highlightAuto;
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
+const store = require('@arangodb/foxx/store');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
@@ -147,6 +146,18 @@ installer.put('/git', function (req) {
   Install a Foxx with user/repository and version.
 `);
 
+installer.put('/url', function (req) {
+  req.body = `${req.body.url}`;
+})
+.body(joi.object({
+  url: joi.string().required(),
+  version: joi.string().default('master')
+}).required(), '')
+.summary('Install a Foxx from URL')
+.description(dd`
+  Install a Foxx from URL.
+`);
+
 installer.put('/generate', (req, res) => {
   const tempDir = fs.getTempFile('aardvark', false);
   const generated = FoxxGenerator.generate(req.body);
@@ -229,9 +240,7 @@ router.get('/', function (req, res) {
     config: service.getConfiguration(),
     deps: service.getDependencies(),
     scripts: service.getScripts(),
-    readme: service.readme && marked(service.readme, {
-      highlight: (code) => highlightAuto(code).value
-    })
+    readme: service.readme
   })));
 })
 .summary('List all Foxxes')
@@ -351,11 +360,11 @@ foxxRouter.patch('/devel', function (req, res) {
 
 router.get('/fishbowl', function (req, res) {
   try {
-    FoxxManager.update();
+    store.update();
   } catch (e) {
     console.warnLines(`Failed to update Foxx store: ${e.stack}`);
   }
-  res.json(FoxxManager.availableJson());
+  res.json(store.availableJson());
 })
 .summary('List of all foxx services submitted to the Foxx store.')
 .description(dd`

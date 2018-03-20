@@ -33,6 +33,9 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
+#include "VocBase/LogicalView.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -46,10 +49,6 @@
 #include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
-
-NS_BEGIN(transaction)
-class Methods;
-NS_END // transaction
 
 NS_BEGIN(basics)
 class VPackStringBufferAdapter;
@@ -163,6 +162,47 @@ void registerRecoveryHelper() {
   }
 }
 
+arangodb::Result transactionStateRegistrationCallback(
+    arangodb::LogicalDataSource& dataSource,
+    arangodb::TransactionState& state
+) {
+  if (arangodb::iresearch::IResearchView::type() != dataSource.type()) {
+    return arangodb::Result(); // not an IResearchView (noop)
+  }
+
+  // TODO FIXME find a better way to look up a LogicalView
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<arangodb::LogicalView*>(&dataSource);
+  #else
+    auto* view = static_cast<arangodb::LogicalView*>(&dataSource);
+  #endif
+
+  if (!view) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
+
+    return arangodb::Result(TRI_ERROR_INTERNAL);
+  }
+
+  // TODO FIXME find a better way to look up an IResearch View
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+  #else
+    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+  #endif
+
+  if (!impl) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
+
+    return arangodb::Result(TRI_ERROR_INTERNAL);
+  }
+
+  impl->apply(state);
+
+  return arangodb::Result();
+}
+
 std::string const FEATURE_NAME("ArangoSearch");
 IResearchLogTopic LIBIRESEARCH("libiresearch", arangodb::LogLevel::INFO);
 
@@ -219,10 +259,21 @@ void IResearchFeature::prepare() {
   // load all known scorers
   ::iresearch::scorers::init();
 
-  // register 'iresearch' view
-  ViewTypesFeature::registerViewImplementation(
-     IResearchView::type(),
-     IResearchView::make
+  auto* viewTypes = getFeature<arangodb::ViewTypesFeature>();
+
+  if (!viewTypes) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'  while starting " + name()
+    );
+  }
+
+  // register 'arangosearch' view
+  viewTypes->emplace(IResearchView::type(), IResearchView::make);
+
+  // register 'arangosearch' TransactionState state-change callback factory
+  arangodb::transaction::Methods::addStateRegistrationCallback(
+    transactionStateRegistrationCallback
   );
 
   registerRecoveryHelper();

@@ -136,6 +136,41 @@ std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
 std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH =
     "/_api/simple/all-keys";
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE =
+    "/_api/simple/by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query first example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_FIRST_EXAMPLE =
+    "/_api/simple/first-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query remove by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REMOVE_BY_EXAMPLE =
+    "/_api/simple/remove-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_REPLACE_BY_EXAMPLE =
+    "/_api/simple/replace-by-example";
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief simple query replace by example path
+//////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::SIMPLE_UPDATE_BY_EXAMPLE =
+    "/_api/simple/update-by-example";
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document batch lookup path
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,11 +337,11 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add("error", VPackValue(true));
-    builder.add("code", VPackValue(static_cast<int32_t>(
+    builder.add(StaticStrings::Error, VPackValue(true));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int32_t>(
                             rest::ResponseCode::PRECONDITION_FAILED)));
-    builder.add("errorNum", VPackValue(TRI_ERROR_ARANGO_CONFLICT));
-    builder.add("errorMessage", VPackValue("precondition failed"));
+    builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
+    builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
       builder.add(StaticStrings::KeyString,
@@ -535,10 +570,10 @@ void RestVocbaseBaseHandler::prepareExecute() {
 
 void RestVocbaseBaseHandler::finalizeExecute() {
   if (_nolockHeaderSet != nullptr) {
-    CollectionLockState::_noLockHeaders = nullptr;
     delete _nolockHeaderSet;
     _nolockHeaderSet = nullptr;
   }
+  CollectionLockState::_noLockHeaders = nullptr;
 
   RestBaseHandler::finalizeExecute();
 }

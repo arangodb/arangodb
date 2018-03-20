@@ -6,7 +6,8 @@ version to ArangoDB 3.2. Please be sure that you have checked the list
 of [changes in 3.2](../../ReleaseNotes/UpgradingChanges32.md) before
 upgrading.
 
-### Switching the storage engine
+Switching the storage engine
+----------------------------
 
 In order to use a different storage engine with an existing data directory,
 it is required to first create a logical backup of the data using *arangodump*.

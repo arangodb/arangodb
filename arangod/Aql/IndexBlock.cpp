@@ -24,15 +24,16 @@
 
 #include "IndexBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -134,17 +135,30 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression;
 
     bool mustDestroy;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions], mustDestroy);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions], _inRegs[posInExpressions]);
+    AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    _condition->getMember(toReplace->orMember)
-        ->getMember(toReplace->andMember)
-        ->changeMember(toReplace->operatorMember, evaluatedNode);
+    auto oldCondition = _condition;
+    auto newCondition = ast->shallowCopyForModify(oldCondition);
+    _condition = newCondition;
+    TRI_DEFER(FINALIZE_SUBTREE(_condition));
+
+    auto oldOrMember = _condition->getMember(toReplace->orMember);
+    auto orMember = ast->shallowCopyForModify(oldOrMember);
+    TRI_DEFER(FINALIZE_SUBTREE(orMember));
+    newCondition->changeMember(toReplace->orMember, orMember);
+
+    auto oldAndMember = orMember->getMember(toReplace->andMember);
+    auto andMember = ast->shallowCopyForModify(oldAndMember);
+    TRI_DEFER(FINALIZE_SUBTREE(andMember));
+    orMember->changeMember(toReplace->andMember, andMember);
+
+    andMember->changeMember(toReplace->operatorMember, evaluatedNode);
   }
   DEBUG_END_BLOCK();
 }
@@ -166,7 +180,7 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->willUseV8();
 
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
@@ -270,24 +284,21 @@ bool IndexBlock::initIndexes() {
     TRI_ASSERT(_condition != nullptr);
 
     if (_hasV8Expression) {
-      bool const isRunningInCluster =
-          arangodb::ServerState::instance()->isRunningInCluster();
-
       // must have a V8 context here to protect Expression::execute()
-      auto engine = _engine;
-      arangodb::basics::ScopeGuard guard{
-          [&engine]() -> void { engine->getQuery()->enterContext(); },
-          [&]() -> void {
-            if (isRunningInCluster) {
-              // must invalidate the expression now as we might be called from
-              // different threads
-              for (auto const& e : _nonConstExpressions) {
-                e->expression->invalidate();
-              }
+      auto cleanup = [this]() {
+        if (arangodb::ServerState::instance()->isRunningInCluster()) {
+          // must invalidate the expression now as we might be called from
+          // different threads
+          for (auto const& e : _nonConstExpressions) {
+            e->expression->invalidate();
+          }
 
-              engine->getQuery()->exitContext();
-            }
-          }};
+          _engine->getQuery()->exitContext();
+        }
+      };
+
+      _engine->getQuery()->enterContext();
+      TRI_DEFER(cleanup());
 
       ISOLATE;
       v8::HandleScope scope(isolate);  // do not delete this!
@@ -406,7 +417,7 @@ bool IndexBlock::skipIndex(size_t atMost) {
     }
   }
   return false;
-  
+
   // cppcheck-suppress style
   DEBUG_END_BLOCK();
 }
@@ -428,7 +439,7 @@ bool IndexBlock::readIndex(
     // All indexes exhausted
     return false;
   }
-    
+
   while (_cursor != nullptr) {
     if (!_cursor->hasMore()) {
       startNextCursor();
@@ -447,10 +458,10 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
- 
+
 
     // TODO: optimize for the case when produceResult() is false
-    // in this case we do not need to fetch the documents at all 
+    // in this case we do not need to fetch the documents at all
     bool res = _cursor->nextDocument(callback, atMost - _returned);
 
     if (res) {
@@ -509,7 +520,22 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // position _returned:
 
   IndexIterator::DocumentCallback callback;
-  if (_indexes.size() > 1) {
+
+  size_t expansions = 0;
+  {
+    // count how many attributes in the index are expanded (array index)
+    // if more than a single attribute, we always need to deduplicate the
+    // result later on
+    auto mainIndex = _indexes[0].getIndex();
+    auto const& fields = mainIndex->fields();
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (mainIndex->isAttributeExpanded(i)) {
+        ++expansions;
+      }
+    }
+  }
+
+  if (_indexes.size() > 1 || expansions > 1) {
     // Activate uniqueness checks
     callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res != nullptr);
@@ -526,7 +552,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
           return;
         }
       }
-      
+
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
   } else {
@@ -572,7 +598,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     TRI_ASSERT(!_indexesExhausted);
     AqlItemBlock* cur = _buffer.front();
     curRegs = cur->getNrRegs();
-   
+
     TRI_ASSERT(curRegs <= res->getNrRegs());
 
     // only copy 1st row of registers inherited from previous frame(s)

@@ -126,9 +126,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   // note: the ditch also protects against unloading the collection
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::READ);
-
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -152,9 +153,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::READ);
-
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -176,7 +178,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             markers.emplace_back(mmdr.vpack());
 
             if (++iterations % 10000 == 0) {
-              if (syncer.checkAborted()) {
+              if (syncer.isAborted()) {
                 return false;
               }
             }
@@ -184,7 +186,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           return true;
         });
 
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
@@ -224,7 +226,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         });
   }
 
-  if (syncer.checkAborted()) {
+  if (syncer.isAborted()) {
     return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
@@ -285,8 +287,13 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::WRITE
+    );
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
@@ -352,21 +359,26 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
-    if (syncer.checkAborted()) {
+    if (syncer.isAborted()) {
       return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::WRITE
+    );
+
+    trx.addHint(
+        transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return Result(res.errorNumber(), std::string("unable to start transaction : ") + res.errorMessage());
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
-    trx.pinData(coll->cid());  // will throw when it fails
+    trx.pinData(coll->id()); // will throw when it fails
 
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.

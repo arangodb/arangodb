@@ -48,7 +48,6 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -278,7 +277,7 @@ bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
-
+/*
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
   for (auto const& trx : transactions) {
     auto opers = std::get<0>(trx);
@@ -323,7 +322,7 @@ void AgencyGeneralTransaction::push_back(
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
   return (result.slice().isArray() &&
           result.slice().length() >= 1); // >= transactions.size()
-}
+}*/
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
@@ -836,8 +835,8 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 }
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
-                                      arangodb::velocypack::Slice const& slice,
-                                      double ttl) {
+                                          arangodb::velocypack::Slice const& slice,
+                                          double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransientTransaction transaction(operation);
@@ -1171,9 +1170,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM) << "checking if agency is initialized";
 
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
-
   while (true) {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
@@ -1500,17 +1496,13 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = send(
           connection.get(), method, conTimeout, url, b.toJson());
 
-      // Inquire returns a body like write or if the write is still ongoing
-      // We check, if the operation is still ongoing then body is {"ongoing:true"}
+      // Inquire returns a body like write, if the transactions are not known,
+      // the list of results is empty.
       // _statusCode can be 200 or 412
       if (result.successful() || result._statusCode == 412) {
         std::shared_ptr<VPackBuilder> resultBody
           = VPackParser::fromJson(result._body);
         VPackSlice outer = resultBody->slice();
-        // If the operation is still ongoing, simply ask again later:
-        if (outer.isObject() && outer.hasKey("ongoing")) {
-          continue;
-        }
 
         // If we get an answer, and it contains a "results" key,
         // we release the connection and break out of the loop letting the
@@ -1602,8 +1594,9 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
-  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  params.setJwt(af->tokenCache()->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1688,11 +1681,7 @@ bool AgencyComm::tryInitializeStructure() {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add("Leader", VPackValue(""));
-      }
+      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1798,7 +1787,11 @@ bool AgencyComm::tryInitializeStructure() {
     AgencyWriteTransaction initTransaction;
     initTransaction.operations.push_back(initOperation);
 
-    auto result = sendTransactionWithFailover(initTransaction);
+    AgencyCommResult result = sendTransactionWithFailover(initTransaction);
+    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+      LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Cannot authenticate with agency,"
+      << " check value of --server.jwt-secret";
+    }
 
     return result.successful();
   } catch (std::exception const& e) {

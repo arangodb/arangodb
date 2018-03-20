@@ -76,7 +76,7 @@ const recoverySuite = function () {
     // Test that count of collection remains unmodified.
     // We crashed after one remove commit. But before the other
     testCollectionCount: () => {
-      assertEqual(c.count(), 10000); 
+      assertEqual(c.count(), 10000);
     },
 
     // Test that the HashIndex remains intact.
@@ -116,6 +116,7 @@ const recoverySuite = function () {
     },
 
     testSelectivityEstimates: () => {
+      internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
       for (let i of indexes) {
         switch (i.type) {
@@ -156,4 +157,3 @@ function main (argv) {
     return jsunity.done();
   }
 }
-

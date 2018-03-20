@@ -83,7 +83,7 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
 static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, AstNode* tmpVar) {
   AstNodeType type = BuildSingleComparatorType(condition);
 
-  auto replaceReference = [&tmpVar](AstNode* node, void*) -> AstNode* {
+  auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
     if (node->type == NODE_TYPE_REFERENCE) {
       return tmpVar;
     }
@@ -91,8 +91,6 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
   };
 
   // Now we need to traverse down and replace the reference
-  void* unused = nullptr;
-
   auto lhs = condition->getMemberUnchecked(0);
   auto rhs = condition->getMemberUnchecked(1);
   // We can only optimize if path.edges[*] is on the left hand side
@@ -103,7 +101,7 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
 
   // We have to take the return-value if LHS already is the refence.
   // otherwise the point will not be relocated.
-  lhs = Ast::traverseAndModify(lhs, replaceReference, unused);
+  lhs = Ast::traverseAndModify(lhs, replaceReference);
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
@@ -237,11 +235,10 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
   //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
 
-  auto unusedWalker = [](AstNode const* n, void*) {};
+  auto unusedWalker = [](AstNode const* n) {};
   bool isEdge = false;
   // We define that depth == UINT64_MAX is "ALL depths"
   uint64_t depth = UINT64_MAX;
-  void* unused = nullptr;
   AstNode* parentOfReplace = nullptr;
   size_t replaceIdx = 0;
   bool notSupported = false;
@@ -249,7 +246,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&notSupported, pathVar](AstNode const* n, void*) -> bool {
+  auto supportedGuard = [&notSupported, pathVar](AstNode const* n) -> bool {
     if (notSupported) {
       return false;
     }
@@ -262,7 +259,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
                         &parentOfReplace, &replaceIdx,
-                        &indexedAccessDepth](AstNode* node, void* unused) -> AstNode* {
+                        &indexedAccessDepth](AstNode* node) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -327,7 +324,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
-          
+
           // we need to know the depth at which a filter condition will
           // access a path. Otherwise there are too many results
           TRI_ASSERT(node->numMembers() == 2);
@@ -411,7 +408,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   size_t numMembers = node->numMembers();
   for (size_t i = 0; i < numMembers; ++i) {
     Ast::traverseAndModify(node->getMemberUnchecked(i), supportedGuard,
-                           searchPattern, unusedWalker, unused);
+                           searchPattern, unusedWalker);
     if (notSupported) {
       return false;
     }
@@ -471,6 +468,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
     if (conditionIsImpossible) {
       return false;
     }
+    // edit in-place; TODO replace instead?
+    TEMPORARILY_UNLOCK_NODE(parentOfReplace);
     // Point Access
     parentOfReplace->changeMember(replaceIdx, tempNode);
     // NOTE: We have to reload the NODE here, because we may have replaced
@@ -588,9 +587,10 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
       auto andNode = orNode->getMemberUnchecked(0);
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
-
+      // edit in-place; TODO: replace node instead
+      TEMPORARILY_UNLOCK_NODE(andNode);
       std::unordered_set<Variable const*> varsUsedByCondition;
-      
+
       auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
@@ -631,7 +631,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
         int64_t indexedAccessDepth = -1;
-        
+
         size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
@@ -649,7 +649,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
         } else {
           TRI_ASSERT(!conditionIsImpossible);
-          
+
           // remember the original filter conditions if we can remove them later
           if (indexedAccessDepth == -1) {
             originalFilterConditions->andCombine(cloned);
@@ -658,7 +658,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             // is in [0..maxDepth], if the depth is not a concrete value
             // then indexedAccessDepth would be INT64_MAX
             originalFilterConditions->andCombine(cloned);
-            
+
             if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
               // do not return paths shorter than the deepest path access
               // Unless the condition evaluates to true on `null`.

@@ -170,7 +170,7 @@ class GeneralClientConnection {
   /// @brief prepare connection for read/write I/O
   //////////////////////////////////////////////////////////////////////////////
 
-  bool prepare(TRI_socket_t socket, double timeout, bool isWrite) const;
+  bool prepare(TRI_socket_t socket, double timeout, bool isWrite);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check whether the socket is still alive

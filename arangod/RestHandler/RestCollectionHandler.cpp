@@ -83,7 +83,7 @@ void RestCollectionHandler::handleCommandGet() {
     methods::Collections::enumerate(_vocbase, [&](LogicalCollection* coll) {
       ExecContext const* exec = ExecContext::CURRENT;
       bool canUse = exec == nullptr ||
-                    exec->canUseCollection(coll->name(), AuthLevel::RO);
+                    exec->canUseCollection(coll->name(), auth::Level::RO);
       if (canUse && (!excludeSystem || !coll->isSystem())) {
         collectionRepresentation(builder, coll,
                                  /*showProperties*/ false,
@@ -183,8 +183,9 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
           auto shards =
-              ClusterInfo::instance()->getShardList(coll->planId_as_string());
+            ClusterInfo::instance()->getShardList(std::to_string(coll->planId()));
           VPackArrayBuilder arr(&builder, "shards", true);
+
           for (ShardID const& shard : *shards) {
             arr->add(VPackValue(shard));
           }
@@ -203,7 +204,7 @@ void RestCollectionHandler::handleCommandGet() {
   }
   if (found.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(found);
   }
@@ -262,10 +263,6 @@ void RestCollectionHandler::handleCommandPost() {
         collectionRepresentation(builder, coll->name(), /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*aggregateCount*/ false);
-        
-        if (!coll->isLocal()) { // FIXME: this is crappy design
-          delete coll;
-        }
       });
   
   if (res.ok()) {
@@ -328,8 +325,9 @@ void RestCollectionHandler::handleCommandPut() {
               _request->value("isSynchronousReplication");
 
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
-          SingleCollectionTransaction trx(ctx, coll->cid(),
-                                          AccessMode::Type::EXCLUSIVE);
+          SingleCollectionTransaction trx(
+            ctx, coll->id(), AccessMode::Type::EXCLUSIVE
+          );
 
           res = trx.begin();
           if (res.ok()) {
@@ -374,8 +372,10 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
-          SingleCollectionTransaction trx(ctx, coll->cid(),
-                                          AccessMode::Type::WRITE);
+          SingleCollectionTransaction trx(
+            ctx, coll->id(), AccessMode::Type::WRITE
+          );
+
           res = trx.begin();
           if (res.ok()) {
             OperationResult result = trx.rotateActiveJournal(coll->name(), OperationOptions());
@@ -400,7 +400,7 @@ void RestCollectionHandler::handleCommandPut() {
     generateError(found);
   } else if (res.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
-    _response->setHeader("location", _request->requestPath());
+    _response->setHeaderNC(StaticStrings::Location, _request->requestPath());
   } else {
     generateError(res);
   }
@@ -421,7 +421,7 @@ void RestCollectionHandler::handleCommandDelete() {
   Result res;
   Result found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
-        std::string cid = coll->cid_as_string();
+        auto cid = std::to_string(coll->id());
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
         res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0);
@@ -461,12 +461,13 @@ void RestCollectionHandler::collectionRepresentation(
   if (!wasOpen) {
     builder.openObject();
   }
-  
+
   // `methods::Collections::properties` will filter these out
-  builder.add("id", VPackValue(coll->cid_as_string()));
+  builder.add("id", VPackValue(std::to_string(coll->id())));
   builder.add("name", VPackValue(coll->name()));
   builder.add("status", VPackValue(coll->status()));
   builder.add("type", VPackValue(coll->type()));
+
   if (!showProperties) {
     builder.add("isSystem", VPackValue(coll->isSystem()));
     builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
@@ -484,7 +485,7 @@ void RestCollectionHandler::collectionRepresentation(
 
   if (showCount) {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+    SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
     Result res = trx.begin();
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
