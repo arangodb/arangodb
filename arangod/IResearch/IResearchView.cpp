@@ -1663,9 +1663,9 @@ size_t IResearchView::memory() const {
   return size;
 }
 
-void IResearchView::open() {
+void IResearchView::open() {std::cerr << __LINE__ << std::endl;
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
-
+std::cerr << __LINE__ << std::endl;
   if (engine) {
     _inRecovery = engine->inRecovery();
   } else {
@@ -1673,64 +1673,64 @@ void IResearchView::open() {
       << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
     // assume not inRecovery()
   }
-
+std::cerr << __LINE__ << std::endl;
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously updated
   SCOPED_LOCK(mutex);
-
+std::cerr << __LINE__ << std::endl;
   if (_storePersisted) {
     return; // view already open
   }
-
+std::cerr << __LINE__ << std::endl;
   try {
     auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
-
+std::cerr << __LINE__ << std::endl;
     if (format) {
       _storePersisted._directory =
         irs::directory::make<irs::mmap_directory>(_storePersisted._path.utf8());
-
+std::cerr << __LINE__ << std::endl;
       if (_storePersisted._directory) {
         // create writer before reader to ensure data directory is present
         _storePersisted._writer =
           irs::index_writer::make(*(_storePersisted._directory), format, irs::OM_CREATE_APPEND);
-
+std::cerr << __LINE__ << std::endl;
         if (_storePersisted._writer) {
           _storePersisted._writer->commit(); // initialize 'store'
           _threadPool.max_idle(_meta._threadsMaxIdle);
-
+std::cerr << __LINE__ << std::endl;
           if (!_inRecovery) {
             // start pool only if we're not in recovery now,
             // otherwise 'PostRecoveryCallback' will take care of that
             _threadPool.max_threads(_meta._threadsMaxTotal);
           }
-
+std::cerr << __LINE__ << std::endl;
           _storePersisted._reader
             = irs::directory_reader::open(*(_storePersisted._directory));
-
+std::cerr << __LINE__ << std::endl;
           if (_storePersisted._reader) {
             registerFlushCallback();
-
+std::cerr << __LINE__ << std::endl;
             return; // success
           }
-
+std::cerr << __LINE__ << std::endl;
           _storePersisted._writer.reset(); // unlock the directory
         }
       }
     }
-  } catch (std::exception const& e) {
+  } catch (std::exception const& e) {std::cerr << __LINE__ << std::endl;
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while opening iResearch view '" << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
     throw;
-  } catch (...) {
+  } catch (...) {std::cerr << __LINE__ << std::endl;
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while opening iResearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
     throw;
   }
-
+std::cerr << __LINE__ << std::endl;
   LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
     << "failed to open IResearch view '" << name() << "' at: " << _storePersisted._path.utf8();
-
+std::cerr << __LINE__ << std::endl;
   throw std::runtime_error(
     std::string("failed to open iResearch view '") + name() + "' at: " + _storePersisted._path.utf8()
   );
