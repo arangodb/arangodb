@@ -133,9 +133,9 @@ struct IResearchQuerySetup {
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEBUG); // suppress WARNING DefaultCustomTypeHandler called
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEBUG);
+    irs::logger::output_le(iresearch::logger::IRL_DEBUG, stderr);
   }
 
   ~IResearchQuerySetup() {
@@ -174,17 +174,17 @@ NS_END
 TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);
-
+std::cerr << __LINE__ << std::endl;
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   std::vector<arangodb::velocypack::Builder> insertedDocs;
   arangodb::LogicalView* view;
-
+std::cerr << __LINE__ << std::endl;
   // create collection0
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection0\" }");
     auto* collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
-
+std::cerr << __LINE__ << std::endl;
     std::vector<std::shared_ptr<arangodb::velocypack::Builder>> docs {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -6, \"value\": null }"),
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -5, \"value\": true }"),
@@ -193,7 +193,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -2, \"value\": [ 1, \"abc\" ] }"),
       arangodb::velocypack::Parser::fromJson("{ \"seq\": -1, \"value\": { \"a\": 7, \"b\": \"c\" } }"),
     };
-
+std::cerr << __LINE__ << std::endl;
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
@@ -202,30 +202,30 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
-
+std::cerr << __LINE__ << std::endl;
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
       CHECK((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((trx.commit().ok()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // create collection1
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection1\" }");
     auto* collection = vocbase.createCollection(createJson->slice());
     REQUIRE((nullptr != collection));
-
+std::cerr << __LINE__ << std::endl;
     irs::utf8_path resource;
     resource/=irs::string_ref(IResearch_test_resource_dir);
     resource/=irs::string_ref("simple_sequential.json");
-
+std::cerr << __LINE__ << std::endl;
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
     auto slice = builder.slice();
     REQUIRE(slice.isArray());
-
+std::cerr << __LINE__ << std::endl;
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
@@ -234,26 +234,26 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto res = trx.insert(collection->name(), itr.value(), options);
       CHECK((res.ok()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((trx.commit().ok()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
     auto logicalView = vocbase.createView(createJson->slice(), 0);
     REQUIRE((false == !logicalView));
-
+std::cerr << __LINE__ << std::endl;
     view = logicalView.get();
     auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
     REQUIRE((false == !impl));
-
+std::cerr << __LINE__ << std::endl;
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
         "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
@@ -266,7 +266,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     CHECK((2 == cids.size()));
     impl->sync();
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (any)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -279,16 +279,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (any) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -301,16 +301,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (bool)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -323,16 +323,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (bool) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -345,16 +345,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (boolean)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -367,16 +367,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (boolean) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -389,16 +389,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (numeric)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -411,16 +411,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (numeric) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -433,16 +433,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (null)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -455,16 +455,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (null) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -477,16 +477,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (string)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -499,16 +499,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (string) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -521,16 +521,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (analyzer)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -543,16 +543,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (analyzer) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -565,16 +565,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (array)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -587,16 +587,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (array) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -609,16 +609,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (object)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -631,16 +631,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test non-existent (object) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -653,16 +653,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (any)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -698,16 +698,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (any) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -743,16 +743,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (bool)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -766,16 +766,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (bool) with bound params
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -790,16 +790,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (bool) with bound view name
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -810,21 +810,21 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
       "FOR d IN VIEW @@testView FILTER EXISTS(d.value, @type, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
       arangodb::velocypack::Parser::fromJson("{ \"type\" : \"type\", \"@testView\": \"testView\" }")
     );
-
+std::cerr << __LINE__ << std::endl;
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (bool) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -838,16 +838,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (boolean)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -861,16 +861,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (boolean) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -884,16 +884,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (numeric)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -924,16 +924,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (numeric) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -964,16 +964,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (numeric) via [], limit  5
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -991,16 +991,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (null)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1014,16 +1014,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (null) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1037,16 +1037,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (string)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1060,16 +1060,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (string) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1083,16 +1083,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (analyzer)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1106,16 +1106,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (analyzer) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1129,16 +1129,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (array)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1152,16 +1152,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (array) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1175,16 +1175,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (object)
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1198,16 +1198,16 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     auto slice = result.result->slice();
     CHECK(slice.isArray());
     size_t i = 0;
-
+std::cerr << __LINE__ << std::endl;
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
-
+std::cerr << __LINE__ << std::endl;
   // test existent (object) via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {
@@ -1220,14 +1220,14 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     REQUIRE(TRI_ERROR_NO_ERROR == result.code);
     auto slice = result.result->slice();
     CHECK(slice.isArray());
-    size_t i = 0;
+ std::cerr << __LINE__ << std::endl;   size_t i = 0;
 
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
-
+std::cerr << __LINE__ << std::endl;
     CHECK((i == expected.size()));
   }
 }
