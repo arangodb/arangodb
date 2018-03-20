@@ -302,12 +302,19 @@ function clusterSubqueriesTestSuite () {
         docsF.push({val: `F${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`, valD: `D${i}`, valE: `E${i}`});
         docsG.push({val: `G${i}`, valA: `A${i}`, valB: `B${i}`, valC: `C${i}`, valD: `D${i}`, valE: `E${i}`, valF: `F${i}`});
       }
+
       db[c1].save(docsA);
+      db[c2].ensureHashIndex("valA");
       db[c2].save(docsB);
+      db[c3].ensureHashIndex("valA", "valB");
       db[c3].save(docsC);
+      db[c4].ensureHashIndex("valA", "valB", "valC");
       db[c4].save(docsD);
+      db[c5].ensureHashIndex("valA", "valB", "valC", "valD");
       db[c5].save(docsE);
+      db[c6].ensureHashIndex("valA", "valB", "valC", "valD", "valE");
       db[c6].save(docsF);
+      db[c7].ensureHashIndex("valA", "valB", "valC", "valF");
       db[c7].save(docsG);
  
       let q = `
