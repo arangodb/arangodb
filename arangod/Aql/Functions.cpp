@@ -71,6 +71,7 @@ using namespace arangodb::aql;
 - errors are broadcasted like this:
     - Wrong parameter types: RegisterInvalidArgumentWarning(query, "MYFUNC")
     - Generic errors: RegisterWarning(query, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
+    - ICU related errors: if (U_FAILURE(status)) { RegisterICUWarning(query, "MYFUNC", status); }
     - close with: return AqlValue(AqlValueHintNull());
 - specify the number of parameters you expect at least and at max using: 
   ValidateParameters(parameters, "MYFUNC", 1, 3); (min: 1, max: 3)
@@ -183,6 +184,18 @@ std::string Functions::ExtractCollectionName(
   }
 
   return StaticStrings::Empty;
+}
+
+void RegisterICUWarning(arangodb::aql::Query* query,
+                        char const* functionName,
+                        UErrorCode status) {
+  std::string msg;
+  msg.append("in function '");
+  msg.append(functionName);
+  msg.append("()': ");
+  msg.append(arangodb::basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
+                                                              u_errorName(status)));
+  query->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg.c_str());
 }
 
 /// @brief register warning
@@ -851,6 +864,10 @@ AqlValue Functions::FindFirst(arangodb::aql::Query* query,
   for(int pos = search.first(status);
       U_SUCCESS(status) && pos != USEARCH_DONE;
       pos = search.next(status)) {
+    if (U_FAILURE(status)) {
+      RegisterICUWarning(query, "FIND_FIRST", status);
+      return AqlValue(AqlValueHintNull());
+    }
     if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
       return AqlValue(AqlValueHintInt(pos));
     }
@@ -918,6 +935,10 @@ AqlValue Functions::FindLast(arangodb::aql::Query* query,
   for(int pos = search.first(status);
       U_SUCCESS(status) && pos != USEARCH_DONE;
       pos = search.next(status)) {
+    if (U_FAILURE(status)) {
+      RegisterICUWarning(query, "FIND_LAST", status);
+      return AqlValue(AqlValueHintNull());
+    }
     if ((pos >= startOffset) && ((pos + searchLen -1) <= maxEnd)) {
       foundPos = pos;
     }
@@ -1296,14 +1317,14 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
                                VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "SUBSTITUTE", 2, 4);
 
-  AqlValue Search = ExtractFunctionParameterValue(parameters, 1);
+  AqlValue search = ExtractFunctionParameterValue(parameters, 1);
   int64_t limit = -1;
   AqlValueMaterializer materializer(trx);
-  std::vector<UnicodeString> match;
-  std::vector<UnicodeString> replace;
+  std::vector<UnicodeString> matchPatterns;
+  std::vector<UnicodeString> replacePatterns;
   bool replaceWasPlainString = false;
   
-  if (Search.isObject()) {
+  if (search.isObject()) {
     if (parameters.size() > 3) {
       RegisterWarning(query, "SUBSTITUTE", TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH);
       return AqlValue(AqlValueHintNull());
@@ -1311,19 +1332,19 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     if (parameters.size() == 3) {
       limit = ExtractFunctionParameterValue(parameters, 2).toInt64(trx);
     }
-    VPackSlice slice = materializer.slice(Search, false);
-    match.reserve(slice.length());
-    replace.reserve(slice.length());
+    VPackSlice slice = materializer.slice(search, false);
+    matchPatterns.reserve(slice.length());
+    replacePatterns.reserve(slice.length());
     for (auto const& it : VPackObjectIterator(slice)) {
       arangodb::velocypack::ValueLength length;
       const char *str = it.key.getString(length);
-      match.push_back(UnicodeString(str, length));
+      matchPatterns.push_back(UnicodeString(str, length));
       if (!it.value.isString()) {
         RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
         return AqlValue(AqlValueHintNull());
       }
       str = it.value.getString(length);
-      replace.push_back(UnicodeString(str, length));
+      replacePatterns.push_back(UnicodeString(str, length));
     }
   }
   else {
@@ -1335,8 +1356,8 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
       limit = ExtractFunctionParameterValue(parameters, 3).toInt64(trx);
     }
     
-    VPackSlice slice = materializer.slice(Search, false);
-    if (Search.isArray()) {
+    VPackSlice slice = materializer.slice(search, false);
+    if (search.isArray()) {
       for (auto const& it : VPackArrayIterator(slice)) {
         if (!it.isString()) {
           RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
@@ -1344,22 +1365,22 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
         }
         arangodb::velocypack::ValueLength length;
         const char *str = it.getString(length);
-        match.push_back(UnicodeString(str, length));
+        matchPatterns.push_back(UnicodeString(str, length));
       }
     }
     else {
-      if (!Search.isString()) {
+      if (!search.isString()) {
         RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
         return AqlValue(AqlValueHintNull());
       }
       arangodb::velocypack::ValueLength length;
       const char *str = slice.getString(length);
-      match.push_back(UnicodeString(str, length));
+      matchPatterns.push_back(UnicodeString(str, length));
     }
     if (parameters.size() > 2) {
-      AqlValue Replace = ExtractFunctionParameterValue(parameters, 2);
-      VPackSlice rslice = materializer.slice(Replace, false);
-      if (Replace.isArray()) {
+      AqlValue replace = ExtractFunctionParameterValue(parameters, 2);
+      VPackSlice rslice = materializer.slice(replace, false);
+      if (replace.isArray()) {
         for (auto const& it : VPackArrayIterator(rslice)) {
           if (!it.isString()) {
             RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
@@ -1367,16 +1388,16 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
           }
           arangodb::velocypack::ValueLength length;
           const char *str = it.getString(length);
-          replace.push_back(UnicodeString(str, length));
+          replacePatterns.push_back(UnicodeString(str, length));
         }
       }
-      else if (Replace.isString()) {
+      else if (replace.isString()) {
         // If we have a string as replacement,
         // it counts in for all found values.
         replaceWasPlainString = true;
         arangodb::velocypack::ValueLength length;
         const char *str = rslice.getString(length);
-        replace.push_back(UnicodeString(str, length));
+        replacePatterns.push_back(UnicodeString(str, length));
       }
       else {
         RegisterInvalidArgumentWarning(query, "SUBSTITUTE");
@@ -1386,7 +1407,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
   }
 
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
-  if ((limit == 0) || (match.size() == 0)) {
+  if ((limit == 0) || (matchPatterns.size() == 0)) {
     // if the limit is 0, or we don't have any match pattern, return the source string.
     return AqlValue(value);
   }
@@ -1399,19 +1420,28 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
 
   auto locale = LanguageFeature::instance()->getLocale();
   std::vector<std::unique_ptr<StringSearch>> searchVec;
-  searchVec.reserve(match.size());
+  searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
-  for (auto const& searchStr : match) {
+  for (auto const& searchStr : matchPatterns) {
     // create a vector of string searches
     searchVec.push_back(std::make_unique<StringSearch>(searchStr, unicodeStr, locale, nullptr, status));
+    if (U_FAILURE(status)) {
+      RegisterICUWarning(query, "SUBSTITUTE", status);
+      return AqlValue(AqlValueHintNull());
+    }
   }
   
   std::vector<std::pair<int32_t, int32_t>> srchResultPtrs;
   std::string utf8;
-  srchResultPtrs.reserve(match.size());
+  srchResultPtrs.reserve(matchPatterns.size());
   for (auto& search : searchVec) {
     // We now find the first hit for each search string. 
     auto pos = search->first(status);
+    if (U_FAILURE(status)) {
+      RegisterICUWarning(query, "SUBSTITUTE", status);
+      return AqlValue(AqlValueHintNull());
+    }
+
     int32_t len;
     if (pos != USEARCH_DONE) {
       len = search->getMatchedLength();
@@ -1445,12 +1475,12 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     }
     // from last match to this match, copy the original string.
     result.append(unicodeStr, lastStart, pos - lastStart);
-    if (replace.size() != 0) {
-      if (replace.size() > (size_t) which) {
-        result.append(replace[which]);
+    if (replacePatterns.size() != 0) {
+      if (replacePatterns.size() > (size_t) which) {
+        result.append(replacePatterns[which]);
       }
       else if (replaceWasPlainString) {
-        result.append(replace[0]);
+        result.append(replacePatterns[0]);
       }
     }
     
@@ -1460,6 +1490,10 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     // we try to search the next occurance of this string
     auto& search = searchVec[which];
     pos = search->next(status);
+    if (U_FAILURE(status)) {
+      RegisterICUWarning(query, "SUBSTITUTE", status);
+      return AqlValue(AqlValueHintNull());
+    }
     if (pos != USEARCH_DONE) {
       mLen = search->getMatchedLength();
     }
@@ -1482,6 +1516,10 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
         pos = thisPos;
         while ((pos < lastStart) && (pos != USEARCH_DONE)) {
           pos = search->next(status);
+          if (U_FAILURE(status)) {
+            RegisterICUWarning(query, "SUBSTITUTE", status);
+            return AqlValue(AqlValueHintNull());
+          }
           if (pos != USEARCH_DONE) {
             mLen = search->getMatchedLength();
           }
@@ -1641,6 +1679,10 @@ AqlValue Functions::Trim(arangodb::aql::Query* query,
   auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
+  if (U_FAILURE(errorCode)) {
+    RegisterICUWarning(query, "LTRIM", errorCode);
+    return AqlValue(AqlValueHintNull());
+  }
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
@@ -1683,6 +1725,10 @@ AqlValue Functions::LTrim(arangodb::aql::Query* query,
   auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
+  if (U_FAILURE(errorCode)) {
+    RegisterICUWarning(query, "LTRIM", errorCode);
+    return AqlValue(AqlValueHintNull());
+  }
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 
@@ -1719,6 +1765,10 @@ AqlValue Functions::RTrim(arangodb::aql::Query* query,
   auto spaceChars = std::make_unique<UChar32[]>(numWhitespaces);
 
   whitespace.toUTF32(spaceChars.get(), numWhitespaces, errorCode);
+  if (U_FAILURE(errorCode)) {
+    RegisterICUWarning(query, "LTRIM", errorCode);
+    return AqlValue(AqlValueHintNull());
+  }
 
   uint32_t startOffset = 0, endOffset = unicodeStr.length();
 

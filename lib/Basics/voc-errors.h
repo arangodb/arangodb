@@ -263,6 +263,11 @@ constexpr int TRI_ERROR_ARANGO_RECOVERY                                         
 /// Will be raised when a required datafile statistics object was not found.
 constexpr int TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND                    = 1009;
 
+/// 1010: ERROR_ARANGO_ICU_ERROR
+/// ",icu error: %s""
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 1010;
+
 /// 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
 /// "corrupted datafile"
 /// Will be raised when a corruption is detected in a datafile.
