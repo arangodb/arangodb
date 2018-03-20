@@ -10,7 +10,7 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.drop()](../../DataModeling/Collections/CollectionMethods.md#drop)
 * [collection.figures()](../../DataModeling/Collections/CollectionMethods.md#figures)
 * [collection.load()](../../DataModeling/Collections/CollectionMethods.md#load)
-* [collection.properties()](../../DataModeling/Collections/CollectionMethods.md#properties)
+* [collection.properties(options)](../../DataModeling/Collections/CollectionMethods.md#properties)
 * [collection.revision()](../../DataModeling/Collections/CollectionMethods.md#revision)
 * [collection.rotate()](../../DataModeling/Collections/CollectionMethods.md#rotate)
 * [collection.toArray()](../../DataModeling/Documents/DocumentMethods.md#toarray)
