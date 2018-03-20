@@ -1006,8 +1006,6 @@ void transaction::Methods::invokeOnAllElements(
   
   TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
 
-  TRI_ASSERT(isLocked(collection, AccessMode::Type::READ));
-
   collection->invokeOnAllElements(this, callback);
 
   if (lockResult.is(TRI_ERROR_LOCKED)) {
