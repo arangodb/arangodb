@@ -158,6 +158,11 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -262,11 +267,6 @@ constexpr int TRI_ERROR_ARANGO_RECOVERY                                         
 /// "datafile statistics not found"
 /// Will be raised when a required datafile statistics object was not found.
 constexpr int TRI_ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND                    = 1009;
-
-/// 1010: ERROR_ARANGO_ICU_ERROR
-/// ",icu error: %s""
-/// will be raised if icu operations failed
-constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 1010;
 
 /// 1100: ERROR_ARANGO_CORRUPTED_DATAFILE
 /// "corrupted datafile"

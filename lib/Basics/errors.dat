@@ -32,6 +32,7 @@ ERROR_DEADLOCK,29,"deadlock detected","Will be raised when a deadlock is detecte
 ERROR_SHUTTING_DOWN,30,"shutdown in progress","Will be raised when a call cannot succeed because a server shutdown is already in progress."
 ERROR_ONLY_ENTERPRISE,31,"only enterprise version","Will be raised when an enterprise-feature is requested from the community edition."
 ERROR_RESOURCE_LIMIT,32,"resource limit exceeded","Will be raised when the resources used by an operation exceed the configured maximum value."
+ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations failed"
 
 ################################################################################
 ## HTTP error status codes
@@ -68,7 +69,6 @@ ERROR_ARANGO_DATAFILE_UNREADABLE,1006,"datafile unreadable","Internal error that
 ERROR_ARANGO_DATAFILE_EMPTY,1007,"datafile empty","Internal error that will be raised when a datafile is empty."
 ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an error occurred during WAL log file recovery."
 ERROR_ARANGO_DATAFILE_STATISTICS_NOT_FOUND,1009,"datafile statistics not found","Will be raised when a required datafile statistics object was not found."
-ERROR_ARANGO_ICU_ERROR,1010,","icu error: %s","will be raised if icu operations failed"
 
 ################################################################################
 ## External ArangoDB storage errors
