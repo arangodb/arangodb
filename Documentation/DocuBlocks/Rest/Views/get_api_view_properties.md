@@ -7,6 +7,7 @@
 @RESTURLPARAMETERS
 
 @RESTDESCRIPTION
+Returns an object containing the definition of the view identified by *view-name*.
 
 @RESTURLPARAM{view-name,string,required}
 The name of the view.
