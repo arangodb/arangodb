@@ -33,6 +33,10 @@
 #include <stack>
 
 namespace arangodb {
+
+class ClusterComm;
+class Result;
+
 namespace aql {
 
 struct Collection;
@@ -151,22 +155,33 @@ class EngineInfoContainerDBServer {
   void closeSnippet(QueryId id);
 
   // Build the Engines for the DBServer
-  //   * Creates one Query-Entry with all locking information per DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
   //   same DB)
-  //   * Snippets DO NOT lock anything, locking is done in the overall query.
+  //   * All snippets know all locking information for the query.
+  //   * Only the first snippet is responsible to lock.
   //   * After this step DBServer-Collections are locked!
-  void buildEngines(Query* query,
-                    std::unordered_map<std::string, std::string>& queryIds,
-                    std::unordered_set<std::string> const& restrictToShards,
-                    std::unordered_set<ShardID>* lockedShards) const;
+  //
+  //   Error Case: It is guaranteed that for all snippets created during
+  //   this methods a shutdown request is send to all DBServers.
+  //   In case the network is broken and this shutdown request is lost
+  //   the DBServers will clean up their snippets after a TTL.
+  Result buildEngines(Query* query,
+                      std::unordered_map<std::string, std::string>& queryIds,
+                      std::unordered_set<std::string> const& restrictToShards,
+                      std::unordered_set<ShardID>* lockedShards) const;
+
+  // Cleanup all engines creade
+  void cleanupEngines(
+      std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
+      std::unordered_map<std::string, std::string>& queryIds) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(Query* query, GraphNode* node);
 
  private:
-  void handleCollection(Collection const* col, AccessMode::Type const& accessType,
+  void handleCollection(Collection const* col,
+                        AccessMode::Type const& accessType,
                         bool updateCollection);
 
   // @brief Helper to create DBServerInfos and sort collections/shards into

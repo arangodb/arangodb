@@ -31,6 +31,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
+#include "Basics/Result.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -558,7 +559,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
   }
 }
 
-void EngineInfoContainerDBServer::buildEngines(
+Result EngineInfoContainerDBServer::buildEngines(
     Query* query, std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_set<ShardID>* lockedShards) const {
@@ -577,12 +578,20 @@ void EngineInfoContainerDBServer::buildEngines(
 
   if (cc == nullptr) {
     // nullptr only happens on controlled shutdown
-    return;
+    return {TRI_ERROR_SHUTTING_DOWN};
   }
 
   std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
                                       query->vocbase()->name()) +
                         "/_api/aql/setup");
+
+  bool needCleanup = true;
+  auto cleanup = [&]() {
+    if (needCleanup) {
+      cleanupEngines(cc, TRI_ERROR_INTERNAL, query->vocbase()->name(), queryIds);
+    }
+  };
+  TRI_DEFER(cleanup());
 
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
@@ -595,8 +604,10 @@ void EngineInfoContainerDBServer::buildEngines(
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
                                             << infoBuilder.toJson();
 
-    // Now we send to DBServers. We expect a body with {id => engineId} plus 0
-    // => trxEngine
+    // Now we send to DBServers.
+    // We expect a body with {snippets: {id => engineId}, traverserEngines:
+    // [engineId]}}
+
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
                                RequestType::POST, url, infoBuilder.toJson(),
@@ -607,9 +618,7 @@ void EngineInfoContainerDBServer::buildEngines(
                                     << res->getErrorCode() << " -> "
                                     << res->stringifyErrorMessage();
       LOG_TOPIC(TRACE, Logger::AQL) << infoBuilder.toJson();
-      // TODO could not register all engines. Need to cleanup.
-      THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
-                                     res->stringifyErrorMessage());
+      return {res->getErrorCode(), res->stringifyErrorMessage()};
     }
 
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
@@ -619,11 +628,11 @@ void EngineInfoContainerDBServer::buildEngines(
       // TODO could not register all engines. Need to cleanup.
       LOG_TOPIC(ERR, Logger::AQL) << "Recieved error information from "
                                   << it.first << " : " << response.toJson();
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                                     "Unable to deploy query on all required "
-                                     "servers. This can happen during "
-                                     "Failover. Please check: " +
-                                         it.first);
+      return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+              "Unable to deploy query on all required "
+              "servers. This can happen during "
+              "Failover. Please check: " +
+                  it.first};
     }
 
     VPackSlice result = response.get("result");
@@ -631,12 +640,11 @@ void EngineInfoContainerDBServer::buildEngines(
 
     for (auto const& resEntry : VPackObjectIterator(snippets)) {
       if (!resEntry.value.isString()) {
-        // TODO could not register all engines. Need to cleanup.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                                       "Unable to deploy query on all required "
-                                       "servers. This can happen during "
-                                       "Failover. Please check: " +
-                                           it.first);
+        return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                "Unable to deploy query on all required "
+                "servers. This can happen during "
+                "Failover. Please check: " +
+                    it.first};
       }
       queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
     }
@@ -645,11 +653,11 @@ void EngineInfoContainerDBServer::buildEngines(
     if (!travEngines.isNone()) {
       if (!travEngines.isArray()) {
         // TODO could not register all traversal engines. Need to cleanup.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                                       "Unable to deploy query on all required "
-                                       "servers. This can happen during "
-                                       "Failover. Please check: " +
-                                           it.first);
+        return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                "Unable to deploy query on all required "
+                "servers. This can happen during "
+                "Failover. Please check: " +
+                    it.first};
       }
 
       it.second.combineTraverserEngines(it.first, travEngines);
@@ -659,6 +667,8 @@ void EngineInfoContainerDBServer::buildEngines(
 #ifdef USE_ENTERPRISE
   resetSatellites();
 #endif
+  needCleanup = false;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
@@ -684,4 +694,41 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
   }
 
   _graphNodes.emplace_back(node);
+}
+
+/**
+ * @brief Will send a shutdown to all engines registered in the list of
+ * queryIds.
+ * NOTE: This function will ignore all queryids where the key is not of
+ * the expected format
+ * they may be leftovers from Coordinator.
+ * Will also clear the list of queryIds after return.
+ *
+ * @param cc The ClusterComm
+ * @param errorCode error Code to be send to DBServers for logging.
+ * @param dbname Name of the database this query is executed in.
+ * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId) ->
+ * queryid.
+ */
+void EngineInfoContainerDBServer::cleanupEngines(
+    std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
+    std::unordered_map<std::string, std::string>& queryIds) const {
+  std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
+                        "/_api/aql/shutdown/");
+  std::vector<ClusterCommRequest> requests;
+  auto body = std::make_shared<std::string>("{\"code\":" +
+                                            std::to_string(errorCode) + "}");
+  for (auto const& it : queryIds) {
+    auto pos = it.first.find(':');
+    if (pos == it.first.npos) {
+      // We we get here the setup format was not as expected.
+      TRI_ASSERT(false);
+      continue;
+    }
+    auto shardId = it.first.substr(pos + 1);
+    requests.emplace_back(shardId, rest::RequestType::PUT, url + it.second,
+                          body);
+  }
+  cc->fireAndForgetRequests(requests);
+  queryIds.clear();
 }

@@ -63,7 +63,8 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_map<std::string, std::string> const& dbServerQueryIds,
+    std::vector<uint64_t>& coordinatorQueryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
   TRI_ASSERT(lockedShards != nullptr);
@@ -80,7 +81,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     engine->setLockedShards(cpyLockedShards.release());
   }
 
-  engine->createBlocks(_nodes, {}, restrictToShards, queryIds);
+  engine->createBlocks(_nodes, {}, restrictToShards, dbServerQueryIds);
 
   TRI_ASSERT(engine->root() != nullptr);
 
@@ -100,10 +101,7 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
       return {TRI_ERROR_INTERNAL};
     }
 
-    std::string queryId = arangodb::basics::StringUtils::itoa(_id);
-    std::string theID =
-        arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
-    queryIds.emplace(theID, queryId);
+    coordinatorQueryIds.emplace_back(_id);
   }
 
   return {TRI_ERROR_NO_ERROR};
@@ -145,18 +143,15 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_map<std::string, std::string>& dbServerQueryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
-  bool needCleanupOnExit = true;
+  std::vector<uint64_t> coordinatorQueryIds{};
   auto cleanup = [&]() {
-    if (needCleanupOnExit) {
-      for (auto const& it : queryIds) {
-        QueryId id = basics::StringUtils::uint64(it.second);
-        registry->destroy(dbname, id, TRI_ERROR_INTERNAL);
-      }
+    for (auto const& it : coordinatorQueryIds) {
+      registry->destroy(dbname, it, TRI_ERROR_INTERNAL);
     }
   };
   TRI_DEFER(cleanup());
@@ -173,8 +168,9 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
         }
       }
       try {
-        auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
-                                    lockedShards);
+        auto res = info.buildEngine(localQuery, registry, dbname,
+                                    restrictToShards, dbServerQueryIds,
+                                    coordinatorQueryIds, lockedShards);
         if (!res.ok()) {
           if (!first) {
             // We need to clean up this query.
@@ -205,6 +201,7 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   }
 
   // This deactivates the defered cleanup.
-  needCleanupOnExit = false;
+  // From here on we rely on the AQL shutdown mechanism.
+  coordinatorQueryIds.clear();
   return query->engine();
 }

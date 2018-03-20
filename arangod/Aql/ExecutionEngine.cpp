@@ -28,17 +28,17 @@
 #include "Aql/ClusterBlocks.h"
 #include "Aql/CollectBlock.h"
 #include "Aql/CollectNode.h"
-#include "Aql/Collection.h"
 #include "Aql/CollectOptions.h"
+#include "Aql/Collection.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServer.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 // #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/GraphNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
-#include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/ShortestPathBlock.h"
@@ -100,7 +100,8 @@ void ExecutionEngine::createBlocks(
     std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
     RemoteNode const* remoteNode = nullptr;
 
-    // We need to traverse the nodes from back to front, the walker collects them
+    // We need to traverse the nodes from back to front, the walker collects
+    // them
     // in the wrong ordering
     for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
       auto en = *it;
@@ -112,7 +113,8 @@ void ExecutionEngine::createBlocks(
       }
 
       // for all node types but REMOTEs, we create blocks
-      std::unique_ptr<ExecutionBlock> uptrEb(en->createBlock(*this, cache, includedShards));
+      std::unique_ptr<ExecutionBlock> uptrEb(
+          en->createBlock(*this, cache, includedShards));
 
       if (uptrEb == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -374,7 +376,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   Query* _query;
 
  public:
-  CoordinatorInstanciator(Query* query) : _isCoordinator(true), _lastClosed(0), _query(query) {}
+  CoordinatorInstanciator(Query* query)
+      : _isCoordinator(true), _lastClosed(0), _query(query) {}
 
   ~CoordinatorInstanciator() {}
 
@@ -431,27 +434,47 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        * Creates the ExecutionBlocks
   ///        * Injects all Parts but the First one into QueryRegistery
   ///        For DBServer Parts
-  ///        * Creates one Query-Entry with all locking information per DBServer
   ///        * Creates one Query-Entry for each Snippet per Shard (multiple on
-  ///        the same DB)
-  ///        * Snippets DO NOT lock anything, locking is done in the overall
-  ///        query.
+  ///        the same DB) Each Snippet knows all details about locking.
+  ///        * Only the first snippet does lock the collections.
+  ///        other snippets are not responsible for any locking.
   ///        * After this step DBServer-Collections are locked!
   ///
+  ///        Error Case:
+  ///        * It is guaranteed that all DBServers will be send a request
+  ///        to remove query snippets / locks they have locally created.
+  ///        * No Engines for this query will remain in the Coordinator
+  ///        Registry.
+  ///        * In case the Network is broken, all non-reachable DBServers will
+  ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngineResult buildEngines(QueryRegistry* registry,
-                                     std::unordered_set<ShardID>* lockedShards) {
+  ExecutionEngineResult buildEngines(
+      QueryRegistry* registry, std::unordered_set<ShardID>* lockedShards) {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
-    _dbserverParts.buildEngines(_query, queryIds, _query->queryOptions().shardIds,
-                                lockedShards);
+    bool needsErrorCleanup = true;
+    auto cleanup = [&]() {
+      if (needsErrorCleanup) {
+        _dbserverParts.cleanupEngines(ClusterComm::instance(),
+                                      TRI_ERROR_INTERNAL,
+                                      _query->vocbase()->name(), queryIds);
+      }
+    };
+    TRI_DEFER(cleanup());
+
+    _dbserverParts.buildEngines(_query, queryIds,
+                                _query->queryOptions().shardIds, lockedShards);
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    return _coordinatorParts.buildEngines(
+    auto res = _coordinatorParts.buildEngines(
         _query, registry, _query->vocbase()->name(),
         _query->queryOptions().shardIds, queryIds, lockedShards);
+    if (res.ok()) {
+      needsErrorCleanup = false;
+    }
+    return res;
   }
 };
 
@@ -518,7 +541,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         auto result = inst->buildEngines(queryRegistry, lockedShards.get());
         if (!result.ok()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+          THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
+                                         result.errorMessage());
         }
         // Every engine has copied the list of locked shards anyways. Simply
         // throw this list away.
@@ -595,7 +619,8 @@ void ExecutionEngine::addBlock(ExecutionBlock* block) {
 }
 
 /// @brief add a block to the engine
-ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock>&& block) {
+ExecutionBlock* ExecutionEngine::addBlock(
+    std::unique_ptr<ExecutionBlock>&& block) {
   TRI_ASSERT(block != nullptr);
 
   _blocks.emplace_back(block.get());
