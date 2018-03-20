@@ -185,9 +185,18 @@ database. The *_system* database itself cannot be dropped.
 Databases are dropped asynchronously, and will be physically removed if
 all clients have disconnected and references have been garbage-collected.
 
+### Engine
+
+retrieve storage engine used by the server
+`db._engine()`
+
+Returns the name of the storage engine in use (`mmfiles` or `rocksdb`), as well
+as a list of supported features (types of indexes and
+[dfdb](../../Troubleshooting/DatafileDebugger.md)).
+
 ### Engine statistics
 
-retrieve statistics related to the storage engine-rocksdb
+retrieve statistics related to the storage engine (rocksdb)
 `db._engineStats()`
 
 Returns some statistics related to storage engine activity, including figures

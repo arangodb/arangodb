@@ -29,6 +29,7 @@ The following methods exist on the collection object (returned by *db.name*):
 
 * [collection.all()](../../DataModeling/Documents/DocumentMethods.md#all)
 * [collection.any()](../../DataModeling/Documents/DocumentMethods.md#any)
+* [collection.byExample(example)](../../DataModeling/Documents/DocumentMethods.md#query-by-example)
 * [collection.closedRange(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#closed-range)
 * [collection.document(object)](../../DataModeling/Documents/DocumentMethods.md#document)
 * [collection.documents(keys)](../../DataModeling/Documents/DocumentMethods.md#lookup-by-keys)
@@ -40,9 +41,9 @@ The following methods exist on the collection object (returned by *db.name*):
 * [collection.edges(vertices)](../../DataModeling/Documents/DocumentMethods.md#edges)
 * [collection.iterate(iterator,options)](../../DataModeling/Documents/DocumentMethods.md#misc)
 * [collection.outEdges(vertex-id)](../../DataModeling/Documents/DocumentMethods.md#edges)
-* [collection.queryByExample(example)](../../DataModeling/Documents/DocumentMethods.md#query-by-example)
 * [collection.range(attribute, left, right)](../../DataModeling/Documents/DocumentMethods.md#range)
 * [collection.remove(selector)](../../DataModeling/Documents/DocumentMethods.md#remove)
+* [collection.removeByExample(example)](../../DataModeling/Documents/DocumentMethods.md#remove-by-example)
 * [collection.removeByKeys(keys)](../../DataModeling/Documents/DocumentMethods.md#remove-by-keys)
 * [collection.rename()](../../DataModeling/Collections/CollectionMethods.md#rename)
 * [collection.replace(selector, data)](../../DataModeling/Documents/DocumentMethods.md#replace)

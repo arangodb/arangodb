@@ -260,6 +260,7 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  type()                                type of the collection            ' + '\n' +
   '  truncate()                            delete all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
+  '  properties(<data>)                    change collection properties      ' + '\n' +
   '  drop()                                delete a collection               ' + '\n' +
   '  load()                                load a collection                 ' + '\n' +
   '  unload()                              unload a collection               ' + '\n' +
