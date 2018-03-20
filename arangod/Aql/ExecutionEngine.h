@@ -29,11 +29,11 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
-#include "Aql/QueryRegistry.h"
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
+class QueryRegistry;
 
 class ExecutionEngine {
  public:
@@ -41,27 +41,33 @@ class ExecutionEngine {
   explicit ExecutionEngine(Query* query);
 
   /// @brief destroy the engine, frees all assigned blocks
-  ~ExecutionEngine();
+  TEST_VIRTUAL ~ExecutionEngine();
 
  public:
   // @brief create an execution engine from a plan
   static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
                                               ExecutionPlan*, bool);
 
+  TEST_VIRTUAL void createBlocks(
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const& includedShards,
+      std::unordered_set<std::string> const& restrictToShards,
+      std::unordered_map<std::string, std::string> const& queryIds);
+
   /// @brief get the root block
-  ExecutionBlock* root() const {
+  TEST_VIRTUAL ExecutionBlock* root() const {
     TRI_ASSERT(_root != nullptr);
     return _root;
   }
 
   /// @brief set the root block
-  void root(ExecutionBlock* root) {
+  TEST_VIRTUAL void root(ExecutionBlock* root) {
     TRI_ASSERT(root != nullptr);
     _root = root;
   }
 
   /// @brief get the query
-  Query* getQuery() const { return _query; }
+  TEST_VIRTUAL Query* getQuery() const { return _query; }
 
   /// @brief initializeCursor, could be called multiple times
   int initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -104,7 +110,7 @@ class ExecutionEngine {
   inline int64_t remaining() const { return _root->remaining(); }
 
   /// @brief add a block to the engine
-  void addBlock(ExecutionBlock*);
+  TEST_VIRTUAL void addBlock(ExecutionBlock*);
 
   /// @brief add a block to the engine
   /// @returns added block
@@ -119,7 +125,7 @@ class ExecutionEngine {
   RegisterId resultRegister() const { return _resultRegister; }
 
   /// @brief _lockedShards
-  void setLockedShards(std::unordered_set<std::string>* lockedShards) {
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string>* lockedShards) {
     _lockedShards = lockedShards;
   }
 
