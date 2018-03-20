@@ -32,6 +32,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -149,6 +150,8 @@ struct IResearchIndexSetup {
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
+    auto d = static_cast<arangodb::DatabasePathFeature*>(features.back().first);
+    d->setDirectory(TRI_GetTempPath());
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // QueryRegistryFeature required to be present before calling TRI_vocbase_t(...)
