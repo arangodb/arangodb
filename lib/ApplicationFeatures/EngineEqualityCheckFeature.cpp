@@ -35,7 +35,7 @@ EngineEqualityCheckFeature::EngineEqualityCheckFeature(
     : ApplicationFeature(server, "EngineEqualityCheck") {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("Cluster");
+  startsAfter("Bootstrap");
 }
 
 bool equalStorageEngines(){

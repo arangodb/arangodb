@@ -128,12 +128,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     application_features::ApplicationServer server(options, SBIN_DIRECTORY);
 
     std::vector<std::string> nonServerFeatures = {
-        "Action",        "Agency",
-        "Cluster",       "Daemon",
-        "FoxxQueues",    "GeneralServer",
-        "Greetings",     "LoggerBufferFeature",
-        "Server",        "SslServer",
-        "Statistics",    "Supervisor"};
+        "Action",              "Agency",
+        "Cluster",             "Daemon",
+        "EngineEqualityCheck", "FoxxQueues",
+        "GeneralServer",       "Greetings",
+        "LoggerBufferFeature", "Server",
+        "SslServer",           "Statistics",
+        "Supervisor"};
 
     int ret = EXIT_FAILURE;
 
