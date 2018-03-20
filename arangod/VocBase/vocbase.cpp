@@ -386,27 +386,27 @@ void TRI_vocbase_t::registerView(
 bool TRI_vocbase_t::unregisterView(
     std::shared_ptr<arangodb::LogicalView> view) {
   TRI_ASSERT(view != nullptr);
-std::cerr << __LINE__ << std::endl;
+
   // pre-condition
   checkCollectionInvariants();
-std::cerr << __LINE__ << std::endl;
+
   auto itr = _dataSourceById.find(view->id());
-std::cerr << __LINE__ << std::endl;
+
   if (itr == _dataSourceById.end()
       || !std::dynamic_pointer_cast<arangodb::LogicalView>(itr->second)) {
     return true; // no such view
   }
-std::cerr << __LINE__ << std::endl;
+
   // only if we find the collection by its id, we can delete it by name
   _dataSourceById.erase(itr);
-std::cerr << __LINE__ << std::endl;
+
     // this is because someone else might have created a new view with the
     // same name, but with a different id
   _dataSourceByName.erase(view->name());
-std::cerr << __LINE__ << std::endl;
+
   // post-condition
   checkCollectionInvariants();
-std::cerr << __LINE__ << std::endl;
+
   return true;
 }
 
@@ -1619,14 +1619,14 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // Let's try to persist it.
     view->persistPhysicalView();
-std::cerr << __LINE__ << std::endl;
+
     // And lets open it.
     view->getImplementation()->open();
-std::cerr << __LINE__ << std::endl;
+
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
-  } catch (...) {std::cerr << __LINE__ << std::endl;
-    unregisterView(view);std::cerr << __LINE__ << std::endl;
+  } catch (...) {
+    unregisterView(view);
     throw;
   }
 }

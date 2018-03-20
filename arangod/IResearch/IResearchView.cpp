@@ -1716,10 +1716,10 @@ void IResearchView::open() {
         }
       }
     }
-  } catch (std::exception const& e) {std::cerr << __LINE__ << std::endl;
+  } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
-      << "caught exception while opening iResearch view '" << id() << "': " << e.what();std::cerr << __LINE__ << std::endl;
-    IR_LOG_EXCEPTION();std::cerr << __LINE__ << std::endl;
+      << "caught exception while opening iResearch view '" << id() << "': " << e.what();
+    IR_LOG_EXCEPTION();
     throw;
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
