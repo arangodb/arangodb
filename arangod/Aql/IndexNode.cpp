@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/Query.h"
+#include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -63,7 +64,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _reverse(base.get("reverse").getBoolean()) {
-
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 

@@ -697,6 +697,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
       col->id(),
       AccessMode::Type::WRITE
     );
+
     Result res = trx.begin();
 
     if (!res.ok()) {

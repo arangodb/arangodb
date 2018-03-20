@@ -716,6 +716,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -742,6 +743,7 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return 0;
   }
@@ -777,10 +779,12 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  TRI_ASSERT(_posForClient.size() > clientId);
   std::pair<size_t, size_t> pos = _posForClient.at(clientId);
 
   // pull more blocks from dependency if necessary . . .
@@ -912,10 +916,12 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
 
+  TRI_ASSERT(_distBuffer.size() > clientId);
   if (!_distBuffer.at(clientId).empty()) {
     return true;
   }
@@ -942,6 +948,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;

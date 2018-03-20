@@ -153,6 +153,7 @@ if (USE_IRESEARCH)
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
+  set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
   set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
   list(APPEND CMAKE_MODULE_PATH
     "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)

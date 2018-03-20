@@ -41,8 +41,9 @@
 #ifdef USE_ENTERPRISE
   #define ENTERPRISE_VIRT virtual
 #else
-  #define ENTERPRISE_VIRT
+  #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
+
 
 namespace arangodb {
 
@@ -308,7 +309,7 @@ class Methods {
                                       OperationOptions const& options);
 
   /// @brief count the number of documents in a collection
-  ENTERPRISE_VIRT OperationResult count(std::string const& collectionName, bool aggregate);
+  virtual OperationResult count(std::string const& collectionName, bool aggregate);
 
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
@@ -471,11 +472,13 @@ class Methods {
                                            OperationOptions const& options);
 
 
+ protected:
 
-  OperationResult countCoordinator(std::string const& collectionName, bool aggregate);
+  OperationResult countCoordinator(std::string const& collectionName,
+                                   bool aggregate, bool sendNoLockHeader);
+
   OperationResult countLocal(std::string const& collectionName);
 
- protected:
   /// @brief return the transaction collection for a document collection
   ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
                                AccessMode::Type type = AccessMode::Type::READ) const;

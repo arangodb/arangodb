@@ -374,12 +374,19 @@ SECTION("test_async_index") {
   // populate collections asynchronously
   {
     std::thread thread0([collection0, &resThread0]()->void {
-      irs::utf8_path resource;
-      resource/=irs::string_ref(IResearch_test_resource_dir);
-      resource/=irs::string_ref("simple_sequential.json");
+      arangodb::velocypack::Builder builder;
+
+      try {
+        irs::utf8_path resource;
+
+        resource/=irs::string_ref(IResearch_test_resource_dir);
+        resource/=irs::string_ref("simple_sequential.json");
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      } catch (...) {
+        return; // velocyPackFromFile(...) may throw exception
+      }
 
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 40, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
       resThread0 = slice.isArray();
       if (!resThread0) return;
@@ -405,12 +412,19 @@ SECTION("test_async_index") {
     });
 
     std::thread thread1([collection1, &resThread1]()->void {
-      irs::utf8_path resource;
-      resource/=irs::string_ref(IResearch_test_resource_dir);
-      resource/=irs::string_ref("simple_sequential.json");
+      arangodb::velocypack::Builder builder;
+
+      try {
+        irs::utf8_path resource;
+
+        resource/=irs::string_ref(IResearch_test_resource_dir);
+        resource/=irs::string_ref("simple_sequential.json");
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      } catch (...) {
+        return; // velocyPackFromFile(...) may throw exception
+      }
 
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 50, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
       resThread1 = slice.isArray();
       if (!resThread1) return;

@@ -86,12 +86,12 @@ class Query {
         std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
-  virtual ~Query();
+  TEST_VIRTUAL ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
 
@@ -107,7 +107,7 @@ class Query {
     return _profile.get();
   }
 
-  QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
@@ -203,15 +203,15 @@ class Query {
   RegexCache* regexCache() { return &_regexCache; }
 
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() const { return _engine.get(); }
+  TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void setEngine(ExecutionEngine* engine);
+  TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
   
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
-  virtual transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
