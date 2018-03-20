@@ -772,6 +772,7 @@ int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
                                         std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(result == nullptr && skipped == 0);
+  TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 
@@ -936,6 +937,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
+  TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 

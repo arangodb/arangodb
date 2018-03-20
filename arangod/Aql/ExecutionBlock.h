@@ -150,7 +150,7 @@ class ExecutionBlock {
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
-  /// return a block of at atMost items, however, it may return
+  /// return a block of at most atMost items, however, it may return
   /// less (for example if there are not enough items to come). However,
   /// if it returns an actual block, it must contain at least one item.
   virtual AqlItemBlock* getSome(size_t atMost);
@@ -191,7 +191,7 @@ class ExecutionBlock {
  public:
   /// @brief getSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
-  /// skip a block of at atMost items, however, it may skip
+  /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
   virtual size_t skipSome(size_t atMost);

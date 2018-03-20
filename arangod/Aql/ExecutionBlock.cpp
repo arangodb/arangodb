@@ -191,7 +191,7 @@ void ExecutionBlock::traceGetSomeEnd(AqlItemBlock const* result) const {
 
 /// @brief getSome, gets some more items, semantic is as follows: not
 /// more than atMost items may be delivered. The method tries to
-/// return a block of at atMost items, however, it may return
+/// return a block of at most atMost items, however, it may return
 /// less (for example if there are not enough items to come). However,
 /// if it returns an actual block, it must contain at least one item.
 AqlItemBlock* ExecutionBlock::getSome(size_t atMost) {
@@ -301,6 +301,7 @@ bool ExecutionBlock::getBlock(size_t atMost) {
 /// cleanup can use this method, internal use only
 AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
+  TRI_ASSERT(atMost > 0);
   size_t skipped = 0;
 
   AqlItemBlock* result = nullptr;
@@ -398,7 +399,7 @@ int ExecutionBlock::getOrSkipSome(size_t atMost, bool skipping,
       if (skipping) {
         size_t numActuallySkipped = 0;
         _dependencies[0]->skip(atMost - skipped, numActuallySkipped);
-        skipped = atMost;
+        skipped += numActuallySkipped;
         return TRI_ERROR_NO_ERROR;
       } else {
         if (!getBlock(atMost - skipped)) {
