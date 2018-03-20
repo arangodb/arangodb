@@ -588,7 +588,8 @@ Result EngineInfoContainerDBServer::buildEngines(
   bool needCleanup = true;
   auto cleanup = [&]() {
     if (needCleanup) {
-      cleanupEngines(cc, TRI_ERROR_INTERNAL, query->vocbase()->name(), queryIds);
+      cleanupEngines(cc, TRI_ERROR_INTERNAL, query->vocbase()->name(),
+                     queryIds);
     }
   };
   TRI_DEFER(cleanup());
@@ -713,8 +714,9 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
 void EngineInfoContainerDBServer::cleanupEngines(
     std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
     std::unordered_map<std::string, std::string>& queryIds) const {
-  std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-                        "/_api/aql/shutdown/");
+  // Shutdown query snippets
+  std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
+                  "/_api/aql/shutdown/");
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>("{\"code\":" +
                                             std::to_string(errorCode) + "}");
@@ -729,6 +731,19 @@ void EngineInfoContainerDBServer::cleanupEngines(
     requests.emplace_back(shardId, rest::RequestType::PUT, url + it.second,
                           body);
   }
+
+  // Shutdown traverser engines
+  url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
+                  "/_internal/traverser/";
+  std::shared_ptr<std::string> noBody;
+  for (auto const& gn : _graphNodes) {
+    auto allEngines = gn->engines();
+    for (auto const& engine : *allEngines) {
+      requests.emplace_back(engine.first, rest::RequestType::DELETE_REQ,
+                            url + basics::StringUtils::itoa(engine.second), noBody);
+    }
+  }
+
   cc->fireAndForgetRequests(requests);
   queryIds.clear();
 }
