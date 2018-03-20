@@ -170,7 +170,20 @@ class EngineInfoContainerDBServer {
                       std::unordered_set<std::string> const& restrictToShards,
                       std::unordered_set<ShardID>* lockedShards) const;
 
-  // Cleanup all engines creade
+/**
+ * @brief Will send a shutdown to all engines registered in the list of
+ * queryIds.
+ * NOTE: This function will ignore all queryids where the key is not of
+ * the expected format
+ * they may be leftovers from Coordinator.
+ * Will also clear the list of queryIds after return.
+ *
+ * @param cc The ClusterComm
+ * @param errorCode error Code to be send to DBServers for logging.
+ * @param dbname Name of the database this query is executed in.
+ * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId) ->
+ * queryid.
+ */
   void cleanupEngines(
       std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
       std::unordered_map<std::string, std::string>& queryIds) const;
