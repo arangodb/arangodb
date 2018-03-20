@@ -491,7 +491,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
               TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
               pair->second.inaccessibleShards.insert(
-                  collection.second->getCollection()->cid_as_string());
+                  std::to_string(collection.second->getCollection()->id()));
             }
 #endif
           }
@@ -523,7 +523,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
             TRI_ASSERT(trxOps.skipInaccessibleCollections);
             pair->second.inaccessibleShards.insert(shard);
             pair->second.inaccessibleShards.insert(
-                it->getCollection()->cid_as_string());
+                std::to_string(it->getCollection()->id()));
           }
 #endif
         }

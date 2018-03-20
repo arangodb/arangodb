@@ -42,7 +42,7 @@ MMFilesTransactionContextData::~MMFilesTransactionContextData() {
 
 /// @brief pin data for the collection
 void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
-  TRI_voc_cid_t const cid = collection->cid();
+  TRI_voc_cid_t const cid = collection->id();
 
   if (_lastPinnedCid == cid) {
     // already pinned data for this collection

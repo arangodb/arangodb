@@ -258,7 +258,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -266,7 +266,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);

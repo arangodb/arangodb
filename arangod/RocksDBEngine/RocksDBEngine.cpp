@@ -1091,12 +1091,12 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Prepare collection remove batch
   RocksDBLogValue logValue = RocksDBLogValue::CollectionDrop(
-      vocbase->id(), collection->cid(),
-      StringRef(collection->globallyUniqueId()));
+    vocbase->id(), collection->id(), StringRef(collection->globallyUniqueId())
+  );
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   RocksDBKey key;
-  key.constructCollection(vocbase->id(), collection->cid());
+  key.constructCollection(vocbase->id(), collection->id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
   rocksdb::Status res = _db->Write(wo, &batch);
 
@@ -1115,7 +1115,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(collection->cid());
+    _collectionMap.erase(collection->id());
   }
 
   // delete documents
@@ -1200,9 +1200,14 @@ arangodb::Result RocksDBEngine::renameCollection(
   VPackBuilder builder =
       collection->toVelocyPackIgnore({"path", "statusString"}, true, true);
   int res = writeCreateCollectionMarker(
-      vocbase->id(), collection->cid(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        StringRef(oldName)));
+    vocbase->id(),
+    collection->id(),
+    builder.slice(),
+    RocksDBLogValue::CollectionRename(
+      vocbase->id(), collection->id(), StringRef(oldName)
+    )
+  );
+
   return arangodb::Result(res);
 }
 
@@ -1645,10 +1650,8 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
-
-      std::string type = it.get("type").copyString();
-      auto& dataSourceType =
-        arangodb::LogicalDataSource::Type::emplace(std::move(type));
+      arangodb::velocypack::StringRef type(it.get("type"));
+      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
       auto& creator = viewTypesFeature->factory(dataSourceType);
 
       if (!creator) {
@@ -1697,13 +1700,11 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
-      auto uniqCol = std::make_unique<arangodb::LogicalCollection>(
-          vocbase.get(), it, false);
+      auto uniqCol =
+        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
-      // The vocbase has taken over control
-      uniqCol.release();
+      StorageEngine::registerCollection(vocbase.get(), uniqCol);
 
       auto physical =
           static_cast<RocksDBCollection*>(collection->getPhysical());
@@ -2016,3 +2017,7 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
 }
 
 }  // namespace arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

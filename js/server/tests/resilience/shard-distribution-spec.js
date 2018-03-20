@@ -283,7 +283,7 @@ describe('Shard distribution', function () {
         var shards = Object.keys(cinfo.shards);
         var replFactor = cinfo.shards[shards[0]].length;
         var count = 0;
-        while (++count <= 180) {
+        while (++count <= 600) {
           var ccinfo = shards.map(
             s => global.ArangoClusterInfo.getCollectionInfoCurrent(
               "_system", collection, s)
@@ -292,10 +292,15 @@ describe('Shard distribution', function () {
           if (_.every(replicas, x => x.length === replFactor)) {
             return true;
           }
+          if (count % 60 === 0) {
+            console.info("waitForSynchronousReplication: cinfo:",
+                JSON.stringify(cinfo), ", replicas: ",
+                JSON.stringify(replicas));
+          }
           wait(0.5);
           global.ArangoClusterInfo.flush();
         }
-        console.error(`Collection "${collection}" failed to get all followers in sync after 60 sec`);
+        console.error(`Collection "${collection}" failed to get all followers in sync after 600 sec`);
         return false;
       };
  

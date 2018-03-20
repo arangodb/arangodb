@@ -24,13 +24,14 @@
 #include "IResearchOrderFactory.h"
 
 #include "AqlHelper.h"
-#include "AttributeScorer.h"
 #include "IResearchAttributes.h"
 #include "VelocyPackHelper.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+
+#include "search/scorers.hpp"
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        OrderFactory dependencies

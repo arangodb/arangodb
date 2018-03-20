@@ -245,12 +245,16 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("InitDatabase");
   startsAfter("Scheduler");
   startsAfter("StorageEngine");
+  
+  DATABASE = nullptr;
 }
 
 DatabaseFeature::~DatabaseFeature() {
   // clean up
   auto p = _databasesLists.load();
   delete p;
+  
+  DATABASE = nullptr;
 }
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -498,7 +502,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
                                                TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(true, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -556,7 +560,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
                                     TRI_vocbase_t*& result) {
   result = nullptr;
 
-  if (!TRI_vocbase_t::IsAllowedName(false, name)) {
+  if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(name))) {
     events::CreateDatabase(name, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
   }
@@ -672,7 +676,10 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
   result = vocbase.release();
   events::CreateDatabase(name, res);
     
-  DatabaseFeature::DATABASE->versionTracker()->track("create database");
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("create database");
+  }
 
   return res;
 }
@@ -791,7 +798,10 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
 
   events::DropDatabase(name, res);
   
-  DatabaseFeature::DATABASE->versionTracker()->track("drop database");
+  if (DatabaseFeature::DATABASE != nullptr &&
+      DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+    DatabaseFeature::DATABASE->versionTracker()->track("drop database");
+  }
 
   return res;
 }

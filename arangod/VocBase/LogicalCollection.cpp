@@ -145,12 +145,17 @@ arangodb::LogicalDataSource::Type const& ReadType(
     std::string const& key,
     TRI_col_type_e def
 ) {
-  static const auto& document =
-    arangodb::LogicalDataSource::Type::emplace("document");
-  static const auto& edge = arangodb::LogicalDataSource::Type::emplace("edge");
+  static const auto& document = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("document")
+  );
+  static const auto& edge = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("edge")
+  );
 
   // arbitrary system-global value for unknown
-  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace("");
+  static const auto& unknown = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef("")
+  );
 
   switch (Helper::readNumericValue<TRI_col_type_e, int>(info, key, def)) {
    case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
@@ -201,17 +206,17 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
   TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
-// @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
                                      VPackSlice const& info,
                                      bool isAStub)
     : LogicalDataSource(
+        category(),
         ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
         vocbase,
         ReadCid(info),
-        ReadPlanId(info, ReadCid(info)),
+        ReadPlanId(info, 0),
         ReadStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
       ),
@@ -224,7 +229,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
-      _isSystem(IsSystemName(ReadStringValue(info, "name", "")) &&
+      _isSystem(TRI_vocbase_t::IsSystemName(ReadStringValue(info, "name", "")) &&
                 Helper::readBooleanValue(info, "isSystem", false)),
       _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version",
@@ -243,7 +248,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _planVersion(0) {
   TRI_ASSERT(info.isObject());
 
-  if (!IsAllowedName(info)) {
+  if (!TRI_vocbase_t::IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -416,6 +421,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
 LogicalCollection::~LogicalCollection() {}
 
+/*static*/ LogicalDataSource::Category const& LogicalCollection::category() noexcept {
+  static const Category category;
+
+  return category;
+}
+
 void LogicalCollection::prepareIndexes(VPackSlice indexesSlice) {
   TRI_ASSERT(_physical != nullptr);
 
@@ -442,99 +453,12 @@ void LogicalCollection::invokeOnAllElements(
   _physical->invokeOnAllElements(trx, callback);
 }
 
-bool LogicalCollection::IsAllowedName(VPackSlice parameters) {
-  bool allowSystem = Helper::readBooleanValue(parameters, "isSystem", false);
-  std::string name = ReadStringValue(parameters, "name", "");
-  if (name.empty()) {
-    return false;
-  }
-
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (ptr = name.c_str(); *ptr; ++ptr) {
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-             ('A' <= *ptr && *ptr <= 'Z');
-      } else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}
-
-/// @brief checks if a collection name is allowed
-/// Returns true if the name is allowed and false otherwise
-bool LogicalCollection::IsAllowedName(bool allowSystem,
-                                      std::string const& name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (ptr = name.c_str(); *ptr; ++ptr) {
-    if (length == 0) {
-      if (allowSystem) {
-        ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-             ('A' <= *ptr && *ptr <= 'Z');
-      } else {
-        ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-      }
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
-}
-
 // @brief Return the number of documents in this collection
 uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx) const {
   return getPhysical()->numberDocuments(trx);
 }
 
 uint32_t LogicalCollection::internalVersion() const { return _internalVersion; }
-
-std::string LogicalCollection::cid_as_string() const {
-  return std::to_string(id());
-}
-
-std::string LogicalCollection::planId_as_string() const {
-  return std::to_string(planId());
-}
 
 TRI_col_type_e LogicalCollection::type() const { return _type; }
 
@@ -560,11 +484,6 @@ std::vector<std::string> const& LogicalCollection::avoidServers() const {
 
 void LogicalCollection::avoidServers(std::vector<std::string> const& a) {
   _avoidServers = a;
-}
-
-std::string LogicalCollection::dbName() const {
-  TRI_ASSERT(vocbase());
-  return vocbase()->name();
 }
 
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
@@ -1093,7 +1012,10 @@ std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() cons
     auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();
     builder->close();
-    int res = figuresOnCoordinator(dbName(), cid_as_string(), builder);
+    TRI_ASSERT(vocbase());
+
+    int res =
+      figuresOnCoordinator(vocbase()->name(), std::to_string(id()), builder);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1318,7 +1240,7 @@ VPackSlice LogicalCollection::keyOptions() const {
 
 ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
   auto ctx = transaction::StandaloneContext::Create(vocbase());
-  SingleCollectionTransaction trx(ctx, cid(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, id(), AccessMode::Type::READ);
 
   Result res = trx.begin();
 

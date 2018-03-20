@@ -406,7 +406,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     } else {
       // on dbserver
       _dbserverParts.addNode(en);
-
       if (nodeType == ExecutionNode::REMOTE) {
         _isCoordinator = true;
         _coordinatorParts.openSnippet(en->id());

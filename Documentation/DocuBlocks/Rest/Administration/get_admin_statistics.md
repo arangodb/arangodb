@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/statistics, Read the statistics}
 
 @RESTDESCRIPTION
-
 Returns the statistics information. The returned object contains the
 statistics figures grouped together according to the description returned by
 *_admin/statistics-description*. For instance, to access a figure *userTime*

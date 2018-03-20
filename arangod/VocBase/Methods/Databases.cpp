@@ -32,12 +32,13 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/ExecContext.h"
-#include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
+#include "V8Server/v8-user-structures.h"
+#include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
 #include <v8.h>
@@ -80,7 +81,8 @@ std::vector<std::string> Databases::list(std::string const& user) {
       
       AuthenticationFeature* af = AuthenticationFeature::instance();
       std::vector<std::string> names;
-      std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
+      std::vector<std::string> dbs =
+          databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
         if (!af->isActive() ||
             af->userManager()->databaseAuthLevel(user, db) > auth::Level::NONE) {
@@ -176,7 +178,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     } else if (user.hasKey("user")) {
       name = user.get("user");
     }
-    if (!name.isString()) { // empty names are silently ignored later
+    if (!name.isString()) {  // empty names are silently ignored later
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -211,8 +213,9 @@ arangodb::Result Databases::create(std::string const& dbName,
     return Result(TRI_ERROR_INTERNAL);
   }
 
+  UpgradeResult upgradeRes;
   if (ServerState::instance()->isCoordinator()) {
-    if (!TRI_vocbase_t::IsAllowedName(false, dbName)) {
+    if (!TRI_vocbase_t::IsAllowedName(false, arangodb::velocypack::StringRef(dbName))) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
     }
 
@@ -269,35 +272,12 @@ arangodb::Result Databases::create(std::string const& dbName,
           });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "could not acquire V8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-    TRI_GET_GLOBALS();
-
-    // now run upgrade and copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
+    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
 
-    // initialize database
-    bool allowUseDatabase = v8g->_allowUseDatabase;
-    v8g->_allowUseDatabase = true;
-    // execute script
-    V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-        isolate, isolate->GetCurrentContext(),
-        "server/bootstrap/coordinator-database.js");
-    v8g->_allowUseDatabase = allowUseDatabase;
-
-  } else {
-    // options for database (currently only allows setting "id" for testing
-    // purposes)
+  } else { // Single, DBServer, Agency
+    // options for database (currently only allows setting "id"
+    // for testing purposes)
     TRI_voc_tick_t id = 0;
     if (options.hasKey("id")) {
       id = basics::VelocyPackHelper::stringUInt64(options, "id");
@@ -308,8 +288,11 @@ arangodb::Result Databases::create(std::string const& dbName,
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
     }
+  
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(!vocbase->isDangling());
+
+    TRI_DEFER(vocbase->release());
 
     // we need to add the permissions before running the upgrade script
     if (ServerState::instance()->isSingleServer() &&
@@ -323,58 +306,22 @@ arangodb::Result Databases::create(std::string const& dbName,
            });
     }
 
-    TRI_ASSERT(V8DealerFeature::DEALER != nullptr);
-
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
-    if (ctx == nullptr) {
-      return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
-    }
-    TRI_DEFER(V8DealerFeature::DEALER->exitContext(ctx));
-    v8::Isolate* isolate = ctx->_isolate;
-    v8::HandleScope scope(isolate);
-
-    // copy users into context
-    TRI_ASSERT(sanitizedUsers.slice().isArray());
-    v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
-                 TRI_VPackToV8(isolate, sanitizedUsers.slice()));
-    isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
-
-    // switch databases
-    {
-      TRI_GET_GLOBALS();
-      TRI_vocbase_t* orig = v8g->_vocbase;
-      TRI_ASSERT(orig != nullptr);
-
-      v8g->_vocbase = vocbase;
-
-      // initialize database
-      try {
-        V8DealerFeature::DEALER->startupLoader()->executeGlobalScript(
-            isolate, isolate->GetCurrentContext(),
-            "server/bootstrap/local-database.js");
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-      } catch (...) {
-        if (v8g->_vocbase == vocbase) {
-          // decrease the reference-counter only if we are coming back with the
-          // same database
-          vocbase->release();
-        }
-
-        // and switch back
-        v8g->_vocbase = orig;
-
-        return Result(TRI_ERROR_INTERNAL,
-                      "Could not execute local-database.js");
-      }
+    upgradeRes = methods::Upgrade::createDB(vocbase, sanitizedUsers.slice());
+  }
+  
+  if (upgradeRes.fail()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "Could not create database "
+    << upgradeRes.errorMessage();
+    return upgradeRes;
+  }
+  
+  // Entirely Foxx related:
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    try {
+      TRI_ExpireFoxxQueueDatabaseCache(databaseFeature->systemDatabase());
+    } catch(...) {
+      // it is of no real importance if cache invalidation fails, because
+      // the cache entry has a ttl
     }
   }
 
@@ -456,7 +403,8 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
     TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
+        TRI_V8_ASCII_STRING(isolate,
+                            "require('internal').executeGlobalContextFunction('"
                             "reloadRouting')"),
         TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
@@ -471,5 +419,3 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
   return res;
 }
-
-

@@ -54,6 +54,11 @@ class LogicalView final: public LogicalDataSource {
   ~LogicalView();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief the category representing a logical view
+  //////////////////////////////////////////////////////////////////////////////
+  static Category const& category() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
@@ -86,9 +91,6 @@ class LogicalView final: public LogicalDataSource {
   virtual Result rename(std::string&& newName, bool doSync) override;
 
   // SECTION: Serialization
-  velocypack::Builder toVelocyPack(bool includeProperties = false,
-                                   bool includeSystem = false) const;
-
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;
 
@@ -104,9 +106,6 @@ class LogicalView final: public LogicalDataSource {
   void spawnImplementation(ViewCreator creator,
                            arangodb::velocypack::Slice const& parameters,
                            bool isNew);
-
-  static bool IsAllowedName(velocypack::Slice parameters);
-  static bool IsAllowedName(std::string const& name);
 
  private:
   // SECTION: Meta Information

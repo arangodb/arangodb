@@ -48,4 +48,9 @@ void TRI_FreeUserStructuresVocBase(TRI_vocbase_t*);
 
 void TRI_InitV8UserStructures(v8::Isolate* isolate, v8::Handle<v8::Context>);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief calls global.KEY_SET('queue-control', 'databases-expire', 0);
+////////////////////////////////////////////////////////////////////////////////
+void TRI_ExpireFoxxQueueDatabaseCache(TRI_vocbase_t* system);
+
 #endif

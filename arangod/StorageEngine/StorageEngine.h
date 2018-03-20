@@ -417,22 +417,23 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void releaseTick(TRI_voc_tick_t) = 0;
 
  protected:
-  void registerCollection(TRI_vocbase_t* vocbase,
-                          arangodb::LogicalCollection* collection) {
+  void registerCollection(
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalCollection> const& collection
+  ) {
     vocbase->registerCollection(true, collection);
   }
 
-  void registerView(TRI_vocbase_t* vocbase,
-                    std::shared_ptr<arangodb::LogicalView> view) {
+  void registerView(
+    TRI_vocbase_t* vocbase,
+    std::shared_ptr<arangodb::LogicalView> const& view
+  ) {
     vocbase->registerView(true, view);
   }
 
  private:
-
   std::unique_ptr<IndexFactory> const _indexFactory;
-
   std::string const _typeName;
-
 };
 
 }

@@ -48,7 +48,8 @@ RestCursorHandler::RestCursorHandler(
       _queryLock(),
       _query(nullptr),
       _hasStarted(false),
-      _queryKilled(false) {}
+      _queryKilled(false),
+      _isValidForFinalize(false) {}
 
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
@@ -292,7 +293,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
-        hasCache = true;  // don't honour if appears below
+        hasCache = true;  // don't honor if appears below
       }
       options.add(keyName, it.value);
     }
@@ -301,7 +302,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
     options.add("count", VPackValue(val));
-    if (!hasCache) {
+    if (!hasCache && slice.hasKey("cache")) {
       val = VelocyPackHelper::getBooleanValue(slice, "cache", false);
       options.add("cache", VPackValue(val));
     }
@@ -382,6 +383,11 @@ void RestCursorHandler::createQueryCursor() {
       // error message generated in parseVelocyPackBody
       return;
     }
+    
+    // tell RestCursorHandler::finalizeExecute that the request
+    // could be parsed successfully and that it may look at it
+    _isValidForFinalize = true;
+
     VPackSlice body = parsedBody.get()->slice();
 
     processQuery(body);

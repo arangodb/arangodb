@@ -81,14 +81,6 @@ static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   return vid;
 }
 
-std::string ReadStringValue(
-    arangodb::velocypack::Slice info,
-    std::string const& name,
-    std::string const& def
-) {
-  return info.isObject() ? Helper::getStringValue(info, name, def) : def;
-}
-
 }  // namespace
 
 /// @brief This the "copy" constructor used in the cluster
@@ -106,16 +98,19 @@ LogicalView::LogicalView(LogicalView const& other)
 // is relevant for this view
 LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
     : LogicalDataSource(
-        LogicalDataSource::Type::emplace(ReadStringValue(info, "type", "")),
+        category(),
+        LogicalDataSource::Type::emplace(
+          arangodb::basics::VelocyPackHelper::getStringRef(info, "type", "")
+        ),
         vocbase,
         ReadId(info),
-        ReadPlanId(info, ReadId(info)),
-        ReadStringValue(info, "name", ""),
+        ReadPlanId(info, 0),
+        arangodb::basics::VelocyPackHelper::getStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
       ),
       _physical(EngineSelectorFeature::ENGINE->createPhysicalView(this, info)) {
   TRI_ASSERT(_physical != nullptr);
-  if (!IsAllowedName(info)) {
+  if (!TRI_vocbase_t::IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -125,40 +120,10 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
 
 LogicalView::~LogicalView() {}
 
-bool LogicalView::IsAllowedName(VPackSlice parameters) {
-  std::string name = ReadStringValue(parameters, "name", "");
-  return IsAllowedName(name);
-}
+/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
+  static const Category category;
 
-bool LogicalView::IsAllowedName(std::string const& name) {
-  bool ok;
-  char const* ptr;
-  size_t length = 0;
-
-  // check allow characters: must start with letter or underscore if system is
-  // allowed
-  for (ptr = name.c_str(); *ptr; ++ptr) {
-    if (length == 0) {
-      ok = (*ptr == '_') || ('a' <= *ptr && *ptr <= 'z') ||
-           ('A' <= *ptr && *ptr <= 'Z');
-    } else {
-      ok = (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9') ||
-           ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z');
-    }
-
-    if (!ok) {
-      return false;
-    }
-
-    ++length;
-  }
-
-  // invalid name length
-  if (length == 0 || length > TRI_COL_NAME_LENGTH) {
-    return false;
-  }
-
-  return true;
+  return category;
 }
 
 Result LogicalView::rename(std::string&& newName, bool doSync) {
@@ -198,15 +163,6 @@ void LogicalView::drop() {
   // engine->destroyView(_vocbase, this);
 
   _physical->drop();
-}
-
-VPackBuilder LogicalView::toVelocyPack(bool includeProperties,
-                                       bool includeSystem) const {
-  VPackBuilder builder;
-  builder.openObject();
-  toVelocyPack(builder, includeProperties, includeSystem);
-  builder.close();
-  return builder;
 }
 
 void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,

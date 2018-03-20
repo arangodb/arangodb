@@ -318,13 +318,12 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
       return true;
     };
 
-
     bool ok;
     {
       auto physical = static_cast<MMFilesCollection*>(context._collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
       bool const useDeadlockDetector = false;
-      int res = physical->lockRead(useDeadlockDetector, 86400.0);
+      int res = physical->lockRead(useDeadlockDetector, trx->tid(), 86400.0);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ok = false;
@@ -335,7 +334,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         } catch (...) {
           ok = false;
         }
-        physical->unlockRead(useDeadlockDetector);
+        physical->unlockRead(useDeadlockDetector, trx->tid());
       }
     }
 
@@ -434,8 +433,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return true;
   };
 
-  arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(collection->vocbase()), 
-      collection->cid(), AccessMode::Type::WRITE);
+  arangodb::SingleCollectionTransaction trx(
+    arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+    collection->id(),
+    AccessMode::Type::WRITE
+  );
+
   trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);
@@ -452,7 +455,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compaction writes to be executed for collection '" << collection->cid() << "', number of source datafiles: " << n << ", target datafile size: " << initial._targetSize;
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compaction writes to be executed for collection '" << collection->id() << "', number of source datafiles: " << n << ", target datafile size: " << initial._targetSize;
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
@@ -996,8 +999,11 @@ void MMFilesCompactorThread::run() {
 /// @brief determine the number of documents in the collection
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-      AccessMode::Type::READ);
+    transaction::StandaloneContext::Create(_vocbase),
+    collection->id(),
+    AccessMode::Type::READ
+  );
+
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(transaction::Hints::Hint::TRY_LOCK); 

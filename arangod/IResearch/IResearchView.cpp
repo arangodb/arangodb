@@ -468,7 +468,7 @@ arangodb::Result updateLinks(
     }
 
     struct State {
-      arangodb::LogicalCollection* _collection = nullptr;
+      std::shared_ptr<arangodb::LogicalCollection> _collection;
       size_t _collectionsToLockOffset; // std::numeric_limits<size_t>::max() == removal only
       arangodb::iresearch::IResearchLink const* _link = nullptr;
       size_t _linkDefinitionsOffset;
@@ -554,12 +554,12 @@ arangodb::Result updateLinks(
 //      );
     }
 
-    auto* resolver = trx.resolver();
+    auto* vocbase = trx.vocbase();
 
-    if (!resolver) {
+    if (!vocbase) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
-        std::string("failed to get resolver from transaction while updating while iResearch view '") + std::to_string(view.id()) + "'"
+        std::string("failed to get vocbase from transaction while updating while IResearch view '") + std::to_string(view.id()) + "'"
       );
     }
 
@@ -572,7 +572,7 @@ arangodb::Result updateLinks(
         auto& state = *itr;
         auto& collectionName = collectionsToLock[state._collectionsToLockOffset];
 
-        state._collection = const_cast<arangodb::LogicalCollection*>(resolver->getCollectionStruct(collectionName));
+        state._collection = vocbase->lookupCollection(collectionName);
 
         if (!state._collection) {
           // remove modification state if removal of non-existant link on non-existant collection
@@ -592,14 +592,14 @@ arangodb::Result updateLinks(
         // remove modification state if removal of non-existant link
         if (!state._link // links currently does not exist
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          view.drop(state._collection->cid()); // drop any stale data for the specified collection
+          view.drop(state._collection->id()); // drop any stale data for the specified collection
           itr = linkModifications.erase(itr);
           continue;
         }
 
         if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size()) { // link removal request
-          auto cid = state._collection->cid();
+          auto cid = state._collection->id();
 
           // remove duplicate removal requests (e.g. by name + by CID)
           if (collectionsToRemove.find(cid) != collectionsToRemove.end()) { // removal previously requested
@@ -612,7 +612,7 @@ arangodb::Result updateLinks(
 
         if (state._link // links currently exists
             && state._linkDefinitionsOffset < linkDefinitions.size()) { // link update request
-          collectionsToUpdate.emplace(state._collection->cid());
+          collectionsToUpdate.emplace(state._collection->id());
         }
 
         ++itr;
@@ -625,7 +625,7 @@ arangodb::Result updateLinks(
         // remove modification if removal request with an update request also present
         if (state._link // links currently exists
             && state._linkDefinitionsOffset >= linkDefinitions.size() // link removal request
-            && collectionsToUpdate.find(state._collection->cid()) != collectionsToUpdate.end()) { // also has a reindex request
+            && collectionsToUpdate.find(state._collection->id()) != collectionsToUpdate.end()) { // also has a reindex request
           itr = linkModifications.erase(itr);
           continue;
         }
@@ -633,7 +633,7 @@ arangodb::Result updateLinks(
         // remove modification state if no change on existing link or
         if (state._link // links currently exists
             && state._linkDefinitionsOffset < linkDefinitions.size() // link creation request
-            && collectionsToRemove.find(state._collection->cid()) == collectionsToRemove.end() // not a reindex request
+            && collectionsToRemove.find(state._collection->id()) == collectionsToRemove.end() // not a reindex request
             && *(state._link) == linkDefinitions[state._linkDefinitionsOffset].second) { // link meta not modified
           itr = linkModifications.erase(itr);
           continue;
@@ -646,7 +646,7 @@ arangodb::Result updateLinks(
     // execute removals
     for (auto& state: linkModifications) {
       if (state._link) { // link removal or recreate request
-        modified.emplace(state._collection->cid());
+        modified.emplace(state._collection->id());
         state._valid = state._collection->dropIndex(state._link->id());
       }
     }
@@ -657,7 +657,7 @@ arangodb::Result updateLinks(
         bool isNew = false;
         auto linkPtr = state._collection->createIndex(&trx, linkDefinitions[state._linkDefinitionsOffset].first.slice(), isNew);
 
-        modified.emplace(state._collection->cid());
+        modified.emplace(state._collection->id());
         state._valid = linkPtr && isNew;
       }
     }
@@ -708,7 +708,7 @@ void validateLinks(
     arangodb::iresearch::IResearchView const& view
 ) {
   for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
-    auto* collection = vocbase.lookupCollection(*itr);
+    auto collection = vocbase.lookupCollection(*itr);
 
     if (!collection || !findFirstMatchingLink(*collection, view)) {
       itr = collections.erase(itr);
@@ -1927,7 +1927,7 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
 /*static*/ arangodb::LogicalDataSource::Type const& IResearchView::type() noexcept {
   static auto& type = arangodb::LogicalDataSource::Type::emplace(
-    std::string(IResearchFeature::type())
+    arangodb::velocypack::StringRef(IResearchFeature::type())
   );
 
   return type;
@@ -2012,7 +2012,7 @@ arangodb::Result IResearchView::updateProperties(
         }
 
         for (auto& cid: meta._collections) {
-          auto* collection = vocbase->lookupCollection(cid);
+          auto collection = vocbase->lookupCollection(cid);
 
           if (collection) {
             _meta._collections.emplace(cid);
@@ -2193,7 +2193,7 @@ void IResearchView::verifyKnownCollections() {
       virtual arangodb::Result commitTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
-      virtual bool hasFailedOperations() const { return false; }
+      virtual bool hasFailedOperations() const override { return false; }
     };
 
     State state;
