@@ -2228,34 +2228,35 @@ AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
 AqlValue Functions::DateLeapYear(arangodb::aql::Query* query,
                                  transaction::Methods* trx,
                                  VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_LEAPYEAR", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(
-      AqlValueHintBool(year_month_day(floor<days>(tp)).year().is_leap()));
+  year_month_day ymd{floor<days>(tp)};
+
+  return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
 }
 
 /// @brief function DATE_QUARTER
 AqlValue Functions::DateQuarter(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_QUARTER", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(
-      ceil(unsigned(year_month_day(floor<days>(tp)).month()) / 3.0f))));
+  year_month_day ymd{floor<days>(tp)};
+  month m = ymd.month();
+
+  // Library has unsigned operator implemented.
+  uint64_t part = static_cast<uint64_t>(ceil(unsigned(m) / 3.0f));
+  // We only have 4 quarters ;)
+  TRI_ASSERT(part <= 4);
+  return AqlValue(AqlValueHintUInt(part));
 }
 
 /// @brief function DATE_DAYS_IN_MONTH
@@ -2269,19 +2270,17 @@ AqlValue Functions::DateDaysInMonth(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  auto yearMonthDay = year_month_day(floor<days>(tp));
+  auto ymd = year_month_day{floor<days>(tp)};
+  auto lastMonthDay = ymd.year() / ymd.month() / last;
 
-  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(
-      (year{yearMonthDay.year()} / yearMonthDay.month() / last).day()))));
+  // The Library has operator unsigned implemented
+  return AqlValue(AqlValueHintUInt(static_cast<uint64_t>(unsigned(lastMonthDay.day()))));
 }
 
 /// @brief function DATE_ADD
 AqlValue Functions::DateAdd(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ADD", 0)) {
