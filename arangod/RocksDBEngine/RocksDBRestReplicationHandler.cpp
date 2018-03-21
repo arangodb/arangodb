@@ -700,6 +700,11 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
+  if (!isBusy) {
+    int res = context->chooseDatabase(_vocbase);
+    isBusy = (TRI_ERROR_CURSOR_BUSY == res);
+  }
+
   if (isBusy) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication dump - context is busy");
@@ -730,6 +735,17 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
   // do the work!
   auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
+  if (result.fail()) {
+    if (result.is(TRI_ERROR_BAD_PARAMETER)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "replication dump - " + result.errorMessage());
+      return;
+    }
+
+    generateError(rest::ResponseCode::SERVER_ERROR, result.errorNumber(),
+                  "replication dump - " + result.errorMessage());
+    return;
+  }
 
   // generate the result
   if (dump.length() == 0) {

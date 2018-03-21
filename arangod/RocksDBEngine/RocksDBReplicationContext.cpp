@@ -174,6 +174,23 @@ int RocksDBReplicationContext::bindCollection(
   return TRI_ERROR_NO_ERROR;
 }
 
+int RocksDBReplicationContext::chooseDatabase(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(_users > 0);
+  MUTEX_LOCKER(locker, _contextLock);
+  if (_guard->database() == vocbase) {
+    return TRI_ERROR_NO_ERROR; // nothing to do here
+  }
+
+  // need to actually change it, first make sure we're alone in this context
+  if (_users > 1) {
+    return TRI_ERROR_CURSOR_BUSY;
+  }
+
+  // make the actual change
+  internalBind(vocbase, true);
+  return TRI_ERROR_NO_ERROR;
+}
+
 // returns inventory
 Result RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
                                                bool includeSystem, bool global,

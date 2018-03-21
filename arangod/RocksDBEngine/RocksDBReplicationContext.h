@@ -77,6 +77,7 @@ class RocksDBReplicationContext {
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
   int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
+  int chooseDatabase(TRI_vocbase_t*);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
