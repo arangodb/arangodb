@@ -1,6 +1,8 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
+* properly exit v8::Context in one place where it was missing before
+
 * fixed issue #4843: Query-Result has more Docs than the Collection itself  
 
 * fixed the behavior of ClusterInfo when waiting for current to catch
