@@ -13,12 +13,6 @@
 
 char const* ARGV0 = "";
 
-int testResult;
-
-void runTests(int argc, char* argv[]) {
-  testResult = Catch::Session().run( argc, argv );
-}
-
 int main(int argc, char* argv[]) {
   ARGV0 = argv[0];
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
@@ -40,11 +34,15 @@ int main(int argc, char* argv[]) {
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
+  int result;
+  auto runTests = [&result] (int argc, char* argv[]) {
+      result = Catch::Session().run( argc, argv );
+  };
   std::thread subthread(runTests, argc, argv);
   subthread.join();
 
   arangodb::Logger::shutdown();
   // global clean-up...
 
-  return ( testResult < 0xff ? testResult : 0xff );
+  return ( result < 0xff ? result : 0xff );
 }
