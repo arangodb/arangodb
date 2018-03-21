@@ -979,6 +979,8 @@ function ahuacatlStringFunctionsTestSuite () {
         [ 'a quick brown foxx jumped over a lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'the' ], [ 'a' ] ],
         [ 'a quick brown foxx jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'the' ], [ 'a' ], 1 ],
         [ 'mötör quick brown mötör jumped over the lazy dog', 'the quick brown foxx jumped over the lazy dog', [ 'over', 'the', 'foxx' ], 'mötör', 2 ],
+        [ 'apfela', 'rabarbara', ['barbara', 'rabarbar'], ['petra', 'apfel']],
+        [ 'rapetra', 'rabarbara', ['barbara', 'bar'], ['petra', 'foo']],
         [ 'AbCdEF', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' } ],
         [ 'AbcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 2 ],
         [ 'aBcDef', 'aBcDef', { a: 'A', B: 'b', c: 'C', D: 'd', e: 'E', f: 'F' }, 0 ],
@@ -999,7 +1001,10 @@ function ahuacatlStringFunctionsTestSuite () {
         for (i = 1; i < n; ++i) {
           args.push(JSON.stringify(value[i]));
         }
-        assertEqual([ expected ], getQueryResults('RETURN SUBSTITUTE(' + args.join(', ') + ')'), value);
+        var nuResults = getQueryResults('RETURN SUBSTITUTE(' + args.join(', ') + ')');
+        var jsResults = getQueryResults('RETURN NOOPT(V8(SUBSTITUTE(' + args.join(', ') + ')))');
+        assertEqual([ expected ], nuResults, value);
+        assertEqual(jsResults, nuResults, value);
       });
     },
 
@@ -1010,6 +1015,8 @@ function ahuacatlStringFunctionsTestSuite () {
     testSubstituteInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN SUBSTITUTE()');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN SUBSTITUTE('foo', 'bar', 'baz', 2, 2)`);
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(V8(SUBSTITUTE()))');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, `RETURN NOOPT(V8(SUBSTITUTE('foo', 'bar', 'baz', 2, 2)))`);
     },
 
 // //////////////////////////////////////////////////////////////////////////////
