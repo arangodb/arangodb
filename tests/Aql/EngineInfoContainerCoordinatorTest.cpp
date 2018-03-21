@@ -83,7 +83,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   //   6. Assert (engine->root() != nullptr)
   //   7. For all but the first:
   //     1. queryRegistry->insert(_id, query, 600.0);
-  //     2. queryIds.emplace(idOfRemote/dbname, _id);
   // 3. query->engine();
 
   SECTION("it should create an ExecutionEngine for the first snippet") {
@@ -302,18 +301,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
 
-    // The first engine should not be stored
-    // It is not added to the registry
-    // The second should be
-    REQUIRE(!queryIds.empty());
     // The second engine needs a generated id
     REQUIRE(secondId != 0);
-
-    // It is stored in the mapping
-    std::string secIdString = arangodb::basics::StringUtils::itoa(secondId);
-    std::string remIdString = arangodb::basics::StringUtils::itoa(remoteId) + "/" + dbname;
-    REQUIRE(queryIds.find(remIdString) != queryIds.end());
-    REQUIRE(queryIds[remIdString] == secIdString);
+    // We do not add anything to the ids
+    REQUIRE(queryIds.empty());
 
     // Validate that the query is wired up with the engine
     fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
@@ -533,23 +524,8 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     ExecutionEngine* engine = result.engine();
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
-
-    // The first engine should not be stored
-    // It is not added to the registry
-    // The other two should be
-    REQUIRE(queryIds.size() == 2);
-
-    // First (A) is stored in the mapping
-    std::string secIdString = arangodb::basics::StringUtils::itoa(secondId);
-    std::string remIdString = arangodb::basics::StringUtils::itoa(remoteId) + "/" + dbname;
-    REQUIRE(queryIds.find(remIdString) != queryIds.end());
-    REQUIRE(queryIds[remIdString] == secIdString);
-
-    // Second (B) is stored in the mapping
-    std::string thirdIdString = arangodb::basics::StringUtils::itoa(thirdId);
-    std::string secRemIdString = arangodb::basics::StringUtils::itoa(secondRemoteId) + "/" + dbname;
-    REQUIRE(queryIds.find(secRemIdString) != queryIds.end());
-    REQUIRE(queryIds[secRemIdString] == thirdIdString);
+    // We do not add anything to the ids
+    REQUIRE(queryIds.empty());
 
     // Validate that the query is wired up with the engine
     fakeit::Verify(Method(mockQuery, setEngine)).Exactly(1);
