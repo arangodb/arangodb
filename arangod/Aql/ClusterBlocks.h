@@ -70,15 +70,15 @@ class GatherBlock : public ExecutionBlock {
   bool hasMore() override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t, size_t) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t, size_t) override final;
+  size_t skipSome(size_t atMost) override final;
 
  protected:
   /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
   /// non-simple case only
-  bool getBlock(size_t i, size_t atLeast, size_t atMost);
+  bool getBlock(size_t i, size_t atMost);
 
   /// @brief _gatherBlockBuffer: buffer the incoming block from each dependency
   /// separately
@@ -136,13 +136,13 @@ class BlockWithClients : public ExecutionBlock {
   int shutdown(int) override;
 
   /// @brief getSome: shouldn't be used, use skipSomeForShard
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final {
+  AqlItemBlock* getSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   /// @brief skipSome: shouldn't be used, use skipSomeForShard
-  size_t skipSome(size_t atLeast, size_t atMost) override final {
+  size_t skipSome(size_t atMost) override final {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
@@ -160,12 +160,10 @@ class BlockWithClients : public ExecutionBlock {
   }
 
   /// @brief getSomeForShard
-  AqlItemBlock* getSomeForShard(size_t atLeast, size_t atMost,
-                                std::string const& shardId);
+  AqlItemBlock* getSomeForShard(size_t atMost, std::string const& shardId);
 
   /// @brief skipSomeForShard
-  size_t skipSomeForShard(size_t atLeast, size_t atMost,
-                          std::string const& shardId);
+  size_t skipSomeForShard(size_t atMost, std::string const& shardId);
 
   /// @brief skipForShard
   bool skipForShard(size_t number, std::string const& shardId);
@@ -178,7 +176,7 @@ class BlockWithClients : public ExecutionBlock {
 
  protected:
   /// @brief getOrSkipSomeForShard
-  virtual int getOrSkipSomeForShard(size_t atLeast, size_t atMost,
+  virtual int getOrSkipSomeForShard(size_t atMost,
                                     bool skipping, AqlItemBlock*& result,
                                     size_t& skipped,
                                     std::string const& shardId) = 0;
@@ -223,7 +221,7 @@ class ScatterBlock : public BlockWithClients {
 
  private:
   /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSomeForShard(size_t atMost, bool skipping,
                             AqlItemBlock*& result, size_t& skipped,
                             std::string const& shardId) override;
 
@@ -253,13 +251,13 @@ class DistributeBlock : public BlockWithClients {
 
  private:
   /// @brief getOrSkipSomeForShard
-  int getOrSkipSomeForShard(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSomeForShard(size_t atMost, bool skipping,
                             AqlItemBlock*& result, size_t& skipped,
                             std::string const& shardId) override;
 
-  /// @brief getBlockForClient: try to get at atLeast/atMost pairs into
+  /// @brief getBlockForClient: try to get at atMost pairs into
   /// _distBuffer.at(clientId).
-  bool getBlockForClient(size_t atLeast, size_t atMost, size_t clientId);
+  bool getBlockForClient(size_t atMost, size_t clientId);
 
   /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
   /// attributes <shardKeys> of the register <id> to determine to which shard
@@ -316,10 +314,10 @@ class RemoteBlock : public ExecutionBlock {
   int shutdown(int) override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
   /// @brief skipSome
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  size_t skipSome(size_t atMost) override final;
 
   /// @brief hasMore
   bool hasMore() override final;
