@@ -9,7 +9,15 @@
 #include "RestServer/ServerIdFeature.h"
 #include "tests/Basics/icu-helper.h"
 
+#include <thread>
+
 char const* ARGV0 = "";
+
+int testResult;
+
+void runTests(int argc, char* argv[]) {
+  testResult = Catch::Session().run( argc, argv );
+}
 
 int main(int argc, char* argv[]) {
   ARGV0 = argv[0];
@@ -29,9 +37,14 @@ int main(int argc, char* argv[]) {
   arangodb::ServerIdFeature::setId(12345);
   IcuInitializer::setup(ARGV0);
 
-  int result = Catch::Session().run( argc, argv );
+  // Run tests in subthread such that it has a larger stack size in libmusl,
+  // the stack size for subthreads has been reconfigured in the
+  // ArangoGlobalContext above in the libmusl case:
+  std::thread subthread(runTests, argc, argv);
+  subthread.join();
+
   arangodb::Logger::shutdown();
   // global clean-up...
 
-  return ( result < 0xff ? result : 0xff );
+  return ( testResult < 0xff ? testResult : 0xff );
 }
