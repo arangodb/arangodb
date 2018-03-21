@@ -94,10 +94,10 @@ int ExecutionBlockMock::initializeCursor(
 }
 
 arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
-    size_t atLeast, size_t atMost
+    size_t atMost
 ) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -113,7 +113,7 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
 
     if (_buffer.empty()) {
       size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         return nullptr;
       }
@@ -168,7 +168,7 @@ arangodb::aql::AqlItemBlock* ExecutionBlockMock::getSome(
   DEBUG_END_BLOCK();
 }
 
-size_t ExecutionBlockMock::skipSome(size_t atLeast, size_t atMost) {
+size_t ExecutionBlockMock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
 
   if (_done) {
@@ -177,10 +177,10 @@ size_t ExecutionBlockMock::skipSome(size_t atLeast, size_t atMost) {
 
   size_t skipped = 0;
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      if (!getBlock(toFetch)) {
         _done = true;
         return skipped;
       }
@@ -195,7 +195,7 @@ size_t ExecutionBlockMock::skipSome(size_t atLeast, size_t atMost) {
     skipped += std::min(_data->size() - _pos_in_data, atMost - skipped);
     _pos_in_data += skipped;
 
-    if (skipped < atLeast) {
+    if (skipped < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
