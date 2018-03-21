@@ -1133,9 +1133,6 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
-            //if (temp == me.attributeName ||
-            //    lhs->toString() == std::string("$") + std::to_string(result.first->id) + "." + me.attributeName ||
-            //    lhs->toString() + "[*]" == std::string("$") + std::to_string(result.first->id) + "." + me.attributeName) {
               if (rhs->isConstant()) {
                 ConditionPart indexCondition(result.first, result.second, operand,
                                             ATTRIBUTE_LEFT, nullptr);
@@ -1161,9 +1158,6 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
             temp.clear();
             TRI_AttributeNamesToString(result.second, temp);
             if (temp == me.attributeName) {
-            //if (temp == me.attributeName ||
-            //    rhs->toString() == std::string("$") + std::to_string(result.first->id) + "." + me.attributeName ||
-            //    rhs->toString() + "[*]" == std::string("$") + std::to_string(result.first->id) + "." + me.attributeName) {
               if (lhs->isConstant()) {
                 ConditionPart indexCondition(result.first, result.second, operand,
                                             ATTRIBUTE_RIGHT, nullptr);
