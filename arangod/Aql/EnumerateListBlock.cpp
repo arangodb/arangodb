@@ -63,9 +63,9 @@ int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();  
 }
 
-AqlItemBlock* EnumerateListBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* EnumerateListBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
@@ -81,7 +81,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         traceGetSomeEnd(nullptr);
         return nullptr;
@@ -162,7 +162,7 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();  
 }
 
-size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t EnumerateListBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();  
   if (_done) {
     return 0;
@@ -170,10 +170,10 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
 
   size_t skipped = 0;
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         return skipped;
       }

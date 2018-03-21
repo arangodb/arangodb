@@ -83,17 +83,17 @@ class ExecutionEngine {
   int shutdown(int errorCode);
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) {
-    return _root->getSome(atLeast, atMost);
+  AqlItemBlock* getSome(size_t atMost) {
+    return _root->getSome(atMost);
   }
 
   /// @brief skipSome
-  size_t skipSome(size_t atLeast, size_t atMost) {
-    return _root->skipSome(atLeast, atMost);
+  size_t skipSome(size_t atMost) {
+    return _root->skipSome(atMost);
   }
 
   /// @brief getOne
-  AqlItemBlock* getOne() { return _root->getSome(1, 1); }
+  AqlItemBlock* getOne() { return _root->getSome(1); }
 
   /// @brief skip
   bool skip(size_t number, size_t& actuallySkipped) { 
