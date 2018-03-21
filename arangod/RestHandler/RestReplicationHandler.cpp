@@ -1651,6 +1651,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(col != nullptr);
+  
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
@@ -1671,7 +1673,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
       arangodb::Index::Compare,
       tmp,
       errorMsg,
-      3600.0
+      cluster->indexCreationTimeout()
     );
 
     if (res != TRI_ERROR_NO_ERROR) {
