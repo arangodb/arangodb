@@ -103,6 +103,7 @@ class Topics {
 
 LogTopic Logger::AGENCY("agency", LogLevel::INFO);
 LogTopic Logger::AGENCYCOMM("agencycomm", LogLevel::INFO);
+LogTopic Logger::AQL("aql", LogLevel::INFO);
 LogTopic Logger::AUTHENTICATION("authentication");
 LogTopic Logger::AUTHORIZATION("authorization");
 LogTopic Logger::CACHE("cache", LogLevel::INFO);

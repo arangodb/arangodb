@@ -566,6 +566,13 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
+if (USE_CATCH_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
@@ -1012,7 +1019,6 @@ add_subdirectory(arangod)
 
 add_subdirectory(Documentation)
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
 endif()
