@@ -192,7 +192,11 @@ struct Functions {
                                 VPackFunctionParameters const&);
 
 
-    // Date
+   // Date
+   static AqlValue DateFromParameters(arangodb::aql::Query* query,
+                                      transaction::Methods* trx,
+                                      VPackFunctionParameters const& parameters,
+                                      bool asTimestamp);
    static AqlValue DateNow(arangodb::aql::Query*, transaction::Methods*,
                                 VPackFunctionParameters const&);
    static AqlValue DateIso8601(arangodb::aql::Query*, transaction::Methods*,
