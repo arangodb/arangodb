@@ -1409,13 +1409,15 @@ testDateDaysInMonth() {
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults(`RETURN NOOPT(DATE_ADD(${value[0].map((val, idx) => `@val${idx}`).join(', ')}))`,
-            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-        assertEqual( [ value[1] ], actual);
+        let dateParams = `${value[0].map((val, idx) => `@val${idx}`).join(', ')}`;
+        let query = `RETURN NOOPT(DATE_ADD(${dateParams}))`;
+        let bindVars = value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {});
+        let actual = getQueryResults(query, bindVars);
+        assertEqual( [ value[1] ], actual, `${query} using ${JSON.stringify(bindVars)}`);
 
-        actual = getQueryResults(`RETURN NOOPT(V8(DATE_ADD(${value[0].map((val, idx) => `@val${idx}`).join(', ')})))`,
-            value[0].reduce((prev, val, idx) => { prev[`val${idx}`] = val; return prev; }, {}));
-        assertEqual( [ value[1] ], actual);
+        query = `RETURN NOOPT(V8(DATE_ADD(${dateParams})))`;
+        actual = getQueryResults(query, bindVars);
+        assertEqual( [ value[1] ], actual, `${query} using ${JSON.stringify(bindVars)}`);
       }); 
     },
 
