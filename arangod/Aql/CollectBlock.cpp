@@ -278,7 +278,7 @@ int SortedCollectBlock::initializeCursor(AqlItemBlock* items,
   DEBUG_END_BLOCK();
 }
 
-int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
+int SortedCollectBlock::getOrSkipSome(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -291,7 +291,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+    if (!ExecutionBlock::getBlock(atMost)) {
       // done
       _done = true;
 
@@ -396,7 +396,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           TRI_IF_FAILURE("SortedCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+          hasMore = ExecutionBlock::getBlock(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);
@@ -600,7 +600,7 @@ HashedCollectBlock::HashedCollectBlock(ExecutionEngine* engine,
 
 HashedCollectBlock::~HashedCollectBlock() {}
 
-int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
+int HashedCollectBlock::getOrSkipSome(size_t atMost,
                                       bool skipping, AqlItemBlock*& result,
                                       size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -610,7 +610,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   }
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+    if (!ExecutionBlock::getBlock(atMost)) {
       // done
       _done = true;
 
@@ -783,7 +783,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         bool hasMore = !_buffer.empty();
 
         if (!hasMore) {
-          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+          hasMore = ExecutionBlock::getBlock(atMost);
         }
 
         if (!hasMore) {
@@ -910,7 +910,7 @@ void DistinctCollectBlock::clearValues() {
   }
 }
 
-int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
+int DistinctCollectBlock::getOrSkipSome(size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
                                         size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
@@ -925,7 +925,7 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   std::unique_ptr<AqlItemBlock> res;
 
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+    if (!ExecutionBlock::getBlock(atMost)) {
       // done
       _done = true;
       return TRI_ERROR_NO_ERROR;
@@ -992,7 +992,7 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           TRI_IF_FAILURE("DistinctCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+          hasMore = ExecutionBlock::getBlock(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);
