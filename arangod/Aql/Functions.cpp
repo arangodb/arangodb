@@ -57,6 +57,7 @@
 #include <unicode/uchar.h>
 #include <unicode/unistr.h>
 #include <unicode/stsearch.h>
+#include <unicode/schriter.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
@@ -923,6 +924,64 @@ AqlValue Functions::FindLast(arangodb::aql::Query* query,
     }
   }
   return AqlValue(AqlValueHintInt(foundPos));
+}
+
+/// @brief function REVERSE
+AqlValue Functions::Reverse(arangodb::aql::Query* query,
+                            transaction::Methods* trx,
+                            VPackFunctionParameters const& parameters) {
+  static char const* AFN = "REVERSE";
+  ValidateParameters(parameters, AFN, 1, 1);
+  AqlValue value = ExtractFunctionParameterValue(parameters, 0);
+
+  if (value.isArray()) {
+    transaction::BuilderLeaser builder(trx);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+    std::vector<VPackSlice> array;
+    array.reserve(slice.length());
+    for (auto const& it : VPackArrayIterator(slice)) {
+      array.push_back(it);
+    }
+    std::reverse(std::begin(array), std::end(array));
+    
+    builder->openArray();
+    for (auto const &it : array) {
+      if (it.isCustom()) {
+        builder->add(VPackValue(trx->extractIdString(slice)));/// TODO
+      } else {
+        builder->add(it);
+      }
+    }
+    builder->close();
+    return AqlValue(builder.get());
+  }
+  else if (value.isString()) {
+    std::string utf8;
+    transaction::StringBufferLeaser buf1(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
+    AppendAsString(trx, adapter, value);
+    UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+    UnicodeString result;
+    result.getBuffer(uBuf.length());
+    result = "";
+    StringCharacterIterator iter(uBuf, uBuf.length());
+    UChar c;
+    do {
+      c = iter.previous();
+      if (c != CharacterIterator::DONE) {
+        result.append(c);
+      }
+    } while (c != CharacterIterator::DONE); 
+    result.toUTF8String(utf8);
+
+    return AqlValue(utf8);
+  }
+  else {
+    // neither array nor string...
+    RegisterWarning(query, AFN, TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(AqlValueHintNull());
+  }
 }
 
 /// @brief function FIRST

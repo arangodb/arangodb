@@ -356,7 +356,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
-       true});  // note: REVERSE() can be applied on strings, too
+        true, &Functions::Reverse});
   add({"FIRST", ".", true, false, true, true,
        &Functions::First});
   add({"LAST", ".", true, false, true, true,
