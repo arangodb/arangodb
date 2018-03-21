@@ -1850,13 +1850,11 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
 }
 
 /// @brief function DATE_NOW
-AqlValue Functions::DateNow(arangodb::aql::Query* query,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-
-  uint64_t dur = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-
+AqlValue Functions::DateNow(arangodb::aql::Query*,
+                             transaction::Methods*,
+                             VPackFunctionParameters const&) {
+  auto millis = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+  uint64_t dur = millis.count();
   return AqlValue(AqlValueHintUInt(dur));
 }
 
@@ -1976,92 +1974,99 @@ AqlValue Functions::DateIso8601(arangodb::aql::Query* query,
 
 /// @brief function DATE_TIMESTAMP
 AqlValue Functions::DateTimestamp(arangodb::aql::Query* query,
-                             transaction::Methods* trx,
-                             VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
+                                  transaction::Methods* trx,
+                                  VPackFunctionParameters const& parameters) {
   if (parameters.size() == 1) {
     tp_sys_clock_ms tp;
 
     if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_TIMESTAMP", 0)) {
       return AqlValue(AqlValueHintNull());
     }
-
-    return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(tp.time_since_epoch()).count()));
+    auto millis = duration_cast<milliseconds>(tp.time_since_epoch());
+    return AqlValue(AqlValueHintInt(millis.count()));
+  }
+  if (parameters.size() < 3 || parameters.size() > 7) {
     // YMD is a must
-  } else if (parameters.size() >= 3 && parameters.size() <= 7) {
-    for (uint8_t i = 0; i < parameters.size(); i++) {
-      AqlValue value = ExtractFunctionParameterValue(parameters, i);
-
-      if (!value.isNumber() && !value.isString()) {
-        RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
-    years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
-    months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
-    days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
-    if (y < years{0}) {
-      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-    if (m < months{0}) {
-      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-    if (d < days{0}) {
-      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    year_month_day ymd = year{y.count()}/m.count()/d.count();
-
-    hours h(0);
-    minutes min(0);
-    seconds s(0);
-    milliseconds ms(0);
-
-    if (parameters.size() >= 4) {
-      h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
-      if (h < hours{0}) {
-        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
-    if (parameters.size() >= 5) {
-      min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
-      if (min < minutes{0}) {
-        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
-    if (parameters.size() >= 6) {
-      s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
-      if (s < seconds{0}) {
-        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
-    if (parameters.size() == 7) {
-      ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
-      if (ms < milliseconds{0}) {
-        RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-      }
-    }
-
-    auto time = sys_days(ymd) + h + min + s + ms;
-
-    return AqlValue(AqlValueHintInt(duration_cast<milliseconds>(time.time_since_epoch()).count() ));
+    RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
+    return AqlValue(AqlValueHintNull());
   }
 
-  RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
-  return AqlValue(AqlValueHintNull());
+  for (uint8_t i = 0; i < parameters.size(); i++) {
+    AqlValue value = ExtractFunctionParameterValue(parameters, i);
+
+    // All Parameters have to be a number or a string
+    if (!value.isNumber() && !value.isString()) {
+      RegisterInvalidArgumentWarning(query, "DATE_TIMESTAMP");
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // Parse the Year
+  years y{ExtractFunctionParameterValue(parameters, 0).toInt64(trx)};
+  if (y < years{0}) {
+    RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // Parse the Month
+  months m{ExtractFunctionParameterValue(parameters, 1).toInt64(trx)};
+  if (m < months{0}) {
+    RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  // Parse the Day
+  days d{ExtractFunctionParameterValue(parameters, 2).toInt64(trx)};
+  if (d < days{0}) {
+    RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  year_month_day ymd = year{y.count()}/m.count()/d.count();
+
+  // Parse the Hour
+  hours h(0);
+  if (parameters.size() >= 4) {
+    h = hours((ExtractFunctionParameterValue(parameters, 3).toInt64(trx)));
+    if (h < hours{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // Parse the Minutes
+  minutes min(0);
+  if (parameters.size() >= 5) {
+    min = minutes((ExtractFunctionParameterValue(parameters, 4).toInt64(trx)));
+    if (min < minutes{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+      }
+  }
+
+  // Parse the Seconds
+  seconds s(0);
+  if (parameters.size() >= 6) {
+    s = seconds((ExtractFunctionParameterValue(parameters, 5).toInt64(trx)));
+    if (s < seconds{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // Parse the Millis
+  milliseconds ms(0);
+  if (parameters.size() == 7) {
+    ms = milliseconds((ExtractFunctionParameterValue(parameters, 6).toInt64(trx)));
+    if (ms < milliseconds{0}) {
+      RegisterWarning(query, "DATE_TIMESTAMP", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  auto time = sys_days(ymd) + h + min + s + ms;
+  auto millis = duration_cast<milliseconds>(time.time_since_epoch());
+  return AqlValue(AqlValueHintInt(millis.count()));
 }
 
 /// @brief function IS_DATESTRING
