@@ -1654,9 +1654,25 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
+    if (id == 0) {
+      id = ci->uniqid();
+    }
     std::string viewId = StringUtils::itoa(id);
+    // Now put together the JSON we need for the agency:
+    VPackBuilder builder;
+    { VPackObjectBuilder guard(&builder);
+      builder.add("id", VPackValue(viewId));
+      for (auto const& p : VPackObjectIterator(parameters)) {
+        builder.add(p.key);
+        builder.add(p.value);
+      }
+      builder.add(VPackValue("collections"));
+      { VPackArrayBuilder guard2(&builder);
+      }
+    }
     std::string errorMsg;
-    int res = ci->createViewCoordinator(name(), viewId, parameters, errorMsg);
+    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
+        errorMsg);
     if (res == TRI_ERROR_NO_ERROR) {
       return ci->getView(name(), viewId);
     }
