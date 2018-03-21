@@ -311,7 +311,7 @@ Result Indexes::ensureIndexCoordinator(
   std::string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
-      errorMsg, 360.0);
+      errorMsg, 3600.0);
   return Result(res, errorMsg);
 }
 
