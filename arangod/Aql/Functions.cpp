@@ -200,6 +200,12 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
 
   DateSelectionModifier flag = ParseDateModifierFlag(durationType);
   double intPart = 0.0;
+  if (durationUnits < 0.0) {
+    // Make sure duration is always positive. So we flip isSubtract in this case.
+    isSubtract = !isSubtract;
+    durationUnits *= -1.0;
+  }
+  TRI_ASSERT(durationUnits >= 0.0);
 
   // All Fallthroughs intentional. We still have some remainder
   switch (flag) {
@@ -287,10 +293,18 @@ AqlValue Functions::AddOrSubtractIsoDurationFromTimestamp(Query* query,
   }
 
   int number = basics::StringUtils::int32(duration_parts[2].str());
-  ymd -= years{number};
+  if (isSubtract) {
+    ymd -= years{number};
+  } else {
+    ymd += years{number};
+  }
 
   number = basics::StringUtils::int32(duration_parts[4].str());
-  ymd -= months{number};
+  if (isSubtract) {
+    ymd -= months{number};
+  } else {
+    ymd += months{number};
+  }
 
 
   milliseconds ms{0};
