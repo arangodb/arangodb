@@ -2376,7 +2376,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  double diff;
+  double diff = 0.0;
   bool asFloat = false;
   auto diffDuration = tp2 - tp1;
 
@@ -2386,8 +2386,7 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::string unit = unitValue.slice().copyString();
-  std::transform(unit.begin(), unit.end(), unit.begin(), ::tolower);
+  DateSelectionModifier flag = ParseDateModifierFlag(unitValue.slice());
 
   if (parameters.size() == 4) {
     AqlValue asFloatValue = ExtractFunctionParameterValue(parameters, 3);
@@ -2398,41 +2397,50 @@ AqlValue Functions::DateDiff(arangodb::aql::Query* query,
     asFloat = asFloatValue.toBoolean();
   }
 
-  if (unit == "y" || unit == "year" || unit == "years") {
-    diff = duration_cast<duration<
-        double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(
-               diffDuration)
-               .count();
-  } else if (unit == "m" || unit == "month" || unit == "months") {
-    diff =
-        duration_cast<
-            duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(
-            diffDuration)
-            .count();
-  } else if (unit == "w" || unit == "week" || unit == "weeks") {
-    diff = duration_cast<
-               duration<int, std::ratio_multiply<std::ratio<7>, days::period>>>(
-               diffDuration)
-               .count();
-  } else if (unit == "d" || unit == "day" || unit == "days") {
-    diff = duration_cast<duration<
-        double,
-        std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>>(
-               diffDuration)
-               .count();
-  } else if (unit == "h" || unit == "hour" || unit == "hours") {
-    diff =
-        duration_cast<duration<double, std::ratio<3600>>>(diffDuration).count();
-  } else if (unit == "i" || unit == "minute" || unit == "minutes") {
-    diff =
-        duration_cast<duration<double, std::ratio<60>>>(diffDuration).count();
-  } else if (unit == "s" || unit == "second" || unit == "seconds") {
-    diff = duration_cast<duration<double>>(diffDuration).count();
-  } else if (unit == "f" || unit == "millisecond" || unit == "milliseconds") {
-    diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
-  } else {
-    RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-    return AqlValue(AqlValueHintNull());
+  switch (flag) {
+    case YEAR:
+      diff = duration_cast<duration<
+          double, std::ratio_multiply<std::ratio<146097, 400>, days::period>>>(
+                 diffDuration)
+                 .count();
+      break;
+    case MONTH:
+      diff =
+          duration_cast<
+              duration<double, std::ratio_divide<years::period, std::ratio<12>>>>(
+              diffDuration)
+              .count();
+      break;
+    case WEEK:
+      diff = duration_cast<
+                 duration<double, std::ratio_multiply<std::ratio<7>, days::period>>>(
+                 diffDuration)
+                 .count();
+      break;
+    case DAY:
+      diff = duration_cast<duration<
+          double,
+          std::ratio_multiply<std::ratio<24>, std::chrono::hours::period>>>(
+                 diffDuration)
+                 .count();
+      break;
+    case HOUR:
+      diff =
+          duration_cast<duration<double, std::ratio<3600>>>(diffDuration).count();
+      break;
+    case MINUTE:
+      diff =
+          duration_cast<duration<double, std::ratio<60>>>(diffDuration).count();
+      break;
+    case SECOND:
+      diff = duration_cast<duration<double>>(diffDuration).count();
+      break;
+    case MILLI:
+      diff = duration_cast<duration<double, std::milli>>(diffDuration).count();
+      break;
+    case INVALID:
+      RegisterWarning(query, "DATE_DIFF", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      return AqlValue(AqlValueHintNull());
   }
 
   if (asFloat) {

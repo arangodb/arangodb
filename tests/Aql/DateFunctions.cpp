@@ -355,7 +355,6 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
       }
     }
 
-    /*
     WHEN("checking Weeks") {
       double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24 * 7);
       auto allFlags = TestDateModifierFlagFactory::createAllFlags(TestDateModifierFlagFactory::FLAGS::WEEK);
@@ -363,7 +362,6 @@ SCENARIO("Testing DATE_DIFF", "[AQL][DATE]") {
         testCombinations(f, expectedDiff);
       }
     }
-    */
 
     WHEN("checking Months") {
       double expectedDiff = dateDiffMillis / (1000 * 60 * 60 * 24) / avgDaysPerMonth;
