@@ -703,23 +703,23 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
     return { boost::none };
   }
 
-  return {
-    FixServerOrderOperation {
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .shard = shardId,
-      .protoShard = protoShardId,
-      .leader = leader,
-      .followers = DBServers { dbServers.begin() + 1, dbServers.end() },
-      .protoFollowers = DBServers { protoDbServers.begin() + 1, protoDbServers.end() },
-    }
+  FixServerOrderOperation fixServerOrderOperation {
+    .database = collection.database,
+    .collectionId = collection.id,
+    .collectionName = collection.name,
+    .protoCollectionId = proto.id,
+    .protoCollectionName = proto.name,
+    .shard = shardId,
+    .protoShard = protoShardId,
+    .leader = leader,
+    .followers = DBServers { dbServers.begin() + 1, dbServers.end() },
+    .protoFollowers = DBServers { protoDbServers.begin() + 1, protoDbServers.end() },
   };
 
-  // TODO
+  // Change order for the rest of the repairs as well
   dbServers = protoDbServers;
+
+  return { fixServerOrderOperation };
 }
 
 

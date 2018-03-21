@@ -80,8 +80,6 @@ RestStatus RestRepairHandler::execute() {
     return RestStatus::FAIL;
   }
 
-  // TODO Instantiate job: Use SchedulerFeature::SCHEDULER->post(lambda)
-
   return repairDistributeShardsLike();
 }
 
@@ -103,6 +101,8 @@ RestRepairHandler::repairDistributeShardsLike() {
   }
 
   try {
+    rest::ResponseCode responseCode = rest::ResponseCode::OK;
+
     ClusterInfo* clusterInfo = ClusterInfo::instance();
     if (clusterInfo == nullptr) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
@@ -171,7 +171,6 @@ RestRepairHandler::repairDistributeShardsLike() {
         << "Executing "
         << repairOperations.size()
         << " operations";
-      response.add("message", VPackValue(message.str()));
 
       // TODO this is only for debugging:
       response.add("Operations", VPackValue(VPackValueType::Array));
@@ -189,12 +188,19 @@ RestRepairHandler::repairDistributeShardsLike() {
       // TODO this is only for debugging
       response.close();
 
-      executeRepairOperations(repairOperations);
+      Result result = executeRepairOperations(repairOperations);
+      if (result.fail()) {
+        responseCode = rest::ResponseCode::SERVER_ERROR;
+        message
+          << "\n"
+          << result.errorMessage();
+      }
+      response.add("message", VPackValue(message.str()));
     }
 
     response.close();
 
-    generateOk(rest::ResponseCode::OK, response);
+    generateOk(responseCode, response);
 
 
     return RestStatus::DONE;
@@ -234,6 +240,7 @@ RestRepairHandler::executeRepairOperations(
   AgencyComm comm;
   for (auto& op : repairOperations) {
     auto visitor = RepairOperationToTransactionVisitor();
+// TODO rename pair
     auto pair =
       boost::apply_visitor(visitor, op);
 
@@ -338,117 +345,10 @@ RestRepairHandler::executeRepairOperations(
   return Result();
 }
 
-template <std::size_t N>
-ResultT<std::array<VPackBufferPtr, N>>
-RestRepairHandler::getFromAgencyArray(std::array<std::string const, N> const& agencyKeyArray) {
-  std::array<VPackBufferPtr, N> resultArray;
-
-  AgencyComm agency;
-
-  // TODO The new code with the new getValues method is untested!
-  AgencyCommResult result = agency.getValues(agencyKeyArray);
-
-  for(size_t i = 0; i < N; i++) {
-    std::string const& agencyKey = agencyKeyArray[i];
-
-    if (!result.successful()) {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::getFromAgency: "
-      << "Getting value from agency failed with: " << result.errorMessage();
-      generateError(rest::ResponseCode::SERVER_ERROR,
-        result.errorCode(),
-        result.errorMessage());
-
-      return ResultT<
-        std::array<VPackBufferPtr, N>
-      >::error(
-        result.errorCode(),
-        result.errorMessage()
-      );
-    }
-
-    std::vector<std::string> agencyPath =
-      basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
-
-    agencyPath.erase(
-      std::remove(
-        agencyPath.begin(),
-        agencyPath.end(),
-        ""
-      ),
-      agencyPath.end()
-    );
-
-
-    VPackBuilder builder;
-
-    builder.add(result.slice()[0].get(agencyPath));
-
-    resultArray[i] = builder.steal();
-  }
-
-  return ResultT<
-    std::array<VPackBufferPtr, N>
-  >::success(resultArray);
-}
-
 
 template <std::size_t N>
 ResultT<std::array<VPackBufferPtr, N>>
-RestRepairHandler::getFromAgencyOld(std::array<std::string const, N> const& agencyKeyArray) {
-  std::array<VPackBufferPtr, N> resultArray;
-
-  AgencyComm agency;
-
-  for(size_t i = 0; i < N; i++) {
-    std::string const& agencyKey = agencyKeyArray[i];
-    AgencyCommResult result = agency.getValues(agencyKey);
-
-    if (!result.successful()) {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::getFromAgency: "
-      << "Getting value from agency failed with: " << result.errorMessage();
-      generateError(rest::ResponseCode::SERVER_ERROR,
-        result.errorCode(),
-        result.errorMessage()
-      );
-
-      return ResultT<
-        std::array<VPackBufferPtr, N>
-      >::error(
-        result.errorCode(),
-        result.errorMessage()
-      );
-    }
-
-    std::vector<std::string> agencyPath =
-      basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
-
-    agencyPath.erase(
-      std::remove(
-        agencyPath.begin(),
-        agencyPath.end(),
-        ""
-      ),
-      agencyPath.end()
-    );
-
-
-    VPackBuilder builder;
-
-    builder.add(result.slice()[0].get(agencyPath));
-
-    resultArray[i] = builder.steal();
-  }
-
-  return ResultT<
-    std::array<VPackBufferPtr, N>
-  >::success(resultArray);
-}
-
-template <std::size_t N>
-ResultT<std::array<VPackBufferPtr, N>>
-RestRepairHandler::getFromAgencyNew(std::array<std::string const, N> const& agencyKeyArray) {
+RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
   AgencyComm agency;
@@ -465,7 +365,6 @@ RestRepairHandler::getFromAgencyNew(std::array<std::string const, N> const& agen
     }
   );
 
-  // TODO The new code with transactions is untested!
   AgencyCommResult result = agency.sendTransactionWithFailover(
     AgencyReadTransaction { std::move(paths) }
   );
@@ -513,43 +412,6 @@ RestRepairHandler::getFromAgencyNew(std::array<std::string const, N> const& agen
   return ResultT<
     std::array<VPackBufferPtr, N>
   >::success(resultArray);
-}
-
-template <std::size_t N>
-ResultT<std::array<VPackBufferPtr, N>>
-RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyKeyArray) {
-  auto oldR = getFromAgencyOld(agencyKeyArray);
-  auto newR = getFromAgencyNew(agencyKeyArray);
-  auto arrayR = getFromAgencyArray(agencyKeyArray);
-
-  // TODO this method is a proxy for debugging
-
-  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-  << "[tg] RestRepairHandler::getFromAgency: old   = "
-  << oldR;
-  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-  << "[tg] RestRepairHandler::getFromAgency: array = "
-  << arrayR;
-  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-  << "[tg] RestRepairHandler::getFromAgency: new_  = "
-  << newR;
-
-  TRI_ASSERT(oldR.ok() && newR.ok() && arrayR.ok());
-  TRI_ASSERT(oldR.get().size() == newR.get().size() && oldR.get().size() == arrayR.get().size());
-
-  std::array<VPackBufferPtr, N>& oldA = oldR.get();
-  std::array<VPackBufferPtr, N>& newA = newR.get();
-  std::array<VPackBufferPtr, N>& arrayA = arrayR.get();
-
-  for(size_t i = 0; i < oldA.size(); i++) {
-    std::string oldJS = VPackSlice(oldA[i]->data()).toJson();
-    std::string newJS = VPackSlice(newA[i]->data()).toJson();
-    std::string arrayJS = VPackSlice(arrayA[i]->data()).toJson();
-    TRI_ASSERT(oldJS == newJS);
-    TRI_ASSERT(oldJS == arrayJS);
-  }
-
-  return newR;
 }
 
 ResultT<VPackBufferPtr>
