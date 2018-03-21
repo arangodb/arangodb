@@ -1720,7 +1720,7 @@ testDateCompareInvalid() {
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'yo'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'yo')))");
 
-  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
+  assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(1, 1, 'y', 'yo'))");
   assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN NOOPT(V8(DATE_COMPARE(1, 1, 'y', 'yo')))");
 
   assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN NOOPT(DATE_COMPARE(false, 1, 'y'))");
