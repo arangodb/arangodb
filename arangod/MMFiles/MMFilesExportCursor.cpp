@@ -37,9 +37,10 @@ using namespace arangodb;
 MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t* vocbase, CursorId id,
                            arangodb::MMFilesCollectionExport* ex, size_t batchSize,
                            double ttl, bool hasCount)
-    : Cursor(id, batchSize, nullptr, ttl, hasCount),
+    : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _ex(ex),
+      _position(0),
       _size(ex->_vpack.size()) {}
 
 MMFilesExportCursor::~MMFilesExportCursor() { delete _ex; }
@@ -71,7 +72,7 @@ VPackSlice MMFilesExportCursor::next() {
 
 size_t MMFilesExportCursor::count() const { return _size; }
 
-void MMFilesExportCursor::dump(VPackBuilder& builder) {
+Result MMFilesExportCursor::dump(VPackBuilder& builder) {
   auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 
@@ -125,10 +126,6 @@ void MMFilesExportCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
-    }
-
     if (!hasNext()) {
       // mark the cursor as deleted
       delete _ex;
@@ -136,11 +133,16 @@ void MMFilesExportCursor::dump(VPackBuilder& builder) {
       this->deleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "internal error during MMFilesExportCursor::dump");
+    return Result(TRI_ERROR_INTERNAL, "internal error during MMFilesExportCursor::dump");
   }
   builder.options = oldOptions;
+  return TRI_ERROR_NO_ERROR;
+}
+
+std::shared_ptr<transaction::Context> MMFilesExportCursor::context() const {
+  return transaction::StandaloneContext::Create(_guard.database()); // likely not used
 }

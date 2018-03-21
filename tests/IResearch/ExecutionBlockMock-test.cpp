@@ -181,7 +181,8 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -225,7 +226,8 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -264,7 +266,8 @@ TEST_CASE("ExecutionBlockMockTestSingle", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     arangodb::aql::AqlItemBlock data(&resMon, 100, 4);
 
@@ -311,7 +314,8 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
@@ -367,7 +371,8 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1
@@ -418,7 +423,8 @@ TEST_CASE("ExecutionBlockMockTestChain", "[iresearch]") {
       nullptr, std::make_shared<arangodb::velocypack::Builder>(),
       arangodb::aql::PART_MAIN
     );
-    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY, 0);
+    query.prepare(arangodb::QueryRegistryFeature::QUERY_REGISTRY,
+                  arangodb::aql::Query::DontCache);
 
     // build chain:
     // Singleton <- MockBlock0 <- MockBlock1

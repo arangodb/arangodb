@@ -226,6 +226,9 @@ TEST_CASE("IResearchViewTest", "[iresearch][iresearch-view]") {
   IResearchViewSetup s;
   UNUSED(s);
 
+SECTION("test_type") {
+  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::IResearchView::type()));
+}
 
 SECTION("test_defaults") {
   auto namedJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
