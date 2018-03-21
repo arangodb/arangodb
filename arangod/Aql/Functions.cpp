@@ -970,11 +970,7 @@ AqlValue Functions::Reverse(arangodb::aql::Query* query,
     
     builder->openArray();
     for (auto const &it : array) {
-      if (it.isCustom()) {
-        builder->add(VPackValue(trx->extractIdString(slice)));/// TODO
-      } else {
-        builder->add(it);
-      }
+      builder->add(it);
     }
     builder->close();
     return AqlValue(builder.get());
@@ -985,17 +981,16 @@ AqlValue Functions::Reverse(arangodb::aql::Query* query,
     arangodb::basics::VPackStringBufferAdapter adapter(buf1->stringBuffer());
     AppendAsString(trx, adapter, value);
     UnicodeString uBuf(buf1->c_str(), static_cast<int32_t>(buf1->length()));
+    // reserve the result buffer, but need to set empty afterwards:
     UnicodeString result;
     result.getBuffer(uBuf.length());
     result = "";
     StringCharacterIterator iter(uBuf, uBuf.length());
-    UChar c;
-    do {
+    UChar c = iter.previous();
+    while (c != CharacterIterator::DONE) {
+      result.append(c);
       c = iter.previous();
-      if (c != CharacterIterator::DONE) {
-        result.append(c);
-      }
-    } while (c != CharacterIterator::DONE); 
+    }
     result.toUTF8String(utf8);
 
     return AqlValue(utf8);
@@ -1326,12 +1321,8 @@ AqlValue Functions::Lower(arangodb::aql::Query* query,
 AqlValue Functions::Upper(arangodb::aql::Query* query,
                           transaction::Methods* trx,
                           VPackFunctionParameters const& parameters) {
-<<<<<<< HEAD
-  ValidateParameters(parameters, "UPPER", 1, 1);
-=======
   static char const* AFN = "UPPER";
   ValidateParameters(parameters, AFN, 1, 1);
->>>>>>> 5d6ef3e7155a903ed7d027336dc9adac92c3656e
 
   std::string utf8;
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
@@ -1352,12 +1343,8 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
 AqlValue Functions::Substring(arangodb::aql::Query* query,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
-<<<<<<< HEAD
-  ValidateParameters(parameters, "SUBSTRING", 2, 3);
-=======
   static char const* AFN = "SUBSTRING";
   ValidateParameters(parameters, AFN, 2, 3);
->>>>>>> 5d6ef3e7155a903ed7d027336dc9adac92c3656e
   AqlValue value = ExtractFunctionParameterValue(parameters, 0);
 
   int32_t length = INT32_MAX;
@@ -1497,6 +1484,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
   UnicodeString unicodeStr(buffer->c_str(), static_cast<int32_t>(buffer->length()));
 
   auto locale = LanguageFeature::instance()->getLocale();
+  // we can't copy the search instances, thus use pointers:
   std::vector<std::unique_ptr<StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
@@ -1520,7 +1508,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-    int32_t len;
+    int32_t len = 0;
     if (pos != USEARCH_DONE) {
       len = search->getMatchedLength();
     }
