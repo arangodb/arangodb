@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/StringUtils.h"
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
@@ -62,6 +63,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <date/date.h>
+#include <date/iso_week.h>
 #include <algorithm>
 #include <regex>
 
@@ -185,6 +187,142 @@ static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
   }
   // If we get here the flag is invalid
   return INVALID;
+}
+
+AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
+                                                   tp_sys_clock_ms const& tp,
+                                                   double durationUnits,
+                                                   VPackSlice durationType,
+                                                   bool isSubtract) {
+  std::chrono::duration<double, std::ratio<1l, 1000l>> ms;
+  year_month_day ymd{floor<days>(tp)};
+  auto day_time = make_time(tp - sys_days(ymd));
+
+  DateSelectionModifier flag = ParseDateModifierFlag(durationType);
+  double intPart = 0.0;
+
+  // All Fallthroughs intentional. We still have some remainder
+  switch (flag) {
+    case YEAR:
+      durationUnits = std::modf(durationUnits, &intPart);
+      if (isSubtract) {
+        ymd -= years{static_cast<int64_t>(intPart)};
+      } else {
+        ymd += years{static_cast<int64_t>(intPart)};
+      }
+      if (durationUnits == 0.0) {
+        break; // We are done
+      }
+      durationUnits *= 12;
+    case MONTH:
+      durationUnits = std::modf(durationUnits, &intPart);
+      if (isSubtract) {
+        ymd -= months{static_cast<int64_t>(intPart)};
+      } else {
+        ymd += months{static_cast<int64_t>(intPart)};
+      }
+      if (durationUnits == 0.0) {
+        break; // We are done
+      }
+      durationUnits *= 30; // 1 Month ~= 30 Days
+      // After this fall through the date may actually a bit off
+    case DAY:
+      // From here on we do not need leap-day handling
+      ms = days{1};
+      ms *= durationUnits;
+      break;
+    case WEEK:
+      ms = weeks{1};
+      ms *= durationUnits;
+      break;
+    case HOUR:
+      ms = hours{1};
+      ms *= durationUnits;
+      break;
+    case MINUTE:
+      ms = minutes{1};
+      ms *= durationUnits;
+      break;
+    case SECOND:
+      ms = seconds{1};
+      ms *= durationUnits;
+      break;
+    case MILLI:
+      ms = milliseconds{1};
+      ms *= durationUnits;
+      break;
+    default:
+      if (isSubtract) {
+        RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      } else {
+        RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+      }
+      return AqlValue(AqlValueHintNull());
+  }
+  // Here we reconstruct the timepoint again
+  
+  tp_sys_clock_ms resTime;
+  if (isSubtract) {
+    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - std::chrono::duration_cast<milliseconds>(ms)};
+  } else {
+    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + std::chrono::duration_cast<milliseconds>(ms)};
+  }
+  return TimeAqlValue(resTime);
+}
+
+AqlValue Functions::AddOrSubtractIsoDurationFromTimestamp(Query* query,
+                                                          tp_sys_clock_ms const& tp,
+                                                          std::string const& duration,
+                                                          bool isSubtract) {
+  year_month_day ymd{floor<days>(tp)};
+  auto day_time = make_time(tp - sys_days(ymd));
+  std::smatch duration_parts;
+  if (!basics::regex_isoDuration(duration, duration_parts)) {
+    if (isSubtract) {
+      RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    } else {
+      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    }
+    return AqlValue(AqlValueHintNull());
+  }
+
+  int number = basics::StringUtils::int32(duration_parts[2].str());
+  ymd -= years{number};
+
+  number = basics::StringUtils::int32(duration_parts[4].str());
+  ymd -= months{number};
+
+
+  milliseconds ms{0};
+  number = basics::StringUtils::int32(duration_parts[6].str());
+  ms += weeks{number};
+
+  number = basics::StringUtils::int32(duration_parts[8].str());
+  ms += days{number};
+
+  number = basics::StringUtils::int32(duration_parts[11].str());
+  ms += hours{number};
+
+  number = basics::StringUtils::int32(duration_parts[13].str());
+  ms += minutes{number};
+
+  number = basics::StringUtils::int32(duration_parts[15].str());
+  ms += seconds{number};
+
+
+  // The Milli seconds can be shortened:
+  // .1 => 100ms
+  // so we append 00 but only take the first 3 digits
+  number = basics::StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
+  ms += milliseconds{number};
+
+  tp_sys_clock_ms resTime;
+  if (isSubtract) {
+    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - ms};
+  } else {
+    resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
+  }
+  return TimeAqlValue(resTime);
 }
 
 /// @brief validate the number of parameters
@@ -1950,71 +2088,60 @@ AqlValue Functions::DateDayOfWeek(arangodb::aql::Query* query,
 AqlValue Functions::DateYear(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_YEAR", 0)) {
     return AqlValue(AqlValueHintNull());
   }
-
-  return AqlValue(AqlValueHintInt(
-    int( year_month_day(floor<days>(tp)).year() )
-  ));
+  auto ymd = year_month_day(floor<days>(tp));
+  // Not the library has operator (int) implemented...
+  int64_t year = static_cast<int64_t>((int)ymd.year());
+  return AqlValue(AqlValueHintInt(year));
 }
 
 /// @brief function DATE_MONTH
 AqlValue Functions::DateMonth(arangodb::aql::Query* query,
                               transaction::Methods* trx,
                               VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MONTH", 0)) {
     return AqlValue(AqlValueHintNull());
   }
-
-  return AqlValue(AqlValueHintUInt(
-    static_cast<uint64_t>(unsigned(year_month_day(floor<days>(tp)).month()))
-  ));
+  auto ymd = year_month_day(floor<days>(tp));
+  // The library has operator (unsigned) implemented
+  uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
+  return AqlValue(AqlValueHintUInt(month));
 }
 
 /// @brief function DATE_DAY
 AqlValue Functions::DateDay(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAY", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  return AqlValue(AqlValueHintUInt(
-    static_cast<uint64_t>(unsigned(year_month_day(floor<days>(tp)).day()))
-  ));
+  auto ymd = year_month_day(floor<days>(tp));
+  // The library has operator (unsigned) implemented
+  uint64_t day = static_cast<uint64_t>((unsigned)ymd.day());
+  return AqlValue(AqlValueHintUInt(day));
 }
 
 /// @brief function DATE_HOUR
 AqlValue Functions::DateHour(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_HOUR", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  uint64_t hours = make_time(tp - floor<days>(tp)).hours().count();
-
+  auto day_time = make_time(tp - floor<days>(tp));
+  uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
 }
 
@@ -2022,17 +2149,14 @@ AqlValue Functions::DateHour(arangodb::aql::Query* query,
 AqlValue Functions::DateMinute(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MINUTE", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  uint64_t minutes = make_time(tp - floor<days>(tp)).minutes().count();
-
+  auto day_time = make_time(tp - floor<days>(tp));
+  uint64_t minutes = day_time.minutes().count();
   return AqlValue(AqlValueHintUInt(minutes));
 }
 
@@ -2040,17 +2164,14 @@ AqlValue Functions::DateMinute(arangodb::aql::Query* query,
 AqlValue Functions::DateSecond(arangodb::aql::Query* query,
                                transaction::Methods* trx,
                                VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_SECOND", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  uint64_t seconds = make_time(tp - floor<days>(tp)).seconds().count();
-
+  auto day_time = make_time(tp - floor<days>(tp));
+  uint64_t seconds = day_time.seconds().count();
   return AqlValue(AqlValueHintUInt(seconds));
 }
 
@@ -2058,35 +2179,30 @@ AqlValue Functions::DateSecond(arangodb::aql::Query* query,
 AqlValue Functions::DateMillisecond(arangodb::aql::Query* query,
                                     transaction::Methods* trx,
                                     VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_MILLISECOND", 0)) {
     return AqlValue(AqlValueHintNull());
   }
-
-  uint64_t mss = make_time( floor<milliseconds>(tp) - floor<days>(tp) ).subseconds().count();
-
-  return AqlValue(AqlValueHintUInt(mss));
+  auto day_time = make_time(tp - floor<days>(tp));
+  uint64_t millis = day_time.subseconds().count();
+  return AqlValue(AqlValueHintUInt(millis));
 }
 
 /// @brief function DATE_DAYOFYEAR
 AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
                                   transaction::Methods* trx,
                                   VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_DAYOFYEAR", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  auto firstDayInYear = year{year_month_day(floor<days>(tp)).year()}/1/0;
-  uint64_t daysSinceFirst = duration_cast<days>( floor<days>(tp) - sys_days(firstDayInYear) ).count();
+  auto ymd = year_month_day(floor<days>(tp));
+  auto yyyy = year{ymd.year()};
+  auto firstDayInYear = yyyy/1/0;
+  uint64_t daysSinceFirst = duration_cast<days>( tp - sys_days(firstDayInYear) ).count();
 
   return AqlValue(AqlValueHintUInt(daysSinceFirst));
 }
@@ -2095,66 +2211,15 @@ AqlValue Functions::DateDayOfYear(arangodb::aql::Query* query,
 AqlValue Functions::DateIsoWeek(arangodb::aql::Query* query,
                                 transaction::Methods* trx,
                                 VPackFunctionParameters const& parameters) {
-  using namespace std::chrono;
-  using namespace date;
-
   tp_sys_clock_ms tp;
 
   if (!ParameterToTimePoint(query, trx, parameters, tp, "DATE_ISOWEEK", 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  auto sysdays = floor<days>(tp);
-
-  auto firstDayInYear = year{year_month_day(sysdays).year()}/1/0;
-  int64_t daysSinceFirst = duration_cast<days>( sysdays - sys_days(firstDayInYear) ).count();
-  int64_t weekdayIdx = unsigned(weekday( sysdays ));
-
-  if (weekdayIdx == 0) {
-    weekdayIdx = 7;
-  }
-
-  uint64_t isoWeek = std::floor( (daysSinceFirst - weekdayIdx + 10) / 7.0f );
-
-  if (isoWeek == 0) {
-    // if 0? last week of prev year -> calc max week for last year
-    int64_t lastYear = int(firstDayInYear.year()) - 1;
-    uint64_t p = static_cast<int64_t>(lastYear + std::floor(lastYear/4.0f) - std::floor(lastYear / 100.0f) + std::floor(lastYear / 400.0f)) % 7;
-
-    if ( p == 4) {
-      isoWeek = 53;
-
-    } else {
-      // check for 3
-      lastYear -= 1;
-      p = static_cast<int64_t>(lastYear + std::floor(lastYear/4.0f) - std::floor(lastYear / 100.0f) + std::floor(lastYear / 400.0f)) % 7;
-
-      if (p == 3) {
-        isoWeek = 53;
-      } else {
-        isoWeek = 52;
-      }
-    }
-  } else if (isoWeek == 53) {
-    // if 53? check for validity
-
-    // check if asked year has 53 weeks
-    int64_t askedYear = int(firstDayInYear.year());
-    uint64_t p = static_cast<int64_t>(askedYear + std::floor(askedYear/4.0f) - std::floor(askedYear / 100.0f) + std::floor(askedYear / 400.0f)) % 7;
-
-    if ( p == 4) {
-      ; // ok
-    } else {
-      // check for 3
-      askedYear -= 1;
-      p = static_cast<int64_t>(askedYear + std::floor(askedYear/4.0f) - std::floor(askedYear / 100.0f) + std::floor(askedYear / 400.0f)) % 7;
-
-      if (p != 3) { // "overflow" to next year
-        isoWeek = 1;
-      }
-    }
-  }
-
+  iso_week::year_weeknum_weekday yww{floor<days>(tp)};
+  // The (unsigned) operator is overloaded...
+  uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
   return AqlValue(AqlValueHintUInt(isoWeek));
 }
 
@@ -2229,44 +2294,20 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
 
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
-    AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
-
-    if (!durationUnit.isNumber() || // unit must be number
-        !durationType.isString()) { // unit type must be string
+    if (!durationUnit.isNumber()) { // unit must be number
       RegisterInvalidArgumentWarning(query, "DATE_ADD");
       return AqlValue(AqlValueHintNull());
     }
-    int64_t units = durationUnit.toInt64(trx);
-    std::string duration = durationType.slice().copyString();
-    std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
 
-    year_month_day ymd{floor<days>(tp)};
-    auto day_time = make_time(tp - sys_days(ymd));
-    milliseconds ms{0};
-
-    if (duration == "y" || duration == "year" || duration == "years") {
-      ymd += years{units};
-    } else if (duration == "m" || duration == "month" || duration == "months") {
-      ymd += months{units};
-
-    } else if (duration == "w" || duration == "week" || duration == "weeks") {
-      ms += weeks{units};
-    } else if (duration == "d" || duration == "day" || duration == "days") {
-      ms += days{units};
-    } else if (duration == "h" || duration == "hour" || duration == "hours") {
-      ms += hours{units};
-    } else if (duration == "i" || duration == "minute" || duration == "minutes") {
-      ms += minutes{units};
-    } else if (duration == "s" || duration == "second" || duration == "seconds") {
-      ms += seconds{units};
-    } else if (duration == "f" || duration == "millisecond" || duration == "milliseconds") {
-      ms += milliseconds{units};
-    } else {
-      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
+    AqlValue durationType = ExtractFunctionParameterValue(parameters, 2);
+    if (!durationType.isString()) { // unit type must be string
+      RegisterInvalidArgumentWarning(query, "DATE_ADD");
       return AqlValue(AqlValueHintNull());
     }
-    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() + ms};
 
+
+    double doubleUnits = durationUnit.toDouble(trx);
+    return AddOrSubtractUnitFromTimestamp(query, tp, doubleUnits, durationType.slice(), false);
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -2275,30 +2316,8 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
     }
 
     std::string const duration = isoDuration.slice().copyString();
-
-    std::smatch duration_parts;
-    if (!basics::regex_isoDuration(duration, duration_parts)) {
-      RegisterWarning(query, "DATE_ADD", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    year_month_day ymd{floor<days>(tp)};
-    auto day_time = make_time(tp - sys_days(ymd));
-
-    ymd += years{atoi(duration_parts[2].str().c_str())};
-    ymd += months{atoi(duration_parts[4].str().c_str())};
-
-    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration()};
-
-    tp += weeks{atoi(duration_parts[6].str().c_str())} + days{atoi(duration_parts[8].str().c_str())};
-
-    tp += hours{atoi(duration_parts[11].str().c_str())};
-    tp += minutes{atoi(duration_parts[13].str().c_str())};
-    tp += seconds{atoi(duration_parts[15].str().c_str())};
-    tp += milliseconds{atoi((duration_parts[17].str()+"00").substr(0,3).c_str())};
+    return AddOrSubtractIsoDurationFromTimestamp(query, tp, duration, false);
   }
-
-  return TimeAqlValue(tp);
 }
 
 /// @brief function DATE_SUBTRACT
@@ -2315,7 +2334,6 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
   // size == 2 iso duration
 
   year_month_day ymd{floor<days>(tp)};
-  auto day_time = make_time(tp - sys_days(ymd));
   if (parameters.size() == 3) {
     AqlValue durationUnit = ExtractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) { // unit must be number
@@ -2329,61 +2347,8 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-    std::chrono::duration<double, std::ratio<1l, 1000l> > ms;
-
-    DateSelectionModifier flag = ParseDateModifierFlag(durationType.slice());
-
     double doubleUnits = durationUnit.toDouble(trx);
-    double intPart = 0.0;
-
-    // All Fallthroughs intentional. We still have some remainder
-    switch (flag) {
-      case YEAR:
-        doubleUnits = std::modf(doubleUnits, &intPart);
-        ymd -= years{static_cast<int64_t>(intPart)};
-        if (doubleUnits == 0.0) {
-          break; // We are done
-        }
-        doubleUnits *= 12;
-      case MONTH:
-        doubleUnits = std::modf(doubleUnits, &intPart);
-        ymd -= months{static_cast<int64_t>(intPart)};
-        if (doubleUnits == 0.0) {
-          break; // We are done
-        }
-        doubleUnits *= 30; // 1 Month ~= 30 Days
-        // After this fall through the date may actually a bit off
-      case DAY:
-        // From here on we do not need leap-day handling
-        ms = days{1};
-        ms = doubleUnits * ms;
-        break;
-      case WEEK:
-        ms = weeks{1};
-        ms *= doubleUnits;
-        break;
-      case HOUR:
-        ms = hours{1};
-        ms *= doubleUnits;
-        break;
-      case MINUTE:
-        ms = minutes{1};
-        ms *= doubleUnits;
-        break;
-      case SECOND:
-        ms = seconds{1};
-        ms *= doubleUnits;
-        break;
-      case MILLI:
-        ms = milliseconds{1};
-        ms *= doubleUnits;
-        break;
-      default:
-        RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-        return AqlValue(AqlValueHintNull());
-    }
-    // Here we reconstruct the timepoint again
-    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() - std::chrono::duration_cast<milliseconds>(ms)};
+    return AddOrSubtractUnitFromTimestamp(query, tp, doubleUnits, durationType.slice(), true);
   } else { // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -2392,45 +2357,9 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
     }
 
     std::string const duration = isoDuration.slice().copyString();
-
-    std::smatch duration_parts;
-    if (!basics::regex_isoDuration(duration, duration_parts)) {
-      RegisterWarning(query, "DATE_SUBTRACT", TRI_ERROR_QUERY_INVALID_DATE_VALUE);
-      return AqlValue(AqlValueHintNull());
-    }
-
-    int number = StringUtils::int32(duration_parts[2].str());
-    ymd -= years{number};
-
-    number = StringUtils::int32(duration_parts[4].str());
-    ymd -= months{number};
-
-    tp = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration()};
-
-    number = StringUtils::int32(duration_parts[6].str());
-    tp -= weeks{number};
-
-    number = StringUtils::int32(duration_parts[8].str());
-    tp += days{number};
-
-    number = StringUtils::int32(duration_parts[11].str());
-    tp += hours{number};
-
-    number = StringUtils::int32(duration_parts[13].str());
-    tp += minutes{number};
-
-    number = StringUtils::int32(duration_parts[15].str());
-    tp += seconds{number};
-
-
-    // The Milli seconds can be shortened:
-    // .1 => 100ms
-    // so we append 00 but only take the first 3 digits
-    number = StringUtils::int32((duration_parts[17].str() + "00").substr(0, 3));
-    tp += seconds{number};
+    return AddOrSubtractIsoDurationFromTimestamp(query, tp, duration, true);
   }
 
-  return TimeAqlValue(tp);
 }
 
 /// @brief function DATE_DIFF
@@ -2603,6 +2532,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       }
       break;
     case INVALID:
+    case WEEK:
       // Was handled before
       TRI_ASSERT(false);
   }

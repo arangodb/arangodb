@@ -53,6 +53,17 @@ typedef std::function<AqlValue(arangodb::aql::Query*, transaction::Methods*,
 struct Functions {
   protected:
 
+    static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
+                                                   tp_sys_clock_ms const& tp,
+                                                   double durationUnits,
+                                                   arangodb::velocypack::Slice durationType,
+                                                   bool isSubtract);
+
+    static AqlValue AddOrSubtractIsoDurationFromTimestamp(arangodb::aql::Query* query,
+                                                          tp_sys_clock_ms const& tp,
+                                                          std::string const& duration,
+                                                          bool isSubtract);
+
   /// @brief validate the number of parameters
    static void ValidateParameters(VPackFunctionParameters const& parameters,
                                   char const* function, int minParams,
