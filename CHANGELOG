@@ -1,6 +1,8 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
 
