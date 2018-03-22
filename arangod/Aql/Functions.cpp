@@ -186,6 +186,7 @@ static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
       if (flagStr == "weeks" || flagStr == "week" || flagStr == "w") {
         return WEEK;
       }
+      break;
     case 'm':
       if (flagStr == "months" || flagStr == "month" || flagStr == "m") {
         return MONTH;
@@ -261,6 +262,7 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
         break;  // We are done
       }
       durationUnits *= 12;
+      // intentionally falls through
     case MONTH:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
@@ -272,6 +274,7 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
         break;  // We are done
       }
       durationUnits *= 30;  // 1 Month ~= 30 Days
+      // intentionally falls through
     // After this fall through the date may actually a bit off
     case DAY:
       // From here on we do not need leap-day handling
@@ -3031,6 +3034,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (ymd1.year() != ymd2.year()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case MONTH:
       if (rangeEnd > MONTH) {
         break;
@@ -3038,6 +3042,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (ymd1.month() != ymd2.month()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case DAY:
       if (rangeEnd > DAY) {
         break;
@@ -3045,6 +3050,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (ymd1.day() != ymd2.day()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case HOUR:
       if (rangeEnd > HOUR) {
         break;
@@ -3052,6 +3058,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (time1.hours() != time2.hours()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case MINUTE:
       if (rangeEnd > MINUTE) {
         break;
@@ -3059,6 +3066,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (time1.minutes() != time2.minutes()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case SECOND:
       if (rangeEnd > SECOND) {
         break;
@@ -3066,6 +3074,7 @@ AqlValue Functions::DateCompare(arangodb::aql::Query* query,
       if (time1.seconds() != time2.seconds()) {
         return AqlValue(AqlValueHintBool(false));
       }
+      // intentionally falls through
     case MILLI:
       if (rangeEnd > MILLI) {
         break;
