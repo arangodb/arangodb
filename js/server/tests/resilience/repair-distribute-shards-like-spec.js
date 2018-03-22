@@ -146,7 +146,7 @@ const expectCollectionPlanToEqualProto = function (collection, protoCollection) 
 
     internal.print("comparing ", followers);
     internal.print("with      ", protoFollowers);
-    expect(followers).to.equal(protoFollowers);
+    expect(followers).to.deep.equal(protoFollowers);
   }
 };
 
@@ -363,7 +363,7 @@ internal.print(`=== [DEBUG] response = `, response);
       collection.properties().distributeShardsLike
     ).to.equal(protoCollection.name());
 
-    expect(expectCollectionPlanToEqualProto(collection, protoCollection)).to.be.true;
+    expectCollectionPlanToEqualProto(collection, protoCollection);
   });
 
 });
