@@ -921,7 +921,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     auto* col = resolveCollection(vocbase(), parameters).get();
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") +
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, std::string("cannot dump: ") +
                     collectionMsg + " not found on slave. Collection info " + parameters.toJson());
     }
 

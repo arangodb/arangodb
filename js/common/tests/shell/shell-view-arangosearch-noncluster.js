@@ -191,13 +191,13 @@ function ViewSuite () {
         abc = db._view("abc");
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_VIEW_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
       try {
         def = db._view("def");
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_VIEW_NOT_FOUND.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
 

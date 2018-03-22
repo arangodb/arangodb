@@ -481,7 +481,7 @@ static void resolveInfo(
     auto lc = vocbase->lookupCollection(collectionID);
 
     if (lc == nullptr || lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                      collectionID);
     }
 
@@ -495,7 +495,7 @@ static void resolveInfo(
     std::shared_ptr<LogicalCollection> lc =
         ci->getCollection(vocbase->name(), collectionID);
     if (lc->deleted()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                                      collectionID);
     }
     collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));

@@ -1705,8 +1705,8 @@ var shardList = function (dbName, collectionName) {
     if (isEnterprise) {
       return require('@arangodb/clusterEE').getSmartShards(dbName, collectionName, ci);
     } else {
-      raiseError(arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
-        arangodb.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message);
+      raiseError(arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code,
+        arangodb.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message);
     }
   }
 
