@@ -476,7 +476,7 @@ static void JS_WaitCollectorWal(
   auto col = vocbase->lookupCollection(name);
 
   if (col == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   double timeout = 30.0;

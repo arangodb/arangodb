@@ -133,6 +133,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--cluster.create-waits-for-sync-replication",
                      "active coordinator will wait for all replicas to create collection",
                      new BooleanParameter(&_createWaitsForSyncReplication));
+  
+  options->addHiddenOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

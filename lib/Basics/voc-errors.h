@@ -344,11 +344,11 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 /// Will be raised when a document with a given identifier or handle is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
-/// 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
+/// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
 /// "collection not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             = 1203;
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
 /// "parameter 'collection' not found"
@@ -384,11 +384,6 @@ constexpr int TRI_ERROR_ARANGO_NO_INDEX                                         
 /// "unique constraint violated"
 /// Will be raised when there is a unique constraint violation.
 constexpr int TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       = 1210;
-
-/// 1211: ERROR_ARANGO_VIEW_NOT_FOUND
-/// "view not found"
-/// Will be raised when a view with the given identifier or name is unknown.
-constexpr int TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   = 1211;
 
 /// 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 /// "index not found"

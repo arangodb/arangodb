@@ -54,7 +54,7 @@ static bool createSystemCollection(TRI_vocbase_t* vocbase,
                                    std::string const& name) {
   Result res = methods::Collections::lookup(vocbase, name,
                                             [](LogicalCollection* coll) {});
-  if (res.is(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) {
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     uint32_t defaultReplFactor = 1;
     ClusterFeature* cl = ApplicationServer::getFeature<ClusterFeature>("Cluster");
     if (cl != nullptr) {

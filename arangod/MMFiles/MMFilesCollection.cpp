@@ -807,7 +807,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   while (true) {
     // no need to go on if the collection is already deleted
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
 
     MMFilesDatafile* datafile = nullptr;

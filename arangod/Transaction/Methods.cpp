@@ -104,11 +104,11 @@ arangodb::Result applyStateRegistrationCallbacks(
 
 static void throwCollectionNotFound(char const* name) {
   if (name == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-      std::string(TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)) +
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::string(TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) +
           ": " + name);
 }
 
@@ -838,7 +838,7 @@ TRI_voc_tid_t transaction::Methods::tid() const {
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   return c->collectionName();
 }
@@ -919,7 +919,7 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
     auto dataSource = resolver()->getDataSource(cid);
 
     if (!dataSource) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
@@ -1163,7 +1163,7 @@ OperationResult transaction::Methods::clusterResultInsert(
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
     case rest::ResponseCode::NOT_FOUND:
-      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     case rest::ResponseCode::CONFLICT:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
@@ -2935,7 +2935,7 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
 
   return dataSource
     ? applyStateRegistrationCallbacks(*dataSource, *_state)
-    : Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)
+    : Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
     ;
 }
 
@@ -3125,7 +3125,7 @@ Result transaction::Methods::addCollectionEmbedded(TRI_voc_cid_t cid,
           res, std::string(TRI_errno_string(res)) + ": " +
                    resolver()->getCollectionNameCluster(cid) + " [" +
                    AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
     THROW_ARANGO_EXCEPTION(res);
@@ -3156,7 +3156,7 @@ Result transaction::Methods::addCollectionToplevel(TRI_voc_cid_t cid,
           res, std::string(TRI_errno_string(res)) + ": " +
                    resolver()->getCollectionNameCluster(cid) + " [" +
                    AccessMode::typeString(type) + "]");
-    } else if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    } else if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       throwCollectionNotFound(name);
     }
     THROW_ARANGO_EXCEPTION(res);
@@ -3208,7 +3208,7 @@ Result transaction::Methods::resolveId(char const* handle, size_t length,
   }
 
   if (cid == 0) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   key = p + 1;

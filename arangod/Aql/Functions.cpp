@@ -789,7 +789,7 @@ static void GetDocumentByIdentifier(transaction::Methods* trx,
   if (!res.ok()) {
     if (ignoreError) {
       if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND ||
-          res.errorNumber() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND ||
+          res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ||
           res.errorNumber() == TRI_ERROR_ARANGO_CROSS_COLLECTION_REQUEST) {
         return;
       }

@@ -582,7 +582,7 @@ arangodb::Result updateLinks(
           }
 
           return arangodb::Result(
-            TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
             std::string("failed to get collection while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
           );
         }
@@ -1940,7 +1940,7 @@ arangodb::Result IResearchView::updateLogicalProperties(
 ) {
   return _logicalView
     ? _logicalView->updateProperties(slice, partialUpdate, doSync)
-    : arangodb::Result(TRI_ERROR_ARANGO_VIEW_NOT_FOUND)
+    : arangodb::Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)
     ;
 }
 
