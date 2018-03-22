@@ -1648,7 +1648,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     col = ci->getCollection(dbName, name);
   } catch (...) {
     errorMsg = "could not find collection '" + name + "'";
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(col != nullptr);
   
@@ -1949,7 +1949,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2078,7 +2078,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2126,7 +2126,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }

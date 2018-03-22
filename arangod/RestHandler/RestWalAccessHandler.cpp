@@ -89,7 +89,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         return false;
       }
 

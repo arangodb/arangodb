@@ -533,7 +533,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     }
 
     if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     if (collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
@@ -564,7 +564,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
       // someone requested the collection to be dropped, so it's not there
       // anymore
-      return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
     // no drop action found, go on
@@ -576,7 +576,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
 
   // deleted, give up
   if (collection->status() == TRI_VOC_COL_STATUS_DELETED) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   // corrupted, give up
@@ -1336,7 +1336,7 @@ int TRI_vocbase_t::renameView(
 
   if (itr1 == _dataSourceByName.end()
       || !std::dynamic_pointer_cast<arangodb::LogicalView>(itr1->second)) {
-    return TRI_ERROR_ARANGO_VIEW_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   _dataSourceByName.emplace(newName, view);
@@ -1445,7 +1445,7 @@ int TRI_vocbase_t::renameCollection(
 
   if (itr1 == _dataSourceByName.end()
       || !std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr1->second)) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   auto* databaseFeature =
@@ -1537,7 +1537,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
 arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(
     arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status) {
   if (collection == nullptr) {
-    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return nullptr;
   }
 
@@ -1668,7 +1668,7 @@ int TRI_vocbase_t::dropView(std::string const& name) {
   std::shared_ptr<LogicalView> view = lookupView(name);
 
   if (view == nullptr) {
-    return TRI_ERROR_ARANGO_VIEW_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   return dropView(view);

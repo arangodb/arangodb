@@ -260,7 +260,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return;
     }
 
@@ -466,7 +466,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   int res = ctx->bindCollection(_vocbase, collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
