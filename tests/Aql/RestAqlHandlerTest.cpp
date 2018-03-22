@@ -76,6 +76,7 @@ class FakeResponse : public GeneralResponse {
     arangodb::Endpoint::TransportType const _transport;
 };
 
+/*
 SCENARIO("Successful query setup", "[aql][restaqlhandler]") {
 
   // We always work on DBServer
@@ -209,6 +210,7 @@ SCENARIO("Successful query setup", "[aql][restaqlhandler]") {
   }
 
 }
+*/
 
 SCENARIO("Error in query setup", "[aql][restaqlhandler]") {
 GIVEN("A single query snippet") {

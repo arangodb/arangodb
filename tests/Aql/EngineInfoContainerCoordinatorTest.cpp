@@ -724,6 +724,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       fakeit::Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
     }
 
+    /*
     GIVEN("inserting into the Registry fails") {
       fakeit::When(Method(mockSecondEngine, getQuery)).Do([&]() -> Query* {
         return &queryClone;
@@ -770,6 +771,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       fakeit::Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(0);
  
     }
+    */
   }
 
 }
