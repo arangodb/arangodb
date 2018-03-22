@@ -3,6 +3,12 @@ v3.3.5 (XXXX-XX-XX)
 
 * fixed issue #4900: Nested FOR query uses index but ignores other filters 
  
+* added hidden option `--cluster.index-create-timeout` for controlling the
+  default value of the index creation timeout in cluster
+  under normal circumstances, this option does not need to be adjusted
+
+* increase default timeout for index creation in cluster to 3600s
+
 * fixed issue #4843: Query-Result has more Docs than the Collection itself  
 
 * fixed the behavior of ClusterInfo when waiting for current to catch
