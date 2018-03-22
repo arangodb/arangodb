@@ -29,6 +29,7 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -307,9 +308,11 @@ Result Indexes::ensureIndexCoordinator(
   std::string const dbName = collection->dbName();
   std::string const cid = collection->cid_as_string();
   std::string errorMsg;
+
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
-      errorMsg, 360.0);
+      errorMsg, cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }
 
