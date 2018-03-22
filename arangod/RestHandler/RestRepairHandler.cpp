@@ -43,9 +43,6 @@ RestRepairHandler::RestRepairHandler(
 
 
 RestStatus RestRepairHandler::execute() {
-  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) // TODO for debugging only
-  << "[tg] RestRepairHandler::execute()";
-
   if (SchedulerFeature::SCHEDULER->isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::FAIL;
@@ -86,9 +83,6 @@ RestStatus RestRepairHandler::execute() {
 
 RestStatus
 RestRepairHandler::repairDistributeShardsLike() {
-  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER) // TODO for debugging only
-  << "[tg] RestRepairHandler::repairDistributeShardsLike()";
-
   if (ServerState::instance()->isSingleServer()) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
     << "RestRepairHandler::repairDistributeShardsLike: "
@@ -172,20 +166,15 @@ RestRepairHandler::repairDistributeShardsLike() {
         << repairOperations.size()
         << " operations";
 
-      // TODO this is only for debugging:
-      response.add("Operations", VPackValue(VPackValueType::Array));
+      response.add("PlannedOperations", VPackValue(VPackValueType::Array));
 
       for (auto const& op : repairOperations) {
-        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO for debugging, remove later
-        << "[tg] op type = "
-        << getTypeAsString(op);
-
+        // TODO write as VelocyPack instead of string
         std::stringstream stringstream;
         stringstream << op;
         response.add(VPackValue(stringstream.str()));
       }
 
-      // TODO this is only for debugging
       response.close();
 
       Result result = executeRepairOperations(repairOperations);
@@ -217,44 +206,75 @@ RestRepairHandler::repairDistributeShardsLike() {
 
 }
 
+ResultT<bool>
+RestRepairHandler::jobFinished(std::string const& jobId) {
+  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+  << "RestRepairHandler::executeRepairOperations: "
+  << "Fetching job info of " << jobId;
+  ResultT<JobStatus> jobStatus
+    = getJobStatusFromAgency(jobId);
 
-// TODO For debugging, remove later. At least, this shouldn't stay here.
-std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& trx) {
-  VPackOptions optPretty = VPackOptions::Defaults;
-  optPretty.prettyPrint = true;
+  if (jobStatus.ok()) {
+    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+    << "RestRepairHandler::executeRepairOperations: "
+    << "Job status is: "
+    << toString(jobStatus.get());
 
-  VPackBuilder builder;
+    switch (jobStatus.get()) {
+      case JobStatus::todo:
+      case JobStatus::pending:
+        break;
 
-  trx.toVelocyPack(builder);
+      case JobStatus::finished:
+        return true;
+        break;
 
-  ostream << builder.slice().toJson(&optPretty);
+      case JobStatus::failed:
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Job " << jobId << " failed, aborting";
 
-  return ostream;
+        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
+
+      case JobStatus::missing:
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Job " << jobId << " went missing, aborting";
+
+        return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
+    }
+
+  }
+  else {
+    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+    << "RestRepairHandler::executeRepairOperations: "
+    << "Failed to get job status: "
+    << "[" << jobStatus.errorNumber() << "] "
+    << jobStatus.errorMessage();
+
+    return jobStatus;
+  }
+
+  return false;
 }
+
 
 Result
 RestRepairHandler::executeRepairOperations(
   std::list<RepairOperation> repairOperations
 ) {
-  // TODO Maybe wait if there are *any* jobs that were created from repairDistributeShardsLike?
   AgencyComm comm;
   for (auto& op : repairOperations) {
     auto visitor = RepairOperationToTransactionVisitor();
-// TODO rename pair
-    auto pair =
+    auto trxJobPair =
       boost::apply_visitor(visitor, op);
 
-    AgencyWriteTransaction &wtrx = pair.first;
-    boost::optional<uint64_t> waitForJobId = pair.second;
+    AgencyWriteTransaction &wtrx = trxJobPair.first;
+    boost::optional<uint64_t> waitForJobId = trxJobPair.second;
 
-    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
+    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
     << "RestRepairHandler::executeRepairOperations: "
-    << "Sending transaction to the agency";
-
-    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
-    << "RestRepairHandler::executeRepairOperations: "
-    << "Transaction is: "
-    << wtrx;
+    << "Sending a transaction to the agency";
 
     AgencyCommResult result
       = comm.sendTransactionWithFailover(wtrx);
@@ -270,75 +290,25 @@ RestRepairHandler::executeRepairOperations(
 
     // If the transaction posted a job, we wait for it to finish.
     if(waitForJobId) {
-      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
+      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
       << "RestRepairHandler::executeRepairOperations: "
       << "Waiting for job " << waitForJobId.get();
       bool previousJobFinished = false;
       std::string jobId = std::to_string(waitForJobId.get());
 
-      // TODO the loop is too long, try to refactor it
       while(! previousJobFinished) {
-        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
-        << "RestRepairHandler::executeRepairOperations: "
-        << "Fetching job info of " << jobId;
-        ResultT<JobStatus> jobStatus
-          = getJobStatusFromAgency(jobId);
-
-        if (jobStatus.ok()) {
-          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to DEBUG
-          << "RestRepairHandler::executeRepairOperations: "
-          << "Job status is: "
-          << (
-            jobStatus.get() == JobStatus::todo ? "todo" :
-            jobStatus.get() == JobStatus::pending ? "pending" :
-            jobStatus.get() == JobStatus::finished ? "finished" :
-            jobStatus.get() == JobStatus::failed ? "failed" :
-            jobStatus.get() == JobStatus::missing ? "missing" :
-            "n/a"
-          );
-
-          switch (jobStatus.get()) {
-            case JobStatus::todo:
-            case JobStatus::pending:
-              break;
-
-            case JobStatus::finished:
-              previousJobFinished = true;
-              break;
-
-            case JobStatus::failed:
-              LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-              << "RestRepairHandler::executeRepairOperations: "
-              << "Job " << jobId << " failed, aborting";
-
-              return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
-
-            case JobStatus::missing:
-              LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-              << "RestRepairHandler::executeRepairOperations: "
-              << "Job " << jobId << " went missing, aborting";
-
-              return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
-          }
-
-        } else
-        {
-          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
-          << "RestRepairHandler::executeRepairOperations: "
-          << "Failed to get job status: "
-          << "[" << jobStatus.errorNumber() << "] "
-          << jobStatus.errorMessage();
-
-          return jobStatus;
+        ResultT<bool> jobFinishedResult = jobFinished(jobId);
+        if (jobFinishedResult.fail()) {
+          return jobFinishedResult;
         }
+        previousJobFinished = jobFinishedResult.get();
 
-        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) // TODO set to TRACE
+        LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::executeRepairOperations: "
         << "Sleeping for 1s";
         sleep(1);
       }
     }
-
 
   }
 

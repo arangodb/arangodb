@@ -43,6 +43,17 @@ enum class JobStatus {
   missing
 };
 
+inline char const*
+toString(JobStatus jobStatus) {
+  return
+    jobStatus == JobStatus::todo ? "todo" :
+    jobStatus == JobStatus::pending ? "pending" :
+    jobStatus == JobStatus::finished ? "finished" :
+    jobStatus == JobStatus::failed ? "failed" :
+    jobStatus == JobStatus::missing ? "missing" :
+    "n/a";
+}
+
 }
 
 class RestRepairHandler : public arangodb::RestBaseHandler {
@@ -57,13 +68,13 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   }
 
   bool isDirect() const override {
-    // TODO [tobias] does this do what I think it does?
+    // TODO does this do what I think it does?
     return false;
   }
 
   RestStatus execute() override;
 
-  // TODO [tobias] maybe implement cancel() ?
+  // TODO maybe implement cancel() ?
 
  private:
   RestStatus repairDistributeShardsLike();
@@ -81,6 +92,9 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   cluster_repairs::ResultT<rest_repair::JobStatus>
   getJobStatusFromAgency(std::string const &jobId);
+
+  cluster_repairs::ResultT<bool>
+  jobFinished(std::string const& jobId);
 };
 
 }
