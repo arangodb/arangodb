@@ -71,11 +71,11 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "RocksDBEngine/RocksDBView.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
+#include "VocBase/LogicalView.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -686,12 +686,6 @@ PhysicalCollection* RocksDBEngine::createPhysicalCollection(
   return new RocksDBCollection(collection, info);
 }
 
-// create storage-engine specific view
-PhysicalView* RocksDBEngine::createPhysicalView(LogicalView* view,
-                                                VPackSlice const& info) {
-  return new RocksDBView(view, info);
-}
-
 // inventory functionality
 // -----------------------
 
@@ -1246,7 +1240,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // This will write a renameMarker if not in recovery
 Result RocksDBEngine::renameView(TRI_vocbase_t* vocbase,
                                  std::shared_ptr<arangodb::LogicalView> view,
-                                 std::string const& oldName) {
+                                 std::string const& /*oldName*/) {
   return persistView(vocbase, view.get());
 }
 
@@ -1714,13 +1708,9 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      std::shared_ptr<LogicalView> view =
-          std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      auto view = std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
 
       StorageEngine::registerView(vocbase.get(), view);
-
-      auto physical = static_cast<RocksDBView*>(view->getPhysical());
-      TRI_ASSERT(physical != nullptr);
 
       view->spawnImplementation(creator, it, false);
       view->getImplementation()->open();

@@ -52,7 +52,6 @@
 #include "MMFiles/MMFilesTransactionManager.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
-#include "MMFiles/MMFilesView.h"
 #include "MMFiles/MMFilesWalAccess.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "MMFiles/mmfiles-replication-dump.h"
@@ -140,6 +139,19 @@ struct DatabaseIdStringComparator {
            getNumericFilenamePartFromDatabase(rhs);
   }
 };
+
+/// @brief reads 'path' propety from a specified
+/// object slice and return value as string
+/// @returns empty string in case if something gone wrong
+std::string readPath(VPackSlice info) {
+  if (info.isObject()) {
+    VPackSlice path = info.get("path");
+    if (path.isString()) {
+      return path.copyString();
+    }
+  }
+  return "";
+}
 }
 
 std::string const MMFilesEngine::EngineName("mmfiles");
@@ -287,13 +299,6 @@ PhysicalCollection* MMFilesEngine::createPhysicalCollection(
     LogicalCollection* collection, VPackSlice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   return new MMFilesCollection(collection, info);
-}
-
-// create storage-engine specific view
-PhysicalView* MMFilesEngine::createPhysicalView(LogicalView* view,
-                                                VPackSlice const& info) {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-  return new MMFilesView(view, info);
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
@@ -1327,6 +1332,15 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   saveViewInfo(vocbase, id, parameters, doSync);
 }
 
+void MMFilesEngine::getViewProperties(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const* view,
+    VPackBuilder& result
+) {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("path", VPackValue(viewDirectory(vocbase->id(), view->id())));
+}
+
 arangodb::Result MMFilesEngine::persistView(TRI_vocbase_t* vocbase,
                                             arangodb::LogicalView const* view) {
   TRI_ASSERT(view != nullptr);
@@ -2136,15 +2150,20 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      std::shared_ptr<LogicalView> view =
-          std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      auto const viewPath = readPath(it);
+
+      if (!viewPath.empty()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "view path cannot be empty"
+        );
+      }
+
+      auto view = std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
 
       StorageEngine::registerView(vocbase.get(), view);
 
-      auto physical = static_cast<MMFilesView*>(view->getPhysical());
-      TRI_ASSERT(physical != nullptr);
-
-      registerViewPath(vocbase->id(), view->id(), physical->path());
+      registerViewPath(vocbase->id(), view->id(), viewPath);
 
       view->spawnImplementation(creator, it, false);
 

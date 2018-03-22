@@ -63,7 +63,6 @@
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 
 #include "IResearchView.h"
 

@@ -64,7 +64,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/ticks.h"
 
@@ -1592,9 +1591,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   }
 
   // Try to create a new view. This is not registered yet
-  std::shared_ptr<arangodb::LogicalView> view =
-      std::make_shared<arangodb::LogicalView>(this, parameters);
-  TRI_ASSERT(view != nullptr);
+  auto view = std::make_shared<arangodb::LogicalView>(this, parameters);
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -1606,6 +1603,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   }
 
   registerView(basics::ConditionalLocking::DoNotLock, view);
+
   try {
     // id might have been assigned
     id = view->id();
@@ -1622,20 +1620,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
     // And lets open it.
     view->getImplementation()->open();
-
-// FIXME persist
-//  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-//  TRI_ASSERT(engine != nullptr);
-//  // TODO Review
-//  arangodb::Result res2 = engine->persistView(this, view.get());
-//  // API compatibility, we always return the view, even if creation failed.
-//
-//  if (view) {
-//    if (DatabaseFeature::DATABASE != nullptr &&
-//        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-//      DatabaseFeature::DATABASE->versionTracker()->track("create view");
-//    }
-//  }
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
@@ -1660,6 +1644,19 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   if (view == nullptr) {
     // something went wrong... must not continue
     return nullptr;
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  // TODO Review
+  arangodb::Result res2 = engine->persistView(this, view.get());
+  // API compatibility, we always return the view, even if creation failed.
+
+  if (view) {
+    if (DatabaseFeature::DATABASE != nullptr &&
+        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+    }
   }
 
   return view;

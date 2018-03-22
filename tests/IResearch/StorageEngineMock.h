@@ -33,7 +33,6 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ContextData.h"
 #include "VocBase/LocalDocumentId.h"
-#include "VocBase/PhysicalView.h"
 
 namespace arangodb {
 
@@ -101,18 +100,6 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
   virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& slice, bool doSync) override;
 };
 
-class PhysicalViewMock: public arangodb::PhysicalView {
- public:
-  static std::function<void()> before;
-  std::string physicalPath;
-
-  PhysicalViewMock(arangodb::LogicalView* view, arangodb::velocypack::Slice const& info);
-  virtual PhysicalView* clone(arangodb::LogicalView*, arangodb::PhysicalView*) override;
-  virtual void getPropertiesVPack(arangodb::velocypack::Builder&, bool includeSystem = false) const override;
-  virtual std::string const& path() const override;
-  virtual void setPath(std::string const&) override;
-};
-
 class TransactionCollectionMock: public arangodb::TransactionCollection {
  public:
   arangodb::AccessMode::Type lockType;
@@ -163,13 +150,13 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual arangodb::PhysicalCollection* createPhysicalCollection(arangodb::LogicalCollection* collection, VPackSlice const& info) override;
-  virtual arangodb::PhysicalView* createPhysicalView(arangodb::LogicalView* view, VPackSlice const& info) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual arangodb::TransactionCollection* createTransactionCollection(arangodb::TransactionState* state, TRI_voc_cid_t cid, arangodb::AccessMode::Type, int nestingLevel) override;
   virtual arangodb::transaction::ContextData* createTransactionContextData() override;
   virtual arangodb::TransactionManager* createTransactionManager() override;
   virtual arangodb::TransactionState* createTransactionState(TRI_vocbase_t* vocbase, arangodb::transaction::Options const& options) override;
   virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*) override;
+  virtual void getViewProperties(TRI_vocbase_t* vocbase, arangodb::LogicalView const* view, VPackBuilder& builder) override;
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;

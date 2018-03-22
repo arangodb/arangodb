@@ -68,21 +68,12 @@ class LogicalView final: public LogicalDataSource {
     return _implementation && _implementation->visitCollections(visitor);
   }
 
- protected:  // If you need a copy outside the class, use clone below.
-  explicit LogicalView(LogicalView const&);
-
  private:
   LogicalView& operator=(LogicalView const&) = delete;
 
  public:
   LogicalView() = delete;
 
-  std::unique_ptr<LogicalView> clone() {
-    auto p = new LogicalView(*this);
-    return std::unique_ptr<LogicalView>(p);
-  }
-
-  PhysicalView* getPhysical() const { return _physical.get(); }
   ViewImplementation* getImplementation() const {
     return _implementation.get();
   }
@@ -108,12 +99,8 @@ class LogicalView final: public LogicalDataSource {
                            bool isNew);
 
  private:
-  // SECTION: Meta Information
-  std::unique_ptr<PhysicalView> _physical;
   std::unique_ptr<ViewImplementation> _implementation;
-
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
+  mutable basics::ReadWriteLock _lock;  // lock protecting the properties
 };
 
 }  // namespace arangodb

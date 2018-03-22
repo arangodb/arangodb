@@ -470,13 +470,7 @@ SECTION("test_drop_cid") {
 
     // drop cid 42
     {
-      bool persisted = false;
-      auto before = PhysicalViewMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
-      PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
-
       view->drop(42);
-      CHECK((!persisted));
       view->sync();
     }
 
@@ -522,13 +516,7 @@ SECTION("test_drop_cid") {
 
     // drop cid 42
     {
-      bool persisted = false;
-      auto before = PhysicalViewMock::before;
-      auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
-      PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
-
       view->drop(42);
-      CHECK((!persisted)); // drop() does not modify view meta
       view->sync();
     }
 
@@ -1242,11 +1230,6 @@ SECTION("test_query") {
 }
 
 SECTION("test_register_link") {
-  bool persisted = false;
-  auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
-  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
-
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson0 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101 }");
   auto viewJson1 = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { \"collections\": [ 100 ] } }");
@@ -1270,9 +1253,7 @@ SECTION("test_register_link") {
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    persisted = false;
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((false == persisted));
     CHECK((false == !link));
     std::set<TRI_voc_cid_t> cids;
     view->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
@@ -1303,9 +1284,7 @@ SECTION("test_register_link") {
       CHECK((actual.empty()));
     }
 
-    persisted = false;
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((false == persisted)); // link instantiation does not modify view meta
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
@@ -1351,35 +1330,7 @@ SECTION("test_register_link") {
       CHECK((actual.empty()));
     }
 
-    persisted = false;
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((false == persisted));
-    CHECK((false == !link0));
-
-    {
-      std::unordered_set<TRI_voc_cid_t> cids;
-      view->sync();
-      TrxStatePtr state(s.engine.createTransactionState(nullptr, arangodb::transaction::Options()));
-      auto* snapshot = view->snapshot(*state, true);
-      arangodb::iresearch::appendKnownCollections(cids, *snapshot);
-      CHECK((0 == cids.size())); // link addition does trigger collection load
-    }
-
-    {
-      std::unordered_set<TRI_voc_cid_t> expected = { 100, 123 };
-      std::set<TRI_voc_cid_t> actual = { 123 };
-      view->visitCollections([&actual](TRI_voc_cid_t cid)->bool { actual.emplace(cid); return true; });
-
-      for (auto& cid: expected) {
-        CHECK((1 == actual.erase(cid)));
-      }
-
-      CHECK((actual.empty()));
-    }
-
-    persisted = false;
     auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
-    CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
     view->sync();
@@ -1403,11 +1354,6 @@ SECTION("test_register_link") {
 }
 
 SECTION("test_unregister_link") {
-  bool persisted = false;
-  auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
-  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
-
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
   auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": 101, \"properties\": { } }");
 
@@ -1469,9 +1415,7 @@ SECTION("test_unregister_link") {
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
-    CHECK((false == persisted)); // link removal does not persist view meta
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
 
     {
@@ -1548,9 +1492,7 @@ SECTION("test_unregister_link") {
     }
 
     CHECK((nullptr != vocbase.lookupCollection("testCollection")));
-    persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
-    CHECK((true == persisted)); // collection removal persists view meta
     CHECK((nullptr == vocbase.lookupCollection("testCollection")));
 
     {
@@ -2522,10 +2464,6 @@ SECTION("test_update_partial") {
     \"name\": \"testView\", \
     \"type\": \"arangosearch\" \
   }");
-  bool persisted = false;
-  auto before = PhysicalViewMock::before;
-  auto restore = irs::make_finally([&before]()->void { PhysicalViewMock::before = before; });
-  PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   // modify meta params
   {
@@ -2616,9 +2554,7 @@ SECTION("test_update_partial") {
     auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-    persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((false == persisted));
 
     arangodb::velocypack::Builder builder;
 
@@ -2654,9 +2590,7 @@ SECTION("test_update_partial") {
 
     expectedMeta._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
-    persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((false == persisted)); // link addition does not persist view meta
 
     arangodb::velocypack::Builder builder;
 
@@ -2726,9 +2660,7 @@ SECTION("test_update_partial") {
 
     expectedMeta._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
-    persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-    CHECK((false == persisted)); // link addition does not persist view meta
 
     arangodb::velocypack::Builder builder;
 
@@ -2813,9 +2745,7 @@ SECTION("test_update_partial") {
       auto updateJson = arangodb::velocypack::Parser::fromJson(
         "{ \"links\": { \"testCollection\": {} } }"
       );
-      persisted = false;
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-      CHECK((false == persisted)); // link addition does not persist view meta
 
       arangodb::velocypack::Builder builder;
 
@@ -2839,9 +2769,7 @@ SECTION("test_update_partial") {
       auto before = StorageEngineMock::inRecoveryResult;
       StorageEngineMock::inRecoveryResult = true;
       auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
-      persisted = false;
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
-      CHECK((false == persisted));
 
       arangodb::velocypack::Builder builder;
 

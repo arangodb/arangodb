@@ -125,9 +125,6 @@ class MMFilesEngine final : public StorageEngine {
   PhysicalCollection* createPhysicalCollection(LogicalCollection*,
                                                VPackSlice const&) override;
 
-  // create storage-engine specific view
-  PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) override;
-
   // inventory functionality
   // -----------------------
 
@@ -301,6 +298,12 @@ class MMFilesEngine final : public StorageEngine {
 
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*) override;
+
+  void getViewProperties(
+     TRI_vocbase_t* vocbase,
+     arangodb::LogicalView const* view,
+     VPackBuilder& builder
+  ) override;
 
   arangodb::Result persistView(TRI_vocbase_t* vocbase,
                                arangodb::LogicalView const*) override;

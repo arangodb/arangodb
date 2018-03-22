@@ -106,9 +106,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
-  // create storage-engine specific view
-  virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
-
   // minimum timeout for the synchronous replication
   virtual double minimumSyncReplicationTimeout() const = 0;
 
@@ -289,6 +286,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   // to "createCview" returns
   virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                           arangodb::LogicalView const*) = 0;
+
+  // asks storage engine to put some view
+  // specific properties into a specified builder
+  virtual void getViewProperties(
+     TRI_vocbase_t* vocbase,
+     arangodb::LogicalView const* view,
+     VPackBuilder& builder
+  ) = 0;
 
   // asks the storage engine to persist the view.
   // After this call the view is persisted over recovery.
