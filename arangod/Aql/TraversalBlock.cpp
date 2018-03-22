@@ -351,10 +351,9 @@ void TraversalBlock::initializePaths(AqlItemBlock const* items, size_t pos) {
 }
 
 /// @brief getSome
-AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
-                                      size_t atMost) {
+AqlItemBlock* TraversalBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(0,atMost);
+  traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);
@@ -363,7 +362,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         traceGetSomeEnd(nullptr);
         return nullptr;
@@ -455,7 +454,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
 }
 
 /// @brief skipSome
-size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t TraversalBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 
@@ -468,10 +467,10 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
     _posInPaths += skipped;
   }
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         return skipped;
       }

@@ -30,6 +30,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Basics/files.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -132,6 +133,13 @@ struct IResearchQuerySetup {
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
 
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    irs::utf8_path testFilesystemPath;
+
+    testFilesystemPath /= TRI_GetTempPath();
+    testFilesystemPath /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath.utf8();
+
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
@@ -198,7 +206,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->cid(),
+      collection->id(),
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -230,7 +238,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->cid(),
+      collection->id(),
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));

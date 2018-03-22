@@ -380,7 +380,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   if (barrierId > 0) {
@@ -669,7 +669,8 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  auto guard = std::make_unique<arangodb::CollectionGuard>(_vocbase, c->cid(), false);
+  auto guard =
+    std::make_unique<arangodb::CollectionGuard>(_vocbase, c->id(), false);
 
   arangodb::LogicalCollection* col = guard->collection();
   TRI_ASSERT(col != nullptr);
@@ -1016,12 +1017,12 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     // additionally wait for the collector
     if (flushWait > 0) {
       MMFilesLogfileManager::instance()->waitForCollectorQueue(
-          c->cid(), static_cast<double>(flushWait));
+        c->id(), static_cast<double>(flushWait)
+      );
     }
   }
 
-  arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-
+  arangodb::CollectionGuard guard(_vocbase, c->id(), false);
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 

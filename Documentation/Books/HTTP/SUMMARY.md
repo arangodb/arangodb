@@ -53,7 +53,6 @@
   * [Replication Logger](Replications/ReplicationLogger.md)
   * [Replication Applier](Replications/ReplicationApplier.md)
   * [Other Replication Commands](Replications/OtherReplication.md)
-* [Sharding](ShardingInterface/README.md)
 * [Monitoring](AdministrationAndMonitoring/README.md)
 * [Endpoints](Endpoints/README.md)
 * [Foxx Services](Foxx/README.md)

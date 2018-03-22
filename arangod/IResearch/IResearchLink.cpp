@@ -159,7 +159,7 @@ void IResearchLink::batchInsert(
     return;
   }
 
-  auto res = view->insert(*trx, _collection->cid(), batch, _meta);
+  auto res = view->insert(*trx, _collection->id(), batch, _meta);
 
   if (TRI_ERROR_NO_ERROR != res) {
     queue->setStatus(res);
@@ -199,7 +199,7 @@ int IResearchLink::drop() {
   }
 
   // FIXME TODO remove link via update properties on view
-  return view->drop(_collection->cid());
+  return view->drop(_collection->id());
 }
 
 bool IResearchLink::hasBatchInsert() const {
@@ -311,7 +311,7 @@ Result IResearchLink::insert(
     return TRI_ERROR_ARANGO_INDEX_HANDLE_BAD; // IResearchView required
   }
 
-  return view->insert(*trx, _collection->cid(), documentId, doc, _meta);
+  return view->insert(*trx, _collection->id(), documentId, doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -435,7 +435,7 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and rid
-  return view->remove(*trx, _collection->cid(), documentId);
+  return view->remove(*trx, _collection->id(), documentId);
 }
 
 Result IResearchLink::remove(
@@ -460,7 +460,7 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and documentId
-  return view->remove(*trx, _collection->cid(), documentId);
+  return view->remove(*trx, _collection->id(), documentId);
 }
 
 /*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
@@ -507,7 +507,7 @@ arangodb::Result IResearchLink::recover() {
   link.close();
 
   // re-insert link into the view
-  return view->link(_collection->cid(), link.slice());
+  return view->link(_collection->id(), link.slice());
 }
 
 Index::IndexType IResearchLink::type() const {

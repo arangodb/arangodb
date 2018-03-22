@@ -41,7 +41,7 @@ bool EqualCollection(CollectionNameResolver const* resolver,
     return true;
   }
 
-  if (collectionName == collection->cid_as_string()) {
+  if (collectionName == std::to_string(collection->id())) {
     return true;
   }
 
@@ -49,13 +49,13 @@ bool EqualCollection(CollectionNameResolver const* resolver,
   // name and cid should be the shard.
   if (ServerState::instance()->isCoordinator()) {
     if (collectionName ==
-        resolver->getCollectionNameCluster(collection->cid())) {
+        resolver->getCollectionNameCluster(collection->id())) {
       return true;
     }
     return false;
   }
 
-  if (collectionName == resolver->getCollectionName(collection->cid())) {
+  if (collectionName == resolver->getCollectionName(collection->id())) {
     return true;
   }
 
@@ -149,8 +149,11 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_DbNameKey);
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-    result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()),
-                     v8::ReadOnly);
+    result->ForceSet(
+      _IdKey,
+      TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()),
+      v8::ReadOnly
+    );
     result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase()->name()));
     result->ForceSet(
         VersionKeyHidden,

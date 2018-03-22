@@ -43,7 +43,7 @@ class SubqueryBlock : public ExecutionBlock {
   int initialize() override final;
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
   /// @brief shutdown, tell dependency and the subquery
   int shutdown(int errorCode) override final;

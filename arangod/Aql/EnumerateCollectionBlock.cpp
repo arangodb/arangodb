@@ -57,8 +57,8 @@ int EnumerateCollectionBlock::initialize() {
   if (_collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
-    auto dbName = logicalCollection->dbName();
-
+    TRI_ASSERT(logicalCollection->vocbase());
+    auto dbName = logicalCollection->vocbase()->name();
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
     unsigned long waitInterval = 10000;
@@ -117,10 +117,9 @@ int EnumerateCollectionBlock::initializeCursor(AqlItemBlock* items,
 }
 
 /// @brief getSome
-AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
-                                                size_t atMost) {
+AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
 
   TRI_ASSERT(_cursor.get() != nullptr);
   // Invariants:
@@ -143,7 +142,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
 
       if (_buffer.empty()) {
         size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        if (!ExecutionBlock::getBlock(toFetch)) {
           _done = true;
           return nullptr;
         }
@@ -227,7 +226,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t atLeast,
   DEBUG_END_BLOCK();
 }
 
-size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t EnumerateCollectionBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   TRI_ASSERT(_cursor != nullptr);
@@ -236,10 +235,10 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      if (!getBlock(toFetch)) {
         _done = true;
         return skipped;
       }
@@ -261,7 +260,7 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
 
     skipped += skippedHere;
 
-    if (skipped < atLeast) {
+    if (skipped < atMost) {
       TRI_ASSERT(!_cursor->hasMore());
       // not skipped enough re-initialize fetching of documents
       _cursor->reset();
@@ -274,7 +273,6 @@ size_t EnumerateCollectionBlock::skipSome(size_t atLeast, size_t atMost) {
   }
 
   _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
-  // We skipped atLeast documents
   return skipped;
 
   // cppcheck-suppress style

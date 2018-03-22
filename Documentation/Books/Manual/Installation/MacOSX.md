@@ -81,19 +81,19 @@ showing you the log-file.
     ArangoDB server has been started
 
     The database directory is located at
-       '/Applications/ArangoDB-CLI.app/Contents/MacOS/opt/arangodb/var/lib/arangodb'
+       '/Users/<user>/Library/ArangoDB/var/lib/arangodb3'
 
     The log file is located at
-       '/Applications/ArangoDB-CLI.app/Contents/MacOS/opt/arangodb/var/log/arangodb/arangod.log'
+       '/Users/<user>/Library/ArangoDB/var/log/arangodb3/arangod.log'
 
     You can access the server using a browser at 'http://127.0.0.1:8529/'
     or start the ArangoDB shell
-       '/Applications/ArangoDB-CLI.app/Contents/MacOS/arangosh'
+       '/Applications/ArangoDB3-CLI.app/Contents/Resources/arangosh'
 
     Switching to log-file now, killing this windows will NOT stop the server.
 
 
-    2013-10-27T19:42:04Z [23840] INFO ArangoDB (version 1.4.devel [darwin]) is ready for business. Have fun!
+    2018-03-16T09:37:01Z [13373] INFO ArangoDB (version 3.3.4 [darwin]) is ready for business. Have fun!
 
 Note that it is possible to install both, the homebrew version and the command-line
 app. You should, however, edit the configuration files of one version and change

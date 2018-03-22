@@ -582,7 +582,8 @@ AstNode* Ast::createNodeCollection(char const* name,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (*name == '\0' || !LogicalCollection::IsAllowedName(true, name)) {
+  if (*name == '\0'
+      || !TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name))) {
     _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
@@ -617,7 +618,8 @@ AstNode* Ast::createNodeView(char const* name) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (*name == '\0' || !LogicalCollection::IsAllowedName(true, name)) {
+  if (*name == '\0'
+      || !TRI_vocbase_t::IsAllowedName(true, arangodb::velocypack::StringRef(name))) {
     _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }

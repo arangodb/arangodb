@@ -8,7 +8,6 @@
 Contains the query.
 
 @RESTDESCRIPTION
-
 Returns all documents of a collections. Equivalent to the AQL query
 `FOR doc IN collection RETURN doc`. The call expects a JSON object
 as body with the following attributes:

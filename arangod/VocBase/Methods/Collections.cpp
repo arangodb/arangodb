@@ -236,18 +236,27 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   TRI_ASSERT(coll != nullptr);
 
   if (ServerState::instance()->isCoordinator()) {
+    TRI_ASSERT(coll->vocbase());
+
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(coll->dbName(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_LOADED);
+    return ULColCoordinatorEnterprise(
+      coll->vocbase()->name(),
+      std::to_string(coll->id()),
+      TRI_VOC_COL_STATUS_LOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
+
     return ci->setCollectionStatusCoordinator(
-        coll->dbName(), coll->cid_as_string(), TRI_VOC_COL_STATUS_LOADED);
+      coll->vocbase()->name(),
+      std::to_string(coll->id()),
+      TRI_VOC_COL_STATUS_LOADED
+    );
 #endif
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
 
   Result res = trx.begin();
   if (res.fail()) {
@@ -259,14 +268,18 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(vocbase->name(), coll->cid_as_string(),
-                                      TRI_VOC_COL_STATUS_UNLOADED);
+    return ULColCoordinatorEnterprise(
+      vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
+    );
 #else
     auto ci = ClusterInfo::instance();
+
     return ci->setCollectionStatusCoordinator(
-        vocbase->name(), coll->cid_as_string(), TRI_VOC_COL_STATUS_UNLOADED);
+      vocbase->name(), std::to_string(coll->id()), TRI_VOC_COL_STATUS_UNLOADED
+    );
 #endif
   }
+
   return vocbase->unloadCollection(coll, false);
 }
 
@@ -294,8 +307,9 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     
     auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), true);
     // populate the transaction object (which is used outside this if too)
-    trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
-                                              AccessMode::Type::READ));
+    trx.reset(new SingleCollectionTransaction(
+      ctx, coll->id(), AccessMode::Type::READ
+    ));
   
     // we actually need this hint here, so that the collection is not
     // loaded if it has status unloaded.
@@ -332,13 +346,20 @@ Result Collections::updateProperties(LogicalCollection* coll,
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
-    auto info = ci->getCollection(coll->dbName(), coll->cid_as_string());
+
+    TRI_ASSERT(coll->vocbase());
+
+    auto info =
+      ci->getCollection(coll->vocbase()->name(), std::to_string(coll->id()));
+
     return info->updateProperties(props, false);
   } else {
     auto ctx = transaction::V8Context::CreateWhenRequired(coll->vocbase(), false);
-    SingleCollectionTransaction trx(ctx, coll->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
+    SingleCollectionTransaction trx(
+      ctx, coll->id(), AccessMode::Type::EXCLUSIVE
+    );
     Result res = trx.begin();
+
     if (!res.ok()) {
       return res;
     }
@@ -429,9 +450,9 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  std::string const databaseName(collection->dbName());
-  std::string const cid = collection->cid_as_string();
-
+  TRI_ASSERT(collection->vocbase());
+  auto& databaseName = collection->vocbase()->name();
+  auto cid = std::to_string(collection->id());
   ClusterInfo* ci = ClusterInfo::instance();
   std::string errorMsg;
 
@@ -462,7 +483,8 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
     }
   }
 
-  std::string const dbname = coll->dbName();
+  TRI_ASSERT(coll->vocbase());
+  auto& dbname = coll->vocbase()->name();
   std::string const collName = coll->name();
 
   Result res;
@@ -496,13 +518,14 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
                                    "server is in read-only mode");
   }
   if (ServerState::instance()->isCoordinator()) {
-    std::string const cid = coll->cid_as_string();
+    auto cid = std::to_string(coll->id());
     return warmupOnCoordinator(vocbase->name(), cid);
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, false);
-  SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+  SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
   Result res = trx.begin();
+
   if (res.fail()) {
     return res;
   }
@@ -529,21 +552,19 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::revisionId(TRI_vocbase_t* vocbase,
                                LogicalCollection* coll,
                                TRI_voc_rid_t& rid) {
-
   TRI_ASSERT(coll != nullptr);
-  std::string const databaseName(coll->dbName());
-  std::string const cid = coll->cid_as_string();
+  TRI_ASSERT(coll->vocbase());
+  auto& databaseName = coll->vocbase()->name();
+  auto cid = std::to_string(coll->id());
 
   if (ServerState::instance()->isCoordinator()) {
     return revisionOnCoordinator(databaseName, cid, rid);
   } 
-  
+
   auto ctx = transaction::V8Context::CreateWhenRequired(vocbase, true);
-  SingleCollectionTransaction trx(ctx, coll->cid(),
-                                  AccessMode::Type::READ);
-  
+  SingleCollectionTransaction trx(ctx, coll->id(), AccessMode::Type::READ);
   Result res = trx.begin();
-  
+
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

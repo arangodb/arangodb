@@ -62,9 +62,10 @@ static void JS_RotateVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::WRITE);
-
+    transaction::V8Context::Create(collection->vocbase(), true),
+    collection->id(),
+    AccessMode::Type::WRITE
+  );
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -484,7 +485,8 @@ static void JS_WaitCollectorWal(
   }
 
   int res = MMFilesLogfileManager::instance()->waitForCollectorQueue(
-      col->cid(), timeout);
+    col->id(), timeout
+  );
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

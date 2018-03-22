@@ -201,7 +201,7 @@ TEST_CASE("IResearchQueryTestNullTerm", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->cid(),
+      collection->id(),
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
@@ -235,7 +235,7 @@ TEST_CASE("IResearchQueryTestNullTerm", "[iresearch][iresearch-query]") {
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
       arangodb::transaction::StandaloneContext::Create(&vocbase),
-      collection->cid(),
+      collection->id(),
       arangodb::AccessMode::Type::WRITE
     );
     CHECK((trx.begin().ok()));
