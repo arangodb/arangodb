@@ -1,6 +1,34 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
+* make AQL data modification operations that are sent to all shards and that are
+  supposed to return values (i.e. `RETURN OLD` or `RETURN NEW`) not return fake
+  empty result rows if the document to be updated/replaced/removed was not present
+  on the target shard
+
+* added AQL optimizer rule `restrict-to-single-shard`
+
+  This rule will kick in if a collection operation (index lookup or data
+  modification operation) will only affect a single shard, and the operation can be
+  restricted to the single shard and is not applied for all shards. This optimization
+  can be applied for queries that access a collection only once in the query, and that
+  do not use traversals, shortest path queries and that do not access collection data
+  dynamically using the `DOCUMENT`, `FULLTEXT`, `NEAR` or `WITHIN` AQL functions.
+  Additionally, the optimizer will only pull off this optimization if can safely 
+  determine the values of all the collection's shard keys from the query, and when the
+  shard keys are covered by a single index (this is always true if the shard key is
+  the default `_key`)
+
+* display missing attributes of GatherNodes in AQL explain output
+
+* make AQL optimizer rule `undistribute-remove-after-enum-coll` fire in a few
+  more cases in which it is possible
+
+* slightly improve index selection for the RocksDB engine when there are multiple
+  competing indexes with the same attribute prefixes, but different amount of
+  attributes covered. In this case, the more specialized index will be preferred
+  now
+
 * added hidden option `--cluster.index-create-timeout` for controlling the
   default value of the index creation timeout in cluster
   under normal circumstances, this option does not need to be adjusted

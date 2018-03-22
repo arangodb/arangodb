@@ -140,6 +140,9 @@ void distributeInClusterRuleSmartEdgeCollection(
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 #endif
 
+/// @brief try to restrict fragments to a single shard if possible
+void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const*);
 

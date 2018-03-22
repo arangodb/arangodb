@@ -381,6 +381,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           idOfRemoteNode(idOfRemoteNode),
           collection(nullptr),
           auxiliaryCollections(),
+          shardId(),
           populated(false) {}
 
     void populate() {
@@ -451,6 +452,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     size_t idOfRemoteNode;          // id of the remote node
     Collection* collection;
     std::unordered_set<Collection*> auxiliaryCollections;
+    std::string shardId;
     bool populated;
     // in the original plan that needs this engine
   };
@@ -458,7 +460,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   void includedShards(std::unordered_set<std::string> const& allowed) {
     _includedShards = allowed;
   }
-
 
   Query* query;
   QueryRegistry* queryRegistry;
@@ -714,15 +715,24 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
-      
       auto auxiliaryCollections = info->getAuxiliaryCollections();
       // iterate over all shards of the collection
       size_t nr = 0;
+          
+      std::unordered_set<std::string> backup = _includedShards;
+      TRI_DEFER(_includedShards = backup);
+
+      if (!info->shardId.empty()) {
+        _includedShards.clear();
+        _includedShards.emplace(info->shardId);
+      }
+
       auto shardIds = collection->shardIds(_includedShards);
+
       for (auto const& shardId : *shardIds) {
         // inject the current shard id into the collection
         collection->setCurrentShard(shardId);
-      
+            
         // inject the current shard id for auxiliary collections
         std::string auxShardId;
         for (auto const& auxiliaryCollection : auxiliaryCollections) {
@@ -812,8 +822,19 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // gather node
           auto gatherNode = static_cast<GatherNode const*>(*en);
           Collection const* collection = gatherNode->collection();
+          TRI_ASSERT(remoteNode != nullptr);
+
+          std::unordered_set<std::string> backup = _includedShards;
+          TRI_DEFER(_includedShards = backup);
+
+          if (!remoteNode->ownName().empty()) {
+            // restrict to just a single shard
+            _includedShards.clear();
+            _includedShards.emplace(remoteNode->ownName());
+          }
 
           auto shardIds = collection->shardIds(_includedShards);
+          
           for (auto const& shardId : *shardIds) {
             std::string theId =
                 arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
@@ -1122,6 +1143,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         auto res = cc->syncRequest("", coordTransactionID, "server:" + list.first,
                                    RequestType::POST, url, engineInfo.toJson(),
                                    headers, 90.0);
+      
         if (res->status != CL_COMM_SENT) {
           // Note If there was an error on server side we do not have CL_COMM_SENT
           std::string message("could not start all traversal engines");
@@ -1227,6 +1249,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       // For the coordinator we do not care about main or part:
       engines.emplace_back(currentLocation, currentEngineId, part, en->id());
+      
+      RemoteNode const* r = static_cast<RemoteNode const*>(en);
+      if (!r->ownName().empty()) {
+        // RemoteNode is restricted to a single shard
+        engines.back().shardId = r->ownName();
+      }
     }
 
     if (nodeType == ExecutionNode::TRAVERSAL || nodeType == ExecutionNode::SHORTEST_PATH) {
