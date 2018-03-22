@@ -220,8 +220,7 @@ public:
   arangodb::Result persistView(TRI_vocbase_t* vocbase,
                                arangodb::LogicalView const*) override;
 
-  arangodb::Result dropView(TRI_vocbase_t* vocbase,
-                            arangodb::LogicalView*) override;
+  arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
   void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
   void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*, bool doSync) override;

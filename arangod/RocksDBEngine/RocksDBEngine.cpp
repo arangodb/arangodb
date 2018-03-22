@@ -1251,14 +1251,50 @@ Result RocksDBEngine::renameView(TRI_vocbase_t* vocbase,
 }
 
 arangodb::Result RocksDBEngine::persistView(
-    TRI_vocbase_t* vocbase, arangodb::LogicalView const* logical) {
-  auto physical = static_cast<RocksDBView*>(logical->getPhysical());
-  return physical->persistProperties();
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const* view) {
+  auto db = rocksutils::globalRocksDB();
+
+  RocksDBKey key;
+  key.constructView(vocbase->id(), view->id());
+
+  VPackBuilder infoBuilder;
+  infoBuilder.openObject();
+  view->toVelocyPack(infoBuilder, true, true);
+  infoBuilder.close();
+  auto const value = RocksDBValue::View(infoBuilder.slice());
+
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+
+  rocksdb::Status const status = db->Put(
+    options, RocksDBColumnFamily::definitions(), key.string(), value.string()
+  );
+
+  return rocksutils::convertStatus(status);
 }
 
-arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
-                                         arangodb::LogicalView* view) {
-  return {TRI_ERROR_NO_ERROR};
+arangodb::Result RocksDBEngine::dropView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) {
+  VPackBuilder builder;
+  builder.openObject();
+  view->toVelocyPack(builder, true, true);
+  builder.close();
+  RocksDBLogValue logValue = RocksDBLogValue::ViewDrop(
+    vocbase->id(), view->id(), builder.slice()
+  );
+
+  RocksDBKey key;
+  key.constructView(vocbase->id(), view->id());
+
+  rocksdb::WriteBatch batch;
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  auto db = rocksutils::globalRocksDB();
+
+  batch.PutLogData(logValue.slice());
+  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+
+  return rocksutils::convertStatus(db->Write(wo, &batch));
 }
 
 void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
@@ -1266,9 +1302,24 @@ void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
   // nothing to do here
 }
 
-void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const*, bool doSync) {
-  // nothing to do here
+void RocksDBEngine::changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t /*id*/,
+    arangodb::LogicalView const* view,
+    bool /*doSync*/) {
+  if (inRecovery()) {
+    // nothing to do
+    return;
+  }
+
+  auto const res = persistView(vocbase, view);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      res.errorNumber(),
+      "could not save view properties"
+    );
+  }
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {

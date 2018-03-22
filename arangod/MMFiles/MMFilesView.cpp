@@ -82,54 +82,6 @@ void MMFilesView::getPropertiesVPack(velocypack::Builder& result,
   TRI_ASSERT(result.isOpenObject());
 }
 
-/// @brief opens an existing view
-void MMFilesView::open() {}
-
-void MMFilesView::drop() {
-  bool const doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  static_cast<MMFilesEngine*>(engine)->saveViewInfo(_logicalView->vocbase(), _logicalView->id(), _logicalView, doSync);
-}
-
-arangodb::Result MMFilesView::updateProperties(VPackSlice const& slice,
-                                               bool doSync) {
-  // nothing to do here
-  return {};
-}
-
-arangodb::Result MMFilesView::persistProperties() {
-  int res = TRI_ERROR_NO_ERROR;
-  try {
-    VPackBuilder infoBuilder;
-    infoBuilder.openObject();
-    _logicalView->toVelocyPack(infoBuilder, true, true);
-    infoBuilder.close();
-
-    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CHANGE_VIEW,
-                             _logicalView->vocbase()->id(), _logicalView->id(),
-                             infoBuilder.slice());
-    MMFilesWalSlotInfoCopy slotInfo =
-        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
-    res = slotInfo.errorCode;
-  } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    // TODO: what to do here
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "could not save view change marker in log: "
-        << TRI_errno_string(res);
-    return {res, TRI_errno_string(res)};
-  }
-  return {};
-}
-
 PhysicalView* MMFilesView::clone(LogicalView* logical, PhysicalView* physical) {
   return new MMFilesView(logical, physical);
 }

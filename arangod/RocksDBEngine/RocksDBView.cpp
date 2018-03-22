@@ -74,55 +74,6 @@ void RocksDBView::getPropertiesVPack(velocypack::Builder& result,
   TRI_ASSERT(result.isOpenObject());
 }
 
-void RocksDBView::open() {}
-
-void RocksDBView::drop() {
-  VPackBuilder builder;
-  builder.openObject();
-  _logicalView->toVelocyPack(builder, true, true);
-  builder.close();
-  RocksDBLogValue logValue = RocksDBLogValue::ViewDrop(
-      _logicalView->vocbase()->id(), _logicalView->id(), builder.slice());
-
-  RocksDBKey key;
-  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
-
-  rocksdb::WriteBatch batch;
-  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
-  auto db = rocksutils::globalRocksDB();
-
-  batch.PutLogData(logValue.slice());
-  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
-  auto status = rocksutils::convertStatus(db->Write(wo, &batch));
-  if (!status.ok()) {
-    THROW_ARANGO_EXCEPTION(status);
-  }
-}
-
-arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
-                                               bool doSync) {
-  // nothing to do here
-  return arangodb::Result{};
-}
-
-arangodb::Result RocksDBView::persistProperties() {
-  auto db = rocksutils::globalRocksDB();
-  RocksDBKey key;
-  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
-
-  VPackBuilder infoBuilder;
-  infoBuilder.openObject();
-  _logicalView->toVelocyPack(infoBuilder, true, true);
-  infoBuilder.close();
-  auto value = RocksDBValue::View(infoBuilder.slice());
-
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-  rocksdb::Status res = db->Put(options, RocksDBColumnFamily::definitions(),
-                                key.string(), value.string());
-
-  return rocksutils::convertStatus(res);
-}
-
 PhysicalView* RocksDBView::clone(LogicalView* logical, PhysicalView* physical) {
   return new RocksDBView(logical, physical);
 }

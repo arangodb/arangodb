@@ -61,19 +61,10 @@ class MMFilesView final : public PhysicalView {
 
   void setPath(std::string const& path) override { _path = path; }
 
-  arangodb::Result updateProperties(VPackSlice const& slice,
-                                    bool doSync) override;
-  virtual arangodb::Result persistProperties() override;
-
   virtual PhysicalView* clone(LogicalView*, PhysicalView*) override;
 
   void getPropertiesVPack(velocypack::Builder&,
                           bool includeSystem = false) const override;
-
-  /// @brief opens an existing view
-  void open() override;
-
-  void drop() override;
 
  private:
   std::string _path;

@@ -171,7 +171,6 @@ struct IResearchViewSetup {
       }
     }
 
-    PhysicalViewMock::persistPropertiesResult = TRI_ERROR_NO_ERROR;
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;

@@ -159,10 +159,9 @@ void LogicalView::drop() {
   }
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // engine->destroyView(_vocbase, this);
-
-  _physical->drop();
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  engine->dropView(vocbase(), this);
 }
 
 void LogicalView::toVelocyPack(VPackBuilder& result, bool includeProperties,
@@ -212,12 +211,7 @@ arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
   if (implResult.ok()) {
     // after this call the properties are stored
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    TRI_ASSERT(engine != nullptr);
-
-    if (!engine->inRecovery()) {
-      getPhysical()->persistProperties();
-    }
-
+    TRI_ASSERT(engine );
     engine->changeView(vocbase(), id(), this, doSync);
   }
 
@@ -232,7 +226,7 @@ void LogicalView::persistPhysicalView() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
   // We have not yet persisted this view
-  TRI_ASSERT(getPhysical()->path().empty());
+//  TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->createView(vocbase(), id(), this);
 }

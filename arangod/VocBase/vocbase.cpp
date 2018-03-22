@@ -1623,6 +1623,20 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     // And lets open it.
     view->getImplementation()->open();
 
+// FIXME persist
+//  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+//  TRI_ASSERT(engine != nullptr);
+//  // TODO Review
+//  arangodb::Result res2 = engine->persistView(this, view.get());
+//  // API compatibility, we always return the view, even if creation failed.
+//
+//  if (view) {
+//    if (DatabaseFeature::DATABASE != nullptr &&
+//        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
+//      DatabaseFeature::DATABASE->versionTracker()->track("create view");
+//    }
+//  }
+
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;
   } catch (...) {
@@ -1646,19 +1660,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   if (view == nullptr) {
     // something went wrong... must not continue
     return nullptr;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
-  // TODO Review
-  arangodb::Result res2 = engine->persistView(this, view.get());
-  // API compatibility, we always return the view, even if creation failed.
- 
-  if (view) { 
-    if (DatabaseFeature::DATABASE != nullptr &&
-        DatabaseFeature::DATABASE->versionTracker() != nullptr) {
-      DatabaseFeature::DATABASE->versionTracker()->track("create view");
-    }
   }
 
   return view;
@@ -1720,9 +1721,6 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   view->drop();
   unregisterView(view);
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropView(this, view.get());
 
   locker.unlock();
   writeLocker.unlock();

@@ -1373,8 +1373,13 @@ arangodb::Result MMFilesEngine::persistView(TRI_vocbase_t* vocbase,
   return {res, TRI_errno_string(res)};
 }
 
-arangodb::Result MMFilesEngine::dropView(TRI_vocbase_t* vocbase,
-                                         arangodb::LogicalView* view) {
+arangodb::Result MMFilesEngine::dropView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) {
+  auto* db = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(db);
+  saveViewInfo(vocbase, view->id(), view, db->forceSyncProperties());
+
   if (inRecovery()) {
     // nothing to do here
     return {};
@@ -1411,18 +1416,17 @@ arangodb::Result MMFilesEngine::dropView(TRI_vocbase_t* vocbase,
   return {res, TRI_errno_string(res)};
 }
 
-void MMFilesEngine::destroyView(TRI_vocbase_t* vocbase,
-                                arangodb::LogicalView* view) {
+void MMFilesEngine::destroyView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) {
   std::string const name(view->name());
-  auto physical = static_cast<MMFilesView*>(view->getPhysical());
-  TRI_ASSERT(physical != nullptr);
+
+  auto const viewPath = viewDirectory(vocbase->id(), view->id());
 
   // rename view directory
-  if (physical->path().empty()) {
+  if (viewPath.empty()) {
     return;
   }
-
-  std::string const viewPath = physical->path();
 
 #ifdef _WIN32
   size_t pos = viewPath.find_last_of('\\');
@@ -1456,7 +1460,7 @@ void MMFilesEngine::destroyView(TRI_vocbase_t* vocbase,
   if (invalid) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename dropped view '"
                                             << name << "': unknown path '"
-                                            << physical->path() << "'";
+                                            << viewPath  << "'";
   } else {
     // prefix the collection name with "deleted-"
 
@@ -1471,12 +1475,13 @@ void MMFilesEngine::destroyView(TRI_vocbase_t* vocbase,
 
     // perform the rename
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "renaming view directory from '" << physical->path() << "' to '"
+        << "renaming view directory from '" << viewPath << "' to '"
         << newFilename << "'";
 
     std::string systemError;
-    int res = TRI_RenameFile(physical->path().c_str(), newFilename.c_str(),
-                             nullptr, &systemError);
+    int res = TRI_RenameFile(
+      viewPath.c_str(), newFilename.c_str(), nullptr, &systemError
+    );
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (!systemError.empty()) {
@@ -1484,7 +1489,7 @@ void MMFilesEngine::destroyView(TRI_vocbase_t* vocbase,
       }
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "cannot rename directory of dropped view '" << name << "' from '"
-          << physical->path() << "' to '" << newFilename
+          << viewPath << "' to '" << newFilename
           << "': " << TRI_errno_string(res) << systemError;
     } else {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "wiping dropped view '"
@@ -1532,8 +1537,35 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // fail.
 // the WAL entry for the propery change will be written *after* the call
 // to "changeView" returns
-void MMFilesEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const* view, bool doSync) {
+void MMFilesEngine::changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const* view,
+    bool doSync
+) {
+  // FIXME make noexcept and return Result???
+
+  if (!inRecovery()) {
+    VPackBuilder infoBuilder;
+    infoBuilder.openObject();
+    view->toVelocyPack(infoBuilder, true, true);
+    infoBuilder.close();
+
+    MMFilesViewMarker marker(
+      TRI_DF_MARKER_VPACK_CHANGE_VIEW, vocbase->id(), id, infoBuilder.slice()
+    );
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          slotInfo.errorCode,
+          "could not save view change marker in log"
+       );
+    }
+  }
+
   saveViewInfo(vocbase, id, view, doSync);
 }
 
