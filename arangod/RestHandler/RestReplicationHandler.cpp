@@ -1631,6 +1631,8 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
   TRI_ASSERT(col != nullptr);
+  
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
@@ -1644,7 +1646,7 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     VPackBuilder tmp;
     res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
                                      arangodb::Index::Compare, tmp, errorMsg,
-                                     3600.0);
+                                     cluster->indexCreationTimeout());
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
           "could not create index: " + std::string(TRI_errno_string(res));
