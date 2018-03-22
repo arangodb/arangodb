@@ -1142,7 +1142,7 @@ function processQuery (query, explain) {
         return keyword('SCATTER');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
-            if (node.path.length) {
+            if (node.path && node.path.length) {
               return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
             }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
