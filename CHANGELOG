@@ -1,6 +1,8 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
 * added hidden option `--cluster.index-create-timeout` for controlling the
   default value of the index creation timeout in cluster
   under normal circumstances, this option does not need to be adjusted
