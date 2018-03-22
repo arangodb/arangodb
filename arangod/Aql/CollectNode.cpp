@@ -261,6 +261,11 @@ void CollectNode::getVariablesUsedHere(
     }
   }
 }
+  
+void CollectNode::setAggregateVariables(
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
+  _aggregateVariables = aggregateVariables;
+}
 
 /// @brief estimateCost
 double CollectNode::estimateCost(size_t& nrItems) const {
