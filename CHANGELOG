@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
 * Improvement: The AQL query planner in cluster is now a bit more clever and
   can prepare AQL queries with less network overhead.
   This should speed up simple queries in cluster mode, on complex queries it
