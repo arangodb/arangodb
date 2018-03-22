@@ -93,7 +93,7 @@ class SortedCollectBlock final : public ExecutionBlock {
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   /// @brief writes the current group data into the result
@@ -135,7 +135,7 @@ class HashedCollectBlock : public ExecutionBlock {
   ~HashedCollectBlock();
 
  private:
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
  private:
@@ -163,7 +163,7 @@ class DistinctCollectBlock : public ExecutionBlock {
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+  int getOrSkipSome(size_t atMost, bool skipping,
                     AqlItemBlock*& result, size_t& skipped) override;
 
   void clearValues();

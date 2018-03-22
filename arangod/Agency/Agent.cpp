@@ -255,6 +255,21 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
   return Agent::raft_commit_t::UNKNOWN;
 }
 
+// Check if log is committed up to index.
+bool Agent::isCommitted(index_t index) {
+
+  if (size() == 1) {  // single host agency
+    return true;
+  }
+
+  CONDITION_LOCKER(guard, _waitForCV);
+  if (leading()) {
+    return _commitIndex >= index;
+  } else {
+    return false;
+  }
+}
+
 //  AgentCallback reports id of follower and its highest processed index
 void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
@@ -866,10 +881,19 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // Apply to spearhead and get indices for log entries
   auto qs = queries->slice();
   addTrxsOngoing(qs);    // remember that these are ongoing
+  size_t failed;
   auto ret = std::make_shared<arangodb::velocypack::Builder>();
-  size_t failed = 0;
-  ret->openArray();
   {
+    TRI_DEFER(removeTrxsOngoing(qs));
+    // Note that once the transactions are in our log, we can remove them
+    // from the list of ongoing ones, although they might not yet be committed.
+    // This is because then, inquire will find them in the log and draw its
+    // own conclusions. The map of ongoing trxs is only to cover the time
+    // from when we receive the request until we have appended the trxs
+    // ourselves.
+    ret = std::make_shared<arangodb::velocypack::Builder>();
+    failed = 0;
+    ret->openArray();
     // Only leader else redirect
     if (challengeLeadership()) {
       resign();
@@ -895,11 +919,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
         _spearhead.read(query, *ret);
       }
     }
-
-    removeTrxsOngoing(qs);
-
+    ret->close();
   }
-  ret->close();
 
   // Report that leader has persisted
   reportIn(id(), maxind);
@@ -975,19 +996,30 @@ write_ret_t Agent::inquire(query_t const& query) {
 
   write_ret_t ret;
 
+  while (true) {
+    // Check ongoing ones:
+    bool found = false;
+    for (auto const& s : VPackArrayIterator(query->slice())) {
+      std::string ss = s.copyString();
+      if (isTrxOngoing(ss)) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::duration<double>(0.1));
+    leader = _constituent.leaderID();
+    if (leader != id()) {
+      return write_ret_t(false, leader);
+    }
+  }
+
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
   ret.indices = _state.inquire(query);
-
-  // Check ongoing ones:
-  for (auto const& s : VPackArrayIterator(query->slice())) {
-    std::string ss = s.copyString();
-    if (isTrxOngoing(ss)) {
-      ret.indices.clear();
-      break;
-    }
-  }
 
   ret.accepted = true;
 
@@ -1018,42 +1050,49 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     }
   }
 
-  addTrxsOngoing(query->slice());    // remember that these are ongoing
+  {
+    addTrxsOngoing(query->slice());    // remember that these are ongoing
+    TRI_DEFER(removeTrxsOngoing(query->slice()));
+    // Note that once the transactions are in our log, we can remove them
+    // from the list of ongoing ones, although they might not yet be committed.
+    // This is because then, inquire will find them in the log and draw its
+    // own conclusions. The map of ongoing trxs is only to cover the time
+    // from when we receive the request until we have appended the trxs
+    // ourselves.
 
-  auto slice = query->slice();
-  size_t ntrans = slice.length();
-  size_t npacks = ntrans/_config.maxAppendSize();
-  if (ntrans%_config.maxAppendSize()!=0) {
-    npacks++;
-  }
+    auto slice = query->slice();
+    size_t ntrans = slice.length();
+    size_t npacks = ntrans/_config.maxAppendSize();
+    if (ntrans%_config.maxAppendSize()!=0) {
+      npacks++;
+    }
 
-  // Apply to spearhead and get indices for log entries
-  // Avoid keeping lock indefinitely
-  for (size_t i = 0, l = 0; i < npacks; ++i) {
-    query_t chunk = std::make_shared<Builder>();
-    {
-      VPackArrayBuilder b(chunk.get());
-      for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans; ++j, ++l) {
-        chunk->add(slice.at(l));
+    // Apply to spearhead and get indices for log entries
+    // Avoid keeping lock indefinitely
+    for (size_t i = 0, l = 0; i < npacks; ++i) {
+      query_t chunk = std::make_shared<Builder>();
+      {
+        VPackArrayBuilder b(chunk.get());
+        for (size_t j = 0; j < _config.maxAppendSize() && l < ntrans; ++j, ++l) {
+          chunk->add(slice.at(l));
+        }
       }
+
+      // Only leader else redirect
+      if (multihost && challengeLeadership()) {
+        resign();
+        return write_ret_t(false, NO_LEADER);
+      }
+
+      _tiLock.assertNotLockedByCurrentThread();
+      MUTEX_LOCKER(ioLocker, _ioLock);
+
+      applied = _spearhead.applyTransactions(chunk);
+      auto tmp = _state.logLeaderMulti(chunk, applied, term());
+      indices.insert(indices.end(), tmp.begin(), tmp.end());
+
     }
-
-    // Only leader else redirect
-    if (multihost && challengeLeadership()) {
-      resign();
-      return write_ret_t(false, NO_LEADER);
-    }
-
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
-
-    applied = _spearhead.applyTransactions(chunk);
-    auto tmp = _state.logLeaderMulti(chunk, applied, term());
-    indices.insert(indices.end(), tmp.begin(), tmp.end());
-
   }
-
-  removeTrxsOngoing(query->slice());
 
   // Maximum log index
   index_t maxind = 0;

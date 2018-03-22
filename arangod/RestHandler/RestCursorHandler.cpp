@@ -293,7 +293,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
           (isStream && keyName == "fullCount")) {
         continue;  // filter out top-level keys
       } else if (keyName == "cache") {
-        hasCache = true;  // don't honour if appears below
+        hasCache = true;  // don't honor if appears below
       }
       options.add(keyName, it.value);
     }
@@ -302,7 +302,7 @@ VPackBuilder RestCursorHandler::buildOptions(VPackSlice const& slice) const {
   if (!isStream) {  // ignore cache & count for streaming queries
     bool val = VelocyPackHelper::getBooleanValue(slice, "count", false);
     options.add("count", VPackValue(val));
-    if (!hasCache) {
+    if (!hasCache && slice.hasKey("cache")) {
       val = VelocyPackHelper::getBooleanValue(slice, "cache", false);
       options.add("cache", VPackValue(val));
     }

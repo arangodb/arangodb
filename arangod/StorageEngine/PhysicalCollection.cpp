@@ -287,8 +287,9 @@ int PhysicalCollection::newObjectForInsert(
                                     sizeof(uint64_t));
   } else {
     // local server
-    encoding::storeNumber<uint64_t>(p, _logicalCollection->cid(),
-                                    sizeof(uint64_t));
+    encoding::storeNumber<uint64_t>(
+      p, _logicalCollection->id(), sizeof(uint64_t)
+    );
   }
 
   // _from and _to

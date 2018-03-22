@@ -74,15 +74,14 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
 ModificationBlock::~ModificationBlock() {}
 
 /// @brief get some - this accumulates all input and calls the work() method
-AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* ModificationBlock::getSome(size_t atMost) {
   // for UPSERT operations, we read and write data in the same collection
   // we cannot use any batching here because if the search document is not
   // found, the UPSERTs INSERT operation may create it. after that, the
   // search document is present and we cannot use an already queried result
   // from the initial search batch
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (getPlanNode()->getType() == ExecutionNode::NodeType::UPSERT) {
-    atLeast = 1;
     atMost = 1;
   }
   
@@ -105,7 +104,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
       // read all input into a buffer first
       while (true) {
         std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
         if (res.get() == nullptr) {
           break;
@@ -127,7 +126,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
       while (true) {
         freeBlocks(blocks);
         std::unique_ptr<AqlItemBlock> res(
-            ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+            ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
         if (res == nullptr) {
           break;

@@ -78,7 +78,7 @@ inline int path_stats(file_stat_t& info, const file_path_t path) {
     auto parts = irs::file_utils::path_parts(path);
 
     return file_stat(
-      parts.basename.null() ? std::wstring(parts.dirname).c_str() : path,
+      parts.basename.empty() ? std::wstring(parts.dirname).c_str() : path,
       &info
     );
   #else
@@ -517,7 +517,7 @@ bool exists(bool& result, const file_path_t file) NOEXCEPT {
 
   result = 0 == path_stats(info, file);
 
-  if (!result) {
+  if (!result && ENOENT != errno) {
     auto path = boost::locale::conv::utf_to_utf<char>(file);
 
     IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
@@ -532,16 +532,16 @@ bool exists_directory(bool& result, const file_path_t name) NOEXCEPT {
 
   result = 0 == path_stats(info, name);
 
-  if (!result) {
-    auto path = boost::locale::conv::utf_to_utf<char>(name);
-
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-  } else {
+  if (result) {
     #ifdef _WIN32
       result = (info.st_mode & _S_IFDIR) > 0;
     #else
       result = (info.st_mode & S_IFDIR) > 0;
     #endif
+  } else if (ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
   }
 
   return true;
@@ -553,16 +553,16 @@ bool exists_file(bool& result, const file_path_t name) NOEXCEPT {
 
   result = 0 == path_stats(info, name);
 
-  if (!result) {
-    auto path = boost::locale::conv::utf_to_utf<char>(name);
-
-    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
-  } else {
+  if (result) {
     #ifdef _WIN32
       result = (info.st_mode & _S_IFREG) > 0;
     #else
       result = (info.st_mode & S_IFREG) > 0;
     #endif
+  } else if (ENOENT != errno) {
+    auto path = boost::locale::conv::utf_to_utf<char>(name);
+
+    IR_FRMT_ERROR("Failed to get stat, error %d path: %s", errno, path.c_str());
   }
 
   return true;

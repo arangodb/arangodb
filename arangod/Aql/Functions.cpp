@@ -3217,7 +3217,7 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     }
 
     builder->openObject();
-    builder->add("_id", VPackValue(coll->cid_as_string()));
+    builder->add("_id", VPackValue(std::to_string(coll->id())));
     builder->add("name", VPackValue(coll->name()));
     builder->close();
   }

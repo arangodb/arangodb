@@ -296,7 +296,7 @@ bool attributeAccessEqual(
   }
 
   return lhsValue.type != NodeValue::Type::INVALID
-   && lhsValue.type != NodeValue::Type::INVALID
+   && rhsValue.type != NodeValue::Type::INVALID
    && rhsValue == lhsValue;
 }
 

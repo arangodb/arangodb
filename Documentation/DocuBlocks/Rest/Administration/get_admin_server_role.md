@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/server/role, Return role of a server in a cluster}
 
 @RESTDESCRIPTION
-
 Returns the role of a server in a cluster.
 The role is returned in the *role* attribute of the result.
 Possible return values for *role* are:

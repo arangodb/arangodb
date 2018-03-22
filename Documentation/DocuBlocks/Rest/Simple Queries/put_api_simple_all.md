@@ -8,8 +8,8 @@
 Contains the query.
 
 @RESTDESCRIPTION
-
-Returns all documents of a collections. The call expects a JSON object
+Returns all documents of a collections. Equivalent to the AQL query
+`FOR doc IN collection RETURN doc`. The call expects a JSON object
 as body with the following attributes:
 
 - *collection*: The name of the collection to query.
@@ -17,7 +17,14 @@ as body with the following attributes:
 - *skip*: The number of documents to skip in the query (optional).
 
 - *limit*: The maximal amount of documents to return. The *skip*
-  is applied before the *limit* restriction. (optional)
+  is applied before the *limit* restriction (optional).
+
+- *batchSize*: The number of documents to return in one go. (optional)
+
+- *ttl*: The time-to-live for the cursor (in seconds, optional). 
+
+- *stream*: Create this cursor as a stream query (optional). 
+
 
 Returns a cursor containing the result, see [Http Cursor](../AqlQueryCursor/README.md) for details.
 

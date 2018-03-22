@@ -112,8 +112,7 @@ struct Function {
 
   /// @brief condition under which the C++ implementation of the function is
   /// executed (if returns false, the function will be executed as its
-  /// JavaScript
-  /// variant)
+  /// JavaScript variant)
   ExecutionCondition condition;
 
   /// @brief function argument conversion information

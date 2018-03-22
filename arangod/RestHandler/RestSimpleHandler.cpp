@@ -301,7 +301,7 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       collectionName = value.copyString();
 
       if (!collectionName.empty()) {
-        auto const* col = _vocbase->lookupCollection(collectionName);
+        auto col = _vocbase->lookupCollection(collectionName);
 
         if (col != nullptr && collectionName != col->name()) {
           // user has probably passed in a numeric collection id.

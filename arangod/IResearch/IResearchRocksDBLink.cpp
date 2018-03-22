@@ -131,7 +131,7 @@ void IResearchRocksDBLink::toVelocyPack(arangodb::velocypack::Builder& builder,
 void IResearchRocksDBLink::writeRocksWalMarker() {
   RocksDBLogValue logValue = RocksDBLogValue::IResearchLinkDrop(
       Index::_collection->vocbase()->id(),
-      Index::_collection->cid(),
+      Index::_collection->id(),
       view() ? view()->id() : 0, // 0 == invalid TRI_voc_cid_t according to transaction::Methods
       Index::_iid);
 

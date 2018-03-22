@@ -35,8 +35,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
 /// @brief just also stores the context
-class VocbaseContext final : public arangodb::ExecContext {
+class VocbaseContext : public arangodb::ExecContext {
  private:
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
@@ -45,13 +46,14 @@ class VocbaseContext final : public arangodb::ExecContext {
 
  public:
   static double ServerSessionTtl;
-  ~VocbaseContext();
+
+  TEST_VIRTUAL ~VocbaseContext();
 
  public:
   
   static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
   
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
+  TEST_VIRTUAL TRI_vocbase_t* vocbase() const { return _vocbase; }
   
   /// @brief upgrade to internal superuser
   void forceSuperuser();

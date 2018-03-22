@@ -5,9 +5,9 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharia
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _WeZkLzW--_
+etag: _WgE6n8y--_
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -15,7 +15,7 @@ etag: _WeZkLzW--_
   <span class="hljs-string">"vertex"</span> : { 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"female/alice"</span>, 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"alice"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WeZkLzW--_"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_WeZkLye--_"</span> 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgE6n8y--_"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_WgE6n8G--_"</span> 
   } 
 }

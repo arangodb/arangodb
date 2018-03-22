@@ -1,13 +1,13 @@
-shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=13141
+shell> curl --dump - http://localhost:8529/_api/replication/logger-follow?from=13085
 
 HTTP/1.1 200 OK
-x-arango-replication-frompresent: true
-x-arango-replication-lastscanned: 13155
-x-content-type-options: nosniff
-x-arango-replication-lastincluded: 13155
-content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
-x-arango-replication-lasttick: 13155
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-lastscanned: 13098
+x-arango-replication-lastincluded: 13098
 x-arango-replication-active: true
+x-arango-replication-frompresent: true
+x-content-type-options: nosniff
+x-arango-replication-lasttick: 13098
 
-"{\"tick\":\"13144\",\"type\":2000,\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"13143\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"hE2F144F58407/13143\",\"id\":\"13143\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"13142\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n{\"tick\":\"13148\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p1\",\"_key\":\"p1\",\"_rev\":\"_WeZklSi--_\",\"name\":\"flux compensator\"}}\n{\"tick\":\"13150\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"_WeZklSi--B\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"13152\",\"type\":2302,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"_key\":\"p1\",\"_rev\":\"_WeZklSm--_\"}}\n{\"tick\":\"13154\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"_WeZklSm--B\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"13155\",\"type\":2001,\"database\":\"1\",\"cid\":\"13143\",\"cname\":\"products\",\"data\":{\"cuid\":\"hE2F144F58407/13143\",\"id\":\"13143\",\"name\":\"products\"}}\n"
+"{\"tick\":\"13087\",\"type\":2000,\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"allowUserKeys\":true,\"cid\":\"13086\",\"count\":0,\"deleted\":false,\"doCompact\":true,\"globallyUniqueId\":\"h4B150768F36C/13086\",\"id\":\"13086\",\"indexBuckets\":8,\"indexes\":[{\"fields\":[\"_key\"],\"id\":\"0\",\"selectivityEstimate\":1,\"sparse\":false,\"type\":\"primary\",\"unique\":true}],\"isSmart\":false,\"isSystem\":false,\"isVolatile\":false,\"journalSize\":33554432,\"keyOptions\":{\"allowUserKeys\":true,\"lastValue\":0,\"type\":\"traditional\"},\"name\":\"products\",\"numberOfShards\":1,\"planId\":\"13086\",\"replicationFactor\":1,\"shardKeys\":[\"_key\"],\"shards\":{},\"status\":3,\"type\":2,\"version\":6,\"waitForSync\":false}}\n{\"tick\":\"13091\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p1\",\"_key\":\"p1\",\"_rev\":\"_WgE8Jnq--_\",\"name\":\"flux compensator\"}}\n{\"tick\":\"13093\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"_WgE8Jnq--B\",\"hp\":5100,\"name\":\"hybrid hovercraft\"}}\n{\"tick\":\"13095\",\"type\":2302,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"_key\":\"p1\",\"_rev\":\"_WgE8Jnu--_\"}}\n{\"tick\":\"13097\",\"type\":2300,\"tid\":\"0\",\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"_id\":\"_unknown/p2\",\"_key\":\"p2\",\"_rev\":\"_WgE8Jny--_\",\"hp\":5100,\"name\":\"broken hovercraft\"}}\n{\"tick\":\"13098\",\"type\":2001,\"database\":\"1\",\"cid\":\"13086\",\"cname\":\"products\",\"data\":{\"cuid\":\"h4B150768F36C/13086\",\"id\":\"13086\",\"name\":\"products\"}}\n"

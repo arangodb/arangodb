@@ -568,6 +568,13 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
+if (USE_CATCH_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
@@ -843,6 +850,7 @@ if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
   list(GET OPENSSL_VERSION_LIST 0 OPENSSL_VERSION_MAJOR)
   list(GET OPENSSL_VERSION_LIST 1 OPENSSL_VERSION_MINOR)
+
   if ("${OPENSSL_VERSION_MAJOR}" GREATER 0 AND "${OPENSSL_VERSION_MINOR}" GREATER 0)
     option(USE_OPENSSL_NO_SSL2
       "do not use OPENSSL_NO_SSL2"
@@ -1013,7 +1021,6 @@ add_subdirectory(arangod)
 
 add_subdirectory(Documentation)
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
 endif()

@@ -102,8 +102,8 @@ void RestSimpleQueryHandler::allDocuments() {
                   "expecting string for <collection>");
     return;
   }
-      
-  auto const* col = _vocbase->lookupCollection(collectionName);
+
+  auto col = _vocbase->lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
     // user has probably passed in a numeric collection id.
@@ -144,16 +144,20 @@ void RestSimpleQueryHandler::allDocuments() {
   data.add("count", VPackValue(true));
 
   // pass on standard options
-  {
-    VPackSlice ttl = body.get("ttl");
-    if (!ttl.isNone()) {
-      data.add("ttl", ttl);
-    }
-
-    VPackSlice batchSize = body.get("batchSize");
-    if (!batchSize.isNone()) {
-      data.add("batchSize", batchSize);
-    }
+  VPackSlice ttl = body.get("ttl");
+  if (!ttl.isNone()) {
+    data.add("ttl", ttl);
+  }
+  
+  VPackSlice batchSize = body.get("batchSize");
+  if (!batchSize.isNone()) {
+    data.add("batchSize", batchSize);
+  }
+  
+  VPackSlice stream = body.get("stream");
+  if (stream.isBool()) {
+    VPackObjectBuilder obj(&data, "options");
+    obj->add("stream", stream);
   }
   data.close();
 
@@ -187,14 +191,14 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   } else {
     collectionName = _request->value("collection");
   }
-      
+
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-  
-  auto const* col = _vocbase->lookupCollection(collectionName);
+
+  auto col = _vocbase->lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
     // user has probably passed in a numeric collection id.
@@ -282,13 +286,13 @@ void RestSimpleQueryHandler::byExample() {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-  
+
   // velocypack will throw an exception for negative numbers
   size_t skip = basics::VelocyPackHelper::getNumericValue(body, "skip", 0);
   size_t limit = basics::VelocyPackHelper::getNumericValue(body, "limit", 0);
   size_t batchSize = basics::VelocyPackHelper::getNumericValue(body, "batchSize", 0);
   VPackSlice example = body.get("example");
-  
+
   std::string cname;
   if (body.hasKey("collection")) {
     VPackSlice const value = body.get("collection");
@@ -298,30 +302,32 @@ void RestSimpleQueryHandler::byExample() {
   } else {
     cname = _request->value("collection");
   }
-  
+
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
     return;
   }
-  
-  auto const* col = _vocbase->lookupCollection(cname);
+
+  auto col = _vocbase->lookupCollection(cname);
+
   if (col != nullptr && cname != col->name()) {
     // user has probably passed in a numeric collection id.
     // translate it into a "real" collection name
     cname = col->name();
   }
-  
+
   VPackBuilder data;
   data.openObject();
   buildExampleQuery(data, cname, example, skip, limit);
-  
+
   if (batchSize > 0) {
     data.add("batchSize", VPackValue(batchSize));
   }
+
   data.add("count", VPackSlice::trueSlice());
   data.close();
-  
+
   // now run the actual query and handle the result
   processQuery(data.slice());
 }

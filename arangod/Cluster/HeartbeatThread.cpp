@@ -385,7 +385,7 @@ void HeartbeatThread::runDBServer() {
 
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
-          planAgencyCallback->refetchAndUpdate(true);
+          planAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -697,6 +697,8 @@ void HeartbeatThread::runCoordinator() {
   uint64_t lastPlanVersionNoticed = 0;
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
+  // For periodic update of the current DBServer list:
+  int DBServerUpdateCounter = 0;
 
   while (!isStopping()) {
     try {
@@ -892,6 +894,12 @@ void HeartbeatThread::runCoordinator() {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
       }
       invalidateCoordinators = !invalidateCoordinators;
+
+      // Periodically update the list of DBServers:
+      if (++DBServerUpdateCounter >= 60) {
+        ClusterInfo::instance()->loadCurrentDBServers();
+        DBServerUpdateCounter = 0;
+      }
 
       double remain = interval - (TRI_microtime() - start);
 

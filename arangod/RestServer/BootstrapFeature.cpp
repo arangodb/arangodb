@@ -112,6 +112,7 @@ static void raceForClusterBootstrap() {
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     
     // let's see whether a DBserver is there:
+    ci->loadCurrentDBServers();
     auto dbservers = ci->getCurrentDBServers();
     if (dbservers.size() == 0) {
       LOG_TOPIC(TRACE, Logger::STARTUP)

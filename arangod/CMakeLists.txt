@@ -48,7 +48,6 @@ if (USE_IRESEARCH)
   add_library(${LIB_ARANGO_IRESEARCH}
     STATIC
     IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
-    IResearch/AttributeScorer.cpp IResearch/AttributeScorer.h
     IResearch/Containers.cpp IResearch/Containers.h
     IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
     IResearch/IResearchAttributes.cpp IResearch/IResearchAttributes.h
@@ -170,6 +169,7 @@ SET(ARANGOD_SOURCES
   Aql/AqlFunctionFeature.cpp
   Aql/AqlItemBlock.cpp
   Aql/AqlItemBlockManager.cpp
+  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/Ast.cpp
@@ -191,6 +191,8 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/EngineInfoContainerCoordinator.cpp
+  Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -242,7 +244,6 @@ SET(ARANGOD_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
   Aql/V8Executor.cpp
-  Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
