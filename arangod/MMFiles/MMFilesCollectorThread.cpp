@@ -500,7 +500,7 @@ int MMFilesCollectorThread::processQueuedOperations(bool& worked) {
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC(TRACE, Logger::COLLECTOR) << "queued operations applied successfully";
         } else if (res == TRI_ERROR_ARANGO_DATABASE_NOT_FOUND ||
-                  res == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+                  res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           // these are expected errors
           LOG_TOPIC(TRACE, Logger::COLLECTOR)
               << "removing queued operations for already deleted collection";
@@ -944,7 +944,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
 
       if (res != TRI_ERROR_NO_ERROR &&
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-          res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+          res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
         if (res != TRI_ERROR_ARANGO_FILESYSTEM_FULL) {
           // other places already log this error, and making the logging
           // conditional here
@@ -961,7 +961,7 @@ int MMFilesCollectorThread::collect(MMFilesWalLogfile* logfile) {
   }
 
   // Error conditions TRI_ERROR_ARANGO_DATABASE_NOT_FOUND and
-  // TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND are intentionally ignored
+  // TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND are intentionally ignored
   // here since this can actually happen if someone has dropped things
   // in between.
 

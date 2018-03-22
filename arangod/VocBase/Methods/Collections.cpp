@@ -86,7 +86,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                                     std::string const& name,
                                     FuncCallback func) {
   if (name.empty()) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
@@ -107,7 +107,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     } catch (...) {
       return Result(TRI_ERROR_INTERNAL);
     }
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   auto coll = vocbase->lookupCollection(name);
@@ -129,7 +129,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
     }
     return Result();
   }
-  return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,

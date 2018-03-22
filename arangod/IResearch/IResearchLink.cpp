@@ -284,7 +284,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
   }
 
   LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error finding view for link '" << _id << "'";
-  TRI_set_errno(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+  TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
   return false;
 }
@@ -488,14 +488,14 @@ Result IResearchLink::remove(
 
 arangodb::Result IResearchLink::recover() {
   if (!_collection) {
-    return {TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND}; // current link isn't associated with the collection
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // current link isn't associated with the collection
   }
 
   // do not acquire `_mutex` lock here, since it causes deadlock
   auto* view = _view.get();
 
   if (!view) {
-    return {TRI_ERROR_ARANGO_VIEW_NOT_FOUND}; // slice has identifier but the current object does not
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // slice has identifier but the current object does not
   }
 
   arangodb::velocypack::Builder link;

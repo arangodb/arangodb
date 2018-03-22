@@ -155,7 +155,7 @@ bool RestEdgesHandler::validateCollection(std::string const& name) {
 
   if (colType == TRI_COL_TYPE_UNKNOWN) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
 
