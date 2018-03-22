@@ -22,12 +22,9 @@
 
 #include "RemoveFollower.h"
 
-#include <boost/range/adaptor/reversed.hpp>
-#include <boost/range/combine.hpp>
-#include <arangod/Cluster/ClusterInfo.h>
-
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Cluster/ClusterInfo.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
