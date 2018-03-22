@@ -158,6 +158,7 @@ add_library(${LIB_ARANGO} STATIC
   Basics/application-exit.cpp
   Basics/conversions.cpp
   Basics/csv.cpp
+  Basics/datetime.cpp
   Basics/debugging.cpp
   Basics/error.cpp
   Basics/fasthash.cpp
