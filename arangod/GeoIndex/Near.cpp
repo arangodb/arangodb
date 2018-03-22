@@ -71,7 +71,7 @@ NearUtils<CMP>::NearUtils(geo::QueryParams&& qp) noexcept
   
 template <typename CMP>
 NearUtils<CMP>::~NearUtils() {
-  LOG_TOPIC(ERR, Logger::FIXME) << "Scans: " << _scans << " Rejections: " << _rejection;
+  //LOG_TOPIC(ERR, Logger::FIXME) << "Scans: " << _scans << " Rejections: " << _rejection;
 }
 
 template <typename CMP>
@@ -253,13 +253,15 @@ void NearUtils<CMP>::reportFound(LocalDocumentId lid,
     }
   }
   
-  auto const& it = _seenDocs.find(lid.id());
-  if (it != _seenDocs.end()) {
-    _rejection++;
-    return;  // ignore repeated documents
+  if (!_params.pointsOnly) {
+    auto const& it = _seenDocs.find(lid.id());
+    if (it != _seenDocs.end()) {
+      _rejection++;
+      return;  // ignore repeated documents
+    }
+    _seenDocs.emplace(lid.id());
   }
-  _seenDocs.emplace(lid.id());
-
+  
   // possibly expensive point rejection, but saves parsing of document
   if (isFilterContains()) {
     TRI_ASSERT(!_params.filterShape.empty());
@@ -279,7 +281,7 @@ void NearUtils<CMP>::estimateDensity(S2Point const& found) {
   }
   
   S1ChordAngle minAngle = S1ChordAngle::Radians(250 / geo::kEarthRadiusInMeters);
-  double fac = std::max(2.0 * std::sqrt(static_cast<double>(_params.limit) / M_PI), 4.0);
+  double fac = std::max(2.0 * static_cast<double>(_params.limit) / M_PI, 4.0);
   S1ChordAngle delta(_origin, found);
   if (minAngle < delta && delta <= _maxAngle) {
     _deltaAngle = S1ChordAngle::FromLength2(delta.length2() * fac);
