@@ -23,9 +23,6 @@
 
 #include "ManagedDirectory.h"
 
-#include <velocypack/Parser.h>
-#include <velocypack/velocypack-aliases.h>
-
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
