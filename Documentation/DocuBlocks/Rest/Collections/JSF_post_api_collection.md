@@ -120,12 +120,12 @@ collections alone will generate warnings, which can be overridden,
 about missing sharding prototype. 
 
 @RESTQUERYPARAMETERS 
-@RESTQUERYPARAM{waitForSyncReplication,integer,optional,int64}
+@RESTQUERYPARAM{waitForSyncReplication,integer,optional}
 Default is *1* which means the server will only report success back to the client
 if all replicas have created the collection. Set to *0* if you want faster
 server responses and don't care about full replication.
 
-@RESTQUERYPARAM{enforceReplicationFactor,integer,optional,int64}
+@RESTQUERYPARAM{enforceReplicationFactor,integer,optional}
 Default is *1* which means the server will check if there are enough replicas
 available at creation time and bail out otherwise. Set to *0* to disable this
 extra check.

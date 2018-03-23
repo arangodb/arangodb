@@ -48,7 +48,6 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "V8/v8-globals.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Recovery.h"
@@ -386,7 +385,7 @@ void HeartbeatThread::runDBServer() {
 
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
-          planAgencyCallback->refetchAndUpdate(true);
+          planAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -415,8 +414,8 @@ void HeartbeatThread::runDBServer() {
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
   double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  TRI_ASSERT(auth != nullptr);
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
   if (!replication->isActiveFailoverEnabled()) {
@@ -610,7 +609,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
         ReplicationApplierConfiguration config = applier->configuration();
         if (config._jwt.empty()) {
-          config._jwt = auth->jwtToken();
+          config._jwt = af->tokenCache()->jwtToken();
         }
         config._endpoint = endpoint;
         config._autoResync = true;
@@ -699,6 +698,8 @@ void HeartbeatThread::runCoordinator() {
   uint64_t lastPlanVersionNoticed = 0;
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
+  // For periodic update of the current DBServer list:
+  int DBServerUpdateCounter = 0;
 
   while (!isStopping()) {
     try {
@@ -827,7 +828,8 @@ void HeartbeatThread::runCoordinator() {
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
             if (authentication->isActive()) {
-              authentication->authInfo()->outdate();
+              authentication->userManager()->outdate();
+              authentication->tokenCache()->invalidateBasicCache();
             }
           }
         }
@@ -893,6 +895,12 @@ void HeartbeatThread::runCoordinator() {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
       }
       invalidateCoordinators = !invalidateCoordinators;
+
+      // Periodically update the list of DBServers:
+      if (++DBServerUpdateCounter >= 60) {
+        ClusterInfo::instance()->loadCurrentDBServers();
+        DBServerUpdateCounter = 0;
+      }
 
       double remain = interval - (TRI_microtime() - start);
 

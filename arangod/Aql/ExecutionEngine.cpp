@@ -140,6 +140,10 @@ static ExecutionBlock* CreateBlock(
                  CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
         return new DistinctCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
+      } else if (aggregationMethod ==
+                 CollectOptions::CollectMethod::COLLECT_METHOD_COUNT) {
+        return new CountCollectBlock(engine,
+                                     static_cast<CollectNode const*>(en));
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -413,6 +417,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           collectionFn(localCollection);
         }
       }
+        
       // mop: no non satellite collection found
       if (collection == nullptr) {
         // mop: just take the last satellite then
@@ -430,6 +435,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (!populated) {
         populate();
       }
+      TRI_ASSERT(populated);
       TRI_ASSERT(collection != nullptr);
       return collection;
     }
@@ -438,6 +444,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       if (!populated) {
         populate();
       }
+      TRI_ASSERT(populated);
       return auxiliaryCollections;
     }
 
@@ -623,9 +630,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
-    // << "\n";
-
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
@@ -695,7 +699,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
      
     size_t numShards = shardIds->size();   
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GOT ALL RESPONSES FROM DB SERVERS: " << nrok << "\n";
 
     if (nrok != static_cast<int>(numShards)) {
       if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -707,7 +710,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
   /// @brief distributePlansToShards, for a single Scatter/Gather block
   void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
-    //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
     Collection* collection = info->getCollection();
     TRI_ASSERT(collection != nullptr);
 
@@ -1159,8 +1161,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
-      //          << it->location;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
         engine = buildEngineCoordinator(info);

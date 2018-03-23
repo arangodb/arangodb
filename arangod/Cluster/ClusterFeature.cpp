@@ -36,7 +36,6 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -134,6 +133,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--cluster.create-waits-for-sync-replication",
                      "active coordinator will wait for all replicas to create collection",
                      new BooleanParameter(&_createWaitsForSyncReplication));
+  
+  options->addHiddenOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -247,8 +250,9 @@ void ClusterFeature::prepare() {
 
   if (agency->isEnabled() || _enableCluster) {
     startClusterComm = true;
-    auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-    if (authentication->isActive() && !authentication->hasUserdefinedJwt()) {
+    AuthenticationFeature* af = AuthenticationFeature::instance();
+    // nullptr happens only during shutdown
+    if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but JWT not set via command line. Please"
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();

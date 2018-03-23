@@ -74,7 +74,9 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
       _result(result),
+#ifdef USE_ENTERPRISE
       _encryption(nullptr),
+#endif
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);

@@ -32,7 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ShardDistributionReporter.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -101,6 +100,8 @@ static void CreateAgencyException(
 static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -162,6 +163,8 @@ static void JS_CreateDirectoryAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -209,6 +212,8 @@ static void JS_IncreaseVersionAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
@@ -233,6 +238,8 @@ static void JS_IncreaseVersionAgency(
 static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
@@ -273,6 +280,8 @@ static void JS_APIAgency(std::string const& envelope,
                          v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(std::string(envelope) + "([[...]])");
@@ -337,6 +346,8 @@ static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
@@ -367,6 +378,8 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
@@ -404,6 +417,8 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("agency()");
@@ -454,6 +469,8 @@ static void JS_EndpointsAgency(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
@@ -484,7 +501,7 @@ static void JS_EndpointsAgency(
 static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   std::string const prefix = AgencyCommManager::path();
 
   TRI_V8_RETURN_STD_STRING(prefix);
@@ -498,6 +515,8 @@ static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
@@ -533,6 +552,8 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  ONLY_IN_CLUSTER;
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
@@ -1876,8 +1897,8 @@ static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  if (authentication->isActive()) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af != nullptr && af->isActive()) {
     // mop: really quick and dirty
     v8::Handle<v8::Object> options = v8::Object::New(isolate);
     v8::Handle<v8::Object> headers = v8::Object::New(isolate);
@@ -1891,13 +1912,10 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
     }
     options->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
     
-    auto af = AuthenticationFeature::INSTANCE;
-    if (af != nullptr) {
-      // nullptr happens only during controlled shutdown
-      std::string authorization = "bearer " + af->jwtToken();
-      v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
-      headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
-    }
+    std::string authorization = "bearer " + af->tokenCache()->jwtToken();
+    v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
+    headers->Set(TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization);
+    
     args[2] = options;
   }
   TRI_V8_TRY_CATCH_END

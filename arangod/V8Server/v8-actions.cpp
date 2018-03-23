@@ -345,7 +345,7 @@ static v8::Handle<v8::Object> RequestCppToV8(v8::Isolate* isolate,
   //      }
 
   TRI_GET_GLOBAL_STRING(AuthorizedKey);
-  if (request->authorized()) {
+  if (request->authenticated()) {
     req->ForceSet(AuthorizedKey, v8::True(isolate));
   } else {
     req->ForceSet(AuthorizedKey, v8::False(isolate));

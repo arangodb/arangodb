@@ -81,7 +81,9 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-)
+  )
+
+add_definitions ("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
 if (ASM_OPTIMIZATIONS AND CMAKE_TARGET_ARCHITECTURE_CODE MATCHES "x86_64")
   if (DARWIN)
@@ -261,3 +263,9 @@ target_link_libraries(${LIB_ARANGO_V8}
     boost_system
     boost_boost
 )
+
+# Enterprise
+if (USE_ENTERPRISE)
+  target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endif()

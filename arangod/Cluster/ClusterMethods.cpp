@@ -2553,18 +2553,32 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   // Now listen to the results:
   int count;
   int nrok = 0;
+  int globalErrorCode = TRI_ERROR_INTERNAL;
   for (count = (int)DBservers.size(); count > 0; count--) {
     auto res = cc->wait("", coordTransactionID, 0, "", 0.0);
     if (res.status == CL_COMM_RECEIVED) {
       if (res.answer_code == arangodb::rest::ResponseCode::OK) {
         nrok++;
+      } else {
+        // got an error. Now try to find the errorNum value returned (if any)
+        TRI_ASSERT(res.answer != nullptr);
+        auto resBody = res.answer->toVelocyPackBuilderPtr();
+        VPackSlice resSlice = resBody->slice();
+        if (resSlice.isObject()) {
+          int code = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+              resSlice, "errorNum", TRI_ERROR_INTERNAL);
+
+          if (code != TRI_ERROR_NO_ERROR) {
+            globalErrorCode = code;
+          }
+        }
       }
     }
   }
 
   if (nrok != (int)DBservers.size()) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not flush WAL on all servers. confirmed: " << nrok << ", expected: " << DBservers.size();
-    return TRI_ERROR_INTERNAL;
+    return globalErrorCode;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2625,13 +2639,25 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
 
     // the default behaviour however is to bail out and inform the user
     // that the requested replicationFactor is not possible right now
-    if (enforceReplicationFactor && dbServers.size() < replicationFactor) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+    if (dbServers.size() < replicationFactor) {
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        << "Do not have enough DBServers for requested replicationFactor,"
+        << " nrDBServers: " << dbServers.size()
+        << " replicationFactor: " << replicationFactor;
+      if (enforceReplicationFactor) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
+      }
     }
 
     if (!avoid.empty()) {
       // We need to remove all servers that are in the avoid list
       if (dbServers.size() - avoid.size() < replicationFactor) {
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+          << "Do not have enough DBServers for requested replicationFactor,"
+          << " (after considering avoid list),"
+          << " nrDBServers: " << dbServers.size()
+          << " replicationFactor: " << replicationFactor
+          << " avoid list size: " << avoid.size();
         // Not enough DBServers left
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
       }

@@ -548,7 +548,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         // got a result from the query cache
         if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
+            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -750,7 +750,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         // got a result from the query cache
         if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
+            if (!exe->canUseCollection(collectionName, auth::Level::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -1123,7 +1123,7 @@ void Query::exitContext() {
 void Query::getStats(VPackBuilder& builder) {
   if (_engine != nullptr) {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
-    _engine->_stats.toVelocyPack(builder);
+    _engine->_stats.toVelocyPack(builder, _queryOptions.fullCount);
   } else {
     ExecutionStats::toVelocyPackStatic(builder);
   }
@@ -1285,7 +1285,7 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
     try {
       _engine->shutdown(errorCode);
       if (statsBuilder != nullptr) {
-        _engine->_stats.toVelocyPack(*statsBuilder);
+        _engine->_stats.toVelocyPack(*statsBuilder, _queryOptions.fullCount);
       }
     } catch (...) {
       // shutdown may fail but we must not throw here

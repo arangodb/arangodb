@@ -110,6 +110,7 @@ static void raceForClusterBootstrap() {
         << "raceForClusterBootstrap: race won, we do the bootstrap";
     
     // let's see whether a DBserver is there:
+    ci->loadCurrentDBServers();
     auto dbservers = ci->getCurrentDBServers();
     if (dbservers.size() == 0) {
       LOG_TOPIC(TRACE, Logger::STARTUP)
@@ -140,7 +141,7 @@ static void raceForClusterBootstrap() {
     }
     
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
-    AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+    AuthenticationFeature::instance()->userManager()->createRootUser();
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -258,10 +259,9 @@ void BootstrapFeature::start() {
     // Agency is not allowed to call this
     if (ServerState::isSingleServer(role)) {
       // only creates root user if it does not exist, will be overwritten on slaves
-      AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+      AuthenticationFeature::instance()->userManager()->createRootUser();
     }
   }
-  
   
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: is set to correct value in the heartbeat thread

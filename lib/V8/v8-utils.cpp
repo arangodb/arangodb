@@ -885,7 +885,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                        body.size(), headerFields));
 
     int returnCode = 500;  // set a default
-    std::string returnMessage;
+    std::string returnMessage = "";
 
     if (response == nullptr || !response->isComplete()) {
       // save error message
@@ -918,11 +918,6 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
         continue;
       }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
-                  v8::Number::New(isolate, returnCode));
-      result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
-                  TRI_V8_STD_STRING(isolate, returnMessage));
 
       // process response headers
       auto const& responseHeaders = response->getHeaderFields();
@@ -4570,6 +4565,21 @@ void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check if we are in the enterprise edition
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_IsEnterprise(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+#ifndef USE_ENTERPRISE
+  TRI_V8_RETURN(v8::False(isolate));
+#else
+  TRI_V8_RETURN(v8::True(isolate));
+#endif
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4793,6 +4803,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "VPACK_TO_V8"), JS_VPackToV8);
+
+  TRI_AddGlobalFunctionVocbase(isolate, 
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_ENTERPRISE"),
+                               JS_IsEnterprise);
 
   // .............................................................................
   // create the global variables

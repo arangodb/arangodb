@@ -4,7 +4,6 @@
 @RESTHEADER{GET /_api/cluster/endpoints, Get information about all coordinator endpoints}
 
 @RESTDESCRIPTION 
-
 Returns an object with an attribute `endpoints`, which contains an
 array of objects, which each have the attribute `endpoint`, whose value
 is a string with the endpoint description. There is an entry for each
