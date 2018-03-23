@@ -62,7 +62,7 @@ const std::string FREE_SERVER2 = "free2";
 const char *agency =
 #include "RemoveFollowerTest.json"
   ;
-const char *agencyLarge =
+std::string const agencyLarge =
 #include "RemoveFollowerTestLarge.json"
 ;
 const char *todo =
@@ -481,7 +481,7 @@ TEST_CASE("RemoveFollower", "[agency][supervision]") {
 
   GIVEN("An agency with 12 DBServers") {
 
-    auto baseStructure = createNode(agencyLarge);
+    auto baseStructure = createNode(agencyLarge.c_str());
     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
 
     Builder builder;
