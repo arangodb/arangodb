@@ -80,7 +80,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _numberDocuments(0),
       _revisionId(0),
       _needToPersistIndexEstimates(false),
-      _hasGeoIndex(false),
+      _numberOfGeoIndexes(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
@@ -108,7 +108,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _numberDocuments(0),
       _revisionId(0),
       _needToPersistIndexEstimates(false),
-      _hasGeoIndex(false),
+      _numberOfGeoIndexes(0),
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
@@ -257,7 +257,7 @@ void RocksDBCollection::open(bool ignoreErrors) {
   for (std::shared_ptr<Index> it : _indexes) {
     if (it->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
         it->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-      _hasGeoIndex = true;
+      ++_numberOfGeoIndexes;
     }
   }
 }
@@ -626,6 +626,9 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
         // trigger compaction before deleting the object
         cindex->cleanup();
 
+        bool isGeoIndex = (cindex->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
+                           cindex->type() == Index::TRI_IDX_TYPE_GEO2_INDEX);
+
         _indexes.erase(_indexes.begin() + i);
         events::DropIndex("", std::to_string(iid), TRI_ERROR_NO_ERROR);
         // toVelocyPackIgnore will take a read lock and we don't need the
@@ -643,6 +646,12 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
                 builder.slice(),
                 RocksDBLogValue::IndexDrop(_logicalCollection->vocbase()->id(),
                                            _logicalCollection->cid(), iid));
+        if (isGeoIndex) {
+          // decrease total number of geo indexes by one
+          TRI_ASSERT(_numberOfGeoIndexes > 0);
+          --_numberOfGeoIndexes;
+        }
+
         return res == TRI_ERROR_NO_ERROR;
       }
 
@@ -879,11 +888,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   res = insertDocument(trx, documentId, newSlice, options);
   if (res.ok()) {
-    Result lookupResult = lookupDocumentVPack(documentId, trx, mdr, false);
-
-    if (lookupResult.fail()) {
-      return lookupResult;
-    }
+    mdr.setManaged(newSlice.begin(), documentId); 
 
     // report document and key size
     RocksDBOperationResult result = state->addOperation(
@@ -1114,8 +1119,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   LocalDocumentId const documentId = LocalDocumentId::create();
   prevRev = 0;
 
-  transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
+  revisionId = TRI_HybridLogicalClock();
 
   VPackSlice key;
   if (slice.isString()) {
@@ -1233,7 +1237,7 @@ void RocksDBCollection::addIndex(std::shared_ptr<arangodb::Index> idx) {
   _indexes.emplace_back(idx);
   if (idx->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
       idx->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-    _hasGeoIndex = true;
+    ++_numberOfGeoIndexes;
   }
   if (idx->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
     TRI_ASSERT(idx->id() == 0);

@@ -192,7 +192,7 @@ class RocksDBCollection final : public PhysicalCollection {
   void compact();
   void estimateSize(velocypack::Builder& builder);
 
-  bool hasGeoIndex() { return _hasGeoIndex; }
+  bool hasGeoIndex() const { return _numberOfGeoIndexes > 0; }
 
   Result serializeIndexEstimates(rocksdb::Transaction*) const;
   void deserializeIndexEstimates(arangodb::RocksDBCounterManager* mgr);
@@ -273,8 +273,8 @@ class RocksDBCollection final : public PhysicalCollection {
   std::atomic<TRI_voc_rid_t> _revisionId;
   mutable std::atomic<bool> _needToPersistIndexEstimates;
 
-  /// upgrade write locks to exclusive locks if this flag is set
-  bool _hasGeoIndex;
+  /// upgrade write locks to exclusive locks if this is > 0
+  uint32_t _numberOfGeoIndexes;
   /// cache the primary index for performance, do not delete
   RocksDBPrimaryIndex* _primaryIndex;
 

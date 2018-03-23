@@ -129,7 +129,6 @@ class AqlItemBlock {
     TRI_ASSERT(_data[index * _nrRegs + varNr].isEmpty());
 
     void* p = &_data[index * _nrRegs + varNr];
-    size_t mem = 0;
     // construct the AqlValue in place
     AqlValue* value;
     try {
@@ -144,8 +143,7 @@ class AqlItemBlock {
       // Now update the reference count, if this fails, we'll roll it back
       if (value->requiresDestruction()) {
         if (++_valueCount[*value] == 1) {
-          mem = value->memoryUsage();
-          increaseMemoryUsage(mem);
+          increaseMemoryUsage(value->memoryUsage());
         }
       }
     } catch (...) {
