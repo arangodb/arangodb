@@ -96,6 +96,12 @@ static aql::Variable const* getVariable(ExecutionNode const* node) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node type does not have an out variable");
 }
 
+/// @brief find the single shard id for the node to restrict an operation to
+/// this will check the conditions of an IndexNode or a data-modification node
+/// (excluding UPSERT) and check if all shard keys are used in it. If all shard
+/// keys are present and their values are fixed (constants), this function will
+/// try to figure out the target shard. If the operation cannot be restricted to
+/// a single shard, this function will return an empty string
 std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* node, aql::Collection const* collection) {
   if (collection->isSmart()) {
     // no support for smart graphs yet
@@ -129,6 +135,7 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
 
   if (setter == nullptr) {
     // oops!
+    TRI_ASSERT(false);
     return std::string();
   }
     

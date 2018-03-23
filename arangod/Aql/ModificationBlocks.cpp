@@ -345,9 +345,10 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
       if (isMultiple) {
         TRI_ASSERT(opRes.ok());
-        VPackSlice removedList = opRes.slice();
-        TRI_ASSERT(removedList.isArray());
         if (producesOutput) {
+          TRI_ASSERT(options.returnOld);
+          VPackSlice removedList = opRes.slice();
+          TRI_ASSERT(removedList.isArray());
           auto iter = VPackArrayIterator(removedList);
           for (size_t i = 0; i < n; ++i) {
             AqlValue const& a = res->getValueReference(i, registerId);
@@ -361,7 +362,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
                   arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                       it, "errorNum", TRI_ERROR_NO_ERROR);
               if (!wasError) {
-                if (options.returnOld && errorCode == TRI_ERROR_NO_ERROR) {
+                if (errorCode == TRI_ERROR_NO_ERROR) {
                   result->emplaceValue(dstRow, _outRegOld, it.get("old"));
                 }
               }
