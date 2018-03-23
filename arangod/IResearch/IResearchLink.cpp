@@ -484,7 +484,7 @@ arangodb::Result IResearchLink::recover() {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex); // FIXME TODO check for deadlock
 
-  if (!view) {
+  if (!_view) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // slice has identifier but the current object does not
   }
 
