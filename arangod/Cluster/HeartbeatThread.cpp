@@ -468,7 +468,7 @@ void HeartbeatThread::runSingleServer() {
         if (res.successful()) {
           LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "successfully increased plan version in agency";
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "could not increase version number in agency";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not increase version number in agency";
         }
       }
 
