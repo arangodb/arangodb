@@ -191,7 +191,7 @@ struct OptimizerRule {
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
-
+    
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -215,6 +215,9 @@ struct OptimizerRule {
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule_pass10,
     
+    // push collect operations to the db servers
+    collectInClusterRule_pass10,
+
     // try to restrict fragments to a single shard if possible
     restrictToSingleShardRule_pass10
   };

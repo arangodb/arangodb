@@ -27,6 +27,7 @@
 #include "Basics/DataProtector.h"
 #include "Basics/Mutex.h"
 #include "Basics/Thread.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -84,6 +85,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void recoveryDone();
 
  public:
+  VersionTracker* versionTracker() { return &_versionTracker; }
 
   /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
@@ -179,6 +181,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   /// @brief lock for serializing the creation of databases
   arangodb::Mutex _databaseCreateLock;
+
+  /// @brief a simple version tracker for all database objects
+  /// maintains a global counter that is increased on every modification
+  /// (addition, removal, change) of database objects  
+  VersionTracker _versionTracker;
 };
 }
 

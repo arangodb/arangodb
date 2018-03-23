@@ -143,6 +143,9 @@ void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimi
 /// @brief try to restrict fragments to a single shard if possible
 void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 
+/// @brief move collect to the DB servers in cluster
+void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const*);
 

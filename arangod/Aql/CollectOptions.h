@@ -39,11 +39,19 @@ struct CollectOptions {
     COLLECT_METHOD_UNDEFINED,
     COLLECT_METHOD_HASH,
     COLLECT_METHOD_SORTED,
-    COLLECT_METHOD_DISTINCT
+    COLLECT_METHOD_DISTINCT,
+    COLLECT_METHOD_COUNT
   };
 
   /// @brief constructor, using default values
   CollectOptions() : method(COLLECT_METHOD_UNDEFINED) {}
+  
+  CollectOptions(CollectOptions const& other) : method(other.method) {}
+
+  CollectOptions& operator=(CollectOptions const& other) {
+    method = other.method;
+    return *this;
+  }
 
   /// @brief constructor
   explicit CollectOptions(arangodb::velocypack::Slice const&);
