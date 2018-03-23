@@ -12,7 +12,7 @@
 - [Include ditaa diagrams](#include-ditaa-diagrams)
 - [Read / use the documentation](#read--use-the-documentation)
 - [arangod Example tool](#arangod-example-tool)
-  * [OUTPUT, RUN and AQL specifics](#output--run-and-aql-specifics)
+  * [OUTPUT, RUN and AQL specifics](#output-run-and-aql-specifics)
 - [Swagger integration](#swagger-integration)
   * [RESTQUERYPARAMETERS](#restqueryparameters)
   * [RESTURLPARAMETERS](#resturlparameters)
