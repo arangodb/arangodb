@@ -469,7 +469,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   addAlias("NOOPT", "PASSTHRU");
   add({"V8", ".", true, false, true, true});
   add({"TEST_INTERNAL", ".,.", false, false, true,
-       false});
+        false, &Functions::TestInternal});
   add({"SLEEP", ".", false, true, true, true, &Functions::Sleep});
   add({"COLLECTIONS", "", false, true, false, true, &Functions::Collections});
   add({"NOT_NULL", ".|+", true, false, true, true,

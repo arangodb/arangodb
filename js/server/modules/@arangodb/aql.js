@@ -4892,19 +4892,55 @@ function AQL_TEST_INTERNAL (test, what) {
   if (test === 'MODIFY_ARRAY') {
     what[0] = 1;
     what[1] = 42;
-    what[2] = [ 1, 2 ];
-    what[3].push([ 1, 2 ]);
-    what[4] = { a: 9, b: 2 };
+
+    what[2] = [
+      1,
+      2
+    ];
+
+    if (!Array.isArray(what[3])) {
+      what[3] = [];
+    }
+    what[3].push([
+      1,
+      2
+    ]);
+
+    what[4] = {
+      a: 9,
+      b: 2
+    };
+
     what.push('foo');
     what.push('bar');
     what.pop();
   } else if (test === 'MODIFY_OBJECT') {
     what.a = 1;
     what.b = 3;
-    what.c = [ 1, 2 ];
-    what.d.push([ 1, 2 ]);
-    what.e.f = { a: 1, b: 2 };
+
+    what.c = [
+      1,
+      2
+    ];
+
+    if (! Array.isArray(what['d'])) {
+      what['d'] = [];
+    }
+    what.d.push([
+      1,
+      2
+    ]);
+
+    if (typeof(what['e']) !== "object") {
+      what['e'] = {};
+    }
+    what.e.f = {
+      a: 1,
+      b: 2
+    };
+
     delete what.f;
+
     what.g = 'foo';
   } else if (test === 'DEADLOCK') {
     var err = new ArangoError();
