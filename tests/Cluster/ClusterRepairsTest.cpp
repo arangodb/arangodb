@@ -90,51 +90,96 @@ operator "" _vpack(const char* json, size_t) {
 void checkAgainstExpectedOperations(
   VPackBufferPtr const& planCollections,
   VPackBufferPtr const& supervisionHealth,
-  std::vector<RepairOperation> expectedRepairOperations
+  std::map<
+    CollectionID, std::vector<RepairOperation>
+  > expectedRepairOperationsByCollection
 ) {
   DistributeShardsLikeRepairer repairer;
 
-  ResultT<std::list<RepairOperation>> repairOperationsResult
+  ResultT<std::map<
+    CollectionID, ResultT<std::list<RepairOperation>>
+  >>
+    repairOperationsByCollectionResult
     = repairer.repairDistributeShardsLike(
       VPackSlice(planCollections->data()),
       VPackSlice(supervisionHealth->data())
     );
 
-  REQUIRE(repairOperationsResult);
-  std::list<RepairOperation> &repairOperations = repairOperationsResult.get();
+  REQUIRE(repairOperationsByCollectionResult.ok());
+  std::map<CollectionID, ResultT<std::list<RepairOperation>>> &
+    repairOperationsByCollection = repairOperationsByCollectionResult.get();
 
   {
     std::stringstream expectedOperationsStringStream;
-    expectedOperationsStringStream << "[" << std::endl;
-    for(auto const& it : expectedRepairOperations) {
-      expectedOperationsStringStream << it << "," << std::endl;
+    expectedOperationsStringStream << "{" << std::endl;
+    for(auto const& it : expectedRepairOperationsByCollection) {
+      std::string const& collection = it.first;
+      std::vector<RepairOperation> const& expectedRepairOperations = it.second;
+      expectedOperationsStringStream << "\"" << collection << "\": " << std::endl;
+      expectedOperationsStringStream << "[" << std::endl;
+      for (auto const &it : expectedRepairOperations) {
+        expectedOperationsStringStream << it << "," << std::endl;
+      }
+      expectedOperationsStringStream << "]," << std::endl;
     }
-    expectedOperationsStringStream << "]";
+    expectedOperationsStringStream << "}";
 
     std::stringstream repairOperationsStringStream;
-    repairOperationsStringStream << "[" << std::endl;
-    for(auto const& it : repairOperations) {
-      repairOperationsStringStream << it << "," << std::endl;
+    repairOperationsStringStream << "{" << std::endl;
+    for(auto const& it : repairOperationsByCollection) {
+      std::string const& collection = it.first;
+      ResultT<std::list<RepairOperation>> const repairOperationsResult = it.second;
+      REQUIRE(repairOperationsResult.ok());
+      std::list<RepairOperation> const& repairOperations = repairOperationsResult.get();
+      repairOperationsStringStream << "\"" << collection << "\": " << std::endl;
+      repairOperationsStringStream << "[" << std::endl;
+      for (auto const &it : repairOperations) {
+        repairOperationsStringStream << it << "," << std::endl;
+      }
+      repairOperationsStringStream << "]," << std::endl;
     }
-    repairOperationsStringStream << "]";
+    repairOperationsStringStream << "}";
 
     INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
     INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
 
-    REQUIRE(repairOperations.size() == expectedRepairOperations.size());
+    REQUIRE(repairOperationsByCollection.size() == expectedRepairOperationsByCollection.size());
+    for (auto const &it : boost::combine(
+      expectedRepairOperationsByCollection,
+      repairOperationsByCollection
+    )) {
+      REQUIRE(it.get<1>().second.ok());
+      REQUIRE(it.get<0>().second.size() == it.get<1>().second.get().size());
+    }
   }
 
-  for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
-    auto const &repairOpIt = it.get<0>();
-    auto const &expectedRepairOpIt = it.get<1>();
+  for (auto const &it : boost::combine(
+    repairOperationsByCollection,
+    expectedRepairOperationsByCollection
+  )) {
+    std::string const& collection = it.get<0>().first;
+    ResultT<std::list<RepairOperation>> const repairOperationsResult = it.get<0>().second;
 
-    REQUIRE(repairOpIt == expectedRepairOpIt);
+    std::string const& expectedCollection = it.get<1>().first;
+    std::vector<RepairOperation> const& expectedRepairOperations = it.get<1>().second;
+
+    REQUIRE(collection == expectedCollection);
+    REQUIRE(repairOperationsResult.ok());
+    std::list<RepairOperation> const& repairOperations = repairOperationsResult.get();
+
+    for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
+      auto const &repairOpIt = it.get<0>();
+      auto const &expectedRepairOpIt = it.get<1>();
+
+      REQUIRE(repairOpIt == expectedRepairOpIt);
+    }
   }
 }
 
-// TODO Add a test with a smart collections (i.e. with {"isSmart": true, "shards": []})
+// TODO Add a test with a smart collection (i.e. with {"isSmart": true, "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
+// TODO Add a test where multiple collections are fixed
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
 
@@ -167,9 +212,16 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
           VPackSlice(supervisionHealth2Healthy1Bad->data())
         );
 
-        REQUIRE(result.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(result.errorNumber()), "not enough healthy db servers"));
-        REQUIRE(result.fail());
+        REQUIRE(result.ok());
+        std::map<CollectionID, ResultT<std::list<RepairOperation>>>
+          operationResultByCollectionId = result.get();
+        REQUIRE(operationResultByCollectionId.size() == 1);
+        REQUIRE(operationResultByCollectionId.find("11111111") != operationResultByCollectionId.end());
+        ResultT<std::list<RepairOperation>> collectionResult = operationResultByCollectionId.at("11111111");
+
+        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(collectionResult.fail());
       }
 
       WHEN("The replicationFactor equals the number of DBServers") {
@@ -182,9 +234,16 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
           VPackSlice(supervisionHealth2Healthy0Bad->data())
         );
 
-        REQUIRE(result.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(result.errorNumber()), "not enough healthy db servers"));
-        REQUIRE(result.fail());
+        REQUIRE(result.ok());
+        std::map<CollectionID, ResultT<std::list<RepairOperation>>>
+          operationResultByCollectionId = result.get();
+        REQUIRE(operationResultByCollectionId.size() == 1);
+        REQUIRE(operationResultByCollectionId.find("11111111") != operationResultByCollectionId.end());
+        ResultT<std::list<RepairOperation>> collectionResult = operationResultByCollectionId.at("11111111");
+
+        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(collectionResult.fail());
       }
     }
 

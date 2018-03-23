@@ -56,57 +56,61 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 //Slice
 //  collName22222222slice = Slice(collName22222222vpack->data());
 
-std::vector< RepairOperation >
+std::map< CollectionID, std::vector< RepairOperation > >
   expectedOperationsWithTwoSwappedDBServers {
-  // rename distributeShardsLike to repairingDistributeShardsLike
-  BeginRepairsOperation {
-    .database = "someDb",
-    .collectionId = "11111111",
-    .collectionName = "_frontend",
-    .protoCollectionId = "22222222",
-    .protoCollectionName = "_graphs",
-    .collectionReplicationFactor = 2,
-    .protoReplicationFactor = 2,
-    .renameDistributeShardsLike = true,
-  },
+  {
+    "11111111", {
+// rename distributeShardsLike to repairingDistributeShardsLike
+      BeginRepairsOperation {
+        .database = "someDb",
+        .collectionId = "11111111",
+        .collectionName = "_frontend",
+        .protoCollectionId = "22222222",
+        .protoCollectionName = "_graphs",
+        .collectionReplicationFactor = 2,
+        .protoReplicationFactor = 2,
+        .renameDistributeShardsLike = true,
+      },
 // shard s11 of collection 11111111
 // make room on the dbserver where the leader should be
-  MoveShardOperation {
-    .database = "someDb",
-    .collectionId = "11111111",
-    .collectionName = "_frontend",
-    .shard = "s11",
-    .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    .isLeader = false,
-  },
+      MoveShardOperation {
+        .database = "someDb",
+        .collectionId = "11111111",
+        .collectionName = "_frontend",
+        .shard = "s11",
+        .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+        .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+        .isLeader = false,
+      },
 // move leader to the correct dbserver
-  MoveShardOperation {
-    .database = "someDb",
-    .collectionId = "11111111",
-    .collectionName = "_frontend",
-    .shard = "s11",
-    .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-    .isLeader = true,
-  },
+      MoveShardOperation {
+        .database = "someDb",
+        .collectionId = "11111111",
+        .collectionName = "_frontend",
+        .shard = "s11",
+        .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+        .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+        .isLeader = true,
+      },
 // fix the remaining shard
-  MoveShardOperation {
-    .database = "someDb",
-    .collectionId = "11111111",
-    .collectionName = "_frontend",
-    .shard = "s11",
-    .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-    .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    .isLeader = false,
-  },
+      MoveShardOperation {
+        .database = "someDb",
+        .collectionId = "11111111",
+        .collectionName = "_frontend",
+        .shard = "s11",
+        .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+        .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+        .isLeader = false,
+      },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  FinishRepairsOperation {
-    .database = "someDb",
-    .collectionId = "11111111",
-    .collectionName = "_frontend",
-    .protoCollectionId = "22222222",
-    .protoCollectionName = "_graphs",
-    .replicationFactor = 2,
+      FinishRepairsOperation {
+        .database = "someDb",
+        .collectionId = "11111111",
+        .collectionName = "_frontend",
+        .protoCollectionId = "22222222",
+        .protoCollectionName = "_graphs",
+        .replicationFactor = 2,
+      },
+    }
   },
 };

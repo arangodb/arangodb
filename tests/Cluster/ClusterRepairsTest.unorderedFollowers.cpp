@@ -52,47 +52,51 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 )="_vpack;
 
 
-std::vector< RepairOperation >
+std::map< CollectionID, std::vector< RepairOperation > >
   expectedOperationsWithWronglyOrderedFollowers {
+  {
+    "22222222", {
 // rename distributeShardsLike to repairingDistributeShardsLike
-  BeginRepairsOperation {
-    .database = "someDb",
-    .collectionId = "22222222",
-    .collectionName = "followingCollection",
-    .protoCollectionId = "11111111",
-    .protoCollectionName = "leadingCollection",
-    .collectionReplicationFactor = 4,
-    .protoReplicationFactor = 4,
-    .renameDistributeShardsLike = true,
-  },
+      BeginRepairsOperation {
+        .database = "someDb",
+        .collectionId = "22222222",
+        .collectionName = "followingCollection",
+        .protoCollectionId = "11111111",
+        .protoCollectionName = "leadingCollection",
+        .collectionReplicationFactor = 4,
+        .protoReplicationFactor = 4,
+        .renameDistributeShardsLike = true,
+      },
 // fix server order
-  FixServerOrderOperation {
-    .database = "someDb",
-    .collectionId = "22222222",
-    .collectionName = "followingCollection",
-    .protoCollectionId = "11111111",
-    .protoCollectionName = "leadingCollection",
-    .shard = "s22",
-    .protoShard = "s11",
-    .leader = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-    .followers = {
-      "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
-      "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-      "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
-    },
-    .protoFollowers = {
-      "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-      "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-      "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
-    },
-  },
+      FixServerOrderOperation {
+        .database = "someDb",
+        .collectionId = "22222222",
+        .collectionName = "followingCollection",
+        .protoCollectionId = "11111111",
+        .protoCollectionName = "leadingCollection",
+        .shard = "s22",
+        .protoShard = "s11",
+        .leader = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+        .followers = {
+          "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
+          "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
+        },
+        .protoFollowers = {
+          "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+          "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+          "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
+        },
+      },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  FinishRepairsOperation {
-    .database = "someDb",
-    .collectionId = "22222222",
-    .collectionName = "followingCollection",
-    .protoCollectionId = "11111111",
-    .protoCollectionName = "leadingCollection",
-    .replicationFactor = 4,
+      FinishRepairsOperation {
+        .database = "someDb",
+        .collectionId = "22222222",
+        .collectionName = "followingCollection",
+        .protoCollectionId = "11111111",
+        .protoCollectionName = "leadingCollection",
+        .replicationFactor = 4,
+      },
+    }
   },
 };

@@ -49,26 +49,30 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::vector< RepairOperation >
+std::map< CollectionID, std::vector< RepairOperation > >
   expectedOperationsWithRepairingDistributeShardsLike {
+  {
+    "22222222", {
 // begin without rename
-  BeginRepairsOperation {
-    .database = "someDb",
-    .collectionId = "22222222",
-    .collectionName = "followingCollection",
-    .protoCollectionId = "11111111",
-    .protoCollectionName = "leadingCollection",
-    .collectionReplicationFactor = 3,
-    .protoReplicationFactor = 3,
-    .renameDistributeShardsLike = false,
-  },
+      BeginRepairsOperation {
+        .database = "someDb",
+        .collectionId = "22222222",
+        .collectionName = "followingCollection",
+        .protoCollectionId = "11111111",
+        .protoCollectionName = "leadingCollection",
+        .collectionReplicationFactor = 3,
+        .protoReplicationFactor = 3,
+        .renameDistributeShardsLike = false,
+      },
 // rename repairingDistributeShardsLike to distributeShardsLike
-  FinishRepairsOperation {
-    .database = "someDb",
-    .collectionId = "22222222",
-    .collectionName = "followingCollection",
-    .protoCollectionId = "11111111",
-    .protoCollectionName = "leadingCollection",
-    .replicationFactor = 3,
-  },
+      FinishRepairsOperation {
+        .database = "someDb",
+        .collectionId = "22222222",
+        .collectionName = "followingCollection",
+        .protoCollectionId = "11111111",
+        .protoCollectionName = "leadingCollection",
+        .replicationFactor = 3,
+      },
+    }
+  }
 };
