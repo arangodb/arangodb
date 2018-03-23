@@ -1048,8 +1048,8 @@ void StorageEngineMock::destroyCollection(TRI_vocbase_t* vocbase, arangodb::Logi
   // NOOP, assume physical collection destroyed OK
 }
 
-void StorageEngineMock::destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) {
-  TRI_ASSERT(false);
+void StorageEngineMock::destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView* view) noexcept {
+  // NOOP
 }
 
 arangodb::Result StorageEngineMock::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {

@@ -1291,8 +1291,9 @@ arangodb::Result RocksDBEngine::dropView(
   return rocksutils::convertStatus(db->Write(wo, &batch));
 }
 
-void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
-                                arangodb::LogicalView*) {
+void RocksDBEngine::destroyView(
+    TRI_vocbase_t* /*vocbase*/,
+    arangodb::LogicalView* /*view*/) noexcept {
   // nothing to do here
 }
 

@@ -160,7 +160,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
   virtual void destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
-  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView* view) noexcept override;
   virtual arangodb::Result dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) override;
   virtual arangodb::Result dropDatabase(TRI_vocbase_t*) override;
   virtual arangodb::Result dropView(TRI_vocbase_t*, arangodb::LogicalView*) override;

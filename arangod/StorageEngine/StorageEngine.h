@@ -313,7 +313,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the view
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
-  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) = 0;
+  // 'noexcept' becuase it may be used in destructor
+  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept = 0;
 
   // asks the storage engine to change properties of the view as specified in
   // the VPack Slice object and persist them. If this operation fails

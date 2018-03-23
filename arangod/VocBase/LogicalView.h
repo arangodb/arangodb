@@ -47,16 +47,15 @@ struct ExecutionContext;
 class PhysicalView;
 
 class LogicalView final: public LogicalDataSource {
-  friend struct ::TRI_vocbase_t;
-
  public:
-  LogicalView(TRI_vocbase_t*, velocypack::Slice const&);
-  ~LogicalView();
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
+
+  LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
+
+  ~LogicalView() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -68,25 +67,25 @@ class LogicalView final: public LogicalDataSource {
     return _implementation && _implementation->visitCollections(visitor);
   }
 
- private:
-  LogicalView& operator=(LogicalView const&) = delete;
-
- public:
-  LogicalView() = delete;
-
   ViewImplementation* getImplementation() const {
     return _implementation.get();
   }
 
   virtual void drop() override;
+
   virtual Result rename(std::string&& newName, bool doSync) override;
 
-  // SECTION: Serialization
-  void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
-                    bool includeSystem = false) const;
+  void toVelocyPack(
+    velocypack::Builder& result,
+    bool includeProperties = false,
+    bool includeSystem = false
+  ) const;
 
-  // Update this view.
-  arangodb::Result updateProperties(velocypack::Slice const&, bool, bool);
+  arangodb::Result updateProperties(
+    velocypack::Slice const& properties,
+    bool partialUpdate,
+    bool doSync
+  );
 
   /// @brief Persist the connected physical view.
   ///        This should be called AFTER the view is successfully
@@ -99,6 +98,8 @@ class LogicalView final: public LogicalDataSource {
                            bool isNew);
 
  private:
+  friend struct ::TRI_vocbase_t;
+
   std::unique_ptr<ViewImplementation> _implementation;
   mutable basics::ReadWriteLock _lock;  // lock protecting the properties
 };

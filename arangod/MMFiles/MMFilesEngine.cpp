@@ -1432,91 +1432,17 @@ arangodb::Result MMFilesEngine::dropView(
 
 void MMFilesEngine::destroyView(
     TRI_vocbase_t* vocbase,
-    arangodb::LogicalView* view) {
-  std::string const name(view->name());
+    arangodb::LogicalView* view) noexcept {
+  try {
+    std::string const directory = viewDirectory(vocbase->id(), view->id());
 
-  auto const viewPath = viewDirectory(vocbase->id(), view->id());
-
-  // rename view directory
-  if (viewPath.empty()) {
-    return;
-  }
-
-#ifdef _WIN32
-  size_t pos = viewPath.find_last_of('\\');
-#else
-  size_t pos = viewPath.find_last_of('/');
-#endif
-
-  bool invalid = false;
-
-  if (pos == std::string::npos || pos + 1 >= viewPath.size()) {
-    invalid = true;
-  }
-
-  std::string path;
-  std::string relName;
-  if (!invalid) {
-    // extract path part
-    if (pos > 0) {
-      path = viewPath.substr(0, pos);
+    if (directory.empty()) {
+      return;
     }
 
-    // extract relative filename
-    relName = viewPath.substr(pos + 1);
-
-    if (!StringUtils::isPrefix(relName, "view-") ||
-        StringUtils::isSuffix(relName, ".tmp")) {
-      invalid = true;
-    }
-  }
-
-  if (invalid) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename dropped view '"
-                                            << name << "': unknown path '"
-                                            << viewPath  << "'";
-  } else {
-    // prefix the collection name with "deleted-"
-
-    std::string const newFilename = FileUtils::buildFilename(
-        path, "deleted-" + relName.substr(std::string("view-").size()));
-
-    // check if target directory already exists
-    if (TRI_IsDirectory(newFilename.c_str())) {
-      // remove existing target directory
-      TRI_RemoveDirectory(newFilename.c_str());
-    }
-
-    // perform the rename
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "renaming view directory from '" << viewPath << "' to '"
-        << newFilename << "'";
-
-    std::string systemError;
-    int res = TRI_RenameFile(
-      viewPath.c_str(), newFilename.c_str(), nullptr, &systemError
-    );
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (!systemError.empty()) {
-        systemError = ", error details: " + systemError;
-      }
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "cannot rename directory of dropped view '" << name << "' from '"
-          << viewPath << "' to '" << newFilename
-          << "': " << TRI_errno_string(res) << systemError;
-    } else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "wiping dropped view '"
-                                                << name << "' from disk";
-
-      res = TRI_RemoveDirectory(newFilename.c_str());
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "cannot wipe dropped view '" << name
-            << "' from disk: " << TRI_errno_string(res);
-      }
-    }
+    TRI_RemoveDirectory(directory.c_str());
+  } catch (...) {
+    // must ignore errors here as we are noexcpet
   }
 }
 

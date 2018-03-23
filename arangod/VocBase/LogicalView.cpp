@@ -38,7 +38,7 @@ using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
-static TRI_voc_cid_t ReadId(VPackSlice info) {
+TRI_voc_cid_t ReadId(VPackSlice info) {
   if (!info.isObject()) {
     // ERROR CASE
     return 0;
@@ -59,7 +59,7 @@ static TRI_voc_cid_t ReadId(VPackSlice info) {
   return id;
 }
 
-static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
+TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   if (!info.isObject()) {
     // ERROR CASE
     return 0;
@@ -81,6 +81,12 @@ static TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
 }
 
 }  // namespace
+
+/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
+  static const Category category;
+
+  return category;
+}
 
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
@@ -106,22 +112,11 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
 }
 
 LogicalView::~LogicalView() {
-// FIXME
-//  if (deleted()) {
-//    try {
-//      StorageEngine* engine = EngineSelectorFeature::ENGINE;
-//      std::string directory = static_cast<MMFilesEngine*>(engine)->viewDirectory(vocbase()->id(), id());
-//      TRI_RemoveDirectory(directory.c_str());
-//    } catch (...) {
-//      // must ignore errors here as we are in the destructor
-//    }
-//  }
-}
-
-/*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
-  static const Category category;
-
-  return category;
+  if (deleted()) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine);
+    engine->destroyView(vocbase(), this);
+  }
 }
 
 Result LogicalView::rename(std::string&& newName, bool doSync) {

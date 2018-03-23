@@ -310,7 +310,7 @@ class MMFilesEngine final : public StorageEngine {
 
   arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
 
-  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept override;
 
   void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*, bool doSync) override;
