@@ -472,6 +472,16 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
 * `collect-in-cluster`: will appear when a collect node on a coordinator is accompanied
   by extra collect nodes on the database servers, which will do the heavy processing and
   allow the collect node on the coordinator to a light-weight aggregation only.
+* `restrict-to-single-shard`: will appear if a collection operation (IndexNode or a
+  data-modification node) will only affect a single shard, and the operation can be
+  restricted to the single shard and is not applied for all shards. This optimization
+  can be applied for queries that access a collection only once in the query, and that
+  do not use traversals, shortest path queries and that do not access collection data
+  dynamically using the `DOCUMENT`, `FULLTEXT`, `NEAR` or `WITHIN` AQL functions.
+  Additionally, the optimizer will only pull off this optimization if can safely 
+  determine the values of all the collection's shard keys from the query, and when the
+  shard keys are covered by a single index (this is always true if the shard key is
+  the default `_key`).
 
 Note that some rules may appear multiple times in the list, with number suffixes.
 This is due to the same rule being applied multiple times, at different positions

@@ -273,12 +273,16 @@ void OptimizerRulesFeature::addRules() {
     registerRule("undistribute-remove-after-enum-coll",
                  undistributeRemoveAfterEnumCollRule,
                  OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
-
+    
 #ifdef USE_ENTERPRISE
     registerRule("remove-satellite-joins",
                  removeSatelliteJoinsRule,
                  OptimizerRule::removeSatelliteJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 #endif
+    
+    registerRule("restrict-to-single-shard",
+                 restrictToSingleShardRule,
+                 OptimizerRule::restrictToSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
   }
   
   // finally add the storage-engine specific rules

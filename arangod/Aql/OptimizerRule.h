@@ -204,7 +204,7 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
-
+    
 #ifdef USE_ENTERPRISE
     // remove any superflous satellite collection joins...
     // put it after Scatter rule because we would do
@@ -216,9 +216,11 @@ struct OptimizerRule {
     undistributeRemoveAfterEnumCollRule_pass10,
     
     // push collect operations to the db servers
-    collectInClusterRule_pass10
-  };
+    collectInClusterRule_pass10,
 
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10
+  };
 
   std::string name;
   RuleFunction func;
