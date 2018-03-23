@@ -245,12 +245,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     includeSystem = StringUtils::boolean(value4);
   }
 
-  size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
-  std::string const& value5 = _request->value("chunkSize", found);
-  if (found) {
-    chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
-  }
-  
+  size_t chunkSize = determineChunkSize();
   grantTemporaryRights();
 
   // extract collection
@@ -394,10 +389,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   bool isGlobal = false;
   getApplier(isGlobal);
   
-  std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
-  if (!result.first.ok()) {
-    generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
+  VPackBuilder result = ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
+  if (result.isEmpty()) { // happens if batch was not created properly
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "inventory could not be created");
     return;
   }
@@ -405,7 +399,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   VPackBuilder builder;
   builder.openObject();
 
-  VPackSlice const inventory = result.second->slice();
+  VPackSlice const inventory = result.slice();
   if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
@@ -435,7 +429,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-/// @brief produce list of keys for a specific collection
+/// @brief produce list of keys for a specific collection (incremental)
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
@@ -469,7 +463,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(_vocbase, collection);
+  int res = ctx->bindCollectionForIncremental(_vocbase, collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -678,8 +672,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   // VPackSlice options = _request->payload();
 
   // get collection Name
-  std::string const& collection = _request->value("collection");
-  if (collection.empty()) {
+  std::string const& cname = _request->value("collection");
+  if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
     return;
@@ -716,46 +710,91 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
       << "' using contextId '" << context->id() << "'";
-
-
-  // TODO needs to generalized || velocypacks needs to support multiple slices
-  // per response!
-  auto response = dynamic_cast<HttpResponse*>(_response.get());
-  StringBuffer dump(8192, false);
-
-  if (response == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
-  }
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase->name(), collection, auth::Level::RO)) {
-    generateError(rest::ResponseCode::FORBIDDEN,
-                  TRI_ERROR_FORBIDDEN);
-    return;
-  }
-  // do the work!
-  auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
-
-  // generate the result
-  if (dump.length() == 0) {
-    resetResponse(rest::ResponseCode::NO_CONTENT);
+  
+  grantTemporaryRights();
+  
+  uint64_t chunkSize = determineChunkSize();
+  size_t reserve = std::max<size_t>(chunkSize, 8192);
+  
+  if (request()->contentTypeResponse() == rest::ContentType::VPACK) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Dumping VPack";
+    
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder vpb(buffer, context->getVPackOptions());
+    buffer.reserve(reserve); // avoid reallocs
+    
+    auto cb = [&buffer, chunkSize]() -> bool {
+      return buffer.byteSize() < chunkSize;
+    };
+    
+    auto result = context->dump(_vocbase, cname, vpb, /*useExt*/false, cb);    
+    size_t bufferSize = buffer.byteSize(); // std::move(buffer) resets buffer
+    if (vpb.size() < bufferSize) {
+      buffer.resetTo(vpb.size()); // fixing a bug in VPackBuilder
+    }
+    
+    // generate the result
+    if (result.fail()) {
+      generateError(result);
+    } else if (buffer.byteSize() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);      
+      _response->setContentType(rest::ContentType::VPACK);
+      _response->setPayload(std::move(buffer), true, *(vpb.options),
+                            /*resolveExternals*/ false);
+    }
+    
+    // set headers
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                           (context->more() ? "true" : "false"));
+    
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                           StringUtils::itoa((bufferSize == 0) ? 0 : result.maxTick()));
+    
   } else {
-    resetResponse(rest::ResponseCode::OK);
+    LOG_TOPIC(WARN, Logger::FIXME) << "Dumping JSON";
+    
+    // hardcode response to be JSON lines
+    HttpResponse* response = dynamic_cast<HttpResponse*>(_response.get());
+    StringBuffer buffer(reserve, false);
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+    }
+    
+    // note: we need the CustomTypeHandler here
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+    VPackDumper dumper(&adapter, context->getVPackOptions());
+    
+    VPackBuilder vpb;
+    auto cb = [&buffer, &dumper, &vpb, chunkSize]() -> bool { // called after each document
+      dumper.dump(vpb.slice());
+      vpb.clear();
+      buffer.appendChar('\n');
+      return buffer.length() < chunkSize;
+    };
+    // do the work!
+    auto result = context->dump(_vocbase, cname, vpb, /*useExt*/true, cb);
+    
+    // generate the result
+    if (buffer.length() == 0) {
+      resetResponse(rest::ResponseCode::NO_CONTENT);
+    } else {
+      resetResponse(rest::ResponseCode::OK);
+    }
+    // need to set it manually
+    response->setContentType(rest::ContentType::DUMP);
+    
+    // set headers
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
+                           (context->more() ? "true" : "false"));
+    
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                           StringUtils::itoa((buffer.length() == 0) ? 0 : result.maxTick()));
+    
+    // transfer ownership of the buffer contents
+    response->body().set(buffer.stringBuffer());
+    // avoid double freeing
+    TRI_StealStringBuffer(buffer.stringBuffer());
   }
-
-  response->setContentType(rest::ContentType::DUMP);
-  // set headers
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
-                         (context->more() ? "true" : "false"));
-
-  _response->setHeaderNC(
-      TRI_REPLICATION_HEADER_LASTINCLUDED,
-      StringUtils::itoa((dump.length() == 0) ? 0 : result.maxTick()));
-
-  // transfer ownership of the buffer contents
-  response->body().set(dump.stringBuffer());
-
-  // avoid double freeing
-  TRI_StealStringBuffer(dump.stringBuffer());
 }

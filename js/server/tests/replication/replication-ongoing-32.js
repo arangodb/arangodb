@@ -297,7 +297,7 @@ function BaseTestConfig() {
 
         function(state) {
           var idx = db._collection(cn).getIndexes();
-          assertEqual(1, idx.length);
+          assertEqual(1, idx.length, "Index should be gone");
           assertEqual("primary", idx[0].type);
         }
       );

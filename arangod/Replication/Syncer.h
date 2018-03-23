@@ -58,13 +58,15 @@ class Syncer {
     TRI_server_id_t _serverId;
     int _majorVersion;
     int _minorVersion;
+    int _patchVersion;
     TRI_voc_tick_t _lastLogTick;
     bool _active;
 
     MasterInfo() 
         : _serverId(0),
           _majorVersion(0), 
-          _minorVersion(0), 
+          _minorVersion(0),
+          _patchVersion(0),
           _lastLogTick(0), 
           _active(false) {}
   };
@@ -116,7 +118,6 @@ class Syncer {
   Result applyCollectionDumpMarker(transaction::Methods&,
                                    LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&, 
                                    arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
@@ -166,7 +167,6 @@ class Syncer {
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
                                            LogicalCollection* coll,
                                            TRI_replication_operation_e,
-                                           arangodb::velocypack::Slice const&, 
                                            arangodb::velocypack::Slice const&); 
   
   /// @brief extract the collection id from VelocyPack

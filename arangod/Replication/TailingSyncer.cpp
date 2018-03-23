@@ -284,7 +284,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   return Result(TRI_ERROR_INTERNAL); // unreachable
 }
 
-/// @brief inserts a document, based on the VelocyPack provided
+/// @brief process a document operation, based on the VelocyPack provided
 Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -298,37 +298,26 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   
   bool isSystem = coll->isSystem();
   // extract "data"
-  VPackSlice const doc = slice.get("data");
+  VPackSlice const data = slice.get("data");
 
-  if (!doc.isObject()) {
+  if (!data.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document format");
   }
 
   // extract "key"
-  VPackSlice const key = doc.get(StaticStrings::KeyString);
+  VPackSlice const key = data.get(StaticStrings::KeyString);
 
   if (!key.isString()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document key format");
   }
 
   // extract "rev"
-  VPackSlice const rev = doc.get(StaticStrings::RevString);
+  VPackSlice const rev = data.get(StaticStrings::RevString);
 
   if (!rev.isNone() && !rev.isString()) {
     // _rev is an optional attribute
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document revision format");
   }
-
-  _documentBuilder.clear();
-  _documentBuilder.openObject();
-  _documentBuilder.add(StaticStrings::KeyString, key);
-  if (rev.isString()) {
-    // _rev is an optional attribute
-    _documentBuilder.add(StaticStrings::RevString, rev);
-  }
-  _documentBuilder.close();
-
-  VPackSlice const old = _documentBuilder.slice();
 
   // extract "tid"
   std::string const transactionId =
@@ -339,6 +328,19 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     // operation is part of a transaction
     tid = static_cast<TRI_voc_tid_t>(
         StringUtils::uint64(transactionId.c_str(), transactionId.size()));
+  }
+  
+  VPackSlice applySlice = data;
+  if (type == REPLICATION_MARKER_REMOVE) {
+    _documentBuilder.clear();
+    _documentBuilder.openObject();
+    _documentBuilder.add(StaticStrings::KeyString, key);
+    if (rev.isString()) {
+      // _rev is an optional attribute
+      _documentBuilder.add(StaticStrings::RevString, rev);
+    }
+    _documentBuilder.close();
+    applySlice = _documentBuilder.slice();
   }
 
   if (tid > 0) { // part of a transaction
@@ -355,7 +357,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     }
 
     trx->addCollectionAtRuntime(coll->cid(), coll->name(), AccessMode::Type::EXCLUSIVE);
-    Result r = applyCollectionDumpMarker(*trx, coll, type, old, doc);
+    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
@@ -387,7 +389,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   std::string collectionName = trx.name();
     
-  res = applyCollectionDumpMarker(trx, coll, type, old, doc);
+  res = applyCollectionDumpMarker(trx, coll, type, applySlice);
   if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
     // ignore unique constraint violations for system collections
     res.reset();

@@ -64,17 +64,20 @@ class RocksDBReplicationContext {
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
+  int bindCollectionForIncremental(TRI_vocbase_t* vocbase,
+                                   std::string const& coll) {
+    return bindCollection(vocbase, coll, /* sorted */true);
+  }
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
+  velocypack::Builder
   getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
-  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
-                                std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize);
+  RocksDBReplicationResult dump(TRI_vocbase_t* vocbase, std::string const& cname,
+                                velocypack::Builder&, bool useExt,
+                                std::function<bool()> const& afterDocCb);
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
@@ -99,7 +102,11 @@ class RocksDBReplicationContext {
   /// remove use flag
   void release();
 
+  velocypack::Options const* getVPackOptions() const { return &_vpackOptions; }
+  
  private:
+  
+  int bindCollection(TRI_vocbase_t*, std::string const& collIdent, bool sorted);
   void releaseDumpingResources();
 
  private:
@@ -111,20 +118,21 @@ class RocksDBReplicationContext {
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
   
+  std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
+  velocypack::Options _vpackOptions;
+  
   /// @brief Collection used in dump and incremental sync
   LogicalCollection* _collection;
   
   /// @brief Iterator on collection
   std::unique_ptr<IndexIterator> _iter;
+  bool _sortedIterator;
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
   
   /// @brief holds last document
   ManagedDocumentResult _mdr;
-  /// @brief type handler used to render documents
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
-  arangodb::velocypack::Options _vpackOptions;
 
   double const _ttl;
   double _expires;

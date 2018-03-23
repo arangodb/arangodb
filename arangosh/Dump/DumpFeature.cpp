@@ -24,13 +24,16 @@
 
 #include <iostream>
 
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/OpenFilesTracker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
@@ -53,6 +56,7 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
+
 
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
@@ -317,7 +321,23 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
   std::string const baseUrl = "/_api/replication/dump?collection=" + cid +
                               "&batchId=" + StringUtils::itoa(_batchId) +
                               "&ticks=false&flush=false";
-
+  
+  // try to request velocypack
+  std::unordered_map<std::string, std::string> headers;
+  //if (vv >= 30303) {
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "Accepting VPack over Http";
+  headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
+  //}
+  VPackOptions options;
+  options.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+  //options.customTypeHandler = customTypeHandler.get();
+  options.validateUtf8Strings = true;
+  VPackValidator validator(&options);
+  basics::StringBuffer tmpBuffer(false);
+  basics::VPackStringBufferAdapter sink(tmpBuffer.stringBuffer());
+  VPackDumper dumper(&sink);
+  
+  
   uint64_t fromTick = _tickStart;
 
   while (true) {
@@ -331,7 +351,7 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
     _stats._totalBatches++;
 
     std::unique_ptr<SimpleHttpResult> response(
-        _httpClient->request(rest::RequestType::GET, url, nullptr, 0));
+        _httpClient->request(rest::RequestType::GET, url, nullptr, 0, headers));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg =
@@ -383,8 +403,37 @@ int DumpFeature::dumpCollection(int fd, std::string const& cid,
 
     if (res == TRI_ERROR_NO_ERROR) {
       StringBuffer const& body = response->getBody();
-      bool result = writeData(fd, body.c_str(), body.length());
-
+      
+      bool result;
+      bool found = false;
+      std::string cType = response->getHeaderField(StaticStrings::ContentTypeHeader, found);
+      if (found && (cType == StaticStrings::MimeTypeVPack)) {
+        try {
+          char const* p = body.begin();
+          char const* end = p + body.length();
+          while (p < end) {
+            ptrdiff_t remaining = end - p;
+            // throws if the data is invalid
+            validator.validate(p, remaining, /*isSubPart*/true);
+            
+            VPackSlice marker(p);
+            dumper.dump(marker);
+            tmpBuffer.appendChar('\n');
+            _stats._totalWritten++;
+            p += marker.byteSize();
+          }
+        } catch(velocypack::Exception const& e) {
+          errorMsg = std::string("Error parsing VPack response: ") + e.what();
+          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        }
+        
+        result = writeData(fd, tmpBuffer.data(), tmpBuffer.length());
+        tmpBuffer.reset();
+        
+      } else {
+        result = writeData(fd, body.c_str(), body.length());
+      }
+      
       if (!result) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
       } else {

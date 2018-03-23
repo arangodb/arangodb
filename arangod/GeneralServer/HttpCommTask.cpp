@@ -169,7 +169,14 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
 
   // write body
   if (_requestType != rest::RequestType::HEAD) {
-    buffer._buffer->appendText(response->body());
+    VPackBuffer<uint8_t> const* buff = response->vpackBody();
+    if (buff != nullptr) {
+      TRI_ASSERT(response->body().empty());
+      LOG_TOPIC(ERR, Logger::FIXME) << "Appending VPackBody " << buff->byteSize();
+      buffer._buffer->appendText((const char*)buff->data(), buff->length());
+    } else {
+      buffer._buffer->appendText(response->body());
+    }
   }
 
   buffer._buffer->ensureNullTerminated();
@@ -210,7 +217,7 @@ void HttpCommTask::addResponse(GeneralResponse* baseResponse,
       << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
       << "\"," << Logger::FIXED(totalTime, 6);
 
-  std::unique_ptr<basics::StringBuffer> body = response->stealBody();
+  std::unique_ptr<basics::StringBuffer> body = response->stealStringBuffer();
   returnStringBuffer(body.release()); // takes care of deleting
 }
 

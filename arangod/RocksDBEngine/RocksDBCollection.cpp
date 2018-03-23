@@ -1329,7 +1329,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
   rocksdb::WriteOptions writeOpts;
   bool hasMore = true;
   while (hasMore && res.ok()) {
-    hasMore = it->nextDocument(cb, 250);
+    hasMore = it->nextDocument(cb, 256);
     if (_logicalCollection->status() == TRI_VOC_COL_STATUS_DELETED ||
         _logicalCollection->deleted()) {
       res = TRI_ERROR_INTERNAL;
