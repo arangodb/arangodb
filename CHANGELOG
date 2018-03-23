@@ -1,4 +1,4 @@
-v3.3.5 (XXXX-XX-XX)
+v3.3.5 (2018-03-23)
 -------------------
 
 * make AQL data modification operations that are sent to all shards and that are
