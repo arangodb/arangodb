@@ -62,7 +62,8 @@ std::ostream& operator<<(std::ostream& stream, std::array<T, N> array) {
   return stream;
 }
 
-inline std::ostream& operator<<(std::ostream& stream, VPackBufferPtr vpack) {
+inline std::ostream&
+operator<<(std::ostream& stream, VPackBufferPtr const& vpack) {
   return stream << "std::shared_ptr<VPackBuffer> { "
                 << velocypack::Slice(vpack->data()).toJson() << " "
                 << "}";

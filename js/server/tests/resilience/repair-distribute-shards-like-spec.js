@@ -23,13 +23,11 @@
 'use strict';
 
 const expect = require('chai').expect;
-const assert = require('chai').assert;
 const _ = require("lodash");
 const internal = require('internal');
 const wait = require('internal').wait;
 const request = require('@arangodb/request');
 
-// const coordinatorName = "Coordinator0001";
 const colName = "RepairDistributeShardsLikeTestCollection";
 const protoColName = "RepairDistributeShardsLikeTestProtoCollection";
 
