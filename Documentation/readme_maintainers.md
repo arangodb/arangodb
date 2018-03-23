@@ -2,7 +2,7 @@
 
 - [Using Docker container](#using-docker-container)
 - [Installing on local system](#installing-on-local-system)
-- [Add / Synchronize external documentation](#add---synchronize-external-documentation)
+- [Add / Synchronize external documentation](#add--synchronize-external-documentation)
 - [Generate users documentation](#generate-users-documentation)
 - [Using Gitbook](#using-gitbook)
 - [Examples](#examples)
