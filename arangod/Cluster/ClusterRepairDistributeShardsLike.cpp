@@ -20,7 +20,7 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterRepairs.h"
+#include "ClusterRepairDistributeShardsLike.h"
 
 #include <boost/range/combine.hpp>
 
