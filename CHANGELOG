@@ -1,3 +1,9 @@
+v3.3.6 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+
+
 v3.3.5 (2018-03-23)
 -------------------
 
