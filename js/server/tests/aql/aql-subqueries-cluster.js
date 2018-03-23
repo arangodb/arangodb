@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, subqueries in cluster
@@ -109,10 +109,10 @@ function clusterSubqueriesTestSuite () {
           RETURN sub[*].foo
       `;
       let c = db._query(q).toArray();
-      assertEqual(c.length, 10) // we have 10 values for X
+      assertEqual(c.length, 10); // we have 10 values for X
       let seen = new Set();
       for (let d of c) {
-        assertEqual(d.length, 5) // we have 5 values for each x
+        assertEqual(d.length, 5); // we have 5 values for each x
         let first = d[0]; 
         seen.add(first);
         for (let q of d) {
