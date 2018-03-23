@@ -8,7 +8,7 @@ of SQL (Structured Query Language).
 ArangoDB's query language is called AQL. There are some similarities between both
 languages despite the different data models of the database systems. The most
 notable difference is probably the concept of loops in AQL, which makes it feel
-more like a programming language. It suites the schema-less model more natural
+more like a programming language. It suits the schema-less model more natural
 and makes the query language very powerful while remaining easy to read and write.
 
 To get started with AQL, have a look at our detailed
@@ -18,11 +18,11 @@ It will also help you to translate SQL queries to AQL when migrating to ArangoDB
 Basic queries
 -------------
 
-**How do browse vectors translate to document queries?**
+**How do select lists translate to AQL queries?**
 
 In traditional SQL you may either fetch all columns of a table row by row, using
 `SELECT * FROM table`, or select a subset of the columns. The list of table
-columns to fetch is commonly called *column list* or *browse vector*:
+columns to fetch is commonly called *select list*:
 
 ```sql
 SELECT columnA, columnB, columnZ FROM table

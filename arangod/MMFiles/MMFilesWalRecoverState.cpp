@@ -676,7 +676,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = vocbase->lookupCollection(collectionId);
+          collection = vocbase->lookupCollection(collectionId).get();
         }
 
         if (collection == nullptr) {
@@ -697,18 +697,19 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         std::string name = nameSlice.copyString();
 
         // check if other collection exist with target name
-        arangodb::LogicalCollection* other = vocbase->lookupCollection(name);
+        auto other = vocbase->lookupCollection(name);
 
         if (other != nullptr) {
-          if (other->cid() == collection->cid()) {
+          if (other->id() == collection->id()) {
             LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "collection " << collectionId << " in database "
               << databaseId << " already renamed; moving on";
             break;
           } else {
-            TRI_voc_cid_t otherCid = other->cid();
+            auto otherCid = other->id();
+
             state->releaseCollection(otherCid);
-            vocbase->dropCollection(other, true, -1.0);
+            vocbase->dropCollection(other.get(), true, -1.0);
           }
         }
 
@@ -963,8 +964,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        arangodb::LogicalCollection* col =
-            vocbase->lookupCollection(collectionId);
+        auto col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -1053,7 +1053,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = vocbase->lookupCollection(collectionId);
+          collection = vocbase->lookupCollection(collectionId).get();
         }
 
         if (collection != nullptr) {
@@ -1071,10 +1071,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (nameSlice.isString()) {
           name = nameSlice.copyString();
-          collection = vocbase->lookupCollection(name);
+          collection = vocbase->lookupCollection(name).get();
 
           if (collection != nullptr) {
-            TRI_voc_cid_t otherCid = collection->cid();
+            auto otherCid = collection->id();
 
             state->releaseCollection(otherCid);
             vocbase->dropCollection(collection, true, -1.0);
@@ -1345,8 +1345,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           return true;
         }
 
-        arangodb::LogicalCollection* col =
-            vocbase->lookupCollection(collectionId);
+        auto col = vocbase->lookupCollection(collectionId);
 
         if (col == nullptr) {
           // if the underlying collection gone, we can go on
@@ -1396,7 +1395,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             state->releaseCollection(collectionId);
 
         if (collection == nullptr) {
-          collection = vocbase->lookupCollection(collectionId);
+          collection = vocbase->lookupCollection(collectionId).get();
         }
 
         if (collection != nullptr) {
@@ -1611,9 +1610,9 @@ int MMFilesWalRecoverState::fillIndexes() {
     physical->useSecondaryIndexes(true);
 
     auto ctx = transaction::StandaloneContext::Create(collection->vocbase());
-    arangodb::SingleCollectionTransaction trx(ctx, collection->cid(),
-                                              AccessMode::Type::WRITE);
-
+    arangodb::SingleCollectionTransaction trx(
+      ctx, collection->id(), AccessMode::Type::WRITE
+    );
     int res = physical->fillAllIndexes(&trx);
 
     if (res != TRI_ERROR_NO_ERROR) {

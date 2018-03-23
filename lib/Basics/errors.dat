@@ -46,6 +46,7 @@ ERROR_HTTP_NOT_ACCEPTABLE,406,"request not acceptable","Will be raised when an u
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
+ERROR_HTTP_GATEWAY_TIMEOUT,504,"gateway timeout","Will be raised when a service contacted by ArangoDB does not respond in a timely manner."
 
 ################################################################################
 ## HTTP processing errors

@@ -629,7 +629,7 @@ function ahuacatlQueryNeighborsTestSuite () {
       var v6 = "UnitTestsAhuacatlVertex/v6";
       var v7 = "UnitTestsAhuacatlVertex/v7";
       var createQuery = function (start, filter) {
-        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+        return `WITH ${vn} FOR n, e IN OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: true} ${filter} SORT n._id RETURN n._id`;
       };
 
       // An empty filter should let all edges through
@@ -656,7 +656,82 @@ function ahuacatlQueryNeighborsTestSuite () {
       // Should be able to handle internal attributes
       actual = getQueryResults(createQuery(v3, `FILTER e._to == "${v4}"`));
       assertEqual(actual, [ v4 ]);
+    },
+
+    testNeighborsWithVertexFilters : function () {
+      let actual;
+      const v1 = "UnitTestsAhuacatlVertex/v1";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var createQuery = function (start, filter) {
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true, uniqueVertices: 'global'} ${filter} SORT n._id RETURN n._id`;
+      };
+
+      // It should filter on the start vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name == 'v1'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name != 'v1'"));
+      assertEqual(actual, []);
+
+      // It should filter on the first vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name == 'v3'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name != 'v3'"));
+      assertEqual(actual, [v3]);
+
+      // It should filter on the second vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name == 'v4'"));
+      assertEqual(actual, [v4]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name != 'v4'"));
+      assertEqual(actual, [v6, v7]);
+
+      // It should filter on all vertices
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[*].name ALL IN ['v1', 'v3', 'v4', 'v6']"));
+      assertEqual(actual, [v4, v6]);
+    },
+
+    testNonUniqueBFSWithVertexFilters : function () {
+      let actual;
+      const v1 = "UnitTestsAhuacatlVertex/v1";
+      var v3 = "UnitTestsAhuacatlVertex/v3";
+      var v4 = "UnitTestsAhuacatlVertex/v4";
+      var v6 = "UnitTestsAhuacatlVertex/v6";
+      var v7 = "UnitTestsAhuacatlVertex/v7";
+      var createQuery = function (start, filter) {
+        return `WITH ${vn} FOR n, e, p IN 2 OUTBOUND "${start}" UnitTestsAhuacatlEdge OPTIONS {bfs: true} ${filter} SORT n._id RETURN n._id`;
+      };
+
+      // It should filter on the start vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name == 'v1'"));
+      assertEqual(actual, [v3, v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[0].name != 'v1'"));
+      assertEqual(actual, []);
+
+      // It should filter on the first vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name == 'v3'"));
+      assertEqual(actual, [v4, v6, v7]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[1].name != 'v3'"));
+      assertEqual(actual, [v3]);
+
+      // It should filter on the second vertex
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name == 'v4'"));
+      assertEqual(actual, [v4]);
+
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[2].name != 'v4'"));
+      assertEqual(actual, [v3, v6, v7]);
+
+      // It should filter on all vertices
+      actual = getQueryResults(createQuery(v1, "FILTER p.vertices[*].name ALL IN ['v1', 'v3', 'v4', 'v6']"));
+      assertEqual(actual, [v4, v6]);
     }
+
   };
 }
 

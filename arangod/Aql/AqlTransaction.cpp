@@ -98,7 +98,7 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
   }
   */
   if (col != nullptr) {
-    cid = col->cid();
+    cid = col->id();
   } else {
     cid = resolver()->getCollectionId(collection->getName());
   }

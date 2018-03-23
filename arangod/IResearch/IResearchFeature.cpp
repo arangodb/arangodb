@@ -163,22 +163,25 @@ void registerRecoveryHelper() {
 }
 
 arangodb::Result transactionStateRegistrationCallback(
-    TRI_voc_cid_t cid,
+    arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
-  auto* vocbase = state.vocbase();
-
-  if (!vocbase) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "failure to find vocbase while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
-
-    return arangodb::Result(TRI_ERROR_INTERNAL);
+  if (arangodb::iresearch::IResearchView::type() != dataSource.type()) {
+    return arangodb::Result(); // not an IResearchView (noop)
   }
 
-  auto view = vocbase->lookupView(cid);
+  // TODO FIXME find a better way to look up a LogicalView
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    auto* view = dynamic_cast<arangodb::LogicalView*>(&dataSource);
+  #else
+    auto* view = static_cast<arangodb::LogicalView*>(&dataSource);
+  #endif
 
-  if (!view || arangodb::iresearch::IResearchView::type() != view->type()) {
-    return arangodb::Result(); // not an IResearchView (noop)
+  if (!view) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failure to get LogicalView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' name '" << dataSource.name() << "'";
+
+    return arangodb::Result(TRI_ERROR_INTERNAL);
   }
 
   // TODO FIXME find a better way to look up an IResearch View
@@ -190,7 +193,7 @@ arangodb::Result transactionStateRegistrationCallback(
 
   if (!impl) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << cid << "'";
+      << "failure to get IResearchView while processing a TransactionState by IResearchFeature for tid '" << state.id() << "' cid '" << dataSource.name() << "'";
 
     return arangodb::Result(TRI_ERROR_INTERNAL);
   }
@@ -256,11 +259,17 @@ void IResearchFeature::prepare() {
   // load all known scorers
   ::iresearch::scorers::init();
 
+  auto* viewTypes = getFeature<arangodb::ViewTypesFeature>();
+
+  if (!viewTypes) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'  while starting " + name()
+    );
+  }
+
   // register 'arangosearch' view
-  ViewTypesFeature::registerViewImplementation(
-     IResearchView::type(),
-     IResearchView::make
-  );
+  viewTypes->emplace(IResearchView::type(), IResearchView::make);
 
   // register 'arangosearch' TransactionState state-change callback factory
   arangodb::transaction::Methods::addStateRegistrationCallback(

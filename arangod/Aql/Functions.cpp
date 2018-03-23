@@ -41,7 +41,6 @@
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
@@ -66,6 +65,40 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+
+/*
+- always specify your user facing function name MYFUNC in error generators
+- errors are broadcasted like this:
+    - Wrong parameter types: RegisterInvalidArgumentWarning(query, "MYFUNC")
+    - Generic errors: RegisterWarning(query, "MYFUNC", TRI_ERROR_QUERY_INVALID_REGEX);
+    - close with: return AqlValue(AqlValueHintNull());
+- specify the number of parameters you expect at least and at max using: 
+  ValidateParameters(parameters, "MYFUNC", 1, 3); (min: 1, max: 3)
+- if you support optional parameters, first check whether the count is sufficient
+  using parameters.size()
+- fetch the values using:
+  AqlValue value
+  - Anonymous  = ExtractFunctionParameterValue(parameters, 0);
+  - GetBooleanParameter() if you expect a bool
+  - Stringify() if you need a string.
+  - ExtractKeys() if its an object and you need the keys
+  - ExtractCollectionName() if you expect a collection
+  - ListContainsElement() search for a member
+- check the values whether they match your expectations i.e. using:
+  - param.isNumber() then extract it using: param.toInt64(trx)
+- Available helper functions for working with pamaterers:
+  - Variance()
+  - SortNumberList()
+  - UnsetOrKeep ()
+  - GetDocumentByIdentifier ()
+  - MergeParameters()
+  - FlattenList()
+
+- now do your work with the parameters
+- build ub a result using a VPackbuilder like you would with regular velocpyack.
+- return it wrapping it into an AqlValue
+
+ */
 /// @brief convert a number value into an AqlValue
 static inline AqlValue NumberValue(transaction::Methods* trx, int value) {
   return AqlValue(AqlValueHintInt(value));
@@ -1511,6 +1544,138 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintBool(result));
 }
 
+/// @brief function SPLIT
+AqlValue Functions::Split(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SPLIT", 1, 3);
+
+  // cheapest parameter checks first:
+  int64_t limitNumber = -1;
+  if (parameters.size() == 3) {
+    AqlValue aqlLimit = ExtractFunctionParameterValue(parameters, 2);
+    if (aqlLimit.isNumber()) {
+      limitNumber = aqlLimit.toInt64(trx);
+    }
+    else {
+      RegisterInvalidArgumentWarning(query, "SPLIT");
+      return AqlValue(AqlValueHintNull());
+    }
+
+    // these are edge cases which are documented to have these return values:
+    if (limitNumber < 0) {
+      return AqlValue(AqlValueHintNull());
+    }
+    if (limitNumber == 0) {
+      return AqlValue(VPackSlice::emptyArraySlice());
+    }
+  }
+
+  transaction::StringBufferLeaser regexBuffer(trx);
+  AqlValue aqlSeparatorExpression;
+  if (parameters.size() >= 2) {
+    aqlSeparatorExpression = ExtractFunctionParameterValue(parameters, 1);
+    if (aqlSeparatorExpression.isObject()) {
+      RegisterInvalidArgumentWarning(query, "SPLIT");
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  AqlValueMaterializer materializer(trx);
+  AqlValue aqlValueToSplit = ExtractFunctionParameterValue(parameters, 0);
+
+  if (parameters.size() == 1) {
+    // pre-documented edge-case: if we only have the first parameter, return it.
+    VPackBuilder result;
+    result.openArray();
+    result.add(aqlValueToSplit.slice());
+    result.close();
+    return AqlValue(result);
+  }
+
+   // Get ready for ICU
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  Stringify(trx, adapter, aqlValueToSplit.slice());
+  UnicodeString valueToSplit(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  bool isEmptyExpression = false;
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildSplitMatcher(aqlSeparatorExpression, trx, isEmptyExpression);
+
+  if (matcher == nullptr) {
+    // compiling regular expression failed
+    RegisterWarning(query, "SPLIT", TRI_ERROR_QUERY_INVALID_REGEX);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  VPackBuilder result;
+  result.openArray();
+  if (!isEmptyExpression && (buffer->length() == 0)) {
+    // Edge case: splitting an empty string by non-empty expression produces an empty string again.
+    result.add(VPackValue(""));
+    result.close();
+    return AqlValue(result);
+  }
+
+  std::string utf8;
+  static const uint16_t nrResults = 16;
+  UnicodeString uResults[nrResults];
+  int64_t totalCount = 0;
+  while (true) {
+    UErrorCode errorCode = U_ZERO_ERROR;
+    auto uCount = matcher->split(valueToSplit, uResults, nrResults, errorCode);
+    uint16_t copyThisTime = uCount;
+    
+    if (U_FAILURE(errorCode)) {
+      RegisterWarning(query, "SPLIT", TRI_ERROR_QUERY_INVALID_REGEX);
+      return AqlValue(AqlValueHintNull());
+    }
+    
+    if ((copyThisTime > 0) && (copyThisTime > nrResults)) {
+      // last hit is the remaining string to be fed into split in a subsequent invocation
+      copyThisTime --;
+    }
+    
+    if ((copyThisTime > 0) && ((copyThisTime == nrResults) || isEmptyExpression)) {
+      // ICU will give us a traling empty string we don't care for if we split
+      // with empty strings.
+      copyThisTime --;
+    }
+
+    int64_t i = 0;
+    while ((i < copyThisTime) &&
+           ((limitNumber < 0 ) || (totalCount < limitNumber))) {
+      if ((i == 0) && isEmptyExpression) {
+        // ICU will give us an empty string that we don't care for
+        // as first value of one match-chunk
+        i++;
+        continue;
+      }
+      uResults[i].toUTF8String(utf8);
+      result.add(VPackValue(utf8));
+      utf8.clear();
+      i++;
+      totalCount++;
+    }
+           
+    if (((uCount != nrResults)) || // fetch any / found less then N
+        ((limitNumber >= 0) && (totalCount >= limitNumber))) { // fetch N
+      break;
+    }
+    // ok, we have more to parse in the last result slot, reiterate with it:
+    if(uCount == nrResults) {
+      valueToSplit = uResults[nrResults - 1];
+    }
+    else {
+      // shoult not go beyound the last match!
+      TRI_ASSERT(false);
+      break;
+    }
+  }
+  
+  result.close();
+  return AqlValue(result);
+}
 /// @brief function REGEX_TEST
 AqlValue Functions::RegexTest(arangodb::aql::Query* query,
                               transaction::Methods* trx,
@@ -2036,8 +2201,8 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
 
 /// @brief function COLLECTIONS
 AqlValue Functions::Collections(arangodb::aql::Query* query,
-                          transaction::Methods* trx,
-                          VPackFunctionParameters const& parameters) {
+                                transaction::Methods* trx,
+                                VPackFunctionParameters const& parameters) {
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -2072,20 +2237,19 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     return basics::StringUtils::tolower(lhs->name()) < basics::StringUtils::tolower(rhs->name());
   });
 
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
 
   size_t const n = colls.size();
   for (size_t i = 0; i < n; ++i) {
-    auto& collection = colls[i];
+    LogicalCollection* coll = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
-    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->canUseCollection(vocbase->name(), coll->name(), auth::Level::RO)) {
       continue;
     }
 
     builder->openObject();
-    builder->add("_id", VPackValue(collection->cid_as_string()));
-    builder->add("name", VPackValue(collection->name()));
+    builder->add("_id", VPackValue(std::to_string(coll->id())));
+    builder->add("name", VPackValue(coll->name()));
     builder->close();
   }
 

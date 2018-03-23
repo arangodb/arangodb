@@ -547,7 +547,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     return false;
   }
-  
+
   LogicalCollection* loadCollection(TRI_voc_cid_t cid) {
     TRI_ASSERT(cid != 0);
     if (_vocbase != nullptr) {
@@ -555,12 +555,15 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       if (it != _collectionCache.end()) {
         return it->second.collection();
       }
-      LogicalCollection* collection = _vocbase->lookupCollection(cid);
+
+      auto* collection = _vocbase->lookupCollection(cid).get();
+
       if (collection != nullptr) {
         _collectionCache.emplace(cid, CollectionGuard(_vocbase, collection));
         return collection;
       }
     }
+
     return nullptr;
   }
 
@@ -616,7 +619,10 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  uint64_t since = std::max(tickStart - 1, (uint64_t)0);
+  uint64_t since = 0;
+  if (tickStart > 0) {
+    since = tickStart - 1;
+  }
   s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
   
   if (!s.ok()) {

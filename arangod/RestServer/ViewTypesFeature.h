@@ -24,29 +24,32 @@
 #define ARANGODB_REST_SERVER_VIEW_TYPES_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "VocBase/LogicalDataSource.h"
 #include "VocBase/ViewImplementation.h"
 
 namespace arangodb {
 
-class ViewTypesFeature final
-    : public application_features::ApplicationFeature {
+class ViewTypesFeature final: public application_features::ApplicationFeature {
  public:
-  explicit ViewTypesFeature(
-      application_features::ApplicationServer* server);
+  explicit ViewTypesFeature(application_features::ApplicationServer* server);
 
  public:
+  /// @return 'factory' for 'type' was added successfully
+  bool emplace(LogicalDataSource::Type const& type, ViewCreator factory);
+
+  /// @return factory for the specified type or false if no such type
+  ViewCreator const& factory(
+    LogicalDataSource::Type const& type
+  ) const noexcept;
+
+  static std::string const& name();
   void prepare() override final;
   void unprepare() override final;
 
-  static void registerViewImplementation(std::string const& type, ViewCreator creator);
-
-  bool isValidType(std::string const& type) const;
-
-  ViewCreator& creator(std::string const& type) const;
-
  private:
-  static std::unordered_map<std::string, arangodb::ViewCreator> _viewCreators;
+  std::unordered_map<LogicalDataSource::Type const*, arangodb::ViewCreator> _factories;
 };
+
 }
 
 #endif

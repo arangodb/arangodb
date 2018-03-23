@@ -232,9 +232,6 @@ During view modification the following directives apply:
       * threshold: (optional; default: `0.85`)
         consolidate `IFF {threshold} > #segment_docs{valid} / (#segment_docs{valid} + #segment_docs{removed})`
 
-* dataPath: <optional> (default: \<ArangoDB database path\>/arangosearch-\<view-id\>)
-  the filesystem path where to store persisted view metadata
-
 * locale: (optional; default: `C`)
   the default locale used for ordering processed attribute names
 

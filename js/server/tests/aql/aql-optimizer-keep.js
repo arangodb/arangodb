@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ KEEP
@@ -195,6 +195,44 @@ function optimizerKeepTestSuite () {
           assertFalse(group[j].hasOwnProperty("class"));
         }
       }
+    },
+
+    testAutomaticKeeping1 : function () {
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1.y }"; 
+      let collect = AQL_EXPLAIN(query).plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+
+      assertEqual("x", collect.groups[0].outVariable.name);
+      assertEqual("g", collect.outVariable.name);
+      assertEqual("doc1", collect.keepVariables[0].variable.name);
+    },
+    
+    testAutomaticKeeping2 : function () {
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1 }"; 
+      let collect = AQL_EXPLAIN(query).plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+
+      assertEqual("x", collect.groups[0].outVariable.name);
+      assertEqual("g", collect.outVariable.name);
+      assertEqual("doc1", collect.keepVariables[0].variable.name);
+    },
+    
+    testAutomaticKeeping3 : function () {
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g[*].doc1, z: g[*].doc2 }"; 
+      let collect = AQL_EXPLAIN(query).plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+
+      assertEqual("x", collect.groups[0].outVariable.name);
+      assertEqual("g", collect.outVariable.name);
+      let vars = [ collect.keepVariables[0].variable.name, collect.keepVariables[1].variable.name ];
+      assertNotEqual(-1, vars.indexOf("doc1"));
+      assertNotEqual(-1, vars.indexOf("doc2"));
+    },
+    
+    testAutomaticKeeping4 : function () {
+      let query = "FOR doc1 IN "  + c.name() + " FOR doc2 IN " + c.name() + " COLLECT x = doc1.x INTO g RETURN { x, y: g }"; 
+      let collect = AQL_EXPLAIN(query).plan.nodes.filter(function(node) { return node.type === 'CollectNode'; })[0];
+
+      assertEqual("x", collect.groups[0].outVariable.name);
+      assertEqual("g", collect.outVariable.name);
+      assertFalse(collect.hasOwnProperty("keepVariables"));
     }
 
   };

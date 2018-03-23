@@ -72,6 +72,7 @@ void MMFilesRestReplicationHandler::insertClient(
   }
 }
 
+// prevents datafiles from beeing removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -91,12 +92,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->insertCompactionBlocker(_vocbase, expires, id);
+    int res = engine->insertCompactionBlocker(_vocbase, ttl, id);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -105,6 +106,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
     b.add("id", VPackValue(std::to_string(id)));
+    b.add("lastTick", VPackValue("0")); // not known yet
     b.close();
     generateResult(rest::ResponseCode::OK, b.slice());
     return;
@@ -124,12 +126,12 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
+    double ttl =
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", InitialSyncer::defaultBatchTimeout);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
-    int res = engine->extendCompactionBlocker(_vocbase, id, expires);
+    int res = engine->extendCompactionBlocker(_vocbase, id, ttl);
 
     if (res == TRI_ERROR_NO_ERROR) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
@@ -362,13 +364,15 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
+  
+  grantTemporaryRights();
 
   // extract collection
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
 
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
@@ -376,7 +380,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   if (barrierId > 0) {
@@ -657,7 +661,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -665,7 +669,8 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  auto guard = std::make_unique<arangodb::CollectionGuard>(_vocbase, c->cid(), false);
+  auto guard =
+    std::make_unique<arangodb::CollectionGuard>(_vocbase, c->id(), false);
 
   arangodb::LogicalCollection* col = guard->collection();
   TRI_ASSERT(col != nullptr);
@@ -986,10 +991,19 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
-  LogicalCollection* c = _vocbase->lookupCollection(collection);
+  auto c = _vocbase->lookupCollection(collection);
+
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return;
+  }
+
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr &&
+      !exec->canUseCollection(_vocbase->name(), c->name(), auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -1003,12 +1017,12 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     // additionally wait for the collector
     if (flushWait > 0) {
       MMFilesLogfileManager::instance()->waitForCollectorQueue(
-          c->cid(), static_cast<double>(flushWait));
+        c->id(), static_cast<double>(flushWait)
+      );
     }
   }
 
-  arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-
+  arangodb::CollectionGuard guard(_vocbase, c->id(), false);
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 

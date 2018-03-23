@@ -84,12 +84,12 @@ std::vector<arangodb::transaction::Methods::StateRegistrationCallback>& getState
 /// @note done separately from addCollection() to avoid creating a
 ///       TransactionCollection instance for virtual entities, e.g. View
 arangodb::Result applyStateRegistrationCallbacks(
-    TRI_voc_cid_t cid,
+    LogicalDataSource& dataSource,
     arangodb::TransactionState& state
 ) {
   for (auto& callback: getStateRegistrationCallbacks()) {
     try {
-      auto res = callback(cid, state);
+      auto res = callback(dataSource, state);
 
       if (!res.ok()) {
         return res;
@@ -829,6 +829,12 @@ Result transaction::Methods::finish(Result const& res) {
   return res;
 }
 
+/// @brief return the transaction id
+TRI_voc_tid_t transaction::Methods::tid() const {
+  TRI_ASSERT(_state != nullptr);
+  return _state->id();
+}
+
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
   if (c == nullptr) {
@@ -910,7 +916,13 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    auto result = applyStateRegistrationCallbacks(cid, *_state);
+    auto dataSource = resolver()->getDataSource(cid);
+
+    if (!dataSource) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+
+    auto result = applyStateRegistrationCallbacks(*dataSource, *_state);
 
     if (!result.ok()) {
       THROW_ARANGO_EXCEPTION(result.errorNumber());
@@ -960,10 +972,9 @@ bool transaction::Methods::isDocumentCollection(
 /// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(
     std::string const& collectionName) const {
-  if (_state->isCoordinator()) {
-    return resolver()->getCollectionTypeCluster(collectionName);
-  }
-  return resolver()->getCollectionType(collectionName);
+  auto collection = resolver()->getCollection(collectionName);
+
+  return collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
 }
 
 /// @brief return the name of a collection
@@ -2872,30 +2883,30 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
   Result res;
   bool visited = false;
   auto visitor = _state->isEmbeddedTransaction()
-    ? std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionEmbedded(ccid, name, type);
+    ? std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionEmbedded(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
       )
-    : std::function<bool(TRI_voc_cid_t)>(
-        [this, name, type, &res, cid, &visited](TRI_voc_cid_t ccid)->bool {
-          res = addCollectionToplevel(ccid, name, type);
+    : std::function<bool(LogicalCollection&)>(
+        [this, name, type, &res, cid, &visited](LogicalCollection& col)->bool {
+          res = addCollectionToplevel(col.id(), name, type);
 
           if (!res.ok()) {
             return false; // break on error
           }
 
-          res = applyStateRegistrationCallbacks(ccid, *_state);
-          visited |= cid == ccid;
+          res = applyStateRegistrationCallbacks(col, *_state);
+          visited |= cid == col.id();
 
           return res.ok(); // add the remaining collections (or break on error)
         }
@@ -2903,15 +2914,28 @@ Result transaction::Methods::addCollection(TRI_voc_cid_t cid, char const* name,
     ;
 
   if (!resolver()->visitCollections(visitor, cid) || !res.ok()) {
+    // trigger exception as per the original behaviour (tests depend on this)
+    if (res.ok() && !visited) {
+      res = _state->isEmbeddedTransaction()
+          ? addCollectionEmbedded(cid, name, type)
+          : addCollectionToplevel(cid, name, type)
+          ;
+    }
+
     return res.ok() ? Result(TRI_ERROR_INTERNAL) : res; // return first error
   }
 
   // skip provided 'cid' if it was already done by the visitor
-  if (!visited) {
-    res = applyStateRegistrationCallbacks(cid, *_state);
+  if (visited) {
+    return res;
   }
 
-  return res;
+  auto dataSource = resolver()->getDataSource(cid);
+
+  return dataSource
+    ? applyStateRegistrationCallbacks(*dataSource, *_state)
+    : Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND)
+    ;
 }
 
 /// @brief add a collection by id, with the name supplied
@@ -2940,7 +2964,7 @@ bool transaction::Methods::isLocked(LogicalCollection* document,
     return false;
   }
 
-  TransactionCollection* trxColl = trxCollection(document->cid(), type);
+  TransactionCollection* trxColl = trxCollection(document->id(), type);
   TRI_ASSERT(trxColl != nullptr);
   return trxColl->isLocked(type, _state->nestingLevel());
 }

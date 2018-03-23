@@ -31,6 +31,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/TraversalBlock.h"
 #include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
@@ -383,6 +384,15 @@ void TraversalNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes,
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<TraversalBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
                                     bool withProperties) const {
@@ -550,7 +560,6 @@ void TraversalNode::prepareOptions() {
       it.second->addMember(jt);
     }
     opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
-    TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
     auto cond =
@@ -559,7 +568,6 @@ void TraversalNode::prepareOptions() {
       cond->addMember(it);
     }
     opts->_baseVertexExpression = new Expression(_plan, ast, cond);
-    TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.

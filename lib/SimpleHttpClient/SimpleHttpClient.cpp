@@ -322,8 +322,9 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             return nullptr;
           }
           this->close();  // this sets the state to IN_CONNECT for a retry
-          _state = DEAD;
-          setErrorMessage("Request timeout reached");
+          LOG_TOPIC(DEBUG, arangodb::Logger::HTTPCLIENT) << _errorMessage;
+
+          std::this_thread::sleep_for(std::chrono::microseconds(5000));
           break;
         }
 
@@ -344,15 +345,15 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
             processHeader();
           }
 
-          if (_state == IN_READ_BODY && !_result->hasContentLength()) {
-            // If we are reading the body and no content length was
-            // found in the header, then we must read until no more
-            // progress is made (but without an error), this then means
-            // that the server has closed the connection and we must
-            // process the body one more time:
-            _result->setContentLength(_readBuffer.length() - _readBufferOffset);
-            processBody();
-          } else if (_state == IN_READ_BODY) {
+          if (_state == IN_READ_BODY) {
+            if (!_result->hasContentLength()) {
+              // If we are reading the body and no content length was
+              // found in the header, then we must read until no more
+              // progress is made (but without an error), this then means
+              // that the server has closed the connection and we must
+              // process the body one more time:
+              _result->setContentLength(_readBuffer.length() - _readBufferOffset);
+            }
             processBody();
           }
 
@@ -404,6 +405,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   if (_state < FINISHED && _errorMessage.empty()) {
     setErrorMessage("Request timeout reached");
+    _result->setHttpReturnCode(TRI_ERROR_HTTP_GATEWAY_TIMEOUT);
   }
 
   // set result type in getResult()
