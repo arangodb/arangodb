@@ -3,7 +3,7 @@ shell> curl --dump - http://localhost:8529/_api/gharial/social/edge/relation/842
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _WdtjLZa--J
+etag: _WjL81zW--F
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
@@ -12,7 +12,7 @@ etag: _WdtjLZa--J
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/8420"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"male/charly"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"female/diana"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WdtjLZa--J"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WjL81zW--F"</span>, 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"married"</span>, 
     <span class="hljs-string">"vertex"</span> : <span class="hljs-string">"charly"</span> 
   }, 
