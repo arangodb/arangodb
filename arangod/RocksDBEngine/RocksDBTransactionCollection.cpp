@@ -197,7 +197,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _collection = _transaction->vocbase()->lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
     }
 
@@ -206,7 +206,7 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       if (res == TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED) {
         return res;
       }
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
 
     doSetup = true;

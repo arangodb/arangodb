@@ -177,7 +177,7 @@ bool RestDocumentHandler::readDocument() {
     case 0:
     case 1:
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<document-handle>");
       return false;
     case 2:
