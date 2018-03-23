@@ -726,7 +726,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       std::unordered_set<std::string> backup = _includedShards;
       TRI_DEFER(_includedShards = backup);
 
-      if (!info->shardId.empty()) {
+      if (!info->shardId.empty() && _includedShards.empty()) {
         _includedShards.clear();
         _includedShards.emplace(info->shardId);
       }
@@ -831,7 +831,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           std::unordered_set<std::string> backup = _includedShards;
           TRI_DEFER(_includedShards = backup);
 
-          if (!remoteNode->ownName().empty()) {
+          if (!remoteNode->ownName().empty() && _includedShards.empty()) {
             // restrict to just a single shard
             _includedShards.clear();
             _includedShards.emplace(remoteNode->ownName());
