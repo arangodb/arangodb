@@ -552,9 +552,93 @@ RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(
   std::function<uint64_t()> getJobId_,
   std::function<std::chrono::system_clock::time_point()> getJobCreationTimestamp_
 ) : _getJobId(getJobId_),
-  _getJobCreationTimestamp(getJobCreationTimestamp_)
+    _getJobCreationTimestamp(getJobCreationTimestamp_)
 { }
 
 std::vector<VPackBufferPtr>&& RepairOperationToTransactionVisitor::steal() {
   return std::move(_vpackBufferArray);
+}
+
+RepairOperationToVPackVisitor::RepairOperationToVPackVisitor(
+  VPackBuilder &builder_
+) : _builder(builder_) {
+}
+
+VPackBuilder&
+RepairOperationToVPackVisitor::builder() {
+  return _builder;
+}
+
+void
+RepairOperationToVPackVisitor::operator()(
+  BeginRepairsOperation const &op
+) {
+  VPackObjectBuilder outerObject(&builder());
+  {
+    VPackObjectBuilder innerObject(&builder(), "BeginRepairsOperation");
+
+    builder().add("database", VPackValue(op.database));
+    builder().add("collection", VPackValue(op.collectionName));
+    builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
+    builder().add("renameDistributeShardsLike", VPackValue(op.renameDistributeShardsLike));
+  }
+}
+
+void
+RepairOperationToVPackVisitor::operator()(
+  FinishRepairsOperation const &op
+) {
+  VPackObjectBuilder outerObject(&builder());
+  {
+    VPackObjectBuilder innerObject(&builder(), "FinishRepairsOperation");
+
+    builder().add("database", VPackValue(op.database));
+    builder().add("collection", VPackValue(op.collectionName));
+    builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
+  }
+}
+
+void
+RepairOperationToVPackVisitor::operator()(
+  MoveShardOperation const &op
+) {
+  VPackObjectBuilder outerObject(&builder());
+  {
+    VPackObjectBuilder innerObject(&builder(), "MoveShardOperation");
+
+    builder().add("database", VPackValue(op.database));
+    builder().add("collection", VPackValue(op.collectionName));
+    builder().add("shard", VPackValue(op.shard));
+    builder().add("from", VPackValue(op.from));
+    builder().add("to", VPackValue(op.to));
+    builder().add("isLeader", VPackValue(op.isLeader));
+  }
+}
+
+void
+RepairOperationToVPackVisitor::operator()(
+  FixServerOrderOperation const &op
+) {
+  VPackObjectBuilder outerObject(&builder());
+  {
+    VPackObjectBuilder innerObject(&builder(), "FixServerOrderOperation");
+    builder().add("database", VPackValue(op.database));
+    builder().add("collection", VPackValue(op.collectionName));
+    builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
+    builder().add("shard", VPackValue(op.shard));
+    builder().add("distributeShardsLikeShard", VPackValue(op.protoShard));
+    builder().add("leader", VPackValue(op.leader));
+    {
+      VPackArrayBuilder followers(&builder(), "followers");
+      for (ServerID const& follower : op.followers) {
+        builder().add(VPackValue(follower));
+      }
+    }
+    {
+      VPackArrayBuilder distributeShardsLikeFollowers(&builder(), "distributeShardsLikeFollowers");
+      for (ServerID const& protoFollower : op.protoFollowers) {
+        builder().add(VPackValue(protoFollower));
+      }
+    }
+  }
 }

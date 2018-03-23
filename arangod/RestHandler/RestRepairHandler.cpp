@@ -237,10 +237,10 @@ bool RestRepairHandler::repairCollection(
   response.add("PlannedOperations", VPackValue(velocypack::ValueType::Array));
 
   for (auto const& op : repairOperations) {
-    // TODO write as VelocyPack instead of string
-    std::stringstream stringstream;
-    stringstream << op;
-    response.add(VPackValue(stringstream.str()));
+    RepairOperationToVPackVisitor
+      addToVpack(response);
+
+    boost::apply_visitor(addToVpack, op);
   }
 
   response.close();

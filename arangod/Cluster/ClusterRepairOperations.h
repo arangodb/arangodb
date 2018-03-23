@@ -177,6 +177,34 @@ class RepairOperationToTransactionVisitor
 
 };
 
+// Adds any RepairOperation to a VPack as an object, suitable for users to see.
+// Doesn't contain all data, some members are named differently.
+// TODO Maybe it would still be good to add all members, at least for the functional tests?
+class RepairOperationToVPackVisitor
+  : public boost::static_visitor<void> {
+ public:
+  RepairOperationToVPackVisitor() = delete;
+  RepairOperationToVPackVisitor(VPackBuilder& builder);
+
+  void
+  operator()(BeginRepairsOperation const &op);
+
+  void
+  operator()(FinishRepairsOperation const &op);
+
+  void
+  operator()(MoveShardOperation const &op);
+
+  void
+  operator()(FixServerOrderOperation const &op);
+
+
+ private:
+  VPackBuilder& _builder;
+
+  VPackBuilder& builder();
+};
+
 }
 }
 
