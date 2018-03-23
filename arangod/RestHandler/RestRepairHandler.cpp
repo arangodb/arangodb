@@ -132,67 +132,86 @@ RestRepairHandler::repairDistributeShardsLike() {
     // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
     // This has to be done per collection...
 
-    DistributeShardsLikeRepairer repairer;
-    ResultT<std::list<RepairOperation>> repairOperationsResult
-      = repairer.repairDistributeShardsLike(
+    ResultT<std::map<
+        CollectionID,
+        ResultT<std::list<RepairOperation>>
+    >>
+      repairOperationsByCollectionResult
+      = DistributeShardsLikeRepairer::repairDistributeShardsLike(
         planCollections,
         supervisionHealth
       );
 
-    if (repairOperationsResult.fail()) {
+    if (repairOperationsByCollectionResult.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
       << "RestRepairHandler::repairDistributeShardsLike: "
       << "Error during preprocessing: "
-      << "[" << repairOperationsResult.errorNumber() << "] "
-      << repairOperationsResult.errorMessage();
+      << "[" << repairOperationsByCollectionResult.errorNumber() << "] "
+      << repairOperationsByCollectionResult.errorMessage();
       generateError(rest::ResponseCode::SERVER_ERROR,
-        repairOperationsResult.errorNumber(),
-        repairOperationsResult.errorMessage()
+        repairOperationsByCollectionResult.errorNumber(),
+        repairOperationsByCollectionResult.errorMessage()
       );
 
       return RestStatus::FAIL;
     }
-    std::list<RepairOperation>& repairOperations = repairOperationsResult.get();
+    std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
+      repairOperationsByCollection = repairOperationsByCollectionResult.get();
 
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
 
-
-    if (repairOperations.empty()) {
+    if (repairOperationsByCollection.empty()) {
       response.add("message", VPackValue("Nothing to do."));
     }
     else {
       std::stringstream message;
       message
-        << "Executing "
-        << repairOperations.size()
-        << " operations";
+        << "Repairing "
+        << repairOperationsByCollection.size()
+        << " collections";
 
-      response.add("PlannedOperations", VPackValue(VPackValueType::Array));
+      bool allCollectionsSucceeded = true;
 
-      for (auto const& op : repairOperations) {
-        // TODO write as VelocyPack instead of string
-        std::stringstream stringstream;
-        stringstream << op;
-        response.add(VPackValue(stringstream.str()));
+      response.add("collections", VPackValue(VPackValueType::Object));
+
+      for(auto const& it : repairOperationsByCollection) {
+        CollectionID collectionId = it.first;
+        auto repairOperationsResult = it.second;
+        auto nameResult = getDbAndCollectionName(planCollections, collectionId);
+        if (nameResult.fail()) {
+          // This should never happen.
+          allCollectionsSucceeded = false;
+          response.add(StaticStrings::Error, VPackValue(true));
+          response.add(StaticStrings::ErrorMessage, VPackValue(nameResult.errorMessage()));
+          continue;
+        }
+
+        std::string name = nameResult.get();
+        response.add(name, VPackValue(VPackValueType::Object));
+
+        bool success;
+        if (repairOperationsResult.ok()) {
+          success = repairCollection(repairOperationsResult.get(), response);
+        }
+        else {
+          response.add(StaticStrings::ErrorMessage, VPackValue(repairOperationsResult.errorMessage()));
+          success = false;
+        }
+        response.add(StaticStrings::Error, VPackValue(! success));
+
+        allCollectionsSucceeded = success && allCollectionsSucceeded;
+
+        response.close();
       }
 
       response.close();
 
-      Result result = executeRepairOperations(repairOperations);
-      if (result.fail()) {
-        responseCode = rest::ResponseCode::SERVER_ERROR;
-        message
-          << "\n"
-          << result.errorMessage();
-      }
-      response.add("message", VPackValue(message.str()));
     }
 
     response.close();
 
     generateOk(responseCode, response);
-
 
     return RestStatus::DONE;
   }
@@ -206,6 +225,33 @@ RestRepairHandler::repairDistributeShardsLike() {
     return RestStatus::FAIL;
   }
 
+}
+
+
+bool RestRepairHandler::repairCollection(
+  std::list<RepairOperation> repairOperations,
+  VPackBuilder &response
+) {
+  bool success = true;
+
+  response.add("PlannedOperations", VPackValue(velocypack::ValueType::Array));
+
+  for (auto const& op : repairOperations) {
+    // TODO write as VelocyPack instead of string
+    std::stringstream stringstream;
+    stringstream << op;
+    response.add(VPackValue(stringstream.str()));
+  }
+
+  response.close();
+
+  Result result = executeRepairOperations(repairOperations);
+  if (result.fail()) {
+    success = false;
+    response.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
+  }
+
+  return success;
 }
 
 ResultT<bool>
@@ -443,4 +489,32 @@ RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
 
 
   return ResultT<JobStatus>::success(JobStatus::missing);
+}
+
+ResultT<std::string>
+RestRepairHandler::getDbAndCollectionName(
+  VPackSlice planCollections, CollectionID collectionID
+) {
+  for(auto const& db : VPackObjectIterator { planCollections }) {
+    std::string dbName = db.key.copyString();
+    for(auto const& collection : VPackObjectIterator { db.value }) {
+      std::string currentCollectionId = collection.key.copyString();
+      if (currentCollectionId == collectionID) {
+        return dbName + "/" + collection.value.get("name").copyString();
+      }
+    }
+  }
+
+  // This should never happen:
+
+  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+  << "RestRepairHandler::getDbAndCollectionName: "
+  << "Collection " << collectionID << " not found!";
+
+  TRI_ASSERT(false);
+
+  return Result {
+    TRI_ERROR_INTERNAL,
+    "Collection not found"
+  };
 }

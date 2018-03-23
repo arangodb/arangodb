@@ -92,8 +92,8 @@ class ResultT : public arangodb::Result {
     TRI_ASSERT(other.fail());
   }
 
-  ResultT(T const& val)
-    : ResultT(val, TRI_ERROR_NO_ERROR) { }
+  ResultT(T&& val)
+    : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) { }
 
   ResultT() = delete;
 
@@ -156,10 +156,10 @@ class ResultT : public arangodb::Result {
  protected:
   boost::optional<T> _val;
 
-  ResultT(boost::optional<T> val_, int errorNumber)
+  ResultT(boost::optional<T>&& val_, int errorNumber)
     : Result(errorNumber), _val(val_) {}
 
-  ResultT(boost::optional<T> val_, int errorNumber, std::__cxx11::string const &errorMessage)
+  ResultT(boost::optional<T>&& val_, int errorNumber, std::__cxx11::string const &errorMessage)
     : Result(errorNumber, errorMessage), _val(val_) {}
 };
 
@@ -211,9 +211,14 @@ struct Collection {
 
 class DistributeShardsLikeRepairer {
  public:
-  ResultT<std::list<RepairOperation>> repairDistributeShardsLike(
-    velocypack::Slice const& planCollections,
-    velocypack::Slice const& supervisionHealth
+  ResultT<
+    std::map< CollectionID,
+      ResultT<std::list<RepairOperation>>
+    >
+  > static
+  repairDistributeShardsLike(
+    velocypack::Slice const &planCollections,
+    velocypack::Slice const &supervisionHealth
   );
 
  private:

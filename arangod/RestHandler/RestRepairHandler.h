@@ -95,6 +95,17 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   cluster_repairs::ResultT<bool>
   jobFinished(std::string const& jobId);
+
+  bool repairCollection(
+    std::list<cluster_repairs::RepairOperation> repairOperations,
+    VPackBuilder &response
+  );
+
+  cluster_repairs::ResultT<std::string> static
+  getDbAndCollectionName(
+    VPackSlice planCollections,
+    CollectionID collectionId
+  );
 };
 
 }

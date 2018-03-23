@@ -517,10 +517,14 @@ DistributeShardsLikeRepairer::fixShard(
 }
 
 
-ResultT<std::list<RepairOperation>>
+ResultT<
+  std::map< CollectionID,
+    ResultT<std::list<RepairOperation>>
+  >
+>
 DistributeShardsLikeRepairer::repairDistributeShardsLike(
-  Slice const& planCollections,
-  Slice const& supervisionHealth
+  Slice const &planCollections,
+  Slice const &supervisionHealth
 ) {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
   << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
@@ -542,7 +546,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
   }
   std::vector<CollectionID> collectionsToFix = collectionsToFixResult.get();
 
-  std::list<RepairOperation> repairOperations;
+  std::map<CollectionID, ResultT<std::list<RepairOperation>>> repairOperationsByCollection;
 
   for (auto const& collectionIdIterator : collectionsToFix) {
     struct Collection& collection = collectionMap.at(collectionIdIterator);
@@ -563,7 +567,11 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
       << "(repairing)distributeShardsLike missing in "
       << collection.fullName();
-      return Result { TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES };
+      repairOperationsByCollection.emplace(
+        collection.id,
+        Result { TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES }
+      );
+      break;
     }
 
     struct Collection& proto = collectionMap.at(protoId);
@@ -574,8 +582,13 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         proto
       );
     if (beginRepairsOperation.fail()) {
-      return beginRepairsOperation;
+      repairOperationsByCollection.emplace(
+        collection.id,
+        std::move(beginRepairsOperation)
+      );
+      break;
     }
+    std::list<RepairOperation> repairOperations;
     repairOperations.emplace_back(
       std::move(beginRepairsOperation.get())
     );
@@ -598,7 +611,11 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         // TODO Do we need to check that dbServers and protoDbServers are of equal size?
         auto newRepairOperationsResult = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
         if (newRepairOperationsResult.fail()) {
-          return newRepairOperationsResult;
+          repairOperationsByCollection.emplace(
+            collection.id,
+            std::move(newRepairOperationsResult)
+          );
+          break;
         }
         std::list<RepairOperation> newRepairOperations
           = newRepairOperationsResult.get();
@@ -618,14 +635,23 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         proto
       );
     if (finishRepairsOperation.fail()) {
-      return finishRepairsOperation;
+      repairOperationsByCollection.emplace(
+        collection.id,
+        std::move(finishRepairsOperation)
+      );
+      break;
     }
     repairOperations.emplace_back(
       std::move(finishRepairsOperation.get())
     );
+
+    repairOperationsByCollection.emplace(
+      collection.id,
+      std::move(repairOperations)
+    );
   }
 
-  return repairOperations;
+  return repairOperationsByCollection;
 }
 
 ResultT<boost::optional<FixServerOrderOperation>>
