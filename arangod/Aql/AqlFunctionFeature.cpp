@@ -259,7 +259,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_FIRST", ".,.|.,.", true, false, true, true, &Functions::FindFirst});
   add({"FIND_LAST", ".,.|.,.", true, false, true, true, &Functions::FindLast});
   add({"SPLIT", ".|.,.", true, false, true, true, &Functions::Split});
-  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
+  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true, &Functions::Substitute});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
   add({"SHA512", ".", true, false, true, true, &Functions::Sha512});
@@ -356,7 +356,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
-       true});  // note: REVERSE() can be applied on strings, too
+        true, &Functions::Reverse});
   add({"FIRST", ".", true, false, true, true,
        &Functions::First});
   add({"LAST", ".", true, false, true, true,
