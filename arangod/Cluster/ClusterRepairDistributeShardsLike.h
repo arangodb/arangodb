@@ -205,15 +205,6 @@ struct Collection {
     return this->database + "/" + this->name;
   }
 
-  std::string inline agencyCollectionId() const {
-    return "Plan/Collections/" + this->database + "/" + this->id;
-  }
-
-  VPackBufferPtr
-  createShardDbServerArray(
-    ShardID const &shardId
-  ) const;
-
   Collection() = delete;
 };
 
@@ -226,8 +217,6 @@ class DistributeShardsLikeRepairer {
   );
 
  private:
-  std::vector< VPackBufferPtr > _vPackBuffers;
-
   std::map<ShardID, DBServers, VersionSort> static
   readShards(velocypack::Slice const& shards);
 
@@ -256,7 +245,7 @@ class DistributeShardsLikeRepairer {
     DBServers setB
   );
 
-  MoveShardOperation
+  MoveShardOperation static
   createMoveShardOperation(
     Collection& collection,
     ShardID const& shardId,
@@ -265,7 +254,7 @@ class DistributeShardsLikeRepairer {
     bool isLeader
   );
 
-  ResultT<std::list<RepairOperation>>
+  ResultT<std::list<RepairOperation>> static
   fixLeader(
     DBServers const& availableDbServers,
     Collection& collection,
@@ -274,7 +263,7 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  ResultT<std::list<RepairOperation>>
+  ResultT<std::list<RepairOperation>> static
   fixShard(
     DBServers const& availableDbServers,
     Collection& collection,
@@ -283,7 +272,7 @@ class DistributeShardsLikeRepairer {
     ShardID const& protoShardId
   );
 
-  ResultT<boost::optional<FixServerOrderOperation>>
+  ResultT<boost::optional<FixServerOrderOperation>> static
   createFixServerOrderOperation(
     Collection &collection,
     Collection const &proto,
@@ -291,13 +280,13 @@ class DistributeShardsLikeRepairer {
     ShardID const &protoShardId
   );
 
-  ResultT<BeginRepairsOperation>
+  ResultT<BeginRepairsOperation> static
   createBeginRepairsOperation(
     Collection &collection,
     Collection const &proto
   );
 
-  ResultT<FinishRepairsOperation>
+  ResultT<FinishRepairsOperation> static
   createFinishRepairsOperation(
     Collection &collection,
     Collection const &proto

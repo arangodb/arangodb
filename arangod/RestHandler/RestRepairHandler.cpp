@@ -48,6 +48,8 @@ RestStatus RestRepairHandler::execute() {
     return RestStatus::FAIL;
   }
 
+  // TODO Allow GET and implement it as a pretend-only version
+
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(
       rest::ResponseCode::METHOD_NOT_ALLOWED,

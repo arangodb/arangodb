@@ -74,23 +74,6 @@ VersionSort::splitVersion(std::string const &str) {
 }
 
 
-VPackBufferPtr
-cluster_repairs::Collection::createShardDbServerArray(
-  ShardID const &shardId
-) const {
-  VPackBuilder builder;
-
-  builder.add(Value(ValueType::Array));
-
-  for (auto const& it : shardsById.at(shardId)) {
-    builder.add(Value(it));
-  }
-
-  builder.close();
-
-  return builder.steal();
-}
-
 std::map<ShardID, DBServers, VersionSort>
 DistributeShardsLikeRepairer::readShards(Slice const& shards) {
   std::map<ShardID, DBServers, VersionSort> shardsById;
