@@ -1,7 +1,6 @@
 HTTP Interface for Administration and Monitoring
 ================================================
 
-
 This is an introduction to ArangoDB's HTTP interface for administration and
 monitoring of the server.
 
@@ -37,6 +36,10 @@ monitoring of the server.
 
 @startDocuBlock JSF_get_admin_server_id
 
+## Cluster
+
 <!-- js/actions/api-cluster.js -->
 
 @startDocuBlock JSF_cluster_statistics_GET
+
+@startDocuBlock get_cluster_health
