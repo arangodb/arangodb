@@ -4860,7 +4860,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
   if (node->numMembers() != 2) {
     return rv;
   }
-
+  
   AstNode* first = node->getMember(0);
   AstNode* second = node->getMember(1);
 
@@ -4876,15 +4876,16 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
     return dist_fun;
   };
 
-  rv = eval_stuff(dist_first, lessEqual,
-                  isDistanceFunction(first, expressionParent),
-                  second);
-  if (!rv) {
+  if (dist_first) {
+    rv = eval_stuff(dist_first, lessEqual,
+                    isDistanceFunction(first, expressionParent),
+                    second);
+  }
+  if (!rv && !dist_first) {
     rv = eval_stuff(dist_first, lessEqual,
                     isDistanceFunction(second, expressionParent),
                     first);
   }
-
   if (rv) {
     // this must be set after checking if the node contains a distance node.
     rv.expressionNode = node;
@@ -5344,8 +5345,19 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           break;
         }
         case EN::FILTER: {
-          filterInfo =
-              identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+          if (filterInfo) {
+            // do not overwrite an already found condition, but test first if the
+            // new condition is actually valid
+            GeoIndexInfo test;
+            test =
+                identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+            if (test) {
+              filterInfo = test;
+            }
+          } else {
+            filterInfo =
+                identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+          }
           break;
         }
         case EN::ENUMERATE_COLLECTION: {
