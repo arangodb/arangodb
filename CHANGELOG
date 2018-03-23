@@ -1,6 +1,8 @@
 v3.3.5 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
 * added "collect-in-cluster" optimizer rule to have COLLECT WITH COUNT queries
   without grouping being executed on the DB servers and the coordinator only summing
   up the counts from the individual shards
