@@ -1409,6 +1409,8 @@ void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Cont
     }
   }
   
+  localContext->Exit();
+  
   LOG_TOPIC(TRACE, arangodb::Logger::V8) << "loaded Javascript file '" << file << "' for V8 context #" << context->id();
 }
 
