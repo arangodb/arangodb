@@ -1112,8 +1112,6 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       double estimate = this->selectivityEstimate(&ignore);
       if (estimate > 0.0) {
         estimatedItems = static_cast<size_t>(1.0 / estimate);
-        // expect less results
-        itemsInIndex = estimatedItems;
       }
     }
     if (itemsInIndex == 0) {
