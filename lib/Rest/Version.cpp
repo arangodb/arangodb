@@ -358,10 +358,14 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "
 #endif
+#ifdef HAVE_ARANGODB_BUILD_REPOSITORY 
+          << "build " << getBuildRepository() << ", " 
+#endif
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " 
+          << getOpenSSLVersion();
 
   return version.str();
 }
