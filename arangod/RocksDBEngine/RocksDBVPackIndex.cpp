@@ -1124,7 +1124,7 @@ bool RocksDBVPackIndex::supportsFilterCondition(
       } else {
         estimatedCost =
             (std::max)(static_cast<double>(1),
-                       std::log2(static_cast<double>(itemsInIndex)) * values) - (_fields.size() - 1) * 0.01;
+             (std::log2(static_cast<double>(itemsInIndex)) * values) + estimatedItems) - (_fields.size() - 1) * 0.01;
       }
     }
     return true;
