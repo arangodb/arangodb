@@ -669,7 +669,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     // shardMap is an unordered_map from ShardId (string) to a vector of
     // servers (strings), wrapped in a shared_ptr
     auto cic =
-        ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->cid()));
+        ci->getCollectionCurrent(dbName, basics::StringUtils::itoa(c->id()));
     // Check all shards:
     bool isReady = true;
     bool allInSync = true;
@@ -887,7 +887,7 @@ Result RestReplicationHandler::processRestoreCollection(
   }
 
   grantTemporaryRights();
-  LogicalCollection* col = _vocbase->lookupCollection(name);
+  auto* col = _vocbase->lookupCollection(name).get();
 
   // drop an existing collection if it exists
   if (col != nullptr) {
@@ -899,8 +899,10 @@ Result RestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        SingleCollectionTransaction trx(ctx, col->cid(),
-                                        AccessMode::Type::EXCLUSIVE);
+        SingleCollectionTransaction trx(
+          ctx, col->id(), AccessMode::Type::EXCLUSIVE
+        );
+
         // to turn off waitForSync!
         trx.addHint(transaction::Hints::Hint::RECOVERY);
         res = trx.begin();
@@ -986,8 +988,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // drop an existing collection if it exists
     if (dropExisting) {
       std::string errorMsg;
-      int res = ci->dropCollectionCoordinator(dbName, col->cid_as_string(),
-                                              errorMsg, 0.0);
+      int res = ci->dropCollectionCoordinator(
+        dbName, std::to_string(col->id()), errorMsg, 0.0
+      );
+
       if (res == TRI_ERROR_FORBIDDEN ||
           res ==
               TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE) {
@@ -1644,9 +1648,11 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     col = ci->getCollection(dbName, name);
   } catch (...) {
     errorMsg = "could not find collection '" + name + "'";
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(col != nullptr);
+  
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
 
   int res = TRI_ERROR_NO_ERROR;
   for (VPackSlice const& idxDef : VPackArrayIterator(indexes)) {
@@ -1658,9 +1664,18 @@ int RestReplicationHandler::processRestoreIndexesCoordinator(
     }
 
     VPackBuilder tmp;
-    res = ci->ensureIndexCoordinator(dbName, col->cid_as_string(), idxDef, true,
-                                     arangodb::Index::Compare, tmp, errorMsg,
-                                     3600.0);
+
+    res = ci->ensureIndexCoordinator(
+      dbName,
+      std::to_string(col->id()),
+      idxDef,
+      true,
+      arangodb::Index::Compare,
+      tmp,
+      errorMsg,
+      cluster->indexCreationTimeout()
+    );
+
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =
           "could not create index: " + std::string(TRI_errno_string(res));
@@ -1934,7 +1949,7 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -1942,10 +1957,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
   if (readLockId.isNone()) {
     // Short cut for the case that the collection is empty
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    SingleCollectionTransaction trx(ctx, col->cid(),
-                                    AccessMode::Type::EXCLUSIVE);
-
+    SingleCollectionTransaction trx(
+      ctx, col->id(), AccessMode::Type::EXCLUSIVE
+    );
     auto res = trx.begin();
+
     if (res.ok()) {
       auto countRes = trx.count(col->name(), false);
       if (countRes.ok()) {
@@ -2062,7 +2078,7 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2110,7 +2126,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
   if (col == nullptr) {
     generateError(rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "did not find collection");
     return;
   }
@@ -2152,7 +2168,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   auto ctx =
       transaction::StandaloneContext::Create(_vocbase);
   auto trx =
-      std::make_shared<SingleCollectionTransaction>(ctx, col->cid(), access);
+      std::make_shared<SingleCollectionTransaction>(ctx, col->id(), access);
+
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   Result res = trx->begin();
   if (!res.ok()) {
@@ -2422,13 +2439,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(
       arangodb::basics::VelocyPackHelper::getNumericValue<int>(
           slice, "type", int(TRI_COL_TYPE_DOCUMENT)));
-
   arangodb::LogicalCollection* col = nullptr;
+
   if (!uuid.empty()) {
-    col = _vocbase->lookupCollectionByUuid(uuid);
+    col = _vocbase->lookupCollectionByUuid(uuid).get();
   }
+
   if (col != nullptr) {
-    col = _vocbase->lookupCollection(name);
+    col = _vocbase->lookupCollection(name).get();
   }
 
   if (col != nullptr && col->type() == type) {
@@ -2478,7 +2496,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
     planId = static_cast<TRI_voc_cid_t>(StringUtils::uint64(tmp));
   } else if (planIdSlice.isNone()) {
     // There is no plan ID it has to be equal to collection id
-    planId = col->cid();
+    planId = col->id();
   }
 
   TRI_ASSERT(col->planId() == planId);

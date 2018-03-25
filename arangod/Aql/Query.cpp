@@ -597,7 +597,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
       resultBuilder->openArray();
         
       // iterate over result, return it and store it in query cache
-      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize()))) {
+      while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
         size_t const n = value->size();
 
         for (size_t i = 0; i < n; ++i) {
@@ -743,8 +743,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         builder->openArray();
 
         uint32_t j = 0;
-        while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize()))) {
+        while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
           size_t const n = value->size();
 
           for (size_t i = 0; i < n; ++i) {
@@ -768,8 +767,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       } else {
         // iterate over result and return it
         uint32_t j = 0;
-        while (nullptr != (value = _engine->getSome(
-                               1, ExecutionBlock::DefaultBatchSize()))) {
+        while (nullptr != (value = _engine->getSome(ExecutionBlock::DefaultBatchSize()))) {
           if (!_queryOptions.silent) {
             size_t const n = value->size();
 

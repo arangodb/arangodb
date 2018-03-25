@@ -270,9 +270,9 @@ bool ShortestPathBlock::nextPath(AqlItemBlock const* items) {
   return hasPath;
 }
 
-AqlItemBlock* ShortestPathBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* ShortestPathBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   while (true) {
     if (_done) {
       traceGetSomeEnd(nullptr);
@@ -281,7 +281,7 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t atLeast, size_t atMost) {
 
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+      if (!ExecutionBlock::getBlock(toFetch)) {
         _done = true;
         traceGetSomeEnd(nullptr);
         return nullptr;
@@ -354,4 +354,4 @@ AqlItemBlock* ShortestPathBlock::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t ShortestPathBlock::skipSome(size_t, size_t atMost) { return 0; }
+size_t ShortestPathBlock::skipSome(size_t atMost) { return 0; }

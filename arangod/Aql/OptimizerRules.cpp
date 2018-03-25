@@ -527,6 +527,65 @@ void arangodb::aql::removeCollectVariablesRule(
       // outVariable not used later
       collectNode->clearOutVariable();
       modified = true;
+    } else if (outVariable != nullptr && !collectNode->count() && 
+               !collectNode->hasExpressionVariable() &&
+               !collectNode->hasKeepVariables()) {
+      // outVariable used later, no count, no INTO expression, no KEEP
+      // e.g. COLLECT something INTO g
+      // we will now check how many part of "g" are used later
+      std::unordered_set<std::string> keepAttributes;
+       
+      bool stop = false; 
+      auto p = collectNode->getFirstParent();
+      while (p != nullptr) {
+        if (p->getType() == EN::CALCULATION) {
+          auto cc = static_cast<CalculationNode const*>(p);
+          Expression const* exp = cc->expression();
+          if (exp != nullptr && exp->node() != nullptr) {
+            bool isSafeForOptimization;
+            auto usedThere = Ast::getReferencedAttributesForKeep(exp->node(), outVariable, isSafeForOptimization);
+            if (isSafeForOptimization) {
+              for (auto const& it : usedThere) {
+                keepAttributes.emplace(it);
+              }
+            } else {
+              stop = true;
+            }
+          }
+        }
+        if (stop) {
+          break;
+        }
+        p = p->getFirstParent();
+      }
+
+      if (!stop) {
+        std::vector<Variable const*> keepVariables;
+        // we are allowed to do the optimization
+        auto current = n->getFirstDependency();
+        while (current != nullptr) {
+          for (auto const& var : current->getVariablesSetHere()) {
+            for (auto it = keepAttributes.begin(); it != keepAttributes.end(); /* no hoisting */) {
+              if ((*it) == var->name) {
+                keepVariables.emplace_back(var);
+                it = keepAttributes.erase(it);
+              } else {
+                ++it;
+              }
+            }
+          }
+          if (keepAttributes.empty()) {
+            // done
+            break;
+          }
+          current = current->getFirstDependency();
+        }
+        
+        if (keepAttributes.empty() && !keepVariables.empty()) {
+          collectNode->setKeepVariables(std::move(keepVariables));
+          modified = true;
+        }
+      }
     }
 
     collectNode->clearAggregates(
@@ -777,6 +836,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
 
   bool modified = false;
+  std::unordered_set<Variable const*> neededVars;
 
   for (auto const& n : nodes) {
     auto nn = static_cast<CalculationNode*>(n);
@@ -787,47 +847,35 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
       continue;
     }
 
-    std::unordered_set<Variable const*> neededVars;
+    neededVars.clear();
     n->getVariablesUsedHere(neededVars);
 
-    std::vector<ExecutionNode*> stack;
+    auto current = n->getFirstDependency();
 
-    n->addDependencies(stack);
-
-    while (!stack.empty()) {
-      auto current = stack.back();
-      stack.pop_back();
-
-      bool found = false;
-
-      for (auto const& v : current->getVariablesSetHere()) {
-        if (neededVars.find(v) != neededVars.end()) {
-          // shared variable, cannot move up any more
-          found = true;
-          break;
-        }
-      }
-
-      if (found) {
-        // done with optimizing this calculation node
-        break;
-      }
-
-      if (!current->hasDependency()) {
+    while (current != nullptr) {
+      auto dep = current->getFirstDependency();
+      
+      if (dep == nullptr) {
         // node either has no or more than one dependency. we don't know what to
         // do and must abort
         // note: this will also handle Singleton nodes
         break;
       }
 
-      current->addDependencies(stack);
+      if (current->setsVariable(neededVars)) {
+        // shared variable, cannot move up any more
+        // done with optimizing this calculation node
+        break;
+      }
 
       // first, unlink the calculation from the plan
       plan->unlinkNode(n);
 
       // and re-insert into before the current node
       plan->insertDependency(current, n);
+
       modified = true;
+      current = dep;
     }
   }
 
@@ -4574,7 +4622,8 @@ static aql::Collection* addCollectionToQuery(Query* query, std::string const& cn
     coll = colls->add(cname, AccessMode::Type::READ);
     if (!ServerState::instance()->isCoordinator()) {
       TRI_ASSERT(coll != nullptr);
-      coll->setCollection(query->trx()->vocbase()->lookupCollection(cname));
+      auto cptr = query->trx()->vocbase()->lookupCollection(cname);
+      coll->setCollection(cptr.get());
       // FIXME: does this need to happen in the coordinator?
       query->trx()->addCollectionAtRuntime(cname);
     }
@@ -5211,12 +5260,14 @@ static void optimizeFilterNode(ExecutionPlan* plan,
   std::vector<AstNodeType> parents; // parents and current node
   size_t orsInBranch = 0;
   Ast::traverseReadOnly(expr->node(),
-                        [&](AstNode const* node, void*){ // pre
+                        [&](AstNode const* node) { // pre
                           parents.push_back(node->type);
                           if (Ast::IsOrOperatorType(node->type)) {
                             orsInBranch++;
                           }
-                        }, [&](AstNode const* node, void*) { // visit
+#warning return false for an OR
+                          return true;
+                        }, [&](AstNode const* node) { // post
                           size_t pl = parents.size();
                           if (orsInBranch == 0 && (pl == 1 || Ast::IsAndOperatorType(parents[pl-2]))) {
                             // do not visit below OR or into <=, <, >, >= expressions
@@ -5225,12 +5276,11 @@ static void optimizeFilterNode(ExecutionPlan* plan,
                               calc->canRemoveIfThrows(true);
                             }
                           }
-                        }, [&](AstNode const* node, void*) { // post
                           parents.pop_back();
                           if (Ast::IsOrOperatorType(node->type)) {
                             orsInBranch--;
                           }
-                        }, nullptr);
+                        });
 }
 
 // modify plan
@@ -5343,10 +5393,10 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   Ast* ast = plan->getAst();
   for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
     AstNode* root = pair.second->nodeForModification();
-    auto pre = [&](AstNode const* node, void*) -> bool {
+    auto pre = [&](AstNode const* node) -> bool {
       return node == root || Ast::IsAndOperatorType(node->type);
     };
-    auto visitor = [&](AstNode* node, void*) -> AstNode* {
+    auto visitor = [&](AstNode* node) -> AstNode* {
       if (Ast::IsAndOperatorType(node->type)) {
         std::vector<AstNode*> keep; // always shallow copy node
         for (std::size_t i = 0; i < node->numMembers(); i++) {
@@ -5373,8 +5423,8 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
       }
       return node;
     };
-    auto post = [](AstNode const*, void*){};
-    AstNode* newNode = Ast::traverseAndModify(root, pre, visitor, post,nullptr);
+    auto post = [](AstNode const*){};
+    AstNode* newNode = Ast::traverseAndModify(root, pre, visitor, post);
     if (newNode == nullptr) { // if root was removed, unlink FILTER or SORT
       plan->unlinkNode(pair.first);
     } else if (newNode != root) {
@@ -5473,7 +5523,7 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
     CalculationNode* originalCN = static_cast<CalculationNode*>(en);
     AstNode* root = originalCN->expression()->nodeForModification();
 
-    auto visitor = [&](AstNode* node, void*) -> AstNode* {
+    auto visitor = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_FCALL) {
         Function* func = static_cast<Function*>(node->getData());
         AstNode* fargs = node->getMemberUnchecked(0);
@@ -5589,7 +5639,7 @@ void arangodb::aql::replaceLegacyGeoFunctionsRule(Optimizer* opt,
       return node;
     };
 
-    AstNode* newNode = Ast::traverseAndModify(root, visitor ,nullptr);
+    AstNode* newNode = Ast::traverseAndModify(root, visitor);
     if (newNode != root) {
       originalCN->expression()->replaceNode(newNode);
     }

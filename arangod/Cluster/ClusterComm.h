@@ -363,6 +363,19 @@ struct ClusterCommRequest {
         body(body),
         done(false) {}
 
+  ClusterCommRequest(std::string const& dest, rest::RequestType type,
+                     std::string const& path,
+                     std::shared_ptr<std::string const> body,
+                     std::unique_ptr<std::unordered_map<std::string, std::string>>& headers)
+      : destination(dest),
+        requestType(type),
+        path(path),
+        body(body),
+        done(false) {
+    headerFields = std::move(headers);
+  }
+
+
   void setHeaders(
       std::unique_ptr<std::unordered_map<std::string, std::string>>& headers) {
     headerFields = std::move(headers);
@@ -523,6 +536,20 @@ class ClusterComm {
                          arangodb::LogTopic const& logTopic,
                          bool retryOnCollNotFound);
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief this method performs the given requests described by the vector
+  /// of ClusterCommRequest structs in the following way: 
+  /// Each request is done with asyncRequest.
+  /// After each request is successfully send out we drop all requests.
+  /// Hence it is guaranteed that all requests are send, but
+  /// we will not wait for answers of those requests.
+  /// Also all reporting for the responses is lost, because we do not care.
+  /// NOTE: The requests can be in any communication state after this function
+  /// and you should not read them. If you care for response use performRequests
+  /// instead.
+  ////////////////////////////////////////////////////////////////////////////////
+  void fireAndForgetRequests(std::vector<ClusterCommRequest>& requests);
+ 
   std::shared_ptr<communicator::Communicator> communicator() {
     return _communicator;
   }

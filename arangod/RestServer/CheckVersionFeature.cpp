@@ -48,6 +48,7 @@ CheckVersionFeature::CheckVersionFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("EngineSelector");
+  startsAfter("ServerId");
 }
 
 void CheckVersionFeature::collectOptions(

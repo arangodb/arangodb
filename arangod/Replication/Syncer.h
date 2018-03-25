@@ -138,30 +138,33 @@ class Syncer {
 
   /// @brief handle the state response of the master
   Result handleStateResponse(arangodb::velocypack::Slice const&);
-  
+
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
-   
-  LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
+
+  std::shared_ptr<LogicalCollection> resolveCollection(
+    TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& slice
+  );
 
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
     return _vocbases;
   }
-  
+
   /// @brief whether or not the HTTP result is valid or not
   bool hasFailed(arangodb::httpclient::SimpleHttpResult* response) const;
 
   /// @brief create an error result from a failed HTTP request/response
   Result buildHttpError(arangodb::httpclient::SimpleHttpResult* response, std::string const& url) const;
-  
+
   /// we need to act like a 3.2 client
   bool simulate32Client() const;
-  
+
  private:
-  
+
   /// @brief extract the collection by either id or name, may return nullptr!
-  LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
-                                             std::string const&);
-  
+  std::shared_ptr<LogicalCollection> getCollectionByIdOrName(
+    TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, std::string const& name
+  );
+
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,
                                            LogicalCollection* coll,

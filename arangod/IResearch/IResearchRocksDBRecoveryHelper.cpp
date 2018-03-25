@@ -58,7 +58,7 @@ std::pair<TRI_vocbase_t*, arangodb::LogicalCollection*> lookupDatabaseAndCollect
     return std::make_pair(nullptr, nullptr);
   }
 
-  return std::make_pair(vocbase, vocbase->lookupCollection(pair.second));
+  return std::make_pair(vocbase, vocbase->lookupCollection(pair.second).get());
 }
 
 std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
@@ -77,32 +77,34 @@ std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
   return indexes;
 }
 
-arangodb::iresearch::IResearchLink* lookupLink(
+std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t cid,
     TRI_idx_iid_t iid
 ) {
-  auto* col = vocbase.lookupCollection(cid);
+  auto col = vocbase.lookupCollection(cid);
 
   if (!col) {
     // invalid cid
     return nullptr;
   }
 
-  auto indexes = col->getIndexes();
+  for (auto& index: col->getIndexes()) {
+    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IRresearch Link
+    }
 
-  auto it = std::find_if(
-    indexes.begin(), indexes.end(),
-    [iid](std::shared_ptr<arangodb::Index> const& idx) {
-      return idx->id() == iid && idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK;
-  });
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
 
-  // TODO FIXME find a better way to retrieve an iResearch Link
-  // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    if (link && link->id() == iid) {
+      return link; // found required link
+    }
+  }
 
-  return it == indexes.end()
-    ? nullptr
-    : dynamic_cast<arangodb::iresearch::IResearchLink*>(it->get());
+  return nullptr;
 }
 
 void ensureLink(
@@ -166,18 +168,18 @@ void ensureLink(
     return;
   }
 
-  auto* col = vocbase->lookupCollection(cid);
+  auto col = vocbase->lookupCollection(cid);
 
   if (!col) {
     // if the underlying collection gone, we can go on
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "Cannot create index for the collection '" << cid
         << "' in the database '" << dbId << "' : "
-        << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
-  auto* link = lookupLink(*vocbase, cid, iid);
+  auto link = lookupLink(*vocbase, cid, iid);
 
   if (!link) {
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -246,7 +248,7 @@ void dropCollectionFromView(
   auto* vocbase = db.useDatabase(dbId);
 
   if (vocbase) {
-    auto* logicalCollection = vocbase->lookupCollection(collectionId);
+    auto logicalCollection = vocbase->lookupCollection(collectionId);
 
     if (!logicalCollection) {
       LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -254,7 +256,7 @@ void dropCollectionFromView(
       return;
     }
 
-    auto* link = lookupLink(*vocbase, collectionId, indexId);
+    auto link = lookupLink(*vocbase, collectionId, indexId);
 
     if (link) {
       // don't remove the link if it's there
@@ -325,7 +327,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     auto doc = RocksDBValue::data(value);
 
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
+      transaction::StandaloneContext::Create(vocbase), coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 
@@ -367,7 +369,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
 
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->cid(),
+      transaction::StandaloneContext::Create(vocbase), coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 

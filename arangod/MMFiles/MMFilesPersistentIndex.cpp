@@ -80,7 +80,8 @@ MMFilesPersistentIndexIterator::MMFilesPersistentIndexIterator(
       _probe(false) {
   TRI_idx_iid_t const id = index->id();
   std::string const prefix = MMFilesPersistentIndex::buildPrefix(
-      trx->vocbase()->id(), _primaryIndex->collection()->cid(), id);
+      trx->vocbase()->id(), _primaryIndex->collection()->id(), id
+  );
   TRI_ASSERT(prefix.size() == MMFilesPersistentIndex::keyPrefixSize());
 
   _leftEndpoint.reset(new arangodb::velocypack::Buffer<char>());
@@ -251,7 +252,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   IndexLookupContext context(trx, _collection, &result, numPaths());
   VPackSlice const key = transaction::helpers::extractKeyFromDocument(doc);
   std::string const prefix =
-      buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid);
+    buildPrefix(trx->vocbase()->id(), _collection->id(), _iid);
 
   VPackBuilder builder;
   std::vector<std::string> values;
@@ -443,7 +444,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
     VPackSlice const s = builder.slice();
     std::string value;
     value.reserve(keyPrefixSize() + s.byteSize());
-    value.append(buildPrefix(trx->vocbase()->id(), _collection->cid(), _iid));
+    value.append(buildPrefix(trx->vocbase()->id(), _collection->id(), _iid));
     value.append(s.startAs<char const>(), s.byteSize());
     values.emplace_back(std::move(value));
   }
@@ -472,7 +473,8 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
-      _collection->vocbase()->id(), _collection->cid(), _iid);
+    _collection->vocbase()->id(), _collection->id(), _iid
+  );
 }
 
 /// @brief attempts to locate an entry in the index

@@ -185,11 +185,11 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
   DEBUG_END_BLOCK();
 }
 
-AqlItemBlock* CalculationBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* CalculationBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   std::unique_ptr<AqlItemBlock> res(
-      ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
+      ExecutionBlock::getSomeWithoutRegisterClearout(atMost));
 
   if (res.get() == nullptr) {
     traceGetSomeEnd(nullptr);
