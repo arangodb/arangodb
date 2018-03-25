@@ -355,8 +355,8 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   TRI_ASSERT(!cells.empty());
 
   for (S2CellId cell : cells) {
-    for (auto it = _tree.lower_bound(cell);
-         it != _tree.end() && it->first == cell;) {
+    auto it = _tree.lower_bound(cell);
+    while (it != _tree.end() && it->first == cell) {
       if (it->second.documentId == documentId) {
         it = _tree.erase(it);
       } else {
