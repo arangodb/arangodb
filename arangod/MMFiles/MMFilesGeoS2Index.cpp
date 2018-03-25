@@ -51,7 +51,9 @@ struct NearIterator final : public IndexIterator {
         _index(index),
         _near(std::move(params)),
         _mmdr(mmdr) {
-    estimateDensity();
+    if (!params.fullRange) {
+      estimateDensity();
+    }
   }
 
   ~NearIterator() {}
@@ -145,11 +147,8 @@ struct NearIterator final : public IndexIterator {
   // found results in a priority list according to their distance
   void performScan() {
     MMFilesGeoS2Index::IndexTree const& tree = _index->tree();
-
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
-    // size_t seeks = 0;
 
     auto it = tree.begin();
     for (size_t i = 0; i < scan.size(); i++) {
@@ -172,7 +171,7 @@ struct NearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        it = tree.lower_bound(interval.min);  // seeks++;
+        it = tree.lower_bound(interval.min);
       }
 
       while (it != tree.end() && it->first <= interval.max) {
@@ -180,7 +179,8 @@ struct NearIterator final : public IndexIterator {
         it++;
       }
     }
-    // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
+    
+    _near.didScanIntervals(); // calculate next bounds
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -316,7 +316,8 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
-  std::vector<S2CellId> cells;
+  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
+  std::vector<S2CellId> cells(reserve);
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
   
@@ -340,7 +341,8 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
-  std::vector<S2CellId> cells;
+  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
+  std::vector<S2CellId> cells(reserve);
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
   
@@ -435,6 +437,7 @@ void retrieveNear(MMFilesGeoS2Index const& index, transaction::Methods* trx,
   auto fetchDoc = [&](geo_index::Document const& gdoc) -> bool {
     bool read = collection->readDocument(trx, gdoc.token, mmdr);
     if (!read) {
+      TRI_ASSERT(false);
       return false;
     }
     VPackSlice doc(mmdr.vpack());

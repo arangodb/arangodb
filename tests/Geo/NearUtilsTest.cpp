@@ -70,6 +70,7 @@ static std::vector<LocalDocumentId> nearSearch(index_t const& index,
         it++;
       }
     }
+    near.didScanIntervals(); // calculate new bounds
 
     while (near.hasNearest()) {
       geo_index::Document doc = near.nearest();
