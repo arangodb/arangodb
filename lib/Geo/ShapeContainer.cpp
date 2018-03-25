@@ -124,8 +124,8 @@ S2Point ShapeContainer::centroid() const noexcept {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return S2Point();
   }
+  return S2Point();
 }
 
 std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
@@ -256,8 +256,8 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::contains(S2LatLngRect const* other) const {
@@ -327,8 +327,8 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 
@@ -359,8 +359,8 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::contains(ShapeContainer const* cc) const {
@@ -399,8 +399,8 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::equals(Coordinate const* cc) const {
@@ -518,8 +518,8 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(S2Polyline const* other) const {
@@ -556,8 +556,8 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
     case ShapeContainer::Type::S2_MULTIPOLYLINE:
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
@@ -588,8 +588,8 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 
@@ -621,8 +621,8 @@ bool ShapeContainer::intersects(S2Polygon const* poly) const {
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(ShapeContainer const* cc) const {
@@ -660,6 +660,6 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
