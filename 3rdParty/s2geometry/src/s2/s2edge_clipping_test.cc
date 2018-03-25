@@ -17,11 +17,12 @@
 
 #include "s2/s2edge_clipping.h"
 
+#include <algorithm>
 #include <cfloat>
 #include <cmath>
 #include <string>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include <gtest/gtest.h>
 #include "s2/third_party/absl/strings/str_cat.h"
 #include "s2/r1interval.h"
@@ -206,8 +207,10 @@ R2Point ChooseRectPoint(const R2Point& a, const R2Point& b) {
   } else if (rnd->OneIn(3)) {
     return a + rnd->RandDouble() * (b - a);
   } else {
-    return R2Point(rnd->UniformDouble(a[0], b[0]),
-                   rnd->UniformDouble(a[1], b[1]));
+    // a[i] may be >, <, or == b[i], so we write it like this instead
+    // of using UniformDouble.
+    return R2Point(a[0] + rnd->RandDouble() * (b[0] - a[0]),
+                   a[1] + rnd->RandDouble() * (b[1] - a[1]));
   }
 }
 

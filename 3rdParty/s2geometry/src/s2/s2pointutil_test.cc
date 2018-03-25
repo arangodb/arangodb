@@ -137,7 +137,7 @@ TEST(S2, OriginTest) {
   // S2Earth because we don't want to depend on that package.)
   double distance_km = acos(S2::Origin().z()) * S2Testing::kEarthRadiusKm;
   EXPECT_GE(distance_km, 50.0);
-  LOG(INFO) << "\nS2::Origin() coordinates: " << S2LatLng(S2::Origin())
+  S2_LOG(INFO) << "\nS2::Origin() coordinates: " << S2LatLng(S2::Origin())
             << ", distance from pole: " << distance_km << " km";
 
   // Check that S2::Origin() is not collinear with the edges of any large

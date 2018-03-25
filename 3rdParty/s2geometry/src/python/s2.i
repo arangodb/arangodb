@@ -18,6 +18,7 @@
 %define %unignore %rename("%s") %enddef
 %define %unignoreall %rename("%s") ""; %enddef
 
+%define ABSL_ATTRIBUTE_ALWAYS_INLINE %enddef
 %define ABSL_DEPRECATED(msg)
 %enddef
 
@@ -30,4 +31,5 @@
 // Still not supported by SWIG 3.0.12.
 %define final %enddef
 
+%include "coder.i"
 %include "s2_common.i"

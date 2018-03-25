@@ -45,12 +45,12 @@
 //   SequenceLexicon<string> lexicon;
 //   vector<string> pets {"cat", "dog", "parrot"};
 //   uint32 pets_id = lexicon.Add(pets);
-//   CHECK_EQ(pets_id, lexicon.Add(pets));
+//   S2_CHECK_EQ(pets_id, lexicon.Add(pets));
 //   string values;
 //   for (const auto& pet : lexicon.sequence(pets_id)) {
 //     values += pet;
 //   }
-//   CHECK_EQ("catdogparrot", values);
+//   S2_CHECK_EQ("catdogparrot", values);
 //
 template <class T,
           class Hasher = std::hash<T>,

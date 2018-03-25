@@ -22,7 +22,7 @@
 #include <vector>
 
 #include "s2/third_party/absl/base/integral_types.h"
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/sequence_lexicon.h"
 
 // IdSetLexicon is a class for compactly representing sets of non-negative
@@ -59,7 +59,7 @@
 //
 //   int label_set_id = GetLabelSet(...);
 //   for (auto id : label_sets_.id_set(label_set_id)) {
-//     LOG(INFO) << id;
+//     S2_LOG(INFO) << id;
 //   }
 //
 // This class is similar to SequenceLexicon, except:
@@ -170,8 +170,8 @@ inline IdSetLexicon::IdSet::IdSet(int32 singleton_id)
 }
 
 inline int32 IdSetLexicon::AddSingleton(int32 id) const {
-  DCHECK_GE(id, 0);
-  DCHECK_LE(id, std::numeric_limits<int32>::max());
+  S2_DCHECK_GE(id, 0);
+  S2_DCHECK_LE(id, std::numeric_limits<int32>::max());
   // Singleton sets are represented by their element.
   return id;
 }
@@ -184,8 +184,8 @@ template <class FwdIterator>
 int32 IdSetLexicon::Add(FwdIterator begin, FwdIterator end) {
   tmp_.clear();
   for (; begin != end; ++begin) {
-    DCHECK_GE(*begin, 0);
-    DCHECK_LE(*begin, std::numeric_limits<int32>::max());
+    S2_DCHECK_GE(*begin, 0);
+    S2_DCHECK_LE(*begin, std::numeric_limits<int32>::max());
     tmp_.push_back(*begin);
   }
   return AddInternal(&tmp_);

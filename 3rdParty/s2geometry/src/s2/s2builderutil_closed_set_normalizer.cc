@@ -48,15 +48,15 @@ ClosedSetNormalizer::ClosedSetNormalizer(
       graph_options_in_(graph_options_out_),
       sentinel_(std::numeric_limits<VertexId>::max(),
                 std::numeric_limits<VertexId>::max()) {
-  DCHECK_EQ(graph_options_out_.size(), 3);
-  DCHECK(graph_options_out_[0].edge_type() == EdgeType::DIRECTED);
-  DCHECK(graph_options_out_[2].edge_type() == EdgeType::DIRECTED);
+  S2_DCHECK_EQ(graph_options_out_.size(), 3);
+  S2_DCHECK(graph_options_out_[0].edge_type() == EdgeType::DIRECTED);
+  S2_DCHECK(graph_options_out_[2].edge_type() == EdgeType::DIRECTED);
 
   // NOTE(ericv): Supporting these options would require some extra code in
   // order to handle undirected edges, and they are not useful for building
   // polylines anyway (they are intended for polygon meshes).
-  DCHECK(graph_options_out_[1].sibling_pairs() != SiblingPairs::CREATE);
-  DCHECK(graph_options_out_[1].sibling_pairs() != SiblingPairs::REQUIRE);
+  S2_DCHECK(graph_options_out_[1].sibling_pairs() != SiblingPairs::CREATE);
+  S2_DCHECK(graph_options_out_[1].sibling_pairs() != SiblingPairs::REQUIRE);
 
   // Set the GraphOptions for the input graphs to ensure that (1) they share a
   // common set of vertices, and (2) to ensure that redundant degeneracies are
@@ -73,7 +73,7 @@ const vector<Graph>& ClosedSetNormalizer::Run(
     const vector<Graph>& g, S2Error* error) {
   // Ensure that the input graphs were built with our requested options.
   for (int dim = 0; dim < 3; ++dim) {
-    DCHECK(g[dim].options() == graph_options_in_[dim]);
+    S2_DCHECK(g[dim].options() == graph_options_in_[dim]);
   }
   if (options_.suppress_lower_dimensions()) {
     // Build the auxiliary data needed to suppress lower-dimensional edges.
@@ -264,7 +264,7 @@ class NormalizeClosedSetImpl {
             output_layers_[1]->graph_options(),
             output_layers_[2]->graph_options()}),
         graphs_(3), graphs_left_(3) {
-    DCHECK_EQ(3, output_layers_.size());
+    S2_DCHECK_EQ(3, output_layers_.size());
   }
 
   class DimensionLayer : public S2Builder::Layer {

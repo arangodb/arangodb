@@ -267,7 +267,7 @@ inline bool IndexCrosser::VisitCellCellCrossings(
 }
 
 bool IndexCrosser::VisitCrossings(RangeIterator* ai, RangeIterator* bi) {
-  DCHECK(ai->id().contains(bi->id()));
+  S2_DCHECK(ai->id().contains(bi->id()));
   if (ai->cell().num_edges() == 0) {
     // Skip over the cells of B using binary search.
     bi->SeekBeyond(*ai);
@@ -424,7 +424,7 @@ static bool FindCrossingError(const S2Shape& shape,
 
 bool FindSelfIntersection(const S2ShapeIndex& index, S2Error* error) {
   if (index.num_shape_ids() == 0) return false;
-  DCHECK_EQ(1, index.num_shape_ids());
+  S2_DCHECK_EQ(1, index.num_shape_ids());
   const S2Shape& shape = *index.shape(0);
 
   // Visit all crossing pairs except possibly for ones of the form (AB, BC),

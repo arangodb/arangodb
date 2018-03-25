@@ -27,9 +27,8 @@
 #include <utility>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
-
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s1angle.h"
 #include "s2/s1interval.h"
@@ -74,8 +73,8 @@ void S2Testing::Random::Reset(int seed) {
 // Return a 64-bit unsigned integer whose lowest "num_bits" are random, and
 // whose other bits are zero.
 inline uint64 GetBits(int num_bits) {
-  DCHECK_GE(num_bits, 0);
-  DCHECK_LE(num_bits, 64);
+  S2_DCHECK_GE(num_bits, 0);
+  S2_DCHECK_LE(num_bits, 64);
 
   // This code uses random(), which returns an integer in the range
   // from 0 to (2^31)-1 inclusive (i.e. all of the lower 31 bits are
@@ -115,10 +114,12 @@ double S2Testing::Random::RandDouble() {
 }
 
 int32 S2Testing::Random::Uniform(int32 n) {
+  S2_DCHECK_GT(n, 0);
   return static_cast<uint32>(RandDouble() * n);
 }
 
 double S2Testing::Random::UniformDouble(double min, double limit) {
+  S2_DCHECK_LT(min, limit);
   return min + RandDouble() * (limit - min);
 }
 
@@ -127,8 +128,8 @@ bool S2Testing::Random::OneIn(int32 n) {
 }
 
 int32 S2Testing::Random::Skewed(int max_log) {
-  DCHECK_GE(max_log, 0);
-  DCHECK_LE(max_log, 31);
+  S2_DCHECK_GE(max_log, 0);
+  S2_DCHECK_LE(max_log, 31);
   int32 base = Uniform(max_log + 1);
   return GetBits(31) & ((1U << base) - 1);
 }
@@ -139,7 +140,7 @@ void S2Testing::AppendLoopVertices(const S2Loop& loop,
                                    vector<S2Point>* vertices) {
   int n = loop.num_vertices();
   const S2Point* base = &loop.vertex(0);
-  DCHECK_EQ(&loop.vertex(n - 1), base + n - 1);
+  S2_DCHECK_EQ(&loop.vertex(n - 1), base + n - 1);
   vertices->insert(vertices->end(), base, base + n);
 }
 
@@ -230,8 +231,8 @@ S2CellId S2Testing::GetRandomCellId() {
 
 S2Cap S2Testing::GetRandomCap(double min_area, double max_area) {
   double cap_area = max_area * pow(min_area / max_area, rnd.RandDouble());
-  DCHECK_GE(cap_area, min_area);
-  DCHECK_LE(cap_area, max_area);
+  S2_DCHECK_GE(cap_area, min_area);
+  S2_DCHECK_LE(cap_area, max_area);
 
   // The surface area of a cap is 2*Pi times its height.
   return S2Cap::FromCenterArea(RandomPoint(), cap_area);
@@ -302,14 +303,14 @@ void S2Testing::CheckCovering(const S2Region& region,
 
   if (!region.MayIntersect(S2Cell(id))) {
     // If region does not intersect id, then neither should the covering.
-    if (check_tight) CHECK(!covering.Intersects(id));
+    if (check_tight) S2_CHECK(!covering.Intersects(id));
 
   } else if (!covering.Contains(id)) {
     // The region may intersect id, but we can't assert that the covering
     // intersects id because we may discover that the region does not actually
     // intersect upon further subdivision.  (MayIntersect is not exact.)
-    CHECK(!region.Contains(S2Cell(id)));
-    CHECK(!id.is_leaf());
+    S2_CHECK(!region.Contains(S2Cell(id)));
+    S2_CHECK(!id.is_leaf());
     S2CellId end = id.child_end();
     S2CellId child;
     for (child = id.child_begin(); child != end; child = child.next()) {
@@ -320,7 +321,7 @@ void S2Testing::CheckCovering(const S2Region& region,
 
 double S2Testing::GetCpuTime() {
   struct rusage ru;
-  CHECK_EQ(getrusage(RUSAGE_SELF, &ru), 0);
+  S2_CHECK_EQ(getrusage(RUSAGE_SELF, &ru), 0);
   return ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6;
 }
 
@@ -332,13 +333,13 @@ S2Testing::Fractal::Fractal()
 }
 
 void S2Testing::Fractal::set_max_level(int max_level) {
-  DCHECK_GE(max_level, 0);
+  S2_DCHECK_GE(max_level, 0);
   max_level_ = max_level;
   ComputeMinLevel();
 }
 
 void S2Testing::Fractal::set_min_level(int min_level_arg) {
-  DCHECK_GE(min_level_arg, -1);
+  S2_DCHECK_GE(min_level_arg, -1);
   min_level_arg_ = min_level_arg;
   ComputeMinLevel();
 }
@@ -352,8 +353,8 @@ void S2Testing::Fractal::ComputeMinLevel() {
 }
 
 void S2Testing::Fractal::set_fractal_dimension(double dimension) {
-  DCHECK_GE(dimension, 1.0);
-  DCHECK_LT(dimension, 2.0);
+  S2_DCHECK_GE(dimension, 1.0);
+  S2_DCHECK_LT(dimension, 2.0);
   dimension_ = dimension;
   ComputeOffsets();
 }

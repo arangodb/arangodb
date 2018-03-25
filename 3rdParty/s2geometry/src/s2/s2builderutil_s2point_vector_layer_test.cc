@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include "s2/base/casts.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include <gtest/gtest.h>
 #include "s2/third_party/absl/memory/memory.h"
@@ -59,7 +60,7 @@ void VerifyS2PointVectorLayerResults(
 void AddPoint(S2Point p, S2Builder* builder) { builder->AddEdge(p, p); }
 
 TEST(S2PointVectorLayer, MergeDuplicates) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   vector<S2Point> output;
   IdSetLexicon label_set_lexicon;
   S2PointVectorLayer::LabelSetIds label_set_ids;
@@ -89,7 +90,7 @@ TEST(S2PointVectorLayer, MergeDuplicates) {
 }
 
 TEST(S2PointVectorLayer, KeepDuplicates) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   vector<S2Point> output;
   IdSetLexicon label_set_lexicon;
   S2PointVectorLayer::LabelSetIds label_set_ids;
@@ -119,7 +120,7 @@ TEST(S2PointVectorLayer, KeepDuplicates) {
 }
 
 TEST(S2PointVectorLayer, Error) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   vector<S2Point> output;
   builder.StartLayer(make_unique<S2PointVectorLayer>(
       &output, S2PointVectorLayer::Options(
@@ -139,7 +140,7 @@ TEST(S2PointVectorLayer, Error) {
 }
 
 TEST(IndexedS2PointVectorLayer, AddsShapes) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   MutableS2ShapeIndex index;
   builder.StartLayer(make_unique<IndexedS2PointVectorLayer>(&index));
   string point0_str = "0:0";
@@ -156,7 +157,7 @@ TEST(IndexedS2PointVectorLayer, AddsShapes) {
 }
 
 TEST(IndexedS2PointVectorLayer, AddsEmptyShape) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   MutableS2ShapeIndex index;
   builder.StartLayer(make_unique<IndexedS2PointVectorLayer>(&index));
   S2Error error;

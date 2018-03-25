@@ -51,7 +51,7 @@ void S2PolylineVectorLayer::Init(vector<unique_ptr<S2Polyline>>* polylines,
                                  LabelSetIds* label_set_ids,
                                  IdSetLexicon* label_set_lexicon,
                                  const Options& options) {
-  DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
+  S2_DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
   polylines_ = polylines;
   label_set_ids_ = label_set_ids;
   label_set_lexicon_ = label_set_lexicon;

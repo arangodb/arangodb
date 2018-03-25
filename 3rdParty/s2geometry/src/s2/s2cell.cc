@@ -22,8 +22,7 @@
 #include <cmath>
 #include <iomanip>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/r2.h"
 #include "s2/s1chord_angle.h"
@@ -226,7 +225,7 @@ S2LatLngRect S2Cell::GetRectBound() const {
   static const double kPoleMinLat = asin(sqrt(1./3)) - 0.5 * DBL_EPSILON;
 
   // The face centers are the +X, +Y, +Z, -X, -Y, -Z axes in that order.
-  DCHECK_EQ(((face_ < 3) ? 1 : -1), S2::GetNorm(face_)[face_ % 3]);
+  S2_DCHECK_EQ(((face_ < 3) ? 1 : -1), S2::GetNorm(face_)[face_ % 3]);
 
   S2LatLngRect bound;
   switch (face_) {

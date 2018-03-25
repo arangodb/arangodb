@@ -95,6 +95,7 @@
 #define ABSL_ATTRIBUTE_UNUSED
 #define ABSL_ATTRIBUTE_INITIAL_EXEC
 #define ABSL_ATTRIBUTE_PACKED
+#define ABSL_ATTRIBUTE_FUNC_ALIGN(bytes)
 
 // To be deleted macros. All macros are going te be renamed with ABSL_ prefix.
 // TODO(user): delete macros
@@ -580,6 +581,16 @@
 #define ABSL_ATTRIBUTE_PACKED
 #endif
 
+// ABSL_ATTRIBUTE_FUNC_ALIGN
+//
+// Tells the compiler to align the function start at least to certain
+// alignment boundary
+#if ABSL_HAVE_ATTRIBUTE(aligned) || (defined(__GNUC__) && !defined(__clang__))
+#define ABSL_ATTRIBUTE_FUNC_ALIGN(bytes) __attribute__((aligned(bytes)))
+#else
+#define ABSL_ATTRIBUTE_FUNC_ALIGN(bytes)
+#endif
+
 #endif  // SWIG
 
 // ABSL_CONST_INIT
@@ -588,11 +599,18 @@
 // not compile (on supported platforms) unless the variable has a constant
 // initializer. This is useful for variables with static and thread storage
 // duration, because it guarantees that they will not suffer from the so-called
-// "static init order fiasco".
+// "static init order fiasco".  Prefer to put this attribute on the most visible
+// declaration of the variable, if there's more than one, because code that
+// accesses the variable can then use the attribute for optimization.
 //
 // Example:
 //
-//   ABSL_CONST_INIT static MyType my_var = MakeMyType(...);
+//   class MyClass {
+//    public:
+//     ABSL_CONST_INIT static MyType my_var;
+//   };
+//
+//   MyType MyClass::my_var = MakeMyType(...);
 //
 // Note that this attribute is redundant if the variable is declared constexpr.
 #if ABSL_HAVE_CPP_ATTRIBUTE(clang::require_constant_initialization)

@@ -19,10 +19,11 @@
 
 #include <cmath>
 #include <cstdio>
+#include <unordered_map>
 
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/logging.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2testing.h"
 #include "s2/third_party/absl/base/macros.h"
@@ -147,4 +148,18 @@ TEST(S2LatLng, TestToStringReturnsString) {
   EXPECT_EQ(S2LatLng::FromDegrees(0, 1).ToStringInDegrees(), s);
 }
 
+TEST(S2LatLng, TestHashCode) {
+  std::unordered_map<S2LatLng, int, S2LatLngHash> map;
+  map[S2LatLng::FromDegrees(0, 10)] = 1;
+  map[S2LatLng::FromDegrees(2, 12)] = 2;
+  map[S2LatLng::FromDegrees(5, 15)] = 3;
+  map[S2LatLng::FromDegrees(7, 17)] = 4;
+  map[S2LatLng::FromDegrees(11, 19)] = 5;
+  EXPECT_EQ(map.size(), 5);
+  EXPECT_EQ(1, map[S2LatLng::FromDegrees(0, 10)]);
+  EXPECT_EQ(2, map[S2LatLng::FromDegrees(2, 12)]);
+  EXPECT_EQ(3, map[S2LatLng::FromDegrees(5, 15)]);
+  EXPECT_EQ(4, map[S2LatLng::FromDegrees(7, 17)]);
+  EXPECT_EQ(5, map[S2LatLng::FromDegrees(11, 19)]);
+}
 

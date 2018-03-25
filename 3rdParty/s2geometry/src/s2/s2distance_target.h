@@ -58,8 +58,22 @@
 //   friend bool operator==(Distance x, Distance y);
 //   friend bool operator<(Distance x, Distance y);
 //
-//   // Subtraction operator (needed to implement Options::max_error):
-//   friend Distance operator-(Distance x, Distance y);
+//   // Delta represents the positive difference between two distances.
+//   // It is used together with operator-() to implement Options::max_error().
+//   // Typically Distance::Delta is simply S1ChordAngle.
+//   class Delta {
+//    public:
+//     Delta();
+//     Delta(const Delta&);
+//     Delta& operator=(const Delta&);
+//     friend bool operator==(Delta x, Delta y);
+//     static Delta Zero();
+//   };
+//
+//   // Subtraction operator.  Note that the second argument represents a
+//   // delta between two distances.  This distinction is important for
+//   // classes that compute maximum distances (e.g., S2FurthestEdgeQuery).
+//   friend Distance operator-(Distance x, Delta delta);
 //
 //   // Method that returns an upper bound on the S1ChordAngle corresponding
 //   // to this Distance (needed to implement Options::max_distance
@@ -70,6 +84,8 @@
 template <class Distance>
 class S2DistanceTarget {
  public:
+  using Delta = typename Distance::Delta;
+
   virtual ~S2DistanceTarget() {}
 
   // Returns an S2Cap that bounds the set of points whose distance to the
@@ -130,7 +146,7 @@ class S2DistanceTarget {
   // If the target takes advantage of "max_error" to optimize its distance
   // calculation, this method must return "true".  (Most target types can use
   // the default implementation which simply returns false.)
-  virtual bool set_max_error(const Distance& max_error) { return false; }
+  virtual bool set_max_error(const Delta& max_error) { return false; }
 
   // The following method is provided as a convenience for classes that
   // compute distances to a collection of indexed geometry, such as

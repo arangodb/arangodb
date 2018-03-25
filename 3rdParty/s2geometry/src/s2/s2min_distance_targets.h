@@ -44,13 +44,15 @@ class S2ClosestEdgeQuery;
 // (See s2distance_target.h for details.)
 class S2MinDistance : public S1ChordAngle {
  public:
+  using Delta = S1ChordAngle;
+
   S2MinDistance() : S1ChordAngle() {}
   explicit S2MinDistance(S1Angle x) : S1ChordAngle(x) {}
   explicit S2MinDistance(S1ChordAngle x) : S1ChordAngle(x) {}
   static S2MinDistance Zero();
   static S2MinDistance Infinity();
   static S2MinDistance Negative();
-  friend S2MinDistance operator-(S2MinDistance x, S2MinDistance y);
+  friend S2MinDistance operator-(S2MinDistance x, S1ChordAngle delta);
   S1ChordAngle GetChordAngleBound() const;
 
   // If (dist < *this), updates *this and returns true (used internally).
@@ -135,7 +137,7 @@ class S2MinDistanceCellTarget : public S2MinDistanceTarget {
 //
 // These options are specified independently of the corresponding
 // S2ClosestEdgeQuery options.  For example, if include_interiors is true for
-// an ShapeIndexTarget but false for the S2ClosestEdgeQuery where the target
+// a ShapeIndexTarget but false for the S2ClosestEdgeQuery where the target
 // is used, then distances will be measured from the boundary of one
 // S2ShapeIndex to the boundary and interior of the other.
 //
@@ -170,7 +172,7 @@ class S2MinDistanceShapeIndexTarget : public S2MinDistanceTarget {
   bool use_brute_force() const;
   void set_use_brute_force(bool use_brute_force);
 
-  bool set_max_error(const S2MinDistance& max_error) override;
+  bool set_max_error(const S1ChordAngle& max_error) override;
   S2Cap GetCapBound() final;
   bool UpdateMinDistance(const S2Point& p, S2MinDistance* min_dist) final;
   bool UpdateMinDistance(const S2Point& v0, const S2Point& v1,
@@ -201,8 +203,8 @@ inline S2MinDistance S2MinDistance::Negative() {
   return S2MinDistance(S1ChordAngle::Negative());
 }
 
-inline S2MinDistance operator-(S2MinDistance x, S2MinDistance y) {
-  return S2MinDistance(S1ChordAngle(x) - y);
+inline S2MinDistance operator-(S2MinDistance x, S1ChordAngle delta) {
+  return S2MinDistance(S1ChordAngle(x) - delta);
 }
 
 inline S1ChordAngle S2MinDistance::GetChordAngleBound() const {

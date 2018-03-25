@@ -49,7 +49,7 @@ S2PolylineLayer::S2PolylineLayer(
 void S2PolylineLayer::Init(S2Polyline* polyline, LabelSetIds* label_set_ids,
                            IdSetLexicon* label_set_lexicon,
                            const Options& options) {
-  DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
+  S2_DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
   polyline_ = polyline;
   label_set_ids_ = label_set_ids;
   label_set_lexicon_ = label_set_lexicon;

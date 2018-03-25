@@ -134,7 +134,7 @@ static const S1Angle kRadius = S2Testing::KmToAngle(10);
 static double kChordAngleError = 1e-15;
 
 // TODO(user): Remove Result and use TestQuery::Result.
-using Result = pair<S1Angle, int>;
+using Result = pair<S2MinDistance, int>;
 
 static S1Angle GetDistance(TestQuery::Target* target,
                            const S2Point& point) {
@@ -170,7 +170,7 @@ static void GetClosestPoints(TestQuery::Target* target, TestQuery* query,
     }
     // Check that it satisfies the max_distance() condition.
     EXPECT_LE(result.distance(), query->options().max_distance());
-    results->push_back(make_pair(result.distance().ToAngle(), result.data()));
+    results->push_back(make_pair(result.distance(), result.data()));
   }
 }
 
@@ -182,8 +182,8 @@ static void TestFindClosestPoints(TestQuery::Target* target, TestQuery *query) {
   GetClosestPoints(target, query, &actual);
   EXPECT_TRUE(
       CheckDistanceResults(expected, actual, query->options().max_points(),
-                           query->options().max_distance().ToAngle(),
-                           S1Angle::Zero()))
+                           query->options().max_distance(),
+                           S2MinDistance::Delta::Zero()))
       << "max_points=" << query->options().max_points()
       << ", max_distance=" << query->options().max_distance();
 }

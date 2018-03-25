@@ -35,7 +35,7 @@
 #include <utility>
 #include <vector>
 #include "s2/third_party/absl/base/integral_types.h"
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include <gtest/gtest.h>
 #include "s2/r2.h"
 #include "s2/s1angle.h"
@@ -146,7 +146,7 @@ static void UpdateS2CellIdMinVertexSeparation(
     S2Point site1 = id1.ToPoint();
     S1Angle vertex_sep(site0, site1);
     S1Angle max_snap_radius = GetMaxVertexDistance(site0, id1);
-    DCHECK_GE(max_snap_radius,
+    S2_DCHECK_GE(max_snap_radius,
               S2CellIdSnapFunction::MinSnapRadiusForLevel(id0.level()));
     double r = vertex_sep / max_snap_radius;
     scores->push_back(make_pair(r, id0));
@@ -329,7 +329,7 @@ static double GetS2CellIdMinEdgeSeparation(
           S1Angle max_v2 = GetMaxVertexDistance(site0, id2);
           S1Angle max_snap_radius = min(max_v1, max_v2);
           if (min_snap_radius > max_snap_radius) continue;
-          DCHECK_GE(max_snap_radius,
+          S2_DCHECK_GE(max_snap_radius,
                     S2CellIdSnapFunction::MinSnapRadiusForLevel(level));
 
           // This is a valid configuration, so evaluate it.
@@ -553,7 +553,7 @@ struct LatLngConfig {
       scale(_scale), ll0(_ll0), ll1(_ll1), ll2(_ll2) {
   }
   bool operator<(const LatLngConfig& other) const {
-    DCHECK_EQ(scale, other.scale);
+    S2_DCHECK_EQ(scale, other.scale);
     return (make_pair(ll0, make_pair(ll1, ll2)) <
             make_pair(other.ll0, make_pair(other.ll1, other.ll2)));
   }
@@ -572,7 +572,7 @@ static double GetLatLngMinEdgeSeparation(
   vector<pair<double, LatLngConfig>> scores;
   for (LatLngConfig parent : *best_configs) {
     // To reduce duplicates, we require that site0 always has longitude 0.
-    DCHECK_EQ(0, parent.ll0[1]);
+    S2_DCHECK_EQ(0, parent.ll0[1]);
     double scale_factor = static_cast<double>(scale) / parent.scale;
     parent.ll0 = Rescale(parent.ll0, scale_factor);
     parent.ll1 = Rescale(parent.ll1, scale_factor);
@@ -675,7 +675,7 @@ static double GetLatLngMinEdgeSeparation(
       }
     }
   }
-  LOG(INFO) << "Starting with " << best_configs.size() << " configurations";
+  S2_LOG(INFO) << "Starting with " << best_configs.size() << " configurations";
   int64 target_scale = 180;
   for (int exp = 0; exp <= 10; ++exp, target_scale *= 10) {
     while (scale < target_scale) {

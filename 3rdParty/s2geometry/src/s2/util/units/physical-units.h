@@ -45,7 +45,7 @@
 //     // completely equivalent to using float, but prevents unitless
 //     // angles from being passed.
 //     void SetLatitude(Radians angle) {
-//       CHECK(angle.abs() < Degrees(90.0));
+//       S2_CHECK(angle.abs() < Degrees(90.0));
 //       latitude_ = angle;
 //       latitude_radius_ = EARTH_RADIUS * cos(angle.value());
 //     }

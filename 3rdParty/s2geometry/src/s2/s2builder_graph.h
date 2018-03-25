@@ -141,17 +141,23 @@ class S2Builder::Graph {
   std::vector<EdgeId> GetInEdgeIds() const;
 
   // Given a graph such that every directed edge has a sibling, returns a map
-  // from EdgeId to the sibling EdgeId.  This method is *identical* to
-  // GetInEdgeIds() except that it requires edges to have siblings.  (An
-  // undirected edge is considered to be two directed edges that form a
-  // sibling pair, so any undirected graph satisfies this requirement.)
-  // Handles duplicate edges correctly and is also consistent with
-  // GetLeftTurnMap().
+  // from EdgeId to the sibling EdgeId.  This method is identical to
+  // GetInEdgeIds() except that (1) it requires edges to have siblings, and
+  // (2) undirected degenerate edges are grouped together in pairs such that
+  // one edge is the sibling of the other.  Handles duplicate edges correctly
+  // and is also consistent with GetLeftTurnMap().
   //
   // REQUIRES: An option is chosen that guarantees sibling pairs:
   //     (options.sibling_pairs() == { REQUIRE, CREATE } ||
   //      options.edge_type() == UNDIRECTED)
   std::vector<EdgeId> GetSiblingMap() const;
+
+  // Like GetSiblingMap(), but constructs the map starting from the vector of
+  // incoming edge ids returned by GetInEdgeIds().  (This operation is a no-op
+  // except unless undirected degenerate edges are present, in which case such
+  // edges are grouped together in pairs to satisfy the requirement that every
+  // edge must have a sibling edge.)
+  void MakeSiblingMap(std::vector<EdgeId>* in_edge_ids) const;
 
   class VertexOutMap;  // Forward declaration
   class VertexInMap;   // Forward declaration
@@ -247,11 +253,8 @@ class S2Builder::Graph {
     int degree(VertexId v) const;
     VertexInEdgeIds edge_ids(VertexId v) const;
 
-    // Returns a sorted vector of all incoming edges (see GetInEdgeIds).  As
-    // mentioned above (see GetSiblingMap), this vector is also a map from an
-    // EdgeId to its sibling EdgeId provided that all edges have siblings.
+    // Returns a sorted vector of all incoming edges (see GetInEdgeIds).
     const std::vector<EdgeId>& in_edge_ids() const { return in_edge_ids_; }
-    const std::vector<EdgeId>& sibling_map() const { return in_edge_ids_; }
 
    private:
     std::vector<EdgeId> in_edge_ids_;
@@ -394,13 +397,15 @@ class S2Builder::Graph {
   // duplicate incoming and outgoing edges are sorted in alternating order
   // (e.g., ")()(").
   //
+  // Degenerate edges (edges from a vertex to itself) are treated as loops
+  // consisting of a single edge.  This avoids the problem of deciding the
+  // connectivity and ordering of such edges when they share a vertex with
+  // other edges (possibly including other degenerate edges).
+  //
   // If it is not possible to make a left turn from every input edge, this
   // method returns false and sets "error" appropriately.  In this situation
   // the left turn map is still valid except that any incoming edge where it
-  // is not possible to make a left turn will have its entry set to "-1".
-  //
-  // Degenerate edges (self-loops from a vertex to itself) also have their
-  // entry set to "-1" and cause this method to return false.
+  // is not possible to make a left turn will have its entry set to -1.
   //
   // "in_edge_ids" should be equal to GetInEdgeIds() or GetSiblingMap().
   bool GetLeftTurnMap(const std::vector<EdgeId>& in_edge_ids,
@@ -443,7 +448,12 @@ class S2Builder::Graph {
   // the graph contains no crossing edges.  If some edges cannot be turned
   // into loops, returns false and sets "error" appropriately.
   //
-  // REQUIRES: options.degenerate_edges() == DISCARD
+  // If any degenerate edges are present, then each such edge is treated as a
+  // separate loop.  This is mainly useful in conjunction with
+  // options.degenerate_edges() == DISCARD_EXCESS, in order to build polygons
+  // that preserve degenerate geometry.
+  //
+  // REQUIRES: options.degenerate_edges() == {DISCARD, DISCARD_EXCESS}
   // REQUIRES: options.edge_type() == DIRECTED
   bool GetDirectedLoops(LoopType loop_type, std::vector<EdgeLoop>* loops,
                         S2Error* error) const;
@@ -471,7 +481,9 @@ class S2Builder::Graph {
   // interested in point containment then they can safely be removed by
   // setting the "degenerate_boundaries" parameter to DISCARD.  (They can't be
   // removed by setting (options.sibling_pairs() == DISCARD) because the two
-  // siblings might belong to different polygons of the mesh.)
+  // siblings might belong to different polygons of the mesh.)  Note that you
+  // can prevent multiple copies of sibling pairs by specifying
+  // options.duplicate_edges() == MERGE.
   //
   // Each loop is represented as a sequence of edges.  The edge ordering and
   // loop ordering are automatically canonicalized in order to preserve the
@@ -479,9 +491,10 @@ class S2Builder::Graph {
   // the graph contains no crossing edges.  If some edges cannot be turned
   // into loops, returns false and sets "error" appropriately.
   //
-  // REQUIRES: options.degenerate_edges() == DISCARD
+  // REQUIRES: options.degenerate_edges() == { DISCARD, DISCARD_EXCESS }
+  //           (but requires DISCARD if degenerate_boundaries == DISCARD)
   // REQUIRES: options.sibling_pairs() == { REQUIRE, CREATE }
-  //           [every edge must have a sibling edge]
+  //           [i.e., every edge must have a sibling edge]
   enum class DegenerateBoundaries { DISCARD, KEEP };
   using DirectedComponent = std::vector<EdgeLoop>;
   bool GetDirectedComponents(
@@ -519,9 +532,9 @@ class S2Builder::Graph {
   // the graph contains no crossing edges.  If some edges cannot be turned
   // into loops, returns false and sets "error" appropriately.
   //
-  // REQUIRES: options.degenerate_edges() == DISCARD
+  // REQUIRES: options.degenerate_edges() == { DISCARD, DISCARD_EXCESS }
   // REQUIRES: options.edge_type() == UNDIRECTED
-  // REQUIRES: options.siblings_pairs() == { DISCARD, KEEP }
+  // REQUIRES: options.siblings_pairs() == { DISCARD, DISCARD_EXCESS, KEEP }
   //           [since REQUIRE, CREATE convert the edge_type() to DIRECTED]
   using UndirectedComponent = std::array<std::vector<EdgeLoop>, 2>;
   bool GetUndirectedComponents(LoopType loop_type,
@@ -545,11 +558,10 @@ class S2Builder::Graph {
   //
   // This method attempts to preserve the input edge ordering in order to
   // implement idempotency, even when there are repeated edges or loops.  This
-  // is true whether directed or undirected edges are used.
+  // is true whether directed or undirected edges are used.  Degenerate edges
+  // are also handled appropriately.
   //
-  // REQUIRES: options.degenerate_edges() == DISCARD
-  //           [It would be easy to add support for KEEP.]
-  // REQUIRES: options.sibling_pairs() == { DISCARD, KEEP }
+  // REQUIRES: options.sibling_pairs() == { DISCARD, DISCARD_EXCESS, KEEP }
   using EdgePolyline = std::vector<EdgeId>;
   std::vector<EdgePolyline> GetPolylines(PolylineType polyline_type) const;
 

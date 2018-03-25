@@ -220,7 +220,7 @@ Component DegeneracyFinder::BuildComponent(VertexId root) {
     frontier.pop_back();
     if (result.root_sign == 0 && is_vertex_unbalanced_[v0]) {
       int v0_sign = ContainsVertexSign(v0);
-      DCHECK_NE(v0_sign, 0);
+      S2_DCHECK_NE(v0_sign, 0);
       result.root_sign = v0_same_inside ? v0_sign : -v0_sign;
     }
     for (EdgeId e : out_.edge_ids(v0)) {
@@ -274,7 +274,7 @@ VertexId DegeneracyFinder::FindUnbalancedVertex() const {
   for (VertexId v = 0; v < g_.num_vertices(); ++v) {
     if (is_vertex_unbalanced_[v]) return v;
   }
-  LOG(DFATAL) << "Could not find previously marked unbalanced vertex";
+  S2_LOG(DFATAL) << "Could not find previously marked unbalanced vertex";
   return -1;
 }
 
@@ -367,7 +367,7 @@ vector<PolygonDegeneracy> DegeneracyFinder::MergeDegeneracies(
     const vector<Component>& components) const {
   vector<PolygonDegeneracy> result;
   for (const Component& component : components) {
-    DCHECK_NE(component.root_sign, 0);
+    S2_DCHECK_NE(component.root_sign, 0);
     bool invert = component.root_sign < 0;
     for (const auto& d : component.degeneracies) {
       result.push_back(PolygonDegeneracy(d.edge_id, d.is_hole ^ invert));
@@ -383,9 +383,9 @@ vector<PolygonDegeneracy> FindPolygonDegeneracies(const Graph& graph,
                                                   S2Error* error) {
   using DegenerateEdges = GraphOptions::DegenerateEdges;
   using SiblingPairs = GraphOptions::SiblingPairs;
-  DCHECK(graph.options().degenerate_edges() == DegenerateEdges::DISCARD ||
+  S2_DCHECK(graph.options().degenerate_edges() == DegenerateEdges::DISCARD ||
          graph.options().degenerate_edges() == DegenerateEdges::DISCARD_EXCESS);
-  DCHECK(graph.options().sibling_pairs() == SiblingPairs::DISCARD ||
+  S2_DCHECK(graph.options().sibling_pairs() == SiblingPairs::DISCARD ||
          graph.options().sibling_pairs() == SiblingPairs::DISCARD_EXCESS);
 
   return DegeneracyFinder(&graph).Run(error);

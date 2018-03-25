@@ -21,8 +21,8 @@
 
 // ----------------------------------------------------------------------
 // ReplaceCharacters
-//    Replaces any occurrence of the character 'remove' (or the characters
-//    in 'remove') with the character 'replace_with'.
+//    Replaces any occurrence of any of the 'remove' *bytes*
+//    with the 'replace_with' *byte*.
 // ----------------------------------------------------------------------
 void ReplaceCharacters(char* str, size_t len, absl::string_view remove,
                        char replace_with) {
@@ -40,4 +40,3 @@ void ReplaceCharacters(string* s, absl::string_view remove, char replace_with) {
     }
   }
 }
-

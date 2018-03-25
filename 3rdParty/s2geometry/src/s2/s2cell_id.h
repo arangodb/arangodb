@@ -24,8 +24,8 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
 
+#include "s2/base/logging.h"
 #include "s2/base/port.h"
 #include "s2/util/bits/bits.h"
 #include "s2/util/coding/coder.h"
@@ -540,10 +540,10 @@ inline uint64 S2CellId::pos() const {
 }
 
 inline int S2CellId::level() const {
-  // We can't just DCHECK(is_valid()) because we want level() to be to be
+  // We can't just S2_DCHECK(is_valid()) because we want level() to be to be
   // defined for end-iterators, i.e. S2CellId::End(kLevel).  However there is
   // no good way to define S2CellId::None().level(), so we do prohibit that.
-  DCHECK(id_ != 0);
+  S2_DCHECK(id_ != 0);
 
   // A special case for leaf cells is not worthwhile.
   return kMaxLevel - (Bits::FindLSBSetNonZero64(id_) >> 1);
@@ -579,9 +579,9 @@ inline int S2CellId::child_position() const {
 }
 
 inline int S2CellId::child_position(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, 1);
-  DCHECK_LE(level, this->level());
+  S2_DCHECK(is_valid());
+  S2_DCHECK_GE(level, 1);
+  S2_DCHECK_LE(level, this->level());
   return static_cast<int>(id_ >> (2 * (kMaxLevel - level) + 1)) & 3;
 }
 
@@ -594,35 +594,35 @@ inline S2CellId S2CellId::range_max() const {
 }
 
 inline bool S2CellId::contains(S2CellId other) const {
-  DCHECK(is_valid());
-  DCHECK(other.is_valid());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(other.is_valid());
   return other >= range_min() && other <= range_max();
 }
 
 inline bool S2CellId::intersects(S2CellId other) const {
-  DCHECK(is_valid());
-  DCHECK(other.is_valid());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(other.is_valid());
   return other.range_min() <= range_max() && other.range_max() >= range_min();
 }
 
 inline S2CellId S2CellId::parent(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, 0);
-  DCHECK_LE(level, this->level());
+  S2_DCHECK(is_valid());
+  S2_DCHECK_GE(level, 0);
+  S2_DCHECK_LE(level, this->level());
   uint64 new_lsb = lsb_for_level(level);
   return S2CellId((id_ & (~new_lsb + 1)) | new_lsb);
 }
 
 inline S2CellId S2CellId::parent() const {
-  DCHECK(is_valid());
-  DCHECK(!is_face());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(!is_face());
   uint64 new_lsb = lsb() << 2;
   return S2CellId((id_ & (~new_lsb + 1)) | new_lsb);
 }
 
 inline S2CellId S2CellId::child(int position) const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(!is_leaf());
   // To change the level, we need to move the least-significant bit two
   // positions downward.  We do this by subtracting (4 * new_lsb) and adding
   // new_lsb.  Then to advance to the given child cell, we add
@@ -632,30 +632,30 @@ inline S2CellId S2CellId::child(int position) const {
 }
 
 inline S2CellId S2CellId::child_begin() const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(!is_leaf());
   uint64 old_lsb = lsb();
   return S2CellId(id_ - old_lsb + (old_lsb >> 2));
 }
 
 inline S2CellId S2CellId::child_begin(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, this->level());
-  DCHECK_LE(level, kMaxLevel);
+  S2_DCHECK(is_valid());
+  S2_DCHECK_GE(level, this->level());
+  S2_DCHECK_LE(level, kMaxLevel);
   return S2CellId(id_ - lsb() + lsb_for_level(level));
 }
 
 inline S2CellId S2CellId::child_end() const {
-  DCHECK(is_valid());
-  DCHECK(!is_leaf());
+  S2_DCHECK(is_valid());
+  S2_DCHECK(!is_leaf());
   uint64 old_lsb = lsb();
   return S2CellId(id_ + old_lsb + (old_lsb >> 2));
 }
 
 inline S2CellId S2CellId::child_end(int level) const {
-  DCHECK(is_valid());
-  DCHECK_GE(level, this->level());
-  DCHECK_LE(level, kMaxLevel);
+  S2_DCHECK(is_valid());
+  S2_DCHECK_GE(level, this->level());
+  S2_DCHECK_LE(level, kMaxLevel);
   return S2CellId(id_ + lsb() + lsb_for_level(level));
 }
 
@@ -668,14 +668,14 @@ inline S2CellId S2CellId::prev() const {
 }
 
 inline S2CellId S2CellId::next_wrap() const {
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
   S2CellId n = next();
   if (n.id_ < kWrapOffset) return n;
   return S2CellId(n.id_ - kWrapOffset);
 }
 
 inline S2CellId S2CellId::prev_wrap() const {
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
   S2CellId p = prev();
   if (p.id_ < kWrapOffset) return p;
   return S2CellId(p.id_ + kWrapOffset);

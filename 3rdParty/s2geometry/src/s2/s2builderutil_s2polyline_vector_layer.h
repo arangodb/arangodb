@@ -20,7 +20,7 @@
 
 #include <memory>
 #include <vector>
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/memory/memory.h"
 #include "s2/id_set_lexicon.h"
 #include "s2/mutable_s2shape_index.h"
@@ -264,7 +264,7 @@ S2PolylineVectorLayer::Options::sibling_pairs() const {
 
 inline void S2PolylineVectorLayer::Options::set_sibling_pairs(
     SiblingPairs sibling_pairs) {
-  DCHECK(sibling_pairs == SiblingPairs::KEEP ||
+  S2_DCHECK(sibling_pairs == SiblingPairs::KEEP ||
          sibling_pairs == SiblingPairs::DISCARD);
   sibling_pairs_ = sibling_pairs;
 }

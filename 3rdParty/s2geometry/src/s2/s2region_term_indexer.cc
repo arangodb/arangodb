@@ -76,8 +76,7 @@
 
 #include <cctype>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_id.h"
@@ -96,7 +95,7 @@ S2RegionTermIndexer::Options::Options() {
 }
 
 void S2RegionTermIndexer::Options::set_marker_character(char ch) {
-  DCHECK(!std::isalnum(ch));
+  S2_DCHECK(!std::isalnum(ch));
   marker_ = string(1, ch);
 }
 
@@ -160,10 +159,10 @@ vector<string> S2RegionTermIndexer::GetIndexTermsForCanonicalCovering(
   // cells as ancestor cells only, since these cells have the special property
   // that query regions will never contain a descendant of these cells.
 
-  CHECK(!options_.index_contains_points_only());
+  S2_CHECK(!options_.index_contains_points_only());
   if (google::DEBUG_MODE) {
     *coverer_.mutable_options() = options_;
-    CHECK(coverer_.IsCanonical(covering));
+    S2_CHECK(coverer_.IsCanonical(covering));
   }
   vector<string> terms;
   S2CellId prev_id = S2CellId::None();
@@ -172,9 +171,9 @@ vector<string> S2RegionTermIndexer::GetIndexTermsForCanonicalCovering(
     // IsCanonical() already checks the following conditions, but we repeat
     // them here for documentation purposes.
     int level = id.level();
-    DCHECK_GE(level, options_.min_level());
-    DCHECK_LE(level, options_.max_level());
-    DCHECK_EQ(0, (level - options_.min_level()) % options_.level_mod());
+    S2_DCHECK_GE(level, options_.min_level());
+    S2_DCHECK_LE(level, options_.max_level());
+    S2_DCHECK_EQ(0, (level - options_.min_level()) % options_.level_mod());
 
     if (level < true_max_level) {
       // Add a covering term for this cell.
@@ -230,7 +229,7 @@ vector<string> S2RegionTermIndexer::GetQueryTermsForCanonicalCovering(
 
   if (google::DEBUG_MODE) {
     *coverer_.mutable_options() = options_;
-    CHECK(coverer_.IsCanonical(covering));
+    S2_CHECK(coverer_.IsCanonical(covering));
   }
   vector<string> terms;
   S2CellId prev_id = S2CellId::None();
@@ -239,9 +238,9 @@ vector<string> S2RegionTermIndexer::GetQueryTermsForCanonicalCovering(
     // IsCanonical() already checks the following conditions, but we repeat
     // them here for documentation purposes.
     int level = id.level();
-    DCHECK_GE(level, options_.min_level());
-    DCHECK_LE(level, options_.max_level());
-    DCHECK_EQ(0, (level - options_.min_level()) % options_.level_mod());
+    S2_DCHECK_GE(level, options_.min_level());
+    S2_DCHECK_LE(level, options_.max_level());
+    S2_DCHECK_EQ(0, (level - options_.min_level()) % options_.level_mod());
 
     // Cells in the covering are always queried as ancestor terms.
     terms.push_back(GetTerm(TermType::ANCESTOR, id, prefix));

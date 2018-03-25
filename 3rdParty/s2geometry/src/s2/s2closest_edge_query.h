@@ -23,7 +23,7 @@
 #include <type_traits>
 #include <vector>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/macros.h"
 #include "s2/third_party/absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
@@ -157,10 +157,9 @@ class S2ClosestEdgeQuery {
     void set_inclusive_max_distance(S1Angle max_distance);
     void set_conservative_max_distance(S1Angle max_distance);
 
-    // Versions of set_max_error() that accept S1ChordAngle / S1Angle.
-    // (See S2ClosestEdgeQueryBaseOptions for details.)
-    void set_max_error(S1ChordAngle max_error);
-    void set_max_error(S1Angle max_error);
+    // See S2ClosestEdgeQueryBase::Options for documentation.
+    using Base::Options::set_max_error;     // S1Chordangle version
+    void set_max_error(S1Angle max_error);  // S1Angle version
 
     // Inherited options (see s2closest_edge_query_base.h for details):
     using Base::Options::set_max_edges;
@@ -234,7 +233,7 @@ class S2ClosestEdgeQuery {
   // Returns a reference to the underlying S2ShapeIndex.
   const S2ShapeIndex& index() const;
 
-  // Returns the query options.  Options can be modifed between queries.
+  // Returns the query options.  Options can be modified between queries.
   const Options& options() const;
   Options* mutable_options();
 
@@ -337,12 +336,8 @@ inline void S2ClosestEdgeQuery::Options::set_inclusive_max_distance(
   set_inclusive_max_distance(S1ChordAngle(max_distance));
 }
 
-inline void S2ClosestEdgeQuery::Options::set_max_error(S1ChordAngle max_error) {
-  Base::Options::set_max_error(Distance(max_error));
-}
-
 inline void S2ClosestEdgeQuery::Options::set_max_error(S1Angle max_error) {
-  Base::Options::set_max_error(Distance(max_error));
+  Base::Options::set_max_error(S1ChordAngle(max_error));
 }
 
 inline S2ClosestEdgeQuery::PointTarget::PointTarget(const S2Point& point)

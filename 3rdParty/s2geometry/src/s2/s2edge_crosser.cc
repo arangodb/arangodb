@@ -17,7 +17,7 @@
 
 #include "s2/s2edge_crosser.h"
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/s2pointutil.h"
 #include "s2/s2predicates.h"
 
@@ -70,16 +70,16 @@ inline int S2EdgeCrosser::CrossingSignInternal2(const S2Point& d) {
 
   // Otherwise it's time to break out the big guns.
   if (acb_ == 0) acb_ = -s2pred::ExpensiveSign(*a_, *b_, *c_);
-  DCHECK_NE(acb_, 0);
+  S2_DCHECK_NE(acb_, 0);
   if (bda_ == 0) bda_ = s2pred::ExpensiveSign(*a_, *b_, d);
-  DCHECK_NE(bda_, 0);
+  S2_DCHECK_NE(bda_, 0);
   if (bda_ != acb_) return -1;
 
   Vector3_d c_cross_d = c_->CrossProd(d);
   int cbd = -s2pred::Sign(*c_, d, *b_, c_cross_d);
-  DCHECK_NE(cbd, 0);
+  S2_DCHECK_NE(cbd, 0);
   if (cbd != acb_) return -1;
   int dac = s2pred::Sign(*c_, d, *a_, c_cross_d);
-  DCHECK_NE(dac, 0);
+  S2_DCHECK_NE(dac, 0);
   return (dac != acb_) ? -1 : 1;
 }

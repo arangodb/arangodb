@@ -65,14 +65,14 @@ void BuildPolygonBoundaries(const vector<vector<S2Shape*>>& components,
       }
     }
     // Check that there is exactly one outer loop in each component.
-    DCHECK_EQ(i + 1, outer_loops.size()) << "Component is not a subdivision";
+    S2_DCHECK_EQ(i + 1, outer_loops.size()) << "Component is not a subdivision";
   }
   // Find the loops containing each component.
   vector<vector<S2Shape*>> ancestors(components.size());
   auto contains_query = MakeS2ContainsPointQuery(&index);
   for (int i = 0; i < outer_loops.size(); ++i) {
     auto loop = outer_loops[i];
-    DCHECK_GT(loop->num_edges(), 0);
+    S2_DCHECK_GT(loop->num_edges(), 0);
     ancestors[i] = contains_query.GetContainingShapes(loop->edge(0).v0);
   }
   // Assign each outer loop to the component whose depth is one less.
@@ -84,11 +84,11 @@ void BuildPolygonBoundaries(const vector<vector<S2Shape*>>& components,
     if (depth > 0) {
       for (auto candidate : ancestors[i]) {
         if (ancestors[component_ids[candidate->id()]].size() == depth - 1) {
-          DCHECK(ancestor == nullptr);
+          S2_DCHECK(ancestor == nullptr);
           ancestor = candidate;
         }
       }
-      DCHECK(ancestor != nullptr);
+      S2_DCHECK(ancestor != nullptr);
     }
     children[ancestor].push_back(outer_loops[i]);
   }

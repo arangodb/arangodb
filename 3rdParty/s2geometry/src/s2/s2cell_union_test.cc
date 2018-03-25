@@ -22,9 +22,9 @@
 #include <cstdio>
 #include <vector>
 
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
@@ -113,7 +113,7 @@ static void AddCells(S2CellId id, bool selected,
   if (id.is_leaf()) {
     // The rnd.OneIn() call below ensures that the parent of a leaf cell
     // will always be selected (if we make it that far down the hierarchy).
-    DCHECK(selected);
+    S2_DCHECK(selected);
     input->push_back(id);
     return;
   }

@@ -27,7 +27,7 @@ S2RegionIntersection::S2RegionIntersection(
 }
 
 void S2RegionIntersection::Init(vector<std::unique_ptr<S2Region>> regions) {
-  DCHECK(regions_.empty());
+  S2_DCHECK(regions_.empty());
   regions_ = std::move(regions);
 }
 

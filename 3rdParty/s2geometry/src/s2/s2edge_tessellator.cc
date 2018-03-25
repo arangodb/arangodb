@@ -34,7 +34,7 @@ S2EdgeTessellator::S2EdgeTessellator(const S2::Projection* projection,
     : proj_(*projection),
       tolerance_(std::max(tolerance, kMinTolerance())),
       wrap_distance_(projection->wrap_distance()) {
-  if (tolerance < kMinTolerance()) LOG(DFATAL) << "Tolerance too small";
+  if (tolerance < kMinTolerance()) S2_LOG(DFATAL) << "Tolerance too small";
 }
 
 void S2EdgeTessellator::AppendProjected(
@@ -44,7 +44,7 @@ void S2EdgeTessellator::AppendProjected(
   if (vertices->empty()) {
     vertices->push_back(pa);
   } else {
-    DCHECK_EQ(vertices->back(), pa) << "Appended edges must form a chain";
+    S2_DCHECK_EQ(vertices->back(), pa) << "Appended edges must form a chain";
   }
   AppendProjected(pa, a, pb, b, vertices);
 }
@@ -97,7 +97,7 @@ void S2EdgeTessellator::AppendUnprojected(
     vertices->push_back(a);
   } else {
     // Note that coordinate wrapping can create a small amount of error.
-    DCHECK(S2::ApproxEquals(vertices->back(), a))
+    S2_DCHECK(S2::ApproxEquals(vertices->back(), a))
         << "Appended edges must form a chain";
   }
   AppendUnprojected(pa, a, pb, b, vertices);

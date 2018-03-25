@@ -25,10 +25,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/r2.h"
 #include "s2/r2rect.h"
 #include "s2/s2cap.h"
@@ -48,7 +48,7 @@ DEFINE_int32(iters, 20000000,
 
 static S2CellId GetCellId(double lat_degrees, double lng_degrees) {
   S2CellId id(S2LatLng::FromDegrees(lat_degrees, lng_degrees));
-  LOG(INFO) << std::hex << id.id();
+  S2_LOG(INFO) << std::hex << id.id();
   return id;
 }
 
@@ -118,33 +118,33 @@ TEST(S2CellId, CenterSiTi) {
 
   // Leaf level, 30.
   id.GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 0, si & 1);
-  CHECK_EQ(1 << 0, ti & 1);
+  S2_CHECK_EQ(1 << 0, si & 1);
+  S2_CHECK_EQ(1 << 0, ti & 1);
 
   // Level 29.
   id.parent(S2CellId::kMaxLevel - 1).GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 1, si & 3);
-  CHECK_EQ(1 << 1, ti & 3);
+  S2_CHECK_EQ(1 << 1, si & 3);
+  S2_CHECK_EQ(1 << 1, ti & 3);
 
   // Level 28.
   id.parent(S2CellId::kMaxLevel - 2).GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 2, si & 7);
-  CHECK_EQ(1 << 2, ti & 7);
+  S2_CHECK_EQ(1 << 2, si & 7);
+  S2_CHECK_EQ(1 << 2, ti & 7);
 
   // Level 20.
   id.parent(S2CellId::kMaxLevel - 10).GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 10, si & ((1 << 11) - 1));
-  CHECK_EQ(1 << 10, ti & ((1 << 11) - 1));
+  S2_CHECK_EQ(1 << 10, si & ((1 << 11) - 1));
+  S2_CHECK_EQ(1 << 10, ti & ((1 << 11) - 1));
 
   // Level 10.
   id.parent(S2CellId::kMaxLevel - 20).GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 20, si & ((1 << 21) - 1));
-  CHECK_EQ(1 << 20, ti & ((1 << 21) - 1));
+  S2_CHECK_EQ(1 << 20, si & ((1 << 21) - 1));
+  S2_CHECK_EQ(1 << 20, ti & ((1 << 21) - 1));
 
   // Level 0.
   id.parent(0).GetCenterSiTi(&si, &ti);
-  CHECK_EQ(1 << 30, si & ((1U << 31) - 1));
-  CHECK_EQ(1 << 30, ti & ((1U << 31) - 1));
+  S2_CHECK_EQ(1 << 30, si & ((1U << 31) - 1));
+  S2_CHECK_EQ(1 << 30, ti & ((1U << 31) - 1));
 }
 
 TEST(S2CellId, Wrapping) {
@@ -455,8 +455,8 @@ TEST(S2CellId, Coverage) {
 }
 
 static void TestAllNeighbors(S2CellId id, int level) {
-  DCHECK_GE(level, id.level());
-  DCHECK_LT(level, S2CellId::kMaxLevel);
+  S2_DCHECK_GE(level, id.level());
+  S2_DCHECK_LT(level, S2CellId::kMaxLevel);
 
   // We compute AppendAllNeighbors, and then add in all the children of "id"
   // at the given level.  We then compare this against the result of finding
@@ -532,8 +532,8 @@ TEST(S2CellId, Neighbors) {
 
     // TestAllNeighbors computes approximately 2**(2*(diff+1)) cell ids,
     // so it's not reasonable to use large values of "diff".
-    int max_diff = min(6, S2CellId::kMaxLevel - id.level() - 1);
-    int level = id.level() + S2Testing::rnd.Uniform(max_diff);
+    int max_diff = min(5, S2CellId::kMaxLevel - id.level() - 1);
+    int level = id.level() + S2Testing::rnd.Uniform(max_diff + 1);
     TestAllNeighbors(id, level);
   }
 }
@@ -557,7 +557,7 @@ static R2Point ProjectToBoundary(const R2Point& uv, const R2Rect& rect) {
   if (du0 == dmin) return R2Point(rect[0][0], rect[1].Project(uv[1]));
   if (du1 == dmin) return R2Point(rect[0][1], rect[1].Project(uv[1]));
   if (dv0 == dmin) return R2Point(rect[0].Project(uv[0]), rect[1][0]);
-  CHECK_EQ(dmin, dv1) << "Bug in ProjectToBoundary";
+  S2_CHECK_EQ(dmin, dv1) << "Bug in ProjectToBoundary";
   return R2Point(rect[0].Project(uv[0]), rect[1][1]);
 }
 

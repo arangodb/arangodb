@@ -4,7 +4,7 @@
 // open source releases of s2.
 
 %{
-#include <strstream>
+#include <sstream>
 
 #include "s2/s2cell_id.h"
 #include "s2/s2region.h"
@@ -175,7 +175,7 @@ class S2Point {
                              std::vector<S2Polyline*>* out) const {
     std::vector<std::unique_ptr<S2Polyline>> polylines =
         $self->IntersectWithPolyline(*in);
-    DCHECK(out->empty());
+    S2_DCHECK(out->empty());
     out->reserve(polylines.size());
     for (auto& polyline : polylines) {
       out->push_back(polyline.release());
@@ -489,7 +489,7 @@ class S2Point {
 %define USE_STREAM_INSERTOR_FOR_STR(type)
   %extend type {
     string __str__() {
-      std::ostrstream output;
+      std::ostringstream output;
       output << *self << std::ends;
       return output.str();
     }

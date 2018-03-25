@@ -30,7 +30,7 @@
 
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/r2.h"
@@ -168,7 +168,7 @@ inline bool ClipToFace(const S2Point& a, const S2Point& b, int face,
 
 inline double InterpolateDouble(double x, double a, double b,
                                 double a1, double b1) {
-  DCHECK_NE(a, b);
+  S2_DCHECK_NE(a, b);
   // To get results that are accurate near both A and B, we interpolate
   // starting from the closer of the two points.
   if (std::fabs(a - x) <= std::fabs(b - x)) {

@@ -30,14 +30,14 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <s2/s2loop.h>
-#include <s2/s2multipoint_region.h>
-#include <s2/s2multipolyline.h>
 #include <s2/s2point_region.h>
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
 
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/ShapeContainer.h"
+#include "Geo/S2/S2MultiPointRegion.h"
+#include "Geo/S2/S2MultiPolyline.h"
 #include "Logger/Logger.h"
 
 namespace {

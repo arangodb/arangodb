@@ -20,8 +20,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s2cell_id.h"
 #include "s2/s2edge_clipping.h"
@@ -226,7 +225,7 @@ bool S2CrossingEdgeQuery::VisitCells(const S2Point& a0, const S2Point& a1,
     S2ShapeIndex::CellRelation relation = iter_.Locate(edge_root);
     if (relation == S2ShapeIndex::INDEXED) {
       // edge_root is an index cell or is contained by an index cell (case 1).
-      DCHECK(iter_.id().contains(edge_root));
+      S2_DCHECK(iter_.id().contains(edge_root));
       if (!visitor(iter_.cell())) return false;
     } else if (relation == S2ShapeIndex::SUBDIVIDED) {
       // edge_root is subdivided into one or more index cells (case 2).  We
@@ -352,56 +351,14 @@ inline void S2CrossingEdgeQuery::SplitBound(const R2Rect& edge_bound, int u_end,
   child_bounds[0] = edge_bound;
   child_bounds[0][0][1 - u_end] = u;
   child_bounds[0][1][1 - v_end] = v;
-  DCHECK(!child_bounds[0].is_empty());
-  DCHECK(edge_bound.Contains(child_bounds[0]));
+  S2_DCHECK(!child_bounds[0].is_empty());
+  S2_DCHECK(edge_bound.Contains(child_bounds[0]));
 
   child_bounds[1] = edge_bound;
   child_bounds[1][0][u_end] = u;
   child_bounds[1][1][v_end] = v;
-  DCHECK(!child_bounds[1].is_empty());
-  DCHECK(edge_bound.Contains(child_bounds[1]));
-}
-
-bool S2CrossingEdgeQuery::GetCrossings(const S2Point& a0, const S2Point& a1,
-                                       const S2Shape* shape, CrossingType type,
-                                       vector<int>* edges) {
-  edges->clear();
-  for (const ShapeEdge& edge : GetCrossingEdges(a0, a1, *shape, type)) {
-    edges->push_back(edge.id().edge_id);
-  }
-  return !edges->empty();
-}
-
-bool S2CrossingEdgeQuery::GetCrossings(const S2Point& a0, const S2Point& a1,
-                                       CrossingType type, EdgeMap* edge_map) {
-  // Since this API is obsolete, don't worry about reserving vectors, etc.
-  edge_map->clear();
-  for (const ShapeEdge& edge : GetCrossingEdges(a0, a1, type)) {
-    const S2Shape* shape = index_->shape(edge.id().shape_id);
-    (*edge_map)[shape].push_back(edge.id().edge_id);
-  }
-  return !edge_map->empty();
-}
-
-bool S2CrossingEdgeQuery::GetCandidates(const S2Point& a0, const S2Point& a1,
-                                        const S2Shape* shape,
-                                        vector<int>* edges) {
-  edges->clear();
-  for (const ShapeEdgeId& edge : GetCandidates(a0, a1, *shape)) {
-    edges->push_back(edge.edge_id);
-  }
-  return !edges->empty();
-}
-
-bool S2CrossingEdgeQuery::GetCandidates(const S2Point& a0, const S2Point& a1,
-                                        EdgeMap* edge_map) {
-  // Since this API is obsolete, don't worry about reserving vectors, etc.
-  edge_map->clear();
-  for (const ShapeEdgeId& edge : GetCandidates(a0, a1)) {
-    const S2Shape* shape = index_->shape(edge.shape_id);
-    (*edge_map)[shape].push_back(edge.edge_id);
-  }
-  return !edge_map->empty();
+  S2_DCHECK(!child_bounds[1].is_empty());
+  S2_DCHECK(edge_bound.Contains(child_bounds[1]));
 }
 
 void S2CrossingEdgeQuery::GetCells(const S2Point& a0, const S2Point& a1,

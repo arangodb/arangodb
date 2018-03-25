@@ -27,8 +27,8 @@
 #include <utility>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include <gtest/gtest.h>
 
 #include "s2/util/coding/coder.h"
@@ -864,7 +864,7 @@ static unique_ptr<S2Loop> MakeCellLoop(S2CellId begin, S2CellId end) {
   vector<S2Point> vertices;
   S2Point p = edges.begin()->first;
   while (!edges.empty()) {
-    DCHECK_EQ(1, edges[p].size());
+    S2_DCHECK_EQ(1, edges[p].size());
     S2Point next = *edges[p].begin();
     vertices.push_back(p);
     edges.erase(p);
@@ -894,13 +894,13 @@ TEST(S2Loop, LoopRelations2) {
     if (a.get() && b.get()) {
       bool contained = (a_begin <= b_begin && b_end <= a_end);
       bool intersects = (a_begin < b_end && b_begin < a_end);
-      VLOG(1) << "Checking " << a->num_vertices() << " vs. "
+      S2_VLOG(1) << "Checking " << a->num_vertices() << " vs. "
               << b->num_vertices() << ", contained = " << contained
               << ", intersects = " << intersects;
       EXPECT_EQ(a->Contains(b.get()), contained);
       EXPECT_EQ(a->Intersects(b.get()), intersects);
     } else {
-      VLOG(1) << "MakeCellLoop failed to create a loop.";
+      S2_VLOG(1) << "MakeCellLoop failed to create a loop.";
     }
   }
 }
@@ -942,7 +942,7 @@ TEST(S2Loop, BoundsForLoopContainment) {
 void DebugDumpCrossings(const S2Loop& loop) {
   // This function is useful for debugging.
 
-  LOG(INFO) << "Ortho(v1): " << S2::Ortho(loop.vertex(1));
+  S2_LOG(INFO) << "Ortho(v1): " << S2::Ortho(loop.vertex(1));
   printf("Contains(kOrigin): %d\n", loop.Contains(S2::Origin()));
   for (int i = 1; i <= loop.num_vertices(); ++i) {
     S2Point a = S2::Ortho(loop.vertex(i));
@@ -1060,7 +1060,7 @@ TEST(S2Loop, EncodeDecode) {
 }
 
 static void TestEmptyFullSnapped(const S2Loop& loop, int level) {
-  CHECK(loop.is_empty_or_full());
+  S2_CHECK(loop.is_empty_or_full());
   S2CellId cellid = S2CellId(loop.vertex(0)).parent(level);
   vector<S2Point> vertices = {cellid.ToPoint()};
   S2Loop loop2(vertices);
@@ -1072,7 +1072,7 @@ static void TestEmptyFullSnapped(const S2Loop& loop, int level) {
 // Test converting the empty/full loops to S2LatLng representations.  (We
 // don't bother testing E5/E6/E7 because that test is less demanding.)
 static void TestEmptyFullLatLng(const S2Loop& loop) {
-  CHECK(loop.is_empty_or_full());
+  S2_CHECK(loop.is_empty_or_full());
   vector<S2Point> vertices = {S2LatLng(loop.vertex(0)).ToPoint()};
   S2Loop loop2(vertices);
   EXPECT_TRUE(loop.BoundaryEquals(&loop2));
@@ -1189,7 +1189,7 @@ TEST(S2Loop, S2CellConstructorAndContains) {
 // Construct a loop using s2textformat::MakeLoop(str) and check that it
 // produces a validation error that includes "snippet".
 static void CheckLoopIsInvalid(const string& str, const string& snippet) {
-  unique_ptr<S2Loop> loop(s2textformat::MakeLoop(str));
+  unique_ptr<S2Loop> loop(s2textformat::MakeLoop(str, S2Debug::DISABLE));
   S2Error error;
   EXPECT_TRUE(loop->FindValidationError(&error));
   EXPECT_NE(string::npos, error.text().find(snippet));
@@ -1197,16 +1197,13 @@ static void CheckLoopIsInvalid(const string& str, const string& snippet) {
 
 static void CheckLoopIsInvalid(const vector<S2Point>& points,
                                const string& snippet) {
-  S2Loop l(points);
+  S2Loop l(points, S2Debug::DISABLE);
   S2Error error;
   EXPECT_TRUE(l.FindValidationError(&error));
   EXPECT_NE(string::npos, error.text().find(snippet));
 }
 
 TEST(S2Loop, IsValidDetectsInvalidLoops) {
-  google::FlagSaver flag_saver;
-  FLAGS_s2debug = false;
-
   // Not enough vertices.  Note that all single-vertex loops are valid; they
   // are interpreted as being either "empty" or "full".
   CheckLoopIsInvalid("", "at least 3 vertices");
@@ -1222,7 +1219,7 @@ TEST(S2Loop, IsValidDetectsInvalidLoops) {
   // Some edges cross
   CheckLoopIsInvalid("20:20, 21:21, 21:20.5, 21:20, 20:21", "crosses");
 
-  // Points with non-unit length (triggers DCHECK failure in debug)
+  // Points with non-unit length (triggers S2_DCHECK failure in debug)
   EXPECT_DEBUG_DEATH(
       CheckLoopIsInvalid({S2Point(2, 0, 0), S2Point(0, 1, 0), S2Point(0, 0, 1)},
                          "unit length"),

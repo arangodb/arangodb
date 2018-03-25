@@ -410,7 +410,7 @@ void CheckEdgePairMaxDistance(S2Point a0, S2Point a1, S2Point b0, S2Point b1,
 }
 
 TEST(S2, EdgePairMaxDistance) {
-  // Standard situation. Same hemisphere, not degenerate.
+  // Standard situation.  Same hemisphere, not degenerate.
   CheckEdgePairMaxDistance(S2Point(1, 0, 0), S2Point(0, 1, 0),
                            S2Point(1, 1, 0), S2Point(1, 1, 1),
                            acos(1/sqrt(3)));

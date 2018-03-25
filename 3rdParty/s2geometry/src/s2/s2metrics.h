@@ -171,8 +171,8 @@ int S2::Metric<dim>::GetLevelForMaxValue(double value) const {
   // fraction in the range [1,2).
   int level = ilogb(value / deriv_);
   level = std::max(0, std::min(S2::kMaxCellLevel, -(level >> (dim - 1))));
-  DCHECK(level == S2::kMaxCellLevel || GetValue(level) <= value);
-  DCHECK(level == 0 || GetValue(level - 1) > value);
+  S2_DCHECK(level == S2::kMaxCellLevel || GetValue(level) <= value);
+  S2_DCHECK(level == 0 || GetValue(level - 1) > value);
   return level;
 }
 
@@ -184,8 +184,8 @@ int S2::Metric<dim>::GetLevelForMinValue(double value) const {
   // value and rounding down.
   int level = ilogb(deriv_ / value);
   level = std::max(0, std::min(S2::kMaxCellLevel, level >> (dim - 1)));
-  DCHECK(level == 0 || GetValue(level) >= value);
-  DCHECK(level == kMaxCellLevel || GetValue(level + 1) < value);
+  S2_DCHECK(level == 0 || GetValue(level) >= value);
+  S2_DCHECK(level == kMaxCellLevel || GetValue(level + 1) < value);
   return level;
 }
 

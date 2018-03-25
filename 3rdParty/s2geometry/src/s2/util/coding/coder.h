@@ -23,12 +23,11 @@
 #include <cstring>
 #include <type_traits>
 
-#include <glog/logging.h>
-
 // Avoid adding expensive includes here.
+#include "s2/base/logging.h"
+#include "s2/base/port.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include "s2/third_party/absl/base/macros.h"
-#include "s2/base/port.h"
 #include "s2/third_party/absl/meta/type_traits.h"
 #include "s2/util/coding/varint.h"
 #include "s2/util/endian/endian.h"
@@ -235,19 +234,19 @@ inline void Encoder::clear() {
 }
 
 inline void Encoder::Ensure(size_t N) {
-  DCHECK(ensure_allowed());
+  S2_DCHECK(ensure_allowed());
   if (avail() < N) {
     EnsureSlowPath(N);
   }
 }
 
 inline size_t Encoder::length() const {
-  DCHECK_GE(buf_, orig_);
+  S2_DCHECK_GE(buf_, orig_);
   return buf_ - orig_;
 }
 
 inline size_t Encoder::avail() const {
-  DCHECK_GE(limit_, buf_);
+  S2_DCHECK_GE(limit_, buf_);
   return limit_ - buf_;
 }
 
@@ -411,12 +410,12 @@ inline void Decoder::reset(const void* b, size_t maxn) {
 }
 
 inline size_t Decoder::pos() const {
-  DCHECK_GE(buf_, orig_);
+  S2_DCHECK_GE(buf_, orig_);
   return buf_ - orig_;
 }
 
 inline size_t Decoder::avail() const {
-  DCHECK_GE(limit_, buf_);
+  S2_DCHECK_GE(limit_, buf_);
   return limit_ - buf_;
 }
 
@@ -437,7 +436,7 @@ inline void Decoder::getcn(void* dst, int c, size_t n) {
 
 inline void Decoder::gets(void* dst, size_t n) {
   size_t len = n - 1;
-  DCHECK_GE(limit_, buf_);
+  S2_DCHECK_GE(limit_, buf_);
   if (n > static_cast<size_t>(1 + limit_ - buf_)) {
     len = limit_ - buf_;
   }
@@ -467,25 +466,25 @@ inline void DecoderExtensions::FillArray(Decoder* array, int num_decoders) {
 }
 
 inline void Encoder::put8(unsigned char v) {
-  DCHECK_GE(avail(), sizeof(v));
+  S2_DCHECK_GE(avail(), sizeof(v));
   *buf_ = v;
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put16(uint16 v) {
-  DCHECK_GE(avail(), sizeof(v));
+  S2_DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store16(buf_, v);
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put32(uint32 v) {
-  DCHECK_GE(avail(), sizeof(v));
+  S2_DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store32(buf_, v);
   buf_ += sizeof(v);
 }
 
 inline void Encoder::put64(uint64 v) {
-  DCHECK_GE(avail(), sizeof(v));
+  S2_DCHECK_GE(avail(), sizeof(v));
   LittleEndian::Store64(buf_, v);
   buf_ += sizeof(v);
 }

@@ -93,7 +93,7 @@ int S2LaxPolygonShape::num_vertices() const {
 }
 
 int S2LaxPolygonShape::num_loop_vertices(int i) const {
-  DCHECK_LT(i, num_loops());
+  S2_DCHECK_LT(i, num_loops());
   if (num_loops() == 1) {
     return num_vertices_;
   } else {
@@ -102,8 +102,8 @@ int S2LaxPolygonShape::num_loop_vertices(int i) const {
 }
 
 const S2Point& S2LaxPolygonShape::loop_vertex(int i, int j) const {
-  DCHECK_LT(i, num_loops());
-  DCHECK_LT(j, num_loop_vertices(i));
+  S2_DCHECK_LT(i, num_loops());
+  S2_DCHECK_LT(j, num_loop_vertices(i));
   if (num_loops() == 1) {
     return vertices_[j];
   } else {
@@ -112,7 +112,7 @@ const S2Point& S2LaxPolygonShape::loop_vertex(int i, int j) const {
 }
 
 S2Shape::Edge S2LaxPolygonShape::edge(int e0) const {
-  DCHECK_LT(e0, num_edges());
+  S2_DCHECK_LT(e0, num_edges());
   int e1 = e0 + 1;
   if (num_loops() == 1) {
     if (e1 == num_vertices_) { e1 = 0; }
@@ -136,7 +136,7 @@ S2Shape::ReferencePoint S2LaxPolygonShape::GetReferencePoint() const {
 }
 
 S2Shape::Chain S2LaxPolygonShape::chain(int i) const {
-  DCHECK_LT(i, num_loops());
+  S2_DCHECK_LT(i, num_loops());
   if (num_loops() == 1) {
     return Chain(0, num_vertices_);
   } else {
@@ -146,8 +146,8 @@ S2Shape::Chain S2LaxPolygonShape::chain(int i) const {
 }
 
 S2Shape::Edge S2LaxPolygonShape::chain_edge(int i, int j) const {
-  DCHECK_LT(i, num_loops());
-  DCHECK_LT(j, num_loop_vertices(i));
+  S2_DCHECK_LT(i, num_loops());
+  S2_DCHECK_LT(j, num_loop_vertices(i));
   int n = num_loop_vertices(i);
   int k = (j + 1 == n) ? 0 : j + 1;
   if (num_loops() == 1) {
@@ -159,7 +159,7 @@ S2Shape::Edge S2LaxPolygonShape::chain_edge(int i, int j) const {
 }
 
 S2Shape::ChainPosition S2LaxPolygonShape::chain_position(int e) const {
-  DCHECK_LT(e, num_edges());
+  S2_DCHECK_LT(e, num_edges());
   const int kMaxLinearSearchLoops = 12;  // From benchmarks.
   if (num_loops() == 1) {
     return ChainPosition(0, e);

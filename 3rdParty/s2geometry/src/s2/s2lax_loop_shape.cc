@@ -38,7 +38,7 @@ void S2LaxLoopShape::Init(const vector<S2Point>& vertices) {
 }
 
 void S2LaxLoopShape::Init(const S2Loop& loop) {
-  DCHECK(!loop.is_full()) << "Full loops not supported; use S2LaxPolygonShape";
+  S2_DCHECK(!loop.is_full()) << "Full loops not supported; use S2LaxPolygonShape";
   if (loop.is_empty()) {
     num_vertices_ = 0;
     vertices_ = nullptr;
@@ -51,15 +51,15 @@ void S2LaxLoopShape::Init(const S2Loop& loop) {
 }
 
 S2Shape::Edge S2LaxLoopShape::edge(int e0) const {
-  DCHECK_LT(e0, num_edges());
+  S2_DCHECK_LT(e0, num_edges());
   int e1 = e0 + 1;
   if (e1 == num_vertices()) e1 = 0;
   return Edge(vertices_[e0], vertices_[e1]);
 }
 
 S2Shape::Edge S2LaxLoopShape::chain_edge(int i, int j) const {
-  DCHECK_EQ(i, 0);
-  DCHECK_LT(j, num_edges());
+  S2_DCHECK_EQ(i, 0);
+  S2_DCHECK_LT(j, num_edges());
   int k = (j + 1 == num_vertices()) ? 0 : j + 1;
   return Edge(vertices_[j], vertices_[k]);
 }
@@ -84,15 +84,15 @@ void S2VertexIdLaxLoopShape::Init(const std::vector<int32>& vertex_ids,
 }
 
 S2Shape::Edge S2VertexIdLaxLoopShape::edge(int e0) const {
-  DCHECK_LT(e0, num_edges());
+  S2_DCHECK_LT(e0, num_edges());
   int e1 = e0 + 1;
   if (e1 == num_vertices()) e1 = 0;
   return Edge(vertex(e0), vertex(e1));
 }
 
 S2Shape::Edge S2VertexIdLaxLoopShape::chain_edge(int i, int j) const {
-  DCHECK_EQ(i, 0);
-  DCHECK_LT(j, num_edges());
+  S2_DCHECK_EQ(i, 0);
+  S2_DCHECK_LT(j, num_edges());
   int k = (j + 1 == num_vertices()) ? 0 : j + 1;
   return Edge(vertex(j), vertex(k));
 }

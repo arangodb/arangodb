@@ -51,6 +51,8 @@ namespace {
 // supplementary distance (Pi - x).
 class MaxDistance {
  public:
+  using Delta = S1ChordAngle;
+
   MaxDistance() : distance_() {}
   explicit MaxDistance(S1ChordAngle x) : distance_(x) {}
   explicit operator S1ChordAngle() const { return distance_; }
@@ -69,8 +71,8 @@ class MaxDistance {
   friend bool operator<(MaxDistance x, MaxDistance y) {
     return x.distance_ > y.distance_;
   }
-  friend MaxDistance operator-(MaxDistance x, MaxDistance y) {
-    return MaxDistance(x.distance_ + y.distance_);
+  friend MaxDistance operator-(MaxDistance x, S1ChordAngle delta) {
+    return MaxDistance(x.distance_ + delta);
   }
   S1ChordAngle GetChordAngleBound() const {
     return S1ChordAngle::Straight() - distance_;
@@ -107,7 +109,7 @@ class FurthestPointQueryTarget final : public S2DistanceTarget<MaxDistance> {
 
   bool UpdateMinDistance(const S2Point& v0, const S2Point& v1,
                          MaxDistance* min_dist) override {
-    LOG(FATAL) << "Unimplemented";
+    S2_LOG(FATAL) << "Unimplemented";
     return false;
   }
 
@@ -119,7 +121,7 @@ class FurthestPointQueryTarget final : public S2DistanceTarget<MaxDistance> {
 
   bool VisitContainingShapes(const S2ShapeIndex& index,
                              const ShapeVisitor& visitor) override {
-    LOG(FATAL) << "Unimplemented";
+    S2_LOG(FATAL) << "Unimplemented";
     return false;
   }
 

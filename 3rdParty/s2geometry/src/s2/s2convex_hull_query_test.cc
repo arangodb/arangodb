@@ -129,7 +129,7 @@ TEST(S2ConvexHullQueryTest, SimplePolyline) {
 void TestNorthPoleLoop(S1Angle radius, int num_vertices) {
   // If the radius is very close to 90, then it's hard to predict whether the
   // result will be the full loop or not.
-  DCHECK_GE(std::abs(radius.radians() - M_PI_2), 1e-15);
+  S2_DCHECK_GE(std::abs(radius.radians() - M_PI_2), 1e-15);
 
   S2ConvexHullQuery query;
   unique_ptr<S2Loop> loop(

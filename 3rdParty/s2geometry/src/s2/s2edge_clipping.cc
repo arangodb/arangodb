@@ -20,7 +20,7 @@
 #include <cfloat>
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s2coords.h"
 #include "s2/s2pointutil.h"
@@ -108,7 +108,7 @@ inline static bool IntersectsOppositeEdges(const S2PointUVW& n) {
 // if L exits through the v=-1 or v=+1 edge.  Either result is acceptable if L
 // exits exactly through a corner vertex of the cube face.
 static int GetExitAxis(const S2PointUVW& n) {
-  DCHECK(IntersectsFace(n));
+  S2_DCHECK(IntersectsFace(n));
   if (IntersectsOppositeEdges(n)) {
     // The line passes through through opposite edges of the face.
     // It exits through the v=+1 or v=-1 edge if the u-component of N has a
@@ -119,7 +119,7 @@ static int GetExitAxis(const S2PointUVW& n) {
     // It exits the v=+1 or v=-1 edge if an even number of the components of N
     // are negative.  We test this using signbit() rather than multiplication
     // to avoid the possibility of underflow.
-    DCHECK(n[0] != 0 && n[1] != 0  && n[2] != 0);
+    S2_DCHECK(n[0] != 0 && n[1] != 0  && n[2] != 0);
     using std::signbit;
     return ((signbit(n[0]) ^ signbit(n[1]) ^ signbit(n[2])) == 0) ? 1 : 0;
   }
@@ -174,7 +174,7 @@ static int MoveOriginToValidFace(int face, const S2Point& a,
   } else {
     face = S2::GetUVWFace(face, 1 /*V axis*/, (*a_uv)[1] > 0);
   }
-  DCHECK(IntersectsFace(S2::FaceXYZtoUVW(face, ab)));
+  S2_DCHECK(IntersectsFace(S2::FaceXYZtoUVW(face, ab)));
   S2::ValidFaceXYZtoUV(face, a, a_uv);
   (*a_uv)[0] = max(-1.0, min(1.0, (*a_uv)[0]));
   (*a_uv)[1] = max(-1.0, min(1.0, (*a_uv)[1]));
@@ -209,8 +209,8 @@ static int GetNextFace(int face, const R2Point& exit, int axis,
 
 void GetFaceSegments(const S2Point& a, const S2Point& b,
                      FaceSegmentVector* segments) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(a));
+  S2_DCHECK(S2::IsUnitLength(b));
   segments->clear();
 
   // Fast path: both endpoints are on the same face.
@@ -276,7 +276,7 @@ static int ClipDestination(
     const S2PointUVW& a, const S2PointUVW& b, const S2PointUVW& scaled_n,
     const S2PointUVW& a_tangent, const S2PointUVW& b_tangent, double scale_uv,
     R2Point* uv) {
-  DCHECK(IntersectsFace(scaled_n));
+  S2_DCHECK(IntersectsFace(scaled_n));
 
   // Optimization: if B is within the safe region of the face, use it.
   const double kMaxSafeUVCoord = 1 - kFaceClipErrorUVCoord;
@@ -326,7 +326,7 @@ static int ClipDestination(
 
 bool ClipToPaddedFace(const S2Point& a_xyz, const S2Point& b_xyz, int face,
                       double padding, R2Point* a_uv, R2Point* b_uv) {
-  DCHECK_GE(padding, 0);
+  S2_DCHECK_GE(padding, 0);
   // Fast path: both endpoints are on the given face.
   if (S2::GetFace(a_xyz) == face && S2::GetFace(b_xyz) == face) {
     S2::ValidFaceXYZtoUV(face, a_xyz, a_uv);

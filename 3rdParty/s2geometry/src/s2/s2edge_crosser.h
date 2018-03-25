@@ -18,7 +18,7 @@
 #ifndef S2_S2EDGE_CROSSER_H_
 #define S2_S2EDGE_CROSSER_H_
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s2edge_crossings.h"
 #include "s2/s2pointutil.h"
@@ -223,8 +223,8 @@ class S2CopyingEdgeCrosser {
 inline S2EdgeCrosser::S2EdgeCrosser(const S2Point* a, const S2Point* b)
     : a_(a), b_(b), a_cross_b_(a_->CrossProd(*b_)), have_tangents_(false),
       c_(nullptr) {
-  DCHECK(S2::IsUnitLength(*a));
-  DCHECK(S2::IsUnitLength(*b));
+  S2_DCHECK(S2::IsUnitLength(*a));
+  S2_DCHECK(S2::IsUnitLength(*b));
 }
 
 inline void S2EdgeCrosser::Init(const S2Point* a, const S2Point* b) {
@@ -249,19 +249,19 @@ inline bool S2EdgeCrosser::EdgeOrVertexCrossing(const S2Point* c,
 inline S2EdgeCrosser::S2EdgeCrosser(
     const S2Point* a, const S2Point* b, const S2Point* c)
     : a_(a), b_(b), a_cross_b_(a_->CrossProd(*b_)), have_tangents_(false) {
-  DCHECK(S2::IsUnitLength(*a));
-  DCHECK(S2::IsUnitLength(*b));
+  S2_DCHECK(S2::IsUnitLength(*a));
+  S2_DCHECK(S2::IsUnitLength(*b));
   RestartAt(c);
 }
 
 inline void S2EdgeCrosser::RestartAt(const S2Point* c) {
-  DCHECK(S2::IsUnitLength(*c));
+  S2_DCHECK(S2::IsUnitLength(*c));
   c_ = c;
   acb_ = -s2pred::TriageSign(*a_, *b_, *c_, a_cross_b_);
 }
 
 inline int S2EdgeCrosser::CrossingSign(const S2Point* d) {
-  DCHECK(S2::IsUnitLength(*d));
+  S2_DCHECK(S2::IsUnitLength(*d));
   // For there to be an edge crossing, the triangles ACB, CBD, BDA, DAC must
   // all be oriented the same way (CW or CCW).  We keep the orientation of ACB
   // as part of our state.  When each new point D arrives, we compute the

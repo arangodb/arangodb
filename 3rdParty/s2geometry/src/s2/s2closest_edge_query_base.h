@@ -21,7 +21,7 @@
 #include <memory>
 #include <vector>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
@@ -84,8 +84,22 @@
 //   friend bool operator==(Distance x, Distance y);
 //   friend bool operator<(Distance x, Distance y);
 //
-//   // Subtraction operator (needed to implement Options::max_error):
-//   friend Distance operator-(Distance x, Distance y);
+//   // Delta represents the positive difference between two distances.
+//   // It is used together with operator-() to implement Options::max_error().
+//   // Typically Distance::Delta is simply S1ChordAngle.
+//   class Delta {
+//    public:
+//     Delta();
+//     Delta(const Delta&);
+//     Delta& operator=(const Delta&);
+//     friend bool operator==(Delta x, Delta y);
+//     static Delta Zero();
+//   };
+//
+//   // Subtraction operator.  Note that the second argument represents a
+//   // delta between two distances.  This distinction is important for
+//   // classes that compute maximum distances (e.g., S2FurthestEdgeQuery).
+//   friend Distance operator-(Distance x, Delta delta);
 //
 //   // Method that returns an upper bound on the S1ChordAngle corresponding
 //   // to this Distance (needed to implement Options::max_distance
@@ -96,6 +110,8 @@
 template <class Distance>
 class S2ClosestEdgeQueryBase {
  public:
+  using Delta = typename Distance::Delta;
+
   // Options that control the set of edges returned.  Note that by default
   // *all* edges are returned, so you will always want to set either the
   // max_edges() option or the max_distance() option (or both).
@@ -142,9 +158,9 @@ class S2ClosestEdgeQueryBase {
     // is less than D, rather than continuing to search for an edge that is
     // even closer.
     //
-    // DEFAULT: Distance::Zero()
-    Distance max_error() const;
-    void set_max_error(Distance max_error);
+    // DEFAULT: Distance::Delta::Zero()
+    Delta max_error() const;
+    void set_max_error(Delta max_error);
 
     // Specifies that polygon interiors should be included when measuring
     // distances.  In other words, polygons that contain the target should
@@ -171,7 +187,7 @@ class S2ClosestEdgeQueryBase {
 
    private:
     Distance max_distance_ = Distance::Infinity();
-    Distance max_error_ = Distance::Zero();
+    Delta max_error_ = Delta::Zero();
     int max_edges_ = kMaxMaxEdges;
     bool include_interiors_ = true;
     bool use_brute_force_ = false;
@@ -275,7 +291,7 @@ class S2ClosestEdgeQueryBase {
   Result FindClosestEdge(Target* target, const Options& options);
 
  private:
-  struct QueueEntry;
+  class QueueEntry;
 
   const Options& options() const { return *options_; }
   void FindClosestEdgesInternal(Target* target, const Options& options);
@@ -416,7 +432,7 @@ inline int S2ClosestEdgeQueryBase<Distance>::Options::max_edges() const {
 template <class Distance>
 inline void S2ClosestEdgeQueryBase<Distance>::Options::set_max_edges(
     int max_edges) {
-  DCHECK_GE(max_edges, 1);
+  S2_DCHECK_GE(max_edges, 1);
   max_edges_ = max_edges;
 }
 
@@ -433,13 +449,14 @@ inline void S2ClosestEdgeQueryBase<Distance>::Options::set_max_distance(
 }
 
 template <class Distance>
-inline Distance S2ClosestEdgeQueryBase<Distance>::Options::max_error() const {
+inline typename Distance::Delta
+S2ClosestEdgeQueryBase<Distance>::Options::max_error() const {
   return max_error_;
 }
 
 template <class Distance>
 inline void S2ClosestEdgeQueryBase<Distance>::Options::set_max_error(
-    Distance max_error) {
+    Delta max_error) {
   max_error_ = max_error;
 }
 
@@ -517,7 +534,7 @@ template <class Distance>
 typename S2ClosestEdgeQueryBase<Distance>::Result
 S2ClosestEdgeQueryBase<Distance>::FindClosestEdge(Target* target,
                                                   const Options& options) {
-  DCHECK_EQ(options.max_edges(), 1);
+  S2_DCHECK_EQ(options.max_edges(), 1);
   FindClosestEdgesInternal(target, options);
   return result_singleton_;
 }
@@ -552,14 +569,14 @@ void S2ClosestEdgeQueryBase<Distance>::FindClosestEdgesInternal(
   tested_edges_.clear();
   distance_limit_ = options.max_distance();
   result_singleton_ = Result();
-  DCHECK(result_vector_.empty());
-  DCHECK(result_set_.empty());
-  DCHECK(target->max_brute_force_index_size() >= 0);
+  S2_DCHECK(result_vector_.empty());
+  S2_DCHECK(result_set_.empty());
+  S2_DCHECK(target->max_brute_force_index_size() >= 0);
   if (distance_limit_ == Distance::Zero()) return;
 
   if (options.max_edges() == Options::kMaxMaxEdges &&
       options.max_distance() == Distance::Infinity()) {
-    LOG(WARNING) << "Returning all edges (max_edges/max_distance not set)";
+    S2_LOG(WARNING) << "Returning all edges (max_edges/max_distance not set)";
   }
 
   if (options.include_interiors()) {
@@ -576,14 +593,35 @@ void S2ClosestEdgeQueryBase<Distance>::FindClosestEdgesInternal(
     if (distance_limit_ == Distance::Zero()) return;
   }
 
-  // If the target takes advantage of max_error() and 0 < max_error() <
-  // distance_limit_, then we need to ensure that the distances to
-  // S2ShapeIndex cells are always a lower bound on the true distance, since
-  // otherwise such cells might be incorrectly discarded.
-  bool target_uses_max_error = (Distance::Zero() < options.max_error() &&
+  // If max_error() > 0 and the target takes advantage of this, then we may
+  // need to adjust the distance estimates to S2ShapeIndex cells to ensure
+  // that they are always a lower bound on the true distance.  For example,
+  // suppose max_distance == 100, max_error == 30, and we compute the distance
+  // to the target from some cell C0 as d(C0) == 80.  Then because the target
+  // takes advantage of max_error(), the true distance could be as low as 50.
+  // In order not to miss edges contained by such cells, we need to subtract
+  // max_error() from the distance estimates.  This behavior is controlled by
+  // the use_conservative_cell_distance_ flag.
+  //
+  // However there is one important case where this adjustment is not
+  // necessary, namely when max_distance() < max_error().  This is because
+  // max_error() only affects the algorithm once at least max_edges() edges
+  // have been found that satisfy the given distance limit.  At that point,
+  // max_error() is subtracted from distance_limit_ in order to ensure that
+  // any further matches are closer by at least that amount.  But when
+  // max_distance() < max_error(), this reduces the distance limit to 0,
+  // i.e. all remaining candidate cells and edges can safely be discarded.
+  // (Note that this is how IsDistanceLess() and friends are implemented.)
+  //
+  // Note that Distance::Delta only supports operator==.
+  bool target_uses_max_error = (!(options.max_error() == Delta::Zero()) &&
                                 target_->set_max_error(options.max_error()));
-  use_conservative_cell_distance_ = (target_uses_max_error &&
-                                     options.max_error() < distance_limit_);
+
+  // Note that we can't compare max_error() and distance_limit_ directly
+  // because one is a Delta and one is a Distance.  Instead we subtract them.
+  use_conservative_cell_distance_ = target_uses_max_error &&
+      (distance_limit_ == Distance::Infinity() ||
+       Distance::Zero() < distance_limit_ - options.max_error());
 
   // Use the brute force algorithm if the index is small enough.  To avoid
   // spending too much time counting edges when there are many shapes, we stop
@@ -668,7 +706,7 @@ void S2ClosestEdgeQueryBase<Distance>::FindClosestEdgesOptimized() {
 
 template <class Distance>
 void S2ClosestEdgeQueryBase<Distance>::InitQueue() {
-  DCHECK(queue_.empty());
+  S2_DCHECK(queue_.empty());
   if (index_covering_.empty()) {
     // We delay iterator initialization until now to make queries on very
     // small indexes a bit faster (i.e., where brute force is used).
@@ -804,7 +842,7 @@ void S2ClosestEdgeQueryBase<Distance>::AddInitialRange(
   } else {
     // Add the lowest common ancestor of the given range.
     int level = first.id().GetCommonAncestorLevel(last.id());
-    DCHECK_GE(level, 0);
+    S2_DCHECK_GE(level, 0);
     index_covering_.push_back(first.id().parent(level));
     index_cells_.push_back(nullptr);
   }
@@ -873,7 +911,7 @@ void S2ClosestEdgeQueryBase<Distance>::ProcessEdges(const QueueEntry& entry) {
 // REQUIRES: iter_ is positioned at a cell contained by "id".
 template <class Distance>
 inline void S2ClosestEdgeQueryBase<Distance>::EnqueueCurrentCell(S2CellId id) {
-  DCHECK(id.contains(iter_.id()));
+  S2_DCHECK(id.contains(iter_.id()));
   if (iter_.id() == id) {
     EnqueueCell(id, &iter_.cell());
   } else {

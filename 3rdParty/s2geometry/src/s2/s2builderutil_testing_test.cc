@@ -40,7 +40,7 @@ namespace s2builderutil {
 TEST(GraphCloningLayer, MakeIndependentCopy) {
   // Also tests GraphClone.
   GraphClone gc;
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   GraphOptions graph_options(EdgeType::DIRECTED, DegenerateEdges::DISCARD,
                              DuplicateEdges::MERGE, SiblingPairs::KEEP);
   builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
@@ -66,7 +66,7 @@ TEST(GraphCloningLayer, MakeIndependentCopy) {
 TEST(GraphAppendingLayer, AppendsTwoGraphs) {
   vector<Graph> graphs;
   vector<unique_ptr<GraphClone>> clones;
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   builder.StartLayer(make_unique<GraphAppendingLayer>(
       GraphOptions(), &graphs, &clones));
   S2Point v0(1, 0, 0), v1(0, 1, 0);

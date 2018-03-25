@@ -33,13 +33,13 @@ class PyWrapS2TestCase(unittest.TestCase):
     london = s2.S2LatLng.FromDegrees(51.5001525, -0.1262355)
     cell = s2.S2CellId(london)
     same_cell = s2.S2CellId(london)
-    self.assertEquals(cell, same_cell)
+    self.assertEqual(cell, same_cell)
 
   def testS2CellIdComparsionIsWrappedCorrectly(self):
     london = s2.S2LatLng.FromDegrees(51.5001525, -0.1262355)
     cell = s2.S2CellId(london)
-    self.assertTrue(cell < cell.next())
-    self.assertTrue(cell.next() > cell)
+    self.assertLess(cell, cell.next())
+    self.assertGreater(cell.next(), cell)
 
   def testS2CellIdGetEdgeNeighborsIsWrappedCorrectly(self):
     cell = s2.S2CellId(0x466d319000000000)
@@ -64,7 +64,7 @@ class PyWrapS2TestCase(unittest.TestCase):
     london = s2.S2LatLng.FromDegrees(51.5001525, -0.1262355)
     cell = s2.S2CellId(london)
     same_cell = s2.S2CellId(london)
-    self.assertEquals(hash(cell), hash(same_cell))
+    self.assertEqual(hash(cell), hash(same_cell))
 
   def testCovererIsWrappedCorrectly(self):
     london = s2.S2LatLngRect(s2.S2LatLng.FromDegrees(51.3368602, 0.4931979),
@@ -85,14 +85,14 @@ class PyWrapS2TestCase(unittest.TestCase):
   def testS2CellUnionIsWrappedCorrectly(self):
     cell_union = s2.S2CellUnion()
     cell_union.Init([0x466d319000000000, 0x466d31b000000000])
-    self.assertEquals(cell_union.num_cells(), 2)
+    self.assertEqual(cell_union.num_cells(), 2)
     trondheim = s2.S2LatLng.FromDegrees(63.431052, 10.395083)
     self.assertTrue(cell_union.Contains(s2.S2CellId(trondheim)))
 
   def testS2PolygonIsWrappedCorrectly(self):
     london = s2.S2LatLng.FromDegrees(51.5001525, -0.1262355)
     polygon = s2.S2Polygon(s2.S2Cell(s2.S2CellId(london)))
-    self.assertEquals(polygon.num_loops(), 1)
+    self.assertEqual(polygon.num_loops(), 1)
     point = london.ToPoint()
     self.assertTrue(polygon.Contains(point))
 
@@ -143,10 +143,10 @@ class PyWrapS2TestCase(unittest.TestCase):
     polygon = s2.S2Polygon(s2.S2Cell(s2.S2CellId(london)))
     loop = polygon.loop(0)
     first_vertex = loop.GetS2LatLngVertex(0)
-    self.assertTrue(isinstance(first_vertex, s2.S2LatLng))
+    self.assertIsInstance(first_vertex, s2.S2LatLng)
     self.assertEqual("51.500152,-0.126235", first_vertex.ToStringInDegrees())
     second_vertex = loop.GetS2LatLngVertex(1)
-    self.assertTrue(isinstance(second_vertex, s2.S2LatLng))
+    self.assertIsInstance(second_vertex, s2.S2LatLng)
     self.assertEqual("51.500153,-0.126235", second_vertex.ToStringInDegrees())
 
   def testS2PolylineInitFromS2LatLngs(self):
@@ -156,7 +156,7 @@ class PyWrapS2TestCase(unittest.TestCase):
       list_ll.append(s2.S2LatLng.FromE7(lat, lng))
     line = s2.S2Polyline()
     line.InitFromS2LatLngs(list_ll)
-    self.assertAlmostEquals(20.0, line.GetLength().degrees())
+    self.assertAlmostEqual(20.0, line.GetLength().degrees())
 
   def testS2PolylineInitFromS2Points(self):
     e7_10deg = 0x5f5e100
@@ -165,7 +165,7 @@ class PyWrapS2TestCase(unittest.TestCase):
       list_points.append(s2.S2LatLng.FromE7(lat, lng).ToPoint())
     line = s2.S2Polyline()
     line.InitFromS2Points(list_points)
-    self.assertAlmostEquals(20.0, line.GetLength().degrees())
+    self.assertAlmostEqual(20.0, line.GetLength().degrees())
 
   def testS2PointsCanBeNormalized(self):
     line = s2.S2Polyline()
@@ -221,7 +221,7 @@ class PyWrapS2TestCase(unittest.TestCase):
     self.assertEqual(45.0, bd1)
 
     p2 = s2.S2LatLng.FromDegrees(0, 90).ToPoint()
-    self.assertTrue(not cell.Contains(p2))
+    self.assertFalse(cell.Contains(p2))
     d2 = cell.GetDistance(p2).ToAngle().degrees()
     self.assertAlmostEqual(45.0, d2)
     bd2 = cell.GetBoundaryDistance(p2).ToAngle().degrees()
@@ -242,6 +242,23 @@ class PyWrapS2TestCase(unittest.TestCase):
     mtv_c = s2.S2LatLng.FromDegrees(37.3447222, -122.0308333).ToPoint()
     angle = s2.TurnAngle(mtv_a, mtv_b, mtv_c)
     self.assertAlmostEqual(-1.7132025, angle)
+
+  def testEncodeDecode(self):
+    london = s2.S2LatLng.FromDegrees(51.5001525, -0.1262355)
+    polygon = s2.S2Polygon(s2.S2Cell(s2.S2CellId(london).parent(15)))
+    self.assertEqual(polygon.num_loops(), 1)
+
+    encoder = s2.Encoder()
+    polygon.Encode(encoder)
+
+    encoded = encoder.buffer()
+    decoder = s2.Decoder(encoded)
+    decoded_polygon = s2.S2Polygon()
+    self.assertTrue(decoded_polygon.Decode(decoder))
+
+    self.assertEqual(decoded_polygon.num_loops(), 1)
+    self.assertTrue(decoded_polygon.Equals(polygon))
+
 
 if __name__ == "__main__":
   unittest.main()

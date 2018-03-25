@@ -78,6 +78,16 @@
   ABSL_INTERNAL_EXTERN_DECL(type, name)                  \
   inline constexpr ::absl::internal::identity_t<type> name = init
 
+#ifdef __clang__
+#undef ABSL_INTERNAL_INLINE_CONSTEXPR
+#define ABSL_INTERNAL_INLINE_CONSTEXPR(type, name, init) \
+  ABSL_INTERNAL_EXTERN_DECL(type, name)                  \
+  _Pragma("clang diagnostic push") \
+  _Pragma("clang diagnostic ignored \"-Wc++98-c++11-c++14-compat\"") \
+  inline constexpr ::absl::internal::identity_t<type> name = init \
+  _Pragma("clang diagnostic pop")
+#endif  // __clang__
+
 #else
 
 // See above comment at top of file for details.

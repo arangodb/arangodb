@@ -21,6 +21,7 @@
 #include <utility>
 #include <vector>
 
+#include "s2/base/casts.h"
 #include <gtest/gtest.h>
 
 #include "s2/mutable_s2shape_index.h"
@@ -41,6 +42,8 @@
 
 using absl::StrCat;
 using absl::make_unique;
+using s2shapeutil::ShapeEdge;
+using s2shapeutil::ShapeEdgeId;
 using s2textformat::MakePoint;
 using s2textformat::MakePolyline;
 using std::is_sorted;
@@ -98,6 +101,17 @@ void GetCapEdges(const S2Cap& center_cap, S1Angle max_length, int count,
   }
 }
 
+// Project ShapeEdges to ShapeEdgeIds.  Useful because
+// ShapeEdge does not have operator==, but ShapeEdgeId does.
+static vector<ShapeEdgeId> GetShapeEdgeIds(
+    const vector<ShapeEdge>& shape_edges) {
+  vector<ShapeEdgeId> shape_edge_ids;
+  for (const auto& shape_edge : shape_edges) {
+    shape_edge_ids.push_back(shape_edge.id());
+  }
+  return shape_edge_ids;
+}
+
 void TestAllCrossings(const vector<TestEdge>& edges) {
   auto shape = new S2EdgeVectorShape;  // raw pointer since "shape" used below
   for (const TestEdge& edge : edges) {
@@ -107,7 +121,8 @@ void TestAllCrossings(const vector<TestEdge>& edges) {
   MutableS2ShapeIndex::Options options;
   options.set_max_edges_per_cell(1);
   MutableS2ShapeIndex index(options);
-  index.Add(absl::WrapUnique(shape));
+  const int shape_id = index.Add(absl::WrapUnique(shape));
+  EXPECT_EQ(0, shape_id);
   // To check that candidates are being filtered reasonably, we count the
   // total number of candidates that the total number of edge pairs that
   // either intersect or are very close to intersecting.
@@ -117,37 +132,35 @@ void TestAllCrossings(const vector<TestEdge>& edges) {
     SCOPED_TRACE(StrCat("Iteration ", i++));
     const S2Point& a = edge.first;
     const S2Point& b = edge.second;
-    vector<int> candidates;
     S2CrossingEdgeQuery query(&index);
-    query.GetCandidates(a, b, shape, &candidates);
+    const vector<ShapeEdgeId> candidates = query.GetCandidates(a, b, *shape);
 
     // Verify that the second version of GetCandidates returns the same result.
-    S2CrossingEdgeQuery::EdgeMap edge_map;
-    query.GetCandidates(a, b, &edge_map);
-    EXPECT_EQ(1, edge_map.size());
-    EXPECT_EQ(shape, edge_map.begin()->first);
-    EXPECT_EQ(candidates, edge_map.begin()->second);
+    const vector<ShapeEdgeId> edge_candidates = query.GetCandidates(a, b);
+    EXPECT_EQ(candidates, edge_candidates);
     EXPECT_TRUE(!candidates.empty());
 
     // Now check the actual candidates.
     EXPECT_TRUE(is_sorted(candidates.begin(), candidates.end()));
-    EXPECT_GE(candidates.front(), 0);
-    EXPECT_LT(candidates.back(), shape->num_edges());
+    EXPECT_EQ(candidates.back().shape_id, 0);  // Implies all shape_ids are 0.
+    EXPECT_GE(candidates.front().edge_id, 0);
+    EXPECT_LT(candidates.back().edge_id, shape->num_edges());
     num_candidates += candidates.size();
     string missing_candidates;
-    vector<int> expected_crossings, expected_interior_crossings;
+    vector<ShapeEdgeId> expected_crossings, expected_interior_crossings;
     for (int i = 0; i < shape->num_edges(); ++i) {
       auto edge = shape->edge(i);
       const S2Point& c = edge.v0;
       const S2Point& d = edge.v1;
       int sign = S2::CrossingSign(a, b, c, d);
       if (sign >= 0) {
-        expected_crossings.push_back(i);
+        expected_crossings.push_back({0, i});
         if (sign > 0) {
-          expected_interior_crossings.push_back(i);
+          expected_interior_crossings.push_back({0, i});
         }
         ++num_nearby_pairs;
-        if (!std::binary_search(candidates.begin(), candidates.end(), i)) {
+        if (!std::binary_search(candidates.begin(), candidates.end(),
+                                ShapeEdgeId{0, i})) {
           StrAppend(&missing_candidates, " ", i);
         }
       } else {
@@ -163,19 +176,20 @@ void TestAllCrossings(const vector<TestEdge>& edges) {
     EXPECT_TRUE(missing_candidates.empty()) << missing_candidates;
 
     // Test that GetCrossings() returns only the actual crossing edges.
-    vector<int> actual_crossings;
-    query.GetCrossings(a, b, shape, CrossingType::ALL, &actual_crossings);
-    EXPECT_EQ(expected_crossings, actual_crossings);
+    const vector<ShapeEdge> actual_crossings =
+        query.GetCrossingEdges(a, b, *shape, CrossingType::ALL);
+    EXPECT_EQ(expected_crossings, GetShapeEdgeIds(actual_crossings));
 
     // Verify that the second version of GetCrossings returns the same result.
-    query.GetCrossings(a, b, CrossingType::ALL, &edge_map);
-    EXPECT_EQ(1, edge_map.size());
-    EXPECT_EQ(shape, edge_map.begin()->first);
-    EXPECT_EQ(expected_crossings, edge_map.begin()->second);
+    const vector<ShapeEdge> actual_edge_crossings =
+        query.GetCrossingEdges(a, b, CrossingType::ALL);
+    EXPECT_EQ(expected_crossings, GetShapeEdgeIds(actual_edge_crossings));
 
     // Verify that CrossingType::INTERIOR returns only the interior crossings.
-    query.GetCrossings(a, b, shape, CrossingType::INTERIOR, &actual_crossings);
-    EXPECT_EQ(expected_interior_crossings, actual_crossings);
+    const vector<ShapeEdge> actual_interior_crossings =
+        query.GetCrossingEdges(a, b, *shape, CrossingType::INTERIOR);
+    EXPECT_EQ(expected_interior_crossings,
+              GetShapeEdgeIds(actual_interior_crossings));
   }
   // There is nothing magical about this particular ratio; this check exists
   // to catch changes that dramatically increase the number of candidates.
@@ -263,29 +277,23 @@ TEST(GetCrossingCandidates, CollinearEdgesOnCellBoundaries) {
 void TestPolylineCrossings(const S2ShapeIndex& index,
                            const S2Point& a0, const S2Point& a1) {
   S2CrossingEdgeQuery query(&index);
-  S2CrossingEdgeQuery::EdgeMap edge_map;
-  if (!query.GetCrossings(a0, a1, CrossingType::ALL, &edge_map)) return;
-  for (const auto& p : edge_map) {
-    auto shape = down_cast<const S2Polyline::Shape*>(p.first);
-    const S2Polyline* polyline = shape->polyline();
-    const vector<int>& edges = p.second;
-    // Shapes with no crossings should be filtered out by this method.
-    EXPECT_FALSE(edges.empty());
-    for (int edge : edges) {
-      const S2Point& b0 = polyline->vertex(edge);
-      const S2Point& b1 = polyline->vertex(edge + 1);
-      CHECK_GE(S2::CrossingSign(a0, a1, b0, b1), 0);
-    }
+  const vector<ShapeEdge> edges =
+      query.GetCrossingEdges(a0, a1, CrossingType::ALL);
+  if (edges.empty()) return;
+  for (const auto& edge : edges) {
+    S2_CHECK_GE(S2::CrossingSign(a0, a1, edge.v0(), edge.v1()), 0);
   }
   // Also test that no edges are missing.
   for (int i = 0; i < index.num_shape_ids(); ++i) {
-    auto shape = down_cast<S2Polyline::Shape*>(index.shape(i));
-    const vector<int>& edges = edge_map[shape];
+    const auto* shape = down_cast<S2Polyline::Shape*>(index.shape(i));
     const S2Polyline* polyline = shape->polyline();
     for (int e = 0; e < polyline->num_vertices() - 1; ++e) {
       if (S2::CrossingSign(a0, a1, polyline->vertex(e),
                                    polyline->vertex(e + 1)) >= 0) {
-        EXPECT_EQ(1, std::count(edges.begin(), edges.end(), e));
+        EXPECT_EQ(1, std::count_if(edges.begin(), edges.end(),
+                                   [e, i](const ShapeEdge& edge) {
+                                     return edge.id() == ShapeEdgeId{i, e};
+                                   }));
       }
     }
   }

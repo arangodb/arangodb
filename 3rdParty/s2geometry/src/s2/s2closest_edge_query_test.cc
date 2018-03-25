@@ -28,6 +28,7 @@
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
 #include "s2/s2cell_id.h"
+#include "s2/s2closest_edge_query_testing.h"
 #include "s2/s2edge_distances.h"
 #include "s2/s2loop.h"
 #include "s2/s2metrics.h"
@@ -134,7 +135,7 @@ TEST(S2ClosestEdgeQuery, TrueDistanceLessThanS1ChordAngleDistance) {
 
 TEST(S2ClosestEdgeQuery, TestReuseOfQuery) {
   // Tests that between queries, the internal mechanism for de-duplicating
-  // results is re-set. See b/71646017.
+  // results is re-set.  See b/71646017.
   auto index = MakeIndexOrDie("2:2 # #");
   S2ClosestEdgeQuery query(index.get());
   query.mutable_options()->set_max_error(S1Angle::Degrees(1));
@@ -291,81 +292,28 @@ TEST(S2ClosestEdgeQuery, IsConservativeDistanceLessOrEqual) {
   EXPECT_GE(num_conservative_needed, 25);
 }
 
-// An abstract class that adds edges to a MutableS2ShapeIndex for benchmarking.
-class ShapeIndexFactory {
- public:
-  virtual ~ShapeIndexFactory() {}
-
-  // Requests that approximately "num_edges" edges located within the given
-  // S2Cap bound should be added to "index".
-  virtual void AddEdges(const S2Cap& index_cap, int num_edges,
-                        MutableS2ShapeIndex* index) const = 0;
-};
-
-// Generates a regular loop that approximately fills the given S2Cap.
-//
-// Regular loops are nearly the worst case for distance calculations, since
-// many edges are nearly equidistant from any query point that is not
-// immediately adjacent to the loop.
-class RegularLoopShapeIndexFactory : public ShapeIndexFactory {
- public:
-  void AddEdges(const S2Cap& index_cap, int num_edges,
-                MutableS2ShapeIndex* index) const override {
-    index->Add(make_unique<S2Loop::OwningShape>(S2Loop::MakeRegularLoop(
-        index_cap.center(), index_cap.GetRadius(), num_edges)));
-  }
-};
-
-// Generates a fractal loop that approximately fills the given S2Cap.
-class FractalLoopShapeIndexFactory : public ShapeIndexFactory {
- public:
-  void AddEdges(const S2Cap& index_cap, int num_edges,
-                MutableS2ShapeIndex* index) const override {
-    S2Testing::Fractal fractal;
-    fractal.SetLevelForApproxMaxEdges(num_edges);
-    index->Add(make_unique<S2Loop::OwningShape>(
-        fractal.MakeLoop(S2Testing::GetRandomFrameAt(index_cap.center()),
-                         index_cap.GetRadius())));
-  }
-};
-
-// Generates a cloud of points that approximately fills the given S2Cap.
-class PointCloudShapeIndexFactory : public ShapeIndexFactory {
- public:
-  void AddEdges(const S2Cap& index_cap, int num_edges,
-                MutableS2ShapeIndex* index) const override {
-    vector<S2Point> points;
-    for (int i = 0; i < num_edges; ++i) {
-      points.push_back(S2Testing::SamplePoint(index_cap));
-    }
-    index->Add(make_unique<S2PointVectorShape>(std::move(points)));
-  }
-};
-
 // The approximate radius of S2Cap from which query edges are chosen.
-static const S1Angle kRadius = S2Testing::KmToAngle(10);
+static const S1Angle kTestCapRadius = S2Testing::KmToAngle(10);
 
 // An approximate bound on the distance measurement error for "reasonable"
 // distances (say, less than Pi/2) due to using S1ChordAngle.
-static double kChordAngleError = 1e-15;
+static const double kTestChordAngleError = 1e-15;
 
-using Result = pair<S1Angle, s2shapeutil::ShapeEdgeId>;
+using Result = pair<S2MinDistance, s2shapeutil::ShapeEdgeId>;
 
 // Converts to the format required by CheckDistanceResults() in s2testing.h
 vector<Result> ConvertResults(const vector<S2ClosestEdgeQuery::Result>& edges) {
   vector<Result> results;
   for (const auto& edge : edges) {
     results.push_back(
-        make_pair(edge.distance.ToAngle(),
+        make_pair(edge.distance,
                   s2shapeutil::ShapeEdgeId(edge.shape_id, edge.edge_id)));
   }
   return results;
 }
 
-// Use "query" to find the closest edge(s) to the given target, then convert
-// the query results into two parallel vectors, one for distances and one for
-// (shape_id, edge_id) pairs.  Also verify that the results satisfy the search
-// criteria.
+// Use "query" to find the closest edge(s) to the given target.  Verify that
+// the results satisfy the search criteria.
 static void GetClosestEdges(S2ClosestEdgeQuery::Target* target,
                             S2ClosestEdgeQuery *query,
                             vector<S2ClosestEdgeQuery::Result>* edges) {
@@ -399,8 +347,8 @@ static S2ClosestEdgeQuery::Result TestFindClosestEdges(
   EXPECT_TRUE(CheckDistanceResults(ConvertResults(expected),
                                    ConvertResults(actual),
                                    query->options().max_edges(),
-                                   query->options().max_distance().ToAngle(),
-                                   query->options().max_error().ToAngle()))
+                                   query->options().max_distance(),
+                                   query->options().max_error()))
       << "max_edges=" << query->options().max_edges()
       << ", max_distance=" << query->options().max_distance()
       << ", max_error=" << query->options().max_error();
@@ -428,7 +376,7 @@ static S2ClosestEdgeQuery::Result TestFindClosestEdges(
 // The running time of this test is proportional to
 //    (num_indexes + num_queries) * num_edges.
 // (Note that every query is checked using the brute force algorithm.)
-static void TestWithIndexFactory(const ShapeIndexFactory& factory,
+static void TestWithIndexFactory(const s2testing::ShapeIndexFactory& factory,
                                  int num_indexes, int num_edges,
                                  int num_queries) {
   // Build a set of MutableS2ShapeIndexes containing the desired geometry.
@@ -436,7 +384,7 @@ static void TestWithIndexFactory(const ShapeIndexFactory& factory,
   vector<unique_ptr<MutableS2ShapeIndex>> indexes;
   for (int i = 0; i < num_indexes; ++i) {
     S2Testing::rnd.Reset(FLAGS_s2_random_seed + i);
-    index_caps.push_back(S2Cap(S2Testing::RandomPoint(), kRadius));
+    index_caps.push_back(S2Cap(S2Testing::RandomPoint(), kTestCapRadius));
     indexes.emplace_back(new MutableS2ShapeIndex);
     factory.AddEdges(index_caps.back(), num_edges, indexes.back().get());
   }
@@ -479,7 +427,7 @@ static void TestWithIndexFactory(const ShapeIndexFactory& factory,
         EXPECT_NEAR(
             closest.distance.ToAngle().radians(),
             S1Angle(point, query.Project(point, closest)).radians(),
-            kChordAngleError);
+            kTestChordAngleError);
       }
     } else if (target_type == 1) {
       // Find the edges closest to a given edge.
@@ -498,7 +446,7 @@ static void TestWithIndexFactory(const ShapeIndexFactory& factory,
       S2ClosestEdgeQuery::CellTarget target(cell);
       TestFindClosestEdges(&target, &query);
     } else {
-      DCHECK_EQ(3, target_type);
+      S2_DCHECK_EQ(3, target_type);
       // Use another one of the pre-built indexes as the target.
       int j_index = S2Testing::rnd.Uniform(num_indexes);
       S2ClosestEdgeQuery::ShapeIndexTarget target(indexes[j_index].get());
@@ -513,26 +461,30 @@ static const int kNumEdges = 100;
 static const int kNumQueries = 200;
 
 TEST(S2ClosestEdgeQuery, CircleEdges) {
-  TestWithIndexFactory(RegularLoopShapeIndexFactory(),
+  TestWithIndexFactory(s2testing::RegularLoopShapeIndexFactory(),
                        kNumIndexes, kNumEdges, kNumQueries);
 }
 
 TEST(S2ClosestEdgeQuery, FractalEdges) {
-  TestWithIndexFactory(FractalLoopShapeIndexFactory(),
+  TestWithIndexFactory(s2testing::FractalLoopShapeIndexFactory(),
                        kNumIndexes, kNumEdges, kNumQueries);
 }
 
 TEST(S2ClosestEdgeQuery, PointCloudEdges) {
-  TestWithIndexFactory(PointCloudShapeIndexFactory(),
+  TestWithIndexFactory(s2testing::PointCloudShapeIndexFactory(),
                        kNumIndexes, kNumEdges, kNumQueries);
 }
 
 TEST(S2ClosestEdgeQuery, ConservativeCellDistanceIsUsed) {
+  // Don't use google::FlagSaver, so it works in opensource without gflags.
+  const int saved_seed = FLAGS_s2_random_seed;
   // These specific test cases happen to fail if max_error() is not properly
   // taken into account when measuring distances to S2ShapeIndex cells.
   for (int seed : {42, 681, 894, 1018, 1750, 1759, 2401}) {
-    FLAGS_s2_random_seed = seed;  // Automatically restored.
-    TestWithIndexFactory(FractalLoopShapeIndexFactory(), 5, 100, 10);
+    FLAGS_s2_random_seed = seed;
+    TestWithIndexFactory(s2testing::FractalLoopShapeIndexFactory(),
+                         5, 100, 10);
   }
+  FLAGS_s2_random_seed = saved_seed;
 }
 

@@ -105,7 +105,7 @@ void DegeneracyCheckingLayer::Build(const Graph& g, S2Error* error) {
 
 void ExpectDegeneracies(const string& polygon_str,
                         const vector<TestDegeneracy>& expected) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   builder.StartLayer(make_unique<DegeneracyCheckingLayer>(expected));
   auto polygon = s2textformat::MakeLaxPolygonOrDie(polygon_str);
   builder.AddIsFullPolygonPredicate(

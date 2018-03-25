@@ -29,7 +29,6 @@
 
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
-#include <s2/s2cell_union.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
 
@@ -212,7 +211,7 @@ class NearUtils {
   std::unordered_set<uint64_t> _seenDocs;
   
   /// Track the already scanned region
-  S2CellUnion _scannedCells;
+  std::vector<S2CellId> _scannedCells;
   /// Coverer instance to use
   S2RegionCoverer _coverer;
 };

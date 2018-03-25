@@ -150,7 +150,7 @@ void S2MinDistanceShapeIndexTarget::set_use_brute_force(
 }
 
 bool S2MinDistanceShapeIndexTarget::set_max_error(
-    const S2MinDistance& max_error) {
+    const S1ChordAngle& max_error) {
   query_->mutable_options()->set_max_error(max_error);
   return true;  // Indicates that we may return suboptimal results.
 }

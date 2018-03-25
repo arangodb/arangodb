@@ -62,8 +62,8 @@ Vector3_d RobustCrossProd(const S2Point& a, const S2Point& b) {
   // yields a result that is nearly orthogonal to both "a" and "b" even if
   // these two values differ only in the lowest bit of one component.
 
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
+  S2_DCHECK(IsUnitLength(a));
+  S2_DCHECK(IsUnitLength(b));
   Vector3_d x = (b + a).CrossProd(b - a);
   if (x != S2Point(0, 0, 0)) return x;
 
@@ -73,8 +73,8 @@ Vector3_d RobustCrossProd(const S2Point& a, const S2Point& b) {
 }
 
 S2Point Rotate(const S2Point& p, const S2Point& axis, S1Angle angle) {
-  DCHECK(IsUnitLength(p));
-  DCHECK(IsUnitLength(axis));
+  S2_DCHECK(IsUnitLength(p));
+  S2_DCHECK(IsUnitLength(axis));
   // Let M be the plane through P that is perpendicular to "axis", and let
   // "center" be the point where M intersects "axis".  We construct a
   // right-handed orthogonal frame (dx, dy, center) such that "dx" is the
@@ -95,7 +95,7 @@ Matrix3x3_d GetFrame(const S2Point& z) {
 }
 
 void GetFrame(const S2Point& z, Matrix3x3_d* m) {
-  DCHECK(IsUnitLength(z));
+  S2_DCHECK(IsUnitLength(z));
   m->SetCol(2, z);
   m->SetCol(1, Ortho(z));
   m->SetCol(0, m->Col(1).CrossProd(z));  // Already unit-length.

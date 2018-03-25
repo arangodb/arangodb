@@ -91,7 +91,7 @@ DistStats TestUnprojected(const S2::Projection& proj, S1Angle tolerance,
     x = y;
     px = py;
   }
-  LOG(INFO) << vertices.size() << " vertices, min/avg/max tolerance ratio = "
+  S2_LOG(INFO) << vertices.size() << " vertices, min/avg/max tolerance ratio = "
             << (stats.min_dist() / tolerance) << " / "
             << (stats.avg_dist() / tolerance) << " / "
             << (stats.max_dist() / tolerance);
@@ -122,7 +122,7 @@ DistStats TestProjected(const S2::Projection& proj, S1Angle tolerance,
     x = y;
     px = py;
   }
-  LOG(INFO) << vertices.size() << " vertices, min/avg/max tolerance ratio = "
+  S2_LOG(INFO) << vertices.size() << " vertices, min/avg/max tolerance ratio = "
             << (stats.min_dist() / tolerance) << " / "
             << (stats.avg_dist() / tolerance) << " / "
             << (stats.max_dist() / tolerance);

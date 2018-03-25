@@ -252,26 +252,26 @@ inline void S2PointIndex<Data>::Iterator::Init(
 
 template <class Data>
 inline S2CellId S2PointIndex<Data>::Iterator::id() const {
-  DCHECK(!done());
+  S2_DCHECK(!done());
   return iter_->first;
 }
 
 template <class Data>
 inline const S2Point& S2PointIndex<Data>::Iterator::point() const {
-  DCHECK(!done());
+  S2_DCHECK(!done());
   return iter_->second.point();
 }
 
 template <class Data>
 inline const Data& S2PointIndex<Data>::Iterator::data() const {
-  DCHECK(!done());
+  S2_DCHECK(!done());
   return iter_->second.data();
 }
 
 template <class Data>
 inline const typename S2PointIndex<Data>::PointData&
 S2PointIndex<Data>::Iterator::point_data() const {
-  DCHECK(!done());
+  S2_DCHECK(!done());
   return iter_->second;
 }
 
@@ -292,7 +292,7 @@ inline void S2PointIndex<Data>::Iterator::Finish() {
 
 template <class Data>
 inline void S2PointIndex<Data>::Iterator::Next() {
-  DCHECK(!done());
+  S2_DCHECK(!done());
   ++iter_;
 }
 

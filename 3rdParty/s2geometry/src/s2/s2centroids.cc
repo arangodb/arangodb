@@ -30,9 +30,9 @@ S2Point PlanarCentroid(const S2Point& a, const S2Point& b,
 
 S2Point TrueCentroid(const S2Point& a, const S2Point& b,
                      const S2Point& c) {
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
-  DCHECK(IsUnitLength(c));
+  S2_DCHECK(IsUnitLength(a));
+  S2_DCHECK(IsUnitLength(b));
+  S2_DCHECK(IsUnitLength(c));
 
   // I couldn't find any references for computing the true centroid of a
   // spherical triangle...  I have a truly marvellous demonstration of this

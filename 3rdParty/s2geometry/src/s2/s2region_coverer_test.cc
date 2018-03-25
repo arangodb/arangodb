@@ -25,10 +25,10 @@
 #include <unordered_map>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/base/stringprintf.h"
 #include "s2/base/strtoint.h"
 #include "s2/s1angle.h"

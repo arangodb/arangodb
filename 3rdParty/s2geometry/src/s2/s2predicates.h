@@ -261,13 +261,13 @@ inline int TriageSign(const S2Point& a, const S2Point& b,
   //
   // which is about 3.6548 * e, or 1.8274 * DBL_EPSILON.
   const double kMaxDetError = 1.8274 * DBL_EPSILON;
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
-  DCHECK(S2::IsUnitLength(c));
+  S2_DCHECK(S2::IsUnitLength(a));
+  S2_DCHECK(S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(c));
   double det = a_cross_b.DotProd(c);
 
   // Double-check borderline cases in debug mode.
-  DCHECK(!FLAGS_s2debug ||
+  S2_DCHECK(!FLAGS_s2debug ||
          std::fabs(det) <= kMaxDetError ||
          std::fabs(det) >= 100 * kMaxDetError ||
          det * ExpensiveSign(a, b, c) > 0);

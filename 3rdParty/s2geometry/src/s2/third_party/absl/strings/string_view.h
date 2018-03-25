@@ -460,24 +460,6 @@ class string_view {
     return substr(pos1, count1).compare(string_view(s, count2));
   }
 
-  // Returns whether this begins with x.
-  ABSL_DEPRECATED("Use absl::StartsWith")
-  bool starts_with(string_view x) const {
-    return length_ >= x.length_ &&
-           0 == std::memcmp(ptr_, x.ptr_, x.length_);
-  }
-
-  // Returns whether this ends with x.
-  ABSL_DEPRECATED("Use absl::EndsWith")
-  bool ends_with(string_view x) const {
-    return length_ >= x.length_ &&
-           0 == std::memcmp(ptr_ + (length_ - x.length_), x.ptr_,
-                                         x.length_);
-  }
-
-  ABSL_DEPRECATED("Use absl::StrContains")
-  bool contains(string_view s) const;
-
   // Find Utilities
 
   // string_view::find()

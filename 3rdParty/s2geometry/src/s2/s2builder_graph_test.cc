@@ -21,11 +21,22 @@
 #include "s2/s2builder_graph.h"
 
 #include <iosfwd>
+#include <memory>
 #include <vector>
 
 #include <gtest/gtest.h>
+#include "s2/third_party/absl/memory/memory.h"
 #include "s2/id_set_lexicon.h"
+#include "s2/s2builderutil_testing.h"
+#include "s2/s2lax_polyline_shape.h"
+#include "s2/s2text_format.h"
 
+using absl::make_unique;
+using s2builderutil::GraphClone;
+using s2builderutil::GraphCloningLayer;
+using s2textformat::MakeLaxPolylineOrDie;
+using s2textformat::MakePointOrDie;
+using std::unique_ptr;
 using std::vector;
 
 using EdgeType = S2Builder::EdgeType;
@@ -36,13 +47,126 @@ using DegenerateEdges = GraphOptions::DegenerateEdges;
 using DuplicateEdges = GraphOptions::DuplicateEdges;
 using SiblingPairs = GraphOptions::SiblingPairs;
 
+using DegenerateBoundaries = Graph::DegenerateBoundaries;
 using Edge = Graph::Edge;
 using EdgeId = Graph::EdgeId;
 using InputEdgeId = Graph::InputEdgeId;
 using InputEdgeIdSetId = Graph::InputEdgeIdSetId;
+using LoopType = Graph::LoopType;
+using PolylineType = Graph::PolylineType;
 using VertexId = Graph::VertexId;
 
 namespace s2builder {
+
+TEST(GetDirectedLoops, DegenerateEdges) {
+  GraphClone gc;
+  S2Builder builder{S2Builder::Options()};
+  GraphOptions graph_options(
+      EdgeType::DIRECTED, DegenerateEdges::DISCARD_EXCESS,
+      DuplicateEdges::KEEP, SiblingPairs::KEEP);
+  builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:0, 0:2, 2:2, 2:0, 0:0"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:3, 3:3, 0:3"));
+  S2Error error;
+  EXPECT_TRUE(builder.Build(&error));
+  const Graph& g = gc.graph();
+  vector<vector<EdgeId>> loops;
+  ASSERT_TRUE(g.GetDirectedLoops(LoopType::SIMPLE, &loops, &error));
+  ASSERT_EQ(loops.size(), 3);
+  EXPECT_EQ(loops[0].size(), 1);
+  EXPECT_EQ(loops[1].size(), 4);
+  EXPECT_EQ(loops[2].size(), 2);
+}
+
+TEST(GetDirectedComponents, DegenerateEdges) {
+  GraphClone gc;
+  S2Builder builder{S2Builder::Options()};
+  GraphOptions graph_options(
+      EdgeType::DIRECTED, DegenerateEdges::DISCARD_EXCESS,
+      DuplicateEdges::MERGE, SiblingPairs::CREATE);
+  builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:0, 0:2, 2:2, 2:0, 0:0"));
+  S2Error error;
+  EXPECT_TRUE(builder.Build(&error));
+  const Graph& g = gc.graph();
+  vector<Graph::DirectedComponent> components;
+  ASSERT_TRUE(g.GetDirectedComponents(DegenerateBoundaries::KEEP, &components,
+                                      &error));
+  ASSERT_EQ(components.size(), 2);
+  EXPECT_EQ(components[0].size(), 1);
+  EXPECT_EQ(components[0][0].size(), 1);
+  EXPECT_EQ(components[1].size(), 2);
+  EXPECT_EQ(components[1][0].size(), 4);
+  EXPECT_EQ(components[1][1].size(), 4);
+}
+
+TEST(GetUndirectedComponents, DegenerateEdges) {
+  GraphClone gc;
+  S2Builder builder{S2Builder::Options()};
+  GraphOptions graph_options(
+      EdgeType::UNDIRECTED, DegenerateEdges::DISCARD_EXCESS,
+      DuplicateEdges::KEEP, SiblingPairs::DISCARD_EXCESS);
+  builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:0, 0:2, 2:2, 2:0, 0:0"));
+  S2Error error;
+  EXPECT_TRUE(builder.Build(&error));
+  const Graph& g = gc.graph();
+  vector<Graph::UndirectedComponent> components;
+  ASSERT_TRUE(g.GetUndirectedComponents(LoopType::CIRCUIT, &components,
+                                      &error));
+  // The result consists of two components, each with two complements.  Each
+  // complement in this example has exactly one loop.  The loops in both
+  // complements of the first component have 1 vertex, while the loops in both
+  // complements of the second component have 4 vertices.
+  ASSERT_EQ(components.size(), 2);
+  EXPECT_EQ(components[0][0].size(), 1);
+  EXPECT_EQ(components[0][0][0].size(), 1);
+  EXPECT_EQ(components[0][1].size(), 1);
+  EXPECT_EQ(components[0][1][0].size(), 1);
+  EXPECT_EQ(components[1][0].size(), 1);
+  EXPECT_EQ(components[1][0][0].size(), 4);
+  EXPECT_EQ(components[1][1].size(), 1);
+  EXPECT_EQ(components[1][1][0].size(), 4);
+}
+
+TEST(GetPolylines, UndirectedDegeneratePaths) {
+  GraphClone gc;
+  S2Builder builder{S2Builder::Options()};
+  GraphOptions graph_options(
+      EdgeType::UNDIRECTED, DegenerateEdges::KEEP,
+      DuplicateEdges::KEEP, SiblingPairs::KEEP);
+  builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:0, 0:0, 0:1, 0:1, 0:2, 0:2"));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  S2Error error;
+  EXPECT_TRUE(builder.Build(&error));
+  const Graph& g = gc.graph();
+  auto polylines = g.GetPolylines(PolylineType::PATH);
+  EXPECT_EQ(polylines.size(), 7);
+}
+
+TEST(GetPolylines, UndirectedDegenerateWalks) {
+  GraphClone gc;
+  S2Builder builder{S2Builder::Options()};
+  GraphOptions graph_options(
+      EdgeType::UNDIRECTED, DegenerateEdges::KEEP,
+      DuplicateEdges::KEEP, SiblingPairs::KEEP);
+  builder.StartLayer(make_unique<GraphCloningLayer>(graph_options, &gc));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  builder.AddShape(*MakeLaxPolylineOrDie("0:0, 0:0, 0:1, 0:1, 0:2, 0:2"));
+  builder.AddShape(*MakeLaxPolylineOrDie("1:1, 1:1"));
+  S2Error error;
+  EXPECT_TRUE(builder.Build(&error));
+  const Graph& g = gc.graph();
+  auto polylines = g.GetPolylines(PolylineType::WALK);
+  EXPECT_EQ(polylines.size(), 2);
+  EXPECT_EQ(polylines[0].size(), 2);
+  EXPECT_EQ(polylines[1].size(), 5);
+}
 
 struct TestEdge {
   VertexId first;

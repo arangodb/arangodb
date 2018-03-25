@@ -17,8 +17,7 @@
 
 #include "s2/s2point_region.h"
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/util/coding/coder.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
@@ -55,7 +54,7 @@ void S2PointRegion::Encode(Encoder* encoder) const {
   for (int i = 0; i < 3; ++i) {
     encoder->putdouble(point_[i]);
   }
-  DCHECK_GE(encoder->avail(), 0);
+  S2_DCHECK_GE(encoder->avail(), 0);
 }
 
 bool S2PointRegion::Decode(Decoder* decoder) {

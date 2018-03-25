@@ -83,7 +83,7 @@ TEST(S2PointRegionTest, DecodeUnitLength) {
 
 TEST(S2PointRegionTest, DecodeNonUnitLength) {
   // Ensure that a decode of a non-unit length vector returns false,
-  // rather than DCHECK fails.
+  // rather than S2_DCHECK fails.
   Encoder encoder;
   encoder.Ensure(1 + 3 * 8);
 

@@ -49,7 +49,7 @@
 #include <utility>
 
 #include "s2/third_party/absl/base/integral_types.h"
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/macros.h"
 #include "s2/base/port.h"
 #include "s2/third_party/absl/meta/type_traits.h"
@@ -110,7 +110,7 @@ class compact_array_base {
     pointer_ = p;
   }
   void SetInlined() {
-    DCHECK_LE(capacity(), kInlined);
+    S2_DCHECK_LE(capacity(), kInlined);
     is_inlined_ = true;
   }
   T* InlinedSpace() { return reinterpret_cast<T*>(inlined_elements_); }
@@ -135,7 +135,7 @@ class compact_array_base {
   enum { kInlined = 0, is_inlined_ = false };
   T* Array() { return first_; }
   void SetArray(T* p) { first_ = p; }
-  void SetInlined() { LOG(FATAL); }
+  void SetInlined() { S2_LOG(FATAL); }
   T* InlinedSpace() { return nullptr; }
 
   // The pointer to the actual data array.
@@ -332,12 +332,12 @@ class compact_array_base {
   }
 
   reference operator[](size_type n) {
-    DCHECK_LT(n, size_);
+    S2_DCHECK_LT(n, size_);
     return Array()[n];
   }
 
   const_reference operator[](size_type n) const {
-    DCHECK_LT(n, size_);
+    S2_DCHECK_LT(n, size_);
     return ConstArray()[n];
   }
 
@@ -383,19 +383,19 @@ class compact_array_base {
 
  private:                               // Low-level helper functions.
   void set_size(size_type n) {
-    DCHECK_LE(n, capacity());
+    S2_DCHECK_LE(n, capacity());
     size_ = n;
   }
 
   void set_capacity(size_type n) {
-    DCHECK_LE(size(), n);
+    S2_DCHECK_LE(size(), n);
     is_exponent_ = (n >= kExponentStart);
     capacity_ = is_exponent_ ? Bits::Log2Ceiling(n) : n;
     // A tiny optimization here would be to set capacity_ to kInlined if
     // it's currently less. We don't bother, because doing so would require
     // changing the existing comments and unittests that say that, for small n,
     // capacity() will be exactly n if one calls reserve(n).
-    DCHECK(n == capacity() || n > kInlined);
+    S2_DCHECK(n == capacity() || n > kInlined);
   }
 
   // Make capacity n or more. Reallocate and copy data as necessary.

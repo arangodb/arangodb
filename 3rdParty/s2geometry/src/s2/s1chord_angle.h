@@ -25,6 +25,7 @@
 
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
+#include "s2/s2pointutil.h"
 
 // S1ChordAngle represents the angle subtended by a chord (i.e., the straight
 // line segment connecting two points on the sphere).  Its representation
@@ -153,7 +154,6 @@ class S1ChordAngle {
   friend S1ChordAngle operator-(S1ChordAngle a, S1ChordAngle b);
   S1ChordAngle& operator+=(S1ChordAngle a);
   S1ChordAngle& operator-=(S1ChordAngle a);
-  S1ChordAngle& operator=(S1ChordAngle a);
 
   // Trigonmetric functions.  It is more accurate and efficient to call these
   // rather than first converting to an S1Angle.
@@ -222,7 +222,7 @@ class S1ChordAngle {
   // S1ChordAngles are represented by the squared chord length, which can
   // range from 0 to 4.  Infinity() uses an infinite squared length.
   explicit S1ChordAngle(double length2) : length2_(length2) {
-    DCHECK(is_valid());
+    S2_DCHECK(is_valid());
   }
   double length2_;
 };
@@ -230,6 +230,15 @@ class S1ChordAngle {
 
 //////////////////   Implementation details follow   ////////////////////
 
+
+inline S1ChordAngle::S1ChordAngle(const S2Point& x, const S2Point& y) {
+  S2_DCHECK(S2::IsUnitLength(x));
+  S2_DCHECK(S2::IsUnitLength(y));
+  // The squared distance may slightly exceed 4.0 due to roundoff errors.
+  // The maximum error in the result is 2 * DBL_EPSILON * length2_.
+  length2_ = std::min(4.0, (x - y).Norm2());
+  S2_DCHECK(is_valid());
+}
 
 inline S1ChordAngle S1ChordAngle::FromLength2(double length2) {
   return S1ChordAngle(std::min(4.0, length2));
@@ -353,12 +362,6 @@ inline S1ChordAngle& S1ChordAngle::operator+=(S1ChordAngle a) {
 inline S1ChordAngle& S1ChordAngle::operator-=(S1ChordAngle a) {
   return (*this = *this - a);
 }
-
-inline S1ChordAngle& S1ChordAngle::operator=(S1ChordAngle a) {
-  length2_ = a.length2_;
-  return *this;
-}
-
 
 // Outputs the chord angle as the equivalent S1Angle.
 std::ostream& operator<<(std::ostream& os, S1ChordAngle a);

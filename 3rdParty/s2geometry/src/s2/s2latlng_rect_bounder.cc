@@ -20,7 +20,7 @@
 #include <cfloat>
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s1interval.h"
@@ -31,7 +31,7 @@ using std::max;
 using std::min;
 
 void S2LatLngRectBounder::AddPoint(const S2Point& b) {
-  DCHECK(S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(b));
   AddInternal(b, S2LatLng(b));
 }
 
@@ -43,7 +43,7 @@ void S2LatLngRectBounder::AddInternal(const S2Point& b,
                                       const S2LatLng& b_latlng) {
   // Simple consistency check to verify that b and b_latlng are alternate
   // representations of the same vertex.
-  DCHECK(S2::ApproxEquals(b, b_latlng.ToPoint()));
+  S2_DCHECK(S2::ApproxEquals(b, b_latlng.ToPoint()));
 
   if (bound_.is_empty()) {
     bound_.AddPoint(b_latlng);

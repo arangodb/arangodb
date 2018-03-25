@@ -22,8 +22,7 @@
 #include <cmath>
 #include <iosfwd>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
@@ -237,12 +236,12 @@ std::ostream& operator<<(std::ostream& os, const S2Cap& cap);
 inline S2Cap::S2Cap(const S2Point& center, S1Angle radius)
     : center_(center), radius_(std::min(radius, S1Angle::Radians(M_PI))) {
   // The "min" calculation above is necessary to handle S1Angle::Infinity().
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
 }
 
 inline S2Cap::S2Cap(const S2Point& center, S1ChordAngle radius)
     : center_(center), radius_(radius) {
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
 }
 
 inline S2Cap S2Cap::FromPoint(const S2Point& center) {

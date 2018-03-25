@@ -27,7 +27,7 @@ S2RegionUnion::S2RegionUnion(vector<std::unique_ptr<S2Region>> regions) {
 }
 
 void S2RegionUnion::Init(vector<std::unique_ptr<S2Region>> regions) {
-  DCHECK(regions_.empty());
+  S2_DCHECK(regions_.empty());
   regions_ = std::move(regions);
 }
 

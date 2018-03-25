@@ -54,9 +54,9 @@ double TurnAngle(const S2Point& a, const S2Point& b, const S2Point& c) {
 }
 
 double Area(const S2Point& a, const S2Point& b, const S2Point& c) {
-  DCHECK(IsUnitLength(a));
-  DCHECK(IsUnitLength(b));
-  DCHECK(IsUnitLength(c));
+  S2_DCHECK(IsUnitLength(a));
+  S2_DCHECK(IsUnitLength(b));
+  S2_DCHECK(IsUnitLength(c));
   // This method is based on l'Huilier's theorem,
   //
   //   tan(E/4) = sqrt(tan(s/2) tan((s-a)/2) tan((s-b)/2) tan((s-c)/2))

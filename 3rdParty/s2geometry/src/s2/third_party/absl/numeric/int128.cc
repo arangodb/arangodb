@@ -20,6 +20,7 @@
 #include <iostream>  // NOLINT(readability/streams)
 #include <sstream>
 #include <string>
+#include <type_traits>
 
 namespace absl {
 
@@ -104,11 +105,15 @@ void DivModImpl(uint128 dividend, uint128 divisor, uint128* quotient_ret,
 }
 
 template <typename T>
-uint128 Initialize128FromFloat(T v) {
+uint128 MakeUint128FromFloat(T v) {
+  static_assert(std::is_floating_point<T>::value, "");
+
   // Rounding behavior is towards zero, same as for built-in types.
 
   // Undefined behavior if v is NaN or cannot fit into uint128.
-  assert(!std::isnan(v) && v > -1 && v < std::ldexp(static_cast<T>(1), 128));
+  assert(std::isfinite(v) && v > -1 &&
+         (std::numeric_limits<T>::max_exponent <= 128 ||
+          v < std::ldexp(static_cast<T>(1), 128)));
 
   if (v >= std::ldexp(static_cast<T>(1), 64)) {
     uint64_t hi = static_cast<uint64_t>(std::ldexp(v, -64));
@@ -120,23 +125,31 @@ uint128 Initialize128FromFloat(T v) {
 }
 }  // namespace
 
-uint128::uint128(float v) : uint128(Initialize128FromFloat(v)) {}
-uint128::uint128(double v) : uint128(Initialize128FromFloat(v)) {}
-uint128::uint128(long double v) : uint128(Initialize128FromFloat(v)) {}
+uint128::uint128(float v) : uint128(MakeUint128FromFloat(v)) {}
+uint128::uint128(double v) : uint128(MakeUint128FromFloat(v)) {}
+uint128::uint128(long double v) : uint128(MakeUint128FromFloat(v)) {}
 
-uint128& uint128::operator/=(uint128 other) {
+uint128 operator/(uint128 lhs, uint128 rhs) {
+#if defined(ABSL_HAVE_INTRINSIC_INT128)
+  return static_cast<unsigned __int128>(lhs) /
+         static_cast<unsigned __int128>(rhs);
+#else  // ABSL_HAVE_INTRINSIC_INT128
   uint128 quotient = 0;
   uint128 remainder = 0;
-  DivModImpl(*this, other, &quotient, &remainder);
-  *this = quotient;
-  return *this;
+  DivModImpl(lhs, rhs, &quotient, &remainder);
+  return quotient;
+#endif  // ABSL_HAVE_INTRINSIC_INT128
 }
-uint128& uint128::operator%=(uint128 other) {
+uint128 operator%(uint128 lhs, uint128 rhs) {
+#if defined(ABSL_HAVE_INTRINSIC_INT128)
+  return static_cast<unsigned __int128>(lhs) %
+         static_cast<unsigned __int128>(rhs);
+#else  // ABSL_HAVE_INTRINSIC_INT128
   uint128 quotient = 0;
   uint128 remainder = 0;
-  DivModImpl(*this, other, &quotient, &remainder);
-  *this = remainder;
-  return *this;
+  DivModImpl(lhs, rhs, &quotient, &remainder);
+  return remainder;
+#endif  // ABSL_HAVE_INTRINSIC_INT128
 }
 
 namespace {
@@ -209,6 +222,9 @@ std::ostream& operator<<(std::ostream& os, uint128 v) {
   return os << rep;
 }
 
+namespace {
+
+}
 
 }  // namespace absl
 

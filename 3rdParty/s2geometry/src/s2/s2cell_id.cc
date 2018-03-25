@@ -24,13 +24,11 @@
 #include <mutex>
 #include <vector>
 
-#include <glog/logging.h>
-
-#include "s2/base/casts.h"
-#include "s2/base/stringprintf.h"
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s2coords.h"
 #include "s2/s2latlng.h"
+#include "s2/third_party/absl/base/casts.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include "s2/third_party/absl/strings/str_cat.h"
 
@@ -134,7 +132,7 @@ int64 S2CellId::distance_from_begin() const {
 }
 
 S2CellId S2CellId::advance_wrap(int64 steps) const {
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
   if (steps == 0) return *this;
 
   int step_shift = 2 * (kMaxLevel - level()) + 1;
@@ -185,7 +183,7 @@ int S2CellId::GetCommonAncestorLevel(S2CellId other) const {
   // differ and convert that to a level.  The max() below is necessary for the
   // case where one S2CellId is a descendant of the other.
   uint64 bits = max(id() ^ other.id(), max(lsb(), other.lsb()));
-  DCHECK_NE(bits, 0);  // Because lsb() is non-zero.
+  S2_DCHECK_NE(bits, 0);  // Because lsb() is non-zero.
 
   // Compute the position of the most significant bit, and then map the bit
   // position as follows:
@@ -263,7 +261,7 @@ S2CellId S2CellId::FromFaceIJ(int face, int i, int j) {
 
   // Note that this value gets shifted one bit to the left at the end
   // of the function.
-  uint64 n = implicit_cast<uint64>(face) << (kPosBits - 1);
+  uint64 n = absl::implicit_cast<uint64>(face) << (kPosBits - 1);
 
   // Alternating faces have opposite Hilbert curve orientations; this
   // is necessary in order for all faces to have a right-handed
@@ -356,8 +354,8 @@ int S2CellId::ToFaceIJOrientation(int* pi, int* pj, int* orientation) const {
     // by (kMaxLevel-n-1) repetitions of "00", followed by "0".  The "10" has
     // no effect, while each occurrence of "00" has the effect of reversing
     // the kSwapMask bit.
-    DCHECK_EQ(0, kPosToOrientation[2]);
-    DCHECK_EQ(kSwapMask, kPosToOrientation[0]);
+    S2_DCHECK_EQ(0, kPosToOrientation[2]);
+    S2_DCHECK_EQ(kSwapMask, kPosToOrientation[0]);
     if (lsb() & GG_ULONGLONG(0x1111111111111110)) {
       bits ^= kSwapMask;
     }
@@ -466,7 +464,7 @@ S2CellId S2CellId::FromFaceIJWrap(int face, int i, int j) {
   static const double kScale = 1.0 / kMaxSize;
   static const double kLimit = 1.0 + DBL_EPSILON;
   // The arithmetic below is designed to avoid 32-bit integer overflows.
-  DCHECK_EQ(0, kMaxSize % 2);
+  S2_DCHECK_EQ(0, kMaxSize % 2);
   double u = max(-kLimit, min(kLimit, kScale * (2 * (i - kMaxSize / 2) + 1)));
   double v = max(-kLimit, min(kLimit, kScale * (2 * (j - kMaxSize / 2) + 1)));
 
@@ -505,7 +503,7 @@ void S2CellId::AppendVertexNeighbors(int level,
                                      vector<S2CellId>* output) const {
   // "level" must be strictly less than this cell's level so that we can
   // determine which vertex this cell is closest to.
-  DCHECK_LT(level, this->level());
+  S2_DCHECK_LT(level, this->level());
   int i, j;
   int face = ToFaceIJOrientation(&i, &j, nullptr);
 
@@ -544,7 +542,7 @@ void S2CellId::AppendVertexNeighbors(int level,
 
 void S2CellId::AppendAllNeighbors(int nbr_level,
                                   vector<S2CellId>* output) const {
-  DCHECK_GE(nbr_level, level());
+  S2_DCHECK_GE(nbr_level, level());
   int i, j;
   int face = ToFaceIJOrientation(&i, &j, nullptr);
 
@@ -556,7 +554,7 @@ void S2CellId::AppendAllNeighbors(int nbr_level,
   j &= -size;
 
   int nbr_size = GetSizeIJ(nbr_level);
-  DCHECK_LE(nbr_size, size);
+  S2_DCHECK_LE(nbr_size, size);
 
   // We compute the top-bottom, left-right, and diagonal neighbors in one
   // pass.  The loop test is at the end of the loop to avoid 32-bit overflow.

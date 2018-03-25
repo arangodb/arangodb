@@ -34,13 +34,27 @@ namespace gtl {
 
 template <typename Key, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<Key>, int TargetNodeSize = 256>
-using btree_set = btree_unique_container<
-    btree<btree_set_params<Key, Compare, Alloc, TargetNodeSize>>>;
+class btree_set
+    : public internal_btree::btree_unique_container<internal_btree::btree<
+          internal_btree::set_params<Key, Compare, Alloc, TargetNodeSize>>> {
+  using Base = typename btree_set::btree_unique_container;
+
+ public:
+  btree_set() {}
+  using Base::Base;
+};
 
 template <typename Key, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<Key>, int TargetNodeSize = 256>
-using btree_multiset = btree_multi_container<
-    btree<btree_set_params<Key, Compare, Alloc, TargetNodeSize>>>;
+class btree_multiset
+    : public internal_btree::btree_multi_container<internal_btree::btree<
+          internal_btree::set_params<Key, Compare, Alloc, TargetNodeSize>>> {
+  using Base = typename btree_multiset::btree_multi_container;
+
+ public:
+  btree_multiset() {}
+  using Base::Base;
+};
 
 }  // namespace gtl
 

@@ -19,6 +19,7 @@
 
 #include <memory>
 #include <string>
+#include "s2/base/casts.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include <gtest/gtest.h>
 #include "s2/third_party/absl/memory/memory.h"
@@ -177,7 +178,7 @@ TEST(S2PolylineVectorLayer, InputEdgeStartsMultipleLoops) {
 }
 
 TEST(S2PolylineVectorLayer, SimpleEdgeLabels) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   vector<unique_ptr<S2Polyline>> output;
   S2PolylineVectorLayer::LabelSetIds label_set_ids;
   IdSetLexicon label_set_lexicon;
@@ -211,7 +212,7 @@ TEST(S2PolylineVectorLayer, SimpleEdgeLabels) {
 }
 
 TEST(IndexedS2PolylineVectorLayer, AddsShapes) {
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   MutableS2ShapeIndex index;
   builder.StartLayer(make_unique<IndexedS2PolylineVectorLayer>(&index));
   string polyline0_str = "0:0, 1:1";

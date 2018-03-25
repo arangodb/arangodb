@@ -26,13 +26,13 @@
 #include <unordered_set>
 #include <vector>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell_union.h"
 #include "s2/s2metrics.h"
 #include "s2/s2region.h"
+#include "s2/third_party/absl/base/casts.h"
 
 using std::is_sorted;
 using std::max;
@@ -58,14 +58,14 @@ void S2RegionCoverer::Options::set_max_cells(int max_cells) {
 }
 
 void S2RegionCoverer::Options::set_min_level(int min_level) {
-  DCHECK_GE(min_level, 0);
-  DCHECK_LE(min_level, S2CellId::kMaxLevel);
+  S2_DCHECK_GE(min_level, 0);
+  S2_DCHECK_LE(min_level, S2CellId::kMaxLevel);
   min_level_ = max(0, min(S2CellId::kMaxLevel, min_level));
 }
 
 void S2RegionCoverer::Options::set_max_level(int max_level) {
-  DCHECK_GE(max_level, 0);
-  DCHECK_LE(max_level, S2CellId::kMaxLevel);
+  S2_DCHECK_GE(max_level, 0);
+  S2_DCHECK_LE(max_level, S2CellId::kMaxLevel);
   max_level_ = max(0, min(S2CellId::kMaxLevel, max_level));
 }
 
@@ -75,8 +75,8 @@ void S2RegionCoverer::Options::set_fixed_level(int level) {
 }
 
 void S2RegionCoverer::Options::set_level_mod(int level_mod) {
-  DCHECK_GE(level_mod, 1);
-  DCHECK_LE(level_mod, 3);
+  S2_DCHECK_GE(level_mod, 1);
+  S2_DCHECK_LE(level_mod, 3);
   level_mod_ = max(1, min(3, level_mod));
 }
 
@@ -114,7 +114,7 @@ S2RegionCoverer::Candidate* S2RegionCoverer::NewCandidate(const S2Cell& cell) {
   candidate->num_children = 0;
   if (!is_terminal) {
     std::fill_n(&candidate->children[0], 1 << max_children_shift(),
-                implicit_cast<Candidate*>(nullptr));
+                absl::implicit_cast<Candidate*>(nullptr));
   }
   ++candidates_created_counter_;
   return candidate;
@@ -159,7 +159,7 @@ void S2RegionCoverer::AddCandidate(Candidate* candidate) {
     DeleteCandidate(candidate, true);
     return;
   }
-  DCHECK_EQ(0, candidate->num_children);
+  S2_DCHECK_EQ(0, candidate->num_children);
 
   // Expand one level at a time until we hit min_level() to ensure that we
   // don't skip over it.
@@ -191,7 +191,7 @@ void S2RegionCoverer::AddCandidate(Candidate* candidate) {
                        + candidate->num_children) << max_children_shift())
                      + num_terminals);
     pq_.push(std::make_pair(priority, candidate));
-    VLOG(2) << "Push: " << candidate->cell.id() << " (" << priority << ") ";
+    S2_VLOG(2) << "Push: " << candidate->cell.id() << " (" << priority << ") ";
   }
 }
 
@@ -203,7 +203,7 @@ inline int S2RegionCoverer::AdjustLevel(int level) const {
 }
 
 void S2RegionCoverer::AdjustCellLevels(vector<S2CellId>* cells) const {
-  DCHECK(is_sorted(cells->begin(), cells->end()));
+  S2_DCHECK(is_sorted(cells->begin(), cells->end()));
   if (options_.level_mod() == 1) return;
 
   int out = 0;
@@ -247,8 +247,8 @@ void S2RegionCoverer::GetCoveringInternal(const S2Region& region) {
   // children first), and then by the number of fully contained children
   // (fewest children first).
 
-  DCHECK(pq_.empty());
-  DCHECK(result_.empty());
+  S2_DCHECK(pq_.empty());
+  S2_DCHECK(result_.empty());
   region_ = &region;
   candidates_created_counter_ = 0;
 
@@ -257,7 +257,7 @@ void S2RegionCoverer::GetCoveringInternal(const S2Region& region) {
          (!interior_covering_ || result_.size() < options_.max_cells())) {
     Candidate* candidate = pq_.top().second;
     pq_.pop();
-    VLOG(2) << "Pop: " << candidate->cell.id();
+    S2_VLOG(2) << "Pop: " << candidate->cell.id();
     // For interior coverings we keep subdividing no matter how many children
     // the candidate has.  If we reach max_cells() before expanding all
     // children, we will just use some of them.  For exterior coverings we
@@ -285,7 +285,7 @@ void S2RegionCoverer::GetCoveringInternal(const S2Region& region) {
       AddCandidate(candidate);
     }
   }
-  VLOG(2) << "Created " << result_.size() << " cells, " <<
+  S2_VLOG(2) << "Created " << result_.size() << " cells, " <<
       candidates_created_counter_ << " candidates created, " <<
       pq_.size() << " left";
   while (!pq_.empty()) {
@@ -306,7 +306,7 @@ void S2RegionCoverer::GetCoveringInternal(const S2Region& region) {
     S2CellUnion::Denormalize(result_copy, options_.min_level(),
                              options_.level_mod(), &result_);
   }
-  DCHECK(IsCanonical(result_));
+  S2_DCHECK(IsCanonical(result_));
 }
 
 void S2RegionCoverer::GetCovering(const S2Region& region,
@@ -404,7 +404,7 @@ void S2RegionCoverer::ReplaceCellsWithAncestor(vector<S2CellId>* covering,
                                 id.range_min());
   auto end = std::upper_bound(covering->begin(), covering->end(),
                               id.range_max());
-  DCHECK(begin != end);
+  S2_DCHECK(begin != end);
   covering->erase(begin + 1, end);
   *begin = id;
 }
@@ -481,7 +481,7 @@ void S2RegionCoverer::CanonicalizeCovering(vector<S2CellId>* covering) {
       }
     }
   }
-  DCHECK(IsCanonical(*covering));
+  S2_DCHECK(IsCanonical(*covering));
 }
 
 void S2RegionCoverer::FloodFill(const S2Region& region, S2CellId start,

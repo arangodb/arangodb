@@ -31,7 +31,7 @@
 
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/macros.h"
 #include "s2/third_party/absl/container/inlined_vector.h"
 #include "s2/_fp_contract_off.h"

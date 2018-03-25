@@ -24,9 +24,10 @@
 #include <thread>
 #include <vector>
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/base/mutex.h"
 #include "s2/r2.h"
 #include "s2/r2rect.h"
@@ -390,13 +391,13 @@ TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
   std::iota(added.begin(), added.end(), 0);
   QuadraticValidate();
   for (int iter = 0; iter < 100; ++iter) {
-    VLOG(1) << "Iteration: " << iter;
+    S2_VLOG(1) << "Iteration: " << iter;
     // Choose some shapes to add and release.
     int num_updates = 1 + S2Testing::rnd.Skewed(5);
     for (int n = 0; n < num_updates; ++n) {
       if (S2Testing::rnd.OneIn(2) && !added.empty()) {
         int i = S2Testing::rnd.Uniform(added.size());
-        VLOG(1) << "  Released shape " << added[i]
+        S2_VLOG(1) << "  Released shape " << added[i]
                 << " (" << index_.shape(added[i]) << ")";
         released.push_back(index_.Release(added[i]));
         added.erase(added.begin() + i);
@@ -406,7 +407,7 @@ TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
         index_.Add(std::move(released[i]));  // Changes shape->id().
         released.erase(released.begin() + i);
         added.push_back(shape->id());
-        VLOG(1) << "  Added shape " << shape->id()
+        S2_VLOG(1) << "  Added shape " << shape->id()
                 << " (" << shape << ")";
       }
     }
@@ -421,7 +422,7 @@ TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
 static bool HasSelfIntersection(const MutableS2ShapeIndex& index) {
   S2Error error;
   if (s2shapeutil::FindSelfIntersection(index, &error)) {
-    VLOG(1) << error;
+    S2_VLOG(1) << error;
     return true;
   }
   return false;
@@ -434,7 +435,7 @@ void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
                                  bool has_crossing) {
   if (i == loops->size()) {
     MutableS2ShapeIndex index;
-    S2Polygon polygon(std::move(*loops));
+    S2Polygon polygon(std::move(*loops), S2Debug::DISABLE);
     index.Add(make_unique<S2Polygon::Shape>(&polygon));
     EXPECT_EQ(has_crossing, HasSelfIntersection(index));
     *loops = polygon.Release();
@@ -445,7 +446,7 @@ void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
       for (int k = 0; k < orig_loop->num_vertices(); ++k) {
         vertices.push_back(orig_loop->vertex(j + k));
       }
-      (*loops)[i] = make_unique<S2Loop>(vertices);
+      (*loops)[i] = make_unique<S2Loop>(vertices, S2Debug::DISABLE);
       TestHasCrossingPermutations(loops, i+1, has_crossing);
     }
     (*loops)[i] = std::move(orig_loop);
@@ -457,9 +458,9 @@ void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
 // HasSelfIntersection returns the expected result for all possible cyclic
 // permutations of the loop vertices.
 void TestHasCrossing(const string& polygon_str, bool has_crossing) {
-  google::FlagSaver flag_saver;
-  FLAGS_s2debug = false;  // Allow invalid polygons (restored by gUnit)
-  unique_ptr<S2Polygon> polygon(s2textformat::MakePolygon(polygon_str));
+  // Set S2Debug::DISABLE to allow invalid polygons.
+  unique_ptr<S2Polygon> polygon =
+      s2textformat::MakePolygon(polygon_str, S2Debug::DISABLE);
   vector<unique_ptr<S2Loop>> loops = polygon->Release();
   TestHasCrossingPermutations(&loops, 0, has_crossing);
 }
@@ -558,7 +559,7 @@ TEST_F(LazyUpdatesTest, ConstMethodsThreadSafe) {
   const int kIters = 100;
   for (int iter = 0; iter < kIters; ++iter) {
     // Loop invariant: lock_ is held and num_readers_left_ == 0.
-    DCHECK_EQ(0, num_readers_left_);
+    S2_DCHECK_EQ(0, num_readers_left_);
     // Since there are no readers, it is safe to modify the index.
     index_.Clear();
     int num_vertices = 4 * S2Testing::rnd.Skewed(10);  // Up to 4K vertices
@@ -617,9 +618,9 @@ TEST(S2Shape, user_data) {
   };
   MyEdgeVectorShape shape(MyData(3, 5));
   MyData* data = static_cast<MyData*>(shape.mutable_user_data());
-  DCHECK_EQ(3, data->x);
+  S2_DCHECK_EQ(3, data->x);
   data->y = 10;
-  DCHECK_EQ(10, static_cast<const MyData*>(shape.user_data())->y);
+  S2_DCHECK_EQ(10, static_cast<const MyData*>(shape.user_data())->y);
 }
 
 }  // namespace

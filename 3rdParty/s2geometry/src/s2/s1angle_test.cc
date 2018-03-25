@@ -17,10 +17,10 @@
 
 #include "s2/s1angle.h"
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/s2latlng.h"
 #include "s2/s2testing.h"
 #include "s2/third_party/absl/base/integral_types.h"
@@ -170,7 +170,7 @@ TEST(S1Angle, TestPerformance) {
   }
   const double from_e6_time = S2Testing::GetCpuTime() - from_e6_start;
   EXPECT_NE(rad_sum, 0);  // Don't let the sum get optimized away.
-  LOG(INFO) << "From E6: "
+  S2_LOG(INFO) << "From E6: "
             << (FLAGS_iters / from_e6_time)
             << " values per second";
 
@@ -192,7 +192,7 @@ TEST(S1Angle, TestPerformance) {
   }
   const double to_e6_time = S2Testing::GetCpuTime() - to_e6_start;
   EXPECT_NE(e6_sum + angle, 0);  // Don't let them get optimized away.
-  LOG(INFO) << "  To E6: "
+  S2_LOG(INFO) << "  To E6: "
             << (FLAGS_iters / to_e6_time)
             << " values per second";
 

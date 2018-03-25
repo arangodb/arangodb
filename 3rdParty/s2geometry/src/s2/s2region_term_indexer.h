@@ -132,7 +132,7 @@ class S2RegionTermIndexer {
     // parameter affects accuracy.)  For example, if you don't mind large
     // indexes but want fast serving, it might be reasonable to set
     // max_cells() == 100 during indexing and max_cells() == 8 for queries.
-
+    //
     // DEFAULT: 8  (coarse approximations)
     using S2RegionCoverer::Options::max_cells;
     using S2RegionCoverer::Options::set_max_cells;
@@ -180,7 +180,7 @@ class S2RegionTermIndexer {
     // (e.g., single points) and you don't mind increasing the index size
     // (since skipping levels will reduce the accuracy of cell coverings for a
     // given max_cells() limit).
-
+    //
     // DEFAULT: 1  (don't skip any cell levels)
     using S2RegionCoverer::Options::level_mod;
     using S2RegionCoverer::Options::set_level_mod;
@@ -279,7 +279,7 @@ class S2RegionTermIndexer {
   //
   // If you have a covering that was computed using different options, then
   // you can either call the regular S2Region methods (since S2CellUnion is a
-  // type of S2Region), or "canonalize" the covering first by calling
+  // type of S2Region), or "canonicalize" the covering first by calling
   // S2RegionCoverer::CanonicalizeCovering() with the same options.
   std::vector<string> GetIndexTermsForCanonicalCovering(
       const S2CellUnion& covering, absl::string_view prefix);

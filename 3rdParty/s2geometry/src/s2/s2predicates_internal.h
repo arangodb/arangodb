@@ -23,7 +23,7 @@
 
 #include <limits>
 
-#include "s2/base/casts.h"
+#include "s2/third_party/absl/base/casts.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2predicates.h"
 #include "s2/util/math/exactfloat/exactfloat.h"
@@ -55,7 +55,7 @@ inline static Vector3_ld ToLD(const S2Point& x) {
 }
 
 inline static long double ToLD(double x) {
-  return implicit_cast<long double>(x);
+  return absl::implicit_cast<long double>(x);
 }
 
 inline static Vector3_xf ToExact(const S2Point& x) {

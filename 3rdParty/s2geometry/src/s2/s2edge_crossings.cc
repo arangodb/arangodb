@@ -20,7 +20,7 @@
 
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s2edge_crosser.h"
 #include "s2/s2pointutil.h"
@@ -92,7 +92,7 @@ bool VertexCrossing(const S2Point& a, const S2Point& b,
   if (a == d) return (b == c) || s2pred::OrderedCCW(S2::Ortho(a), c, b, a);
   if (b == c) return s2pred::OrderedCCW(S2::Ortho(b), d, a, b);
 
-  LOG(DFATAL) << "VertexCrossing called with 4 distinct vertices";
+  S2_LOG(DFATAL) << "VertexCrossing called with 4 distinct vertices";
   return false;
 }
 
@@ -174,7 +174,7 @@ static bool GetIntersectionSimple(const Vector3<T>& a0, const Vector3<T>& a1,
   // even for edges that meet at an angle of 30 degrees.  (On Intel platforms
   // kMinResultLen corresponds to an intersection angle of about 0.04
   // degrees.)
-  DCHECK_LE(kMinResultLen, 0.5);
+  S2_DCHECK_LE(kMinResultLen, 0.5);
 
   Vector3<T> a_norm, b_norm;
   if (RobustNormalWithLength(a0, a1, &a_norm) >= kMinNormalLength &&
@@ -249,7 +249,7 @@ template <class T>
 static bool GetIntersectionStableSorted(
     const Vector3<T>& a0, const Vector3<T>& a1,
     const Vector3<T>& b0, const Vector3<T>& b1, Vector3<T>* result) {
-  DCHECK_GE((a1 - a0).Norm2(), (b1 - b0).Norm2());
+  S2_DCHECK_GE((a1 - a0).Norm2(), (b1 - b0).Norm2());
 
   // Compute the normal of the plane through (a0, a1) in a stable way.
   Vector3<T> a_norm = (a0 - a1).CrossProd(a0 + a1);
@@ -403,14 +403,14 @@ S2Point GetIntersectionExact(const S2Point& a0, const S2Point& a1,
       // add an s2pred::CrossProd() function that computes the cross product
       // using simulation of simplicity and rounds the result to the nearest
       // floating-point representation.
-      LOG(DFATAL) << "Exactly antipodal edges not supported by GetIntersection";
+      S2_LOG(DFATAL) << "Exactly antipodal edges not supported by GetIntersection";
     }
     if (s2pred::OrderedCCW(b0, a0, b1, b_norm) && a0 < x) x = a0;
     if (s2pred::OrderedCCW(b0, a1, b1, b_norm) && a1 < x) x = a1;
     if (s2pred::OrderedCCW(a0, b0, a1, a_norm) && b0 < x) x = b0;
     if (s2pred::OrderedCCW(a0, b1, a1, a_norm) && b1 < x) x = b1;
   }
-  DCHECK(S2::IsUnitLength(x));
+  S2_DCHECK(S2::IsUnitLength(x));
   return x;
 }
 
@@ -430,7 +430,7 @@ static bool ApproximatelyOrdered(const S2Point& a, const S2Point& x,
 
 S2Point GetIntersection(const S2Point& a0, const S2Point& a1,
                         const S2Point& b0, const S2Point& b1) {
-  DCHECK_GT(CrossingSign(a0, a1, b0, b1), 0);
+  S2_DCHECK_GT(CrossingSign(a0, a1, b0, b1), 0);
 
   // It is difficult to compute the intersection point of two edges accurately
   // when the angle between the edges is very small.  Previously we handled
@@ -497,8 +497,8 @@ S2Point GetIntersection(const S2Point& a0, const S2Point& a1,
   if (result.DotProd((a0 + a1) + (b0 + b1)) < 0) result = -result;
 
   // Make sure that the intersection point lies on both edges.
-  DCHECK(ApproximatelyOrdered(a0, result, a1, kIntersectionError.radians()));
-  DCHECK(ApproximatelyOrdered(b0, result, b1, kIntersectionError.radians()));
+  S2_DCHECK(ApproximatelyOrdered(a0, result, a1, kIntersectionError.radians()));
+  S2_DCHECK(ApproximatelyOrdered(b0, result, b1, kIntersectionError.radians()));
 
   return result;
 }

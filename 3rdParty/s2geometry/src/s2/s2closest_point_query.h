@@ -20,7 +20,7 @@
 #ifndef S2_S2CLOSEST_POINT_QUERY_H_
 #define S2_S2CLOSEST_POINT_QUERY_H_
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2closest_point_query_base.h"
@@ -75,10 +75,9 @@ class S2ClosestPointQueryOptions :
   void set_inclusive_max_distance(S1Angle max_distance);
   void set_conservative_max_distance(S1Angle max_distance);
 
-  // Versions of set_max_error() that accept S1ChordAngle / S1Angle.
-  // (See S2ClosestPointQueryBaseOptions for details.)
-  void set_max_error(S1ChordAngle max_error);
-  void set_max_error(S1Angle max_error);
+  // See S2ClosestPointQueryBaseOptions for documentation.
+  using Base::set_max_error;              // S1Chordangle version
+  void set_max_error(S1Angle max_error);  // S1Angle version
 
   // Inherited options (see s2closest_point_query_base.h for details):
   using Base::set_max_points;
@@ -334,12 +333,8 @@ inline void S2ClosestPointQueryOptions::set_inclusive_max_distance(
   set_inclusive_max_distance(S1ChordAngle(max_distance));
 }
 
-inline void S2ClosestPointQueryOptions::set_max_error(S1ChordAngle max_error) {
-  Base::set_max_error(Distance(max_error));
-}
-
 inline void S2ClosestPointQueryOptions::set_max_error(S1Angle max_error) {
-  Base::set_max_error(Distance(max_error));
+  Base::set_max_error(S1ChordAngle(max_error));
 }
 
 inline S2ClosestPointQueryPointTarget::S2ClosestPointQueryPointTarget(

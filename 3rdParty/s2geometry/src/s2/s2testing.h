@@ -24,11 +24,11 @@
 #include <utility>
 #include <vector>
 
-#include <gflags/gflags.h>
-
+#include "s2/base/commandlineflags.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/r2.h"
 #include "s2/s1angle.h"
+#include "s2/s1chord_angle.h"
 #include "s2/s2cell_id.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include "s2/third_party/absl/base/macros.h"
@@ -299,11 +299,11 @@ class S2Testing::Random {
 // number of items, "max_distance" is a limit on the distance to any item, and
 // "max_error" is the maximum error allowed when selecting which items are
 // closest (see S2ClosestEdgeQuery::Options::max_error).
-template <typename Id>
+template <typename Id, typename Distance>
 bool CheckDistanceResults(
-    const std::vector<std::pair<S1Angle, Id>>& expected,
-    const std::vector<std::pair<S1Angle, Id>>& actual,
-    int max_size, S1Angle max_distance, S1Angle max_error);
+    const std::vector<std::pair<Distance, Id>>& expected,
+    const std::vector<std::pair<Distance, Id>>& actual,
+    int max_size, Distance max_distance, typename Distance::Delta max_error);
 
 
 //////////////////// Implementation Details Follow ////////////////////////
@@ -314,32 +314,39 @@ namespace internal {
 
 // Check that result set "x" contains all the expected results from "y", and
 // does not include any duplicate results.
-template <typename Id>
-bool CheckResultSet(const std::vector<std::pair<S1Angle, Id>>& x,
-                    const std::vector<std::pair<S1Angle, Id>>& y,
-                    int max_size, S1Angle max_distance, S1Angle max_error,
-                    S1Angle max_pruning_error, const string& label) {
-  using Result = std::pair<S1Angle, Id>;
+template <typename Id, typename Distance>
+bool CheckResultSet(const std::vector<std::pair<Distance, Id>>& x,
+                    const std::vector<std::pair<Distance, Id>>& y,
+                    int max_size, Distance max_distance,
+                    typename Distance::Delta max_error,
+                    typename Distance::Delta max_pruning_error,
+                    const string& label) {
+  using Result = std::pair<Distance, Id>;
   // Results should be sorted by distance, but not necessarily then by Id.
   EXPECT_TRUE(std::is_sorted(x.begin(), x.end(),
                              [](const Result& x, const Result& y) {
                                return x.first < y.first;
                              }));
 
-  // Result set X should contain all the items from U whose distance is less
+  // Result set X should contain all the items from Y whose distance is less
   // than "limit" computed below.
-  S1Angle limit = S1Angle::Zero();
+  Distance limit = Distance::Zero();
   if (x.size() < max_size) {
     // Result set X was not limited by "max_size", so it should contain all
     // the items up to "max_distance", except that a few items right near the
     // distance limit may be missed because the distance measurements used for
     // pruning S2Cells are not conservative.
-    limit = max_distance - max_pruning_error;
+    if (max_distance == Distance::Infinity()) {
+      limit = max_distance;
+    } else {
+      limit = max_distance - max_pruning_error;
+    }
   } else if (!x.empty()) {
     // Result set X contains only the closest "max_size" items, to within a
     // tolerance of "max_error + max_pruning_error".
-    limit = x.back().first - max_error - max_pruning_error;
+    limit = (x.back().first - max_error) - max_pruning_error;
   }
+
   bool result = true;
   for (const auto& yp : y) {
     // Note that this test also catches duplicate values.
@@ -349,30 +356,33 @@ bool CheckResultSet(const std::vector<std::pair<S1Angle, Id>>& x,
     if (yp.first < limit && count != 1) {
       result = false;
       std::cout << (count > 1 ? "Duplicate" : label) << " distance = "
-                << yp.first << ", id = " << yp.second << std::endl;
+                << S1ChordAngle(yp.first) << ", id = " << yp.second
+                << std::endl;
     }
   }
+
   return result;
 }
 
 }  // namespace internal
 }  // namespace S2
 
-template <typename Id>
+template <typename Id, typename Distance>
 bool CheckDistanceResults(
-    const std::vector<std::pair<S1Angle, Id>>& expected,
-    const std::vector<std::pair<S1Angle, Id>>& actual,
-    int max_size, S1Angle max_distance, S1Angle max_error) {
+    const std::vector<std::pair<Distance, Id>>& expected,
+    const std::vector<std::pair<Distance, Id>>& actual,
+    int max_size, Distance max_distance, typename Distance::Delta max_error) {
   // This is a conservative bound on the error in computing the distance from
   // the target geometry to an S2Cell.  Such errors can cause candidates to be
   // pruned from the result set even though they may be slightly closer.
-  static const S1Angle kMaxPruningError = S1Angle::Radians(1e-15);
+  static const typename Distance::Delta kMaxPruningError(
+      S1ChordAngle::Radians(1e-15));
   return (S2::internal::CheckResultSet(
               actual, expected, max_size, max_distance, max_error,
               kMaxPruningError, "Missing") & /*not &&*/
           S2::internal::CheckResultSet(
               expected, actual, max_size, max_distance, max_error,
-              S1Angle::Zero(), "Extra"));
+              Distance::Delta::Zero(), "Extra"));
 }
 
 #endif  // S2_S2TESTING_H_

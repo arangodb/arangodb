@@ -7,7 +7,7 @@
 #include <cinttypes>
 #include <cstdint>
 #include <cstdio>
-#include <gflags/gflags.h>
+#include "s2/base/commandlineflags.h"
 #include "s2/s2earth.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2closest_point_query.h"

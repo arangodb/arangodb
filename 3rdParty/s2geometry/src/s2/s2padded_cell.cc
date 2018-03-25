@@ -120,7 +120,7 @@ S2Point S2PaddedCell::GetExitVertex() const {
 }
 
 S2CellId S2PaddedCell::ShrinkToFit(const R2Rect& rect) const {
-  DCHECK(bound().Intersects(rect));
+  S2_DCHECK(bound().Intersects(rect));
 
   // Quick rejection test: if "rect" contains the center of this cell along
   // either axis, then no further shrinking is possible.

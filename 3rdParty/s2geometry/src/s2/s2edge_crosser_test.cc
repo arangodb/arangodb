@@ -21,7 +21,7 @@
 #include <string>
 #include <vector>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include <gtest/gtest.h>
 #include "s2/s2edge_crossings.h"
 #include "s2/s2edge_distances.h"

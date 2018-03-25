@@ -21,8 +21,7 @@
 #include <algorithm>
 #include <cassert>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/integral_types.h"
 
 // An initialization value used when we are allowed to
@@ -47,7 +46,7 @@ int Encoder::varint64_length(uint64 v) {
 }
 
 void Encoder::EnsureSlowPath(size_t N) {
-  CHECK(ensure_allowed());
+  S2_CHECK(ensure_allowed());
   assert(avail() < N);
   assert(length() == 0 || orig_ == underlying_buffer_);
 
@@ -65,16 +64,16 @@ void Encoder::EnsureSlowPath(size_t N) {
   orig_ = new_buffer;
   limit_ = new_buffer + new_capacity;
   buf_ = orig_ + current_len;
-  CHECK(avail() >= N);
+  S2_CHECK(avail() >= N);
 }
 
 void Encoder::RemoveLast(size_t N) {
-  CHECK(length() >= N);
+  S2_CHECK(length() >= N);
   buf_ -= N;
 }
 
 void Encoder::Resize(size_t N) {
-  CHECK(length() >= N);
+  S2_CHECK(length() >= N);
   buf_ = orig_ + N;
   assert(length() == N);
 }

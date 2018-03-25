@@ -606,7 +606,7 @@ static void TestCentroidSplitting(const S2LatLngRect& r, int splits_left) {
     child0 = S2LatLngRect(R1Interval(r.lat().lo(), lat), r.lng());
     child1 = S2LatLngRect(R1Interval(lat, r.lat().hi()), r.lng());
   } else {
-    DCHECK_LE(r.lng().lo(), r.lng().hi());
+    S2_DCHECK_LE(r.lng().lo(), r.lng().hi());
     double lng = S2Testing::rnd.UniformDouble(r.lng().lo(), r.lng().hi());
     child0 = S2LatLngRect(r.lat(), S1Interval(r.lng().lo(), lng));
     child1 = S2LatLngRect(r.lat(), S1Interval(lng, r.lng().hi()));

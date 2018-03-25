@@ -52,6 +52,22 @@ namespace {
 // supplementary distance (Pi - x).
 class MaxDistance {
  public:
+  // Expose only the methods that are documented as necessary in the API.
+  class Delta {
+   public:
+    Delta() {}
+    Delta(const Delta& x) : a_(x.a_) {}
+    Delta& operator=(const Delta& x) { a_ = x.a_; return *this; }
+    friend bool operator==(Delta x, Delta y) { return x.a_ == y.a_; }
+    static Delta Zero() { Delta r; r.a_ = S1ChordAngle::Zero(); return r; }
+
+    // This method is needed to implement Distance::operator-.
+    explicit operator S1ChordAngle() const { return a_; }
+
+   private:
+    S1ChordAngle a_;
+  };
+
   MaxDistance() : distance_() {}
   explicit MaxDistance(S1ChordAngle x) : distance_(x) {}
   explicit operator S1ChordAngle() const { return distance_; }
@@ -70,8 +86,8 @@ class MaxDistance {
   friend bool operator<(MaxDistance x, MaxDistance y) {
     return x.distance_ > y.distance_;
   }
-  friend MaxDistance operator-(MaxDistance x, MaxDistance y) {
-    return MaxDistance(x.distance_ + y.distance_);
+  friend MaxDistance operator-(MaxDistance x, Delta delta) {
+    return MaxDistance(x.distance_ + S1ChordAngle(delta));
   }
   S1ChordAngle GetChordAngleBound() const {
     return S1ChordAngle::Straight() - distance_;

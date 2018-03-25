@@ -949,7 +949,7 @@ class dense_hashtable {
     } else {
       // Swapping when allocators are unequal and
       // propagate_on_container_swap is false is undefined behavior.
-      CHECK(key_info.as_value_alloc() == ht.key_info.as_value_alloc());
+      S2_CHECK(key_info.as_value_alloc() == ht.key_info.as_value_alloc());
     }
     swap(key_info.empty, ht.key_info.empty);
     swap(key_info.delkey, ht.key_info.delkey);

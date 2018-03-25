@@ -29,7 +29,7 @@
 #include <type_traits>
 
 #include "s2/third_party/absl/base/integral_types.h"
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/macros.h"
 #include "s2/third_party/absl/utility/utility.h"
 
@@ -81,13 +81,13 @@ class BasicVector {
   void Clear() { AsD() = D(); }
 
   T& operator[](int b) {
-    DCHECK_GE(b, 0);
-    DCHECK_LT(b, SIZE);
+    S2_DCHECK_GE(b, 0);
+    S2_DCHECK_LT(b, SIZE);
     return static_cast<D&>(*this).Data()[b];
   }
   T operator[](int b) const {
-    DCHECK_GE(b, 0);
-    DCHECK_LT(b, SIZE);
+    S2_DCHECK_GE(b, 0);
+    S2_DCHECK_LT(b, SIZE);
     return static_cast<const D&>(*this).Data()[b];
   }
 

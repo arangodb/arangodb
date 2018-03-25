@@ -1,28 +1,51 @@
 cmake_minimum_required(VERSION 2.8.12)
 project(s2-geometry)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+include(CMakeDependentOption)
 include(CheckCXXCompilerFlag)
+include(FeatureSummary)
 include(FindPackageHandleStandardArgs)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/third_party/cmake")
 
-#find_package(GFlags REQUIRED)
-#find_package(Glog REQUIRED)
+option(WITH_GFLAGS "Use gflags to change command line flags." OFF)
+add_feature_info(GFLAGS WITH_GFLAGS
+                 "allows changing command line flags.")
+
+# glog option can only be turned on if gflags is on.
+cmake_dependent_option(WITH_GLOG "Use glog for logging." ON
+                       "WITH_GFLAGS" OFF)
+add_feature_info(GLOG WITH_GLOG "provides logging configurability.")
+
+feature_summary(WHAT ALL)
+
+if (WITH_GLOG)
+    find_package(Glog REQUIRED)
+    # FindGFlags.cmake and FindGlog.cmake do not seem to implement REQUIRED;
+    # check manually.
+    if (NOT ${GLOG_FOUND})
+        message(FATAL_ERROR "Glog requested but not found")
+    endif()
+    add_definitions(-DS2_USE_GLOG)
+else()
+    # Don't output anything for LOG(INFO).
+    add_definitions(-DABSL_MIN_LOG_LEVEL=1)
+endif()
+
+if (WITH_GFLAGS)
+    find_package(GFlags REQUIRED)
+    if (NOT ${GFLAGS_FOUND})
+        message(FATAL_ERROR "GFlags requested but not found")
+    endif()
+    add_definitions(-DS2_USE_GFLAGS)
+endif()
+
 find_package(OpenSSL REQUIRED)
 # pthreads isn't used directly, but this is still required for std::thread.
 find_package(Threads REQUIRED)
-#find_package(SWIG)
-#find_package(PythonInterp)
-#find_package(PythonLibs)
-
-# FindGFlags.cmake and FindGlog.cmake do not seem to implement REQUIRED;
-# check manually.
-#if (NOT ${GFLAGS_FOUND})
-#    message(FATAL_ERROR "GFLags required but not found")
-#endif()
-#if (NOT ${GLOG_FOUND})
-#    message(FATAL_ERROR "Glog required but not found")
-#endif()
+find_package(SWIG)
+find_package(PythonInterp)
+find_package(PythonLibs)
 
 # Avoid "Policy CMP0042 is not set" warning on macOS.
 if (APPLE)
@@ -78,6 +101,7 @@ add_library(s2 STATIC
             src/s2/s2edge_distances.cc
             src/s2/s2edge_tessellator.cc
             src/s2/s2error.cc
+            src/s2/s2furthest_edge_query.cc
             src/s2/s2latlng.cc
             src/s2/s2latlng_rect.cc
             src/s2/s2latlng_rect_bounder.cc
@@ -87,15 +111,15 @@ add_library(s2 STATIC
             src/s2/s2loop.cc
             src/s2/s2measures.cc
             src/s2/s2metrics.cc
+            src/s2/s2max_distance_targets.cc
             src/s2/s2min_distance_targets.cc
-            src/s2/s2multipoint_region.cc
-            src/s2/s2multipolyline.cc
             src/s2/s2padded_cell.cc
             src/s2/s2point_compression.cc
             src/s2/s2point_region.cc
             src/s2/s2pointutil.cc
             src/s2/s2polygon.cc
             src/s2/s2polyline.cc
+            src/s2/s2polyline_alignment.cc
             src/s2/s2polyline_simplifier.cc
             src/s2/s2predicates.cc
             src/s2/s2projections.cc
@@ -134,13 +158,18 @@ add_library(s2 STATIC
             src/s2/util/coding/varint.cc
             src/s2/util/math/exactfloat/exactfloat.cc
             src/s2/util/math/mathutil.cc
-            src/s2/util/units/length-units.cc
-	    ../glog/src/logging.cpp)
+            src/s2/util/units/length-units.cc)
 add_library(s2testing STATIC src/s2/s2testing.cc)
 target_link_libraries(
     s2
     ${GFLAGS_LIBRARIES} ${GLOG_LIBRARIES} ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT})
+
+# Allow other CMake projects to use this one with:
+# list(APPEND CMAKE_MODULE_PATH "<path_to_s2geometry_dir>/third_party/cmake")
+# add_subdirectory(<path_to_s2geometry_dir> s2geometry)
+# target_link_libraries(<target_name> s2)
+target_include_directories(s2 PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
 # We don't need to install all headers, only those
 # transitively included by s2 headers we are exporting.
@@ -191,6 +220,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2edge_tessellator.h
               src/s2/s2edge_vector_shape.h
               src/s2/s2error.h
+              src/s2/s2furthest_edge_query.h
               src/s2/s2latlng.h
               src/s2/s2latlng_rect.h
               src/s2/s2latlng_rect_bounder.h
@@ -200,6 +230,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2loop.h
               src/s2/s2measures.h
               src/s2/s2metrics.h
+              src/s2/s2max_distance_targets.h
               src/s2/s2min_distance_targets.h
               src/s2/s2padded_cell.h
               src/s2/s2point.h
@@ -210,6 +241,7 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/s2pointutil.h
               src/s2/s2polygon.h
               src/s2/s2polyline.h
+              src/s2/s2polyline_alignment.h
               src/s2/s2polyline_simplifier.h
               src/s2/s2predicates_internal.h
               src/s2/s2predicates.h
@@ -240,6 +272,9 @@ install(FILES src/s2/_fp_contract_off.h
               src/s2/value_lexicon.h
         DESTINATION include/s2)
 install(FILES src/s2/base/casts.h
+              src/s2/base/commandlineflags.h
+              src/s2/base/log_severity.h
+              src/s2/base/logging.h
               src/s2/base/mutex.h
               src/s2/base/port.h
               src/s2/base/spinlock.h
@@ -251,6 +286,7 @@ install(FILES src/s2/third_party/absl/base/attributes.h
               src/s2/third_party/absl/base/config.h
               src/s2/third_party/absl/base/dynamic_annotations.h
               src/s2/third_party/absl/base/integral_types.h
+              src/s2/third_party/absl/base/log_severity.h
               src/s2/third_party/absl/base/macros.h
               src/s2/third_party/absl/base/optimization.h
               src/s2/third_party/absl/base/policy_checks.h
@@ -297,6 +333,8 @@ install(FILES src/s2/util/gtl/btree.h
               src/s2/util/gtl/hashtable_common.h
               src/s2/util/gtl/libc_allocator_with_realloc.h
         DESTINATION include/s2/util/gtl)
+install(FILES src/s2/util/gtl/subtle/compressed_tuple.h
+        DESTINATION include/s2/util/gtl/subtle)
 install(FILES src/s2/util/hash/mix.h
         DESTINATION include/s2/util/hash)
 install(FILES src/s2/util/math/mathutil.h
@@ -309,8 +347,8 @@ install(FILES src/s2/util/units/length-units.h
         DESTINATION include/s2/util/units)
 install(TARGETS s2 DESTINATION lib)
 
+message("GTEST_ROOT: ${GTEST_ROOT}")
 if (GTEST_ROOT)
-  message("GTEST_ROOT: ${GTEST_ROOT}")
   add_subdirectory(${GTEST_ROOT} build_gtest)
 
   set(S2TestFiles
@@ -346,7 +384,6 @@ if (GTEST_ROOT)
       src/s2/s2convex_hull_query_test.cc
       src/s2/s2coords_test.cc
       src/s2/s2crossing_edge_query_test.cc
-      src/s2/s2debug_test.cc
       src/s2/s2earth_test.cc
       src/s2/s2edge_clipping_test.cc
       src/s2/s2edge_crosser_test.cc
@@ -355,6 +392,7 @@ if (GTEST_ROOT)
       src/s2/s2edge_tessellator_test.cc
       src/s2/s2edge_vector_shape_test.cc
       src/s2/s2error_test.cc
+      src/s2/s2furthest_edge_query_test.cc
       src/s2/s2latlng_test.cc
       src/s2/s2latlng_rect_bounder_test.cc
       src/s2/s2latlng_rect_test.cc
@@ -364,6 +402,7 @@ if (GTEST_ROOT)
       src/s2/s2loop_test.cc
       src/s2/s2measures_test.cc
       src/s2/s2metrics_test.cc
+      src/s2/s2max_distance_targets_test.cc
       src/s2/s2min_distance_targets_test.cc
       src/s2/s2padded_cell_test.cc
       src/s2/s2point_test.cc
@@ -373,6 +412,7 @@ if (GTEST_ROOT)
       src/s2/s2point_region_test.cc
       src/s2/s2pointutil_test.cc
       src/s2/s2polygon_test.cc
+      src/s2/s2polyline_alignment_test.cc
       src/s2/s2polyline_simplifier_test.cc
       src/s2/s2polyline_test.cc
       src/s2/s2predicates_test.cc
@@ -400,7 +440,6 @@ if (GTEST_ROOT)
 
   enable_testing()
 
-  message("adding s2testing")
   foreach (test_cc ${S2TestFiles})
     get_filename_component(test ${test_cc} NAME_WE)
     add_executable(${test} ${test_cc})
@@ -411,8 +450,8 @@ if (GTEST_ROOT)
   endforeach()
 endif()
 
-#add_subdirectory("doc/examples" examples)
+add_subdirectory("doc/examples" examples)
 
-#if (${SWIG_FOUND} AND ${PYTHONLIBS_FOUND})
-#  add_subdirectory("src/python" python)
-#endif()
+if (${SWIG_FOUND} AND ${PYTHONLIBS_FOUND})
+  add_subdirectory("src/python" python)
+endif()

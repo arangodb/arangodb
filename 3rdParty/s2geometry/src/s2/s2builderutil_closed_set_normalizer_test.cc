@@ -91,7 +91,7 @@ void NormalizeTest::Run(const string& input_str,
   options.set_suppress_lower_dimensions(suppress_lower_dimensions_);
   ClosedSetNormalizer normalizer(options, graph_options_out_);
 
-  S2Builder builder((S2Builder::Options()));
+  S2Builder builder{S2Builder::Options()};
   vector<Graph> input, expected;
   AddLayers(input_str, normalizer.graph_options(), &input, &builder);
   AddLayers(expected_str, graph_options_out_, &expected, &builder);

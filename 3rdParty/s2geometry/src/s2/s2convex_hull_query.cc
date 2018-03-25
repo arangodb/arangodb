@@ -137,7 +137,7 @@ unique_ptr<S2Loop> S2ConvexHullQuery::GetConvexHull() {
   }
 
   // Verify that all points lie within a 180 degree span around the origin.
-  DCHECK_GE(s2pred::Sign(origin, points_.front(), points_.back()), 0);
+  S2_DCHECK_GE(s2pred::Sign(origin, points_.front(), points_.back()), 0);
 
   // Generate the lower and upper halves of the convex hull.  Each half
   // consists of the maximal subset of vertices such that the edge chain makes
@@ -148,8 +148,8 @@ unique_ptr<S2Loop> S2ConvexHullQuery::GetConvexHull() {
   GetMonotoneChain(&upper);
 
   // Remove the duplicate vertices and combine the chains.
-  DCHECK_EQ(lower.front(), upper.back());
-  DCHECK_EQ(lower.back(), upper.front());
+  S2_DCHECK_EQ(lower.front(), upper.back());
+  S2_DCHECK_EQ(lower.back(), upper.front());
   lower.pop_back();
   upper.pop_back();
   lower.insert(lower.end(), upper.begin(), upper.end());
@@ -159,7 +159,7 @@ unique_ptr<S2Loop> S2ConvexHullQuery::GetConvexHull() {
 // Iterate through the given points, selecting the maximal subset of points
 // such that the edge chain makes only left (CCW) turns.
 void S2ConvexHullQuery::GetMonotoneChain(vector<S2Point>* output) {
-  DCHECK(output->empty());
+  S2_DCHECK(output->empty());
   for (const S2Point& p : points_) {
     // Remove any points that would cause the chain to make a clockwise turn.
     while (output->size() >= 2 &&

@@ -26,10 +26,10 @@
 #include <utility>
 #include <vector>
 
-#include <gflags/gflags.h>
-#include <glog/logging.h>
 
 #include "s2/base/casts.h"
+#include "s2/base/commandlineflags.h"
+#include "s2/base/logging.h"
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s1angle.h"
 #include "s2/s1interval.h"
@@ -109,7 +109,7 @@ S2Polygon::S2Polygon()
       unindexed_contains_calls_(0) {
 }
 
-S2Polygon::S2Polygon(vector<unique_ptr<S2Loop>>&& loops, S2Debug override)
+S2Polygon::S2Polygon(vector<unique_ptr<S2Loop>> loops, S2Debug override)
     : s2debug_override_(override) {
   InitNested(std::move(loops));
 }
@@ -177,7 +177,7 @@ S2Polygon::~S2Polygon() {
 bool S2Polygon::IsValid() const {
   S2Error error;
   if (FindValidationError(&error)) {
-    LOG_IF(ERROR, FLAGS_s2debug) << error;
+    S2_LOG_IF(ERROR, FLAGS_s2debug) << error;
     return false;
   }
   return true;
@@ -293,7 +293,7 @@ void S2Polygon::InitLoops(LoopMap* loop_map) {
     const vector<S2Loop*>& children = (*loop_map)[loop];
     for (int i = children.size() - 1; i >= 0; --i) {
       S2Loop* child = children[i];
-      DCHECK(child != nullptr);
+      S2_DCHECK(child != nullptr);
       child->set_depth(depth + 1);
       loop_stack.push(child);
     }
@@ -301,14 +301,14 @@ void S2Polygon::InitLoops(LoopMap* loop_map) {
 }
 
 void S2Polygon::InitIndex() {
-  DCHECK_EQ(0, index_.num_shape_ids());
+  S2_DCHECK_EQ(0, index_.num_shape_ids());
   index_.Add(make_unique<Shape>(this));
   if (!FLAGS_s2polygon_lazy_indexing) {
     index_.ForceBuild();
   }
   if (FLAGS_s2debug && s2debug_override_ == S2Debug::ALLOW) {
     // Note that FLAGS_s2debug is false in optimized builds (by default).
-    CHECK(IsValid());
+    S2_CHECK(IsValid());
   }
 }
 
@@ -355,7 +355,7 @@ void S2Polygon::Init(unique_ptr<S2Loop> loop) {
 // This is an internal method that expects that loops_ has already been
 // initialized with a single non-empty loop.
 void S2Polygon::InitOneLoop() {
-  DCHECK_EQ(1, num_loops());
+  S2_DCHECK_EQ(1, num_loops());
   S2Loop* loop = loops_[0].get();
   loop->set_depth(0);
   error_inconsistent_loop_orientations_ = false;
@@ -444,7 +444,7 @@ void S2Polygon::InitOriented(vector<unique_ptr<S2Loop>> loops) {
       if (FLAGS_s2debug && s2debug_override_ == S2Debug::ALLOW) {
         // The FLAGS_s2debug validity checking usually happens in InitIndex(),
         // but this error is detected too late for that.
-        CHECK(IsValid());  // Always fails.
+        S2_CHECK(IsValid());  // Always fails.
       }
     }
   }
@@ -719,7 +719,7 @@ void S2Polygon::EncodeLossless(Encoder* const encoder) const {
   }
   encoder->put8(has_holes);
   encoder->put32(loops_.size());
-  DCHECK_GE(encoder->avail(), 0);
+  S2_DCHECK_GE(encoder->avail(), 0);
 
   for (int i = 0; i < num_loops(); ++i) {
     loop(i)->Encode(encoder);
@@ -851,7 +851,7 @@ void S2Polygon::Invert() {
       }
     }
     loops_.swap(new_loops);
-    DCHECK_EQ(new_loops.size(), num_loops());
+    S2_DCHECK_EQ(new_loops.size(), num_loops());
   }
   ClearIndex();
   InitLoopProperties();
@@ -871,7 +871,7 @@ bool S2Polygon::InitToOperation(S2BooleanOperation::OpType op_type,
                          options);
   S2Error error;
   if (!op.Build(a.index_, b.index_, &error)) {
-    LOG(DFATAL) << S2BooleanOperation::OpTypeToString(op_type)
+    S2_LOG(DFATAL) << S2BooleanOperation::OpTypeToString(op_type)
                 << " operation failed: " << error;
     return false;
   }
@@ -1034,7 +1034,7 @@ void S2Polygon::InitFromBuilder(const S2Polygon& a, S2Builder* builder) {
   builder->AddPolygon(a);
   S2Error error;
   if (!builder->Build(&error)) {
-    LOG(DFATAL) << "Could not build polygon: " << error;
+    S2_LOG(DFATAL) << "Could not build polygon: " << error;
   }
   // If there are no loops, check whether the result should be the full
   // polygon rather than the empty one.  (See InitToApproxIntersection.)
@@ -1044,7 +1044,7 @@ void S2Polygon::InitFromBuilder(const S2Polygon& a, S2Builder* builder) {
 }
 
 void S2Polygon::InitToSnapped(const S2Polygon* a, int snap_level) {
-  S2Builder builder((S2Builder::Options(S2CellIdSnapFunction(snap_level))));
+  S2Builder builder{S2Builder::Options(S2CellIdSnapFunction(snap_level))};
   InitFromBuilder(*a, &builder);
 }
 
@@ -1067,7 +1067,7 @@ uint8 GetCellEdgeIncidenceMask(const S2Cell& cell, const S2Point& p,
   R2Point uv;
   if (S2::FaceXYZtoUV(cell.face(), p, &uv)) {
     R2Rect bound = cell.GetBoundUV();
-    if (FLAGS_s2debug) DCHECK(bound.Expanded(tolerance_uv).Contains(uv));
+    if (FLAGS_s2debug) S2_DCHECK(bound.Expanded(tolerance_uv).Contains(uv));
     if (fabs(uv[1] - bound[1][0]) <= tolerance_uv) mask |= 1;
     if (fabs(uv[0] - bound[0][1]) <= tolerance_uv) mask |= 2;
     if (fabs(uv[1] - bound[1][1]) <= tolerance_uv) mask |= 4;
@@ -1143,7 +1143,7 @@ void S2Polygon::InitToSimplifiedInCell(
   }
   S2Error error;
   if (!builder.Build(&error)) {
-    LOG(DFATAL) << "Could not build polygon: " << error;
+    S2_LOG(DFATAL) << "Could not build polygon: " << error;
     return;
   }
   // If there are no loops, check whether the result should be the full
@@ -1178,7 +1178,7 @@ vector<unique_ptr<S2Polyline>> S2Polygon::SimplifyEdgesInCell(
         // separate polyline for each edge to keep things simple.)  We call
         // ForceVertex on all boundary vertices to ensure that they don't
         // move, and so that nearby interior edges are snapped to them.
-        DCHECK(!in_interior);
+        S2_DCHECK(!in_interior);
         builder.ForceVertex(*v1);
         polylines.emplace_back(new S2Polyline(vector<S2Point>{*v0, *v1}));
       } else {
@@ -1204,7 +1204,7 @@ vector<unique_ptr<S2Polyline>> S2Polygon::SimplifyEdgesInCell(
   }
   S2Error error;
   if (!builder.Build(&error)) {
-    LOG(DFATAL) << "InitToSimplifiedInCell failed: " << error;
+    S2_LOG(DFATAL) << "InitToSimplifiedInCell failed: " << error;
   }
   return polylines;
 }
@@ -1226,7 +1226,7 @@ vector<unique_ptr<S2Polyline>> S2Polygon::OperationWithPolyline(
   a_index.Add(make_unique<S2Polyline::Shape>(&a));
   S2Error error;
   if (!op.Build(a_index, index_, &error)) {
-    LOG(DFATAL) << "Polyline " << S2BooleanOperation::OpTypeToString(op_type)
+    S2_LOG(DFATAL) << "Polyline " << S2BooleanOperation::OpTypeToString(op_type)
                 << " operation failed: " << error;
   }
   return result;
@@ -1334,22 +1334,22 @@ void S2Polygon::InitToCellUnionBorder(const S2CellUnion& cells) {
   // that distance, then we should always merge shared edges without merging
   // different edges.
   double snap_radius = 0.5 * S2::kMinWidth.GetValue(S2CellId::kMaxLevel);
-  S2Builder builder((S2Builder::Options(
-      IdentitySnapFunction(S1Angle::Radians(snap_radius)))));
+  S2Builder builder{S2Builder::Options(
+      IdentitySnapFunction(S1Angle::Radians(snap_radius)))};
   builder.StartLayer(make_unique<S2PolygonLayer>(this));
   for (S2CellId id : cells) {
     builder.AddLoop(S2Loop{S2Cell{id}});
   }
   S2Error error;
   if (!builder.Build(&error)) {
-    LOG(DFATAL) << "InitToCellUnionBorder failed: " << error;
+    S2_LOG(DFATAL) << "InitToCellUnionBorder failed: " << error;
   }
   // If there are no loops, check whether the result should be the full
   // polygon rather than the empty one.  There are only two ways that this can
   // happen: either the cell union is empty, or it consists of all six faces.
   if (num_loops() == 0) {
     if (cells.empty()) return;
-    DCHECK_EQ(static_cast<uint64>(6) << (2 * S2CellId::kMaxLevel),
+    S2_DCHECK_EQ(static_cast<uint64>(6) << (2 * S2CellId::kMaxLevel),
               cells.LeafCellsCovered());
     Invert();
   }
@@ -1462,13 +1462,13 @@ bool S2Polygon::BoundaryNear(const S2Polygon& b, S1Angle max_error) const {
 void S2Polygon::EncodeCompressed(Encoder* encoder,
                                  const S2XYZFaceSiTi* all_vertices,
                                  int snap_level) const {
-  CHECK_GE(snap_level, 0);
+  S2_CHECK_GE(snap_level, 0);
   // Sufficient for what we write. Typically enough for a 4 vertex polygon.
   encoder->Ensure(40);
   encoder->put8(kCurrentCompressedEncodingVersionNumber);
   encoder->put8(snap_level);
   encoder->put_varint32(num_loops());
-  DCHECK_GE(encoder->avail(), 0);
+  S2_DCHECK_GE(encoder->avail(), 0);
   const S2XYZFaceSiTi* current_loop_vertices = all_vertices;
   for (int i = 0; i < num_loops(); ++i) {
     loops_[i]->EncodeCompressed(encoder, current_loop_vertices, snap_level);
@@ -1530,7 +1530,7 @@ S2Polygon::Shape::~Shape() {
 }
 
 S2Shape::Edge S2Polygon::Shape::edge(int e) const {
-  DCHECK_LT(e, num_edges());
+  S2_DCHECK_LT(e, num_edges());
   const S2Polygon* p = polygon();
   int i;
   if (cumulative_edges_) {
@@ -1564,7 +1564,7 @@ int S2Polygon::Shape::num_chains() const {
 }
 
 S2Shape::Chain S2Polygon::Shape::chain(int i) const {
-  DCHECK_LT(i, Shape::num_chains());
+  S2_DCHECK_LT(i, Shape::num_chains());
   if (cumulative_edges_) {
     return Chain(cumulative_edges_[i], polygon_->loop(i)->num_vertices());
   } else {
@@ -1575,15 +1575,15 @@ S2Shape::Chain S2Polygon::Shape::chain(int i) const {
 }
 
 S2Shape::Edge S2Polygon::Shape::chain_edge(int i, int j) const {
-  DCHECK_LT(i, Shape::num_chains());
-  DCHECK_LT(j, polygon_->loop(i)->num_vertices());
+  S2_DCHECK_LT(i, Shape::num_chains());
+  S2_DCHECK_LT(j, polygon_->loop(i)->num_vertices());
   return Edge(polygon()->loop(i)->oriented_vertex(j),
               polygon()->loop(i)->oriented_vertex(j + 1));
 }
 
 S2Shape::ChainPosition S2Polygon::Shape::chain_position(int e) const {
   // TODO(ericv): Make inline to remove code duplication with GetEdge.
-  DCHECK_LT(e, num_edges());
+  S2_DCHECK_LT(e, num_edges());
   const S2Polygon* p = polygon();
   int i;
   if (cumulative_edges_) {

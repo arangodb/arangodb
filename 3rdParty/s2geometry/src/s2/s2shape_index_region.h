@@ -241,7 +241,7 @@ inline void S2ShapeIndexRegion<IndexType>::CoverRange(
   } else {
     // Add the lowest common ancestor of the given range.
     int level = first.GetCommonAncestorLevel(last);
-    DCHECK_GE(level, 0);
+    S2_DCHECK_GE(level, 0);
     cell_ids->push_back(first.parent(level));
   }
 }
@@ -257,7 +257,7 @@ bool S2ShapeIndexRegion<IndexType>::Contains(const S2Cell& target) const {
 
   // Otherwise, the iterator points to an index cell containing "target".
   // If any shape contains the target cell, we return true.
-  DCHECK(iter_.id().contains(target.id()));
+  S2_DCHECK(iter_.id().contains(target.id()));
   const S2ShapeIndexCell& cell = iter_.cell();
   for (int s = 0; s < cell.num_clipped(); ++s) {
     const S2ClippedShape& clipped = cell.clipped(s);
@@ -293,7 +293,7 @@ bool S2ShapeIndexRegion<IndexType>::MayIntersect(const S2Cell& target) const {
   // If "target" is an index cell itself, there is an intersection because index
   // cells are created only if they have at least one edge or they are
   // entirely contained by the loop.
-  DCHECK(iter_.id().contains(target.id()));
+  S2_DCHECK(iter_.id().contains(target.id()));
   if (iter_.id() == target.id()) return true;
 
   // Test whether any shape intersects the target cell or contains its center.

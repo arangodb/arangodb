@@ -126,8 +126,12 @@ inline bool TryStripSuffixString(absl::string_view str,
   return res;
 }
 
-// Replaces any of the characters in 'remove' with the character 'replace_with'.
+// Replaces any of the *bytes* in 'remove' with the *byte* 'replace_with'.
 //
+// *Warning*: This function operates on *bytes* in the remove string.
+// When the remove string contains multi-byte (non-ASCII) characters,
+// then some strings will turn into garbage which will break downstream code.
+// Use icu::UnicodeSet and its spanUTF8()/spanBackUTF8().
 void ReplaceCharacters(char* str, size_t len, absl::string_view remove,
                        char replace_with);
 void ReplaceCharacters(string* s, absl::string_view remove, char replace_with);
@@ -149,8 +153,8 @@ inline void StripWhitespace(absl::string_view* str) {
   *str = absl::StripAsciiWhitespace(*str);
 }
 
-// Returns a pointer to the first non-whitespace character in 'str'. Never
-// returns nullptr. 'str' must be NUL-terminated.
+// Returns a pointer to the first character in 'str' that is not
+// ASCII whitespace. Never returns nullptr. 'str' must be NUL-terminated.
 inline const char* SkipLeadingWhitespace(const char* str) {
   while (absl::ascii_isspace(*str)) ++str;
   return str;

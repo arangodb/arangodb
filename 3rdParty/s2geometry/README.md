@@ -20,9 +20,9 @@ S2 documentation can be found on [s2geometry.io](http://s2geometry.io).
 * [CMake](http://www.cmake.org/)
 * A C++ compiler with C++11 support, such as [g++](https://gcc.gnu.org/)
   \>= 4.7.
-* [gflags command line flags](https://github.com/gflags/gflags)
-* [glog logging module](https://github.com/google/glog)
 * [OpenSSL](https://github.com/openssl/openssl) (for its bignum library)
+* [gflags command line flags](https://github.com/gflags/gflags), optional
+* [glog logging module](https://github.com/google/glog), optional
 * [googletest testing framework](https://github.com/google/googletest)
   (to build tests and example programs, optional)
 
@@ -89,6 +89,8 @@ make
 make test  # If GTEST_ROOT specified above.
 sudo make install
 ```
+
+Enable gflags and glog with `cmake -DWITH_GFLAGS=ON -DWITH_GLOG=ON ...`.
 
 ## Python
 

@@ -20,6 +20,8 @@
 #ifndef S2_THIRD_PARTY_ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
 #define S2_THIRD_PARTY_ABSL_BASE_INTERNAL_LOG_SEVERITY_H_
 
+#include <array>
+
 #include "s2/third_party/absl/base/attributes.h"
 
 namespace absl {
@@ -30,6 +32,13 @@ enum class LogSeverity : int {
   kError = 2,
   kFatal = 3,
 };
+
+// Returns an iterable of all standard `absl::LogSeverity` values, ordered from
+// least to most severe.
+constexpr std::array<absl::LogSeverity, 4> LogSeverities() {
+  return {{absl::LogSeverity::kInfo, absl::LogSeverity::kWarning,
+           absl::LogSeverity::kError, absl::LogSeverity::kFatal}};
+}
 
 // absl::kLogDebugFatal equals absl::LogSeverity::kFatal in debug builds (i.e.
 // when NDEBUG is not defined) and absl::LogSeverity::kError otherwise.
@@ -47,7 +56,7 @@ constexpr const char* LogSeverityName(absl::LogSeverity s) {
                          : s == absl::LogSeverity::kFatal ? "FATAL" : "UNKNOWN";
 }
 
-// Note that out-of-range large severities normalize to kError, not kFatal.
+// Note that out-of-range severities normalize to kInfo or kError, never kFatal.
 constexpr absl::LogSeverity NormalizeLogSeverity(absl::LogSeverity s) {
   return s < absl::LogSeverity::kInfo
              ? absl::LogSeverity::kInfo

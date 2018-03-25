@@ -19,6 +19,7 @@
 #include "s2/util/bits/bits.h"
 
 #include <cassert>
+#include "s2/third_party/absl/numeric/int128.h"
 
 using absl::uint128;
 
@@ -103,7 +104,7 @@ int Bits::Log2Ceiling64(uint64 n) {
     return floor + 1;
 }
 
-int Bits::Log2Ceiling128(uint128 n) {
+int Bits::Log2Ceiling128(absl::uint128 n) {
   int floor = Log2Floor128(n);
   if ((n & (n - 1)) == 0)              // zero or a power of two
     return floor;

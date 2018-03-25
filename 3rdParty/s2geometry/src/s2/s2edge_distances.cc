@@ -20,7 +20,7 @@
 #include <cfloat>
 #include <cmath>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2edge_crossings.h"
 #include "s2/s2pointutil.h"
@@ -33,7 +33,7 @@ namespace S2 {
 
 double GetDistanceFraction(const S2Point& x,
                              const S2Point& a0, const S2Point& a1) {
-  DCHECK_NE(a0, a1);
+  S2_DCHECK_NE(a0, a1);
   double d0 = x.Angle(a0);
   double d1 = x.Angle(a1);
   return d0 / (d0 + d1);
@@ -43,15 +43,15 @@ S2Point InterpolateAtDistance(S1Angle ax_angle,
                               const S2Point& a, const S2Point& b) {
   double ax = ax_angle.radians();
 
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(a));
+  S2_DCHECK(S2::IsUnitLength(b));
 
   // Use RobustCrossProd() to compute the tangent vector at A towards B.  The
   // result is always perpendicular to A, even if A=B or A=-B, but it is not
   // necessarily unit length.  (We effectively normalize it below.)
   Vector3_d normal = S2::RobustCrossProd(a, b);
   Vector3_d tangent = normal.CrossProd(a);
-  DCHECK(tangent != S2Point(0, 0, 0));
+  S2_DCHECK(tangent != S2Point(0, 0, 0));
 
   // Now compute the appropriate linear combination of A and "tangent".  With
   // infinite precision the result would always be unit length, but we
@@ -82,9 +82,9 @@ template <bool always_update>
 inline bool AlwaysUpdateMinInteriorDistance(
     const S2Point& x, const S2Point& a, const S2Point& b,
     double xa2, double xb2, S1ChordAngle* min_dist) {
-  DCHECK(S2::IsUnitLength(x) && S2::IsUnitLength(a) && S2::IsUnitLength(b));
-  DCHECK_EQ(xa2, (x-a).Norm2());
-  DCHECK_EQ(xb2, (x-b).Norm2());
+  S2_DCHECK(S2::IsUnitLength(x) && S2::IsUnitLength(a) && S2::IsUnitLength(b));
+  S2_DCHECK_EQ(xa2, (x-a).Norm2());
+  S2_DCHECK_EQ(xb2, (x-b).Norm2());
 
   // The closest point on AB could either be one of the two vertices (the
   // "vertex case") or in the interior (the "interior case").  Let C = A x B.
@@ -161,7 +161,7 @@ template <bool always_update>
 inline bool AlwaysUpdateMinDistance(const S2Point& x,
                                     const S2Point& a, const S2Point& b,
                                     S1ChordAngle* min_dist) {
-  DCHECK(S2::IsUnitLength(x) && S2::IsUnitLength(a) && S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(x) && S2::IsUnitLength(a) && S2::IsUnitLength(b));
 
   double xa2 = (x-a).Norm2(), xb2 = (x-b).Norm2();
   if (AlwaysUpdateMinInteriorDistance<always_update>(x, a, b, xa2, xb2,
@@ -240,9 +240,9 @@ double GetUpdateMinDistanceMaxError(S1ChordAngle dist) {
 
 S2Point Project(const S2Point& x, const S2Point& a, const S2Point& b,
                 const Vector3_d& a_cross_b) {
-  DCHECK(S2::IsUnitLength(a));
-  DCHECK(S2::IsUnitLength(b));
-  DCHECK(S2::IsUnitLength(x));
+  S2_DCHECK(S2::IsUnitLength(a));
+  S2_DCHECK(S2::IsUnitLength(b));
+  S2_DCHECK(S2::IsUnitLength(x));
 
   // Find the closest point to X along the great circle through AB.
   S2Point p = x - (x.DotProd(a_cross_b) / a_cross_b.Norm2()) * a_cross_b;
@@ -325,15 +325,15 @@ std::pair<S2Point, S2Point> GetEdgePairClosestPoints(
     case A1: return std::make_pair(a1, Project(a1, b0, b1));
     case B0: return std::make_pair(Project(b0, a0, a1), b0);
     case B1: return std::make_pair(Project(b1, a0, a1), b1);
-    default: LOG(FATAL) << "Unreached (to suppress Android compiler warning)";
+    default: S2_LOG(FATAL) << "Unreached (to suppress Android compiler warning)";
   }
 }
 
 bool IsEdgeBNearEdgeA(const S2Point& a0, const S2Point& a1,
                       const S2Point& b0, const S2Point& b1,
                       S1Angle tolerance) {
-  DCHECK_LT(tolerance.radians(), M_PI / 2);
-  DCHECK_GT(tolerance.radians(), 0);
+  S2_DCHECK_LT(tolerance.radians(), M_PI / 2);
+  S2_DCHECK_GT(tolerance.radians(), 0);
   // The point on edge B=b0b1 furthest from edge A=a0a1 is either b0, b1, or
   // some interior point on B.  If it is an interior point on B, then it must be
   // one of the two points where the great circle containing B (circ(B)) is
@@ -401,7 +401,7 @@ bool IsEdgeBNearEdgeA(const S2Point& a0, const S2Point& a1,
   // the two points along circ(B) where it is furthest from circ(A).  The other
   // is -1 times the normalized projection.
   S2Point furthest = (a_ortho - a_ortho.DotProd(b_ortho) * b_ortho).Normalize();
-  DCHECK(S2::IsUnitLength(furthest));
+  S2_DCHECK(S2::IsUnitLength(furthest));
   S2Point furthest_inv = -1 * furthest;
 
   // A point p lies on B if you can proceed from b_ortho to b0 to p to b1 and

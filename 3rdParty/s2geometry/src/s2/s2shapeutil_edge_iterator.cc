@@ -25,7 +25,7 @@ EdgeIterator::EdgeIterator(const S2ShapeIndex* index)
 }
 
 S2Shape::Edge EdgeIterator::edge() const {
-  DCHECK(!Done());
+  S2_DCHECK(!Done());
   return index_->shape(shape_id_)->edge(edge_id_);
 }
 

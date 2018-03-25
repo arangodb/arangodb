@@ -21,8 +21,7 @@
 #include <memory>
 #include <vector>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s2debug.h"
@@ -47,12 +46,7 @@ class S2Polyline final : public S2Region {
   // Creates an empty S2Polyline that should be initialized by calling Init()
   // or Decode().
   S2Polyline();
-  S2Polyline(S2Polyline&& other) :
-    s2debug_override_(other.s2debug_override_),
-    num_vertices_(other.num_vertices_),
-    vertices_(std::move(other.vertices_)) {
-      other.num_vertices_ = 0;
-    }
+  S2Polyline(S2Polyline&&);
 
   // Convenience constructors that call Init() with the given vertices.
   explicit S2Polyline(const std::vector<S2Point>& vertices);
@@ -111,8 +105,8 @@ class S2Polyline final : public S2Region {
 
   int num_vertices() const { return num_vertices_; }
   const S2Point& vertex(int k) const {
-    DCHECK_GE(k, 0);
-    DCHECK_LT(k, num_vertices_);
+    S2_DCHECK_GE(k, 0);
+    S2_DCHECK_LT(k, num_vertices_);
     return vertices_[k];
   }
 
@@ -306,7 +300,7 @@ class S2Polyline final : public S2Region {
     int num_chains() const final;
     Chain chain(int i) const final;
     Edge chain_edge(int i, int j) const final {
-      DCHECK_EQ(i, 0);
+      S2_DCHECK_EQ(i, 0);
       return Edge(polyline_->vertex(j), polyline_->vertex(j + 1));
     }
     ChainPosition chain_position(int e) const final {

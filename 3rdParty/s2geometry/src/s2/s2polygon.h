@@ -48,7 +48,7 @@ class S2Error;
 class S2Loop;
 class S2PolygonBuilder;
 class S2Polyline;
-struct S2XYZFaceSiTi;
+class S2XYZFaceSiTi;
 
 // An S2Polygon is an S2Region object that represents a polygon.  A polygon is
 // defined by zero or more loops; recall that the interior of a loop is
@@ -133,7 +133,7 @@ class S2Polygon final : public S2Region {
   //   S2Polygon* polygon = new S2Polygon;
   //   polygon->set_s2debug_override(S2Debug::DISABLE);
   //   polygon->InitNested(loops);
-  explicit S2Polygon(std::vector<std::unique_ptr<S2Loop>>&& loops,
+  explicit S2Polygon(std::vector<std::unique_ptr<S2Loop> > loops,
                      S2Debug override = S2Debug::ALLOW);
 #endif
 

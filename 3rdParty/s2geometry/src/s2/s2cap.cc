@@ -22,8 +22,7 @@
 #include <iosfwd>
 #include <vector>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/r1interval.h"
 #include "s2/s1interval.h"
 #include "s2/s2cell.h"
@@ -84,7 +83,7 @@ bool S2Cap::InteriorIntersects(const S2Cap& other) const {
 
 void S2Cap::AddPoint(const S2Point& p) {
   // Compute the squared chord length, then convert it into a height.
-  DCHECK(S2::IsUnitLength(p));
+  S2_DCHECK(S2::IsUnitLength(p));
   if (is_empty()) {
     center_ = p;
     radius_ = S1ChordAngle::Zero();
@@ -108,7 +107,7 @@ void S2Cap::AddCap(const S2Cap& other) {
 }
 
 S2Cap S2Cap::Expanded(S1Angle distance) const {
-  DCHECK_GE(distance.radians(), 0);
+  S2_DCHECK_GE(distance.radians(), 0);
   if (is_empty()) return Empty();
   return S2Cap(center_, radius_ + S1ChordAngle(distance));
 }
@@ -290,12 +289,12 @@ bool S2Cap::MayIntersect(const S2Cell& cell) const {
 }
 
 bool S2Cap::Contains(const S2Point& p) const {
-  DCHECK(S2::IsUnitLength(p));
+  S2_DCHECK(S2::IsUnitLength(p));
   return S1ChordAngle(center_, p) <= radius_;
 }
 
 bool S2Cap::InteriorContains(const S2Point& p) const {
-  DCHECK(S2::IsUnitLength(p));
+  S2_DCHECK(S2::IsUnitLength(p));
   return is_full() || S1ChordAngle(center_, p) < radius_;
 }
 
@@ -330,7 +329,7 @@ void S2Cap::Encode(Encoder* encoder) const {
   encoder->putdouble(center_.z());
   encoder->putdouble(radius_.length2());
 
-  DCHECK_GE(encoder->avail(), 0);
+  S2_DCHECK_GE(encoder->avail(), 0);
 }
 
 bool S2Cap::Decode(Decoder* decoder) {
@@ -343,7 +342,7 @@ bool S2Cap::Decode(Decoder* decoder) {
   radius_ = S1ChordAngle::FromLength2(decoder->getdouble());
 
   if (FLAGS_s2debug) {
-    CHECK(is_valid());// << "Invalid S2Cap: " << *this;
+     S2_CHECK(is_valid()) << "Invalid S2Cap: " << *this;
   }
   return true;
 }

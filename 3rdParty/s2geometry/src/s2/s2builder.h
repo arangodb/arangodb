@@ -128,7 +128,7 @@ class S2Polyline;
 //  builder.AddPolygon(input);
 //  S2Error error;
 //  if (!builder.Build(&error)) {
-//    LOG(ERROR) << error;
+//    S2_LOG(ERROR) << error;
 //    ...
 //  }
 class S2Builder {
@@ -410,7 +410,7 @@ class S2Builder {
   // Convenience constructor that calls Init().  Note that to use the default
   // options, C++ syntax requires an extra layer of parentheses:
   //
-  //   S2Builder builder((S2Builder::Options()));
+  //   S2Builder builder{S2Builder::Options()};
   explicit S2Builder(const Options& options);
 
   // Initializes an S2Builder with the given options.
@@ -440,7 +440,7 @@ class S2Builder {
   // builder.StartLayer(make_unique<s2builderutil::S2PolylineLayer>(&line2)));
   // ... Add edges using builder.AddEdge(), etc ...
   // S2Error error;
-  // CHECK(builder.Build(&error)) << error;  // Builds "line1" & "line2"
+  // S2_CHECK(builder.Build(&error)) << error;  // Builds "line1" & "line2"
   class Layer;
   void StartLayer(std::unique_ptr<Layer> layer);
 
@@ -462,10 +462,12 @@ class S2Builder {
 
   // Adds the loops in the given polygon.  Loops representing holes have their
   // edge directions automatically reversed as described for AddLoop().  Note
-  // that this method does not distinguish between the empty and full
-  // polygons, i.e. adding a full polygon has the same effect as adding an
-  // empty one.
+  // that this method does not distinguish between the empty and full polygons,
+  // i.e. adding a full polygon has the same effect as adding an empty one.
   void AddPolygon(const S2Polygon& polygon);
+
+  // Adds the edges of the given shape to the current layer.
+  void AddShape(const S2Shape& shape);
 
   // For layers that will be assembled into polygons, this method specifies a
   // predicate that will be called to determine whether the polygon is empty

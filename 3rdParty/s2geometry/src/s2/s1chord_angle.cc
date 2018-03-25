@@ -35,15 +35,6 @@ using std::nextafter;
 
 static constexpr double kMaxLength2 = 4.0;
 
-S1ChordAngle::S1ChordAngle(const S2Point& x, const S2Point& y) {
-  DCHECK(S2::IsUnitLength(x));
-  DCHECK(S2::IsUnitLength(y));
-  // The distance may slightly exceed kMaxLength2 due to roundoff errors.
-  // The maximum error in the result is 2 * DBL_EPSILON * length2_.
-  length2_ = min(kMaxLength2, (x - y).Norm2());
-  DCHECK(is_valid());
-}
-
 S1ChordAngle::S1ChordAngle(S1Angle angle) {
   if (angle.radians() < 0) {
     *this = Negative();
@@ -54,7 +45,7 @@ S1ChordAngle::S1ChordAngle(S1Angle angle) {
     double length = 2 * sin(0.5 * min(M_PI, angle.radians()));
     length2_ = length * length;
   }
-  DCHECK(is_valid());
+  S2_DCHECK(is_valid());
 }
 
 S1Angle S1ChordAngle::ToAngle() const {
@@ -105,8 +96,8 @@ S1ChordAngle operator+(S1ChordAngle a, S1ChordAngle b) {
   // Note that this method is much more efficient than converting the chord
   // angles to S1Angles and adding those.  It requires only one square root
   // plus a few additions and multiplications.
-  DCHECK(!a.is_special());
-  DCHECK(!b.is_special());
+  S2_DCHECK(!a.is_special());
+  S2_DCHECK(!b.is_special());
 
   // Optimization for the common case where "b" is an error tolerance
   // parameter that happens to be set to zero.
@@ -129,8 +120,8 @@ S1ChordAngle operator+(S1ChordAngle a, S1ChordAngle b) {
 
 S1ChordAngle operator-(S1ChordAngle a, S1ChordAngle b) {
   // See comments in operator+().
-  DCHECK(!a.is_special());
-  DCHECK(!b.is_special());
+  S2_DCHECK(!a.is_special());
+  S2_DCHECK(!b.is_special());
   double a2 = a.length2(), b2 = b.length2();
   if (b2 == 0) return a;
   if (a2 <= b2) return S1ChordAngle::Zero();
@@ -140,7 +131,7 @@ S1ChordAngle operator-(S1ChordAngle a, S1ChordAngle b) {
 }
 
 double sin2(S1ChordAngle a) {
-  DCHECK(!a.is_special());
+  S2_DCHECK(!a.is_special());
   // Let "a" be the (non-squared) chord length, and let A be the corresponding
   // half-angle (a = 2*sin(A)).  The formula below can be derived from:
   //   sin(2*A) = 2 * sin(A) * cos(A)
@@ -155,7 +146,7 @@ double sin(S1ChordAngle a) {
 
 double cos(S1ChordAngle a) {
   // cos(2*A) = cos^2(A) - sin^2(A) = 1 - 2*sin^2(A)
-  DCHECK(!a.is_special());
+  S2_DCHECK(!a.is_special());
   return 1 - 0.5 * a.length2();
 }
 

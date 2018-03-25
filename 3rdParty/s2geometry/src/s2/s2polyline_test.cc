@@ -22,7 +22,7 @@
 #include <string>
 #include <vector>
 
-#include <gflags/gflags.h>
+#include "s2/base/commandlineflags.h"
 #include <gtest/gtest.h>
 
 #include "s2/s1angle.h"
@@ -45,12 +45,15 @@ using std::vector;
 namespace {
 
 // Wraps s2textformat::MakePolyline in order to test Encode/Decode.
-unique_ptr<S2Polyline> MakePolyline(const string& str) {
-  unique_ptr<S2Polyline> polyline(s2textformat::MakePolyline(str));
+unique_ptr<S2Polyline> MakePolyline(const string& str,
+                                    S2Debug debug_override = S2Debug::ALLOW) {
+  unique_ptr<S2Polyline> polyline =
+      s2textformat::MakePolyline(str, debug_override);
   Encoder encoder;
   polyline->Encode(&encoder);
   Decoder decoder(encoder.base(), encoder.length());
   auto decoded_polyline = make_unique<S2Polyline>();
+  decoded_polyline->set_s2debug_override(debug_override);
   decoded_polyline->Decode(&decoder);
   return decoded_polyline;
 }
@@ -296,10 +299,11 @@ static string JoinInts(const vector<int>& ints) {
 }
 
 void CheckSubsample(const char* polyline_str, double tolerance_degrees,
-                    const char* expected_str) {
+                    const char* expected_str,
+                    S2Debug debug_override = S2Debug::ALLOW) {
   SCOPED_TRACE(StrCat("\"", polyline_str, "\", tolerance ",
                       tolerance_degrees));
-  unique_ptr<S2Polyline> polyline(MakePolyline(polyline_str));
+  unique_ptr<S2Polyline> polyline(MakePolyline(polyline_str, debug_override));
   vector<int> indices;
   polyline->SubsampleVertices(S1Angle::Degrees(tolerance_degrees), &indices);
   EXPECT_EQ(expected_str, JoinInts(indices));
@@ -325,9 +329,7 @@ TEST(S2Polyline, SubsampleVerticesTrivialInputs) {
 
   // And finally, verify that we still do something reasonable if the client
   // passes in an invalid polyline with two or more adjacent vertices.
-  google::FlagSaver flag_saver;  // Needed for opensource gtest.
-  FLAGS_s2debug = false;
-  CheckSubsample("0:1, 0:1, 0:1, 0:2", 0.0, "0,3");
+  CheckSubsample("0:1, 0:1, 0:1, 0:2", 0.0, "0,3", S2Debug::DISABLE);
 }
 
 TEST(S2Polyline, SubsampleVerticesSimpleExample) {
@@ -431,11 +433,12 @@ TEST(S2PolylineOwningShape, Ownership) {
 
 void TestNearlyCovers(const string& a_str, const string& b_str,
                       double max_error_degrees, bool expect_b_covers_a,
-                      bool expect_a_covers_b) {
+                      bool expect_a_covers_b,
+                      S2Debug debug_override = S2Debug::ALLOW) {
   SCOPED_TRACE(StrCat("a=\"", a_str, "\", b=\"", b_str, "\", max error=",
                       max_error_degrees));
-  unique_ptr<S2Polyline> a(MakePolyline(a_str));
-  unique_ptr<S2Polyline> b(MakePolyline(b_str));
+  unique_ptr<S2Polyline> a(MakePolyline(a_str, debug_override));
+  unique_ptr<S2Polyline> b(MakePolyline(b_str, debug_override));
   S1Angle max_error = S1Angle::Degrees(max_error_degrees);
   EXPECT_EQ(expect_b_covers_a, b->NearlyCovers(*a, max_error));
   EXPECT_EQ(expect_a_covers_b, a->NearlyCovers(*b, max_error));
@@ -487,12 +490,10 @@ TEST(S2PolylineCoveringTest, LongBacktracking) {
 
 TEST(S2PolylineCoveringTest, IsResilientToDuplicatePoints) {
   // S2Polyines are not generally supposed to contain adjacent, identical
-  // points, but it happens in practice.  When --s2debug=true, debug-mode
-  // binaries abort on such polylines, so we also set --s2debug=false.
-  google::FlagSaver flag_saver;  // Needed for opensource gtest.
-  FLAGS_s2debug = false;
+  // points, but it happens in practice.  We also set S2Debug::DISABLE so
+  // debug binaries won't abort on such polylines.
   TestNearlyCovers("0:1, 0:2, 0:2, 0:3", "0:1, 0:1, 0:1, 0:3",
-                   1e-10, true, true);
+                   1e-10, true, true, S2Debug::DISABLE);
 }
 
 TEST(S2PolylineCoveringTest, CanChooseBetweenTwoPotentialStartingPoints) {
@@ -519,11 +520,8 @@ TEST(S2PolylineCoveringTest, MatchStartsAtLastVertex) {
 }
 
 TEST(S2PolylineCoveringTest, MatchStartsAtDuplicatedLastVertex) {
-  // Like the above, except that the last vertex is duplicated.
-  google::FlagSaver flag_saver;  // Needed for opensource gtest.
-  FLAGS_s2debug = false;
   TestNearlyCovers(
-      "0:0, 0:2, 0:2, 0:2", "0:2, 0:3", 1.5, false, true);
+      "0:0, 0:2, 0:2, 0:2", "0:2, 0:3", 1.5, false, true, S2Debug::DISABLE);
 }
 
 TEST(S2PolylineCoveringTest, EmptyPolylines) {

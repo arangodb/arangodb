@@ -18,8 +18,7 @@
 #ifndef S2_S2POINT_REGION_H_
 #define S2_S2POINT_REGION_H_
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/s1angle.h"
 #include "s2/s2pointutil.h"
@@ -71,7 +70,7 @@ class S2PointRegion final : public S2Region {
 };
 
 inline S2PointRegion::S2PointRegion(const S2Point& point) : point_(point) {
-  DCHECK(S2::IsUnitLength(point));
+  S2_DCHECK(S2::IsUnitLength(point));
 }
 
 #endif  // S2_S2POINT_REGION_H_

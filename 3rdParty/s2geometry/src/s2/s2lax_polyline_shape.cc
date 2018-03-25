@@ -18,7 +18,7 @@
 #include "s2/s2lax_polyline_shape.h"
 
 #include <algorithm>
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/s2polyline.h"
 
 using std::vector;
@@ -33,7 +33,7 @@ S2LaxPolylineShape::S2LaxPolylineShape(const S2Polyline& polyline) {
 
 void S2LaxPolylineShape::Init(const vector<S2Point>& vertices) {
   num_vertices_ = vertices.size();
-  LOG_IF(WARNING, num_vertices_ == 1)
+  S2_LOG_IF(WARNING, num_vertices_ == 1)
       << "s2shapeutil::S2LaxPolylineShape with one vertex has no edges";
   vertices_.reset(new S2Point[num_vertices_]);
   std::copy(vertices.begin(), vertices.end(), vertices_.get());
@@ -41,7 +41,7 @@ void S2LaxPolylineShape::Init(const vector<S2Point>& vertices) {
 
 void S2LaxPolylineShape::Init(const S2Polyline& polyline) {
   num_vertices_ = polyline.num_vertices();
-  LOG_IF(WARNING, num_vertices_ == 1)
+  S2_LOG_IF(WARNING, num_vertices_ == 1)
       << "s2shapeutil::S2LaxPolylineShape with one vertex has no edges";
   vertices_.reset(new S2Point[num_vertices_]);
   std::copy(&polyline.vertex(0), &polyline.vertex(0) + num_vertices_,
@@ -49,7 +49,7 @@ void S2LaxPolylineShape::Init(const S2Polyline& polyline) {
 }
 
 S2Shape::Edge S2LaxPolylineShape::edge(int e) const {
-  DCHECK_LT(e, num_edges());
+  S2_DCHECK_LT(e, num_edges());
   return Edge(vertices_[e], vertices_[e + 1]);
 }
 
@@ -62,8 +62,8 @@ S2Shape::Chain S2LaxPolylineShape::chain(int i) const {
 }
 
 S2Shape::Edge S2LaxPolylineShape::chain_edge(int i, int j) const {
-  DCHECK_EQ(i, 0);
-  DCHECK_LT(j, num_edges());
+  S2_DCHECK_EQ(i, 0);
+  S2_DCHECK_LT(j, num_edges());
   return Edge(vertices_[j], vertices_[j + 1]);
 }
 

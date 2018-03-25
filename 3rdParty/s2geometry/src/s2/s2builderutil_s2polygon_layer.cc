@@ -54,7 +54,7 @@ S2PolygonLayer::S2PolygonLayer(
 void S2PolygonLayer::Init(
     S2Polygon* polygon, LabelSetIds* label_set_ids,
     IdSetLexicon* label_set_lexicon, const Options& options) {
-  //DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
+  S2_DCHECK_EQ(label_set_ids == nullptr, label_set_lexicon == nullptr);
   polygon_ = polygon;
   label_set_ids_ = label_set_ids;
   label_set_lexicon_ = label_set_lexicon;
@@ -158,11 +158,13 @@ void S2PolygonLayer::Build(const Graph& g, S2Error* error) {
       return;
     }
     // It doesn't really matter which complement of each component we use,
-    // since S2Polygon::InitNested() automatically normalizes all the loops.
+    // since below we normalize all the loops so that they enclose at most
+    // half of the sphere (to ensure that the loops can always be nested).
+    //
     // The only reason to prefer one over the other is that when there are
     // multiple loops that touch, only one of the two complements matches the
     // structure of the input loops.  GetUndirectedComponents() tries to
-    // ensure that this is always component 0.
+    // ensure that this is always complement 0 of each component.
     vector<unique_ptr<S2Loop>> loops;
     for (const auto& component : components) {
       AppendS2Loops(g, component[0], &loops);

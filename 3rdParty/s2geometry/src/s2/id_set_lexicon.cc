@@ -19,7 +19,7 @@
 
 #include <algorithm>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 
 IdSetLexicon::IdSetLexicon() {
 }
@@ -74,7 +74,7 @@ IdSetLexicon::IdSet IdSetLexicon::id_set(int32 set_id) const {
     return IdSet();
   } else {
     auto sequence = id_sets_.sequence(~set_id);
-    DCHECK_NE(0, sequence.size());
+    S2_DCHECK_NE(0, sequence.size());
     return IdSet(&*sequence.begin(), &*sequence.begin() + sequence.size());
   }
 }

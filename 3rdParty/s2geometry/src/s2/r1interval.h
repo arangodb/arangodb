@@ -23,8 +23,7 @@
 #include <iosfwd>
 #include <iostream>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/util/math/vector.h"  // IWYU pragma: export
 
@@ -162,7 +161,7 @@ class R1Interval {
   // Return the closest point in the interval to the given point "p".
   // The interval must be non-empty.
   double Project(double p) const {
-    DCHECK(!is_empty());
+    S2_DCHECK(!is_empty());
     return std::max(lo(), std::min(hi(), p));
   }
 

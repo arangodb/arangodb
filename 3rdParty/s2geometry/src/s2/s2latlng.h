@@ -122,12 +122,6 @@ class S2LatLng {
   bool operator>(const S2LatLng& o) const { return coords_ > o.coords_; }
   bool operator<=(const S2LatLng& o) const { return coords_ <= o.coords_; }
   bool operator>=(const S2LatLng& o) const { return coords_ >= o.coords_; }
-  
-  S2LatLng& operator=(S2LatLng const& other) {
-    coords_.x(other.coords_.x());
-    coords_.y(other.coords_.y());
-    return *this;
-  }
 
   bool ApproxEquals(const S2LatLng& o,
                     S1Angle max_error = S1Angle::Radians(1e-15)) const {
@@ -150,6 +144,13 @@ class S2LatLng {
   R2Point coords_;
 };
 
+// Hasher for S2LatLng.
+// Example use: std::unordered_map<S2LatLng, int, S2LatLngHash>.
+struct S2LatLngHash {
+  size_t operator()(const S2LatLng& lat_lng) const {
+    return GoodFastHash<R2Point>()(lat_lng.coords());
+  }
+};
 
 //////////////////   Implementation details follow   ////////////////////
 

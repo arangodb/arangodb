@@ -22,6 +22,7 @@
 
 #include "Near.h"
 
+#include <s2/s2cell_union.h>
 #include <s2/s2latlng.h>
 #include <s2/s2metrics.h>
 #include <s2/s2region.h>
@@ -117,18 +118,29 @@ void NearUtils<CMP>::estimateDensity(S2Point const& found) {
   }
 }
   
-static void GetDifferenceInternal(S2CellId cell, const S2CellUnion& y,
-                                  std::vector<S2CellId>* cell_ids) {
-  // Add the difference between cell and y to cell_ids.
+static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
+                          std::vector<S2CellId>* result) {
   // If they intersect but the difference is non-empty, divide and conquer.
-  if (!y.Intersects(cell)) {
-    cell_ids->push_back(cell);
-  } else if (!y.Contains(cell)) {
-    S2CellId child = cell.child_begin();
-    for (int i = 0; ; ++i) {
-      GetDifferenceInternal(child, y, cell_ids);
-      if (i == 3) break;  // Avoid unnecessary next() computation.
-      child = child.next();
+  
+  std::vector<S2CellId>::const_iterator i =
+  std::lower_bound(cell_ids.begin(), cell_ids.end(), id);
+  auto j = i;
+  bool intersects = (i != cell_ids.end() && i->range_min() <= id.range_max()) ||
+                    (i != cell_ids.begin() && (--i)->range_max() >= id.range_min());
+  
+  if (!intersects) {
+    result->push_back(id);
+  } else {
+    // cell_ids.Intersects(id) == true
+    bool contains = (j != cell_ids.end() && j->range_min() <= id) ||
+                    (j != cell_ids.begin() && (--j)->range_max() >= id);
+    if (!contains) {
+      S2CellId child = id.child_begin();
+      for (int i = 0; ; ++i) {
+        GetDifference(cell_ids, child, result);
+        if (i == 3) break;  // Avoid unnecessary next() computation.
+        child = child.next();
+      }
     }
   }
 }
@@ -160,25 +172,25 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     // LOG_TOPIC(INFO, Logger::FIXME) << "[Scan] 0 to something";
     S2Cap ob = S2Cap(_origin, _outerAngle);
     //_coverer.GetCovering(ob, &cover);
-    if (_scannedCells.num_cells() == 0) {
+    if (_scannedCells.empty() == 0) {
       _coverer.GetFastCovering(ob, &cover);
     } else {
       std::vector<S2CellId> tmpCover;
       _coverer.GetFastCovering(ob, &tmpCover);
       for (S2CellId id : tmpCover) {
-        GetDifferenceInternal(id, _scannedCells, &cover);
+        GetDifference(_scannedCells, id, &cover);
       }
     }
   } else if (_innerAngle > _minAngle) {
     // create a search ring
     
-    if (_scannedCells.num_cells() != 0) {
+    if (_scannedCells.size() > 0) {
       S2Cap ob(_origin, _outerAngle); // outer ring
       std::vector<S2CellId> tmpCover;
       _coverer.GetCovering(ob, &tmpCover);
       //_coverer.GetFastCovering(ob, &tmpCover);
       for (S2CellId id : tmpCover) {
-        GetDifferenceInternal(id, _scannedCells, &cover);
+        GetDifference(_scannedCells, id, &cover);
       }
     } else {
       // expensive exact cover
@@ -214,7 +226,8 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   std::vector<geo::Interval> intervals;
   if (!cover.empty()) {
     geo::GeoUtils::scanIntervals(_params, cover, intervals);
-    _scannedCells.Add(cover);
+    _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
+    S2CellUnion::Normalize(&_scannedCells); // will sort the IDs
   }
   
   /*if (!cover.empty()) {  // not sure if this can ever happen

@@ -91,8 +91,6 @@ string_view::size_type string_view::copy(char* buf, size_type n,
   return rlen;
 }
 
-bool string_view::contains(string_view s) const { return find(s, 0) != npos; }
-
 string_view::size_type string_view::find(string_view s, size_type pos) const
     noexcept {
   if (empty() || pos > length_) {

@@ -190,6 +190,8 @@ add_library(${LIB_ARANGO} STATIC
   Geo/GeoUtils.cpp
   Geo/ShapeContainer.cpp
   Geo/Shapes.cpp
+  Geo/S2/S2MultiPointRegion.cpp
+  Geo/S2/S2MultiPolyline.cpp
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
@@ -237,7 +239,6 @@ add_library(${LIB_ARANGO} STATIC
 
 target_link_libraries(${LIB_ARANGO}
     s2
-    gflags
     boost_system
     boost_boost
 )

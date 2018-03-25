@@ -20,9 +20,7 @@
 #include <algorithm>
 #include <vector>
 
-#include <glog/logging.h>
-
-#include "s2/util/coding/coder.h"
+#include "s2/base/logging.h"
 #include "s2/s1angle.h"
 #include "s2/s2cap.h"
 #include "s2/s2cell.h"
@@ -30,6 +28,7 @@
 #include "s2/s2latlng_rect.h"
 #include "s2/s2metrics.h"
 #include "s2/third_party/absl/base/integral_types.h"
+#include "s2/util/coding/coder.h"
 
 using std::is_sorted;
 using std::max;
@@ -71,14 +70,14 @@ void S2CellUnion::Init(const vector<uint64>& cell_ids) {
 }
 
 void S2CellUnion::InitFromMinMax(S2CellId min_id, S2CellId max_id) {
-  DCHECK(max_id.is_valid());
+  S2_DCHECK(max_id.is_valid());
   InitFromBeginEnd(min_id, max_id.next());
 }
 
 void S2CellUnion::InitFromBeginEnd(S2CellId begin, S2CellId end) {
-  DCHECK(begin.is_leaf());
-  DCHECK(end.is_leaf());
-  DCHECK_LE(begin, end);
+  S2_DCHECK(begin.is_leaf());
+  S2_DCHECK(end.is_leaf());
+  S2_DCHECK_LE(begin, end);
 
   // We repeatedly add the largest cell we can.
   cell_ids_.clear();
@@ -87,7 +86,7 @@ void S2CellUnion::InitFromBeginEnd(S2CellId begin, S2CellId end) {
     cell_ids_.push_back(id);
   }
   // The output is already normalized.
-  DCHECK(IsNormalized());
+  S2_DCHECK(IsNormalized());
 }
 
 void S2CellUnion::Pack(int excess) {
@@ -182,11 +181,11 @@ void S2CellUnion::Denormalize(int min_level, int level_mod,
 void S2CellUnion::Denormalize(const vector<S2CellId>& in,
                               int min_level, int level_mod,
                               vector<S2CellId>* out) {
-  DCHECK_GE(min_level, 0);
-  DCHECK_LE(min_level, S2CellId::kMaxLevel);
-  DCHECK_GE(level_mod, 1);
-  DCHECK_LE(level_mod, 3);
-  DCHECK_NE(out, &in);
+  S2_DCHECK_GE(min_level, 0);
+  S2_DCHECK_LE(min_level, S2CellId::kMaxLevel);
+  S2_DCHECK_GE(level_mod, 1);
+  S2_DCHECK_LE(level_mod, 3);
+  S2_DCHECK_NE(out, &in);
 
   out->clear();
   out->reserve(in.size());
@@ -306,7 +305,7 @@ S2CellUnion S2CellUnion::Intersection(S2CellId id) const {
     while (i != cell_ids_.end() && *i <= id_max)
       result.cell_ids_.push_back(*i++);
   }
-  DCHECK(result.IsNormalized() || !IsNormalized());
+  S2_DCHECK(result.IsNormalized() || !IsNormalized());
   return result;
 }
 
@@ -314,17 +313,17 @@ S2CellUnion S2CellUnion::Intersection(const S2CellUnion& y) const {
   S2CellUnion result;
   GetIntersection(cell_ids_, y.cell_ids_, &result.cell_ids_);
   // The output is normalized as long as at least one input is normalized.
-  DCHECK(result.IsNormalized() || (!IsNormalized() && !y.IsNormalized()));
+  S2_DCHECK(result.IsNormalized() || (!IsNormalized() && !y.IsNormalized()));
   return result;
 }
 
 /*static*/ void S2CellUnion::GetIntersection(const vector<S2CellId>& x,
                                              const vector<S2CellId>& y,
                                              vector<S2CellId>* out) {
-  DCHECK_NE(out, &x);
-  DCHECK_NE(out, &y);
-  DCHECK(is_sorted(x.begin(), x.end()));
-  DCHECK(is_sorted(y.begin(), y.end()));
+  S2_DCHECK_NE(out, &x);
+  S2_DCHECK_NE(out, &y);
+  S2_DCHECK(is_sorted(x.begin(), x.end()));
+  S2_DCHECK(is_sorted(y.begin(), y.end()));
 
   // This is a fairly efficient calculation that uses binary search to skip
   // over sections of both input vectors.  It takes logarithmic time if all the
@@ -363,7 +362,7 @@ S2CellUnion S2CellUnion::Intersection(const S2CellUnion& y) const {
     }
   }
   // The output is generated in sorted order.
-  DCHECK(is_sorted(out->begin(), out->end()));
+  S2_DCHECK(is_sorted(out->begin(), out->end()));
 }
 
 static void GetDifferenceInternal(S2CellId cell,
@@ -392,7 +391,7 @@ S2CellUnion S2CellUnion::Difference(const S2CellUnion& y) const {
     GetDifferenceInternal(id, y, &result.cell_ids_);
   }
   // The output is normalized as long as the first argument is normalized.
-  DCHECK(result.IsNormalized() || !IsNormalized());
+  S2_DCHECK(result.IsNormalized() || !IsNormalized());
   return result;
 }
 
@@ -498,7 +497,7 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
   }
 
   vector<S2CellId> temp_cell_ids(num_cells);
-  for (size_t i = 0; i < num_cells; ++i) {
+  for (int i = 0; i < num_cells; ++i) {
     if (!temp_cell_ids[i].Decode(decoder)) return false;
   }
   cell_ids_.swap(temp_cell_ids);
@@ -508,10 +507,3 @@ bool S2CellUnion::Decode(Decoder* const decoder) {
 bool S2CellUnion::Contains(const S2Point& p) const {
   return Contains(S2CellId(p));
 }
-
-void S2CellUnion::Add(std::vector<S2CellId> const& other) {
-  cell_ids_.reserve(cell_ids_.size() + other.size());
-  cell_ids_.insert(cell_ids_.end(), other.begin(), other.end());
-  Normalize();
-}
-

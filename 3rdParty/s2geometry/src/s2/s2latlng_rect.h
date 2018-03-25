@@ -22,8 +22,7 @@
 #include <iosfwd>
 #include <iostream>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
 #include "s2/r1interval.h"
 #include "s2/s1angle.h"
@@ -380,13 +379,13 @@ class S2LatLngRect final : public S2Region {
 inline S2LatLngRect::S2LatLngRect(const S2LatLng& lo, const S2LatLng& hi)
   : lat_(lo.lat().radians(), hi.lat().radians()),
     lng_(lo.lng().radians(), hi.lng().radians()) {
-  DLOG_IF(ERROR, !is_valid())
+  S2_DLOG_IF(ERROR, !is_valid())
       << "Invalid rect: " << lo << ", " << hi;
 }
 
 inline S2LatLngRect::S2LatLngRect(const R1Interval& lat, const S1Interval& lng)
   : lat_(lat), lng_(lng) {
-  DLOG_IF(ERROR, !is_valid())
+  S2_DLOG_IF(ERROR, !is_valid())
       << "Invalid rect: " << lat << ", " << lng;
 }
 

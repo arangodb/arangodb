@@ -22,7 +22,7 @@
 
 #include <vector>
 
-#include <glog/logging.h>
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/container/inlined_vector.h"
 #include "s2/s1chord_angle.h"
 #include "s2/s2cap.h"
@@ -44,6 +44,8 @@
 template <class Distance>
 class S2ClosestPointQueryBaseOptions {
  public:
+  using Delta = typename Distance::Delta;
+
   S2ClosestPointQueryBaseOptions();
 
   // Specifies that at most "max_points" points should be returned.
@@ -85,9 +87,9 @@ class S2ClosestPointQueryBaseOptions {
   // finds any point whose distance is less than D, rather than continuing to
   // search for a point that is even closer.
   //
-  // DEFAULT: Distance::Zero()
-  Distance max_error() const;
-  void set_max_error(Distance max_error);
+  // DEFAULT: Distance::Delta::Zero()
+  Delta max_error() const;
+  void set_max_error(Delta max_error);
 
   // Specifies that points must be contained by the given S2Region.  "region"
   // is owned by the caller and must persist during the lifetime of this
@@ -111,7 +113,7 @@ class S2ClosestPointQueryBaseOptions {
 
  private:
   Distance max_distance_ = Distance::Infinity();
-  Distance max_error_ = Distance::Zero();
+  Delta max_error_ = Delta::Zero();
   const S2Region* region_ = nullptr;
   int max_points_ = kMaxMaxPoints;
   bool use_brute_force_ = false;
@@ -158,8 +160,22 @@ class S2ClosestPointQueryBaseOptions {
 //   friend bool operator==(Distance x, Distance y);
 //   friend bool operator<(Distance x, Distance y);
 //
-//   // Subtraction operator (needed to implement Options::max_error):
-//   friend Distance operator-(Distance x, Distance y);
+//   // Delta represents the positive difference between two distances.
+//   // It is used together with operator-() to implement Options::max_error().
+//   // Typically Distance::Delta is simply S1ChordAngle.
+//   class Delta {
+//    public:
+//     Delta();
+//     Delta(const Delta&);
+//     Delta& operator=(const Delta&);
+//     friend bool operator==(Delta x, Delta y);
+//     static Delta Zero();
+//   };
+//
+//   // Subtraction operator.  Note that the second argument represents a
+//   // delta between two distances.  This distinction is important for
+//   // classes that compute maximum distances (e.g., S2FurthestEdgeQuery).
+//   friend Distance operator-(Distance x, Delta delta);
 //
 //   // Method that returns an upper bound on the S1ChordAngle corresponding
 //   // to this Distance (needed to implement Options::max_distance
@@ -170,6 +186,7 @@ class S2ClosestPointQueryBaseOptions {
 template <class Distance, class Data>
 class S2ClosestPointQueryBase {
  public:
+  using Delta = typename Distance::Delta;
   using Index = S2PointIndex<Data>;
   using PointData = typename Index::PointData;
   using Options = S2ClosestPointQueryBaseOptions<Distance>;
@@ -365,7 +382,7 @@ inline int S2ClosestPointQueryBaseOptions<Distance>::max_points() const {
 template <class Distance>
 inline void S2ClosestPointQueryBaseOptions<Distance>::set_max_points(
     int max_points) {
-  DCHECK_GE(max_points, 1);
+  S2_DCHECK_GE(max_points, 1);
   max_points_ = max_points;
 }
 
@@ -382,13 +399,14 @@ inline void S2ClosestPointQueryBaseOptions<Distance>::set_max_distance(
 }
 
 template <class Distance>
-inline Distance S2ClosestPointQueryBaseOptions<Distance>::max_error() const {
+inline typename Distance::Delta
+S2ClosestPointQueryBaseOptions<Distance>::max_error() const {
   return max_error_;
 }
 
 template <class Distance>
 inline void S2ClosestPointQueryBaseOptions<Distance>::set_max_error(
-    Distance max_error) {
+    Delta max_error) {
   max_error_ = max_error;
 }
 
@@ -462,7 +480,7 @@ template <class Distance, class Data>
 typename S2ClosestPointQueryBase<Distance, Data>::Result
 S2ClosestPointQueryBase<Distance, Data>::FindClosestPoint(
     Target* target, const Options& options) {
-  DCHECK_EQ(options.max_points(), 1);
+  S2_DCHECK_EQ(options.max_points(), 1);
   FindClosestPointsInternal(target, options);
   return result_singleton_;
 }
@@ -488,7 +506,7 @@ void S2ClosestPointQueryBase<Distance, Data>::FindClosestPoints(
     }
     // The priority queue returns the largest elements first.
     std::reverse(results->begin(), results->end());
-    DCHECK(std::is_sorted(results->begin(), results->end()));
+    S2_DCHECK(std::is_sorted(results->begin(), results->end()));
   }
 }
 
@@ -500,20 +518,22 @@ void S2ClosestPointQueryBase<Distance, Data>::FindClosestPointsInternal(
 
   distance_limit_ = options.max_distance();
   result_singleton_ = Result();
-  DCHECK(result_vector_.empty());
-  DCHECK(result_set_.empty());
-  DCHECK(target->max_brute_force_index_size() >= 0);
+  S2_DCHECK(result_vector_.empty());
+  S2_DCHECK(result_set_.empty());
+  S2_DCHECK(target->max_brute_force_index_size() >= 0);
   if (distance_limit_ == Distance::Zero()) return;
 
   if (options.max_points() == Options::kMaxMaxPoints &&
-      options.max_distance() == Distance::Infinity()) {
-    LOG(WARNING) << "Returning all points (max_points/max_distance not set)";
+      options.max_distance() == Distance::Infinity() &&
+      options.region() == nullptr) {
+    S2_LOG(WARNING) << "Returning all points "
+                    "(max_points/max_distance/region not set)";
   }
 
   // Note that given point is processed only once (unlike S2ClosestEdgeQuery),
   // and therefore we don't need to worry about the possibility of having
   // duplicate points in the results.
-  if (Distance::Zero() < options.max_error()) {
+  if (!(options.max_error() == Delta::Zero())) {
     target_->set_max_error(options.max_error());
   }
   if (options.use_brute_force() ||
@@ -559,7 +579,7 @@ void S2ClosestPointQueryBase<Distance, Data>::FindClosestPointsOptimized() {
 
 template <class Distance, class Data>
 void S2ClosestPointQueryBase<Distance, Data>::InitQueue() {
-  DCHECK(queue_.empty());
+  S2_DCHECK(queue_.empty());
 
   // Optimization: rather than starting with the entire index, see if we can
   // limit the search region to a small disc.  Then we can find a covering for
@@ -675,7 +695,7 @@ void S2ClosestPointQueryBase<Distance, Data>::AddInitialRange(
     S2CellId first_id, S2CellId last_id) {
   // Add the lowest common ancestor of the given range.
   int level = first_id.GetCommonAncestorLevel(last_id);
-  DCHECK_GE(level, 0);
+  S2_DCHECK_GE(level, 0);
   index_covering_.push_back(first_id.parent(level));
 }
 

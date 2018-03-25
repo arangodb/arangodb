@@ -27,8 +27,7 @@
 #include <cassert>
 #include <type_traits>
 
-#include <glog/logging.h>
-
+#include "s2/base/logging.h"
 #include "s2/third_party/absl/base/casts.h"
 #include "s2/third_party/absl/base/integral_types.h"
 #include "s2/third_party/absl/base/port.h"
@@ -604,7 +603,7 @@ GeneralFormatConverter<EndianClass, ValueType>::FromHost(ValueType v) {
       return EndianClass::FromHost64(static_cast<uint64>(v));
       break;
     default:
-      LOG(FATAL) << "Unexpected value size: " << sizeof(ValueType);
+      S2_LOG(FATAL) << "Unexpected value size: " << sizeof(ValueType);
   }
 }
 
@@ -629,7 +628,7 @@ GeneralFormatConverter<EndianClass, ValueType>::ToHost(ValueType v) {
       return EndianClass::ToHost64(static_cast<uint64>(v));
       break;
     default:
-      LOG(FATAL) << "Unexpected value size: " << sizeof(ValueType);
+      S2_LOG(FATAL) << "Unexpected value size: " << sizeof(ValueType);
   }
 }
 
@@ -640,11 +639,11 @@ class GeneralFormatConverter<EndianClass, float> {
  public:
   static typename tofromhost_value_type_traits<float>::int_type FromHost(
       float v) {
-    return EndianClass::FromHost32(bit_cast<uint32>(v));
+    return EndianClass::FromHost32(absl::bit_cast<uint32>(v));
   }
   static typename tofromhost_value_type_traits<float>::int_type ToHost(
       float v) {
-    return bit_cast<float>(EndianClass::ToHost32(bit_cast<uint32>(v)));
+    return bit_cast<float>(EndianClass::ToHost32(absl::bit_cast<uint32>(v)));
   }
 };
 
@@ -655,11 +654,11 @@ class GeneralFormatConverter<EndianClass, double> {
  public:
   static typename tofromhost_value_type_traits<double>::int_type FromHost(
       double v) {
-    return EndianClass::FromHost64(bit_cast<uint64>(v));
+    return EndianClass::FromHost64(absl::bit_cast<uint64>(v));
   }
   static typename tofromhost_value_type_traits<double>::int_type ToHost(
       double v) {
-    return bit_cast<double>(EndianClass::ToHost64(bit_cast<uint64>(v)));
+    return bit_cast<double>(EndianClass::ToHost64(absl::bit_cast<uint64>(v)));
   }
 };
 
@@ -693,7 +692,7 @@ inline T LoadInteger(const char* p) {
     case 4: return EndianClass::ToHost32(UNALIGNED_LOAD32(p));
     case 8: return EndianClass::ToHost64(UNALIGNED_LOAD64(p));
     default: {
-      LOG(FATAL) << "Not reached!";
+      S2_LOG(FATAL) << "Not reached!";
       return 0;
     }
   }
@@ -711,7 +710,7 @@ inline void StoreInteger(T value, char* p) {
     case 4: UNALIGNED_STORE32(p, EndianClass::FromHost32(value)); break;
     case 8: UNALIGNED_STORE64(p, EndianClass::FromHost64(value)); break;
     default: {
-      LOG(FATAL) << "Not reached!";
+      S2_LOG(FATAL) << "Not reached!";
     }
   }
 }
@@ -720,22 +719,22 @@ inline void StoreInteger(T value, char* p) {
 
 template<typename EndianClass>
 inline float LoadFloat(const char* p) {
-  return bit_cast<float>(EndianClass::ToHost32(UNALIGNED_LOAD32(p)));
+  return absl::bit_cast<float>(EndianClass::ToHost32(UNALIGNED_LOAD32(p)));
 }
 
 template<typename EndianClass>
 inline void StoreFloat(float value, char* p) {
-  UNALIGNED_STORE32(p, EndianClass::FromHost32(bit_cast<uint32>(value)));
+  UNALIGNED_STORE32(p, EndianClass::FromHost32(absl::bit_cast<uint32>(value)));
 }
 
 template<typename EndianClass>
 inline double LoadDouble(const char* p) {
-  return bit_cast<double>(EndianClass::ToHost64(UNALIGNED_LOAD64(p)));
+  return absl::bit_cast<double>(EndianClass::ToHost64(UNALIGNED_LOAD64(p)));
 }
 
 template<typename EndianClass>
 inline void StoreDouble(double value, char* p) {
-  UNALIGNED_STORE64(p, EndianClass::FromHost64(bit_cast<uint64>(value)));
+  UNALIGNED_STORE64(p, EndianClass::FromHost64(absl::bit_cast<uint64>(value)));
 }
 
 }  // namespace endian_internal

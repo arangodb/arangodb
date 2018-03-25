@@ -57,6 +57,18 @@
 #include <windows.h>
 #undef ERROR
 #undef DELETE
+#define STDIN_FILENO 0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
+#define S_IRUSR 00400
+#define S_IWUSR 00200
+#define S_IXUSR 00100
+#define S_IRGRP 00040
+#define S_IWGRP 00020
+#define S_IXGRP 00010
+#define S_IROTH 00004
+#define S_IWOTH 00002
+#define S_IXOTH 00001
 
 // This compiler flag can be easily overlooked on MSVC.
 // _CHAR_UNSIGNED gets set with the /J flag.
@@ -76,6 +88,7 @@
 //   const long stop_time = os::GetMilliseconds() + kWaitTimeoutMillis;
 //   while (os::GetMilliseconds() <= stop_time) { ... }
 #pragma warning(disable : 4018)  // level 3
+#pragma warning(disable : 4267)  // level 3
 
 // Don't warn about unused local variables.
 //
@@ -146,14 +159,14 @@
 #endif  // defined(__APPLE__)
 
 // __GLIBC_PREREQ
-#if defined OS_LINUX
+#if defined __linux__
 // GLIBC-related macros.
 #include <features.h>
 
 #ifndef __GLIBC_PREREQ
 #define __GLIBC_PREREQ(a, b) 0  // not a GLIBC system
 #endif
-#endif  // OS_LINUX
+#endif  // __linux__
 
 // STATIC_ANALYSIS
 // Klocwork static analysis tool's C/C++ complier kwcc
@@ -261,7 +274,7 @@ inline void sized_delete_array(void *ptr, size_t size) {
 // -----------------------------------------------------------------------------
 
 // IS_LITTLE_ENDIAN, IS_BIG_ENDIAN
-#if defined OS_LINUX || defined(__linux__) || defined OS_ANDROID || defined(__ANDROID__)
+#if defined __linux__ || defined OS_ANDROID || defined(__ANDROID__)
 // _BIG_ENDIAN
 #include <endian.h>
 
@@ -372,8 +385,10 @@ struct PortableHashBase {};
 // -----------------------------------------------------------------------------
 
 // PATH_SEPARATOR
-// DEPRECATED: use absl::PathSeparator() instead.
 // Define the OS's path separator
+//
+// NOTE: Assuming the path separator at compile time is discouraged.
+// Prefer instead to be tolerant of both possible separators whenever possible.
 #ifdef __cplusplus  // C won't merge duplicate const variables at link time
 // Some headers provide a macro for this (GCC's system.h), remove it so that we
 // can use our own.
@@ -390,7 +405,7 @@ const char PATH_SEPARATOR = '/';
 // -----------------------------------------------------------------------------
 
 // uint, ushort, ulong
-#if defined OS_LINUX || defined(__linux__)
+#if defined __linux__
 // The uint mess:
 // mysql.h sets _GNU_SOURCE which sets __USE_MISC in <features.h>
 // sys/types.h typedefs uint if __USE_MISC
@@ -412,7 +427,7 @@ typedef unsigned long ulong;  // NOLINT
 #endif  // !HAVE_ULONG
 #endif  // !__USE_MISC
 
-#endif  // OS_LINUX
+#endif  // __linux__
 
 #ifdef _MSC_VER /* if Visual C++ */
 // VC++ doesn't understand "uint"
@@ -560,17 +575,6 @@ std::ostream &operator<<(std::ostream &out, const pthread_t &thread_id);
 // Predefined System/Language Functions
 // -----------------------------------------------------------------------------
 
-// strnlen
-#if defined(__APPLE__)
-// Darwin doesn't have strnlen. No comment.
-inline size_t strnlen(const char *s, size_t maxlen) {
-  const char* end = (const char *)memchr(s, '\0', maxlen);
-  if (end)
-    return end - s;
-  return maxlen;
-}
-#endif
-
 // strtoq, strtouq, atoll
 #ifdef _MSC_VER
 #define strtoq _strtoi64
@@ -608,7 +612,7 @@ inline void bzero(void *s, int n) { memset(s, 0, n); }
 #endif  // _MSC_VER
 
 // gethostbyname
-#if defined(OS_WINDOWS) || defined(__APPLE__)
+#if defined(_WIN32) || defined(__APPLE__)
 // gethostbyname() *is* thread-safe for Windows native threads. It is also
 // safe on Mac OS X and iOS, where it uses thread-local storage, even though the
 // manpages claim otherwise. For details, see
