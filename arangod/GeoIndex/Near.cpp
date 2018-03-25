@@ -94,6 +94,10 @@ void NearUtils<CMP>::reset() {
   _deltaAngle = S1ChordAngle::Radians(S2::kAvgDiag.GetValue(level));
   TRI_ASSERT(!_deltaAngle.is_zero());
   TRI_ASSERT(_deltaAngle.radians() * geo::kEarthRadiusInMeters >= 400);
+  
+  if (_minAngle == _maxAngle) { // no search area
+    _allIntervalsCovered = true;
+  }
 }
   
   
@@ -229,31 +233,6 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
     S2CellUnion::Normalize(&_scannedCells); // will sort the IDs
   }
-  
-  /*if (!cover.empty()) {  // not sure if this can ever happen
-    if (_scannedCells.num_cells() != 0) {
-      // substract already scanned areas from cover
-      S2CellUnion coverUnion(std::move(cover));
-      S2CellUnion lookup = coverUnion.Difference(_scannedCells);
-
-      TRI_ASSERT(cover.empty());  // swap should empty this
-      if (!isFilterNone()) {
-        TRI_ASSERT(!_params.filterShape.empty());
-        for (S2CellId cellId : lookup.cell_ids()) {
-          if (_params.filterShape.mayIntersect(cellId)) {
-            cover.push_back(cellId);
-          }
-        }
-      } else {
-        cover = lookup.cell_ids();
-      }
-    }
-
-    if (!cover.empty()) {
-      geo::GeoUtils::scanIntervals(_params, cover, intervals);
-      _scannedCells.Add(cover);
-    }
-  }*/
 
   return intervals;
 }
