@@ -1,8 +1,11 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
+
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
+
 
 v3.2.12 (2018-02-27)
 --------------------
