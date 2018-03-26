@@ -33,7 +33,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;

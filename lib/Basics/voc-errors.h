@@ -158,10 +158,15 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
-/// 33: ERROR_CANNOT_READ_FILE
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
+/// 34: ERROR_CANNOT_READ_FILE
 /// "cannot read file"
 /// Will be raised when a file cannot be read.
-constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 33;
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
 
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
@@ -1462,7 +1467,7 @@ constexpr int TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      
 
 /// 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 /// "Invalid number of arguments. Expected: "
-/// Invalid number of arguments. Expected: 
+/// Invalid number of arguments. Expected:
 constexpr int TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       = 1935;
 
 /// 1936: ERROR_GRAPH_INVALID_PARAMETER

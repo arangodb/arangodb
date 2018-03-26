@@ -2,6 +2,8 @@ devel
 -----
 * arangodump now supports `--threads` option to dump collections in parallel
 
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
 * Improvement: The AQL query planner in cluster is now a bit more clever and
   can prepare AQL queries with less network overhead.
   This should speed up simple queries in cluster mode, on complex queries it
@@ -159,6 +161,13 @@ devel
 * internal issue #1726: Supervision to remove deleted nodes from
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
+
+* added C++ implementation for AQL functions `DATE_NOW()`, `DATE_ISO8601()`,
+  `DATE_TIMESTAMP()`, `IS_DATESTRING()`, `DATE_DAYOFWEEK()`, `DATE_YEAR()`,
+  `DATE_MONTH()`, `DATE_DAY()`, `DATE_HOUR()`, `DATE_MINUTE()`, `DATE_SECOND()`,
+  `DATE_MILLISECOND()`, `DATE_DAYOFYEAR()`, `DATE_ISOWEEK()`, `DATE_LEAPYEAR()`,
+  `DATE_QUARTER()`, `DATE_DAYS_IN_MONTH()`, `DATE_ADD()`, `DATE_SUBTRACT()`,
+  `DATE_DIFF()` and `DATE_COMPARE()`
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 

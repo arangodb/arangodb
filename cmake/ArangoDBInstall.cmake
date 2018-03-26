@@ -75,7 +75,6 @@ install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
-    ${PROJECT_SOURCE_DIR}/js/contrib
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX       "^.*/server/tests$"                          EXCLUDE

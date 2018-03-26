@@ -12,10 +12,8 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/AccessMode.h"
-#include <iostream>
 %}
 
 %union {
