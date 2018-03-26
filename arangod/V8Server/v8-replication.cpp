@@ -375,7 +375,7 @@ static void JS_SynchronizeReplicationFinalize(
   }
 
   result->Set(TRI_V8_ASCII_STRING(isolate, "finalTick"),
-              TRI_V8_ASCII_STRING(isolate, StringUtils::itoa(finalTick)));
+              TRI_V8_ASCII_STD_STRING(isolate, StringUtils::itoa(finalTick)));
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
