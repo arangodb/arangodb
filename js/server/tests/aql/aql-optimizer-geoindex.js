@@ -289,10 +289,70 @@ function optimizerRuleTestSuite() {
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
 
+function geoVariationsTestSuite() {
+  var colName = "UnitTestsAqlOptimizerGeoIndex";
+
+  var geocol;
+  var hasIndexNode = function (plan) {
+    var rn = findExecutionNodes(plan,"IndexNode");
+    assertEqual(rn.length, 1);
+    assertEqual(rn[0].indexes.length, 1);
+    var indexType = rn[0].indexes[0].type;
+    assertTrue(indexType === "geo1" || indexType === "geo2");
+  };
+
+  return {
+
+    setUp : function () {
+      internal.db._drop(colName);
+      geocol = internal.db._create(colName);
+      geocol.ensureIndex({ type:"geo", fields: ["location"] });
+      let documents = [
+        {"_key":"1138","_id":"test/1138","_rev":"_WjFfhsm---","location":[11,0]},
+        {"_key":"1232","_id":"test/1232","_rev":"_WjFgKfC---","location":[0,0]},
+        {"_key":"1173","_id":"test/1173","_rev":"_WjFfvBC---","location":[10,10]},
+        {"_key":"1197","_id":"test/1197","_rev":"_WjFf9AC---","location":[0,50]},
+        {"_key":"1256","_id":"test/1256","_rev":"_WjFgVtC---","location":[10,10]}
+      ];
+      geocol.insert(documents);
+    },
+
+    tearDown : function () {
+      internal.db._drop(colName);
+    },
+
+    testQueries : function () {
+      // all of these queries should produce exactly the same result, with and without optimizations
+      let queries = [
+        "FOR e IN " + colName + " FILTER @2 <= distance(e.location[0], e.location[1], @0, @1) FILTER distance(e.location[0], e.location[1], @0, @1) <= @3 SORT distance(e.location[0], e.location[1], 0.000000, 0.000000) RETURN e._key",
+        "FOR e IN " + colName + " FILTER @2 <= distance(e.location[0], e.location[1], @0, @1) AND distance(e.location[0], e.location[1], @0, @1) <= @3 SORT distance(e.location[0], e.location[1], 0.000000, 0.000000) RETURN e._key",
+        "FOR e IN " + colName + " FILTER distance(e.location[0], e.location[1], @0, @1) <= @3 FILTER @2 <= distance(e.location[0], e.location[1], @0, @1) SORT distance(e.location[0], e.location[1], 0.000000, 0.000000) RETURN e._key",
+        "FOR e IN " + colName + " FILTER distance(e.location[0], e.location[1], @0, @1) <= @3 AND @2 <= distance(e.location[0], e.location[1], @0, @1) SORT distance(e.location[0], e.location[1], 0.000000, 0.000000) RETURN e._key"
+      ];
+
+      let bind = { "0": 0, "1": 0, "2": 1000000, "3": 5000000 }; 
+      let noOpt = { optimizer:  { rules: ["-all"] } }; 
+      let doOpt = { optimizer: { rules: ["+all"] } }; 
+
+      queries.forEach(function(q) {
+        let result = AQL_EXECUTE(q, bind, noOpt);
+        assertEqual([ "1138", "1173", "1256" ], result.json);
+        
+        result = AQL_EXECUTE(q, bind, doOpt);
+        assertEqual([ "1138", "1173", "1256" ], result.json);
+     
+        let plan = AQL_EXPLAIN(q, bind);
+        hasIndexNode(plan);       
+      });
+    }
+  };
+} 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerRuleTestSuite);
+jsunity.run(geoVariationsTestSuite);
 
 return jsunity.done();

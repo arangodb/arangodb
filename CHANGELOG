@@ -1,10 +1,14 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
+* fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
+
 
 v3.2.12 (2018-02-27)
 --------------------
@@ -65,11 +69,13 @@ v3.2.12 (2018-02-27)
 
 * fix issue #4393: broken handling of unix domain sockets in
   JS_Download
-  
+
 * fix internal bug #1726: supervision failed to remove multiple
   removed servers from health UI
   
 * fixed internal issue #1969 - command apt-get purge/remove arangodb3e was failing
+
+* fixed a bug where supervision tried to deal with shards of virtual collections
 
 
 v3.2.11 (2018-01-17)
