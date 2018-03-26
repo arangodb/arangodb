@@ -106,6 +106,8 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
     VPackSlice planCollections,
     CollectionID collectionId
   );
+
+  void addErrorDetails(VPackBuilder &builder, int errorNumber);
 };
 
 }

@@ -196,6 +196,7 @@ RestRepairHandler::repairDistributeShardsLike() {
         }
         else {
           response.add(StaticStrings::ErrorMessage, VPackValue(repairOperationsResult.errorMessage()));
+          addErrorDetails(response, repairOperationsResult.errorNumber());
           success = false;
         }
         response.add(StaticStrings::Error, VPackValue(! success));
@@ -249,6 +250,7 @@ bool RestRepairHandler::repairCollection(
   if (result.fail()) {
     success = false;
     response.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
+    addErrorDetails(response, result.errorNumber());
   }
 
   return success;
@@ -519,4 +521,85 @@ RestRepairHandler::getDbAndCollectionName(
     TRI_ERROR_INTERNAL,
     "Collection not found"
   };
+}
+
+void
+RestRepairHandler::addErrorDetails(
+  VPackBuilder &builder,
+  int errorNumber
+) {
+  boost::optional<const char*> errorDetails;
+
+  switch (errorNumber) {
+    case TRI_ERROR_CLUSTER_REPAIRS_FAILED:
+      // General error
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY:
+      errorDetails =
+        "There are not enough healthy DBServers to complete the repair "
+        "operations. Please try again after getting your unhealthy DBServer(s) "
+        "up again.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED:
+      errorDetails =
+        "Somewhere the replicationFactor is violated, e.g. this collection "
+        "has a different replicationFactor or number of DBServers than its "
+        "distributeShardsLike prototype. This has to be fixed before this "
+        "collection can be repaired.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS:
+      errorDetails =
+        "Some shard of this collection doesn't have any DBServers. This should "
+        "not happen. Please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS:
+      errorDetails =
+        "Mismatching leaders of a shard and its distributeShardsLike prototype "
+        "shard, after the leader should already have been fixed. "
+        "This should not happen, but it should be safe to try this job again. "
+        "If that does not help, please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS:
+      errorDetails =
+        "Mismatching followers of a shard and its distributeShardsLike "
+        "prototype shard, after they should already have been fixed. "
+        "This should not happen, but it should be safe to try this job again. "
+        "If that does not help, please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES:
+      errorDetails =
+        "Unexpected state of distributeShardsLike or "
+        "repairingDistributeShardsLike attribute. "
+        "This should not happen, but it should be safe to try this job again. "
+        "If that does not help, please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS:
+      errorDetails =
+        "In this collection, some shard and its distributeShardsLike prototype "
+        "have an unequal number of DBServers. This has to be fixed before "
+        "this collection can be repaired.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED:
+      errorDetails =
+        "Error during repairs! "
+        "Moving a shard failed. Did you do any changes to the affected "
+        "collection(s) or the cluster during the repairs? "
+        "It should be safe to try this job again. "
+        "If that does not help, please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED:
+      errorDetails =
+        "Error during repairs! "
+        "A job to move a shard disappeared. "
+        "This should not happen. "
+        "Please report this error.";
+      break;
+    default:
+      // Some non-repair related error
+      ;
+  }
+
+  if (errorDetails.is_initialized()) {
+    builder.add("errorDetails", VPackValue(errorDetails.get()));
+  }
 }
