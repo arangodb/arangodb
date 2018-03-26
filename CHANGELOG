@@ -1,6 +1,8 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 
