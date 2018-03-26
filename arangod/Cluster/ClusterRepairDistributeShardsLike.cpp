@@ -808,8 +808,10 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
     .database = collection.database,
     .collectionId = collection.id,
     .collectionName = collection.name,
+    .collectionShards = collection.shardsById,
     .protoCollectionId = proto.id,
     .protoCollectionName = proto.name,
+    .protoCollectionShards = proto.shardsById,
     .replicationFactor = proto.replicationFactor,
   };
 }

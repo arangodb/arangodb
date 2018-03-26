@@ -107,8 +107,10 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .database = "someDb",
         .collectionId = "11111111",
         .collectionName = "_frontend",
+        .collectionShards = {},
         .protoCollectionId = "22222222",
         .protoCollectionName = "_graphs",
+        .protoCollectionShards = {},
         .replicationFactor = 2,
       },
     }

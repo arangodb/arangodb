@@ -177,19 +177,6 @@ std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
 }
 
 
-class VersionSort {
-  using CharOrInt = boost::variant<char, uint64_t>;
-
- public:
-
-  bool operator()(std::string const &a, std::string const &b) const;
-
- private:
-
-  std::vector<CharOrInt> static splitVersion(std::string const &str);
-};
-
-
 struct Collection {
   DatabaseID database;
   std::string name;

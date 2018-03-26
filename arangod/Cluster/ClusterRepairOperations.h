@@ -41,6 +41,19 @@ using DBServers = std::vector<ServerID>;
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
 
+class VersionSort {
+  using CharOrInt = boost::variant<char, uint64_t>;
+
+ public:
+
+  bool operator()(std::string const &a, std::string const &b) const;
+
+ private:
+
+  std::vector<CharOrInt> static splitVersion(std::string const &str);
+};
+
+
 struct BeginRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
@@ -58,8 +71,10 @@ struct FinishRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
   std::string collectionName;
+  std::map<ShardID, DBServers, VersionSort> collectionShards;
   CollectionID protoCollectionId;
   std::string protoCollectionName;
+  std::map<ShardID, DBServers, VersionSort> protoCollectionShards;
   size_t replicationFactor;
 
   FinishRepairsOperation() = delete;

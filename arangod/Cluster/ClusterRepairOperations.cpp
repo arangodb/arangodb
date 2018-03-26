@@ -48,8 +48,10 @@ bool cluster_repairs::operator==(FinishRepairsOperation const &left, FinishRepai
     left.database == right.database
     && left.collectionId == right.collectionId
     && left.collectionName == right.collectionName
+    && left.collectionShards == right.collectionShards
     && left.protoCollectionId == right.protoCollectionId
     && left.protoCollectionName == right.protoCollectionName
+    && left.protoCollectionShards == right.protoCollectionShards
     && left.replicationFactor == right.replicationFactor;
 }
 
@@ -98,11 +100,62 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, BeginRepairsOpe
 
 
 std::ostream& cluster_repairs::operator<<(std::ostream& ostream, FinishRepairsOperation const& operation) {
+  auto printShard = [](std::ostream& ostream, ShardID shardId, DBServers const& dbServers) {
+    ostream << shardId << ": ";
+
+    if (dbServers.empty()) {
+      ostream << "[]";
+      return;
+    }
+
+    auto it = dbServers.begin();
+    ostream << "[" << *it;
+    ++it;
+
+    for(; it != dbServers.end(); ++it) {
+      ostream << ", " << *it;
+    }
+
+    ostream << "]";
+  };
+
+  auto printShards = [&printShard](std::ostream& ostream, std::map<ShardID, DBServers, VersionSort>const& shards) {
+    if (shards.empty()) {
+      ostream << "  {}";
+      return;
+    }
+
+    auto it = shards.begin();
+    ostream << "  { ";
+    printShard(ostream, it->first, it->second);
+    ostream << "\n";
+    ++it;
+
+    for(; it != shards.end(); ++it) {
+      ostream << "  , ";
+      printShard(ostream, it->first, it->second);
+      ostream << "\n";
+    }
+
+    ostream << "  }";
+  };
+
+
   ostream
     << "FinishRepairsOperation" << std::endl
     << "{ database: " << operation.database << std::endl
     << ", collection: " << operation.collectionName << " (" << operation.collectionId << ")" << std::endl
-    << ", protoCollection: " << operation.protoCollectionName << " (" << operation.protoCollectionId << ")" << std::endl
+    << ", protoCollection: " << operation.protoCollectionName << " (" << operation.protoCollectionId << ")" << std::endl;
+
+  ostream << ", collectionShards: \n";
+  printShards(ostream, operation.collectionShards);
+  ostream << std::endl;
+
+  ostream << ", protoCollectionShards: \n";
+  printShards(ostream, operation.protoCollectionShards);
+  ostream << std::endl;
+
+  ostream
     << ", replicationFactor: " << operation.replicationFactor << std::endl
     << "}";
 
@@ -402,6 +455,7 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
   velocypack::Slice replicationFactorSlice = builder.slice();
   _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
+  // TODO add shards as preconditions
 
   std::vector<AgencyPrecondition> preconditions{
     AgencyPrecondition {
@@ -592,6 +646,7 @@ RepairOperationToVPackVisitor::operator()(
   {
     VPackObjectBuilder innerObject(&builder(), "FinishRepairsOperation");
 
+    // TODO add shards
     builder().add("database", VPackValue(op.database));
     builder().add("collection", VPackValue(op.collectionName));
     builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));

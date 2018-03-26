@@ -473,8 +473,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         .database = "myDbName",
         .collectionId = "123456",
         .collectionName = "myCollection",
+        .collectionShards = {}, // TODO add shards
         .protoCollectionId = "789876",
         .protoCollectionName = "myProtoCollection",
+        .protoCollectionShards = {}, // TODO add shards
         .replicationFactor = 3,
       };
 
@@ -490,6 +492,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
+        // TODO add shards
         AgencyWriteTransaction expectedTrx{
           std::vector<AgencyOperation> {
             AgencyOperation {

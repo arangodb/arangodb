@@ -93,8 +93,10 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .database = "someDb",
         .collectionId = "22222222",
         .collectionName = "followingCollection",
+        .collectionShards = {}, // TODO add shards
         .protoCollectionId = "11111111",
         .protoCollectionName = "leadingCollection",
+        .protoCollectionShards = {}, // TODO add shards
         .replicationFactor = 4,
       },
     }
