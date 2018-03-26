@@ -80,12 +80,12 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .followers = {
           "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
           "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-          "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"
+          "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
         },
         .protoFollowers = {
           "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
           "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-          "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD"
+          "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
         },
       },
 // rename repairingDistributeShardsLike to distributeShardsLike
@@ -93,10 +93,20 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .database = "someDb",
         .collectionId = "22222222",
         .collectionName = "followingCollection",
-        .collectionShards = {}, // TODO add shards
         .protoCollectionId = "11111111",
         .protoCollectionName = "leadingCollection",
-        .protoCollectionShards = {}, // TODO add shards
+        .shards = {
+          std::make_tuple<ShardID, ShardID, DBServers>(
+            "s22",
+            "s11",
+            {
+              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+              "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+              "PRMR-DDDDDDDD-DDDD-DDDD-DDDD-DDDDDDDDDDDD",
+            }
+          ),
+        },
         .replicationFactor = 4,
       },
     }

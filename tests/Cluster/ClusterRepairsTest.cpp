@@ -180,6 +180,7 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where multiple collections are fixed
+// TODO Add a test where multiple collections are fixed and one is broken
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
 
@@ -473,10 +474,12 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         .database = "myDbName",
         .collectionId = "123456",
         .collectionName = "myCollection",
-        .collectionShards = {}, // TODO add shards
         .protoCollectionId = "789876",
         .protoCollectionName = "myProtoCollection",
-        .protoCollectionShards = {}, // TODO add shards
+        .shards = {
+          std::make_tuple<ShardID, ShardID, DBServers>("shard1", "protoShard1", {"dbServer1", "dbServer2"}),
+          std::make_tuple<ShardID, ShardID, DBServers>("shard2", "protoShard2", {"dbServer2", "dbServer3"}),
+        },
         .replicationFactor = 3,
       };
 
@@ -492,7 +495,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        // TODO add shards
+        VPackBufferPtr serverOrderVpack1 = R"=(["dbServer1", "dbServer2"])="_vpack;
+        VPackBufferPtr serverOrderVpack2 = R"=(["dbServer2", "dbServer3"])="_vpack;
+        Slice serverOrderSlice1 = Slice(serverOrderVpack1->data());
+        Slice serverOrderSlice2 = Slice(serverOrderVpack2->data());
+
         AgencyWriteTransaction expectedTrx{
           std::vector<AgencyOperation> {
             AgencyOperation {
@@ -525,6 +532,26 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
               "Plan/Collections/myDbName/789876/replicationFactor",
               AgencyPrecondition::Type::VALUE,
               replicationFactorSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/shards/shard1",
+              AgencyPrecondition::Type::VALUE,
+              serverOrderSlice1,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/shards/protoShard1",
+              AgencyPrecondition::Type::VALUE,
+              serverOrderSlice1,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/shards/shard2",
+              AgencyPrecondition::Type::VALUE,
+              serverOrderSlice2,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/shards/protoShard2",
+              AgencyPrecondition::Type::VALUE,
+              serverOrderSlice2,
             },
           },
         };

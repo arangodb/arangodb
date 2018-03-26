@@ -278,6 +278,12 @@ class DistributeShardsLikeRepairer {
     Collection const &proto
   );
 
+  std::vector<cluster_repairs::ShardWithProtoAndDbServers> static
+  createShardVector(
+    std::map<ShardID, DBServers, VersionSort> const& shardsById,
+    std::map<ShardID, DBServers, VersionSort> const& protoShardsById
+  );
+
   ResultT<FinishRepairsOperation> static
   createFinishRepairsOperation(
     Collection &collection,

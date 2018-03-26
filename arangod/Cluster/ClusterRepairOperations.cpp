@@ -48,10 +48,9 @@ bool cluster_repairs::operator==(FinishRepairsOperation const &left, FinishRepai
     left.database == right.database
     && left.collectionId == right.collectionId
     && left.collectionName == right.collectionName
-    && left.collectionShards == right.collectionShards
     && left.protoCollectionId == right.protoCollectionId
     && left.protoCollectionName == right.protoCollectionName
-    && left.protoCollectionShards == right.protoCollectionShards
+    && left.shards == right.shards
     && left.replicationFactor == right.replicationFactor;
 }
 
@@ -100,44 +99,54 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, BeginRepairsOpe
 
 
 std::ostream& cluster_repairs::operator<<(std::ostream& ostream, FinishRepairsOperation const& operation) {
-  auto printShard = [](std::ostream& ostream, ShardID shardId, DBServers const& dbServers) {
-    ostream << shardId << ": ";
+
+  auto printShard = [](std::ostream& ostream, ShardWithProtoAndDbServers shardWithProtoAndDbServers) {
+    ShardID shardId, protoShardId;
+    DBServers dbServers;
+    std::tie(shardId, protoShardId, dbServers) = shardWithProtoAndDbServers;
+
+    ostream << "{ ";
+    ostream << "shard: " << shardId << ", ";
+    ostream << "protoShard: " << protoShardId << ", ";
+    ostream << "dbServers: ";
 
     if (dbServers.empty()) {
       ostream << "[]";
       return;
     }
+    else {
+      auto it = dbServers.begin();
+      ostream << "[" << *it;
+      ++it;
 
-    auto it = dbServers.begin();
-    ostream << "[" << *it;
-    ++it;
+      for (; it != dbServers.end(); ++it) {
+        ostream << ", " << *it;
+      }
 
-    for(; it != dbServers.end(); ++it) {
-      ostream << ", " << *it;
+      ostream << "]";
     }
-
-    ostream << "]";
+    ostream << "}";
   };
 
-  auto printShards = [&printShard](std::ostream& ostream, std::map<ShardID, DBServers, VersionSort>const& shards) {
+  auto printShards = [&printShard](std::ostream& ostream, std::vector<ShardWithProtoAndDbServers> shards) {
     if (shards.empty()) {
-      ostream << "  {}";
+      ostream << "  []";
       return;
     }
 
     auto it = shards.begin();
-    ostream << "  { ";
-    printShard(ostream, it->first, it->second);
+    ostream << "  ] ";
+    printShard(ostream, *it);
     ostream << "\n";
     ++it;
 
     for(; it != shards.end(); ++it) {
       ostream << "  , ";
-      printShard(ostream, it->first, it->second);
+      printShard(ostream, *it);
       ostream << "\n";
     }
 
-    ostream << "  }";
+    ostream << "  [";
   };
 
 
@@ -147,12 +156,8 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream, FinishRepairsOp
     << ", collection: " << operation.collectionName << " (" << operation.collectionId << ")" << std::endl
     << ", protoCollection: " << operation.protoCollectionName << " (" << operation.protoCollectionId << ")" << std::endl;
 
-  ostream << ", collectionShards: \n";
-  printShards(ostream, operation.collectionShards);
-  ostream << std::endl;
-
-  ostream << ", protoCollectionShards: \n";
-  printShards(ostream, operation.protoCollectionShards);
+  ostream << ", shards: \n";
+  printShards(ostream, operation.shards);
   ostream << std::endl;
 
   ostream

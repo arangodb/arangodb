@@ -69,10 +69,19 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .database = "someDb",
         .collectionId = "22222222",
         .collectionName = "followingCollection",
-        .collectionShards = {}, // TODO add shards
         .protoCollectionId = "11111111",
         .protoCollectionName = "leadingCollection",
-        .protoCollectionShards = {}, // TODO add shards
+        .shards = {
+          std::make_tuple<ShardID, ShardID, DBServers>(
+            "s22",
+            "s11",
+            {
+              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+              "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+            }
+          ),
+        },
         .replicationFactor = 3,
       },
     }

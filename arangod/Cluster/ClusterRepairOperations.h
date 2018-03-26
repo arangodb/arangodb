@@ -67,14 +67,17 @@ struct BeginRepairsOperation {
   BeginRepairsOperation() = delete;
 };
 
+// Elements are (shardId, protoShardId, dbServers). The dbServers are
+// the same for both shard and protoShard at this point.
+using ShardWithProtoAndDbServers = std::tuple<ShardID, ShardID, DBServers>;
+
 struct FinishRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
   std::string collectionName;
-  std::map<ShardID, DBServers, VersionSort> collectionShards;
   CollectionID protoCollectionId;
   std::string protoCollectionName;
-  std::map<ShardID, DBServers, VersionSort> protoCollectionShards;
+  std::vector<ShardWithProtoAndDbServers> shards;
   size_t replicationFactor;
 
   FinishRepairsOperation() = delete;

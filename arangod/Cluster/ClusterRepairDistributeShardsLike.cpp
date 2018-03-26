@@ -785,12 +785,35 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
     .database = collection.database,
     .collectionId = collection.id,
     .collectionName = collection.name,
-    .collectionShards = collection.shardsById,
     .protoCollectionId = proto.id,
     .protoCollectionName = proto.name,
-    .protoCollectionShards = proto.shardsById,
+    .shards = createShardVector(collection.shardsById, proto.shardsById),
     .replicationFactor = proto.replicationFactor,
   };
+}
+
+std::vector<cluster_repairs::ShardWithProtoAndDbServers>
+DistributeShardsLikeRepairer::createShardVector(
+  std::map<ShardID, DBServers, VersionSort> const &shardsById,
+  std::map<ShardID, DBServers, VersionSort> const &protoShardsById
+) {
+  std::vector<ShardWithProtoAndDbServers> shards;
+
+  for(auto const& it : boost::combine(shardsById, protoShardsById)) {
+    auto const& shardIt = it.get<0>();
+    auto const& protoShardIt = it.get<1>();
+    ShardID const& shard = shardIt.first;
+    ShardID const& protoShard = protoShardIt.first;
+
+    // DBServers must be the same at this point!
+    TRI_ASSERT(shardIt.second == protoShardIt.second);
+
+    DBServers const& dbServers = protoShardIt.second;
+
+    shards.emplace_back(std::make_tuple(shard, protoShard, dbServers));
+  }
+
+  return shards;
 }
 
 ResultT<std::list<RepairOperation>>

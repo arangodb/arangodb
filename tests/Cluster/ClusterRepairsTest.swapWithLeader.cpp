@@ -107,10 +107,18 @@ std::map< CollectionID, std::vector< RepairOperation > >
         .database = "someDb",
         .collectionId = "11111111",
         .collectionName = "_frontend",
-        .collectionShards = {},
         .protoCollectionId = "22222222",
         .protoCollectionName = "_graphs",
-        .protoCollectionShards = {},
+        .shards = {
+          std::make_tuple<ShardID, ShardID, DBServers>(
+            "s11",
+            "s22",
+            {
+              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+            }
+          ),
+        },
         .replicationFactor = 2,
       },
     }
