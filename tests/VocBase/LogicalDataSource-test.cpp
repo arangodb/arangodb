@@ -64,14 +64,6 @@ SECTION("test_category") {
 
     CHECK((arangodb::LogicalCollection::category() == instance.category()));
   }
-
-  // LogicalView
-  {
-    auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    arangodb::LogicalView instance(nullptr, json->slice());
-
-    CHECK((arangodb::LogicalView::category() == instance.category()));
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -231,9 +231,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       // TODO FIXME find a better way to look up an iResearch View
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+        auto* view = dynamic_cast<IResearchView*>(logicalView.get());
       #else
-        auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+        auto* view = static_cast<IResearchView*>(logicalView.get());
       #endif
 
       if (!view) {

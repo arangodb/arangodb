@@ -64,7 +64,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/ViewImplementation.h"
 #include "VocBase/ticks.h"
 
 #include <thread>
@@ -1567,31 +1566,42 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  auto type =
+  auto const type =
     arangodb::basics::VelocyPackHelper::getStringRef(parameters, "type", "");
-  ViewTypesFeature* viewTypesFeature =
+  auto const* viewTypes =
       application_features::ApplicationServer::getFeature<ViewTypesFeature>(
           "ViewTypes");
 
-  if (!viewTypesFeature) {
+  if (!viewTypes) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'"
     );
   }
 
-  auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-  auto& creator = viewTypesFeature->factory(dataSourceType);
+  auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
 
-  if (!creator) {
+  auto const& viewFactory = viewTypes->factory(dataSourceType);
+
+  if (!viewFactory) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_BAD_PARAMETER,
       "no handler found for view type"
     );
   }
 
+  // FIXME first check for existence???
+
   // Try to create a new view. This is not registered yet
-  auto view = std::make_shared<arangodb::LogicalView>(this, parameters);
+  auto view = viewFactory(*this, parameters, true);
+
+  if (!view) {
+    auto const message =
+      "failed to instantiate view of type "
+      + dataSourceType.name();
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+  }
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -1608,18 +1618,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     // id might have been assigned
     id = view->id();
 
-    // now let's actually create the backing implementation
-    view->spawnImplementation(creator, parameters, true);
-    if (view->getImplementation() == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not spawn view "
-        "implementation");
-    }
-
     // Let's try to persist it.
     view->persistPhysicalView();
 
     // And lets open it.
-    view->getImplementation()->open();
+    view->open();
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
     return view;

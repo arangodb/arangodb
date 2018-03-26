@@ -238,9 +238,9 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice(), 0)
+  );
   REQUIRE((false == !view));
 
   // add link to collection
@@ -256,7 +256,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, false, false);
     builder.close();
 
     auto slice = builder.slice();

@@ -26,7 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -37,27 +37,6 @@ using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-
-TRI_voc_cid_t ReadId(VPackSlice info) {
-  if (!info.isObject()) {
-    // ERROR CASE
-    return 0;
-  }
-
-  // Somehow the id is now propagated to dbservers
-  TRI_voc_cid_t id = Helper::extractIdValue(info);
-
-  if (id == 0) {
-    if (ServerState::instance()->isDBServer()) {
-      id = ClusterInfo::instance()->uniqid(1);
-    } else if (ServerState::instance()->isCoordinator()) {
-      id = ClusterInfo::instance()->uniqid(1);
-    } else {
-      id = TRI_NewTickServer();
-    }
-  }
-  return id;
-}
 
 TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   if (!info.isObject()) {
@@ -82,6 +61,31 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
 
 }  // namespace
 
+/*static*/ TRI_voc_cid_t LogicalView::readViewId(VPackSlice info) {
+  if (!info.isObject()) {
+    // ERROR CASE
+    return 0;
+  }
+
+  // Somehow the id is now propagated to dbservers
+  TRI_voc_cid_t id = Helper::extractIdValue(info);
+
+  if (id == 0) {
+    if (ServerState::instance()->isDBServer()) {
+      id = ClusterInfo::instance()->uniqid(1);
+    } else if (ServerState::instance()->isCoordinator()) {
+      id = ClusterInfo::instance()->uniqid(1);
+    } else {
+      id = TRI_NewTickServer();
+    }
+  }
+  return id;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       LogicalView
+// -----------------------------------------------------------------------------
+
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
   static const Category category;
 
@@ -98,7 +102,7 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
           arangodb::basics::VelocyPackHelper::getStringRef(info, "type", "")
         ),
         vocbase,
-        ReadId(info),
+        LogicalView::readViewId(info),
         ReadPlanId(info, 0),
         arangodb::basics::VelocyPackHelper::getStringValue(info, "name", ""),
         Helper::readBooleanValue(info, "deleted", false)
@@ -111,7 +115,29 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 }
 
-LogicalView::~LogicalView() {
+/// @brief Persist the connected physical view
+///        This should be called AFTER the view is successfully
+///        created and only on Single/DBServer
+void LogicalView::persistPhysicalView() {
+  // Coordinators are not allowed to have local views!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  // We have not yet persisted this view
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->createView(vocbase(), id(), this);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               DBServerLogicalView
+// -----------------------------------------------------------------------------
+
+DBServerLogicalView::DBServerLogicalView(
+    TRI_vocbase_t* vocbase,
+    VPackSlice const& info
+) : LogicalView(vocbase, info) {
+}
+
+DBServerLogicalView::~DBServerLogicalView() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
@@ -119,7 +145,14 @@ LogicalView::~LogicalView() {
   }
 }
 
-Result LogicalView::rename(std::string&& newName, bool doSync) {
+void DBServerLogicalView::drop() {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  engine->dropView(vocbase(), this);
+}
+
+Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
   auto oldName = name();
 
   try {
@@ -144,22 +177,9 @@ Result LogicalView::rename(std::string&& newName, bool doSync) {
   return TRI_ERROR_NO_ERROR;
 }
 
-void LogicalView::drop() {
-  deleted(true);
-
-  if (getImplementation() != nullptr) {
-    getImplementation()->drop();
-  }
-
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
-  engine->dropView(vocbase(), this);
-}
-
-void LogicalView::toVelocyPack(
-    VPackBuilder& result,
-    bool includeProperties,
+void DBServerLogicalView::toVelocyPack(
+    velocypack::Builder &result,
+    bool /*includeProperties*/,
     bool includeSystem
 ) const {
   // We write into an open object
@@ -177,64 +197,31 @@ void LogicalView::toVelocyPack(
     // Cluster Specific
     result.add("planId", VPackValue(std::to_string(planId())));
 
-    if (includeSystem) {
-      // storage engine related properties
-      StorageEngine* engine = EngineSelectorFeature::ENGINE;
-      TRI_ASSERT(engine );
-      engine->getViewProperties(vocbase(), this, result);
-    }
-  }
-
-  if (includeProperties && (getImplementation() != nullptr)) {
-    // implementation Information
-    result.add("properties", VPackValue(VPackValueType::Object));
-    // note: includeSystem and forPersistence are not 100% synonymous,
-    // however, for our purposes this is an okay mapping; we only set
-    // includeSystem if we are persisting the properties
-    getImplementation()->getPropertiesVPack(result, includeSystem);
-    result.close();
-  }
-
-  TRI_ASSERT(result.isOpenObject()); // We leave the object open
-}
-
-arangodb::Result LogicalView::updateProperties(VPackSlice const& slice,
-                                               bool partialUpdate,
-                                               bool doSync) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  TRI_ASSERT(getImplementation() != nullptr);
-
-  // the implementation may filter/change/react to the changes
-  arangodb::Result implResult =
-      getImplementation()->updateProperties(slice, partialUpdate, doSync);
-
-  if (implResult.ok()) {
-    // after this call the properties are stored
+    // storage engine related properties
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine );
+    engine->getViewProperties(vocbase(), this, result);
+  }
+}
+
+arangodb::Result DBServerLogicalView::updateProperties(
+    VPackSlice const& /*slice*/,
+    bool /*partialUpdate*/,
+    bool doSync
+) {
+  // after this call the properties are stored
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+
+  try {
     engine->changeView(vocbase(), id(), this, doSync);
+  } catch (arangodb::basics::Exception const& e) {
+    return { e.code() };
+  } catch (...) {
+    return { TRI_ERROR_INTERNAL };
   }
 
-  return implResult;
-}
-
-/// @brief Persist the connected physical view
-///        This should be called AFTER the view is successfully
-///        created and only on Single/DBServer
-void LogicalView::persistPhysicalView() {
-  // Coordinators are not allowed to have local views!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // We have not yet persisted this view
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createView(vocbase(), id(), this);
-}
-
-void LogicalView::spawnImplementation(
-    ViewCreator creator, arangodb::velocypack::Slice const& parameters,
-    bool isNew) {
-  _implementation = creator(this, parameters.get("properties"), isNew);
+  return {};
 }
 
 // -----------------------------------------------------------------------------

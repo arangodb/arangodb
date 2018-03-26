@@ -26,9 +26,11 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
-#include "VocBase/ViewImplementation.h"
+#include "VocBase/LogicalView.h"
 #include "Utils/FlushTransaction.h"
 
 #include "store/directory.hpp"
@@ -98,7 +100,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief an abstraction over the IResearch index implementing the
-///        ViewImplementation interface
+///        LogicalView interface
 /// @note the responsibility of the IResearchView API is to only manage the
 ///       IResearch data store, i.e. insert/remove/query
 ///       the IResearchView API does not manage which and how the data gets
@@ -107,12 +109,9 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 ///       which may be, but are not explicitly required to be, triggered via
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchView final: public arangodb::ViewImplementation,
+class IResearchView final: public arangodb::DBServerLogicalView,
                            public arangodb::FlushTransaction {
  public:
-  typedef std::unique_ptr<arangodb::ViewImplementation> ptr;
-  typedef std::shared_ptr<IResearchView> sptr;
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
@@ -127,6 +126,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief destructor to clean up resources
   ///////////////////////////////////////////////////////////////////////////////
   virtual ~IResearchView();
+
+  using arangodb::LogicalView::name;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief apply any changes to 'state' required by this view
@@ -149,20 +150,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///        also remove 'cid' from the runtime list of tracked collection IDs
   ////////////////////////////////////////////////////////////////////////////////
   int drop(TRI_voc_cid_t cid);
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchView object
-  ///        only fields describing the view itself, not 'link' descriptions
-  ////////////////////////////////////////////////////////////////////////////////
-  void getPropertiesVPack(
-    arangodb::velocypack::Builder& builder,
-    bool forPersistence
-  ) const override;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the id identifying the current iResearch View or '0' if unknown
-  ////////////////////////////////////////////////////////////////////////////////
-  TRI_voc_cid_t id() const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a document into this IResearch View and the underlying
@@ -205,8 +192,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief view factory
   /// @returns initialized view object
   ///////////////////////////////////////////////////////////////////////////////
-  static ptr make(
-    arangodb::LogicalView* view,
+  static std::shared_ptr<LogicalView> make(
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     bool isNew
   );
@@ -269,6 +256,12 @@ class IResearchView final: public arangodb::ViewImplementation,
     bool doSync
   );
 
+  void toVelocyPack(
+    velocypack::Builder& result,
+    bool includeProperties,
+    bool includeSystem
+  ) const override;
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)
   ///////////////////////////////////////////////////////////////////////////////
@@ -282,9 +275,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief visit all collection IDs that were added to the view
   /// @return 'visitor' success
   ///////////////////////////////////////////////////////////////////////////////
-  bool visitCollections(
-    std::function<bool(TRI_voc_cid_t)> const& visitor
-  ) const override;
+  bool visitCollections(CollectionVisitor const& visitor) const override;
 
  private:
   struct DataStore {
@@ -334,10 +325,27 @@ class IResearchView final: public arangodb::ViewImplementation,
   > FlushTransactionPtr;
 
   IResearchView(
-    arangodb::LogicalView*,
+    TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& info,
     irs::utf8_path&& persistedPath
   );
+
+  // FIXME remove
+  void dropImpl();
+  arangodb::Result updatePropertiesImpl(
+    arangodb::velocypack::Slice const& slice,
+    bool partialUpdate,
+    bool doSync
+  );
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchView object
+  ///        only fields describing the view itself, not 'link' descriptions
+  ////////////////////////////////////////////////////////////////////////////////
+  void getPropertiesVPack(
+    arangodb::velocypack::Builder& builder,
+    bool forPersistence
+  ) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called in post-recovery to remove any dangling documents old links
@@ -374,6 +382,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
+
+  mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
 };
 
 NS_END // iresearch

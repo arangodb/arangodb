@@ -59,6 +59,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchRocksDBRecoveryHelper.cpp
     IResearch/IResearchRocksDBRecoveryHelper.h
     IResearch/IResearchView.cpp IResearch/IResearchView.h
+    IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
     IResearch/IResearchViewOptimizerRules.cpp IResearch/IResearchViewOptimizerRules.h
     IResearch/IResearchViewNode.cpp IResearch/IResearchViewNode.h
     IResearch/IResearchViewBlock.cpp IResearch/IResearchViewBlock.h
