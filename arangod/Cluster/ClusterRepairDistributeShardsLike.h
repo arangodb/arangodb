@@ -250,7 +250,7 @@ class DistributeShardsLikeRepairer {
   fixLeader(
     DBServers const& availableDbServers,
     Collection& collection,
-    Collection& proto,
+    Collection const& proto,
     ShardID const& shardId,
     ShardID const& protoShardId
   );
@@ -259,7 +259,7 @@ class DistributeShardsLikeRepairer {
   fixShard(
     DBServers const& availableDbServers,
     Collection& collection,
-    Collection& proto,
+    Collection const& proto,
     ShardID const& shardId,
     ShardID const& protoShardId
   );
@@ -282,6 +282,13 @@ class DistributeShardsLikeRepairer {
   createFinishRepairsOperation(
     Collection &collection,
     Collection const &proto
+  );
+
+  ResultT<std::list<RepairOperation>> static
+  fixAllShardsOfCollection(
+    Collection &collection,
+    Collection const &proto,
+    DBServers const &availableDbServers
   );
 };
 

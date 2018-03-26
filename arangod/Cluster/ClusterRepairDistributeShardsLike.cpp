@@ -363,7 +363,7 @@ ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::fixLeader(
   DBServers const& availableDbServers,
   Collection& collection,
-  Collection& proto,
+  Collection const& proto,
   ShardID const& shardId,
   ShardID const& protoShardId
 ) {
@@ -428,7 +428,7 @@ ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::fixShard(
   DBServers const& availableDbServers,
   Collection& collection,
-  Collection& proto,
+  Collection const& proto,
   ShardID const& shardId,
   ShardID const& protoShardId
 ) {
@@ -593,41 +593,18 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       std::move(beginRepairsOperation.get())
     );
 
-    for (auto const& zippedShardsIterator : boost::combine(collection.shardsById, proto.shardsById)) {
-      auto const &shardIterator = zippedShardsIterator.get<0>();
-      auto const &protoShardIterator = zippedShardsIterator.get<1>();
+    ResultT<std::list<RepairOperation>> shardRepairOperationsResult
+      = fixAllShardsOfCollection(collection, proto, availableDbServers);
 
-      ShardID const& shardId = shardIterator.first;
-      ShardID const& protoShardId = protoShardIterator.first;
-
-      DBServers const &dbServers = shardIterator.second;
-      DBServers const &protoDbServers = protoShardIterator.second;
-
-      if (dbServers != protoDbServers) {
-        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
-        << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-        << "fixing shard " << collection.fullName() << "/" << shardId;
-        // TODO Do we need to check that dbServers and protoDbServers are not empty?
-        // TODO Do we need to check that dbServers and protoDbServers are of equal size?
-        auto newRepairOperationsResult = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
-        if (newRepairOperationsResult.fail()) {
-          repairOperationsByCollection.emplace(
-            collection.id,
-            std::move(newRepairOperationsResult)
-          );
-          break;
-        }
-        std::list<RepairOperation> newRepairOperations
-          = newRepairOperationsResult.get();
-        repairOperations.splice(repairOperations.end(), newRepairOperations);
-      }
-      else {
-        LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
-        << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-        << "shard " << collection.fullName() << "/" << shardId
-        << " doesn't need fixing";
-      }
+    if (shardRepairOperationsResult.fail()) {
+      repairOperationsByCollection.emplace(
+        collection.id,
+        std::move(shardRepairOperationsResult)
+      );
+      break;
     }
+
+    repairOperations.splice(repairOperations.end(), shardRepairOperationsResult.get());
 
     auto finishRepairsOperation
       = createFinishRepairsOperation(
@@ -814,4 +791,47 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
     .protoCollectionShards = proto.shardsById,
     .replicationFactor = proto.replicationFactor,
   };
+}
+
+ResultT<std::list<RepairOperation>>
+DistributeShardsLikeRepairer::fixAllShardsOfCollection(
+  Collection &collection,
+  Collection const &proto,
+  DBServers const &availableDbServers
+) {
+  std::list<RepairOperation> shardRepairOperations;
+
+  for (auto const& zippedShardsIterator : boost::combine(collection.shardsById, proto.shardsById)) {
+    auto const &shardIterator = zippedShardsIterator.get<0>();
+    auto const &protoShardIterator = zippedShardsIterator.get<1>();
+
+    ShardID const& shardId = shardIterator.first;
+    ShardID const& protoShardId = protoShardIterator.first;
+
+    DBServers const &dbServers = shardIterator.second;
+    DBServers const &protoDbServers = protoShardIterator.second;
+
+    if (dbServers != protoDbServers) {
+      LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+      << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+      << "fixing shard " << collection.fullName() << "/" << shardId;
+      // TODO Do we need to check that dbServers and protoDbServers are not empty?
+      // TODO Do we need to check that dbServers and protoDbServers are of equal size?
+      auto newRepairOperationsResult = fixShard(availableDbServers, collection, proto, shardId, protoShardId);
+      if (newRepairOperationsResult.fail()) {
+        return newRepairOperationsResult;
+      }
+      std::list<RepairOperation> newRepairOperations
+        = newRepairOperationsResult.get();
+      shardRepairOperations.splice(shardRepairOperations.end(), newRepairOperations);
+    }
+    else {
+      LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+      << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+      << "shard " << collection.fullName() << "/" << shardId
+      << " doesn't need fixing";
+    }
+  }
+
+  return shardRepairOperations;
 }
