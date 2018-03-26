@@ -237,10 +237,12 @@ static DateSelectionModifier ParseDateModifierFlag(VPackSlice flag) {
 
 AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
                                                    tp_sys_clock_ms const& tp,
-                                                   double durationUnits,
+                                                   VPackSlice durationUnitsSlice,
                                                    VPackSlice durationType,
                                                    bool isSubtract) {
-  std::chrono::duration<double, std::ratio<1l, 1000l>> ms;
+  bool isInteger = durationUnitsSlice.isInteger();
+  double durationUnits = durationUnitsSlice.getNumber<double>();
+  std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
 
@@ -263,7 +265,7 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
       } else {
         ymd += years{static_cast<int64_t>(intPart)};
       }
-      if (durationUnits == 0.0) {
+      if (isInteger || durationUnits == 0.0) {
         break;  // We are done
       }
       durationUnits *= 12;
@@ -275,7 +277,7 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
       } else {
         ymd += months{static_cast<int64_t>(intPart)};
       }
-      if (durationUnits == 0.0) {
+      if (isInteger || durationUnits == 0.0) {
         break;  // We are done
       }
       durationUnits *= 30;  // 1 Month ~= 30 Days
@@ -2844,8 +2846,8 @@ AqlValue Functions::DateAdd(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-    double doubleUnits = durationUnit.toDouble(trx);
-    return AddOrSubtractUnitFromTimestamp(query, tp, doubleUnits,
+    // Numbers and Strings can both be sliced
+    return AddOrSubtractUnitFromTimestamp(query, tp, durationUnit.slice(),
                                           durationType.slice(), false);
   } else {  // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);
@@ -2886,8 +2888,8 @@ AqlValue Functions::DateSubtract(arangodb::aql::Query* query,
       return AqlValue(AqlValueHintNull());
     }
 
-    double doubleUnits = durationUnit.toDouble(trx);
-    return AddOrSubtractUnitFromTimestamp(query, tp, doubleUnits,
+    // Numbers and Strings can both be sliced
+    return AddOrSubtractUnitFromTimestamp(query, tp, durationUnit.slice(),
                                           durationType.slice(), true);
   } else {  // iso duration
     AqlValue isoDuration = ExtractFunctionParameterValue(parameters, 1);

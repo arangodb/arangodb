@@ -153,13 +153,13 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       // not need to sort the IN values then
       continue;
     }
-      
+
     if (rhs->type == NODE_TYPE_ARRAY) {
       if (rhs->numMembers() < AstNode::SortNumberThreshold || rhs->isSorted()) {
         // number of values is below threshold or array is already sorted
         continue;
       }
-    
+
       auto ast = plan->getAst();
       auto args = ast->createNodeArray();
       args->addMember(rhs);
@@ -527,15 +527,15 @@ void arangodb::aql::removeCollectVariablesRule(
       // outVariable not used later
       collectNode->clearOutVariable();
       modified = true;
-    } else if (outVariable != nullptr && !collectNode->count() && 
+    } else if (outVariable != nullptr && !collectNode->count() &&
                !collectNode->hasExpressionVariable() &&
                !collectNode->hasKeepVariables()) {
       // outVariable used later, no count, no INTO expression, no KEEP
       // e.g. COLLECT something INTO g
       // we will now check how many part of "g" are used later
       std::unordered_set<std::string> keepAttributes;
-       
-      bool stop = false; 
+
+      bool stop = false;
       auto p = collectNode->getFirstParent();
       while (p != nullptr) {
         if (p->getType() == EN::CALCULATION) {
@@ -580,7 +580,7 @@ void arangodb::aql::removeCollectVariablesRule(
           }
           current = current->getFirstDependency();
         }
-        
+
         if (keepAttributes.empty() && !keepVariables.empty()) {
           collectNode->setKeepVariables(std::move(keepVariables));
           modified = true;
@@ -854,7 +854,7 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
 
     while (current != nullptr) {
       auto dep = current->getFirstDependency();
-      
+
       if (dep == nullptr) {
         // node either has no or more than one dependency. we don't know what to
         // do and must abort
@@ -1979,8 +1979,8 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
                   continue;
                 }
                 auto lhs = sub->getMember(0);
-                if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
-                    lhs->getMember(0)->type == NODE_TYPE_REFERENCE && 
+                if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    lhs->getMember(0)->type == NODE_TYPE_REFERENCE &&
                     lhs->getMember(0)->getData() == outVariable) {
                   // check if this is either _from or _to
                   std::string attr = lhs->getString();
@@ -1988,11 +1988,11 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
                     // reduce index fields to just the attribute we found in the index lookup condition
                     fields = {{arangodb::basics::AttributeName(attr, false)} };
                   }
-                } 
+                }
 
                 auto rhs = sub->getMember(1);
-                if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && 
-                    rhs->getMember(0)->type == NODE_TYPE_REFERENCE && 
+                if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
+                    rhs->getMember(0)->type == NODE_TYPE_REFERENCE &&
                     rhs->getMember(0)->getData() == outVariable) {
                   // check if this is either _from or _to
                   std::string attr = rhs->getString();
@@ -2898,7 +2898,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     if (node == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
-   
+
     ExecutionNode* originalParent = nullptr;
     if (node->hasParent()) {
       auto const& parents = node->getParents();
@@ -2954,7 +2954,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       //auto planRoot = plan->root();
       plan->unlinkNode(node, true);
       if (snode) {
-        if (snode->getSubquery() == node) { 
+        if (snode->getSubquery() == node) {
           snode->setSubquery(originalParent, true);
           haveAdjusted = true;
         }
@@ -3061,7 +3061,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     } else {
       // we replaced the root node, set a new root node
       if (snode) {
-        if (snode->getSubquery() == node || haveAdjusted) { 
+        if (snode->getSubquery() == node || haveAdjusted) {
           snode->setSubquery(gatherNode, true);
         }
       } else {

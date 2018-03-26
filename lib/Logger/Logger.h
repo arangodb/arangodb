@@ -137,6 +137,7 @@ class Logger {
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
+  static LogTopic DUMP;
   static LogTopic ENGINES;
   static LogTopic FIXME;
   static LogTopic GRAPHS;
@@ -167,7 +168,7 @@ class Logger {
     double _value;
     int _precision;
   };
-  
+
   struct CHARS {
     CHARS(char const* data, size_t size)
         : data(data), size(size) {}
