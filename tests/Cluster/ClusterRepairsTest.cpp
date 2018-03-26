@@ -181,6 +181,7 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where multiple collections are fixed
 // TODO Add a test where multiple collections are fixed and one is broken
+// TODO Add a test where distributeShardsLike is already renamed to repairingDistributeShardsLike, but the replicationFactor differs
 
 SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
 

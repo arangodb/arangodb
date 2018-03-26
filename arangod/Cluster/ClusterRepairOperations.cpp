@@ -415,17 +415,31 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
         AgencySimpleOperationType::DELETE_OP,
       }
     );
-  };
 
-  // TODO should we do this, even when op.renameDistributeShardsLike is false?
-  if (op.collectionReplicationFactor != op.protoReplicationFactor) {
-    operations.emplace_back(
-      AgencyOperation {
-        replicationFactorPath,
-        AgencyValueOperationType::SET,
-        protoReplicationFactorSlice,
-      }
-    );
+    // Fix the replicationFactor to be the same as the proto collection,
+    // but only when also renaming distributeShardsLike.
+    // Rationale: As long as distributeShardsLike is set,
+    // collection.replicationFactor is ignored but proto.replicationFactor
+    // is used instead.
+    // This way, we never change the replicationFactor that is actually used.
+    if (op.collectionReplicationFactor != op.protoReplicationFactor) {
+      operations.emplace_back(
+        AgencyOperation {
+          replicationFactorPath,
+          AgencyValueOperationType::SET,
+          protoReplicationFactorSlice,
+        }
+      );
+    }
+    else {
+      preconditions.emplace_back(
+        AgencyPrecondition {
+          replicationFactorPath,
+          AgencyPrecondition::Type::VALUE,
+          protoReplicationFactorSlice
+        }
+      );
+    }
   }
 
   return {
