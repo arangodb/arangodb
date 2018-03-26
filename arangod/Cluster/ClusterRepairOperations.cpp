@@ -474,8 +474,6 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
   velocypack::Slice replicationFactorSlice = builder.slice();
   _vpackBufferArray.emplace_back(std::move(builder.steal()));
 
-  // TODO add shards as preconditions
-
   std::vector<AgencyPrecondition> preconditions{
     AgencyPrecondition {
       oldAttrPath,
@@ -498,6 +496,43 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
       replicationFactorSlice,
     },
   };
+
+  for(auto const& it : op.shards) {
+    ShardID shardId, protoShardId;
+    DBServers dbServers;
+    std::tie(shardId, protoShardId, dbServers) = it;
+    std::string const shardPath
+      = agencyCollectionId(op.database, op.collectionId)
+        + "/shards/" + shardId;
+    std::string const protoShardPath
+      = agencyCollectionId(op.database, op.protoCollectionId)
+        + "/shards/" + protoShardId;
+
+    VPackSlice dbServersSlice;
+    {
+      VPackBuilder dbServerBuilder;
+      dbServerBuilder.add(VPackValue(velocypack::ValueType::Array));
+      for (auto const &dbServer : dbServers) {
+        dbServerBuilder.add(VPackValue(dbServer));
+      }
+      dbServerBuilder.close();
+
+      dbServersSlice = dbServerBuilder.slice();
+      _vpackBufferArray.emplace_back(std::move(dbServerBuilder.steal()));
+    }
+
+    preconditions.emplace_back(AgencyPrecondition{
+      shardPath,
+      AgencyPrecondition::Type::VALUE,
+      dbServersSlice
+    });
+    preconditions.emplace_back(AgencyPrecondition{
+      protoShardPath,
+      AgencyPrecondition::Type::VALUE,
+      dbServersSlice
+    });
+  }
+
   std::vector<AgencyOperation> operations{
     AgencyOperation {
       newAttrPath,
