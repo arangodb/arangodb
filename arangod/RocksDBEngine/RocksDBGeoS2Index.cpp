@@ -397,6 +397,7 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   TRI_ASSERT(!cells.empty());
+  TRI_ASSERT(S2::IsUnitLength(centroid));
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(trx);

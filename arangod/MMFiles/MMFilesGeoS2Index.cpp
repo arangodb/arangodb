@@ -328,8 +328,9 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
   // LOG_TOPIC(ERR, Logger::FIXME) << "Inserting #cells " << cells.size() << "
   // doc: " << doc.toJson() << " center: " << centroid.toString();
   TRI_ASSERT(!cells.empty());
-  IndexValue value(documentId, std::move(centroid));
+  TRI_ASSERT(S2::IsUnitLength(centroid));
 
+  IndexValue value(documentId, std::move(centroid));
   for (S2CellId cell : cells) {
     _tree.insert(std::make_pair(cell, value));
   }

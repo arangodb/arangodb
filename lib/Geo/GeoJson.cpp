@@ -231,8 +231,12 @@ Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
     if (res.fail()) {
       return res;
     }
-
     ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
+    
+    if (vtx.size() < 3+1) { // last vertex must be same as first
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon, "
+                    "must have at least 3 distinct vertices");
+    }
     vtx.resize(vtx.size() - 1);  // remove redundant last vertex
     
     if (n == 1) { // rectangle detection
@@ -250,11 +254,6 @@ Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
           return TRI_ERROR_NO_ERROR;
         }
       }
-    }
-    
-    if (vtx.size() < 3) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon, "
-                    "must have at least 3 distinct vertices");
     }
     
     loops.push_back(std::make_unique<S2Loop>(vtx));

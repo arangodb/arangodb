@@ -91,13 +91,14 @@ S2Point ShapeContainer::centroid() const noexcept {
       return (static_cast<S2PointRegion const*>(_data))->point();
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      return (static_cast<S2Polyline const*>(_data))->GetCentroid();
+      return (static_cast<S2Polyline const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      return static_cast<S2LatLngRect const*>(_data)->GetCentroid();
+      return static_cast<S2LatLngRect const*>(_data)->GetCenter().ToPoint();
     }
     case ShapeContainer::Type::S2_POLYGON: {
-      return (static_cast<S2Polygon const*>(_data))->GetCentroid();
+      // not unit length by default
+      return (static_cast<S2Polygon const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion const* pts =
@@ -107,8 +108,7 @@ S2Point ShapeContainer::centroid() const noexcept {
         c += pts->point(k);
       }
       c = (c / pts->num_points());
-      c.Norm();
-      return c; // FIXME probably broken
+      return c.Normalize(); // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* lines =
@@ -118,8 +118,7 @@ S2Point ShapeContainer::centroid() const noexcept {
         c += lines->line(k).GetCentroid();
       }
       c /= lines->num_lines();
-      c.Norm();
-      return c;
+      return c.Normalize();
     }
 
     case ShapeContainer::Type::EMPTY:

@@ -268,7 +268,7 @@ function legacyGeoTestSuite() {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN(true, 0, 0, 10)"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN([ ], 0, 0, 10)"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN WITHIN({ }, 0, 0, 10)"); 
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "RETURN WITHIN(@name, 0, 0, 10)", { name: "foobarbazcoll" }); 
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "RETURN WITHIN(@name, 0, 0, 10)", { name: "foobarbazcoll" }); 
       assertQueryError(errors.ERROR_QUERY_BIND_PARAMETER_MISSING.code, "RETURN WITHIN(@name, 0, 0, 10)"); 
     }
 
