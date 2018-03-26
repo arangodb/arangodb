@@ -340,7 +340,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
-    return std::move(file);
+    return file;
   }
 
   try {
@@ -353,7 +353,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::readableFile(
     return {nullptr};
   }
 
-  return std::move(file);
+  return file;
 }
 
 std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
@@ -361,7 +361,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
   std::unique_ptr<File> file{nullptr};
 
   if (_status.fail()) {  // directory is in a bad state
-    return std::move(file);
+    return file;
   }
 
   try {
@@ -384,7 +384,7 @@ std::unique_ptr<ManagedDirectory::File> ManagedDirectory::writableFile(
     return {nullptr};
   }
 
-  return std::move(file);
+  return file;
 }
 
 void ManagedDirectory::spitFile(std::string const& filename,

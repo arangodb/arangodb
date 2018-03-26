@@ -178,7 +178,7 @@ int RocksDBReplicationContext::chooseDatabase(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(_users > 0);
   MUTEX_LOCKER(locker, _contextLock);
   if (_guard->database() == vocbase) {
-    return TRI_ERROR_NO_ERROR; // nothing to do here
+    return TRI_ERROR_NO_ERROR;  // nothing to do here
   }
 
   // need to actually change it, first make sure we're alone in this context
@@ -715,8 +715,8 @@ RocksDBReplicationContext::getCollectionIterator(TRI_voc_cid_t cid) {
     if (nullptr != logical) {
       TRI_ASSERT(nullptr != logical);
       TRI_ASSERT(nullptr != _trx);
-      auto result =
-          _iterators.emplace(cid, new CollectionIterator(*logical, *_trx));
+      auto result = _iterators.emplace(
+          cid, std::make_unique<CollectionIterator>(*logical, *_trx));
       if (result.second) {
         collection = result.first->second.get();
         if (nullptr == collection->iter) {
