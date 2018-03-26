@@ -64,7 +64,6 @@
 #include "V8Server/v8-user-structures.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/ticks.h"
 
@@ -1592,9 +1591,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   }
 
   // Try to create a new view. This is not registered yet
-  std::shared_ptr<arangodb::LogicalView> view =
-      std::make_shared<arangodb::LogicalView>(this, parameters);
-  TRI_ASSERT(view != nullptr);
+  auto view = std::make_shared<arangodb::LogicalView>(this, parameters);
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
@@ -1606,6 +1603,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
   }
 
   registerView(basics::ConditionalLocking::DoNotLock, view);
+
   try {
     // id might have been assigned
     id = view->id();
@@ -1653,8 +1651,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   // TODO Review
   arangodb::Result res2 = engine->persistView(this, view.get());
   // API compatibility, we always return the view, even if creation failed.
- 
-  if (view) { 
+
+  if (view) {
     if (DatabaseFeature::DATABASE != nullptr &&
         DatabaseFeature::DATABASE->versionTracker() != nullptr) {
       DatabaseFeature::DATABASE->versionTracker()->track("create view");
@@ -1720,9 +1718,6 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   view->drop();
   unregisterView(view);
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->dropView(this, view.get());
 
   locker.unlock();
   writeLocker.unlock();
