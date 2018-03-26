@@ -73,7 +73,7 @@ Dependencies to build documentation:
 # Add / Synchronize external documentation
 
 We maintain documentation along with their respective git repositories of their component - 
-be it a driver or another utility which shouldn't be directly in sync to the ArangoDB core documentation.
+be driver or other utilities which shouldn't be directly in sync to the ArangoDB core documentation.
 The maintainer of the respective component can alter the documentation, and once a good point in 
 time is reached, it can be sync'ed over via `Documentation/Scripts/fetchRefs.sh`, which spiders 
 the `SUMMARY.md` files of all books, creates a clone of the external resource, adds a `don't edit this here` note to the files, and copies them over. 
@@ -82,10 +82,12 @@ The syntax of the `SUMMARY.md` integration are special comment lines that contai
 
  - The git repository - the gitrepository containing the documentation - we will clone this; If authentification is required, prepend an `@` to `gituhb.com`
  - The directory name where to clone it under `Documentation/Books/repos` (so several integration points can share a working copy)
- - Subdirectory - the sub-directory inside of the git repository to integrate
+ - Subdirectory - the sub-directory inside of the git repository to integrate, also used in the `VERSIONS` file
  - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories
  - Destination - may be empty if the sub-directory on the remote repo should be mapped into the book the `SUMMARY.md` is located in; else specify a file or directory.
- 
+
+If a other than the default branch should be checked out you can specify the branch in the VERSIONS file. The syntax is `EXTERNAL_DOC_{the-directory-name}={branch-name}`
+
 If private repositories with authentification need to be cloned, the integrator can specify a username/password pair to the script. He/She can also create a clone in the `Documentation/Books/repos/$1` directory - where the script would clone it. 
 
 The script will reset & pull the repos. 
@@ -114,8 +116,10 @@ Another example, integrating a single README.md from an unauthentificated repo m
 
 # Generate users documentation
 
-If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
-If you've edited REST (AKA HTTP) documentation, first invoke `./utils/generateSwagger.sh`.
+If you've edited examples, see below how to regenerate them with 
+[`./utils/generateExamples.sh`](https://github.com/arangodb/arangodb/blob/devel/utils/generateExamples.sh).
+If you've edited REST (AKA HTTP) documentation, first invoke 
+[`./utils/generateSwagger.sh`](https://github.com/arangodb/arangodb/blob/devel/utils/generateSwagger.sh).
 Run `cd Documentation/Books && ./build.sh` to generate it.
 The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
 use your favorite browser to read it.
@@ -132,7 +136,7 @@ used, and no dead references are there. (see building examples in that case belo
 
 If the markdown files aren't converted to html, or `index.html` shows a single
 chapter only (content of `README.md`), make sure
-[Cygwin create native symlinks](https://docs.arangodb.com/cookbook/CompilingUnderWindows.html)
+[Cygwin create native symlinks](https://docs.arangodb.com/devel/Cookbook/Compiling/Windows.html)
 It does not, if `SUMMARY.md` in `Books/ppbooks/` looks like this:
 
     !<symlink>ÿþf o o
@@ -211,12 +215,12 @@ We use the [beautifull ditaa (DIagrams Through Ascii Art)](http://ditaa.sourcefo
 in our documentation.
 
 We have i.e. `Manual/Graphs/graph_user_in_group.ditaa` which is transpiled by ditaa into a png file, thus you simply include
-a png file of the same name as image into the mardown: `![User in group example](graph_user_in_group.png)` to reference it.
+a png file of the same name as image into the markdown: `![User in group example](graph_user_in_group.png)` to reference it.
 
 # Read / use the documentation
 
  - `file:///Documentation/Books/books/Manual/index.html` contains the generated manual
- - JS-Console - Tools/API - Interactive swagger documentation which you can play with.
+ - JS-Console - Tools/API - [Interactive swagger documentation](https://arangodb.com/2018/03/using-arangodb-swaggerio-interactive-api-documentation/) which you can play with.
 
 # arangod Example tool
 
@@ -228,7 +232,7 @@ Here is how its details work:
   - an example start is marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
   - the example is named by the string provided in brackets after the above key
   - the output is written to `Documentation/Examples/<name>.generated`
-  - examples end with *@END_EXAMPLE_[OUTPUT|RUN]*
+  - examples end with *@END_EXAMPLE_[OUTPUT|RUN|AQL]*
   - all code in between is executed as javascript in the **arangosh** while talking to a valid **arangod**.
   You may inspect the generated js code in `/tmp/arangosh.examples.js`
 
