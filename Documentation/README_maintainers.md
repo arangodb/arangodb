@@ -86,7 +86,7 @@ The syntax of the `SUMMARY.md` integration are special comment lines that contai
  - Source - may be empty if the whole Subdirectory should be mapped into the book the `SUMMARY.md` is in, else specify source files (one per line) or directories
  - Destination - may be empty if the sub-directory on the remote repo should be mapped into the book the `SUMMARY.md` is located in; else specify a file or directory.
 
-If a other than the default branch should be checked out you can specify the branch in the VERSIONS file. The syntax is `EXTERNAL_DOC_{the-directory-name}={branch-name}`
+If a other than the default branch should be checked out you can specify the branch|tag in the VERSIONS file. The syntax is `EXTERNAL_DOC_{the-directory-name}={remote-branch-name|tag}`
 
 If private repositories with authentification need to be cloned, the integrator can specify a username/password pair to the script. He/She can also create a clone in the `Documentation/Books/repos/$1` directory - where the script would clone it. 
 
