@@ -94,7 +94,7 @@ Result DatabaseTailingSyncer::saveApplierState() {
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName) {
+Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName, TRI_voc_tick_t& finalTick) {
   setAborted(false);
   // fetch master state just once
   Result r = getMasterState();
@@ -125,11 +125,13 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, url, nullptr, 0));
     
     if (hasFailed(response.get())) {
+      finalTick = 0;  // invalid
       return buildHttpError(response.get(), url);
     }
     
     if (response->getHttpReturnCode() == 204) {
       // HTTP 204 No content: this means we are done
+      finalTick = fromTick;
       return Result();
     }
     
@@ -143,6 +145,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     header =
     response->getHeaderField(StaticStrings::ReplicationHeaderLastIncluded, found);
     if (!found) {
+      finalTick = 0;  // invalid
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
                     _masterInfo._endpoint + ": required header " + StaticStrings::ReplicationHeaderLastIncluded + " is missing");
     }
@@ -155,6 +158,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
       fromIncluded = StringUtils::boolean(header);
     }
     if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
+      finalTick = 0;   // invalid
       return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") +
                     StringUtils::itoa(lastIncludedTick) + "' is not present (anymore?) on master at " +
                     _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) +
@@ -165,6 +169,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     uint64_t ignoreCount = 0;
     Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
     if (r.fail()) {
+      finalTick = 0;   // invalid
       return r;
     }
     
@@ -180,6 +185,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     
     if (!checkMore) {
       // done!
+      finalTick = lastIncludedTick;
       return Result();
     }
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data fromTick " << fromTick;

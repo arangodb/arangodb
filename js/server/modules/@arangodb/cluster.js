@@ -598,6 +598,28 @@ function synchronizeOneShard (database, shard, planId, leader) {
         }
         throw 'Shard ' + shard + ' seems to be gone from leader!';
       } else {
+        let tickToSyncFrom = sy.lastLogTick;
+        // First call REPLICATION_SYNCHRONIZE_FINALIZE once without stopping
+        // writers on the leader:
+        try {
+          let syReFi = REPLICATION_SYNCHRONIZE_FINALIZE({ 
+            endpoint: ep, 
+            database, 
+            collection: shard, 
+            leaderId: leader, 
+            from: tickToSyncFrom,
+            requestTimeout: 60,
+            connectTimeout: 60
+          });
+          console.topic('heartbeat=debug', 'synchronizeOneShard: first syncCollectionFinalize ok, worked from tick' + tickToSyncFrom + 'to tick' + syReFi.finalTick);
+          tickToSyncFrom = syReFi.finalTick;  // such that the next sync starts
+                                              // here
+        } catch (errSyReFi) {
+          console.topic('heartbeat=error', 'synchronizeOneShard: exception in first syncCollectionFinalize:', errSyReFi);
+          cancelBarrier(ep, database, sy.barrierId);
+          throw 'Did not work for shard ' + shard + '.';
+        }
+             
         // Now start a read transaction to stop writes:
         var lockJobId = false;
         try {
@@ -617,7 +639,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               database, 
               collection: shard, 
               leaderId: leader, 
-              from: sy.lastLogTick,
+              from: tickToSyncFrom,
               requestTimeout: 60,
               connectTimeout: 60
             });

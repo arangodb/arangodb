@@ -48,8 +48,11 @@ class DatabaseTailingSyncer : public TailingSyncer {
   }
   
   /// @brief finalize the synchronization of a collection by tailing the WAL
-  /// and filtering on the collection name until no more data is available
-  Result syncCollectionFinalize(std::string const& collectionName);
+  /// and filtering on the collection name until no more data is available.
+  /// After that the argument `finalTick` is set to the final tick included
+  /// in the operation.
+  Result syncCollectionFinalize(std::string const& collectionName,
+      TRI_voc_tick_t& finalTick);
   
  protected:
     

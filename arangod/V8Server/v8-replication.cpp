@@ -356,8 +356,9 @@ static void JS_SynchronizeReplicationFinalize(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   Result r;
+  TRI_voc_tick_t finalTick = 0;
   try {
-    r = syncer.syncCollectionFinalize(collection);
+    r = syncer.syncCollectionFinalize(collection, finalTick);
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -373,6 +374,8 @@ static void JS_SynchronizeReplicationFinalize(
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), errorMsg);
   }
 
+  result->Set(TRI_V8_ASCII_STRING(isolate, "finalTick"),
+              TRI_V8_ASCII_STRING(isolate, StringUtils::itoa(finalTick)));
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
