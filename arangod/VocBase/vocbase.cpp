@@ -1660,10 +1660,23 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     VPackBuilder builder;
     { VPackObjectBuilder guard(&builder);
       builder.add("id", VPackValue(viewId));
-      for (auto const& p : VPackObjectIterator(parameters)) {
-        builder.add(p.key);
-        builder.add(p.value);
+      builder.add(VPackValue("properties"));
+      std::string name;
+      { VPackObjectBuilder guard(&builder);
+        for (auto const& p : VPackObjectIterator(parameters)) {
+          if (p.key.copyString() == "name" && p.value.isString()) {
+            name = p.value.copyString();
+          }
+          builder.add(p.key);
+          builder.add(p.value);
+        }
       }
+      if (name.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "Could not create view in agency, error: no name given.";
+        return nullptr;
+      }
+      builder.add("name", VPackValue(name));
       builder.add(VPackValue("collections"));
       { VPackArrayBuilder guard2(&builder);
       }

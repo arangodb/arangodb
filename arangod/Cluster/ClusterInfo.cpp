@@ -1047,7 +1047,7 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     loadPlan();
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_VIEW_NOT_FOUND,
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
       "View not found: " + viewID + " in database " + databaseID);
 }
 
