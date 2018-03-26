@@ -700,10 +700,25 @@ RepairOperationToVPackVisitor::operator()(
   {
     VPackObjectBuilder innerObject(&builder(), "FinishRepairsOperation");
 
-    // TODO add shards
     builder().add("database", VPackValue(op.database));
     builder().add("collection", VPackValue(op.collectionName));
     builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
+
+    VPackArrayBuilder shards(&builder(), "shards");
+    for (auto const& it : op.shards) {
+      ShardID shardId, protoShardId;
+      DBServers dbServers;
+      std::tie(shardId, protoShardId, dbServers) = it;
+      VPackObjectBuilder shard(&builder());
+      builder().add("shard", VPackValue(shardId));
+      builder().add("protoShard", VPackValue(protoShardId));
+      {
+        VPackArrayBuilder dbServersGuard(&builder(), "dbServers");
+        for (auto const& dbServer : dbServers) {
+          builder().add(VPackValue(dbServer));
+        }
+      }
+    }
   }
 }
 
