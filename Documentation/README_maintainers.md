@@ -178,7 +178,7 @@ Generate an ePub:
 ## Where to add new...
 
 - Documentation/DocuBlocks/* - markdown comments with execution section
- - Documentation/Books/Manual/SUMMARY.md - index of all sub documentations
+ - Documentation/Books/Aql|Cookbook|HTTP|Manual/SUMMARY.md - index of all sub documentations
 
 ## generate
 
@@ -196,7 +196,7 @@ Generate an ePub:
  - `./Documentation/Scripts/allExamples.sh` generates a file where you can inspect all examples for readability.
  - `./utils/generateSwagger.sh` - on top level to generate the documentation interactively with the server; you may use
     [the swagger editor](https://github.com/swagger-api/swagger-editor) to revalidate whether
-    *js/apps/system/_admin/aardvark/APP/api-docs.json* is accurate.
+    *../../js/apps/system/_admin/aardvark/APP/api-docs.json* is accurate.
  - `cd Documentation/Books; make` - to generate the HTML documentation
 
 
@@ -206,7 +206,7 @@ Generate an ePub:
 you need to place hooks:
   - `@startDocuBlock <tdocuBlockName>` is replaced by a Docublock extracted from source.
   - `@startDocuBlockInline <docuBlockName>` till `@endDocuBlock <docuBlockName>`
-     is replaced in with its own evaluated content - so  *@EXAMPLE_ARANGOSH_[OUTPUT | RUN]* sections are executed
+     is replaced in with its own evaluated content - so  *@EXAMPLE_AQL | @EXAMPLE_ARANGOSH_[OUTPUT | RUN]* sections are executed
      the same way as inside of source code documentation.
 
 # Include ditaa diagrams
