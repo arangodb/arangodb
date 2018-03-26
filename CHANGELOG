@@ -4,8 +4,10 @@ v3.3.6 (XXXX-XX-XX)
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 
-v3.3.5 (2018-03-23)
+v3.3.5 (2018-03-24)
 -------------------
+
+* make build id appear in startup log message alongside with other version info
 
 * make AQL data modification operations that are sent to all shards and that are
   supposed to return values (i.e. `RETURN OLD` or `RETURN NEW`) not return fake

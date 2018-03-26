@@ -614,7 +614,7 @@ function ahuacatlModifySuite () {
         c.insert({ id1: i, id2: i % 10 });
       }
 
-      let expected = { writesExecuted: 10, writesIgnored: isCluster ? 40 : 0 };
+      let expected = { writesExecuted: 10, writesIgnored: isCluster ? (internal.isEnterprise() ? 40 : 36) : 0 };
       let query = "FOR d IN " + cn + " FILTER d.id2 == 2 REMOVE { _key: d._key, id1: d.id1, id2: 2 } IN " + cn;
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
