@@ -43,6 +43,7 @@ const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
+const platform = require('internal').platform;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 // const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -351,7 +352,13 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   defaultFns.push('ssl_server');
 
   opts['skipSsl'] = false;
-  opts['rspec'] = 'rspec';
+  if (platform.substr(0, 3) !== 'win') {
+    opts['rspec'] = 'rspec';
+  } else {
+    // Windows process utilties would apply `.exe` to rspec.
+    // However the file is called .bat and .exe cannot be found.
+    opts['rspec'] = 'rspec.bat';
+  }
   opts['ruby'] = '';
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
