@@ -171,10 +171,6 @@ struct OptimizerRule {
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
-    // simplify an EnumerationCollectionNode that fetches an
-    // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6,
-
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 
@@ -217,9 +213,12 @@ struct OptimizerRule {
 #endif
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10
-  };
+    undistributeRemoveAfterEnumCollRule_pass10,
 
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass6
+  };
 
   std::string name;
   RuleFunction func;
