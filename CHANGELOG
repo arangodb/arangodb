@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
 * Improvement: The AQL query planner in cluster is now a bit more clever and
