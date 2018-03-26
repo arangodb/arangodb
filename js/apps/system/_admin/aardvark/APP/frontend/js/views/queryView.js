@@ -1063,6 +1063,7 @@
 
       var counter = 0;
 
+      this.checkForNewBindParams();
       _.each(this.bindParamTableObj, function (val, key) {
         $('#arangoBindParamTable tbody').append(
           '<tr>' +
