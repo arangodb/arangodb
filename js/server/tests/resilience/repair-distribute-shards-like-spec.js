@@ -271,7 +271,64 @@ describe('Collections with distributeShardsLike', function () {
 
     expect(response).to.have.property("error", false);
     expect(response).to.have.property("code", 200);
-    expect(response).to.have.property("message", "Executing 5 operations");
+
+    let expectedCollections = {
+      [`${internal.db._name()}/${colName}`]: {
+        "PlannedOperations": [
+          {
+            "BeginRepairsOperation": {
+              "database": internal.db._name(),
+              "collection": colName,
+              "distributeShardsLike": protoColName,
+              "renameDistributeShardsLike": true,
+            }
+          },
+          {
+            "MoveShardOperation": {
+              "database": internal.db._name(),
+              "collection": colName,
+              "shard": shard,
+              "from": leaderDbServer,
+              "to": followerDbServer,
+              "isLeader": false,
+            }
+          },
+          {
+            "MoveShardOperation": {
+              "database": internal.db._name(),
+              "collection": colName,
+              "shard": shard,
+              "from": freeDbServer,
+              "to": leaderDbServer,
+              "isLeader": true,
+            }
+          },
+          {
+            "FixServerOrderOperation": {
+              "database": "_system",
+              "collection": colName,
+              "distributeShardsLike": protoColName,
+              "shard": shard,
+              "distributeShardsLikeShard": protoShard,
+              "leader": leaderDbServer,
+              "followers": [1, 2, 0].map(i => protoShardInfo.followers[i]).map(f => dbServerIdByName[f]),
+              "distributeShardsLikeFollowers": protoShardInfo.followers.map(f => dbServerIdByName[f])
+            }
+          },
+          {
+            "FinishRepairsOperation": {
+              "database": internal.db._name(),
+              "collection": colName,
+              "distributeShardsLike": protoColName,
+            }
+          }
+        ],
+        error: false
+      }
+    };
+
+    expect(response).to.have.property("collections");
+    expect(response.collections).to.eql(expectedCollections);
 
     global.ArangoClusterInfo.flush();
 
@@ -282,8 +339,6 @@ describe('Collections with distributeShardsLike', function () {
     ).to.equal(protoCollection.name());
 
     expectCollectionPlanToEqualProto(collection, protoCollection);
-
-    // TODO Should the exact operations be checked? Or do we leave that to the unit tests?
   });
 
 });

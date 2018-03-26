@@ -312,6 +312,8 @@ RestRepairHandler::executeRepairOperations(
   std::list<RepairOperation> repairOperations
 ) {
   AgencyComm comm;
+  // TODO If an operation fails during execution, add a hint on which one
+  // in the response to the user!
   for (auto& op : repairOperations) {
     auto visitor = RepairOperationToTransactionVisitor();
     auto trxJobPair =
