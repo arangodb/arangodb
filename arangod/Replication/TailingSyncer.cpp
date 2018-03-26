@@ -294,7 +294,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   auto* coll = resolveCollection(vocbase, slice).get();
 
   if (coll == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   bool isSystem = coll->isSystem();
@@ -563,18 +563,18 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
     col = resolveCollection(vocbase, slice).get();
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown cuid");
     }
   } else if (collection.hasKey("oldName")) {
     col =
      vocbase->lookupCollection(collection.get("oldName").copyString()).get();
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
+      return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unknown old collection name");
     }
   } else {
     TRI_ASSERT(col == nullptr);
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unable to identify collection");
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "unable to identify collection");
   }
   if (col->isSystem()) {
     LOG_TOPIC(WARN, Logger::REPLICATION) << "Renaming system collection " << col->name();
@@ -620,7 +620,7 @@ Result TailingSyncer::changeCollection(VPackSlice const& slice) {
       return Result();
     }
 
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   arangodb::CollectionGuard guard(vocbase, col);

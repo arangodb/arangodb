@@ -675,7 +675,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     case TRI_VOC_COL_STATUS_CORRUPTED:
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     case TRI_VOC_COL_STATUS_DELETED:
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     default:
       // Fall through intentional
       break;

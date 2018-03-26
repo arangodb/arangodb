@@ -324,7 +324,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-  std::string const& nameOrId
+    std::string const& nameOrId
 ) const noexcept {
   auto itr = _dataSourceByName.find(nameOrId);
 

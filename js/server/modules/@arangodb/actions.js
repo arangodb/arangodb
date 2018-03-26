@@ -1740,7 +1740,7 @@ function collectionNotFound (req, res, collection, headers) {
       headers);
   } else {
     resultError(req, res,
-      exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND,
+      exports.HTTP_NOT_FOUND, arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
       "unknown collection '" + collection + "'", headers);
   }
 }
@@ -1785,7 +1785,7 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_USE_SYSTEM_DATABASE:
       return exports.HTTP_FORBIDDEN;
 
-    case arangodb.ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case arangodb.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case arangodb.ERROR_ARANGO_DATABASE_NOT_FOUND:
     case arangodb.ERROR_ARANGO_ENDPOINT_NOT_FOUND:
