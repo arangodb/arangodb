@@ -122,7 +122,7 @@ SCENARIO("Successful query setup", "[aql][restaqlhandler]") {
 
   fakeit::When(Dtor(reqMock)).Do([] () {} )
     .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
- 
+
 
   fakeit::Mock<VocbaseContext> ctxtMock;
   VocbaseContext& ctxt = ctxtMock.get();;
