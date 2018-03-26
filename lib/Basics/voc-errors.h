@@ -350,7 +350,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
-/// "collection not found"
+/// "collection or view not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
 constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
