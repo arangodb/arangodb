@@ -29,7 +29,6 @@
 
 #include <s2/s2cap.h>
 #include <s2/s2cell_id.h>
-#include <s2/s2cell_union.h>
 #include <s2/s2region.h>
 #include <s2/s2region_coverer.h>
 
@@ -137,6 +136,10 @@ class NearUtils {
 
   /// @brief reset query to inital state
   void reset();
+  
+  /// aid density estimation by reporting a result close
+  /// to the target coordinates
+  void estimateDensity(S2Point const& found);
 
   /// Call only when current scan intervals contain no more results
   /// will internall track already returned intervals and not return
@@ -145,17 +148,18 @@ class NearUtils {
 
   /// buffer and sort results
   void reportFound(LocalDocumentId lid, S2Point const& center);
-
-  /// aid density estimation by reporting a result close
-  /// to the target coordinates
-  void estimateDensity(S2Point const& found);
   
+  /// Call after scanning all intervals
+  void didScanIntervals();
+  
+  size_t _found = 0;
   size_t _rejection = 0;
-  size_t _scans = 0;
 
  private:
   /// @brief adjust the bounds delta
   void estimateDelta();
+  /// @brief calculate the scan bounds
+  void calculateBounds();
 
   /// @brief make isDone return true
   void invalidate() {
@@ -188,15 +192,17 @@ class NearUtils {
 
   /// Are all intervals covered
   bool _allIntervalsCovered;
+  /// for adjusting _deltaAngle on the fly
+  size_t _statsFoundLastInterval;
+  /// Total number of interval calculations
+  size_t _numScans;
+  
   /// Amount to increment by
   S1ChordAngle _deltaAngle;
   /// inner limit of search area
   S1ChordAngle _innerAngle;
   /// outer limit of search area
   S1ChordAngle _outerAngle;
-
-  /// for adjusting _deltaAngle on the fly
-  size_t _statsFoundLastInterval = 0;
 
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
@@ -205,7 +211,7 @@ class NearUtils {
   std::unordered_set<uint64_t> _seenDocs;
   
   /// Track the already scanned region
-  S2CellUnion _scannedCells;
+  std::vector<S2CellId> _scannedCells;
   /// Coverer instance to use
   S2RegionCoverer _coverer;
 };

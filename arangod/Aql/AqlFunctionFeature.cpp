@@ -222,7 +222,7 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
   addAlias("IS_DOCUMENT", "IS_OBJECT");
 
   add({"IS_DATESTRING", ".", true, false, true,
-       true});
+       true, &Functions::IsDatestring});
   add({"IS_KEY", ".", true, false, true, true, &Functions::IsKey});
   add({"TYPENAME", ".", true, false, true, true,
        &Functions::Typename});
@@ -260,7 +260,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"FIND_FIRST", ".,.|.,.", true, false, true, true, &Functions::FindFirst});
   add({"FIND_LAST", ".,.|.,.", true, false, true, true, &Functions::FindLast});
   add({"SPLIT", ".|.,.", true, false, true, true, &Functions::Split});
-  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
+  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true, &Functions::Substitute});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
   add({"SHA512", ".", true, false, true, true, &Functions::Sha512});
@@ -357,7 +357,7 @@ void AqlFunctionFeature::addListFunctions() {
   add({"SLICE", ".,.|.", true, false, true, true,
        &Functions::Slice});
   add({"REVERSE", ".", true, false, true,
-       true});  // note: REVERSE() can be applied on strings, too
+        true, &Functions::Reverse});
   add({"FIRST", ".", true, false, true, true,
        &Functions::First});
   add({"LAST", ".", true, false, true, true,
@@ -448,38 +448,38 @@ void AqlFunctionFeature::addGeometryConstructors() {
 
 void AqlFunctionFeature::addDateFunctions() {
   // date functions
-  add({"DATE_NOW", "", false, false, true, true});
-  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.",
-       true, false, true, true});
+  add({"DATE_NOW", "", false, false, true, true, &Functions::DateNow});
+  add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", 
+       true, false, true, true, &Functions::DateTimestamp});
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", true,
-       false, true, true});
+       false, true, true, &Functions::DateIso8601});
   add({"DATE_DAYOFWEEK", ".", true, false, true,
-       true});
-  add({"DATE_YEAR", ".", true, false, true, true});
-  add({"DATE_MONTH", ".", true, false, true, true});
-  add({"DATE_DAY", ".", true, false, true, true});
-  add({"DATE_HOUR", ".", true, false, true, true});
-  add({"DATE_MINUTE", ".", true, false, true, true});
-  add({"DATE_SECOND", ".", true, false, true, true});
+       true, &Functions::DateDayOfWeek});
+  add({"DATE_YEAR", ".", true, false, true, true, &Functions::DateYear});
+  add({"DATE_MONTH", ".", true, false, true, true, &Functions::DateMonth});
+  add({"DATE_DAY", ".", true, false, true, true, &Functions::DateDay});
+  add({"DATE_HOUR", ".", true, false, true, true, &Functions::DateHour});
+  add({"DATE_MINUTE", ".", true, false, true, true, &Functions::DateMinute});
+  add({"DATE_SECOND", ".", true, false, true, true, &Functions::DateSecond});
   add({"DATE_MILLISECOND", ".", true, false,
-       true, true});
+       true, true, &Functions::DateMillisecond});
   add({"DATE_DAYOFYEAR", ".", true, false, true,
-       true});
+       true, &Functions::DateDayOfYear});
   add({"DATE_ISOWEEK", ".", true, false, true,
-       true});
+       true, &Functions::DateIsoWeek});
   add({"DATE_LEAPYEAR", ".", true, false, true,
-       true});
+       true, &Functions::DateLeapYear});
   add({"DATE_QUARTER", ".", true, false, true,
-       true});
+       true, &Functions::DateQuarter});
   add({"DATE_DAYS_IN_MONTH", ".", true, false,
-       true, true});
-  add({"DATE_ADD", ".,.|.", true, false, true, true});
+       true, true, &Functions::DateDaysInMonth});
+  add({"DATE_ADD", ".,.|.", true, false, true, true, &Functions::DateAdd});
   add({"DATE_SUBTRACT", ".,.|.", true, false, true,
-       true});
+       true, &Functions::DateSubtract});
   add({"DATE_DIFF", ".,.,.|.", true, false, true,
-       true});
+       true, &Functions::DateDiff});
   add({"DATE_COMPARE", ".,.,.|.", true, false, true,
-       true});
+       true, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", true, false, true,
        true});
 }

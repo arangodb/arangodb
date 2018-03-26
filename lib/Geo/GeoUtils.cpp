@@ -51,6 +51,7 @@ Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
   S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                       lon.getNumericValue<double>());
   if (!ll.is_valid()) {
+    LOG_TOPIC(WARN, Logger::ENGINES) << "Invalid lat lng pair";
     return TRI_ERROR_BAD_PARAMETER;
   }
   centroid = ll.ToPoint();

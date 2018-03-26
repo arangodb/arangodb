@@ -12,10 +12,8 @@
 #include "Aql/Function.h"
 #include "Aql/Parser.h"
 #include "Aql/Quantifier.h"
-#include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/AccessMode.h"
-#include <iostream>
 %}
 
 %union {
@@ -331,7 +329,6 @@ static AstNode const* GetIntoExpression(AstNode const* node) {
 %type <node> view_name;
 %type <node> in_or_into_collection;
 %type <node> bind_parameter;
-%type <node> bind_view;
 %type <strval> variable_name;
 %type <node> numeric_value;
 %type <intval> update_or_replace;
@@ -1690,8 +1687,12 @@ view_name:
   | T_QUOTED_STRING {
       $$ = parser->ast()->createNodeView($1.value);
     }
-  | bind_view {
-      $$ = $1;
+  | T_DATA_SOURCE_PARAMETER {
+      if ($1.length < 2 || $1.value[0] != '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length);
     }
   ;
 
@@ -1701,20 +1702,10 @@ bind_parameter:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
-      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::Collection);
+      $$ = parser->ast()->createNodeParameter($1.value, $1.length);
     }
   | T_PARAMETER {
       $$ = parser->ast()->createNodeParameter($1.value, $1.length);
-    }
-  ;
-
-bind_view:
-    T_DATA_SOURCE_PARAMETER {
-      if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameter($1.value, $1.length, AstNode::DataSourceType::View);
     }
   ;
 

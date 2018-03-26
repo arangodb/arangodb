@@ -63,8 +63,12 @@ RocksDBIndex::RocksDBIndex(
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection->vocbase()->id(), collection->id(), _iid
+  );
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -84,8 +88,12 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection->vocbase()->id(), collection->id(), _iid
+  );
 }
 
 RocksDBIndex::~RocksDBIndex() {

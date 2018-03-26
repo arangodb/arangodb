@@ -228,7 +228,7 @@ bool GatherBlock::hasMore() {
     for (size_t i = 0; i < _gatherBlockBuffer.size(); i++) {
       if (!_gatherBlockBuffer.at(i).empty()) {
         return true;
-      } else if (getBlock(i, DefaultBatchSize(), DefaultBatchSize())) {
+      } else if (getBlock(i, DefaultBatchSize())) {
         _gatherBlockPos.at(i) = std::make_pair(i, 0);
         return true;
       }
@@ -242,9 +242,9 @@ bool GatherBlock::hasMore() {
 }
 
 /// @brief getSome
-AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* GatherBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
 
   if (_dependencies.empty()) {
     _done = true;
@@ -257,10 +257,10 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
   // the simple case . . .
   if (_isSimple) {
-    auto res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
+    auto res = _dependencies.at(_atDep)->getSome(atMost);
     while (res == nullptr && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      res = _dependencies.at(_atDep)->getSome(atLeast, atMost);
+      res = _dependencies.at(_atDep)->getSome(atMost);
     }
     if (res == nullptr) {
       _done = true;
@@ -279,7 +279,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
  
   for (size_t i = 0; i < _dependencies.size(); ++i) {
     if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atLeast, atMost)) {
+      if (getBlock(i, atMost)) {
         index = i;
         _gatherBlockPos[i] = std::make_pair(i, 0);
       }
@@ -382,7 +382,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
         // if we pulled everything from the buffer, we need to fetch
         // more data for the shard for which we have no more local
         // values. 
-        getBlock(val.first, atLeast, atMost);
+        getBlock(val.first, atMost);
         cache[val.first].clear();
         // note that if getBlock() returns false here, this is not
         // a problem, because the sort function used takes care of
@@ -403,7 +403,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 /// @brief skipSome
-size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t GatherBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
@@ -411,10 +411,10 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
 
   // the simple case . . .
   if (_isSimple) {
-    auto skipped = _dependencies.at(_atDep)->skipSome(atLeast, atMost);
+    auto skipped = _dependencies.at(_atDep)->skipSome(atMost);
     while (skipped == 0 && _atDep < _dependencies.size() - 1) {
       _atDep++;
-      skipped = _dependencies[_atDep]->skipSome(atLeast, atMost);
+      skipped = _dependencies[_atDep]->skipSome(atMost);
     }
     if (skipped == 0) {
       _done = true;
@@ -429,7 +429,7 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
   // pull more blocks from dependencies . . .
   for (size_t i = 0; i < _dependencies.size(); i++) {
     if (_gatherBlockBuffer[i].empty()) {
-      if (getBlock(i, atLeast, atMost)) {
+      if (getBlock(i, atMost)) {
         _gatherBlockPos[i] = std::make_pair(i, 0);
       }
     }
@@ -478,12 +478,12 @@ size_t GatherBlock::skipSome(size_t atLeast, size_t atMost) {
 
 /// @brief getBlock: from dependency i into _gatherBlockBuffer.at(i),
 /// non-simple case only
-bool GatherBlock::getBlock(size_t i, size_t atLeast, size_t atMost) {
+bool GatherBlock::getBlock(size_t i, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   TRI_ASSERT(i < _dependencies.size());
   TRI_ASSERT(!_isSimple);
 
-  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> docs(_dependencies.at(i)->getSome(atMost));
   if (docs != nullptr && docs->size() > 0) {
     _gatherBlockBuffer.at(i).emplace_back(docs.get());
     docs.release();
@@ -592,14 +592,14 @@ int BlockWithClients::shutdown(int errorCode) {
 }
 
 /// @brief getSomeForShard
-AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
+AqlItemBlock* BlockWithClients::getSomeForShard(size_t atMost,
                                                 std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
 
   int out =
-      getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
+      getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
 
   if (out == TRI_ERROR_NO_ERROR) {
     return result;
@@ -615,13 +615,12 @@ AqlItemBlock* BlockWithClients::getSomeForShard(size_t atLeast, size_t atMost,
 }
 
 /// @brief skipSomeForShard
-size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
-                                          std::string const& shardId) {
+size_t BlockWithClients::skipSomeForShard(size_t atMost, std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out =
-      getOrSkipSomeForShard(atLeast, atMost, true, result, skipped, shardId);
+      getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
   TRI_ASSERT(result == nullptr);
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
@@ -635,10 +634,10 @@ size_t BlockWithClients::skipSomeForShard(size_t atLeast, size_t atMost,
 /// @brief skipForShard
 bool BlockWithClients::skipForShard(size_t number, std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  size_t skipped = skipSomeForShard(number, number, shardId);
+  size_t skipped = skipSomeForShard(number, shardId);
   size_t nr = skipped;
   while (nr != 0 && skipped < number) {
-    nr = skipSomeForShard(number - skipped, number - skipped, shardId);
+    nr = skipSomeForShard(number - skipped, shardId);
     skipped += nr;
   }
   if (nr == 0) {
@@ -716,6 +715,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
@@ -725,7 +725,7 @@ bool ScatterBlock::hasMoreForShard(std::string const& shardId) {
   // _buffer.at(i) we are sending to <clientId>
 
   if (pos.first > _buffer.size()) {
-    if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+    if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
       _doneForClient.at(clientId) = true;
       return false;
     }
@@ -742,6 +742,7 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
   
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return 0;
   }
@@ -767,25 +768,27 @@ int64_t ScatterBlock::remainingForShard(std::string const& shardId) {
 }
 
 /// @brief getOrSkipSomeForShard
-int ScatterBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
+int ScatterBlock::getOrSkipSomeForShard(size_t atMost,
                                         bool skipping, AqlItemBlock*& result,
                                         size_t& skipped,
                                         std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
+  TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  TRI_ASSERT(_posForClient.size() > clientId);
   std::pair<size_t, size_t> pos = _posForClient.at(clientId);
 
   // pull more blocks from dependency if necessary . . .
   if (pos.first >= _buffer.size()) {
-    if (!getBlock(atLeast, atMost)) {
+    if (!getBlock(atMost)) {
       _doneForClient.at(clientId) = true;
       return TRI_ERROR_NO_ERROR;
     }
@@ -912,15 +915,17 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
 
   size_t clientId = getClientId(shardId);
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     return false;
   }
 
+  TRI_ASSERT(_distBuffer.size() > clientId);
   if (!_distBuffer.at(clientId).empty()) {
     return true;
   }
 
-  if (!getBlockForClient(DefaultBatchSize(), DefaultBatchSize(), clientId)) {
+  if (!getBlockForClient(DefaultBatchSize(), clientId)) {
     _doneForClient.at(clientId) = true;
     return false;
   }
@@ -931,17 +936,18 @@ bool DistributeBlock::hasMoreForShard(std::string const& shardId) {
 }
 
 /// @brief getOrSkipSomeForShard
-int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
+int DistributeBlock::getOrSkipSomeForShard(size_t atMost,
                                            bool skipping, AqlItemBlock*& result,
                                            size_t& skipped,
                                            std::string const& shardId) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
-  TRI_ASSERT(0 < atLeast && atLeast <= atMost);
+  traceGetSomeBegin(atMost);
   TRI_ASSERT(result == nullptr && skipped == 0);
+  TRI_ASSERT(atMost > 0);
 
   size_t clientId = getClientId(shardId);
 
+  TRI_ASSERT(_doneForClient.size() > clientId);
   if (_doneForClient.at(clientId)) {
     traceGetSomeEnd(result);
     return TRI_ERROR_NO_ERROR;
@@ -950,7 +956,7 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   std::deque<std::pair<size_t, size_t>>& buf = _distBuffer.at(clientId);
 
   if (buf.empty()) {
-    if (!getBlockForClient(atLeast, atMost, clientId)) {
+    if (!getBlockForClient(atMost, clientId)) {
       _doneForClient.at(clientId) = true;
       traceGetSomeEnd(result);
       return TRI_ERROR_NO_ERROR;
@@ -1003,13 +1009,12 @@ int DistributeBlock::getOrSkipSomeForShard(size_t atLeast, size_t atMost,
   DEBUG_END_BLOCK();
 }
 
-/// @brief getBlockForClient: try to get atLeast pairs into
+/// @brief getBlockForClient: try to get atMost pairs into
 /// _distBuffer.at(clientId), this means we have to look at every row in the
 /// incoming blocks until they run out or we find enough rows for clientId. We
 /// also keep track of blocks which should be sent to other clients than the
 /// current one.
-bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
-                                        size_t clientId) {
+bool DistributeBlock::getBlockForClient(size_t atMost, size_t clientId) {
   DEBUG_BEGIN_BLOCK();
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
@@ -1019,9 +1024,9 @@ bool DistributeBlock::getBlockForClient(size_t atLeast, size_t atMost,
   std::vector<std::deque<std::pair<size_t, size_t>>>& buf = _distBuffer;
   // it should be the case that buf.at(clientId) is empty
 
-  while (buf.at(clientId).size() < atLeast) {
+  while (buf.at(clientId).size() < atMost) {
     if (_index == _buffer.size()) {
-      if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+      if (!ExecutionBlock::getBlock(atMost)) {
         if (buf.at(clientId).size() == 0) {
           _doneForClient.at(clientId) = true;
           return false;
@@ -1468,14 +1473,13 @@ int RemoteBlock::shutdown(int errorCode) {
 }
 
 /// @brief getSome
-AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* RemoteBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
   
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   VPackBuilder builder;
   builder.openObject();
-  builder.add("atLeast", VPackValue(atLeast));
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 
@@ -1505,13 +1509,12 @@ AqlItemBlock* RemoteBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 /// @brief skipSome
-size_t RemoteBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t RemoteBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   // For every call we simply forward via HTTP
 
   VPackBuilder builder;
   builder.openObject();
-  builder.add("atLeast", VPackValue(atLeast));
   builder.add("atMost", VPackValue(atMost));
   builder.close();
 

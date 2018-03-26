@@ -324,7 +324,7 @@ ArangoDatabase.prototype._collection = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 
@@ -1262,7 +1262,7 @@ ArangoDatabase.prototype._view = function (id) {
   // return null in case of not found
   if (requestResult !== null
     && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_ARANGO_VIEW_NOT_FOUND.code) {
+    && requestResult.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     return null;
   }
 

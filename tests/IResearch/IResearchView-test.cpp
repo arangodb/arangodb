@@ -841,7 +841,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::velocypack::Slice::nullSlice()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->id(), arangodb::velocypack::Slice::nullSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -873,7 +873,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::velocypack::Slice::nullSlice()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->id(), arangodb::velocypack::Slice::nullSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       CHECK((0 == cids.size()));
@@ -925,7 +925,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::iresearch::emptyObjectSlice()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->id(), arangodb::iresearch::emptyObjectSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -968,7 +968,7 @@ SECTION("test_link") {
     }
 
     {
-      CHECK((true == viewImpl->link(logicalCollection->cid(), arangodb::iresearch::emptyObjectSlice()).ok()));
+      CHECK((true == viewImpl->link(logicalCollection->id(), arangodb::iresearch::emptyObjectSlice()).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -1020,7 +1020,7 @@ SECTION("test_link") {
       builder.add("includeAllFields", arangodb::velocypack::Value("abc"));
       builder.close();
       auto slice  = builder.slice();
-      CHECK((false == viewImpl->link(logicalCollection->cid(), slice).ok()));
+      CHECK((false == viewImpl->link(logicalCollection->id(), slice).ok()));
       std::set<TRI_voc_cid_t> cids;
       viewImpl->visitCollections([&cids](TRI_voc_cid_t cid)->bool { cids.emplace(cid); return true; });
       std::unordered_set<TRI_voc_cid_t> expected = { 100 };
@@ -1432,7 +1432,7 @@ SECTION("test_unregister_link") {
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      view->insert(trx, logicalCollection->cid(), arangodb::LocalDocumentId(0), doc->slice(), meta);
+      view->insert(trx, logicalCollection->id(), arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
     }
 
@@ -1515,7 +1515,7 @@ SECTION("test_unregister_link") {
         EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
-      view->insert(trx, logicalCollection->cid(), arangodb::LocalDocumentId(0), doc->slice(), meta);
+      view->insert(trx, logicalCollection->id(), arangodb::LocalDocumentId(0), doc->slice(), meta);
       CHECK((trx.commit().ok()));
     }
 
@@ -1888,8 +1888,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -1910,8 +1910,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -1932,8 +1932,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -1954,8 +1954,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -1976,8 +1976,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -1998,8 +1998,8 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((2 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection1->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0", "testCollection1" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2023,7 +2023,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2044,7 +2044,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2065,7 +2065,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2086,7 +2086,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2107,7 +2107,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2128,7 +2128,7 @@ SECTION("test_transaction_registration") {
     );
     CHECK((trx.begin().ok()));
     CHECK((1 == trx.state()->numCollections()));
-    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->cid())));
+    CHECK((nullptr != trx.state()->findCollection(logicalCollection0->id())));
     std::unordered_set<std::string> expectedNames = { "testCollection0" };
     auto actualNames = trx.state()->collectionNames();
 
@@ -2370,7 +2370,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
-      expectedMeta._collections.insert(logicalCollection0->cid());
+      expectedMeta._collections.insert(logicalCollection0->id());
       expectedLinkMeta["testCollection0"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
 
@@ -2417,7 +2417,7 @@ SECTION("test_update_overwrite") {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       std::unordered_map<std::string, arangodb::iresearch::IResearchLinkMeta> expectedLinkMeta;
 
-      expectedMeta._collections.insert(logicalCollection1->cid());
+      expectedMeta._collections.insert(logicalCollection1->id());
       expectedLinkMeta["testCollection1"]; // use defaults
       CHECK((view->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -2653,7 +2653,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
-    expectedMeta._collections.insert(logicalCollection->cid());
+    expectedMeta._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2725,7 +2725,7 @@ SECTION("test_update_partial") {
         \"testCollection\": {} \
       }}");
 
-    expectedMeta._collections.insert(logicalCollection->cid());
+    expectedMeta._collections.insert(logicalCollection->id());
     expectedLinkMeta["testCollection"]; // use defaults
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -2872,7 +2872,7 @@ SECTION("test_update_partial") {
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
 
-    expectedMeta._collections.insert(logicalCollection->cid());
+    expectedMeta._collections.insert(logicalCollection->id());
 
     {
       auto updateJson = arangodb::velocypack::Parser::fromJson("{ \

@@ -26,8 +26,6 @@
 #include <s2/s2cell.h>
 #include <s2/s2latlng_rect.h>
 #include <s2/s2metrics.h>
-#include <s2/s2multipoint_region.h>
-#include <s2/s2multipolyline.h>
 #include <s2/s2point_region.h>
 #include <s2/s2polygon.h>
 #include <s2/s2region.h>
@@ -39,6 +37,8 @@
 
 #include "Basics/voc-errors.h"
 #include "Geo/GeoParams.h"
+#include "Geo/S2/S2MultiPointRegion.h"
+#include "Geo/S2/S2MultiPolyline.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -91,13 +91,14 @@ S2Point ShapeContainer::centroid() const noexcept {
       return (static_cast<S2PointRegion const*>(_data))->point();
     }
     case ShapeContainer::Type::S2_POLYLINE: {
-      return (static_cast<S2Polyline const*>(_data))->GetCentroid();
+      return (static_cast<S2Polyline const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      return static_cast<S2LatLngRect const*>(_data)->GetCentroid();
+      return static_cast<S2LatLngRect const*>(_data)->GetCenter().ToPoint();
     }
     case ShapeContainer::Type::S2_POLYGON: {
-      return (static_cast<S2Polygon const*>(_data))->GetCentroid();
+      // not unit length by default
+      return (static_cast<S2Polygon const*>(_data))->GetCentroid().Normalize();
     }
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion const* pts =
@@ -107,8 +108,7 @@ S2Point ShapeContainer::centroid() const noexcept {
         c += pts->point(k);
       }
       c = (c / pts->num_points());
-      c.Norm();
-      return c; // FIXME probably broken
+      return c.Normalize(); // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* lines =
@@ -118,14 +118,13 @@ S2Point ShapeContainer::centroid() const noexcept {
         c += lines->line(k).GetCentroid();
       }
       c /= lines->num_lines();
-      c.Norm();
-      return c;
+      return c.Normalize();
     }
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return S2Point();
   }
+  return S2Point();
 }
 
 std::vector<S2CellId> ShapeContainer::covering(S2RegionCoverer* coverer) const
@@ -256,8 +255,8 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::contains(S2LatLngRect const* other) const {
@@ -327,8 +326,8 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 
@@ -359,8 +358,8 @@ bool ShapeContainer::contains(S2Polygon const* poly) const {
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::contains(ShapeContainer const* cc) const {
@@ -399,8 +398,8 @@ bool ShapeContainer::contains(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::equals(Coordinate const* cc) const {
@@ -518,8 +517,8 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(S2Polyline const* other) const {
@@ -556,8 +555,8 @@ bool ShapeContainer::intersects(S2Polyline const* other) const {
     case ShapeContainer::Type::S2_MULTIPOLYLINE:
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(S2LatLngRect const* other) const {
@@ -588,8 +587,8 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 
@@ -621,8 +620,8 @@ bool ShapeContainer::intersects(S2Polygon const* poly) const {
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }
 
 bool ShapeContainer::intersects(ShapeContainer const* cc) const {
@@ -660,6 +659,6 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
     }
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
-      return false;
   }
+  return false;
 }

@@ -614,7 +614,7 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexInsert(_collection->cid(), id(), it);
+      state->trackIndexInsert(_collection->id(), id(), it);
     }
   }
 
@@ -739,7 +739,7 @@ Result RocksDBVPackIndex::removeInternal(transaction::Methods* trx,
     for (auto& it : hashes) {
       // The estimator is only useful if we are in a non-unique indexes
       TRI_ASSERT(!_unique);
-      state->trackIndexRemove(_collection->cid(), id(), it);
+      state->trackIndexRemove(_collection->id(), id(), it);
     }
   }
 

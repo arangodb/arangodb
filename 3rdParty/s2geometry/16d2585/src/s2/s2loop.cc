@@ -919,7 +919,6 @@ class RangeIterator {
 
   MutableS2ShapeIndex::Iterator it_;
   S2CellId range_min_, range_max_;
-  const S2ClippedShape* clipped_;
 };
 
 // LoopCrosser is a helper class for determining whether two loops cross.

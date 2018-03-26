@@ -123,7 +123,7 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
 
   TRI_ASSERT(_type != UNPROCESSED);
   _expressionContext = ctx;
-
+ 
   // and execute
   switch (_type) {
     case JSON: {

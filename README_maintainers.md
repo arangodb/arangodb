@@ -707,7 +707,7 @@ Building will fail if resources aren't cleaned.
 However, if you intend a set of OUTPUT and RUN to demonstrate interactively and share generated *ids*, you have to use an alphabetical
 sortable naming scheme so they're executed in sequence. Using `<modulename>_<sequencenumber>[a|b|c|d]_thisDoesThat` seems to be a good scheme.
 
-  - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
+  - EXAMPLE_ARANGOSH_OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
     * wrapped lines:
       Lines starting with a pipe (`/// |`) are joined together with the next following line.
       You have to use this if you want to execute loops, functions or commands which shouldn't be torn apart by the framework.
@@ -727,7 +727,7 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
         /// | someLongStatement()
         /// ~ // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
 
- - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work.
+ - EXAMPLE_ARANGOSH_RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work.
    The whole chunk of code is executed at once, and is expected **not to throw**.
    You should use **assert(condition)** to ensure the result is what you've expected.
    The *body* can be a string, or a javascript object which is then represented in JSON format.
@@ -739,13 +739,14 @@ sortable naming scheme so they're executed in sequence. Using `<modulename>_<seq
     * output the plain text to dump to the user: `logRawResponse(response);`
     * dump the reply to the errorlog for testing (will mark run as failed): `logErrorResponse(response);`
 
- - AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.
+ - EXAMPLE_AQL is intended to contain AQL queries that can be pasted into arangosh or the webinterfaces query editor.
    Usually this query references an example dataset generator in `js/common/modules/@arangodb/examples/examples.js`
    which the users can also invoke to generate the data in their installation. 
    This sort of example consists of three parts: 
-    - @DATASET{datasetName} - the name of the dataset in the above mentioned `examples.js` to be instanciated before executing this query. 
-    - A following AQL query which may either end at the end of the comment block, or at the optional next section:
-    - @BV - verbatim object containing the bind parameters to be passed into the query. Will also be put into the generated snippet.
+    - @DATASET{datasetName} - (optional) the name of the dataset in the above mentioned `examples.js` to be instanciated before executing this query. 
+    - @EXPLAIN{TRUE|FALSE} - (optional) print execution plan of the AQL query. The default is `FALSE`.
+    - A following AQL query which may either end at the end of the comment block, or at the next section:
+    - @BV - (optional) verbatim object containing the bind parameters to be passed into the query. Will also be put into the generated snippet.
 
 Swagger integration
 ===================

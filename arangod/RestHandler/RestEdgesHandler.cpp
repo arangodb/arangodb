@@ -151,10 +151,12 @@ bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
 
 bool RestEdgesHandler::validateCollection(std::string const& name) {
   CollectionNameResolver resolver(_vocbase);
-  TRI_col_type_e colType = resolver.getCollectionTypeCluster(name);
+  auto collection = resolver.getCollection(name);
+  auto colType = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
+
   if (colType == TRI_COL_TYPE_UNKNOWN) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
 

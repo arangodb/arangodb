@@ -258,15 +258,15 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   TRI_voc_cid_t cid = 0;
   std::string const& value6 = _request->value("collection", found);
   if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    auto c = _vocbase->lookupCollection(value6);
 
     if (c == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return;
     }
 
-    cid = c->cid();
+    cid = c->id();
   }
 
   auto trxContext = transaction::StandaloneContext::Create(_vocbase);
@@ -468,7 +468,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   int res = ctx->bindCollection(_vocbase, collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 

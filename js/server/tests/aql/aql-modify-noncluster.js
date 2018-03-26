@@ -184,7 +184,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfNew : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,7 +192,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfOld : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +208,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames2 : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -224,7 +224,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames4 : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////

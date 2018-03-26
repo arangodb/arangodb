@@ -523,7 +523,7 @@ bool mergeSlice(
 
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
-    pinned.emplace(collection->cid());
+    pinned.emplace(collection->id());
   }
 }
 

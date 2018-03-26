@@ -947,7 +947,7 @@ arangodb::Result MMFilesEngine::persistCollection(
       collection->toVelocyPackIgnore({"path", "statusString"}, true, false);
   VPackSlice const slice = builder.slice();
 
-  auto cid = collection->cid();
+  auto cid = collection->id();
   TRI_ASSERT(cid != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
@@ -994,15 +994,17 @@ arangodb::Result MMFilesEngine::dropCollection(
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("id", VPackValue(collection->cid_as_string()));
+    builder.add("id", VPackValue(std::to_string(collection->id())));
     builder.add("name", VPackValue(collection->name()));
     builder.add("cuid", VPackValue(collection->globallyUniqueId()));
     builder.close();
 
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION,
-                                   vocbase->id(), collection->cid(),
-                                   builder.slice());
-
+    MMFilesCollectionMarker marker(
+      TRI_DF_MARKER_VPACK_DROP_COLLECTION,
+      vocbase->id(),
+      collection->id(),
+      builder.slice()
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -1032,11 +1034,12 @@ void MMFilesEngine::destroyCollection(TRI_vocbase_t* vocbase,
   std::string const name(collection->name());
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
-  unregisterCollectionPath(vocbase->id(), collection->cid());
+  unregisterCollectionPath(vocbase->id(), collection->id());
 
   // delete persistent indexes
-  MMFilesPersistentIndexFeature::dropCollection(vocbase->id(),
-                                                collection->cid());
+  MMFilesPersistentIndexFeature::dropCollection(
+    vocbase->id(), collection->id()
+  );
 
   // rename collection directory
   if (physical->path().empty()) {
@@ -1149,15 +1152,17 @@ Result MMFilesEngine::renameCollection(
   try {
     VPackBuilder builder;
     builder.openObject();
-    builder.add("id", VPackValue(collection->cid_as_string()));
+    builder.add("id", VPackValue(std::to_string(collection->id())));
     builder.add("oldName", VPackValue(oldName));
     builder.add("name", VPackValue(collection->name()));
     builder.close();
 
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_RENAME_COLLECTION,
-                                   vocbase->id(), collection->cid(),
-                                   builder.slice());
-
+    MMFilesCollectionMarker marker(
+      TRI_DF_MARKER_VPACK_RENAME_COLLECTION,
+      vocbase->id(),
+      collection->id(),
+      builder.slice()
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -2154,8 +2159,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
           static_cast<MMFilesCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);
 
-      registerCollectionPath(vocbase->id(), collection->cid(),
-                             physical->path());
+      registerCollectionPath(vocbase->id(), collection->id(), physical->path());
 
       if (!wasCleanShutdown) {
         // iterating markers may be time-consuming. we'll only do it if
@@ -2857,7 +2861,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
   bool stop = false;
   int result = TRI_ERROR_NO_ERROR;
 
-  TRI_ASSERT(collection->cid() != 0);
+  TRI_ASSERT(collection->id() != 0);
 
   // check files within the directory
   std::vector<std::string> files = TRI_FilesDirectory(physical->path().c_str());

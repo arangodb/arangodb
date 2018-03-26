@@ -133,7 +133,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
                 std::string const& name);
-  ~TRI_vocbase_t();
+  TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
   /// @brief sleep interval used when polling for a loading collection's status
@@ -185,7 +185,15 @@ struct TRI_vocbase_t {
  public:
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
-  static bool IsAllowedName(bool allowSystem, std::string const& name);
+  static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
+  static bool IsAllowedName(
+    bool allowSystem,
+    arangodb::velocypack::StringRef const& name
+  ) noexcept;
+
+  /// @brief determine whether a data-source name is a system data-source name
+  static bool IsSystemName(std::string const& name) noexcept;
+
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
@@ -279,17 +287,17 @@ struct TRI_vocbase_t {
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief looks up a collection by identifier
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     TRI_voc_cid_t id
   ) const noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     std::string const& nameOrId
   ) const noexcept;
 
   /// @brief looks up a collection by uuid
-  arangodb::LogicalCollection* lookupCollectionByUuid(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
     std::string const& uuid
   ) const noexcept;
 

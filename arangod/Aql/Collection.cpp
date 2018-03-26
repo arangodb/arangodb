@@ -58,7 +58,7 @@ Collection::~Collection() {}
 
 /// @brief get the collection id
 TRI_voc_cid_t Collection::cid() const {
-  return getCollection()->cid();
+  return getCollection()->id();
 }
   
 /// @brief count the number of documents in the collection
@@ -76,7 +76,7 @@ size_t Collection::count(transaction::Methods* trx) const {
 
 /// @brief returns the collection's plan id
 TRI_voc_cid_t Collection::getPlanId() const {
-  return getCollection()->cid();
+  return getCollection()->id();
 }
 
 std::unordered_set<std::string> Collection::responsibleServers() const {
@@ -118,7 +118,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     for (auto const& n : names) {
       auto collectionInfo = clusterInfo->getCollection(vocbase->name(), n);
       auto list = clusterInfo->getShardList(
-          arangodb::basics::StringUtils::itoa(collectionInfo->cid()));
+          arangodb::basics::StringUtils::itoa(collectionInfo->id()));
       for (auto const& x : *list) {
         res->push_back(x);
       }

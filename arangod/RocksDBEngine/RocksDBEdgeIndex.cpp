@@ -469,7 +469,10 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
   if (r.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexInsert(_collection->cid(), id(), hash);
+    RocksDBTransactionState::toState(trx)->trackIndexInsert(
+      _collection->id(), id(), hash
+    );
+
     return IndexResult();
   } else {
     return IndexResult(r.errorNumber(), this);
@@ -500,7 +503,10 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
   if (res.ok()) {
     std::hash<StringRef> hasher;
     uint64_t hash = static_cast<uint64_t>(hasher(fromToRef));
-    RocksDBTransactionState::toState(trx)->trackIndexRemove(_collection->cid(), id(), hash);
+    RocksDBTransactionState::toState(trx)->trackIndexRemove(
+      _collection->id(), id(), hash
+    );
+
     return IndexResult();
   } else {
     return IndexResult(res.errorNumber(), this);

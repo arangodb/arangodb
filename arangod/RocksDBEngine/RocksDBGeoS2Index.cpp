@@ -60,7 +60,9 @@ class RDBNearIterator final : public IndexIterator {
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() ==
                RocksDBColumnFamily::geo()->GetID());
-    estimateDensity();
+    if (!params.fullRange) {
+      estimateDensity();
+    }
   }
 
   char const* typeName() const override {
@@ -202,6 +204,8 @@ class RDBNearIterator final : public IndexIterator {
         _iter->Next();
       }
     }
+    
+    _near.didScanIntervals(); // calculate next bounds
     // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
 
@@ -393,6 +397,7 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   TRI_ASSERT(!cells.empty());
+  TRI_ASSERT(S2::IsUnitLength(centroid));
 
   RocksDBValue val = RocksDBValue::S2Value(centroid);
   RocksDBKeyLeaser key(trx);
