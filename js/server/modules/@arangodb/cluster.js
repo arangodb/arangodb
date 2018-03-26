@@ -611,7 +611,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             requestTimeout: 60,
             connectTimeout: 60
           });
-          console.topic('heartbeat=debug', 'synchronizeOneShard: first syncCollectionFinalize ok, worked from tick' + tickToSyncFrom + 'to tick' + syReFi.finalTick);
+          console.topic('heartbeat=debug', 'synchronizeOneShard: first syncCollectionFinalize ok, worked from tick ' + tickToSyncFrom + ' to tick ' + syReFi.finalTick);
           tickToSyncFrom = syReFi.finalTick;  // such that the next sync starts
                                               // here
         } catch (errSyReFi) {
