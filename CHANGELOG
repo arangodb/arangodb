@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed internal issue #2147 - fixed database filter in UI
+
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
 * Improvement: The AQL query planner in cluster is now a bit more clever and
