@@ -144,6 +144,18 @@ const expectCollectionPlanToEqualProto = function (collection, protoCollection) 
 };
 
 
+const zip = function(...arrays) {
+  if (arrays.length == 0) {
+    return [];
+  }
+  const minSize = Math.min(...arrays.map(a => a.length));
+
+  const indices = [...new Array(minSize).keys()];
+
+  return indices.map(i => arrays.map(a => a[i]));
+};
+
+
 describe('Collections with distributeShardsLike', function () {
   afterEach(function() {
     internal.db._drop(colName);
@@ -320,6 +332,15 @@ describe('Collections with distributeShardsLike', function () {
               "database": internal.db._name(),
               "collection": colName,
               "distributeShardsLike": protoColName,
+              "shards": zip(shards, protoShards).map(
+                ([shard, protoShard]) => ({
+                  shard: shard,
+                  protoShard: protoShard,
+                  dbServers: [protoShardDist[protoShard].leader]
+                    .concat(protoShardDist[protoShard].followers)
+                    .map(server => dbServerIdByName[server])
+                })
+              ),
             }
           }
         ],
