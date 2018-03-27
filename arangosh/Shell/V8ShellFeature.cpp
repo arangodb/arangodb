@@ -772,34 +772,6 @@ static void JS_StopOutputPager(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief start the invasion
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_StartFlux(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  
-  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
-  V8ShellFeature* shell = static_cast<V8ShellFeature*>(wrap->Value());
-  
-  linenoiseEnableRawMode();
-  TRI_SetStdinVisibility(false);
-  TRI_DEFER(
-            linenoiseDisableRawMode();
-            TRI_SetStdinVisibility(true););
-  
-  
-  auto path = FileUtils::buildFilename(shell->startupDirectory(),
-                                       "contrib/flux/flux.js");
-
-  TRI_ExecuteGlobalJavaScriptFile(isolate, path.c_str(), true);
-  
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes UTF 16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -959,12 +931,6 @@ void V8ShellFeature::initGlobals() {
       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
           ->GetFunction());
-  
-  v8::Local<v8::Value> shell = v8::External::New(_isolate, this);
-  TRI_AddGlobalVariableVocbase(
-       _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_FLUX"),
-       v8::FunctionTemplate::New(_isolate, JS_StartFlux, shell)
-       ->GetFunction());
 }
 
 void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
