@@ -62,7 +62,7 @@ include_directories(
     ${PYTHON_INCLUDE_DIRS})
 include_directories(src)
 
-add_library(s2 SHARED
+add_library(s2 STATIC
             src/s2/base/stringprintf.cc
             src/s2/base/strtoint.cc
             src/s2/id_set_lexicon.cc

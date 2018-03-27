@@ -5264,8 +5264,8 @@ static void optimizeFilterNode(ExecutionPlan* plan,
                           parents.push_back(node->type);
                           if (Ast::IsOrOperatorType(node->type)) {
                             orsInBranch++;
+                            return false;
                           }
-#warning return false for an OR
                           return true;
                         }, [&](AstNode const* node) { // post
                           size_t pl = parents.size();
@@ -5465,9 +5465,6 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
 
     while (current) {
       switch (current->getType()) {
-        case EN::FILTER:
-          optimizeFilterNode(plan.get(), static_cast<FilterNode*>(current), info);
-          break;
         case EN::SORT:
           if (!optimizeSortNode(plan.get(), static_cast<SortNode*>(current), info)) {
             // 1. EnumerateCollectionNode x
@@ -5475,6 +5472,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
             // 3. LimitNode n,m  <-- cannot reuse LIMIT node here
             limit = nullptr;
           }
+          break;
+        case EN::FILTER:
+          optimizeFilterNode(plan.get(), static_cast<FilterNode*>(current), info);
           break;
         case EN::LIMIT: // collect this so we can use it
           limit = static_cast<LimitNode*>(current);

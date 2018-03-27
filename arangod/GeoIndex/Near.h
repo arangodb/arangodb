@@ -46,7 +46,7 @@ namespace geo_index {
 /// result of a geospatial index query. distance may or may not be set
 struct Document {
   Document(LocalDocumentId d, S1ChordAngle angle)
-    : token(d), distAngle(angle) {}
+      : token(d), distAngle(angle) {}
   /// @brief LocalDocumentId
   LocalDocumentId token;
   /// @brief distance from centroids on the unit sphere
@@ -64,7 +64,7 @@ struct DocumentsDescending {
     return a.distAngle < b.distAngle;
   }
 };
-  
+
 /// @brief Helper class to build a simple near query iterator.
 /// Will return points sorted by distance to the target point, can
 /// also filter contains / intersect in regions (on rsesult points and
@@ -99,9 +99,11 @@ class NearUtils {
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
-    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() && _innerAngle <= _outerAngle);
+    TRI_ASSERT(_innerAngle >= S1ChordAngle::Zero() &&
+               _innerAngle <= _outerAngle);
     TRI_ASSERT(_outerAngle <= _maxAngle &&
-               _maxAngle <= S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
+               _maxAngle <=
+                   S1ChordAngle::Radians(geo::kMaxRadiansBetweenPoints));
     return _buffer.empty() && _allIntervalsCovered;
   }
 
@@ -122,7 +124,8 @@ class NearUtils {
   geo_index::Document const& nearest() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!_allIntervalsCovered) {
-      TRI_ASSERT(!isAscending() || isFilterIntersects() || _buffer.top().distAngle <= _innerAngle);
+      TRI_ASSERT(!isAscending() || isFilterIntersects() ||
+                 _buffer.top().distAngle <= _innerAngle);
       TRI_ASSERT(!isDescending() || _buffer.top().distAngle >= _outerAngle);
     }
 #endif
@@ -130,13 +133,11 @@ class NearUtils {
   }
 
   /// @brief remove closest buffered result
-  void popNearest() {
-    _buffer.pop();
-  }
+  void popNearest() { _buffer.pop(); }
 
   /// @brief reset query to inital state
   void reset();
-  
+
   /// aid density estimation by reporting a result close
   /// to the target coordinates
   void estimateDensity(S2Point const& found);
@@ -148,10 +149,10 @@ class NearUtils {
 
   /// buffer and sort results
   void reportFound(LocalDocumentId lid, S2Point const& center);
-  
+
   /// Call after scanning all intervals
   void didScanIntervals();
-  
+
   size_t _found = 0;
   size_t _rejection = 0;
 
@@ -196,7 +197,7 @@ class NearUtils {
   size_t _statsFoundLastInterval;
   /// Total number of interval calculations
   size_t _numScans;
-  
+
   /// Amount to increment by
   S1ChordAngle _deltaAngle;
   /// inner limit of search area
@@ -206,10 +207,10 @@ class NearUtils {
 
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
-  
+
   // deduplication filter
   std::unordered_set<uint64_t> _seenDocs;
-  
+
   /// Track the already scanned region
   std::vector<S2CellId> _scannedCells;
   /// Coverer instance to use
