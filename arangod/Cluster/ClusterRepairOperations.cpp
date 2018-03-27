@@ -314,6 +314,16 @@ MoveShardOperation::toVpackTodo(
   return builder.steal();
 }
 
+template<typename T>
+VPackSlice
+RepairOperationToTransactionVisitor::createSingleValueVpack(T val) {
+  VPackBuilder builder;
+  builder.add(VPackValue(val));
+  VPackSlice slice = builder.slice();
+  _vpackBufferArray.emplace_back(std::move(builder.steal()));
+  return slice;
+};
+
 
 RepairOperationToTransactionVisitor::ReturnValueT
 RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op) {
@@ -330,22 +340,16 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
     = agencyCollectionId(op.database, op.protoCollectionId)
       + "/" + "replicationFactor";
 
-  VPackBuilder builder;
-  builder.add(VPackValue(op.protoCollectionId));
-  velocypack::Slice protoCollectionIdSlice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
-
-  builder = VPackBuilder();
-  builder.add(VPackValue(op.collectionReplicationFactor));
-  velocypack::Slice collectionReplicationFactorSlice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
-
-  builder = VPackBuilder();
-  builder.add(VPackValue(op.protoReplicationFactor));
-  velocypack::Slice protoReplicationFactorSlice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
+  VPackSlice protoCollectionIdSlice
+    = createSingleValueVpack(op.protoCollectionId);
+  VPackSlice collectionReplicationFactorSlice
+    = createSingleValueVpack(op.collectionReplicationFactor);
+  VPackSlice protoReplicationFactorSlice
+    = createSingleValueVpack(op.protoReplicationFactor);
 
   std::vector<AgencyPrecondition> preconditions;
+  std::vector<AgencyOperation> operations;
+
 
   if (op.renameDistributeShardsLike) {
     // assert that distributeShardsLike is set, but repairingDistributeShardsLike
@@ -362,6 +366,46 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
         repairingDistributeShardsLikePath,
         AgencyPrecondition::Type::EMPTY,
         true,
+      }
+    );
+
+    // rename distributeShardsLike to repairingDistributeShardsLike
+    operations.emplace_back(
+      AgencyOperation {
+        repairingDistributeShardsLikePath,
+        AgencyValueOperationType::SET,
+        protoCollectionIdSlice,
+      }
+    );
+    operations.emplace_back(
+      AgencyOperation {
+        distributeShardsLikePath,
+        AgencySimpleOperationType::DELETE_OP,
+      }
+    );
+
+    // assert replicationFactors
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        replicationFactorPath,
+        AgencyPrecondition::Type::VALUE,
+        collectionReplicationFactorSlice,
+      }
+    );
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        protoReplicationFactorPath,
+        AgencyPrecondition::Type::VALUE,
+        protoReplicationFactorSlice,
+      }
+    );
+
+    // set collection.replicationFactor = proto.replicationFactor
+    operations.emplace_back(
+      AgencyOperation {
+        replicationFactorPath,
+        AgencyValueOperationType::SET,
+        protoReplicationFactorSlice,
       }
     );
   }
@@ -382,64 +426,22 @@ RepairOperationToTransactionVisitor::operator()(BeginRepairsOperation const& op)
         true,
       }
     );
-  }
 
-  // assert replicationFactors
-  preconditions.emplace_back(
-    AgencyPrecondition {
-      replicationFactorPath,
-      AgencyPrecondition::Type::VALUE,
-      collectionReplicationFactorSlice,
-    }
-  );
-  preconditions.emplace_back(
-    AgencyPrecondition {
-      protoReplicationFactorPath,
-      AgencyPrecondition::Type::VALUE,
-      protoReplicationFactorSlice,
-    }
-  );
-
-  std::vector<AgencyOperation> operations;
-  if (op.renameDistributeShardsLike) {
-    operations.emplace_back(
-      AgencyOperation {
-        repairingDistributeShardsLikePath,
-        AgencyValueOperationType::SET,
-        protoCollectionIdSlice,
+    // assert replicationFactors to match
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        replicationFactorPath,
+        AgencyPrecondition::Type::VALUE,
+        protoReplicationFactorSlice,
       }
     );
-    operations.emplace_back(
-      AgencyOperation {
-        distributeShardsLikePath,
-        AgencySimpleOperationType::DELETE_OP,
+    preconditions.emplace_back(
+      AgencyPrecondition {
+        protoReplicationFactorPath,
+        AgencyPrecondition::Type::VALUE,
+        protoReplicationFactorSlice,
       }
     );
-
-    // Fix the replicationFactor to be the same as the proto collection,
-    // but only when also renaming distributeShardsLike.
-    // Rationale: As long as distributeShardsLike is set,
-    // collection.replicationFactor is ignored but proto.replicationFactor
-    // is used instead.
-    // This way, we never change the replicationFactor that is actually used.
-    if (op.collectionReplicationFactor != op.protoReplicationFactor) {
-      operations.emplace_back(
-        AgencyOperation {
-          replicationFactorPath,
-          AgencyValueOperationType::SET,
-          protoReplicationFactorSlice,
-        }
-      );
-    }
-    else {
-      preconditions.emplace_back(
-        AgencyPrecondition {
-          replicationFactorPath,
-          AgencyPrecondition::Type::VALUE,
-          protoReplicationFactorSlice
-        }
-      );
-    }
   }
 
   return {
@@ -464,15 +466,10 @@ RepairOperationToTransactionVisitor::operator()(FinishRepairsOperation const& op
     = agencyCollectionId(op.database, op.protoCollectionId)
       + "/" + "replicationFactor";
 
-  VPackBuilder builder;
-  builder.add(VPackValue(op.protoCollectionId));
-  velocypack::Slice protoCollectionIdSlice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
-
-  builder = VPackBuilder();
-  builder.add(VPackValue(op.replicationFactor));
-  velocypack::Slice replicationFactorSlice = builder.slice();
-  _vpackBufferArray.emplace_back(std::move(builder.steal()));
+  VPackSlice protoCollectionIdSlice
+    = createSingleValueVpack(op.protoCollectionId);
+  VPackSlice replicationFactorSlice
+    = createSingleValueVpack(op.replicationFactor);
 
   std::vector<AgencyPrecondition> preconditions{
     AgencyPrecondition {

@@ -193,6 +193,10 @@ class RepairOperationToTransactionVisitor
     DBServers const &followers
   ) const;
 
+  template<typename T>
+  VPackSlice
+  createSingleValueVpack(T val);
+
 };
 
 // Adds any RepairOperation to a VPack as an object, suitable for users to see.
