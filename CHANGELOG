@@ -1,6 +1,8 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 
