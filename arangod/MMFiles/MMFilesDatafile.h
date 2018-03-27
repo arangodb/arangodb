@@ -305,7 +305,7 @@ struct MMFilesDatafile {
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
-  uint32_t const _initSize; // initial size of the datafile (constant)
+  uint32_t mutable _initSize; // initial size of the datafile (constant)
   uint32_t _maximalSize;    // maximal size of the datafile (may be adjusted/reduced at runtime)
   uint32_t _currentSize;    // current size of the datafile
   uint32_t _footerSize;     // size of the final footer

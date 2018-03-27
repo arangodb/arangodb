@@ -39,8 +39,6 @@
 #include <sstream>
 #include <iomanip>
 
-// #define DEBUG_DATAFILE 1
-
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -1200,10 +1198,10 @@ int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   _data = static_cast<char*>(data);
   _next = (char*)(data) + position;
   _currentSize = position;
-  // do not change _initSize!
   TRI_ASSERT(_initSize == _maximalSize);
   TRI_ASSERT(maximalSize <= _initSize);
   _maximalSize = static_cast<uint32_t>(maximalSize);
+  _initSize = maximalSize;
   _fd = fd;
   _mmHandle = mmHandle;
   _state = TRI_DF_STATE_WRITE;
@@ -1257,22 +1255,22 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
   TRI_DEFER(TRI_UpdateTickServer(maxTick));
 
   while (ptr < end) {
+    bool const canRead = (ptr + sizeof(MMFilesMarker) <= end);
+
     MMFilesMarker const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
     uint32_t const size = marker->getSize();
     TRI_voc_tick_t const tick = marker->getTick();
     MMFilesMarkerType const type = marker->getType();
 
-#ifdef DEBUG_DATAFILE
-    LOG_TOPIC(TRACE, arangodb::Logger::DATAFILES) << "MARKER: size " << size << ", tick " << tick << ", crc " << marker->getCrc() << ", type " << type;
-#endif
+    if (canRead) {
+      if (size == 0) {
+        LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "reached end of datafile '" << getName() << "' data, current size " << currentSize;
 
-    if (size == 0) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::DATAFILES) << "reached end of datafile '" << getName() << "' data, current size " << currentSize;
+        _currentSize = currentSize;
+        _next = _data + _currentSize;
 
-      _currentSize = currentSize;
-      _next = _data + _currentSize;
-
-      return true;
+        return true;
+      }
     }
 
     if (size < sizeof(MMFilesMarker)) {
@@ -1603,11 +1601,17 @@ DatafileScan MMFilesDatafile::scanHelper() {
 
     MMFilesMarkerType const type = marker->getType();
 
-    if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-        type == TRI_DF_MARKER_VPACK_REMOVE) {
-      VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
-      TRI_ASSERT(slice.isObject());
-      entry.key = slice.get(StaticStrings::KeyString).copyString();
+    if (ok) {
+      if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+          type == TRI_DF_MARKER_VPACK_REMOVE) {
+        VPackSlice const slice(reinterpret_cast<char const*>(marker) + MMFilesDatafileHelper::VPackOffset(type));
+        TRI_ASSERT(slice.isObject());
+        try {
+          entry.key = slice.get(StaticStrings::KeyString).copyString();
+        } catch (...) {
+          entry.key = "(unable to read value of _key)";
+        }
+      }
     }
 
     scan.entries.emplace_back(entry);
@@ -1660,6 +1664,11 @@ bool MMFilesDatafile::tryRepair() {
   uint32_t currentSize = 0;
 
   while (ptr < end) {
+    if (ptr + sizeof(MMFilesMarker) > end) {
+      // remaining data chunk is too small
+      return false;
+    }
+
     MMFilesMarker* marker = reinterpret_cast<MMFilesMarker*>(ptr);
     uint32_t const size = marker->getSize();
 
