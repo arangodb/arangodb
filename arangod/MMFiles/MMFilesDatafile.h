@@ -298,8 +298,8 @@ struct MMFilesDatafile {
   /// @brief tries to repair a datafile
   bool tryRepair();
 
-  void printMarker(MMFilesMarker const* marker, uint32_t size, char const* begin, char const* end) const;
-
+  static void printMarker(MMFilesMarker const* marker, uint32_t size, char const* begin, char const* end);
+ 
  private:
   std::string _filename;  // underlying filename
   TRI_voc_fid_t const _fid;  // datafile identifier
