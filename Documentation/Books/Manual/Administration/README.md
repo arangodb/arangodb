@@ -1,18 +1,20 @@
 Administration
 ==============
 
-Most administration can be managed using the *arangosh*.
+Tools
+-----
 
+Deployments of ArangoDB servers can be managed with the following tools:
 
-Filesystems
------------
+- [**Web interface**](): [arangod]() serves a graphical web interface to be accessed via the server port with a browser. It provides basic and advanced functionality to interact with the server and its data.
 
-As one would expect for a database, we recommend a locally mounted filesystems.
+- **ArangoShell**: [arangosh]() is a V8 shell to interact with any local or remote ArangoDB server through a JavaScript interface. It can be used to automate tasks. Some developers may prefer it over the web interface, especially for simple CRUD. It is not to be confused with general command lines like Bash or PowerShell.
 
-NFS or similar network filesystems will not work.
+- **RESTful API**: arangod has an [HTTP interface]() through which it can be fully managed. The official client tools including arangosh and the Web interface talk to this bare metal interface. It is also relevant for [driver]() developers.
 
-On Linux we recommend the use of ext4fs, on Windows NTFS and on MacOS HFS+.
+- [**ArangoDB Starter**](): This deployment tool helps to start arangod instances, like for a cluster or a resilient setup.
 
-We recommend to **not** use BTRFS on Linux. It is known to not work well in conjunction with ArangoDB.
-We experienced that ArangoDB faces latency issues on accessing its database files on BTRFS partitions.
-In conjunction with BTRFS and AUFS we also saw data loss on restart.
+<!-- In case of a cluster, the web interface can be reached via any of the coordinators. (?) -->
+
+Topics
+------

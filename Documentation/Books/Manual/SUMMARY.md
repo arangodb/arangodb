@@ -7,14 +7,14 @@
 ## GETTING FAMILIAR 
 
 * [Getting Started](GettingStarted/README.md)
-  * [Installation](GettingStarted/Installation.md) 
+  * [Installation](GettingStarted/Installation.md)
   * [Authentication](GettingStarted/Authentication.md)
-  * [Web Interface](GettingStarted/WebInterface.md) 
-  * [Databases, Collections and Documents](GettingStarted/DatabasesCollectionsDocuments.md)   
-  * [Querying the Database](GettingStarted/QueryingTheDatabase.md)   
+  * [Web Interface](GettingStarted/WebInterface.md)
+  * [Databases, Collections and Documents](GettingStarted/DatabasesCollectionsDocuments.md)
+  * [Querying the Database](GettingStarted/QueryingTheDatabase.md)
   * [Coming from SQL](GettingStarted/ComingFromSql.md)
-  * [Next Steps](GettingStarted/NextSteps.md) 
-* [Tutorials](Tutorials/README.md)  
+  * [Next Steps](GettingStarted/NextSteps.md)
+* [Tutorials](Tutorials/README.md)
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
@@ -24,11 +24,23 @@
   * [ArangoDB Starter](Programs/Starter/README.md)
     * [Options](Programs/Starter/options.md)
     * [Security](Programs/Starter/security.md)
+  * [Arangodump](Programs/Arangodump/README.md)
+  * [Arangorestore](Programs/Arangorestore/README.md)
+  * [Arangoimport](Programs/Arangoimport/README.md)
+  * [Arangoexport](Programs/Arangoexport/README.md)
+  * [Arangobench](Troubleshooting/Arangobench.md)
+  * [Datafile Debugger](Programs/DatafileDebugger.md)
 
 ## CORE TOPICS	
 
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
+<!--
+  * [Multi-model]()
+    * [Key-value]()
+    * [Document]()
+    * [Graph]()
+-->
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
     * [Notes about Databases](DataModeling/Databases/Notes.md)
@@ -83,9 +95,9 @@
 ## ADVANCED TOPICS	
 
 * [Architecture](Architecture/README.md)
+  * [Storage Engines](Architecture/StorageEngines.md)
   * [Replication](Architecture/Replication/README.md)
   * [Write-ahead log](Architecture/WriteAheadLog.md)
-  * [Storage Engines](Architecture/StorageEngines.md)
 * [Foxx Microservices](Foxx/README.md)
   * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
@@ -178,6 +190,8 @@
     * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 * [Administration](Administration/README.md)
+  * [Backup & Restore](Administration/BackupRestore.md)
+  * [Import & Export](Administration/ImportExport.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Dashboard](Administration/WebInterface/Dashboard.md)
     * [Cluster](Administration/WebInterface/Cluster.md)
@@ -192,10 +206,6 @@
     * [Shell Output](Administration/Arangosh/Output.md)
     * [Configuration](Administration/Arangosh/Configuration.md)
     * [Details](GettingStarted/Arangosh.md)
-  * [Arangoimport](Administration/Arangoimport.md)
-  * [Arangodump](Administration/Arangodump.md)
-  * [Arangorestore](Administration/Arangorestore.md)
-  * [Arangoexport](Administration/Arangoexport.md)
   * [Managing Users](Administration/ManagingUsers/README.md)
     * [In Arangosh](Administration/ManagingUsers/InArangosh.md)
   * [Server Configuration](Administration/Configuration/README.md)
@@ -247,8 +257,6 @@
 * [Troubleshooting](Troubleshooting/README.md)
   * [arangod](Troubleshooting/Arangod.md)
   * [Emergency Console](Troubleshooting/EmergencyConsole.md)
-  * [Datafile Debugger](Troubleshooting/DatafileDebugger.md)
-  * [Arangobench](Troubleshooting/Arangobench.md)
   * [Cluster](Troubleshooting/Cluster/README.md)  
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/   
   * [Datacenter to datacenter replication](Troubleshooting/DC2DC/README.md)  

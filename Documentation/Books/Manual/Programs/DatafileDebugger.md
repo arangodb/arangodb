@@ -1,8 +1,10 @@
 Datafile Debugger
 =================
 
-In Case Of Disaster
--------------------
+{% hint 'info' %}
+`arango-dfdb` works with the
+[MMFiles storage engine](../Architecture/StorageEngines.md) only.
+{% endhint %}
 
 AranagoDB uses append-only journals. Data corruption should only occur when the
 database server is killed. In this case, the corruption should only occur in the

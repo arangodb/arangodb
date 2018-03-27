@@ -15,16 +15,16 @@ The full ArangoDB package comes with the following programs:
   A client that implements a read-eval-print loop (REPL) and provides functions
   to access and administrate the ArangoDB server.
 
-- `arangoimport`: [Bulk importer](../Administration/Arangoimport.md) for the
+- `arangoimport`: [Bulk importer](../Arangoimport/README.md) for the
   ArangoDB server. It supports JSON and CSV.
 
-- `arangoexport`: [Bulk exporter](../Administration/Arangoexport.md) for the
+- `arangoexport`: [Bulk exporter](../Arangoexport/README.md) for the
   ArangoDB server. It supports JSON, CSV and XML.
 
-- `arangodump`: Tool to [create backups](../Administration/Arangodump.md)
+- `arangodump`: Tool to [create backups](../Arangodump/README.md)
   of an ArangoDB database in JSON format.
 
-- `arangorestore`: Tool to [load data of a backup](../Administration/Arangorestore.md)
+- `arangorestore`: Tool to [load data of a backup](../Arangorestore/README.md)
   back into an ArangoDB database.
 
 - `arango-dfdb`: [Datafile debugger](../Troubleshooting/DatafileDebugger.md) for
