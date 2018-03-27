@@ -298,6 +298,8 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
       --extraArgs:scheduler.threads 1 \
       --extraArgs:javascript.gc-frequency 1000000 \
       --extraArgs:javascript.gc-interval 65536 \
+      --extraArgs:log.level debug \
+      --extraArgs:log.force-direct true \
       --javascript.v8-contexts 2 \
       --valgrind /usr/bin/valgrind \
       --valgrindargs:log-file /tmp/valgrindlog.%p
@@ -306,6 +308,9 @@ syntax --option value --sub:option value. Using Valgrind could look like this:
  - we specify some arangod arguments via --extraArgs which increase the server performance
  - we specify to run using valgrind (this is supported by all facilities)
  - we specify some valgrind commandline arguments
+ - we set the loglevel to debug
+ - we force the logging not to happen asynchroneous
+ - eventually you may still add temporary `console.log()` statements to tests you debug.
 
 Running a single unittestsuite
 ------------------------------

@@ -322,10 +322,10 @@ AqlValue Functions::AddOrSubtractUnitFromTimestamp(Query* query,
   tp_sys_clock_ms resTime;
   if (isSubtract) {
     resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() -
-                              std::chrono::duration_cast<milliseconds>(ms)};
+                              std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   } else {
     resTime = tp_sys_clock_ms{sys_days(ymd) + day_time.to_duration() +
-                              std::chrono::duration_cast<milliseconds>(ms)};
+                              std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
   return TimeAqlValue(resTime);
 }
@@ -2424,7 +2424,7 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
 AqlValue Functions::DateNow(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&) {
   auto millis =
-      duration_cast<milliseconds>(system_clock::now().time_since_epoch());
+      std::chrono::duration_cast<duration<int64_t, std::milli>>(system_clock::now().time_since_epoch());
   uint64_t dur = millis.count();
   return AqlValue(AqlValueHintUInt(dur));
 }
@@ -2477,12 +2477,14 @@ AqlValue Functions::DateFromParameters(
     funcName = "DATE_ISO8601";
   }
   tp_sys_clock_ms tp;
+  duration<int64_t, std::milli> time;
 
   if (parameters.size() == 1) {
     if (!ParameterToTimePoint(query, trx, parameters, tp, funcName.c_str(),
                               0)) {
       return AqlValue(AqlValueHintNull());
     }
+    time = tp.time_since_epoch();
   } else {
     if (parameters.size() < 3 || parameters.size() > 7) {
       // YMD is a must
@@ -2572,12 +2574,16 @@ AqlValue Functions::DateFromParameters(
       }
     }
 
-    tp = sys_days(ymd) + h + min + s + ms;
+    time = sys_days(ymd).time_since_epoch();
+    time += h;
+    time += min;
+    time += s;
+    time += ms;
+    tp = tp_sys_clock_ms(time);
   }
 
   if (asTimestamp) {
-    auto millis = duration_cast<milliseconds>(tp.time_since_epoch());
-    return AqlValue(AqlValueHintInt(millis.count()));
+    return AqlValue(AqlValueHintInt(time.count()));
   } else {
     return TimeAqlValue(tp);
   }
