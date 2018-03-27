@@ -170,8 +170,7 @@ int IResearchLink::drop() {
 
   // if the collection is in the process of being removed then drop it from the view
   if (_collection->deleted()) {
-    auto result =
-      _view->updateLogicalProperties(emptyObjectSlice(), true, false); // revalidate all links
+    auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)

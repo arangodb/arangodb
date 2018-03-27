@@ -314,9 +314,11 @@ bool TRI_vocbase_t::unregisterCollection(
   auto itr = _dataSourceById.find(collection->id());
 
   if (itr == _dataSourceById.end()
-      || !std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second)) {
+      || itr->second->category() != LogicalCollection::category()) {
     return true; // no such collection
   }
+
+  TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalCollection>(itr->second));
 
   // only if we find the collection by its id, we can delete it by name
   _dataSourceById.erase(itr);
@@ -391,9 +393,11 @@ bool TRI_vocbase_t::unregisterView(
   auto itr = _dataSourceById.find(view->id());
 
   if (itr == _dataSourceById.end()
-      || !std::dynamic_pointer_cast<arangodb::LogicalView>(itr->second)) {
+      || itr->second->category() != arangodb::LogicalView::category()) {
     return true; // no such view
   }
+
+  TRI_ASSERT(std::dynamic_pointer_cast<arangodb::LogicalView>(itr->second));
 
   // only if we find the collection by its id, we can delete it by name
   _dataSourceById.erase(itr);
@@ -1590,8 +1594,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     );
   }
 
-  // FIXME first check for existence???
-
   // Try to create a new view. This is not registered yet
   auto view = viewFactory(*this, parameters, true);
 
@@ -1609,27 +1611,26 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
   if (it != _dataSourceByName.end()) {
     events::CreateView(name, TRI_ERROR_ARANGO_DUPLICATE_NAME);
+
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
-    // id might have been assigned
-    id = view->id();
-
-    // Let's try to persist it.
-    view->persistPhysicalView();
-
     // And lets open it.
     view->open();
 
     events::CreateView(name, TRI_ERROR_NO_ERROR);
-    return view;
   } catch (...) {
     unregisterView(view);
     throw;
   }
+
+  // noexcept below
+  id = view->id();
+
+  return view;
 }
 
 /// @brief creates a new view from parameter set

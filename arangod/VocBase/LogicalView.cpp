@@ -115,26 +115,16 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id()));
 }
 
-/// @brief Persist the connected physical view
-///        This should be called AFTER the view is successfully
-///        created and only on Single/DBServer
-void LogicalView::persistPhysicalView() {
-  // Coordinators are not allowed to have local views!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  // We have not yet persisted this view
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createView(vocbase(), id(), this);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                               DBServerLogicalView
 // -----------------------------------------------------------------------------
 
 DBServerLogicalView::DBServerLogicalView(
     TRI_vocbase_t* vocbase,
-    VPackSlice const& info
-) : LogicalView(vocbase, info) {
+    VPackSlice const& info,
+    bool isNew
+) : LogicalView(vocbase, info),
+    _isNew(isNew) {
 }
 
 DBServerLogicalView::~DBServerLogicalView() {
@@ -143,6 +133,20 @@ DBServerLogicalView::~DBServerLogicalView() {
     TRI_ASSERT(engine);
     engine->destroyView(vocbase(), this);
   }
+}
+
+void DBServerLogicalView::open() {
+  // Coordinators are not allowed to have local views!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  if (!_isNew) {
+    return;
+  }
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  engine->createView(vocbase(), id(), this);
+  _isNew = false;
 }
 
 void DBServerLogicalView::drop() {

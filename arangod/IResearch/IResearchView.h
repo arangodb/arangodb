@@ -246,16 +246,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::LogicalDataSource::Type const& type() noexcept;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief update the view properties via the LogicalView allowing for tracking
-  ///        update via WAL entries
-  ///////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateLogicalProperties(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool doSync
-  );
-
   void toVelocyPack(
     velocypack::Builder& result,
     bool includeProperties,
@@ -327,15 +317,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   IResearchView(
     TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& info,
-    irs::utf8_path&& persistedPath
-  );
-
-  // FIXME remove
-  void dropImpl();
-  arangodb::Result updatePropertiesImpl(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool doSync
+    irs::utf8_path&& persistedPath,
+    bool isNew
   );
 
   ///////////////////////////////////////////////////////////////////////////////

@@ -93,12 +93,6 @@ class LogicalView : public LogicalDataSource {
     bool doSync
   ) = 0;
 
-  //FIXME remove
-  /// @brief Persist the connected physical view.
-  ///        This should be called AFTER the view is successfully
-  ///        created and only on Sinlge/DBServer
-  void persistPhysicalView();
-
  protected:
   static TRI_voc_cid_t readViewId(velocypack::Slice slice);
 
@@ -132,6 +126,8 @@ class DBServerLogicalView : public LogicalView {
  public:
   ~DBServerLogicalView() override;
 
+  void open() override;
+
   void drop() override;
 
   Result rename(
@@ -152,7 +148,14 @@ class DBServerLogicalView : public LogicalView {
   ) override;
 
  protected:
-  DBServerLogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
+  DBServerLogicalView(
+    TRI_vocbase_t* vocbase,
+    velocypack::Slice const& definition,
+    bool isNew
+  );
+
+ private:
+  bool _isNew;
 }; // LogicalView
 
 }  // namespace arangodb
