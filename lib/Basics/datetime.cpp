@@ -52,7 +52,7 @@ bool arangodb::basics::parse_dateTime(
                                 "\\d\\d\\:\\d\\d" // timezone hh:mm
                               ")?"
                             ")|"  
-                            "(z|Z)?" // Z
+                            "(z|Z)" // Z
                            ")?"
                            );
 
