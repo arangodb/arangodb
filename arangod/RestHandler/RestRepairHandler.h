@@ -67,6 +67,10 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   // TODO maybe implement cancel() ?
 
  private:
+  bool _pretendOnly = true;
+
+  bool pretendOnly();
+
   RestStatus repairDistributeShardsLike();
 
   Result executeRepairOperations(

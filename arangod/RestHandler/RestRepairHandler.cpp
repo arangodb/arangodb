@@ -46,13 +46,18 @@ RestStatus RestRepairHandler::execute() {
     return RestStatus::FAIL;
   }
 
-  // TODO Allow GET and implement it as a pretend-only version
+  switch (_request->requestType()) {
+    case rest::RequestType::POST:
+      _pretendOnly = false;
+      break;
+    case rest::RequestType::GET:
+      _pretendOnly = true;
+      break;
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
 
-  if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
-
-    return RestStatus::FAIL;
+      return RestStatus::FAIL;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -221,12 +226,15 @@ bool RestRepairHandler::repairCollection(
 
   response.close();
 
-  Result result = executeRepairOperations(repairOperations);
-  if (result.fail()) {
-    success = false;
-    response.add(StaticStrings::ErrorMessage,
-                 VPackValue(result.errorMessage()));
-    addErrorDetails(response, result.errorNumber());
+  if (! pretendOnly()) {
+    Result result = executeRepairOperations(repairOperations);
+    if (result.fail()) {
+      success = false;
+      response.add(
+        StaticStrings::ErrorMessage,
+        VPackValue(result.errorMessage()));
+      addErrorDetails(response, result.errorNumber());
+    }
   }
 
   return success;
@@ -537,3 +545,5 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
     builder.add("errorDetails", VPackValue(errorDetails.get()));
   }
 }
+
+bool RestRepairHandler::pretendOnly() { return _pretendOnly; }
