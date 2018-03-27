@@ -187,7 +187,7 @@ all clients have disconnected and references have been garbage-collected.
 
 ### Engine
 
-retrieve storage engine used by the server
+retrieve the storage engine used by the server
 `db._engine()`
 
 Returns the name of the storage engine in use (`mmfiles` or `rocksdb`), as well
@@ -199,7 +199,7 @@ as a list of supported features (types of indexes and
 retrieve statistics related to the storage engine (rocksdb)
 `db._engineStats()`
 
-Returns some statistics related to storage engine activity, including figures
+Returns some statistics related to the storage engine activity, including figures
 about data size, cache usage, etc.
 
 **Note**: Currently this only produces useful output for the RocksDB engine.
