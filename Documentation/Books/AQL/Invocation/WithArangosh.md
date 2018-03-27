@@ -337,7 +337,7 @@ a client.
 ### Using cursors to obtain additional information on internal timings
 
 Cursors can also optionally provide statistics of the internal execution phases. By default, they do not. 
-To get to know how long parsing, otpimisation, instanciation and execution took,
+To get to know how long parsing, optimization, instantiation and execution took,
 make the server return that by setting the *profile* attribute to
 *true* when creating a statement:
 
@@ -359,3 +359,15 @@ produced statistics:
     c.getExtra();
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 06_workWithAQL_statements12
+
+Query validation
+----------------
+
+The *_parse* method of the *db* object can be used to parse and validate a
+query syntactically, without actually executing it.
+
+    @startDocuBlockInline 06_workWithAQL_statements13
+    @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statements13}
+    db._parse( { "query": "FOR i IN [ 1, 2 ] RETURN i" } );
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock 06_workWithAQL_statements13
