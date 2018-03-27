@@ -366,6 +366,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
 
+  // FIXME came from "LogicalView", check whether it needs to be there
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
 };
 

@@ -99,8 +99,8 @@ class LogicalView : public LogicalDataSource {
   LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
 
  private:
+  // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
-
   mutable basics::ReadWriteLock _lock;
 }; // LogicalView
 
