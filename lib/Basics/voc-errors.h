@@ -1704,6 +1704,12 @@ constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED                              
 /// before it finished
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED                         = 5009;
 
+/// 5010:
+/// "agency transaction failed during cluster repairs"
+/// Will be raised if an agency transaction failed during either
+/// sending or executing it.
+constexpr int TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED                        = 5010;
+
 /// 20001: ERROR_AGENCY_INQUIRY_SYNTAX
 /// "Illegal inquiry syntax"
 /// Inquiry handles a list of string clientIds: [<clientId>,...].

@@ -321,6 +321,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS, "mismatching shards during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
+  REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
   REG_ERROR(ERROR_AGENCY_INQUIRY_SYNTAX, "Illegal inquiry syntax");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");

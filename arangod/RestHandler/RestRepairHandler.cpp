@@ -320,7 +320,10 @@ Result RestRepairHandler::executeRepairOperations(
   AgencyComm comm;
   // TODO If an operation fails during execution, add a hint on which one
   // in the response to the user!
+
+  size_t opNum = 0;
   for (auto& op : repairOperations) {
+    opNum += 1;
     auto visitor = RepairOperationToTransactionVisitor();
     auto trxJobPair = boost::apply_visitor(visitor, op);
 
@@ -333,12 +336,18 @@ Result RestRepairHandler::executeRepairOperations(
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
     if (!result.successful()) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-          << "RestRepairHandler::executeRepairOperations: "
-          << "Failed to send transaction to the agency. Error was: "
-          << "[" << result.errorCode() << "] " << result.errorMessage();
+      std::stringstream errMsg;
+      errMsg << "Failed to send and execute operation. "
+             << "Collection: " << databaseId << "/" << collectionId << ", "
+             << "agency error: "
+             << "[" << result.errorCode() << "] " << result.errorMessage()
+             << ", "
+             << "operation#" << opNum << ": " << op;
 
-      return Result(result.errorCode(), result.errorMessage());
+      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "RestRepairHandler::executeRepairOperations: " << errMsg.str();
+
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, errMsg.str());
     }
 
     // If the transaction posted a job, we wait for it to finish.
@@ -520,13 +529,14 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY:
       errorDetails =
+          "Error while collecting repair actions. "
           "There are not enough healthy DBServers to complete the repair "
           "operations. Please try again after getting your unhealthy "
-          "DBServer(s) "
-          "up again.";
+          "DBServer(s) up again.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED:
       errorDetails =
+          "Error while collecting repair actions. "
           "Somewhere the replicationFactor is violated, e.g. this collection "
           "has a different replicationFactor or number of DBServers than its "
           "distributeShardsLike prototype. This has to be fixed before this "
@@ -534,21 +544,23 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS:
       errorDetails =
+          "Error while collecting repair actions. "
           "Some shard of this collection doesn't have any DBServers. This "
-          "should "
-          "not happen. Please report this error.";
+          "should not happen. "
+          "Please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS:
       errorDetails =
+          "Error while collecting repair actions. "
           "Mismatching leaders of a shard and its distributeShardsLike "
-          "prototype "
-          "shard, after the leader should already have been fixed. "
+          "prototype shard, after the leader should already have been fixed. "
           "This should not happen, but it should be safe to try this job "
           "again. "
           "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS:
       errorDetails =
+          "Error while collecting repair actions. "
           "Mismatching followers of a shard and its distributeShardsLike "
           "prototype shard, after they should already have been fixed. "
           "This should not happen, but it should be safe to try this job "
@@ -557,6 +569,7 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES:
       errorDetails =
+          "Error while collecting repair actions. "
           "Unexpected state of distributeShardsLike or "
           "repairingDistributeShardsLike attribute. "
           "This should not happen, but it should be safe to try this job "
@@ -565,25 +578,32 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS:
       errorDetails =
+          "Error while collecting repair actions. "
           "In this collection, some shard and its distributeShardsLike "
-          "prototype "
-          "have an unequal number of DBServers. This has to be fixed before "
-          "this collection can be repaired.";
+          "prototype have an unequal number of DBServers. This has to be fixed "
+          "before this collection can be repaired.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED:
       errorDetails =
           "Error during repairs! "
           "Moving a shard failed. Did you do any changes to the affected "
-          "collection(s) or the cluster during the repairs? "
-          "It should be safe to try this job again. "
+          "collection(s) or the cluster during the repairs? It should be safe "
+          "to try this job again. "
           "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED:
       errorDetails =
           "Error during repairs! "
-          "A job to move a shard disappeared. "
-          "This should not happen. "
+          "A job to move a shard disappeared. This should not happen. "
           "Please report this error.";
+      break;
+    case TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED:
+      errorDetails =
+          "Error during repairs! "
+          "Executing an operation as an agency transaction failed. Did you do "
+          "any changes to the affected collection(s) or the cluster during the "
+          "repairs? It should be safe to try this job again. "
+          "If that does not help, please report this error.";
       break;
     default:
         // Some non-repair related error

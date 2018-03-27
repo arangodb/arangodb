@@ -322,6 +322,7 @@
     "ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS" : { "code" : 5007, "message" : "mismatching shards during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_JOB_FAILED" : { "code" : 5008, "message" : "move shard job failed during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED" : { "code" : 5009, "message" : "move shard job disappeared during cluster repairs" },
+    "ERROR_CLUSTER_REPAIRS_OPERATION_FAILED" : { "code" : 5010, "message" : "agency transaction failed during cluster repairs" },
     "ERROR_AGENCY_INQUIRY_SYNTAX"  : { "code" : 20001, "message" : "Illegal inquiry syntax" },
     "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM" : { "code" : 20012, "message" : "Inform message must contain uint parameter 'term'" },
