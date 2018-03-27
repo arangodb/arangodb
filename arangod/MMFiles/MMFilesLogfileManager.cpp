@@ -179,7 +179,7 @@ void MMFilesLogfileManager::collectOptions(std::shared_ptr<ProgramOptions> optio
       "ignore logfile errors. this will read recoverable data from corrupted "
       "logfiles but ignore any unrecoverable data",
       new BooleanParameter(&_ignoreLogfileErrors));
-
+  
   options->addOption(
       "--wal.ignore-recovery-errors",
       "continue recovery even if re-applying operations fails",
@@ -392,8 +392,7 @@ bool MMFilesLogfileManager::open() {
   res = startMMFilesSynchronizerThread();
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: "
-               << TRI_errno_string(res);
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not start WAL synchronizer thread: " << TRI_errno_string(res);
     return false;
   }
 
@@ -2150,11 +2149,10 @@ int MMFilesLogfileManager::inspectLogfiles() {
         }
         return res;
       }
-
       _logfiles.erase(it++);
       continue;
     }
-
+     
     if (logfile->status() == MMFilesWalLogfile::StatusType::OPEN ||
         logfile->status() == MMFilesWalLogfile::StatusType::SEALED) {
       _recoverState->logfilesToProcess.push_back(logfile.get());

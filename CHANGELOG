@@ -1,6 +1,8 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* improve startup resilience in case there are datafile errors
+
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 

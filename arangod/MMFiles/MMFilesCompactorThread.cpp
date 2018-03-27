@@ -49,6 +49,8 @@
 
 using namespace arangodb;
 
+static char const* ReasonCorrupted =
+    "skipped compaction because collection has corrupted datafile(s)";
 static char const* ReasonNoDatafiles =
     "skipped compaction because collection has no datafiles";
 static char const* ReasonCompactionBlocked =
@@ -711,6 +713,15 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t totalSize = 0;
   char const* reason = nullptr;
   char const* firstReason = nullptr;
+  
+  for (size_t i = start; i < n; ++i) {
+    MMFilesDatafile* df = datafiles[i];
+    if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "cannot compact datafile " << df->fid() << " of collection '" << collection->name() << "' because it has errors";
+      physical->setCompactionStatus(ReasonCorrupted);
+      return false;
+    }
+  }
 
   for (size_t i = start; i < n; ++i) {
     MMFilesDatafile* df = datafiles[i];
@@ -938,6 +949,8 @@ void MMFilesCompactorThread::run() {
                       }
                       // if we worked or were blocked, then we don't set the compaction stamp to
                       // force another round of compaction
+                    } catch (std::exception const& ex) {
+                      LOG_TOPIC(ERR, Logger::COMPACTOR) << "caught exception during compaction: " << ex.what();
                     } catch (...) {
                       LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
                       // in case an error occurs, we must still free this ditch
@@ -948,6 +961,8 @@ void MMFilesCompactorThread::run() {
                         ->freeDitch(ce);
                   }
                 }
+              } catch (std::exception const& ex) {
+                LOG_TOPIC(ERR, Logger::COMPACTOR) << "caught exception during compaction: " << ex.what();
               } catch (...) {
                 // in case an error occurs, we must still relase the lock
                 LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
