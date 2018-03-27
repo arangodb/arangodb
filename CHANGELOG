@@ -1,6 +1,7 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* improve startup resilience in case there are datafile errors
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 

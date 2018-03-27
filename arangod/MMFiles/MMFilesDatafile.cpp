@@ -861,7 +861,7 @@ int MMFilesDatafile::seal() {
     _isSealed = true;
     _state = TRI_DF_STATE_READ;
     // note: _initSize must remain constant
-    TRI_ASSERT(_initSize == _maximalSize);
+    //TRI_ASSERT(_initSize == _maximalSize);
     _maximalSize = _currentSize;
   }
 
@@ -1113,7 +1113,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   }
 
   // open the file
-  std::string filename = arangodb::basics::FileUtils::buildFilename(getName(), ".new");
+  std::string filename = getName() + ".new";
 
   int fd =
       TRI_TRACKED_CREATE_FILE(filename.c_str(), O_CREAT | O_EXCL | O_RDWR | TRI_O_CLOEXEC,
@@ -1207,24 +1207,26 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   _maximalSize = static_cast<TRI_voc_size_t>(maximalSize);
   _fd = fd;
   _mmHandle = mmHandle;
-  _state = TRI_DF_STATE_CLOSED;
+  _state = TRI_DF_STATE_WRITE;
   _full = false;
   _isSealed = false;
   _synced = static_cast<char*>(data);
   _written = _next;
 
   // rename files
-  std::string oldname = arangodb::basics::FileUtils::buildFilename(_filename, ".corrupted");
+  std::string oldname = _filename + ".corrupted";
 
   res = TRI_RenameFile(_filename.c_str(), oldname.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "unable to rename file '" << filename << "' to '" << oldname << "': " << TRI_errno_string(res);
     return res;
   }
 
   res = TRI_RenameFile(filename.c_str(), _filename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "unable to rename file '" << filename << "' to '" << _filename << "': " << TRI_errno_string(res);
     return res;
   }
 
@@ -1445,7 +1447,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
   return true;
 }
 
-void MMFilesDatafile::printMarker(MMFilesMarker const* marker, TRI_voc_size_t size, char const* begin, char const* end) const {
+void MMFilesDatafile::printMarker(MMFilesMarker const* marker, TRI_voc_size_t size, char const* begin, char const* end) {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "raw marker data following:";
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
@@ -1768,7 +1770,7 @@ MMFilesDatafile* MMFilesDatafile::open(std::string const& filename, bool ignoreF
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!filename.empty());
 
-  std::unique_ptr<MMFilesDatafile> datafile(MMFilesDatafile::openHelper(filename, false));
+  std::unique_ptr<MMFilesDatafile> datafile(MMFilesDatafile::openHelper(filename, ignoreFailures));
 
   if (datafile == nullptr) {
     return nullptr;
@@ -1853,7 +1855,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   char buffer[128];
   memset(&buffer[0], 0, sizeof(buffer)); 
 
-  ssize_t len = sizeof(MMFilesDatafileHeaderMarker);
+  size_t const len = sizeof(MMFilesDatafileHeaderMarker);
 
   ssize_t toRead = sizeof(buffer);
   if (toRead > static_cast<ssize_t>(status.st_size)) {
@@ -1888,6 +1890,8 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
 
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "corrupted datafile header read from '" << filename << "'";
+    
+    printMarker(reinterpret_cast<MMFilesMarker const*>(ptr), len, &buffer[0], end);
 
     if (!ignoreErrors) {
       TRI_TRACKED_CLOSE_FILE(fd);
