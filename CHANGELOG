@@ -1,5 +1,8 @@
 devel
 -----
+
+* fix internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
