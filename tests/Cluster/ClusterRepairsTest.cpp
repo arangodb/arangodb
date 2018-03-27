@@ -336,7 +336,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        AgencyWriteTransaction expectedTrx{
+        AgencyWriteTransaction expectedTrx {
           std::vector<AgencyOperation> {
             AgencyOperation {
               "Plan/Collections/myDbName/123456/distributeShardsLike",
@@ -346,6 +346,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
               "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
               AgencyValueOperationType::SET,
               protoCollIdSlice,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyValueOperationType::SET,
+              replicationFactorSlice,
             },
           },
           std::vector<AgencyPrecondition> {
@@ -404,7 +409,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
       }
     }
 
-    GIVEN("A BeginRepairsOperation differing replicationFactors and rename=false") {
+    GIVEN("A BeginRepairsOperation with differing replicationFactors and rename=false") {
       BeginRepairsOperation operation{
         .database = "myDbName",
         .collectionId = "123456",
@@ -425,18 +430,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
         VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
         Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
-        VPackBufferPtr oldReplicationFactorVpack = R"=(5)="_vpack;
-        Slice oldReplicationFactorSlice = Slice(oldReplicationFactorVpack->data());
         VPackBufferPtr replicationFactorVpack = R"=(4)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        AgencyWriteTransaction expectedTrx{
-          std::vector<AgencyOperation> {
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyValueOperationType::SET,
-              replicationFactorSlice,
-            },
+        AgencyWriteTransaction expectedTrx {
+          {
           },
           std::vector<AgencyPrecondition> {
             AgencyPrecondition {
@@ -452,7 +450,82 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
             AgencyPrecondition {
               "Plan/Collections/myDbName/123456/replicationFactor",
               AgencyPrecondition::Type::VALUE,
-              oldReplicationFactorSlice,
+              replicationFactorSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/789876/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              replicationFactorSlice,
+            },
+          }
+        };
+
+        trx.clientId
+          = expectedTrx.clientId
+          = "dummy-client-id";
+
+        REQUIRE(trx == expectedTrx);
+      }
+    }
+
+    GIVEN("A BeginRepairsOperation with differing replicationFactors and rename=true") {
+      BeginRepairsOperation operation{
+        .database = "myDbName",
+        .collectionId = "123456",
+        .collectionName = "myCollection",
+        .protoCollectionId = "789876",
+        .protoCollectionName = "myProtoCollection",
+        .collectionReplicationFactor = 2,
+        .protoReplicationFactor = 5,
+        .renameDistributeShardsLike = true,
+      };
+
+      WHEN("Converted into an AgencyTransaction") {
+        AgencyWriteTransaction trx;
+        boost::optional<uint64_t> jobid;
+        std::tie(trx, jobid) = conversionVisitor(operation);
+
+        REQUIRE_FALSE(jobid.is_initialized());
+
+        VPackBufferPtr protoCollIdVpack = R"=("789876")="_vpack;
+        Slice protoCollIdSlice = Slice(protoCollIdVpack->data());
+        VPackBufferPtr replicationFactorVpack = R"=(5)="_vpack;
+        Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
+        VPackBufferPtr prevReplicationFactorVpack = R"=(2)="_vpack;
+        Slice prevReplicationFactorSlice = Slice(prevReplicationFactorVpack->data());
+
+        AgencyWriteTransaction expectedTrx {
+          std::vector<AgencyOperation> {
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencySimpleOperationType::DELETE_OP,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyValueOperationType::SET,
+              protoCollIdSlice,
+            },
+            AgencyOperation {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyValueOperationType::SET,
+              replicationFactorSlice,
+            },
+          },
+          std::vector<AgencyPrecondition> {
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
+              AgencyPrecondition::Type::EMPTY,
+              true,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/distributeShardsLike",
+              AgencyPrecondition::Type::VALUE,
+              protoCollIdSlice,
+            },
+            AgencyPrecondition {
+              "Plan/Collections/myDbName/123456/replicationFactor",
+              AgencyPrecondition::Type::VALUE,
+              prevReplicationFactorSlice,
             },
             AgencyPrecondition {
               "Plan/Collections/myDbName/789876/replicationFactor",
