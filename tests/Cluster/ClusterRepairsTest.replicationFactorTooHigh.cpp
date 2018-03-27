@@ -1,6 +1,5 @@
 // Agency output of .[0].arango.Plan.Collections
-std::shared_ptr<VPackBuffer<uint8_t>>
-  planCollections = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
 {
   "someDb": {
     "11111111": {
@@ -30,8 +29,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 
 // Agency output of .[0].arango.Supervision.Health
 // Coordinators are unused in the test, but must be ignored
-std::shared_ptr<VPackBuffer<uint8_t>>
-  supervisionHealth2Healthy0Bad = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth2Healthy0Bad = R"=(
 {
   "CRDN-976e3d6a-9148-4ece-99e9-326dc69834b2": {
   },

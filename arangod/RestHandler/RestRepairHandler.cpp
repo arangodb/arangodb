@@ -20,11 +20,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "RestRepairHandler.h"
+#include <arangod/Cluster/ServerState.h>
+#include <arangod/GeneralServer/AsyncJobManager.h>
 #include <list>
 #include <valarray>
-#include <arangod/GeneralServer/AsyncJobManager.h>
-#include <arangod/Cluster/ServerState.h>
-#include "RestRepairHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -32,49 +32,42 @@ using namespace arangodb::rest;
 using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
-// TODO Fix logging for production (remove [tg], reduce loglevels, rewrite messages etc)
+// TODO Fix logging for production (remove [tg], reduce loglevels, rewrite
+// messages etc)
 
-
-RestRepairHandler::RestRepairHandler(
-  GeneralRequest *request, GeneralResponse *response
-)
-  : RestBaseHandler(request, response) {
-}
-
+RestRepairHandler::RestRepairHandler(GeneralRequest* request,
+                                     GeneralResponse* response)
+    : RestBaseHandler(request, response) {}
 
 RestStatus RestRepairHandler::execute() {
   if (SchedulerFeature::SCHEDULER->isStopping()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::FAIL;
   }
 
   // TODO Allow GET and implement it as a pretend-only version
 
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(
-      rest::ResponseCode::METHOD_NOT_ALLOWED,
-      (int) rest::ResponseCode::METHOD_NOT_ALLOWED
-    );
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
 
     return RestStatus::FAIL;
   }
 
-  std::vector<std::string> const &suffixes = _request->suffixes();
+  std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
-    generateError(
-      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-      "Bad parameter: expected 'distributeShardsLike', got none"
-    );
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Bad parameter: expected 'distributeShardsLike', got none");
 
     return RestStatus::FAIL;
   }
 
   if (suffixes[0] != "distributeShardsLike") {
-    generateError(
-      rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-      "Bad parameter: expected 'distributeShardsLike', got '" + suffixes[0] + "'"
-    );
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Bad parameter: expected 'distributeShardsLike', got '" +
+                      suffixes[0] + "'");
 
     return RestStatus::FAIL;
   }
@@ -82,16 +75,14 @@ RestStatus RestRepairHandler::execute() {
   return repairDistributeShardsLike();
 }
 
-
-RestStatus
-RestRepairHandler::repairDistributeShardsLike() {
+RestStatus RestRepairHandler::repairDistributeShardsLike() {
   if (ServerState::instance()->isSingleServer()) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::repairDistributeShardsLike: "
-    << "No ClusterInfo instance";
+        << "RestRepairHandler::repairDistributeShardsLike: "
+        << "No ClusterInfo instance";
 
-    generateError(rest::ResponseCode::BAD,
-      TRI_ERROR_HTTP_BAD_PARAMETER, "Only useful in cluster mode.");
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Only useful in cluster mode.");
 
     return RestStatus::FAIL;
   }
@@ -102,10 +93,10 @@ RestRepairHandler::repairDistributeShardsLike() {
     ClusterInfo* clusterInfo = ClusterInfo::instance();
     if (clusterInfo == nullptr) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::repairDistributeShardsLike: "
-      << "No ClusterInfo instance";
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "No ClusterInfo instance";
       generateError(rest::ResponseCode::SERVER_ERROR,
-        TRI_ERROR_HTTP_SERVER_ERROR);
+                    TRI_ERROR_HTTP_SERVER_ERROR);
 
       return RestStatus::FAIL;
     }
@@ -118,64 +109,55 @@ RestRepairHandler::repairDistributeShardsLike() {
 
     if (healthResult.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::repairDistributeShardsLike: "
-      << "Failed to fetch server health result";
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "Failed to fetch server health result";
       generateError(rest::ResponseCode::SERVER_ERROR,
-        healthResult.errorNumber(),
-        healthResult.errorMessage());
+                    healthResult.errorNumber(), healthResult.errorMessage());
 
       return RestStatus::FAIL;
     }
 
     VPackSlice supervisionHealth(healthResult.get()->data());
 
-    // TODO assert replicationFactor < #DBServers before calling repairDistributeShardsLike()
+    // TODO assert replicationFactor < #DBServers before calling
+    // repairDistributeShardsLike()
     // This has to be done per collection...
 
-    ResultT<std::map<
-        CollectionID,
-        ResultT<std::list<RepairOperation>>
-    >>
-      repairOperationsByCollectionResult
-      = DistributeShardsLikeRepairer::repairDistributeShardsLike(
-        planCollections,
-        supervisionHealth
-      );
+    ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
+        repairOperationsByCollectionResult =
+            DistributeShardsLikeRepairer::repairDistributeShardsLike(
+                planCollections, supervisionHealth);
 
     if (repairOperationsByCollectionResult.fail()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::repairDistributeShardsLike: "
-      << "Error during preprocessing: "
-      << "[" << repairOperationsByCollectionResult.errorNumber() << "] "
-      << repairOperationsByCollectionResult.errorMessage();
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "Error during preprocessing: "
+          << "[" << repairOperationsByCollectionResult.errorNumber() << "] "
+          << repairOperationsByCollectionResult.errorMessage();
       generateError(rest::ResponseCode::SERVER_ERROR,
-        repairOperationsByCollectionResult.errorNumber(),
-        repairOperationsByCollectionResult.errorMessage()
-      );
+                    repairOperationsByCollectionResult.errorNumber(),
+                    repairOperationsByCollectionResult.errorMessage());
 
       return RestStatus::FAIL;
     }
     std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
-      repairOperationsByCollection = repairOperationsByCollectionResult.get();
+        repairOperationsByCollection = repairOperationsByCollectionResult.get();
 
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
 
     if (repairOperationsByCollection.empty()) {
       response.add("message", VPackValue("Nothing to do."));
-    }
-    else {
+    } else {
       std::stringstream message;
-      message
-        << "Repairing "
-        << repairOperationsByCollection.size()
-        << " collections";
+      message << "Repairing " << repairOperationsByCollection.size()
+              << " collections";
 
       bool allCollectionsSucceeded = true;
 
       response.add("collections", VPackValue(VPackValueType::Object));
 
-      for(auto const& it : repairOperationsByCollection) {
+      for (auto const& it : repairOperationsByCollection) {
         CollectionID collectionId = it.first;
         auto repairOperationsResult = it.second;
         auto nameResult = getDbAndCollectionName(planCollections, collectionId);
@@ -183,7 +165,8 @@ RestRepairHandler::repairDistributeShardsLike() {
           // This should never happen.
           allCollectionsSucceeded = false;
           response.add(StaticStrings::Error, VPackValue(true));
-          response.add(StaticStrings::ErrorMessage, VPackValue(nameResult.errorMessage()));
+          response.add(StaticStrings::ErrorMessage,
+                       VPackValue(nameResult.errorMessage()));
           continue;
         }
 
@@ -193,13 +176,13 @@ RestRepairHandler::repairDistributeShardsLike() {
         bool success;
         if (repairOperationsResult.ok()) {
           success = repairCollection(repairOperationsResult.get(), response);
-        }
-        else {
-          response.add(StaticStrings::ErrorMessage, VPackValue(repairOperationsResult.errorMessage()));
+        } else {
+          response.add(StaticStrings::ErrorMessage,
+                       VPackValue(repairOperationsResult.errorMessage()));
           addErrorDetails(response, repairOperationsResult.errorNumber());
           success = false;
         }
-        response.add(StaticStrings::Error, VPackValue(! success));
+        response.add(StaticStrings::Error, VPackValue(!success));
 
         allCollectionsSucceeded = success && allCollectionsSucceeded;
 
@@ -207,7 +190,6 @@ RestRepairHandler::repairDistributeShardsLike() {
       }
 
       response.close();
-
     }
 
     response.close();
@@ -215,31 +197,24 @@ RestRepairHandler::repairDistributeShardsLike() {
     generateOk(responseCode, response);
 
     return RestStatus::DONE;
-  }
-  catch (Exception &e) {
+  } catch (Exception& e) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::repairDistributeShardsLike: "
-    << "Caught exception: " << e.message();
-    generateError(rest::ResponseCode::SERVER_ERROR,
-      e.code());
+        << "RestRepairHandler::repairDistributeShardsLike: "
+        << "Caught exception: " << e.message();
+    generateError(rest::ResponseCode::SERVER_ERROR, e.code());
 
     return RestStatus::FAIL;
   }
-
 }
 
-
 bool RestRepairHandler::repairCollection(
-  std::list<RepairOperation> repairOperations,
-  VPackBuilder &response
-) {
+    std::list<RepairOperation> repairOperations, VPackBuilder& response) {
   bool success = true;
 
   response.add("PlannedOperations", VPackValue(velocypack::ValueType::Array));
 
   for (auto const& op : repairOperations) {
-    RepairOperationToVPackVisitor
-      addToVpack(response);
+    RepairOperationToVPackVisitor addToVpack(response);
 
     boost::apply_visitor(addToVpack, op);
   }
@@ -249,26 +224,24 @@ bool RestRepairHandler::repairCollection(
   Result result = executeRepairOperations(repairOperations);
   if (result.fail()) {
     success = false;
-    response.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
+    response.add(StaticStrings::ErrorMessage,
+                 VPackValue(result.errorMessage()));
     addErrorDetails(response, result.errorNumber());
   }
 
   return success;
 }
 
-ResultT<bool>
-RestRepairHandler::jobFinished(std::string const& jobId) {
+ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
   LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
-  << "RestRepairHandler::executeRepairOperations: "
-  << "Fetching job info of " << jobId;
-  ResultT<JobStatus> jobStatus
-    = getJobStatusFromAgency(jobId);
+      << "RestRepairHandler::executeRepairOperations: "
+      << "Fetching job info of " << jobId;
+  ResultT<JobStatus> jobStatus = getJobStatusFromAgency(jobId);
 
   if (jobStatus.ok()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::executeRepairOperations: "
-    << "Job status is: "
-    << toString(jobStatus.get());
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Job status is: " << toString(jobStatus.get());
 
     switch (jobStatus.get()) {
       case JobStatus::todo:
@@ -281,26 +254,24 @@ RestRepairHandler::jobFinished(std::string const& jobId) {
 
       case JobStatus::failed:
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-        << "RestRepairHandler::executeRepairOperations: "
-        << "Job " << jobId << " failed, aborting";
+            << "RestRepairHandler::executeRepairOperations: "
+            << "Job " << jobId << " failed, aborting";
 
         return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
       case JobStatus::missing:
         LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-        << "RestRepairHandler::executeRepairOperations: "
-        << "Job " << jobId << " went missing, aborting";
+            << "RestRepairHandler::executeRepairOperations: "
+            << "Job " << jobId << " went missing, aborting";
 
         return Result(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED);
     }
 
-  }
-  else {
+  } else {
     LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::executeRepairOperations: "
-    << "Failed to get job status: "
-    << "[" << jobStatus.errorNumber() << "] "
-    << jobStatus.errorMessage();
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Failed to get job status: "
+        << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
     return jobStatus;
   }
@@ -308,47 +279,41 @@ RestRepairHandler::jobFinished(std::string const& jobId) {
   return false;
 }
 
-
-Result
-RestRepairHandler::executeRepairOperations(
-  std::list<RepairOperation> repairOperations
-) {
+Result RestRepairHandler::executeRepairOperations(
+    std::list<RepairOperation> repairOperations) {
   AgencyComm comm;
   // TODO If an operation fails during execution, add a hint on which one
   // in the response to the user!
   for (auto& op : repairOperations) {
     auto visitor = RepairOperationToTransactionVisitor();
-    auto trxJobPair =
-      boost::apply_visitor(visitor, op);
+    auto trxJobPair = boost::apply_visitor(visitor, op);
 
-    AgencyWriteTransaction &wtrx = trxJobPair.first;
+    AgencyWriteTransaction& wtrx = trxJobPair.first;
     boost::optional<uint64_t> waitForJobId = trxJobPair.second;
 
     LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
-    << "RestRepairHandler::executeRepairOperations: "
-    << "Sending a transaction to the agency";
+        << "RestRepairHandler::executeRepairOperations: "
+        << "Sending a transaction to the agency";
 
-    AgencyCommResult result
-      = comm.sendTransactionWithFailover(wtrx);
-    if (! result.successful()) {
+    AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
+    if (!result.successful()) {
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::executeRepairOperations: "
-      << "Failed to send transaction to the agency. Error was: "
-      << "[" << result.errorCode() << "] "
-      << result.errorMessage();
+          << "RestRepairHandler::executeRepairOperations: "
+          << "Failed to send transaction to the agency. Error was: "
+          << "[" << result.errorCode() << "] " << result.errorMessage();
 
       return Result(result.errorCode(), result.errorMessage());
     }
 
     // If the transaction posted a job, we wait for it to finish.
-    if(waitForJobId) {
+    if (waitForJobId) {
       LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::executeRepairOperations: "
-      << "Waiting for job " << waitForJobId.get();
+          << "RestRepairHandler::executeRepairOperations: "
+          << "Waiting for job " << waitForJobId.get();
       bool previousJobFinished = false;
       std::string jobId = std::to_string(waitForJobId.get());
 
-      while(! previousJobFinished) {
+      while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
         if (jobFinishedResult.fail()) {
           return jobFinishedResult;
@@ -356,21 +321,19 @@ RestRepairHandler::executeRepairOperations(
         previousJobFinished = jobFinishedResult.get();
 
         LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
-        << "RestRepairHandler::executeRepairOperations: "
-        << "Sleeping for 1s";
+            << "RestRepairHandler::executeRepairOperations: "
+            << "Sleeping for 1s";
         sleep(1);
       }
     }
-
   }
 
   return Result();
 }
 
-
 template <std::size_t N>
-ResultT<std::array<VPackBufferPtr, N>>
-RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyKeyArray) {
+ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
+    std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
   AgencyComm agency;
@@ -379,50 +342,31 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
 
   // apply AgencyCommManager::path on every element and copy to vector
   std::transform(
-    agencyKeyArray.begin(),
-    agencyKeyArray.end(),
-    std::back_inserter(paths),
-    [](std::string const& key) {
-      return AgencyCommManager::path(key);
-    }
-  );
+      agencyKeyArray.begin(), agencyKeyArray.end(), std::back_inserter(paths),
+      [](std::string const& key) { return AgencyCommManager::path(key); });
 
   AgencyCommResult result = agency.sendTransactionWithFailover(
-    AgencyReadTransaction { std::move(paths) }
-  );
+      AgencyReadTransaction{std::move(paths)});
 
-  for(size_t i = 0; i < N; i++) {
+  for (size_t i = 0; i < N; i++) {
     std::string const& agencyKey = agencyKeyArray[i];
 
     if (!result.successful()) {
       LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-      << "RestRepairHandler::getFromAgency: "
-      << "Getting value from agency failed with: " << result.errorMessage();
-      generateError(rest::ResponseCode::SERVER_ERROR,
-        result.errorCode(),
-        result.errorMessage()
-      );
+          << "RestRepairHandler::getFromAgency: "
+          << "Getting value from agency failed with: " << result.errorMessage();
+      generateError(rest::ResponseCode::SERVER_ERROR, result.errorCode(),
+                    result.errorMessage());
 
-      return ResultT<
-        std::array<VPackBufferPtr, N>
-      >::error(
-        result.errorCode(),
-        result.errorMessage()
-      );
+      return ResultT<std::array<VPackBufferPtr, N>>::error(
+          result.errorCode(), result.errorMessage());
     }
 
     std::vector<std::string> agencyPath =
-      basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+        basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
 
-    agencyPath.erase(
-      std::remove(
-        agencyPath.begin(),
-        agencyPath.end(),
-        ""
-      ),
-      agencyPath.end()
-    );
-
+    agencyPath.erase(std::remove(agencyPath.begin(), agencyPath.end(), ""),
+                     agencyPath.end());
 
     VPackBuilder builder;
 
@@ -431,37 +375,30 @@ RestRepairHandler::getFromAgency(std::array<std::string const, N> const& agencyK
     resultArray[i] = builder.steal();
   }
 
-  return ResultT<
-    std::array<VPackBufferPtr, N>
-  >::success(resultArray);
+  return ResultT<std::array<VPackBufferPtr, N>>::success(resultArray);
 }
 
-ResultT<VPackBufferPtr>
-RestRepairHandler::getFromAgency(std::string const &agencyKey) {
-  ResultT<std::array<VPackBufferPtr, 1>> rv
-    = getFromAgency<1>({agencyKey});
+ResultT<VPackBufferPtr> RestRepairHandler::getFromAgency(
+    std::string const& agencyKey) {
+  ResultT<std::array<VPackBufferPtr, 1>> rv = getFromAgency<1>({agencyKey});
 
   if (rv.ok()) {
     return ResultT<VPackBufferPtr>::success(rv.get()[0]);
-  }
-  else {
+  } else {
     return ResultT<VPackBufferPtr>(rv);
   }
 }
 
-ResultT<JobStatus>
-RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
+ResultT<JobStatus> RestRepairHandler::getJobStatusFromAgency(
+    std::string const& jobId) {
   // As long as getFromAgency doesn't get all values at once, the order here
   // matters: if e.g. finished was checked before pending, this would
   // introduce a race condition which would result in JobStatus::missing
   // despite it being finished.
-  auto rv
-    = getFromAgency<4>({
-      "Target/ToDo/" + jobId,
-      "Target/Pending/" + jobId,
-      "Target/Finished/" + jobId,
-      "Target/Failed/" + jobId,
-    });
+  auto rv = getFromAgency<4>({
+      "Target/ToDo/" + jobId, "Target/Pending/" + jobId,
+      "Target/Finished/" + jobId, "Target/Failed/" + jobId,
+  });
 
   if (rv.fail()) {
     return ResultT<JobStatus>(rv);
@@ -473,9 +410,8 @@ RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
   VPackSlice failed(rv.get()[3]->data());
 
   auto isSet = [&jobId](VPackSlice slice) {
-    return slice.isObject()
-      && slice.hasKey("jobId")
-      && slice.get("jobId").copyString() == jobId;
+    return slice.isObject() && slice.hasKey("jobId") &&
+           slice.get("jobId").copyString() == jobId;
   };
 
   if (isSet(todo)) {
@@ -491,17 +427,14 @@ RestRepairHandler::getJobStatusFromAgency(std::string const &jobId) {
     return ResultT<JobStatus>::success(JobStatus::failed);
   }
 
-
   return ResultT<JobStatus>::success(JobStatus::missing);
 }
 
-ResultT<std::string>
-RestRepairHandler::getDbAndCollectionName(
-  VPackSlice planCollections, CollectionID collectionID
-) {
-  for(auto const& db : VPackObjectIterator { planCollections }) {
+ResultT<std::string> RestRepairHandler::getDbAndCollectionName(
+    VPackSlice planCollections, CollectionID collectionID) {
+  for (auto const& db : VPackObjectIterator{planCollections}) {
     std::string dbName = db.key.copyString();
-    for(auto const& collection : VPackObjectIterator { db.value }) {
+    for (auto const& collection : VPackObjectIterator{db.value}) {
       std::string currentCollectionId = collection.key.copyString();
       if (currentCollectionId == collectionID) {
         return dbName + "/" + collection.value.get("name").copyString();
@@ -512,22 +445,16 @@ RestRepairHandler::getDbAndCollectionName(
   // This should never happen:
 
   LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-  << "RestRepairHandler::getDbAndCollectionName: "
-  << "Collection " << collectionID << " not found!";
+      << "RestRepairHandler::getDbAndCollectionName: "
+      << "Collection " << collectionID << " not found!";
 
   TRI_ASSERT(false);
 
-  return Result {
-    TRI_ERROR_INTERNAL,
-    "Collection not found"
-  };
+  return Result{TRI_ERROR_INTERNAL, "Collection not found"};
 }
 
-void
-RestRepairHandler::addErrorDetails(
-  VPackBuilder &builder,
-  int errorNumber
-) {
+void RestRepairHandler::addErrorDetails(VPackBuilder& builder,
+                                        int errorNumber) {
   boost::optional<const char*> errorDetails;
 
   switch (errorNumber) {
@@ -536,67 +463,74 @@ RestRepairHandler::addErrorDetails(
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY:
       errorDetails =
-        "There are not enough healthy DBServers to complete the repair "
-        "operations. Please try again after getting your unhealthy DBServer(s) "
-        "up again.";
+          "There are not enough healthy DBServers to complete the repair "
+          "operations. Please try again after getting your unhealthy "
+          "DBServer(s) "
+          "up again.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED:
       errorDetails =
-        "Somewhere the replicationFactor is violated, e.g. this collection "
-        "has a different replicationFactor or number of DBServers than its "
-        "distributeShardsLike prototype. This has to be fixed before this "
-        "collection can be repaired.";
+          "Somewhere the replicationFactor is violated, e.g. this collection "
+          "has a different replicationFactor or number of DBServers than its "
+          "distributeShardsLike prototype. This has to be fixed before this "
+          "collection can be repaired.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS:
       errorDetails =
-        "Some shard of this collection doesn't have any DBServers. This should "
-        "not happen. Please report this error.";
+          "Some shard of this collection doesn't have any DBServers. This "
+          "should "
+          "not happen. Please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS:
       errorDetails =
-        "Mismatching leaders of a shard and its distributeShardsLike prototype "
-        "shard, after the leader should already have been fixed. "
-        "This should not happen, but it should be safe to try this job again. "
-        "If that does not help, please report this error.";
+          "Mismatching leaders of a shard and its distributeShardsLike "
+          "prototype "
+          "shard, after the leader should already have been fixed. "
+          "This should not happen, but it should be safe to try this job "
+          "again. "
+          "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS:
       errorDetails =
-        "Mismatching followers of a shard and its distributeShardsLike "
-        "prototype shard, after they should already have been fixed. "
-        "This should not happen, but it should be safe to try this job again. "
-        "If that does not help, please report this error.";
+          "Mismatching followers of a shard and its distributeShardsLike "
+          "prototype shard, after they should already have been fixed. "
+          "This should not happen, but it should be safe to try this job "
+          "again. "
+          "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES:
       errorDetails =
-        "Unexpected state of distributeShardsLike or "
-        "repairingDistributeShardsLike attribute. "
-        "This should not happen, but it should be safe to try this job again. "
-        "If that does not help, please report this error.";
+          "Unexpected state of distributeShardsLike or "
+          "repairingDistributeShardsLike attribute. "
+          "This should not happen, but it should be safe to try this job "
+          "again. "
+          "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS:
       errorDetails =
-        "In this collection, some shard and its distributeShardsLike prototype "
-        "have an unequal number of DBServers. This has to be fixed before "
-        "this collection can be repaired.";
+          "In this collection, some shard and its distributeShardsLike "
+          "prototype "
+          "have an unequal number of DBServers. This has to be fixed before "
+          "this collection can be repaired.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED:
       errorDetails =
-        "Error during repairs! "
-        "Moving a shard failed. Did you do any changes to the affected "
-        "collection(s) or the cluster during the repairs? "
-        "It should be safe to try this job again. "
-        "If that does not help, please report this error.";
+          "Error during repairs! "
+          "Moving a shard failed. Did you do any changes to the affected "
+          "collection(s) or the cluster during the repairs? "
+          "It should be safe to try this job again. "
+          "If that does not help, please report this error.";
       break;
     case TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED:
       errorDetails =
-        "Error during repairs! "
-        "A job to move a shard disappeared. "
-        "This should not happen. "
-        "Please report this error.";
+          "Error during repairs! "
+          "A job to move a shard disappeared. "
+          "This should not happen. "
+          "Please report this error.";
       break;
     default:
-      // Some non-repair related error
-      ;
+        // Some non-repair related error
+        ;
   }
 
   if (errorDetails.is_initialized()) {

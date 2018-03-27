@@ -41,20 +41,20 @@ using namespace arangodb::cluster_repairs;
 
 namespace arangodb {
 
-bool operator==(AgencyWriteTransaction const& left, AgencyWriteTransaction const& right) {
+bool operator==(AgencyWriteTransaction const& left,
+                AgencyWriteTransaction const& right) {
   VPackBuilder leftBuilder;
   VPackBuilder rightBuilder;
 
   left.toVelocyPack(leftBuilder);
   right.toVelocyPack(rightBuilder);
 
-  return velocypack::NormalizedCompare::equals(
-    leftBuilder.slice(),
-    rightBuilder.slice()
-  );
+  return velocypack::NormalizedCompare::equals(leftBuilder.slice(),
+                                               rightBuilder.slice());
 }
 
-std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& trx) {
+std::ostream& operator<<(std::ostream& ostream,
+                         AgencyWriteTransaction const& trx) {
   Options optPretty = VPackOptions::Defaults;
   optPretty.prettyPrint = true;
 
@@ -70,8 +70,7 @@ std::ostream& operator<<(std::ostream& ostream, AgencyWriteTransaction const& tr
 namespace tests {
 namespace cluster_repairs_test {
 
-VPackBufferPtr
-vpackFromJsonString(char const *c) {
+VPackBufferPtr vpackFromJsonString(char const* c) {
   Options options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
@@ -82,42 +81,36 @@ vpackFromJsonString(char const *c) {
   return builder->steal();
 }
 
-VPackBufferPtr
-operator "" _vpack(const char* json, size_t) {
+VPackBufferPtr operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
 void checkAgainstExpectedOperations(
-  VPackBufferPtr const& planCollections,
-  VPackBufferPtr const& supervisionHealth,
-  std::map<
-    CollectionID, std::vector<RepairOperation>
-  > expectedRepairOperationsByCollection
-) {
+    VPackBufferPtr const& planCollections,
+    VPackBufferPtr const& supervisionHealth,
+    std::map<CollectionID, std::vector<RepairOperation>>
+        expectedRepairOperationsByCollection) {
   DistributeShardsLikeRepairer repairer;
 
-  ResultT<std::map<
-    CollectionID, ResultT<std::list<RepairOperation>>
-  >>
-    repairOperationsByCollectionResult
-    = repairer.repairDistributeShardsLike(
-      VPackSlice(planCollections->data()),
-      VPackSlice(supervisionHealth->data())
-    );
+  ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
+      repairOperationsByCollectionResult = repairer.repairDistributeShardsLike(
+          VPackSlice(planCollections->data()),
+          VPackSlice(supervisionHealth->data()));
 
   REQUIRE(repairOperationsByCollectionResult.ok());
-  std::map<CollectionID, ResultT<std::list<RepairOperation>>> &
-    repairOperationsByCollection = repairOperationsByCollectionResult.get();
+  std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
+      repairOperationsByCollection = repairOperationsByCollectionResult.get();
 
   {
     std::stringstream expectedOperationsStringStream;
     expectedOperationsStringStream << "{" << std::endl;
-    for(auto const& it : expectedRepairOperationsByCollection) {
+    for (auto const& it : expectedRepairOperationsByCollection) {
       std::string const& collection = it.first;
       std::vector<RepairOperation> const& expectedRepairOperations = it.second;
-      expectedOperationsStringStream << "\"" << collection << "\": " << std::endl;
+      expectedOperationsStringStream << "\"" << collection
+                                     << "\": " << std::endl;
       expectedOperationsStringStream << "[" << std::endl;
-      for (auto const &it : expectedRepairOperations) {
+      for (auto const& it : expectedRepairOperations) {
         expectedOperationsStringStream << it << "," << std::endl;
       }
       expectedOperationsStringStream << "]," << std::endl;
@@ -126,82 +119,86 @@ void checkAgainstExpectedOperations(
 
     std::stringstream repairOperationsStringStream;
     repairOperationsStringStream << "{" << std::endl;
-    for(auto const& it : repairOperationsByCollection) {
+    for (auto const& it : repairOperationsByCollection) {
       std::string const& collection = it.first;
-      ResultT<std::list<RepairOperation>> const repairOperationsResult = it.second;
+      ResultT<std::list<RepairOperation>> const repairOperationsResult =
+          it.second;
       REQUIRE(repairOperationsResult.ok());
-      std::list<RepairOperation> const& repairOperations = repairOperationsResult.get();
+      std::list<RepairOperation> const& repairOperations =
+          repairOperationsResult.get();
       repairOperationsStringStream << "\"" << collection << "\": " << std::endl;
       repairOperationsStringStream << "[" << std::endl;
-      for (auto const &it : repairOperations) {
+      for (auto const& it : repairOperations) {
         repairOperationsStringStream << it << "," << std::endl;
       }
       repairOperationsStringStream << "]," << std::endl;
     }
     repairOperationsStringStream << "}";
 
-    INFO("Expected transactions are:\n" << expectedOperationsStringStream.str());
+    INFO("Expected transactions are:\n"
+         << expectedOperationsStringStream.str());
     INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
 
-    REQUIRE(repairOperationsByCollection.size() == expectedRepairOperationsByCollection.size());
-    for (auto const &it : boost::combine(
-      expectedRepairOperationsByCollection,
-      repairOperationsByCollection
-    )) {
+    REQUIRE(repairOperationsByCollection.size() ==
+            expectedRepairOperationsByCollection.size());
+    for (auto const& it : boost::combine(expectedRepairOperationsByCollection,
+                                         repairOperationsByCollection)) {
       REQUIRE(it.get<1>().second.ok());
       REQUIRE(it.get<0>().second.size() == it.get<1>().second.get().size());
     }
   }
 
-  for (auto const &it : boost::combine(
-    repairOperationsByCollection,
-    expectedRepairOperationsByCollection
-  )) {
+  for (auto const& it : boost::combine(repairOperationsByCollection,
+                                       expectedRepairOperationsByCollection)) {
     std::string const& collection = it.get<0>().first;
-    ResultT<std::list<RepairOperation>> const repairOperationsResult = it.get<0>().second;
+    ResultT<std::list<RepairOperation>> const repairOperationsResult =
+        it.get<0>().second;
 
     std::string const& expectedCollection = it.get<1>().first;
-    std::vector<RepairOperation> const& expectedRepairOperations = it.get<1>().second;
+    std::vector<RepairOperation> const& expectedRepairOperations =
+        it.get<1>().second;
 
     REQUIRE(collection == expectedCollection);
     REQUIRE(repairOperationsResult.ok());
-    std::list<RepairOperation> const& repairOperations = repairOperationsResult.get();
+    std::list<RepairOperation> const& repairOperations =
+        repairOperationsResult.get();
 
-    for (auto const &it : boost::combine(repairOperations, expectedRepairOperations)) {
-      auto const &repairOpIt = it.get<0>();
-      auto const &expectedRepairOpIt = it.get<1>();
+    for (auto const& it :
+         boost::combine(repairOperations, expectedRepairOperations)) {
+      auto const& repairOpIt = it.get<0>();
+      auto const& expectedRepairOpIt = it.get<1>();
 
       REQUIRE(repairOpIt == expectedRepairOpIt);
     }
   }
 }
 
-// TODO Add a test with a smart collection (i.e. with {"isSmart": true, "shards": []})
+// TODO Add a test with a smart collection (i.e. with {"isSmart": true,
+// "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where multiple collections are fixed
 // TODO Add a test where multiple collections are fixed and one is broken
-// TODO Add a test where distributeShardsLike is already renamed to repairingDistributeShardsLike, but the replicationFactor differs
+// TODO Add a test where distributeShardsLike is already renamed to
+// repairingDistributeShardsLike, but the replicationFactor differs
 
-SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]") {
-
+SCENARIO("Broken distributeShardsLike collections",
+         "[cluster][shards][repairs]") {
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
+  std::unique_ptr<AgencyCommManager> oldManager =
+      std::move(AgencyCommManager::MANAGER);
 
   try {
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
 
     GIVEN("An agency where on two shards the DBServers are swapped") {
-
       WHEN("One unused DBServer is free to exchange the leader") {
 #include "ClusterRepairsTest.swapWithLeader.cpp"
 
         checkAgainstExpectedOperations(
-          planCollections,
-          supervisionHealth3Healthy0Bad,
-          expectedOperationsWithTwoSwappedDBServers
-        );
+            planCollections, supervisionHealth3Healthy0Bad,
+            expectedOperationsWithTwoSwappedDBServers);
       }
 
       WHEN("The unused DBServer is marked as non-healthy") {
@@ -210,19 +207,22 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
         DistributeShardsLikeRepairer repairer;
 
         auto result = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth2Healthy1Bad->data())
-        );
+            VPackSlice(planCollections->data()),
+            VPackSlice(supervisionHealth2Healthy1Bad->data()));
 
         REQUIRE(result.ok());
         std::map<CollectionID, ResultT<std::list<RepairOperation>>>
-          operationResultByCollectionId = result.get();
+            operationResultByCollectionId = result.get();
         REQUIRE(operationResultByCollectionId.size() == 1);
-        REQUIRE(operationResultByCollectionId.find("11111111") != operationResultByCollectionId.end());
-        ResultT<std::list<RepairOperation>> collectionResult = operationResultByCollectionId.at("11111111");
+        REQUIRE(operationResultByCollectionId.find("11111111") !=
+                operationResultByCollectionId.end());
+        ResultT<std::list<RepairOperation>> collectionResult =
+            operationResultByCollectionId.at("11111111");
 
-        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(collectionResult.errorNumber() ==
+                TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
+                            "not enough healthy db servers"));
         REQUIRE(collectionResult.fail());
       }
 
@@ -232,39 +232,41 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
         DistributeShardsLikeRepairer repairer;
 
         auto result = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth2Healthy0Bad->data())
-        );
+            VPackSlice(planCollections->data()),
+            VPackSlice(supervisionHealth2Healthy0Bad->data()));
 
         REQUIRE(result.ok());
         std::map<CollectionID, ResultT<std::list<RepairOperation>>>
-          operationResultByCollectionId = result.get();
+            operationResultByCollectionId = result.get();
         REQUIRE(operationResultByCollectionId.size() == 1);
-        REQUIRE(operationResultByCollectionId.find("11111111") != operationResultByCollectionId.end());
-        ResultT<std::list<RepairOperation>> collectionResult = operationResultByCollectionId.at("11111111");
+        REQUIRE(operationResultByCollectionId.find("11111111") !=
+                operationResultByCollectionId.end());
+        ResultT<std::list<RepairOperation>> collectionResult =
+            operationResultByCollectionId.at("11111111");
 
-        REQUIRE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()), "not enough healthy db servers"));
+        REQUIRE(collectionResult.errorNumber() ==
+                TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+        REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
+                            "not enough healthy db servers"));
         REQUIRE(collectionResult.fail());
       }
     }
 
-    GIVEN("An agency where a follower-shard has erroneously ordered DBServers") {
+    GIVEN(
+        "An agency where a follower-shard has erroneously ordered DBServers") {
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
       checkAgainstExpectedOperations(
-        planCollections,
-        supervisionHealth4Healthy0Bad,
-        expectedOperationsWithWronglyOrderedFollowers
-      );
+          planCollections, supervisionHealth4Healthy0Bad,
+          expectedOperationsWithWronglyOrderedFollowers);
     }
 
-    GIVEN("An agency where a collection has repairingDistributeShardsLike, but nothing else is broken") {
+    GIVEN(
+        "An agency where a collection has repairingDistributeShardsLike, but "
+        "nothing else is broken") {
 #include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
       checkAgainstExpectedOperations(
-        planCollections,
-        supervisionHealth4Healthy0Bad,
-        expectedOperationsWithRepairingDistributeShardsLike
-      );
+          planCollections, supervisionHealth4Healthy0Bad,
+          expectedOperationsWithRepairingDistributeShardsLike);
     }
 
   } catch (...) {
@@ -279,19 +281,19 @@ SCENARIO("Broken distributeShardsLike collections", "[cluster][shards][repairs]"
 SCENARIO("VersionSort", "[cluster][shards][repairs]") {
   GIVEN("Different version strings") {
     REQUIRE(VersionSort()("s2", "s10"));
-    REQUIRE(! VersionSort()("s10", "s2"));
+    REQUIRE(!VersionSort()("s10", "s2"));
 
     REQUIRE(VersionSort()("s5", "s7"));
-    REQUIRE(! VersionSort()("s7", "s5"));
+    REQUIRE(!VersionSort()("s7", "s5"));
   }
 }
 
 // TODO write more tests for RepairOperation to Transaction conversion
 
 SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
-
   // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager = std::move(AgencyCommManager::MANAGER);
+  std::unique_ptr<AgencyCommManager> oldManager =
+      std::move(AgencyCommManager::MANAGER);
   std::string const oldServerId = ServerState::instance()->getId();
 
   try {
@@ -302,26 +304,27 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
       REQUIRE(false);
       return 0ul;
     };
-    std::chrono::system_clock::time_point (*mockJobCreationTimestampGenerator)() = []() {
+    std::chrono::system_clock::time_point (
+        *mockJobCreationTimestampGenerator)() = []() {
       REQUIRE(false);
       return std::chrono::system_clock::now();
     };
 
     RepairOperationToTransactionVisitor conversionVisitor(
-      mockJobIdGenerator,
-      mockJobCreationTimestampGenerator
-    );
+        mockJobIdGenerator, mockJobCreationTimestampGenerator);
 
-    GIVEN("A BeginRepairsOperation with equal replicationFactors and rename=true") {
+    GIVEN(
+        "A BeginRepairsOperation with equal replicationFactors and "
+        "rename=true") {
       BeginRepairsOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .protoCollectionId = "789876",
-        .protoCollectionName = "myProtoCollection",
-        .collectionReplicationFactor = 3,
-        .protoReplicationFactor = 3,
-        .renameDistributeShardsLike = true,
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .protoCollectionId = "789876",
+          .protoCollectionName = "myProtoCollection",
+          .collectionReplicationFactor = 3,
+          .protoReplicationFactor = 3,
+          .renameDistributeShardsLike = true,
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -336,50 +339,43 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        AgencyWriteTransaction expectedTrx {
-          std::vector<AgencyOperation> {
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencySimpleOperationType::DELETE_OP,
+        AgencyWriteTransaction expectedTrx{
+            std::vector<AgencyOperation>{
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencySimpleOperationType::DELETE_OP,
+                },
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyValueOperationType::SET, protoCollIdSlice,
+                },
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyValueOperationType::SET, replicationFactorSlice,
+                },
             },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyValueOperationType::SET,
-              protoCollIdSlice,
-            },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyValueOperationType::SET,
-              replicationFactorSlice,
-            },
-          },
-          std::vector<AgencyPrecondition> {
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyPrecondition::Type::EMPTY,
-              true,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencyPrecondition::Type::VALUE,
-              protoCollIdSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-          }
-        };
+            std::vector<AgencyPrecondition>{
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyPrecondition::Type::EMPTY, true,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencyPrecondition::Type::VALUE, protoCollIdSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+            }};
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
@@ -397,28 +393,31 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).protoCollectionId = "differing protoCollectionId";
         REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName = "differing protoCollectionName";
+        (other = operation).protoCollectionName =
+            "differing protoCollectionName";
         REQUIRE_FALSE(operation == other);
         (other = operation).collectionReplicationFactor = 42;
         REQUIRE_FALSE(operation == other);
         (other = operation).protoReplicationFactor = 23;
         REQUIRE_FALSE(operation == other);
-        (other = operation).renameDistributeShardsLike = ! operation.renameDistributeShardsLike;
+        (other = operation).renameDistributeShardsLike =
+            !operation.renameDistributeShardsLike;
         REQUIRE_FALSE(operation == other);
-
       }
     }
 
-    GIVEN("A BeginRepairsOperation with differing replicationFactors and rename=false") {
+    GIVEN(
+        "A BeginRepairsOperation with differing replicationFactors and "
+        "rename=false") {
       BeginRepairsOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .protoCollectionId = "789876",
-        .protoCollectionName = "myProtoCollection",
-        .collectionReplicationFactor = 5,
-        .protoReplicationFactor = 4,
-        .renameDistributeShardsLike = false,
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .protoCollectionId = "789876",
+          .protoCollectionName = "myProtoCollection",
+          .collectionReplicationFactor = 5,
+          .protoReplicationFactor = 4,
+          .renameDistributeShardsLike = false,
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -433,51 +432,46 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(4)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        AgencyWriteTransaction expectedTrx {
-          {
-          },
-          std::vector<AgencyPrecondition> {
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencyPrecondition::Type::EMPTY,
-              true,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyPrecondition::Type::VALUE,
-              protoCollIdSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-          }
-        };
+        AgencyWriteTransaction expectedTrx{
+            {},
+            std::vector<AgencyPrecondition>{
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencyPrecondition::Type::EMPTY, true,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyPrecondition::Type::VALUE, protoCollIdSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+            }};
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
     }
 
-    GIVEN("A BeginRepairsOperation with differing replicationFactors and rename=true") {
+    GIVEN(
+        "A BeginRepairsOperation with differing replicationFactors and "
+        "rename=true") {
       BeginRepairsOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .protoCollectionId = "789876",
-        .protoCollectionName = "myProtoCollection",
-        .collectionReplicationFactor = 2,
-        .protoReplicationFactor = 5,
-        .renameDistributeShardsLike = true,
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .protoCollectionId = "789876",
+          .protoCollectionName = "myProtoCollection",
+          .collectionReplicationFactor = 2,
+          .protoReplicationFactor = 5,
+          .renameDistributeShardsLike = true,
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -492,52 +486,46 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(5)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
         VPackBufferPtr prevReplicationFactorVpack = R"=(2)="_vpack;
-        Slice prevReplicationFactorSlice = Slice(prevReplicationFactorVpack->data());
+        Slice prevReplicationFactorSlice =
+            Slice(prevReplicationFactorVpack->data());
 
-        AgencyWriteTransaction expectedTrx {
-          std::vector<AgencyOperation> {
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencySimpleOperationType::DELETE_OP,
+        AgencyWriteTransaction expectedTrx{
+            std::vector<AgencyOperation>{
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencySimpleOperationType::DELETE_OP,
+                },
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyValueOperationType::SET, protoCollIdSlice,
+                },
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyValueOperationType::SET, replicationFactorSlice,
+                },
             },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyValueOperationType::SET,
-              protoCollIdSlice,
-            },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyValueOperationType::SET,
-              replicationFactorSlice,
-            },
-          },
-          std::vector<AgencyPrecondition> {
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyPrecondition::Type::EMPTY,
-              true,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencyPrecondition::Type::VALUE,
-              protoCollIdSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              prevReplicationFactorSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-          }
-        };
+            std::vector<AgencyPrecondition>{
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyPrecondition::Type::EMPTY, true,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencyPrecondition::Type::VALUE, protoCollIdSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, prevReplicationFactorSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+            }};
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
@@ -545,16 +533,19 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
     GIVEN("A FinishRepairsOperation") {
       FinishRepairsOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .protoCollectionId = "789876",
-        .protoCollectionName = "myProtoCollection",
-        .shards = {
-          std::make_tuple<ShardID, ShardID, DBServers>("shard1", "protoShard1", {"dbServer1", "dbServer2"}),
-          std::make_tuple<ShardID, ShardID, DBServers>("shard2", "protoShard2", {"dbServer2", "dbServer3"}),
-        },
-        .replicationFactor = 3,
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .protoCollectionId = "789876",
+          .protoCollectionName = "myProtoCollection",
+          .shards =
+              {
+                  std::make_tuple<ShardID, ShardID, DBServers>(
+                      "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
+                  std::make_tuple<ShardID, ShardID, DBServers>(
+                      "shard2", "protoShard2", {"dbServer2", "dbServer3"}),
+              },
+          .replicationFactor = 3,
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -569,70 +560,63 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         VPackBufferPtr replicationFactorVpack = R"=(3)="_vpack;
         Slice replicationFactorSlice = Slice(replicationFactorVpack->data());
 
-        VPackBufferPtr serverOrderVpack1 = R"=(["dbServer1", "dbServer2"])="_vpack;
-        VPackBufferPtr serverOrderVpack2 = R"=(["dbServer2", "dbServer3"])="_vpack;
+        VPackBufferPtr serverOrderVpack1 =
+            R"=(["dbServer1", "dbServer2"])="_vpack;
+        VPackBufferPtr serverOrderVpack2 =
+            R"=(["dbServer2", "dbServer3"])="_vpack;
         Slice serverOrderSlice1 = Slice(serverOrderVpack1->data());
         Slice serverOrderSlice2 = Slice(serverOrderVpack2->data());
 
         AgencyWriteTransaction expectedTrx{
-          std::vector<AgencyOperation> {
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencySimpleOperationType::DELETE_OP,
+            std::vector<AgencyOperation>{
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencySimpleOperationType::DELETE_OP,
+                },
+                AgencyOperation{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencyValueOperationType::SET, protoIdSlice,
+                },
             },
-            AgencyOperation {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencyValueOperationType::SET,
-              protoIdSlice,
+            std::vector<AgencyPrecondition>{
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/distributeShardsLike",
+                    AgencyPrecondition::Type::EMPTY, true,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/"
+                    "repairingDistributeShardsLike",
+                    AgencyPrecondition::Type::VALUE, protoIdSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/replicationFactor",
+                    AgencyPrecondition::Type::VALUE, replicationFactorSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/shards/shard1",
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice1,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/shards/protoShard1",
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice1,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/shards/shard2",
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice2,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/shards/protoShard2",
+                    AgencyPrecondition::Type::VALUE, serverOrderSlice2,
+                },
             },
-          },
-          std::vector<AgencyPrecondition> {
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/distributeShardsLike",
-              AgencyPrecondition::Type::EMPTY,
-              true,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/repairingDistributeShardsLike",
-              AgencyPrecondition::Type::VALUE,
-              protoIdSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/replicationFactor",
-              AgencyPrecondition::Type::VALUE,
-              replicationFactorSlice,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/shards/shard1",
-              AgencyPrecondition::Type::VALUE,
-              serverOrderSlice1,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/shards/protoShard1",
-              AgencyPrecondition::Type::VALUE,
-              serverOrderSlice1,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/shards/shard2",
-              AgencyPrecondition::Type::VALUE,
-              serverOrderSlice2,
-            },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/shards/protoShard2",
-              AgencyPrecondition::Type::VALUE,
-              serverOrderSlice2,
-            },
-          },
         };
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
@@ -650,11 +634,11 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).protoCollectionId = "differing protoCollectionId";
         REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName = "differing protoCollectionName";
+        (other = operation).protoCollectionName =
+            "differing protoCollectionName";
         REQUIRE_FALSE(operation == other);
         (other = operation).replicationFactor = 42;
         REQUIRE_FALSE(operation == other);
-
       }
     }
 
@@ -662,47 +646,43 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
       ServerState::instance()->setId("CurrentCoordinatorServerId");
 
       MoveShardOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .shard = "s1",
-        .from = "db-from-server",
-        .to = "db-to-server",
-        .isLeader = true,
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .shard = "s1",
+          .from = "db-from-server",
+          .to = "db-to-server",
+          .isLeader = true,
       };
 
       WHEN("Converted into an AgencyTransaction") {
         uint64_t nextJobId = 41;
-        auto jobIdGenerator = [&nextJobId]() {
-          return nextJobId++;
-        };
+        auto jobIdGenerator = [&nextJobId]() { return nextJobId++; };
         auto jobCreationTimestampGenerator = []() {
           std::tm tm = {};
-          tm.tm_year = 2018 - 1900; // years since 1900
-          tm.tm_mon = 3 - 1; // March, counted from january
+          tm.tm_year = 2018 - 1900;  // years since 1900
+          tm.tm_mon = 3 - 1;         // March, counted from january
           tm.tm_mday = 7;
           tm.tm_hour = 15;
           tm.tm_min = 20;
           tm.tm_sec = 1;
           tm.tm_isdst = 0;
 
-          std::chrono::system_clock::time_point tp
-            = std::chrono::system_clock::from_time_t(TRI_timegm(&tm));
+          std::chrono::system_clock::time_point tp =
+              std::chrono::system_clock::from_time_t(TRI_timegm(&tm));
 
           return tp;
         };
 
         conversionVisitor = RepairOperationToTransactionVisitor(
-          jobIdGenerator,
-          jobCreationTimestampGenerator
-        );
+            jobIdGenerator, jobCreationTimestampGenerator);
 
         AgencyWriteTransaction trx;
         boost::optional<uint64_t> jobId;
         std::tie(trx, jobId) = conversionVisitor(operation);
 
         REQUIRE(jobId.is_initialized());
-// "timeCreated": "2018-03-07T15:20:01.284Z",
+        // "timeCreated": "2018-03-07T15:20:01.284Z",
         VPackBufferPtr todoVpack = R"=(
           {
             "type": "moveShard",
@@ -719,22 +699,18 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         )="_vpack;
         Slice todoSlice = Slice(todoVpack->data());
 
-        AgencyWriteTransaction expectedTrx {
-          AgencyOperation {
-            "Target/ToDo/" + std::to_string(jobId.get()),
-            AgencyValueOperationType::SET,
-            todoSlice,
-          },
-          AgencyPrecondition {
-            "Target/ToDo/" + std::to_string(jobId.get()),
-            AgencyPrecondition::Type::EMPTY,
-            true,
-          },
+        AgencyWriteTransaction expectedTrx{
+            AgencyOperation{
+                "Target/ToDo/" + std::to_string(jobId.get()),
+                AgencyValueOperationType::SET, todoSlice,
+            },
+            AgencyPrecondition{
+                "Target/ToDo/" + std::to_string(jobId.get()),
+                AgencyPrecondition::Type::EMPTY, true,
+            },
         };
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
@@ -756,34 +732,31 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).to = "differing to";
         REQUIRE_FALSE(operation == other);
-        (other = operation).isLeader = ! operation.isLeader;
+        (other = operation).isLeader = !operation.isLeader;
         REQUIRE_FALSE(operation == other);
-
       }
     }
 
     GIVEN("A FixServerOrderOperation") {
       FixServerOrderOperation operation{
-        .database = "myDbName",
-        .collectionId = "123456",
-        .collectionName = "myCollection",
-        .protoCollectionId = "789876",
-        .protoCollectionName = "myProtoCollection",
-        .shard = "s1",
-        .protoShard = "s7",
-        .leader = "db-leader-server",
-        .followers = {
-          "db-follower-3-server",
-          "db-follower-2-server",
-          "db-follower-4-server",
-          "db-follower-1-server",
-        },
-        .protoFollowers = {
-          "db-follower-1-server",
-          "db-follower-2-server",
-          "db-follower-3-server",
-          "db-follower-4-server",
-        },
+          .database = "myDbName",
+          .collectionId = "123456",
+          .collectionName = "myCollection",
+          .protoCollectionId = "789876",
+          .protoCollectionName = "myProtoCollection",
+          .shard = "s1",
+          .protoShard = "s7",
+          .leader = "db-leader-server",
+          .followers =
+              {
+                  "db-follower-3-server", "db-follower-2-server",
+                  "db-follower-4-server", "db-follower-1-server",
+              },
+          .protoFollowers =
+              {
+                  "db-follower-1-server", "db-follower-2-server",
+                  "db-follower-3-server", "db-follower-4-server",
+              },
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -801,7 +774,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
           "db-follower-3-server",
           "db-follower-4-server"
         ])="_vpack;
-        Slice previousServerOrderSlice = Slice(previousServerOrderVpack->data());
+        Slice previousServerOrderSlice =
+            Slice(previousServerOrderVpack->data());
         Slice correctServerOrderSlice = Slice(correctServerOrderVpack->data());
 
         AgencyWriteTransaction trx;
@@ -811,28 +785,23 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(jobid.is_initialized());
 
         AgencyWriteTransaction expectedTrx{
-          AgencyOperation {
-            "Plan/Collections/myDbName/123456/shards/s1",
-            AgencyValueOperationType::SET,
-            correctServerOrderSlice,
-          },
-          {
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/123456/shards/s1",
-              AgencyPrecondition::Type::VALUE,
-              previousServerOrderSlice,
+            AgencyOperation{
+                "Plan/Collections/myDbName/123456/shards/s1",
+                AgencyValueOperationType::SET, correctServerOrderSlice,
             },
-            AgencyPrecondition {
-              "Plan/Collections/myDbName/789876/shards/s7",
-              AgencyPrecondition::Type::VALUE,
-              correctServerOrderSlice,
+            {
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/123456/shards/s1",
+                    AgencyPrecondition::Type::VALUE, previousServerOrderSlice,
+                },
+                AgencyPrecondition{
+                    "Plan/Collections/myDbName/789876/shards/s7",
+                    AgencyPrecondition::Type::VALUE, correctServerOrderSlice,
+                },
             },
-          },
         };
 
-        trx.clientId
-          = expectedTrx.clientId
-          = "dummy-client-id";
+        trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
         REQUIRE(trx == expectedTrx);
       }
@@ -850,7 +819,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).protoCollectionId = "differing protoCollectionId";
         REQUIRE_FALSE(operation == other);
-        (other = operation).protoCollectionName = "differing protoCollectionName";
+        (other = operation).protoCollectionName =
+            "differing protoCollectionName";
         REQUIRE_FALSE(operation == other);
         (other = operation).shard = "differing shard";
         REQUIRE_FALSE(operation == other);
@@ -862,12 +832,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).protoFollowers = {"differing", "protoFollowers"};
         REQUIRE_FALSE(operation == other);
-
       }
     }
 
-  }
-  catch (...) {
+  } catch (...) {
     // restore old manager
     AgencyCommManager::MANAGER = std::move(oldManager);
     throw;
@@ -875,8 +843,6 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
   // restore old manager
   AgencyCommManager::MANAGER = std::move(oldManager);
 }
-
-
 }
 }
 }

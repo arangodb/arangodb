@@ -23,10 +23,10 @@
 #ifndef ARANGODB3_RESTREPAIRHANDLER_H
 #define ARANGODB3_RESTREPAIRHANDLER_H
 
+#include "Agency/AgencyComm.h"
+#include "Cluster/ClusterRepairs.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "RestHandler/RestBaseHandler.h"
-#include "Cluster/ClusterRepairs.h"
-#include "Agency/AgencyComm.h"
 
 namespace arangodb {
 namespace rest {
@@ -35,37 +35,27 @@ class AsyncJobManager;
 
 namespace rest_repair {
 
-enum class JobStatus {
-  todo,
-  finished,
-  pending,
-  failed,
-  missing
-};
+enum class JobStatus { todo, finished, pending, failed, missing };
 
-inline char const*
-toString(JobStatus jobStatus) {
-  return
-    jobStatus == JobStatus::todo ? "todo" :
-    jobStatus == JobStatus::pending ? "pending" :
-    jobStatus == JobStatus::finished ? "finished" :
-    jobStatus == JobStatus::failed ? "failed" :
-    jobStatus == JobStatus::missing ? "missing" :
-    "n/a";
+inline char const* toString(JobStatus jobStatus) {
+  return jobStatus == JobStatus::todo
+             ? "todo"
+             : jobStatus == JobStatus::pending
+                   ? "pending"
+                   : jobStatus == JobStatus::finished
+                         ? "finished"
+                         : jobStatus == JobStatus::failed
+                               ? "failed"
+                               : jobStatus == JobStatus::missing ? "missing"
+                                                                 : "n/a";
 }
-
 }
 
 class RestRepairHandler : public arangodb::RestBaseHandler {
  public:
-  RestRepairHandler(
-    GeneralRequest *request,
-    GeneralResponse *response
-  );
+  RestRepairHandler(GeneralRequest* request, GeneralResponse* response);
 
-  char const *name() const final {
-    return "RestDemoHandler";
-  }
+  char const* name() const final { return "RestDemoHandler"; }
 
   bool isDirect() const override {
     // TODO does this do what I think it does?
@@ -80,37 +70,29 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   RestStatus repairDistributeShardsLike();
 
   Result executeRepairOperations(
-    std::list<cluster_repairs::RepairOperation> list
-  );
+      std::list<cluster_repairs::RepairOperation> list);
 
   template <std::size_t N>
   cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
   getFromAgency(std::array<std::string const, N> const& agencyKeyArray);
 
-  cluster_repairs::ResultT<cluster_repairs::VPackBufferPtr>
-  getFromAgency(std::string const& agencyKey);
+  cluster_repairs::ResultT<cluster_repairs::VPackBufferPtr> getFromAgency(
+      std::string const& agencyKey);
 
-  cluster_repairs::ResultT<rest_repair::JobStatus>
-  getJobStatusFromAgency(std::string const &jobId);
+  cluster_repairs::ResultT<rest_repair::JobStatus> getJobStatusFromAgency(
+      std::string const& jobId);
 
-  cluster_repairs::ResultT<bool>
-  jobFinished(std::string const& jobId);
+  cluster_repairs::ResultT<bool> jobFinished(std::string const& jobId);
 
   bool repairCollection(
-    std::list<cluster_repairs::RepairOperation> repairOperations,
-    VPackBuilder &response
-  );
+      std::list<cluster_repairs::RepairOperation> repairOperations,
+      VPackBuilder& response);
 
-  cluster_repairs::ResultT<std::string> static
-  getDbAndCollectionName(
-    VPackSlice planCollections,
-    CollectionID collectionId
-  );
+  cluster_repairs::ResultT<std::string> static getDbAndCollectionName(
+      VPackSlice planCollections, CollectionID collectionId);
 
-  void addErrorDetails(VPackBuilder &builder, int errorNumber);
+  void addErrorDetails(VPackBuilder& builder, int errorNumber);
 };
-
 }
 
-
-#endif //ARANGODB3_RESTREPAIRHANDLER_H
+#endif  // ARANGODB3_RESTREPAIRHANDLER_H

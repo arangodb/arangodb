@@ -25,4 +25,4 @@
 
 #include "ClusterRepairDistributeShardsLike.h"
 
-#endif //ARANGODB3_CLUSTERREPAIRS_H
+#endif  // ARANGODB3_CLUSTERREPAIRS_H

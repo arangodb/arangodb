@@ -1,6 +1,5 @@
 // Agency output of .[0].arango.Plan.Collections
-std::shared_ptr<VPackBuffer<uint8_t>>
-  planCollections = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
 {
   "someDb": {
     "11111111": {
@@ -31,8 +30,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 )="_vpack;
 
 // Agency output of .[0].arango.Supervision.Health
-std::shared_ptr<VPackBuffer<uint8_t>>
-  supervisionHealth4Healthy0Bad = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth4Healthy0Bad = R"=(
 {
   "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA": {
     "Status": "GOOD"
@@ -49,41 +47,38 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-std::map< CollectionID, std::vector< RepairOperation > >
-  expectedOperationsWithRepairingDistributeShardsLike {
-  {
-    "22222222", {
-// begin without rename
-      BeginRepairsOperation {
-        .database = "someDb",
-        .collectionId = "22222222",
-        .collectionName = "followingCollection",
-        .protoCollectionId = "11111111",
-        .protoCollectionName = "leadingCollection",
-        .collectionReplicationFactor = 3,
-        .protoReplicationFactor = 3,
-        .renameDistributeShardsLike = false,
-      },
-// rename repairingDistributeShardsLike to distributeShardsLike
-      FinishRepairsOperation {
-        .database = "someDb",
-        .collectionId = "22222222",
-        .collectionName = "followingCollection",
-        .protoCollectionId = "11111111",
-        .protoCollectionName = "leadingCollection",
-        .shards = {
-          std::make_tuple<ShardID, ShardID, DBServers>(
-            "s22",
-            "s11",
-            {
-              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-              "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-            }
-          ),
-        },
-        .replicationFactor = 3,
-      },
-    }
-  }
-};
+std::map<CollectionID, std::vector<RepairOperation>>
+    expectedOperationsWithRepairingDistributeShardsLike{
+        {"22222222",
+         {
+             // begin without rename
+             BeginRepairsOperation{
+                 .database = "someDb",
+                 .collectionId = "22222222",
+                 .collectionName = "followingCollection",
+                 .protoCollectionId = "11111111",
+                 .protoCollectionName = "leadingCollection",
+                 .collectionReplicationFactor = 3,
+                 .protoReplicationFactor = 3,
+                 .renameDistributeShardsLike = false,
+             },
+             // rename repairingDistributeShardsLike to distributeShardsLike
+             FinishRepairsOperation{
+                 .database = "someDb",
+                 .collectionId = "22222222",
+                 .collectionName = "followingCollection",
+                 .protoCollectionId = "11111111",
+                 .protoCollectionName = "leadingCollection",
+                 .shards =
+                     {
+                         std::make_tuple<ShardID, ShardID, DBServers>(
+                             "s22", "s11",
+                             {
+                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                                 "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                             }),
+                     },
+                 .replicationFactor = 3,
+             },
+         }}};

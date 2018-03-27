@@ -1,6 +1,5 @@
 // Agency output of .[0].arango.Plan.Collections
-std::shared_ptr<VPackBuffer<uint8_t>>
-  planCollections = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
 {
   "someDb": {
     "11111111": {
@@ -30,8 +29,7 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 
 // Agency output of .[0].arango.Supervision.Health
 // Coordinators are unused in the test, but must be ignored
-std::shared_ptr<VPackBuffer<uint8_t>>
-  supervisionHealth3Healthy0Bad = R"=(
+std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth3Healthy0Bad = R"=(
 {
   "CRDN-976e3d6a-9148-4ece-99e9-326dc69834b2": {
   },
@@ -51,76 +49,74 @@ std::shared_ptr<VPackBuffer<uint8_t>>
 }
 )="_vpack;
 
-//std::shared_ptr<VPackBuffer<uint8_t>>
+// std::shared_ptr<VPackBuffer<uint8_t>>
 //  collName22222222vpack = R"=("22222222")="_vpack;
-//Slice
+// Slice
 //  collName22222222slice = Slice(collName22222222vpack->data());
 
-std::map< CollectionID, std::vector< RepairOperation > >
-  expectedOperationsWithTwoSwappedDBServers {
-  {
-    "11111111", {
-// rename distributeShardsLike to repairingDistributeShardsLike
-      BeginRepairsOperation {
-        .database = "someDb",
-        .collectionId = "11111111",
-        .collectionName = "_frontend",
-        .protoCollectionId = "22222222",
-        .protoCollectionName = "_graphs",
-        .collectionReplicationFactor = 2,
-        .protoReplicationFactor = 2,
-        .renameDistributeShardsLike = true,
-      },
-// shard s11 of collection 11111111
-// make room on the dbserver where the leader should be
-      MoveShardOperation {
-        .database = "someDb",
-        .collectionId = "11111111",
-        .collectionName = "_frontend",
-        .shard = "s11",
-        .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-        .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-        .isLeader = false,
-      },
-// move leader to the correct dbserver
-      MoveShardOperation {
-        .database = "someDb",
-        .collectionId = "11111111",
-        .collectionName = "_frontend",
-        .shard = "s11",
-        .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-        .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-        .isLeader = true,
-      },
-// fix the remaining shard
-      MoveShardOperation {
-        .database = "someDb",
-        .collectionId = "11111111",
-        .collectionName = "_frontend",
-        .shard = "s11",
-        .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-        .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-        .isLeader = false,
-      },
-// rename repairingDistributeShardsLike to distributeShardsLike
-      FinishRepairsOperation {
-        .database = "someDb",
-        .collectionId = "11111111",
-        .collectionName = "_frontend",
-        .protoCollectionId = "22222222",
-        .protoCollectionName = "_graphs",
-        .shards = {
-          std::make_tuple<ShardID, ShardID, DBServers>(
-            "s11",
-            "s22",
-            {
-              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-            }
-          ),
-        },
-        .replicationFactor = 2,
-      },
-    }
-  },
-};
+std::map<CollectionID, std::vector<RepairOperation>>
+    expectedOperationsWithTwoSwappedDBServers{
+        {"11111111",
+         {
+             // rename distributeShardsLike to repairingDistributeShardsLike
+             BeginRepairsOperation{
+                 .database = "someDb",
+                 .collectionId = "11111111",
+                 .collectionName = "_frontend",
+                 .protoCollectionId = "22222222",
+                 .protoCollectionName = "_graphs",
+                 .collectionReplicationFactor = 2,
+                 .protoReplicationFactor = 2,
+                 .renameDistributeShardsLike = true,
+             },
+             // shard s11 of collection 11111111
+             // make room on the dbserver where the leader should be
+             MoveShardOperation{
+                 .database = "someDb",
+                 .collectionId = "11111111",
+                 .collectionName = "_frontend",
+                 .shard = "s11",
+                 .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 .isLeader = false,
+             },
+             // move leader to the correct dbserver
+             MoveShardOperation{
+                 .database = "someDb",
+                 .collectionId = "11111111",
+                 .collectionName = "_frontend",
+                 .shard = "s11",
+                 .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 .isLeader = true,
+             },
+             // fix the remaining shard
+             MoveShardOperation{
+                 .database = "someDb",
+                 .collectionId = "11111111",
+                 .collectionName = "_frontend",
+                 .shard = "s11",
+                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 .isLeader = false,
+             },
+             // rename repairingDistributeShardsLike to distributeShardsLike
+             FinishRepairsOperation{
+                 .database = "someDb",
+                 .collectionId = "11111111",
+                 .collectionName = "_frontend",
+                 .protoCollectionId = "22222222",
+                 .protoCollectionName = "_graphs",
+                 .shards =
+                     {
+                         std::make_tuple<ShardID, ShardID, DBServers>(
+                             "s11", "s22",
+                             {
+                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                             }),
+                     },
+                 .replicationFactor = 2,
+             },
+         }},
+    };

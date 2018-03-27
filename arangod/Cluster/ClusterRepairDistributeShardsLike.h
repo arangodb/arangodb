@@ -37,7 +37,7 @@
 namespace arangodb {
 namespace velocypack {
 class Slice;
-template<typename T>
+template <typename T>
 class Buffer;
 }
 
@@ -46,92 +46,77 @@ namespace cluster_repairs {
 using DBServers = std::vector<ServerID>;
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 std::ostream& operator<<(std::ostream& stream, std::array<T, N> array) {
   stream << "std::array<" << typeid(T).name() << "> { ";
-  std::for_each(
-    array.begin(),
-    array.end(),
-    [&stream](T const &val) {
-      stream << val << ", ";
-    }
-  );
+  std::for_each(array.begin(), array.end(),
+                [&stream](T const& val) { stream << val << ", "; });
 
   stream << "}";
 
   return stream;
 }
 
-inline std::ostream&
-operator<<(std::ostream& stream, VPackBufferPtr const& vpack) {
+inline std::ostream& operator<<(std::ostream& stream,
+                                VPackBufferPtr const& vpack) {
   return stream << "std::shared_ptr<VPackBuffer> { "
                 << velocypack::Slice(vpack->data()).toJson() << " "
                 << "}";
 }
 
-template<typename T>
+template <typename T>
 class ResultT : public arangodb::Result {
  public:
-
-  ResultT static success(T val) {
-    return ResultT(val, TRI_ERROR_NO_ERROR);
-  }
+  ResultT static success(T val) { return ResultT(val, TRI_ERROR_NO_ERROR); }
 
   ResultT static error(int errorNumber) {
     return ResultT(boost::none, errorNumber);
   }
 
-  ResultT static error(int errorNumber, std::__cxx11::string const &errorMessage) {
+  ResultT static error(int errorNumber,
+                       std::__cxx11::string const& errorMessage) {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
-  ResultT(Result const& other)
-    : Result(other) {
+  ResultT(Result const& other) : Result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
-  ResultT(T&& val)
-    : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) { }
+  ResultT(T&& val) : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
 
-  ResultT &operator=(T const &val_) {
+  ResultT& operator=(T const& val_) {
     _val = val_;
     return *this;
   }
 
-  ResultT &operator=(T&& val_) {
+  ResultT& operator=(T&& val_) {
     _val = std::move(val_);
     return *this;
   }
 
-// These are very convenient, but also make it very easy to accidentally use
-// the value of an error-result...
-//
-//  operator T() const { return get(); }
-//  operator T &() { return get(); }
+  // These are very convenient, but also make it very easy to accidentally use
+  // the value of an error-result...
+  //
+  //  operator T() const { return get(); }
+  //  operator T &() { return get(); }
 
-  T *operator->() { return &get(); }
-  T const *operator->() const { return &get(); }
+  T* operator->() { return &get(); }
+  T const* operator->() const { return &get(); }
 
-  T &operator*() &{ return get(); }
-  T const &operator*() const &{ return get(); }
+  T& operator*() & { return get(); }
+  T const& operator*() const& { return get(); }
 
   T&& operator*() && { return get(); }
-  T const&& operator*() const && { return get(); }
+  T const&& operator*() const&& { return get(); }
 
-  explicit operator bool() const {
-    return ok();
-  }
+  explicit operator bool() const { return ok(); }
 
-  T const& get() const {
-    return _val.get();
-  }
-  T& get() {
-    return _val.get();
-  }
+  T const& get() const { return _val.get(); }
+  T& get() { return _val.get(); }
 
   ResultT map(ResultT<T> (*fun)(T const& val)) const {
     if (ok()) {
@@ -146,8 +131,8 @@ class ResultT : public arangodb::Result {
       return this->get() == other.get();
     }
     if (this->fail() && other.fail()) {
-      return this->errorNumber() == other.errorNumber()
-             && this->errorMessage() == other.errorMessage();
+      return this->errorNumber() == other.errorNumber() &&
+             this->errorMessage() == other.errorMessage();
     }
 
     return false;
@@ -157,25 +142,23 @@ class ResultT : public arangodb::Result {
   boost::optional<T> _val;
 
   ResultT(boost::optional<T>&& val_, int errorNumber)
-    : Result(errorNumber), _val(val_) {}
+      : Result(errorNumber), _val(val_) {}
 
-  ResultT(boost::optional<T>&& val_, int errorNumber, std::__cxx11::string const &errorMessage)
-    : Result(errorNumber, errorMessage), _val(val_) {}
+  ResultT(boost::optional<T>&& val_, int errorNumber,
+          std::__cxx11::string const& errorMessage)
+      : Result(errorNumber, errorMessage), _val(val_) {}
 };
 
-
-template<typename T>
+template <typename T>
 std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
-  return stream
-    << "ResultT<" << typeid(T).name() << "> "
-    << ": Result { "
-    << "errorNumber = " << result.errorNumber() << ", "
-    << "errorMessage = \"" << result.errorMessage() << "\" "
-    << "} { "
-    << "val = " << result.get() << " "
-    << "}";
+  return stream << "ResultT<" << typeid(T).name() << "> "
+                << ": Result { "
+                << "errorNumber = " << result.errorNumber() << ", "
+                << "errorMessage = \"" << result.errorMessage() << "\" "
+                << "} { "
+                << "val = " << result.get() << " "
+                << "}";
 }
-
 
 struct Collection {
   DatabaseID database;
@@ -195,110 +178,70 @@ struct Collection {
   Collection() = delete;
 };
 
-
 class DistributeShardsLikeRepairer {
  public:
-  ResultT<
-    std::map< CollectionID,
-      ResultT<std::list<RepairOperation>>
-    >
-  > static
-  repairDistributeShardsLike(
-    velocypack::Slice const &planCollections,
-    velocypack::Slice const &supervisionHealth
-  );
+  ResultT<std::map<
+      CollectionID,
+      ResultT<std::list<
+          RepairOperation>>>> static repairDistributeShardsLike(velocypack::
+                                                                    Slice const&
+                                                                        planCollections,
+                                                                velocypack::
+                                                                    Slice const&
+                                                                        supervisionHealth);
 
  private:
-  std::map<ShardID, DBServers, VersionSort> static
-  readShards(velocypack::Slice const& shards);
+  std::map<ShardID, DBServers, VersionSort> static readShards(
+      velocypack::Slice const& shards);
 
-  DBServers static
-  readDatabases(velocypack::Slice const& planDbServers);
+  DBServers static readDatabases(velocypack::Slice const& planDbServers);
 
-  ResultT<std::map<CollectionID, struct Collection>> static
-  readCollections(velocypack::Slice const& collectionsByDatabase);
+  ResultT<std::map<CollectionID, struct Collection>> static readCollections(
+      velocypack::Slice const& collectionsByDatabase);
 
-  boost::optional<ServerID const> static
-  findFreeServer(
-    DBServers const& availableDbServers,
-    DBServers const& shardDbServers
-  );
+  boost::optional<ServerID const> static findFreeServer(
+      DBServers const& availableDbServers, DBServers const& shardDbServers);
 
-  ResultT<std::vector<CollectionID>> static
-  findCollectionsToFix(std::map<CollectionID, struct Collection> collections);
+  ResultT<std::vector<CollectionID>> static findCollectionsToFix(
+      std::map<CollectionID, struct Collection> collections);
 
-  DBServers static serverSetDifference(
-    DBServers setA,
-    DBServers setB
-  );
+  DBServers static serverSetDifference(DBServers setA, DBServers setB);
 
-  DBServers static serverSetSymmetricDifference(
-    DBServers setA,
-    DBServers setB
-  );
+  DBServers static serverSetSymmetricDifference(DBServers setA, DBServers setB);
 
-  MoveShardOperation static
-  createMoveShardOperation(
-    Collection& collection,
-    ShardID const& shardId,
-    ServerID const& fromServerId,
-    ServerID const& toServerId,
-    bool isLeader
-  );
+  MoveShardOperation static createMoveShardOperation(
+      Collection& collection, ShardID const& shardId,
+      ServerID const& fromServerId, ServerID const& toServerId, bool isLeader);
 
-  ResultT<std::list<RepairOperation>> static
-  fixLeader(
-    DBServers const& availableDbServers,
-    Collection& collection,
-    Collection const& proto,
-    ShardID const& shardId,
-    ShardID const& protoShardId
-  );
+  ResultT<std::list<RepairOperation>> static fixLeader(
+      DBServers const& availableDbServers, Collection& collection,
+      Collection const& proto, ShardID const& shardId,
+      ShardID const& protoShardId);
 
-  ResultT<std::list<RepairOperation>> static
-  fixShard(
-    DBServers const& availableDbServers,
-    Collection& collection,
-    Collection const& proto,
-    ShardID const& shardId,
-    ShardID const& protoShardId
-  );
+  ResultT<std::list<RepairOperation>> static fixShard(
+      DBServers const& availableDbServers, Collection& collection,
+      Collection const& proto, ShardID const& shardId,
+      ShardID const& protoShardId);
 
-  ResultT<boost::optional<FixServerOrderOperation>> static
-  createFixServerOrderOperation(
-    Collection &collection,
-    Collection const &proto,
-    ShardID const &shardId,
-    ShardID const &protoShardId
-  );
+  ResultT<boost::optional<FixServerOrderOperation>> static createFixServerOrderOperation(
+      Collection& collection, Collection const& proto, ShardID const& shardId,
+      ShardID const& protoShardId);
 
-  ResultT<BeginRepairsOperation> static
-  createBeginRepairsOperation(
-    Collection &collection,
-    Collection const &proto
-  );
+  ResultT<BeginRepairsOperation> static createBeginRepairsOperation(
+      Collection& collection, Collection const& proto);
 
-  std::vector<cluster_repairs::ShardWithProtoAndDbServers> static
-  createShardVector(
-    std::map<ShardID, DBServers, VersionSort> const& shardsById,
-    std::map<ShardID, DBServers, VersionSort> const& protoShardsById
-  );
+  std::
+      vector<cluster_repairs::ShardWithProtoAndDbServers> static createShardVector(
+          std::map<ShardID, DBServers, VersionSort> const& shardsById,
+          std::map<ShardID, DBServers, VersionSort> const& protoShardsById);
 
-  ResultT<FinishRepairsOperation> static
-  createFinishRepairsOperation(
-    Collection &collection,
-    Collection const &proto
-  );
+  ResultT<FinishRepairsOperation> static createFinishRepairsOperation(
+      Collection& collection, Collection const& proto);
 
-  ResultT<std::list<RepairOperation>> static
-  fixAllShardsOfCollection(
-    Collection &collection,
-    Collection const &proto,
-    DBServers const &availableDbServers
-  );
+  ResultT<std::list<RepairOperation>> static fixAllShardsOfCollection(
+      Collection& collection, Collection const& proto,
+      DBServers const& availableDbServers);
 };
-
-
 }
 }
 
