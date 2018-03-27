@@ -39,9 +39,22 @@ bool arangodb::basics::parse_dateTime(
   boost::algorithm::trim(dateTime);
 
   std::regex iso8601_regex(
-      "(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?(((\\ "
-      "|T)\\d\\d\\:\\d\\d(\\:\\d\\d(\\.\\d{1,3})?)?(z|Z|(\\+|\\-)\\d\\d\\:"
-      "\\d\\d)?)?|(z|Z)?)?");
+                           "(\\+|\\-)?\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)" // YY[YY]-MM-DD
+                           "?("
+                            "("
+                           // Time is optional
+                             "(\\ |T)" // T or blank separates date and time
+                             "\\d\\d\\:\\d\\d" // time: hh:mm
+                              "(\\:\\d\\d(\\.\\d{1,3})?)" // Optional: :ss.mmms
+                              "?("
+                                "z|Z|" // trailing Z or start of timezone
+                                "(\\+|\\-)" 
+                                "\\d\\d\\:\\d\\d" // timezone hh:mm
+                              ")?"
+                            ")|"  
+                            "(z|Z)?" // Z
+                           ")?"
+                           );
 
   if (!std::regex_match(dateTime, iso8601_regex)) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
