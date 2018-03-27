@@ -74,7 +74,8 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   RestStatus repairDistributeShardsLike();
 
   Result executeRepairOperations(
-      std::list<cluster_repairs::RepairOperation> list);
+      DatabaseID const& databaseId, CollectionID const& collectionId,
+      std::list<cluster_repairs::RepairOperation> const& list);
 
   template <std::size_t N>
   cluster_repairs::ResultT<std::array<cluster_repairs::VPackBufferPtr, N>>
@@ -89,13 +90,17 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
   cluster_repairs::ResultT<bool> jobFinished(std::string const& jobId);
 
   bool repairCollection(
-      std::list<cluster_repairs::RepairOperation> repairOperations,
+      DatabaseID const& databaseId, CollectionID const& collectionId,
+      std::list<cluster_repairs::RepairOperation> const& repairOperations,
       VPackBuilder& response);
 
   cluster_repairs::ResultT<std::string> static getDbAndCollectionName(
-      VPackSlice planCollections, CollectionID collectionId);
+      VPackSlice planCollections, CollectionID const& collectionId);
 
   void addErrorDetails(VPackBuilder& builder, int errorNumber);
+
+  cluster_repairs::ResultT<bool> checkReplicationFactor(
+      DatabaseID const& databaseId, CollectionID const& collectionId);
 };
 }
 
