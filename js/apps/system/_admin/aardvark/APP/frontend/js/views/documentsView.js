@@ -424,8 +424,12 @@
       });
       this.collection.setToFirst();
 
-      this.collection.getDocuments(this.getDocsCallback.bind(this));
-      this.markFilterToggle();
+      if (this.getFilterContent().length === 0) {
+        this.resetView();
+      } else {
+        this.collection.getDocuments(this.getDocsCallback.bind(this));
+        this.markFilterToggle();
+      }
     },
 
     restoreFilter: function () {
