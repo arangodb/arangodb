@@ -76,7 +76,8 @@ add_executable(${BIN_ARANGODUMP}
   Dump/arangodump.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
-  V8Client/ArangoClientHelper.cpp
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
   ${ADDITIONAL_BIN_ARANGODUMP_SOURCES}
 )
 
@@ -234,6 +235,7 @@ add_executable(${BIN_ARANGORESTORE}
   Restore/arangorestore.cpp
   Shell/ClientFeature.cpp
   Shell/ConsoleFeature.cpp
+  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
   ${ADDITIONAL_BIN_ARANGORESTORE_SOURCES}
 )
