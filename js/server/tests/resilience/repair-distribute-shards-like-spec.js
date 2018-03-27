@@ -119,13 +119,9 @@ const waitForAgencyJob = function (jobId) {
 };
 
 
-const expectCollectionPlanToEqualProto = function (collection, protoCollection) {
-  global.ArangoClusterInfo.flush();
-  const shardDist = internal.getCollectionShardDistribution(collection._id);
-  const protoShardDist = internal.getCollectionShardDistribution(protoCollection._id);
-
-  const shardDistPlan = shardDist[collection.name()].Plan;
-  const protoShardDistPlan = protoShardDist[protoCollection.name()].Plan;
+const expectEqualShardDistributionPlan = function (shardDist, protoShardDist) {
+  const shardDistPlan = shardDist.Plan;
+  const protoShardDistPlan = protoShardDist.Plan;
 
   let shards = Object.keys(shardDistPlan)
     .sort((a, b) => a.localeCompare(b, 'POSIX', {numeric:true}));
@@ -153,6 +149,160 @@ const zip = function(...arrays) {
   const indices = [...new Array(minSize).keys()];
 
   return indices.map(i => arrays.map(a => a[i]));
+};
+
+
+const createBrokenClusterState = function () {
+  const replicationFactor = dbServerCount - 1;
+  const protoCollection = internal.db._createDocumentCollection(protoColName,
+    {replicationFactor: replicationFactor, numberOfShards: 16});
+  const collection = internal.db._createDocumentCollection(colName,
+    {distributeShardsLike: protoCollection._id});
+
+  expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
+  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+
+  // IMPORTANT NOTE: Never do this in a real environment. Changing
+  // distributeShardsLike will break your cluster!
+  global.ArangoAgency.remove(`Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`);
+
+  global.ArangoClusterInfo.flush();
+  const protoShardDist = internal.getCollectionShardDistribution(protoColName)[protoColName].Plan;
+  const shardDist = internal.getCollectionShardDistribution(colName)[colName].Plan;
+  let protoShards = Object.keys(protoShardDist)
+    .sort((a, b) => a.localeCompare(b, 'POSIX', {numeric: true}));
+  let shards = Object.keys(shardDist)
+    .sort((a, b) => a.localeCompare(b, 'POSIX', {numeric: true}));
+
+  const dbServers = global.ArangoClusterInfo.getDBServers();
+  const dbServerIdByName =
+    dbServers.reduce(
+      (nameToId, server) => {
+        nameToId[server.serverName] = server.serverId;
+        return nameToId;
+      },
+      {}
+    );
+
+  const protoShard = protoShards[0];
+  const shard = shards[0];
+  const protoShardInfo = protoShardDist[protoShard];
+  const shardInfo = shardDist[shard];
+
+  const freeDbServers = dbServers.filter(
+    server => ![protoShardInfo.leader]
+      .concat(protoShardInfo.followers)
+      .includes(server.serverName)
+  );
+
+  const freeDbServer = freeDbServers[0].serverId;
+  const leaderDbServer = dbServerIdByName[shardInfo.leader];
+  const followerDbServer = dbServerIdByName[shardInfo.followers[0]];
+
+  let expectedCollections = {
+    [`${internal.db._name()}/${colName}`]: {
+      "PlannedOperations": [
+        {
+          "BeginRepairsOperation": {
+            "database": internal.db._name(),
+            "collection": colName,
+            "distributeShardsLike": protoColName,
+            "renameDistributeShardsLike": true,
+          }
+        },
+        {
+          "MoveShardOperation": {
+            "database": internal.db._name(),
+            "collection": colName,
+            "shard": shard,
+            "from": leaderDbServer,
+            "to": followerDbServer,
+            "isLeader": false,
+          }
+        },
+        {
+          "MoveShardOperation": {
+            "database": internal.db._name(),
+            "collection": colName,
+            "shard": shard,
+            "from": freeDbServer,
+            "to": leaderDbServer,
+            "isLeader": true,
+          }
+        },
+        {
+          "FixServerOrderOperation": {
+            "database": "_system",
+            "collection": colName,
+            "distributeShardsLike": protoColName,
+            "shard": shard,
+            "distributeShardsLikeShard": protoShard,
+            "leader": leaderDbServer,
+            "followers": [1, 2, 0].map(i => protoShardInfo.followers[i]).map(f => dbServerIdByName[f]),
+            "distributeShardsLikeFollowers": protoShardInfo.followers.map(f => dbServerIdByName[f])
+          }
+        },
+        {
+          "FinishRepairsOperation": {
+            "database": internal.db._name(),
+            "collection": colName,
+            "distributeShardsLike": protoColName,
+            "shards": zip(shards, protoShards).map(
+              ([shard, protoShard]) => ({
+                shard: shard,
+                protoShard: protoShard,
+                dbServers: [protoShardDist[protoShard].leader]
+                  .concat(protoShardDist[protoShard].followers)
+                  .map(server => dbServerIdByName[server])
+              })
+            ),
+          }
+        }
+      ],
+      error: false
+    }
+  };
+
+  const postMoveShardJob = function (from, to, isLeader) {
+    const id = global.ArangoClusterInfo.uniqid();
+    const moveShardTodo = {
+      type: 'moveShard',
+      database: internal.db._name(),
+      collection: collection._id,
+      shard: shard,
+      fromServer: from,
+      toServer: to,
+      jobId: id,
+      timeCreated: (new Date()).toISOString(),
+      creator: ArangoServerState.id(),
+      isLeader: isLeader
+    };
+    global.ArangoAgency.set('Target/ToDo/' + id, moveShardTodo);
+    return id;
+  };
+
+  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  let jobId = postMoveShardJob(leaderDbServer, freeDbServer, true);
+  let result = waitForAgencyJob(jobId);
+  expect(result).to.equal(true);
+  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+
+  jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
+  result = waitForAgencyJob(jobId);
+
+  expect(result).to.equal(true);
+
+  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+
+  // IMPORTANT NOTE: Never do this in a real environment. Changing
+  // distributeShardsLike will break your cluster!
+  global.ArangoAgency.set(
+    `Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`,
+    protoCollection._id
+  );
+
+  expect(waitForPlanEqualCurrent(collection)).to.be.true;
+  return {collection, protoCollection, expectedCollections};
 };
 
 
@@ -192,155 +342,8 @@ describe('Collections with distributeShardsLike', function () {
 // - Use an agency transaction to restore distributeShardsLike
 // - Execute repairs
   it('if broken, should be repaired', function() {
-    const replicationFactor = dbServerCount - 1;
-    const protoCollection = internal.db._createDocumentCollection(protoColName,
-      {replicationFactor: replicationFactor, numberOfShards: 16});
-    const collection = internal.db._createDocumentCollection(colName,
-      {distributeShardsLike: protoCollection._id});
-
-    expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
-
-    // IMPORTANT NOTE: Never do this in a real environment. Changing
-    // distributeShardsLike will break your cluster!
-    global.ArangoAgency.remove(`Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`);
-
-    global.ArangoClusterInfo.flush();
-    const protoShardDist = internal.getCollectionShardDistribution(protoColName)[protoColName].Plan;
-    const shardDist = internal.getCollectionShardDistribution(colName)[colName].Plan;
-    let protoShards = Object.keys(protoShardDist)
-      .sort((a, b) => a.localeCompare(b, 'POSIX', {numeric:true}));
-    let shards = Object.keys(shardDist)
-      .sort((a, b) => a.localeCompare(b, 'POSIX', {numeric:true}));
-
-    const dbServers = global.ArangoClusterInfo.getDBServers();
-    const dbServerIdByName =
-      dbServers.reduce(
-        (nameToId, server) => {
-          nameToId[server.serverName] = server.serverId;
-          return nameToId;
-        },
-        {}
-      );
-
-    const protoShard = protoShards[0];
-    const shard = shards[0];
-    const protoShardInfo = protoShardDist[protoShard];
-    const shardInfo = shardDist[shard];
-
-    const freeDbServers = dbServers.filter(
-      server => ! [protoShardInfo.leader]
-        .concat(protoShardInfo.followers)
-        .includes(server.serverName)
-    );
-
-    const freeDbServer = freeDbServers[0].serverId;
-    const leaderDbServer = dbServerIdByName[shardInfo.leader];
-    const followerDbServer = dbServerIdByName[shardInfo.followers[0]];
-
-    let expectedCollections = {
-      [`${internal.db._name()}/${colName}`]: {
-        "PlannedOperations": [
-          {
-            "BeginRepairsOperation": {
-              "database": internal.db._name(),
-              "collection": colName,
-              "distributeShardsLike": protoColName,
-              "renameDistributeShardsLike": true,
-            }
-          },
-          {
-            "MoveShardOperation": {
-              "database": internal.db._name(),
-              "collection": colName,
-              "shard": shard,
-              "from": leaderDbServer,
-              "to": followerDbServer,
-              "isLeader": false,
-            }
-          },
-          {
-            "MoveShardOperation": {
-              "database": internal.db._name(),
-              "collection": colName,
-              "shard": shard,
-              "from": freeDbServer,
-              "to": leaderDbServer,
-              "isLeader": true,
-            }
-          },
-          {
-            "FixServerOrderOperation": {
-              "database": "_system",
-              "collection": colName,
-              "distributeShardsLike": protoColName,
-              "shard": shard,
-              "distributeShardsLikeShard": protoShard,
-              "leader": leaderDbServer,
-              "followers": [1, 2, 0].map(i => protoShardInfo.followers[i]).map(f => dbServerIdByName[f]),
-              "distributeShardsLikeFollowers": protoShardInfo.followers.map(f => dbServerIdByName[f])
-            }
-          },
-          {
-            "FinishRepairsOperation": {
-              "database": internal.db._name(),
-              "collection": colName,
-              "distributeShardsLike": protoColName,
-              "shards": zip(shards, protoShards).map(
-                ([shard, protoShard]) => ({
-                  shard: shard,
-                  protoShard: protoShard,
-                  dbServers: [protoShardDist[protoShard].leader]
-                    .concat(protoShardDist[protoShard].followers)
-                    .map(server => dbServerIdByName[server])
-                })
-              ),
-            }
-          }
-        ],
-        error: false
-      }
-    };
-
-    const postMoveShardJob = function (from, to, isLeader) {
-      const id = global.ArangoClusterInfo.uniqid();
-      const moveShardTodo = {
-        type: 'moveShard',
-        database: internal.db._name(),
-        collection: collection._id,
-        shard: shard,
-        fromServer: from,
-        toServer: to,
-        jobId: id,
-        timeCreated: (new Date()).toISOString(),
-        creator: ArangoServerState.id(),
-        isLeader: isLeader
-      };
-      global.ArangoAgency.set('Target/ToDo/' + id, moveShardTodo);
-      return id;
-    };
-
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
-    let jobId = postMoveShardJob(leaderDbServer, freeDbServer, true);
-    let result = waitForAgencyJob(jobId);
-    expect(result).to.equal(true);
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
-
-    jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
-    result = waitForAgencyJob(jobId);
-
-    expect(result).to.equal(true);
-
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
-
-    // IMPORTANT NOTE: Never do this in a real environment. Changing
-    // distributeShardsLike will break your cluster!
-    global.ArangoAgency.set(
-      `Plan/Collections/${internal.db._name()}/${collection._id}/distributeShardsLike`,
-      protoCollection._id
-    );
-
-    expect(waitForPlanEqualCurrent(collection)).to.be.true;
+    const { protoCollection, collection, expectedCollections }
+      = createBrokenClusterState();
 
     const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
@@ -360,7 +363,44 @@ describe('Collections with distributeShardsLike', function () {
       collection.properties().distributeShardsLike
     ).to.equal(protoCollection.name());
 
-    expectCollectionPlanToEqualProto(collection, protoCollection);
+    global.ArangoClusterInfo.flush();
+    const shardDist = internal
+      .getCollectionShardDistribution(collection._id)[collection.name()];
+    const protoShardDist = internal
+      .getCollectionShardDistribution(protoCollection._id)[protoCollection.name()];
+    expectEqualShardDistributionPlan(shardDist, protoShardDist);
+  });
+
+  it('if called via GET, only return planned operations', function() {
+    const { protoCollection, collection, expectedCollections }
+      = createBrokenClusterState();
+
+    global.ArangoClusterInfo.flush();
+    const previousShardDist = internal
+      .getCollectionShardDistribution(collection._id)[collection.name()];
+
+    const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
+
+    let response = JSON.parse(d.body);
+    expect(response).to.have.property("error", false);
+
+    expect(response).to.have.property("code", 200);
+
+    expect(response).to.have.property("collections");
+    expect(response.collections).to.eql(expectedCollections);
+
+    global.ArangoClusterInfo.flush();
+
+    // Note: properties() returns the name of the collection in distributeShardsLike
+    // instead of the id!
+    expect(
+      collection.properties().distributeShardsLike
+    ).to.equal(protoCollection.name());
+
+    global.ArangoClusterInfo.flush();
+    const shardDist = internal
+      .getCollectionShardDistribution(collection._id)[collection.name()];
+    expectEqualShardDistributionPlan(shardDist, previousShardDist);
   });
 
 });
