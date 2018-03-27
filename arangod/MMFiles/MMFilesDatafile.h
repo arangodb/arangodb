@@ -302,7 +302,7 @@ struct MMFilesDatafile {
 
   void* _mmHandle;  // underlying memory map object handle (windows only)
 
-  TRI_voc_size_t const _initSize; // initial size of the datafile (constant)
+  TRI_voc_size_t mutable _initSize; // initial size of the datafile (constant)
   TRI_voc_size_t _maximalSize;    // maximal size of the datafile (may be adjusted/reduced at runtime)
   TRI_voc_size_t _currentSize;    // current size of the datafile
   TRI_voc_size_t _footerSize;     // size of the final footer
