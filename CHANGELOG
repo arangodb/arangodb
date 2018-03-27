@@ -1,5 +1,8 @@
 devel
 -----
+
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
