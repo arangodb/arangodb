@@ -1797,10 +1797,16 @@ arangodb::Result IResearchView::link(
     new IResearchView(&vocbase, info, std::move(dataPath))
   );
 
-  auto& json = info.isNone() ? emptyObjectSlice() : info; // if no 'info' then assume defaults
+  auto props = info.get("properties");
+
+  if (props.isNone()) {
+    // if no 'properties' then assume defaults
+    props = emptyObjectSlice();
+  }
+
   std::string error;
 
-  if (!ptr->_meta.init(json, error)) {
+  if (!ptr->_meta.init(props, error)) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed to initialize iResearch view from definition, error: " << error;
 

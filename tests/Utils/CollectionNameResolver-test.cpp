@@ -42,9 +42,12 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     bool isNew
   ) {
   struct Impl: public arangodb::LogicalView{
-    Impl(): arangodb::LogicalView(nullptr, arangodb::velocypack::Slice::emptyObjectSlice()) {
+    Impl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info)
+      : arangodb::LogicalView(&vocbase, info) {
     }
-    virtual void drop() override {}
+    virtual void drop() override {
+      deleted(true);
+    }
     virtual void toVelocyPack(
         arangodb::velocypack::Builder&, bool, bool
     ) const override {
@@ -65,7 +68,7 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>();
+  return std::make_unique<Impl>(vocbase, info);
 }
 
 }
