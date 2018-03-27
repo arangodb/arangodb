@@ -94,6 +94,13 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
       std::list<cluster_repairs::RepairOperation> const& repairOperations,
       VPackBuilder& response);
 
+  bool repairAllCollections(
+      VPackSlice const& planCollections,
+      std::map<CollectionID, cluster_repairs::ResultT<std::list<
+                                 cluster_repairs::RepairOperation>>> const&
+          repairOperationsByCollection,
+      VPackBuilder& response);
+
   cluster_repairs::ResultT<std::string> static getDbAndCollectionName(
       VPackSlice planCollections, CollectionID const& collectionId);
 

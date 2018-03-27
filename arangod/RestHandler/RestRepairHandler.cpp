@@ -33,9 +33,6 @@ using namespace arangodb::rest;
 using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
-// TODO Fix logging for production (remove [tg], reduce loglevels, rewrite
-// messages etc)
-
 RestRepairHandler::RestRepairHandler(GeneralRequest* request,
                                      GeneralResponse* response)
     : RestBaseHandler(request, response) {}
@@ -85,7 +82,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
   if (ServerState::instance()->isSingleServer()) {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
-        << "No ClusterInfo instance";
+        << "Called on single server; this only makes sense in cluster mode";
 
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "Only useful in cluster mode.");
@@ -110,15 +107,6 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     VPackSlice plan = clusterInfo->getPlan()->slice();
 
     VPackSlice planCollections = plan.get("Collections");
-    std::unordered_map<CollectionID, DatabaseID> databaseByCollectionId;
-
-    for (auto const& dbIt : VPackObjectIterator(planCollections)) {
-      DatabaseID database = dbIt.key.copyString();
-      for (auto const& colIt : VPackObjectIterator(dbIt.value)) {
-        CollectionID collectionId = colIt.key.copyString();
-        databaseByCollectionId[collectionId] = database;
-      }
-    }
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
 
@@ -168,42 +156,13 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       message << "Repairing " << repairOperationsByCollection.size()
               << " collections";
 
-      bool allCollectionsSucceeded = true;
-
       response.add("collections", VPackValue(VPackValueType::Object));
 
-      for (auto const& it : repairOperationsByCollection) {
-        CollectionID collectionId = it.first;
-        DatabaseID databaseId = databaseByCollectionId.at(collectionId);
-        auto repairOperationsResult = it.second;
-        auto nameResult = getDbAndCollectionName(planCollections, collectionId);
-        if (nameResult.fail()) {
-          // This should never happen.
-          allCollectionsSucceeded = false;
-          response.add(StaticStrings::Error, VPackValue(true));
-          response.add(StaticStrings::ErrorMessage,
-                       VPackValue(nameResult.errorMessage()));
-          continue;
-        }
+      bool allCollectionsSucceeded = repairAllCollections(
+          planCollections, repairOperationsByCollection, response);
 
-        std::string name = nameResult.get();
-        response.add(name, VPackValue(VPackValueType::Object));
-
-        bool success;
-        if (repairOperationsResult.ok()) {
-          success = repairCollection(databaseId, collectionId,
-                                     repairOperationsResult.get(), response);
-        } else {
-          response.add(StaticStrings::ErrorMessage,
-                       VPackValue(repairOperationsResult.errorMessage()));
-          addErrorDetails(response, repairOperationsResult.errorNumber());
-          success = false;
-        }
-        response.add(StaticStrings::Error, VPackValue(!success));
-
-        allCollectionsSucceeded = success && allCollectionsSucceeded;
-
-        response.close();
+      if (!allCollectionsSucceeded) {
+        responseCode = rest::ResponseCode::SERVER_ERROR;
       }
 
       response.close();
@@ -222,6 +181,60 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     return RestStatus::FAIL;
   }
+}
+
+bool RestRepairHandler::repairAllCollections(
+    VPackSlice const& planCollections,
+    std::map<CollectionID, ResultT<std::list<RepairOperation>>> const&
+        repairOperationsByCollection,
+    VPackBuilder& response) {
+  bool allCollectionsSucceeded = true;
+
+  std::unordered_map<CollectionID, DatabaseID> databaseByCollectionId;
+
+  for (auto const& dbIt : VPackObjectIterator(planCollections)) {
+    DatabaseID database = dbIt.key.copyString();
+    for (auto const& colIt : VPackObjectIterator(dbIt.value)) {
+      CollectionID collectionId = colIt.key.copyString();
+      databaseByCollectionId[collectionId] = database;
+    }
+  }
+
+  for (auto const& it : repairOperationsByCollection) {
+    CollectionID collectionId = it.first;
+    DatabaseID databaseId = databaseByCollectionId.at(collectionId);
+    auto repairOperationsResult = it.second;
+    auto nameResult = getDbAndCollectionName(planCollections, collectionId);
+    if (nameResult.fail()) {
+      // This should never happen.
+      allCollectionsSucceeded = false;
+      response.add(StaticStrings::Error, VPackValue(true));
+      response.add(StaticStrings::ErrorMessage,
+                   VPackValue(nameResult.errorMessage()));
+      continue;
+    }
+
+    std::string name = nameResult.get();
+    response.add(name, VPackValue(VPackValueType::Object));
+
+    bool success;
+    if (repairOperationsResult.ok()) {
+      success = this->repairCollection(databaseId, collectionId,
+                                       repairOperationsResult.get(), response);
+    } else {
+      response.add(StaticStrings::ErrorMessage,
+                   VPackValue(repairOperationsResult.errorMessage()));
+      this->addErrorDetails(response, repairOperationsResult.errorNumber());
+      success = false;
+    }
+    response.add(StaticStrings::Error, VPackValue(!success));
+
+    allCollectionsSucceeded = success && allCollectionsSucceeded;
+
+    response.close();
+  }
+
+  return allCollectionsSucceeded;
 }
 
 bool RestRepairHandler::repairCollection(
