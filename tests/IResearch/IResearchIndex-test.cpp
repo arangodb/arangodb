@@ -227,9 +227,7 @@ SECTION("test_analyzer") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // populate collections
@@ -346,9 +344,7 @@ SECTION("test_async_index") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // link collections with view
@@ -547,9 +543,7 @@ SECTION("test_fields") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // populate collections

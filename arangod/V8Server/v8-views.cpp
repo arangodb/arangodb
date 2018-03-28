@@ -435,7 +435,7 @@ static void JS_PropertiesViewVocbase(
 
   VPackBuilder vpackProperties;
   vpackProperties.openObject();
-  view->toVelocyPack(vpackProperties, true);
+  view->toVelocyPack(vpackProperties, true, false);
   vpackProperties.close();
 
   // return the current parameter set

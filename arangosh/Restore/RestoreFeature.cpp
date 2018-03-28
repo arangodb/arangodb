@@ -63,6 +63,8 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _chunkSize(1024 * 1024 * 8),
       _includeSystemCollections(false),
       _createDatabase(false),
+      _inputPath(),
+      _directory(nullptr),
       _forceSameDatabase(false),
       _importData(true),
       _importStructure(true),
@@ -74,7 +76,6 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
       _defaultNumberOfShards(1),
       _defaultReplicationFactor(1),
       _result(result),
-      _encryption(nullptr),
       _stats{0, 0, 0} {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -85,7 +86,7 @@ RestoreFeature::RestoreFeature(application_features::ApplicationServer* server,
   startsAfter("Encryption");
 #endif
 
-  _inputDirectory =
+  _inputPath =
       FileUtils::buildFilename(FileUtils::currentDirectory().result(), "dump");
 }
 
@@ -110,13 +111,14 @@ void RestoreFeature::collectOptions(
   options->addOption("--create-database",
                      "create the target database if it does not exist",
                      new BooleanParameter(&_createDatabase));
-  
-  options->addOption("--force-same-database",
-                     "force usage of the same database name as in the source dump.json file",
-                     new BooleanParameter(&_forceSameDatabase));
+
+  options->addOption(
+      "--force-same-database",
+      "force usage of the same database name as in the source dump.json file",
+      new BooleanParameter(&_forceSameDatabase));
 
   options->addOption("--input-directory", "input directory",
-                     new StringParameter(&_inputDirectory));
+                     new StringParameter(&_inputPath));
 
   options->addOption("--import-data", "import data into collection",
                      new BooleanParameter(&_importData));
@@ -154,7 +156,7 @@ void RestoreFeature::validateOptions(
   size_t n = positionals.size();
 
   if (1 == n) {
-    _inputDirectory = positionals[0];
+    _inputPath = positionals[0];
   } else if (1 < n) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
         << "expecting at most one directory, got " +
@@ -169,22 +171,11 @@ void RestoreFeature::validateOptions(
 }
 
 void RestoreFeature::prepare() {
-  if (!_inputDirectory.empty() &&
-      _inputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+  if (!_inputPath.empty() && _inputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...
     // Windows
-    TRI_ASSERT(_inputDirectory.size() > 0);
-    _inputDirectory.pop_back();
-  }
-
-  // .............................................................................
-  // check input directory
-  // .............................................................................
-
-  if (_inputDirectory == "" || !TRI_IsDirectory(_inputDirectory.c_str())) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-        << "input directory '" << _inputDirectory << "' does not exist";
-    FATAL_ERROR_EXIT();
+    TRI_ASSERT(_inputPath.size() > 0);
+    _inputPath.pop_back();
   }
 
   if (!_importStructure && !_importData) {
@@ -243,8 +234,8 @@ int RestoreFeature::sendRestoreCollection(VPackSlice const& slice,
   std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
-      std::string(_overwrite ? "true" : "false") + "&force=" +
-      std::string(_force ? "true" : "false") +
+      std::string(_overwrite ? "true" : "false") +
+      "&force=" + std::string(_force ? "true" : "false") +
       "&ignoreDistributeShardsLikeErrors=" +
       std::string(_ignoreDistributeShardsLikeErrors ? "true" : "false");
 
@@ -329,8 +320,8 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
                                     char const* buffer, size_t bufferSize,
                                     std::string& errorMsg) {
   std::string const url = "/_api/replication/restore-data?collection=" +
-                          StringUtils::urlEncode(cname) + "&force=" +
-                          (_force ? "true" : "false");
+                          StringUtils::urlEncode(cname) +
+                          "&force=" + (_force ? "true" : "false");
 
   std::unique_ptr<SimpleHttpResult> response(
       _httpClient->request(rest::RequestType::PUT, url, buffer, bufferSize));
@@ -390,30 +381,21 @@ static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
   return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }
 
-Result RestoreFeature::readEncryptionInfo() {
-  std::string encryptionType;
-  try {
-    std::string const encryptionFilename = FileUtils::buildFilename(_inputDirectory, "ENCRYPTION");
-    if (FileUtils::exists(encryptionFilename)) {
-      encryptionType = StringUtils::trim(FileUtils::slurp(encryptionFilename));
-    } else {
-      encryptionType = "none";
-    }
-  } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.what());
-  } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    // file not found etc.
-  }
-
-  if (encryptionType != "none") {
+Result RestoreFeature::checkEncryption() {
+  if (_directory->isEncrypted()) {
 #ifdef USE_ENTERPRISE
-    if (!_encryption->keyOptionSpecified()) {
-      std::cerr << "the dump data seems to be encrypted with " << encryptionType << ", but no key information was specified to decrypt the dump" << std::endl;
-      std::cerr << "it is recommended to specify either `--encryption.key-file` or `--encryption.key-generator` when invoking arangorestore with an encrypted dump" << std::endl;
+    if (!_directory->encryptionFeature()->keyOptionSpecified()) {
+      std::cerr << "the dump data seems to be encrypted with "
+                << _directory->encryptionType()
+                << ", but no key information was specified to decrypt the dump"
+                << std::endl;
+      std::cerr << "it is recommended to specify either "
+                   "`--encryption.key-file` or `--encryption.key-generator` "
+                   "when invoking arangorestore with an encrypted dump"
+                << std::endl;
     } else {
-      std::cout << "# using encryption type " << encryptionType << " for reading dump" << std::endl;
+      std::cout << "# using encryption type " << _directory->encryptionType()
+                << " for reading dump" << std::endl;
     }
 #endif
   }
@@ -425,33 +407,27 @@ Result RestoreFeature::readDumpInfo() {
   std::string databaseName;
 
   try {
-    std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + "dump.json";
-#ifdef USE_ENTERPRISE
     VPackBuilder fileContentBuilder =
-        (_encryption != nullptr)
-            ? _encryption->velocyPackFromFile(fqn)
-            : basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#else
-    VPackBuilder fileContentBuilder =
-        basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#endif
+        _directory->vpackFromJsonFile("dump.json");
     VPackSlice const fileContent = fileContentBuilder.slice();
-
     databaseName = fileContent.get("database").copyString();
   } catch (...) {
     // the above may go wrong for several reasons
   }
-  
-  if (!databaseName.empty()) {
-    std::cout << "Database name in source dump is '" << databaseName << "'" << std::endl;
-  }
 
+  if (!databaseName.empty()) {
+    std::cout << "Database name in source dump is '" << databaseName << "'"
+              << std::endl;
+  }
 
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
           "Client");
   if (_forceSameDatabase && databaseName != client->databaseName()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, std::string("database name in dump.json ('") + databaseName + "') does not match specified database name ('" + client->databaseName() + "')");
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  std::string("database name in dump.json ('") + databaseName +
+                      "') does not match specified database name ('" +
+                      client->databaseName() + "')");
   }
 
   return Result();
@@ -464,8 +440,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     restrictList.insert(std::pair<std::string, bool>(_collections[i], true));
   }
   try {
-    std::vector<std::string> const files =
-        FileUtils::listFiles(_inputDirectory);
+    std::vector<std::string> const files = FileUtils::listFiles(_inputPath);
     std::string const suffix = std::string(".structure.json");
     std::vector<VPackBuilder> collections;
 
@@ -489,20 +464,11 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           continue;
         }
 
-        std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + file;
-#ifdef USE_ENTERPRISE
-        VPackBuilder fileContentBuilder =
-            (_encryption != nullptr)
-                ? _encryption->velocyPackFromFile(fqn)
-                : basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#else
-        VPackBuilder fileContentBuilder =
-            basics::VelocyPackHelper::velocyPackFromFile(fqn);
-#endif
+        VPackBuilder fileContentBuilder = _directory->vpackFromJsonFile(file);
         VPackSlice const fileContent = fileContentBuilder.slice();
-
         if (!fileContent.isObject()) {
-          errorMsg = "could not read collection structure file '" + fqn + "'";
+          errorMsg = "could not read collection structure file '" +
+                     _directory->pathToFile(file) + "'";
           return TRI_ERROR_INTERNAL;
         }
 
@@ -510,7 +476,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         VPackSlice const indexes = fileContent.get("indexes");
 
         if (!parameters.isObject() || !indexes.isArray()) {
-          errorMsg = "could not read collection structure file '" + fqn + "'";
+          errorMsg = "could not read collection structure file '" +
+                     _directory->pathToFile(file) + "'";
           return TRI_ERROR_INTERNAL;
         }
 
@@ -528,13 +495,15 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             // we cannot go on if there is a mismatch
             errorMsg =
                 "collection name mismatch in collection structure file '" +
-                fqn + "' (offending value: '" + cname + "')";
+                _directory->pathToFile(file) + "' (offending value: '" + cname +
+                "')";
             return TRI_ERROR_INTERNAL;
           } else {
             // we can patch the name in our array and go on
             std::cout << "ignoring collection name mismatch in collection "
                          "structure file '" +
-                             fqn + "' (offending value: '" + cname + "')"
+                             _directory->pathToFile(file) +
+                             "' (offending value: '" + cname + "')"
                       << std::endl;
 
             overwriteName = true;
@@ -597,15 +566,18 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
       if (_importData) {
         // import data. check if we have a datafile
-        std::string datafile =
-            _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + "_" +
-            arangodb::rest::SslInterface::sslMD5(cname) + ".data.json";
-        if (!TRI_ExistsFile(datafile.c_str())) {
-          datafile =
-              _inputDirectory + TRI_DIR_SEPARATOR_STR + cname + ".data.json";
+        auto datafile = _directory->readableFile(
+            cname + "_" + arangodb::rest::SslInterface::sslMD5(cname) +
+            ".data.json");
+        if (!datafile || datafile->status().fail()) {
+          datafile = _directory->readableFile(cname + ".data.json");
+          if (!datafile || datafile->status().fail()) {
+            errorMsg = "could not open file";
+            return TRI_ERROR_CANNOT_READ_FILE;
+          }
         }
 
-        if (TRI_ExistsFile(datafile.c_str())) {
+        if (TRI_ExistsFile(datafile->path().c_str())) {
           // found a datafile
 
           if (_progress) {
@@ -613,37 +585,19 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                       << " collection '" << cname << "'..." << std::endl;
           }
 
-          int fd =
-              TRI_TRACKED_OPEN_FILE(datafile.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-
-          if (fd < 0) {
-            errorMsg = "cannot open collection data file '" + datafile + "'";
-
-            return TRI_ERROR_INTERNAL;
-          }
-
-          beginDecryption(fd);
-
           buffer.clear();
 
           while (true) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
-              endDecryption(fd);
-              TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
-            ssize_t numRead = readData(fd, buffer.end(), 16384);
-
-            if (numRead < 0) {
+            ssize_t numRead = datafile->read(buffer.end(), 16384);
+            if (datafile->status().fail()) {
               // error while reading
-              int res = TRI_errno();
-              endDecryption(fd);
-              TRI_TRACKED_CLOSE_FILE(fd);
-              errorMsg = std::string(TRI_errno_string(res));
-
-              return res;
+              errorMsg = datafile->status().errorMessage();
+              return datafile->status().errorNumber();
             }
 
             // read something
@@ -695,9 +649,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
                   continue;
                 }
 
-                endDecryption(fd);
-                TRI_TRACKED_CLOSE_FILE(fd);
-
                 return res;
               }
 
@@ -709,9 +660,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
               break;
             }
           }
-
-          endDecryption(fd);
-          TRI_TRACKED_CLOSE_FILE(fd);
         }
       }
 
@@ -748,11 +696,21 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 }
 
 void RestoreFeature::start() {
-#ifdef USE_ENTERPRISE
-  _encryption =
-      application_features::ApplicationServer::getFeature<EncryptionFeature>(
-          "Encryption");
-#endif
+  // set up the output directory, not much else
+  _directory = std::make_unique<ManagedDirectory>(_inputPath, false, false);
+  if (_directory->status().fail()) {
+    switch (_directory->status().errorNumber()) {
+      case TRI_ERROR_FILE_NOT_FOUND:
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "input directory '" << _inputPath << "' does not exist";
+        break;
+      default:
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+            << _directory->status().errorMessage();
+        break;
+    }
+    FATAL_ERROR_EXIT();
+  }
 
   ClientFeature* client =
       application_features::ApplicationServer::getFeature<ClientFeature>(
@@ -778,7 +736,7 @@ void RestoreFeature::start() {
 
   // read encryption info
   {
-    Result r = readEncryptionInfo();
+    Result r = checkEncryption();
 
     if (r.fail()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << r.errorMessage();
@@ -808,8 +766,8 @@ void RestoreFeature::start() {
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not create database '"
-                                              << dbName << "'";
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          << "Could not create database '" << dbName << "'";
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << _httpClient->getErrorMessage();
       FATAL_ERROR_EXIT();
@@ -890,35 +848,4 @@ void RestoreFeature::start() {
   }
 
   *_result = ret;
-}
-
-ssize_t RestoreFeature::readData(int fd, char* data, size_t len) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    return _encryption->readData(fd, data, len);
-  }
-#endif
-  return TRI_READ(fd, data, static_cast<TRI_read_t>(len));
-}
-
-void RestoreFeature::beginDecryption(int fd) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    bool result = _encryption->beginDecryption(fd);
-
-    if (!result) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "cannot write prefix, giving up!";
-      FATAL_ERROR_EXIT();
-    }
-  }
-#endif
-}
-
-void RestoreFeature::endDecryption(int fd) {
-#ifdef USE_ENTERPRISE
-  if (_encryption != nullptr) {
-    _encryption->endDecryption(fd);
-  }
-#endif
 }

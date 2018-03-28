@@ -55,7 +55,7 @@ struct Functions {
 
     static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
                                                    tp_sys_clock_ms const& tp,
-                                                   double durationUnits,
+                                                   arangodb::velocypack::Slice durationUnits,
                                                    arangodb::velocypack::Slice durationType,
                                                    bool isSubtract);
 

@@ -39,6 +39,7 @@
     "ERROR_ONLY_ENTERPRISE"        : { "code" : 31, "message" : "only enterprise version" },
     "ERROR_RESOURCE_LIMIT"         : { "code" : 32, "message" : "resource limit exceeded" },
     "ERROR_ARANGO_ICU_ERROR"       : { "code" : 33, "message" : "icu error: %s" },
+    "ERROR_CANNOT_READ_FILE"       : { "code" : 34, "message" : "cannot read file" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -330,4 +331,3 @@
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
 }());
-
