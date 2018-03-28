@@ -288,8 +288,6 @@ SCENARIO("VersionSort", "[cluster][shards][repairs]") {
   }
 }
 
-// TODO write more tests for RepairOperation to Transaction conversion
-
 SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager =
@@ -636,6 +634,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         REQUIRE_FALSE(operation == other);
         (other = operation).protoCollectionName =
             "differing protoCollectionName";
+        REQUIRE_FALSE(operation == other);
+        (other = operation).shards = {
+            std::make_tuple<ShardID, ShardID, DBServers>("differing", "shards",
+                                                         {"vector"})};
         REQUIRE_FALSE(operation == other);
         (other = operation).replicationFactor = 42;
         REQUIRE_FALSE(operation == other);
