@@ -1,6 +1,9 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 
