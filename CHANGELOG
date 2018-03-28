@@ -1,6 +1,8 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
