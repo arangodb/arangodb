@@ -1,7 +1,10 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
-* improve startup resilience in case there are datafile errors
+* improve startup resilience in case there are datafile errors (MMFiles)
+  
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
 
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
