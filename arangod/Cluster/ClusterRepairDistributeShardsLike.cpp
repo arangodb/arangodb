@@ -266,7 +266,6 @@ boost::optional<ServerID const> DistributeShardsLikeRepairer::findFreeServer(
   DBServers freeServer =
       serverSetDifference(availableDbServers, shardDbServers);
 
-  // TODO maybe use a random server instead?
   if (!freeServer.empty()) {
     return freeServer[0];
   }
@@ -388,7 +387,6 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
       << proto.fullName();
 
   if (collection.replicationFactor != proto.replicationFactor) {
-    // TODO maybe write a test
     std::stringstream errorMessage;
     errorMessage << "replicationFactor is violated: "
                  << "Collection " << collection.fullName()
@@ -422,7 +420,6 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
       serverSetDifference(shardDbServers, protoShardDbServers);
 
   if (serversOnlyOnProto.size() != serversOnlyOnShard.size()) {
-    // TODO write a test
     std::stringstream errorMessage;
     errorMessage << "replicationFactor is violated: "
                  << "Collection " << collection.fullName()

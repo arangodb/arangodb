@@ -122,9 +122,6 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     VPackSlice supervisionHealth(healthResult.get()->data());
 
-    // TODO assert replicationFactor < #DBServers before calling
-    // repairDistributeShardsLike()
-    // This has to be done per collection...
 
     ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
         repairOperationsByCollectionResult =
@@ -318,8 +315,6 @@ Result RestRepairHandler::executeRepairOperations(
     DatabaseID const& databaseId, CollectionID const& collectionId,
     std::list<RepairOperation> const& repairOperations) {
   AgencyComm comm;
-  // TODO If an operation fails during execution, add a hint on which one
-  // in the response to the user!
 
   size_t opNum = 0;
   for (auto& op : repairOperations) {
