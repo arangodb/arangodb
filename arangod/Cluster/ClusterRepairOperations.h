@@ -191,7 +191,7 @@ class RepairOperationToTransactionVisitor
 class RepairOperationToVPackVisitor : public boost::static_visitor<void> {
  public:
   RepairOperationToVPackVisitor() = delete;
-  RepairOperationToVPackVisitor(VPackBuilder& builder);
+  explicit RepairOperationToVPackVisitor(VPackBuilder& builder);
 
   void operator()(BeginRepairsOperation const& op);
 
