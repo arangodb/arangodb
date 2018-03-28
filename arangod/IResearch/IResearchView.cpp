@@ -1624,7 +1624,7 @@ arangodb::Result IResearchView::link(
   dataPath += "-";
   dataPath += std::to_string(id);
 
-  auto view = std::unique_ptr<IResearchView>(
+  auto view = std::shared_ptr<IResearchView>(
     new IResearchView(&vocbase, info, std::move(dataPath), isNew)
   );
 
@@ -1644,7 +1644,7 @@ arangodb::Result IResearchView::link(
     return nullptr;
   }
 
-  return std::shared_ptr<IResearchView>(std::move(view));
+  return view;
 }
 
 size_t IResearchView::memory() const {
@@ -1981,7 +1981,7 @@ void IResearchView::toVelocyPack(
 }
 
 arangodb::Result IResearchView::updateProperties(
-    const velocypack::Slice &slice,
+    velocypack::Slice const& slice,
     bool partialUpdate,
     bool doSync
 ) {
