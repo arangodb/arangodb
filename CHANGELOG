@@ -1,6 +1,9 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4582: ui query editor now has the same behavior as java driver while
+  parsing a queries bind parameters
+
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 
