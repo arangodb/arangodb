@@ -321,6 +321,48 @@ const createBrokenClusterState = function () {
 };
 
 
+let waitForJob = function (postJobRes) {
+  expect(postJobRes).to.have.property("status", 202);
+  expect(postJobRes).to.have.property("headers");
+  expect(postJobRes.headers).to.have.property('x-arango-async-id');
+  const jobId = postJobRes.headers['x-arango-async-id'];
+  expect(jobId).to.be.a('string');
+
+  const waitInterval = 1.0;
+  const maxWaitTime = 120;
+
+  const start = Date.now();
+
+  let jobFinished = false;
+  let timeoutExceeded = false;
+  let putJobRes;
+
+  while (!jobFinished && !timeoutExceeded) {
+    const duration = (Date.now() - start) / 1000;
+    timeoutExceeded = duration > maxWaitTime;
+
+    putJobRes = request.put(coordinator.url + `/_api/job/${jobId}`);
+
+    expect(putJobRes).to.have.property("status");
+    expect(putJobRes.status).to.be.oneOf([200, 204]);
+
+    if (putJobRes.status === 200) {
+      jobFinished = true;
+    }
+
+    // status === 204
+    wait(waitInterval);
+  }
+
+  if (jobFinished) {
+    return putJobRes;
+  }
+
+  console.error(`Waiting for REST job timed out`);
+  return undefined;
+};
+
+
 describe('Collections with distributeShardsLike', function () {
   afterEach(function() {
     internal.db._drop(colName);
@@ -336,6 +378,10 @@ describe('Collections with distributeShardsLike', function () {
     expect(waitForPlanEqualCurrent(protoCollection)).to.be.true;
     expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
+    // Directly posting should generally not be used, as it is likely to timeout.
+    // Setting the header "x-arango-async: store" instead is preferred.
+    // In this case however it should return immediately, so a timeout would
+    // be an error here. Also its good to have a test for a direct call, too.
     const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
     expect(d.status).to.equal(200);
@@ -362,15 +408,18 @@ describe('Collections with distributeShardsLike', function () {
     const { protoCollection, collection, expectedCollections }
       = createBrokenClusterState();
 
-    const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
-    if (d.status !== 200) {
-      internal.print(d);
-    }
+    const postJobRes = request.post(
+      coordinator.url + '/_admin/repair/distributeShardsLike',
+      {
+        headers: { "x-arango-async": "store" },
+      }
+    );
+    const jobRes = waitForJob(postJobRes);
 
-    expect(d.status).to.equal(200);
+    expect(jobRes).to.have.property("status", 200);
 
-    let response = JSON.parse(d.body);
+    let response = JSON.parse(jobRes.body);
 
     expect(response).to.have.property("error", false);
     expect(response).to.have.property("code", 200);
