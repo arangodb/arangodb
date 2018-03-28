@@ -1,8 +1,7 @@
 devel
 -----
 
-* fix issue #4582: ui query editor now has the same behavior as java driver while
-  parsing a queries bind parameters
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
 
 * arangodump now supports `--threads` option to dump collections in parallel
 
