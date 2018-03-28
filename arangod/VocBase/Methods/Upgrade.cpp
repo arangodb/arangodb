@@ -94,8 +94,7 @@ UpgradeResult Upgrade::createDB(TRI_vocbase_t* vocbase,
                   Upgrade::Flags::DATABASE_INIT);
 }
 
-UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade) {
-  
+UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool ignoreFileErrors) {
   uint32_t clusterFlag = Flags::CLUSTER_LOCAL;
   if (ServerState::instance()->isSingleServer()) {
     clusterFlag = Flags::CLUSTER_NONE;
@@ -103,6 +102,22 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade) {
   uint32_t dbflag = Flags::DATABASE_EXISTING;
 
   VersionResult vinfo = Version::check(vocbase);
+
+  if (ignoreFileErrors) {
+    if (vinfo.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
+        vinfo.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+      // try to install a fresh new, empty VERSION file instead
+      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+        // give it another try
+        LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value because option `--database.ignore-logfile-errors` is set";
+        vinfo = methods::Version::check(vocbase);
+      }
+    }
+  } else {
+    LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
+                                     << "please start the server with option `--database.ignore-logfile-errors true`";
+  }
+
   switch (vinfo.status) {
     case VersionResult::INVALID:
       TRI_ASSERT(false);  // never returned by Version::check
