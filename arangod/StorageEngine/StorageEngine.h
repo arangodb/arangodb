@@ -106,9 +106,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
-  // create storage-engine specific view
-  virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
-
   // minimum timeout for the synchronous replication
   virtual double minimumSyncReplicationTimeout() const = 0;
 
@@ -290,6 +287,14 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                           arangodb::LogicalView const*) = 0;
 
+  // asks storage engine to put some view
+  // specific properties into a specified builder
+  virtual void getViewProperties(
+     TRI_vocbase_t* vocbase,
+     arangodb::LogicalView const* view,
+     VPackBuilder& builder
+  ) = 0;
+
   // asks the storage engine to persist the view.
   // After this call the view is persisted over recovery.
   virtual arangodb::Result persistView(
@@ -308,7 +313,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the view
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
-  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) = 0;
+  // 'noexcept' becuase it may be used in destructor
+  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept = 0;
 
   // asks the storage engine to change properties of the view as specified in
   // the VPack Slice object and persist them. If this operation fails

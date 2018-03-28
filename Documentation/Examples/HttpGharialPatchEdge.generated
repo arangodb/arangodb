@@ -1,21 +1,21 @@
-shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/10794 &lt;&lt;EOF
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation/10825 &lt;&lt;EOF
 { 
   <span class="hljs-string">"since"</span> : <span class="hljs-string">"01.01.2001"</span> 
 }
 EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
-x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: _WeZkMIG--_
+etag: _WgE6pGa--_
+x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">202</span>, 
   <span class="hljs-string">"edge"</span> : { 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/10794"</span>, 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10794"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WeZkMIG--_"</span>, 
-    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_WeZkMHm--B"</span> 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/10825"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"10825"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WgE6pGa--_"</span>, 
+    <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_WgE6pF6--_"</span> 
   } 
 }

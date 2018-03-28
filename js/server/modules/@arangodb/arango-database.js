@@ -150,7 +150,7 @@ ArangoDatabase.prototype._drop = function (name, options) {
   } catch (err) {
     // ignore if the collection does not exist
     if (err instanceof ArangoError &&
-      err.errorNum === internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+      err.errorNum === internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
       return;
     }
     // rethrow exception
@@ -209,8 +209,8 @@ ArangoDatabase.prototype._index = function (id) {
 
   if (col === null) {
     err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+    err.errorNum = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
     throw err;
   }
 
@@ -251,8 +251,8 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
   if (col === null) {
     err = new ArangoError();
-    err.errorNum = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code;
-    err.errorMessage = internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message;
+    err.errorNum = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code;
+    err.errorMessage = internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message;
     throw err;
   }
 

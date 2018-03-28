@@ -41,11 +41,14 @@ var ignoreCollectionAlreadyThere = [];
 var rc;
 var j;
 
-var exds = require("@arangodb/examples/examples").Examples;
+const exds = require("@arangodb/examples/examples").Examples;
 
-var hljs = require('highlightjs');
+const AU = require('ansi_up');
+const ansi_up = new AU.default;
 
-var MAP = {
+const hljs = require('highlightjs');
+
+const MAP = {
     'py': 'python',
     'js': 'javascript',
     'json': 'javascript',
@@ -80,19 +83,22 @@ internal.stopColorPrint(true);
 var appender = function(text) {
   output += text;
 };
-var jsonAppender = function(text) {
+const ansiAppender = (text) => {
+  output += ansi_up.ansi_to_html(text);
+};
+const jsonAppender = function(text) {
   output += highlight("js", text);
 };
-var htmlAppender = function(text) {
+const htmlAppender = function(text) {
   output += highlight("html", text);
 };
-var rawAppender = function(text) {
+const rawAppender = function(text) {
   output += text;
 };
-var shellAppender = function(text) {
+const shellAppender = function(text) {
   output += highlight("shell", text);
 };
-var log = function (a) {
+const log = function (a) {
   internal.startCaptureMode();
   print(a);
   appender(internal.stopCaptureMode());

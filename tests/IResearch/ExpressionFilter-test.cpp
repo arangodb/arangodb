@@ -387,9 +387,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     }");
 
     // add view
-    auto logicalView = vocbase.createView(createJson->slice(), 0);
-    REQUIRE((false == !logicalView));
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+      vocbase.createView(createJson->slice(), 0)
+    );
     REQUIRE((false == !view));
   }
 

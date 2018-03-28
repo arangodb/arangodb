@@ -306,7 +306,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const&
 ) const {
-  if (ServerState::isCoordinator()) {
+  if (ServerState::instance()->isCoordinator()) {
     // coordinator in a cluster
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
@@ -314,7 +314,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     );
   }
 
-  if (ServerState::isDBServer()) {
+  if (ServerState::instance()->isDBServer()) {
     // db server in a cluster
 
     // FIXME
@@ -325,20 +325,10 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   // single server
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view().getImplementation());
+  auto& view = dynamic_cast<IResearchView const&>(this->view());
 #else
-  auto* impl = static_cast<IResearchView*>(view().getImplementation());
+  auto& view = static_cast<IResearchView const&>(this->view());
 #endif
-
-  if (!impl) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-      << "failed to get view implementation while creating IResearchView ExecutionBlock";
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "failed to get view implementation while creating IResearchView ExecutionBlock"
-    );
-  }
 
   auto* trx = engine.getQuery()->trx();
 
@@ -353,11 +343,11 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   }
 
   auto& state = *(trx->state());
-  auto* reader = impl->snapshot(state);
+  auto* reader = view.snapshot(state);
 
   if (!reader) {
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
+      << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
@@ -419,7 +409,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewScatterNode::createBlock(
     std::unordered_map<ExecutionNode*, aql::ExecutionBlock*> const&,
     std::unordered_set<std::string> const& includedShards
 ) const {
-  if (!ServerState::isCoordinator()) {
+  if (!ServerState::instance()->isCoordinator()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL,
       "IResearchScatterView node is intended to use on a coordinator only"

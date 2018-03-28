@@ -212,7 +212,7 @@ Result QueryStreamCursor::dump(VPackBuilder& builder) {
       builder.add("result", VPackValue(VPackValueType::Array, true));
 
       // get one batch
-      if ((value = engine->getSome(1, batchSize())) != nullptr) {
+      if ((value = engine->getSome(batchSize())) != nullptr) {
         size_t const n = value->size();
         for (size_t i = 0; i < n; ++i) {
           AqlValue const& val = value->getValueReference(i, resultRegister);

@@ -1397,6 +1397,8 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
   // iterate over all active readers and find their minimum used logfile id
   MMFilesWalLogfile::IdType minId = UINT64_MAX;
 
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: called";
+
   auto cb = [&minId](TRI_voc_tid_t, TransactionData const* data) {
     MMFilesWalLogfile::IdType lastWrittenId = static_cast<MMFilesTransactionData const*>(data)->lastSealedId;
 
@@ -1422,15 +1424,25 @@ MMFilesWalLogfile* MMFilesLogfileManager::getCollectableLogfile() {
       }
 
       if (logfile->id() <= minId && logfile->canBeCollected(released)) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: found logfile id: " << logfile->id();
         return logfile;
       }
 
-      if (logfile->id() > minId || !logfile->hasBeenReleased(released)) {
+      if (logfile->id() > minId) {
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early1 "
+          << logfile->id() << " minId: " << minId;
+        break;
+      }
+      if (!logfile->hasBeenReleased(released)) {
         // abort early
+        LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: abort early2 released: " << released;
         break;
       }
     }
   }
+
+  LOG_TOPIC(DEBUG, Logger::FIXME) << "getCollectableLogfile: "
+    << "found no logfile to collect, minId:" << minId;
 
   return nullptr;
 }
@@ -1741,8 +1753,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     locker.unlock();
 
-    // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId <<
-    // " lastCollected: " << _lastCollectedId << ", result: " << res;
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "still waiting for collector. logfileId: " << logfileId << " lastCollected: " << _lastCollectedId << ", result: " << res;
 
     if (res != TRI_ERROR_LOCK_TIMEOUT && res != TRI_ERROR_NO_ERROR) {
       // some error occurred

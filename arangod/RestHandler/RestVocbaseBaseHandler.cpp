@@ -428,7 +428,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
   int code = result.errorNumber();
   switch (code) {
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,

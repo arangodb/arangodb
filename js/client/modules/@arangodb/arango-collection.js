@@ -260,6 +260,7 @@ var helpArangoCollection = arangosh.createHelpHeadline('ArangoCollection help') 
   '  type()                                type of the collection            ' + '\n' +
   '  truncate()                            delete all documents              ' + '\n' +
   '  properties()                          show collection properties        ' + '\n' +
+  '  properties(<data>)                    change collection properties      ' + '\n' +
   '  drop()                                delete a collection               ' + '\n' +
   '  load()                                load a collection                 ' + '\n' +
   '  unload()                              unload a collection               ' + '\n' +
@@ -463,7 +464,7 @@ ArangoCollection.prototype.drop = function (options) {
   if (requestResult !== null 
     && requestResult !== undefined
     && requestResult.error === true
-    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code) {
+    && requestResult.errorNum !== internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
     // check error in case we got anything else but "collection not found"
     arangosh.checkRequestResult(requestResult);
   }

@@ -586,7 +586,7 @@ function COLLECTION (name, func) {
   }
 
   if (c === null || c === undefined) {
-    THROW(func, INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
+    THROW(func, INTERNAL.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, String(name));
   }
   return c;
 }
@@ -605,7 +605,7 @@ function VIEW (name, func) {
   var v = INTERNAL.db._view(name);
 
   if (v === null || v === undefined) {
-    THROW(func, INTERNAL.errors.ERROR_ARANGO_VIEW_NOT_FOUND, String(name));
+    THROW(func, INTERNAL.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, String(name));
   }
   return v;
 }
@@ -840,7 +840,7 @@ function FCALL_USER (name, parameters) {
   try {
     return FIX_VALUE(UserFunctions[prefix][name].func.apply({ name: name }, parameters));
   } catch (err) {
-    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
+    THROW(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err.stack || String(err)));
     return null;
   }
 }
@@ -1247,7 +1247,7 @@ function AQL_COLLECTION_COUNT (name) {
 
   var c = INTERNAL.db._collection(name);
   if (c === null || c === undefined) {
-    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND, String(name));
+    THROW('COLLECTION_COUNT', INTERNAL.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, String(name));
   }
   return c.count();
 }
@@ -5638,7 +5638,6 @@ function AQL_WARN (expression, message) {
   }
   return true;
 }
-
 
 exports.FCALL_USER = FCALL_USER;
 exports.KEYS = KEYS;

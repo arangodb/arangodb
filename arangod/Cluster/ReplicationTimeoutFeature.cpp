@@ -54,5 +54,6 @@ void ReplicationTimeoutFeature::collectOptions(std::shared_ptr<ProgramOptions> o
 
 void ReplicationTimeoutFeature::prepare() {
   // set minimum timeout. this depends on the selected storage engine 
+  TRI_ASSERT(EngineSelectorFeature::ENGINE != nullptr);
   lowerLimit = EngineSelectorFeature::ENGINE->minimumSyncReplicationTimeout();
 }

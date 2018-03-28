@@ -244,9 +244,9 @@ bool IResearchViewBlockBase::readDocument(
   );
 }
 
-AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* IResearchViewBlockBase::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -266,7 +266,7 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
 
       if (_buffer.empty()) {
         size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
-        if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        if (!ExecutionBlock::getBlock(toFetch)) {
           _done = true;
           return nullptr;
         }
@@ -336,7 +336,7 @@ AqlItemBlock* IResearchViewBlockBase::getSome(size_t atLeast, size_t atMost) {
   DEBUG_END_BLOCK();
 }
 
-size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
+size_t IResearchViewBlockBase::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   size_t skipped = 0;
 
@@ -344,10 +344,10 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  while (skipped < atLeast) {
+  while (skipped < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!getBlock(toFetch, toFetch)) {
+      if (!getBlock(toFetch)) {
         _done = true;
         return skipped;
       }
@@ -360,7 +360,7 @@ size_t IResearchViewBlockBase::skipSome(size_t atLeast, size_t atMost) {
 
     skipped += skip(atMost - skipped);
 
-    if (skipped < atLeast) {
+    if (skipped < atMost) {
       // not skipped enough re-initialize fetching of documents
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw

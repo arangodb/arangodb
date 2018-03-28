@@ -158,6 +158,16 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
+/// 34: ERROR_CANNOT_READ_FILE
+/// "cannot read file"
+/// Will be raised when a file cannot be read.
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -344,11 +354,11 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 /// Will be raised when a document with a given identifier or handle is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
-/// 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
+/// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
 /// "collection not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             = 1203;
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
 /// "parameter 'collection' not found"
@@ -384,11 +394,6 @@ constexpr int TRI_ERROR_ARANGO_NO_INDEX                                         
 /// "unique constraint violated"
 /// Will be raised when there is a unique constraint violation.
 constexpr int TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       = 1210;
-
-/// 1211: ERROR_ARANGO_VIEW_NOT_FOUND
-/// "view not found"
-/// Will be raised when a view with the given identifier or name is unknown.
-constexpr int TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   = 1211;
 
 /// 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 /// "index not found"
@@ -1462,7 +1467,7 @@ constexpr int TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      
 
 /// 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 /// "Invalid number of arguments. Expected: "
-/// Invalid number of arguments. Expected: 
+/// Invalid number of arguments. Expected:
 constexpr int TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       = 1935;
 
 /// 1936: ERROR_GRAPH_INVALID_PARAMETER
