@@ -1,11 +1,7 @@
-v3.3.6 (XXXX-XX-XX)
+v3.3.5 (2018-03-28)
 -------------------
 
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
-
-
-v3.3.5 (2018-03-24)
--------------------
 
 * make build id appear in startup log message alongside with other version info
 
