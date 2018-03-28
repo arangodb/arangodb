@@ -1575,17 +1575,6 @@
         return quit;
       }
 
-      var keys = [];
-      _.each(this.bindParamTableObj, function (val, key) {
-        if (val === '') {
-          quit = true;
-          keys.push(key);
-        }
-      });
-      if (keys.length > 0) {
-        arangoHelper.arangoError('Bind Parameter', JSON.stringify(keys) + ' not defined.');
-      }
-
       return quit;
     },
 
