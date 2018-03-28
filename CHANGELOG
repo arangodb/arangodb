@@ -1,5 +1,9 @@
 devel
 -----
+
+* fixed issue #3811: gharial api is now checking existence of _from and _to vertices
+  during edge creation
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
