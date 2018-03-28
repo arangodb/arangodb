@@ -187,7 +187,7 @@ all clients have disconnected and references have been garbage-collected.
 
 ### Engine
 
-retrieve the storage engine used by the server
+retrieve the storage engine type used by the server
 `db._engine()`
 
 Returns the name of the storage engine in use (`mmfiles` or `rocksdb`), as well
