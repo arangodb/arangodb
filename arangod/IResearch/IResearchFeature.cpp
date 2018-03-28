@@ -27,6 +27,7 @@
 #include "IResearchFeature.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
+#include "IResearchViewCoordinator.h"
 #include "ApplicationServerHelper.h"
 
 #include "RestServer/ViewTypesFeature.h"
@@ -36,6 +37,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
+#include "Cluster/ServerState.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -186,9 +188,9 @@ arangodb::Result transactionStateRegistrationCallback(
 
   // TODO FIXME find a better way to look up an IResearch View
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
   #else
-    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    auto* impl = static_cast<arangodb::iresearch::IResearchView*>(view);
   #endif
 
   if (!impl) {
@@ -269,7 +271,13 @@ void IResearchFeature::prepare() {
   }
 
   // register 'arangosearch' view
-  viewTypes->emplace(IResearchView::type(), IResearchView::make);
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    viewTypes->emplace(IResearchView::type(), IResearchViewCoordinator::make);
+  } else {
+    // DB server in custer or single-server
+    viewTypes->emplace(IResearchView::type(), IResearchView::make);
+  }
+
 
   // register 'arangosearch' TransactionState state-change callback factory
   arangodb::transaction::Methods::addStateRegistrationCallback(

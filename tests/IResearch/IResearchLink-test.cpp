@@ -325,9 +325,9 @@ SECTION("test_write") {
   }");
   auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
   REQUIRE((nullptr != logicalCollection));
-  auto logicalView = vocbase.createView(viewJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(viewJson->slice(), 0)
+  );
   REQUIRE((false == !view));
   view->open();
   auto* flush = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");

@@ -31,7 +31,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"

@@ -2040,8 +2040,9 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
                                                    std::string const& name,
                                                    bool wasCleanShutdown,
                                                    bool isUpgrade) {
-  auto vocbase =
-      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+  auto vocbase = std::make_unique<TRI_vocbase_t>(
+    TRI_VOCBASE_TYPE_NORMAL, id, name
+  );
 
   // scan the database path for views
   try {
@@ -2055,7 +2056,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    ViewTypesFeature* viewTypesFeature =
+    auto const* viewTypes =
         application_features::ApplicationServer::getFeature<ViewTypesFeature>(
             "ViewTypes");
 
@@ -2063,11 +2064,11 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a view that is still active
       LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
-      arangodb::velocypack::StringRef type(it.get("type"));
-      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-      auto& creator = viewTypesFeature->factory(dataSourceType);
+      arangodb::velocypack::StringRef const type(it.get("type"));
+      auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
+      auto const& viewFactory = viewTypes->factory(dataSourceType);
 
-      if (!creator) {
+      if (!viewFactory) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "no handler found for view type"
@@ -2085,18 +2086,21 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         );
       }
 
-      auto view = std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      auto view = viewFactory(*vocbase, it, false);
+
+      if (!view) {
+        auto const message =
+          "failed to instantiate view of type "
+          + dataSourceType.name();
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+      }
 
       StorageEngine::registerView(vocbase.get(), view);
 
       registerViewPath(vocbase->id(), view->id(), viewPath);
 
-      view->spawnImplementation(creator, it, false);
-
-      if (view->getImplementation() == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to spawn view implementation");
-      }
-      view->getImplementation()->open();
+      view->open();
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database views: "
