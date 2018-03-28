@@ -368,6 +368,7 @@ query syntactically, without actually executing it.
 
     @startDocuBlockInline 06_workWithAQL_statements13
     @EXAMPLE_ARANGOSH_OUTPUT{06_workWithAQL_statements13}
-    db._parse( { "query": "FOR i IN [ 1, 2 ] RETURN i" } );
+    db._parse( "FOR i IN [ 1, 2 ] RETURN i" );
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock 06_workWithAQL_statements13
+
