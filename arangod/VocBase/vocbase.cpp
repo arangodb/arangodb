@@ -1683,9 +1683,10 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
         for (auto const& p : VPackObjectIterator(parameters)) {
           if (p.key.copyString() == "name" && p.value.isString()) {
             name = p.value.copyString();
+          } else {
+            builder.add(p.key);
+            builder.add(p.value);
           }
-          builder.add(p.key);
-          builder.add(p.value);
         }
       }
       if (name.empty()) {

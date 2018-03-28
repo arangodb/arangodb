@@ -1473,7 +1473,7 @@ constexpr int TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      
 
 /// 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 /// "Invalid number of arguments. Expected: "
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 constexpr int TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       = 1935;
 
 /// 1936: ERROR_GRAPH_INVALID_PARAMETER
