@@ -94,7 +94,7 @@ Result DatabaseTailingSyncer::saveApplierState() {
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName, TRI_voc_tick_t& finalTick) {
+Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName, TRI_voc_tick_t& finalTick, bool waitForTrxsClosed) {
   setAborted(false);
   // fetch master state just once
   Result r = getMasterState();
@@ -130,9 +130,17 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     }
     
     if (response->getHttpReturnCode() == 204) {
-      // HTTP 204 No content: this means we are done
-      finalTick = fromTick;
-      return Result();
+      if (!waitForTrxsClosed || _ongoingTransactions.empty()) {
+        // HTTP 204 No content: this means we are done
+        finalTick = fromTick;
+        return Result();
+      }
+      // Some transaction is ongoing, so we simply wait and try again
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncCollectionFinalize: got "
+        "an empty result, but some transaction is ongoing, retrying..."
+        "number of ongoing transactions: " << _ongoingTransactions.size();
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
+      continue;
     }
     
     bool found;
@@ -184,9 +192,15 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     }
     
     if (!checkMore) {
-      // done!
-      finalTick = lastIncludedTick;
-      return Result();
+      if (!waitForTrxsClosed || _ongoingTransactions.empty()) {
+        // done!
+        finalTick = lastIncludedTick;
+        return Result();
+      }
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncCollectionFinalize: got "
+        "no new entries, but some transaction is ongoing, retrying..."
+        "number of ongoing transactions: " << _ongoingTransactions.size();
+      std::this_thread::sleep_for(std::chrono::milliseconds(200));
     }
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data fromTick " << fromTick;
   }

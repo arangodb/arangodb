@@ -358,7 +358,7 @@ static void JS_SynchronizeReplicationFinalize(
   Result r;
   TRI_voc_tick_t finalTick = 0;
   try {
-    r = syncer.syncCollectionFinalize(collection, finalTick);
+    r = syncer.syncCollectionFinalize(collection, finalTick, true);
   } catch (arangodb::basics::Exception const& ex) {
     r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

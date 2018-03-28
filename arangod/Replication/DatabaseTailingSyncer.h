@@ -52,7 +52,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// After that the argument `finalTick` is set to the final tick included
   /// in the operation.
   Result syncCollectionFinalize(std::string const& collectionName,
-      TRI_voc_tick_t& finalTick);
+      TRI_voc_tick_t& finalTick, bool waitForTrxsClosed);
   
  protected:
     
