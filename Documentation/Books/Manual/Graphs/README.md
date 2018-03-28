@@ -277,7 +277,7 @@ The above referenced chapters describe the various APIs of ArangoDBs graph engin
 
  - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
  - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
- - [Retrieving documents from ArangoDB without knowing the structure](https://docs.arangodb.com/cookbook/Graph/JavaDriverBaseDocument.html)
+ - [Retrieving documents from ArangoDB without knowing the structure](../../Cookbook/UseCases/JavaDriverBaseDocument.html)
  - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
  - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)
 
