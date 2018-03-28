@@ -61,6 +61,31 @@ const waitForPlanEqualCurrent = function (collection) {
   return false;
 };
 
+const waitForReplicationFactor = function (collection) {
+  const iterations = 120;
+  const waitTime = 1.0;
+  const maxTime = iterations * waitTime;
+
+
+  for (let i = 0; i < iterations; i++) {
+    global.ArangoClusterInfo.flush();
+    const ci = global.ArangoClusterInfo.getCollectionInfo(internal.db._name(), collection._id);
+
+    let allShardsInSync = Object.values(ci.shards).every(
+      servers => servers.length === ci.replicationFactor
+    );
+
+    if (allShardsInSync) {
+      return true;
+    }
+
+    wait(waitTime);
+  }
+
+  console.error(`Collection "${collection}" failed to get replicationFactor in sync after ${maxTime} sec`);
+  return false;
+};
+
 const waitForAgencyJob = function (jobId) {
   const prefix = global.ArangoAgency.prefix();
   const paths = [
@@ -137,18 +162,6 @@ const expectEqualShardDistributionPlan = function (shardDist, protoShardDist) {
 
     expect(followers).to.deep.equal(protoFollowers);
   }
-};
-
-
-const zip = function(...arrays) {
-  if (arrays.length == 0) {
-    return [];
-  }
-  const minSize = Math.min(...arrays.map(a => a.length));
-
-  const indices = [...new Array(minSize).keys()];
-
-  return indices.map(i => arrays.map(a => a[i]));
 };
 
 
@@ -247,7 +260,7 @@ const createBrokenClusterState = function () {
             "database": internal.db._name(),
             "collection": colName,
             "distributeShardsLike": protoColName,
-            "shards": zip(shards, protoShards).map(
+            "shards": _.zip(shards, protoShards).map(
               ([shard, protoShard]) => ({
                 shard: shard,
                 protoShard: protoShard,
@@ -285,10 +298,12 @@ const createBrokenClusterState = function () {
   let jobId = postMoveShardJob(leaderDbServer, freeDbServer, true);
   let result = waitForAgencyJob(jobId);
   expect(result).to.equal(true);
+  expect(waitForReplicationFactor(collection)).to.be.true;
   expect(waitForPlanEqualCurrent(collection)).to.be.true;
 
   jobId = postMoveShardJob(followerDbServer, leaderDbServer, false);
   result = waitForAgencyJob(jobId);
+  expect(waitForReplicationFactor(collection)).to.be.true;
 
   expect(result).to.equal(true);
 
@@ -323,6 +338,8 @@ describe('Collections with distributeShardsLike', function () {
 
     const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
+    expect(d.status).to.equal(200);
+
     let response = JSON.parse(d.body);
 
     expect(response).to.have.property("error", false);
@@ -347,11 +364,16 @@ describe('Collections with distributeShardsLike', function () {
 
     const d = request.post(coordinator.url + '/_admin/repair/distributeShardsLike');
 
+    if (d.status !== 200) {
+      internal.print(d);
+    }
+
+    expect(d.status).to.equal(200);
+
     let response = JSON.parse(d.body);
+
     expect(response).to.have.property("error", false);
-
     expect(response).to.have.property("code", 200);
-
     expect(response).to.have.property("collections");
     expect(response.collections).to.eql(expectedCollections);
 
@@ -381,11 +403,12 @@ describe('Collections with distributeShardsLike', function () {
 
     const d = request.get(coordinator.url + '/_admin/repair/distributeShardsLike');
 
+    expect(d.status).to.equal(200);
+
     let response = JSON.parse(d.body);
+
     expect(response).to.have.property("error", false);
-
     expect(response).to.have.property("code", 200);
-
     expect(response).to.have.property("collections");
     expect(response.collections).to.eql(expectedCollections);
 
