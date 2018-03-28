@@ -1,5 +1,9 @@
 devel
 -----
+
+* fix issue #4582: ui query editor now has the same behavior as java driver while
+  parsing a queries bind parameters
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
