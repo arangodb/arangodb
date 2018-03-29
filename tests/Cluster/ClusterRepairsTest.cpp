@@ -30,10 +30,12 @@
 #include "Agency/MoveShard.h"
 #include "lib/Random/RandomGenerator.h"
 
+#include <boost/core/demangle.hpp>
 #include <boost/date_time.hpp>
 #include <boost/range/combine.hpp>
 
 #include <iostream>
+#include <typeinfo>
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -67,6 +69,52 @@ std::ostream& operator<<(std::ostream& ostream,
   return ostream;
 }
 
+std::ostream& operator<<(std::ostream& ostream,
+                         std::list<RepairOperation> const& list) {
+  ostream << "std::list<RepairOperation> {\n";
+  if (!list.empty()) {
+    auto it = list.begin();
+    ostream << *it << "\n";
+    for (++it; it != list.end(); ++it) {
+      ostream << ", " << *it << "\n";
+    }
+  }
+  ostream << "}" << std::endl;
+  return ostream;
+}
+
+std::ostream& operator<<(std::ostream& ostream,
+                         std::vector<RepairOperation> const& vector) {
+  ostream << "std::vector<RepairOperation> {\n";
+  if (!vector.empty()) {
+    auto it = vector.begin();
+    ostream << *it << "\n";
+    for (++it; it != vector.end(); ++it) {
+      ostream << ", " << *it << "\n";
+    }
+  }
+  ostream << "}" << std::endl;
+  return ostream;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
+  std::string const typeName =
+    typeid(T) == typeid(RepairOperation) ? "RepairOperation" :
+    typeid(T) == typeid(std::list<RepairOperation>) ? "std::list<RepairOperation>" :
+    typeid(T) == typeid(std::vector<RepairOperation>) ? "std::vector<RepairOperation>" :
+    boost::core::demangle(typeid(T).name());
+
+  if (result.ok()) {
+    return stream << "ResultT<" << typeName << "> {"
+                  << "val = " << result.get() << " }";
+  }
+
+  return stream << "ResultT<" << typeName << "> {"
+                << "errorNumber = " << result.errorNumber() << ", "
+                << "errorMessage = \"" << result.errorMessage() << "\" }";
+}
+
 namespace tests {
 namespace cluster_repairs_test {
 
@@ -85,11 +133,10 @@ VPackBufferPtr operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
-// TODO Allow a ResultT per collection. Rewrite the tests for that.
 void checkAgainstExpectedOperations(
     VPackBufferPtr const& planCollections,
     VPackBufferPtr const& supervisionHealth,
-    std::map<CollectionID, std::vector<RepairOperation>>
+    std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         expectedRepairOperationsByCollection) {
   DistributeShardsLikeRepairer repairer;
 
@@ -107,14 +154,12 @@ void checkAgainstExpectedOperations(
     expectedOperationsStringStream << "{" << std::endl;
     for (auto const& it : expectedRepairOperationsByCollection) {
       std::string const& collection = it.first;
-      std::vector<RepairOperation> const& expectedRepairOperations = it.second;
+      ResultT<std::vector<RepairOperation>> const& expectedRepairResult =
+          it.second;
+
       expectedOperationsStringStream << "\"" << collection
                                      << "\": " << std::endl;
-      expectedOperationsStringStream << "[" << std::endl;
-      for (auto const& it : expectedRepairOperations) {
-        expectedOperationsStringStream << it << "," << std::endl;
-      }
-      expectedOperationsStringStream << "]," << std::endl;
+      expectedOperationsStringStream << expectedRepairResult;
     }
     expectedOperationsStringStream << "}";
 
@@ -124,52 +169,51 @@ void checkAgainstExpectedOperations(
       std::string const& collection = it.first;
       ResultT<std::list<RepairOperation>> const repairOperationsResult =
           it.second;
-      REQUIRE(repairOperationsResult.ok());
-      std::list<RepairOperation> const& repairOperations =
-          repairOperationsResult.get();
       repairOperationsStringStream << "\"" << collection << "\": " << std::endl;
-      repairOperationsStringStream << "[" << std::endl;
-      for (auto const& it : repairOperations) {
-        repairOperationsStringStream << it << "," << std::endl;
-      }
-      repairOperationsStringStream << "]," << std::endl;
+      repairOperationsStringStream << repairOperationsResult;
     }
     repairOperationsStringStream << "}";
 
-    INFO("Expected transactions are:\n"
+    INFO("Expected operations are:\n"
          << expectedOperationsStringStream.str());
-    INFO("Actual transactions are:\n" << repairOperationsStringStream.str());
+    INFO("Actual operations are:\n" << repairOperationsStringStream.str());
 
     REQUIRE(repairOperationsByCollection.size() ==
             expectedRepairOperationsByCollection.size());
     for (auto const& it : boost::combine(expectedRepairOperationsByCollection,
                                          repairOperationsByCollection)) {
-      REQUIRE(it.get<1>().second.ok());
-      REQUIRE(it.get<0>().second.size() == it.get<1>().second.get().size());
+      auto const& expectedResult = it.get<0>().second;
+      auto const& actualResult = it.get<1>().second;
+      REQUIRE(expectedResult.ok() == actualResult.ok());
+      if (expectedResult.ok()) {
+        REQUIRE(expectedResult.get().size() == actualResult.get().size());
+      }
     }
   }
 
   for (auto const& it : boost::combine(repairOperationsByCollection,
                                        expectedRepairOperationsByCollection)) {
     std::string const& collection = it.get<0>().first;
-    ResultT<std::list<RepairOperation>> const repairOperationsResult =
-        it.get<0>().second;
+    ResultT<std::list<RepairOperation>> const repairResult = it.get<0>().second;
 
     std::string const& expectedCollection = it.get<1>().first;
-    std::vector<RepairOperation> const& expectedRepairOperations =
+    ResultT<std::vector<RepairOperation>> const& expectedResult =
         it.get<1>().second;
 
     REQUIRE(collection == expectedCollection);
-    REQUIRE(repairOperationsResult.ok());
-    std::list<RepairOperation> const& repairOperations =
-        repairOperationsResult.get();
+    REQUIRE(repairResult.ok() == expectedResult.ok());
+    if (expectedResult.ok()) {
+      std::list<RepairOperation> const& repairOperations = repairResult.get();
+      std::vector<RepairOperation> const& expectedOperations =
+          expectedResult.get();
 
-    for (auto const& it :
-         boost::combine(repairOperations, expectedRepairOperations)) {
-      auto const& repairOpIt = it.get<0>();
-      auto const& expectedRepairOpIt = it.get<1>();
+      for (auto const& it :
+           boost::combine(repairOperations, expectedOperations)) {
+        auto const& repairOpIt = it.get<0>();
+        auto const& expectedRepairOpIt = it.get<1>();
 
-      REQUIRE(repairOpIt == expectedRepairOpIt);
+        REQUIRE(repairOpIt == expectedRepairOpIt);
+      }
     }
   }
 }
@@ -180,8 +224,8 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where distributeShardsLike is already renamed to
 // repairingDistributeShardsLike, but the replicationFactor differs
-// TODO Add a test with multiple broken shards in one collection. Don't order them the same, so the sorting is tested as well.
-
+// TODO Add a test with multiple broken shards in one collection. Don't order
+// them the same, so the sorting is tested as well.
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -197,9 +241,9 @@ SCENARIO("Broken distributeShardsLike collections",
       WHEN("One unused DBServer is free to exchange the leader") {
 #include "ClusterRepairsTest.swapWithLeader.cpp"
 
-        checkAgainstExpectedOperations(
-            planCollections, supervisionHealth3Healthy0Bad,
-            expectedOperationsWithTwoSwappedDBServers);
+        checkAgainstExpectedOperations(planCollections,
+                                       supervisionHealth3Healthy0Bad,
+                                       expectedResultsWithTwoSwappedDBServers);
       }
 
       WHEN("The unused DBServer is marked as non-healthy") {
@@ -258,7 +302,7 @@ SCENARIO("Broken distributeShardsLike collections",
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
       checkAgainstExpectedOperations(
           planCollections, supervisionHealth4Healthy0Bad,
-          expectedOperationsWithWronglyOrderedFollowers);
+          expectedResultsWithWronglyOrderedFollowers);
     }
 
     GIVEN(
@@ -267,14 +311,14 @@ SCENARIO("Broken distributeShardsLike collections",
 #include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
       checkAgainstExpectedOperations(
           planCollections, supervisionHealth4Healthy0Bad,
-          expectedOperationsWithRepairingDistributeShardsLike);
+          expectedResultsWithRepairingDistributeShardsLike);
     }
 
     GIVEN("An agency with multiple collections") {
 #include "ClusterRepairsTest.multipleCollections.cpp"
-      checkAgainstExpectedOperations(
-        planCollections, supervisionHealth4Healthy0Bad,
-        expectedResultsWithMultipleCollections);
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth4Healthy0Bad,
+                                     expectedResultsWithMultipleCollections);
     }
 
   } catch (...) {

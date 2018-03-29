@@ -130,7 +130,7 @@ std::ostream& cluster_repairs::operator<<(
     }
 
     auto it = shards.begin();
-    ostream << "  ] ";
+    ostream << "  [ ";
     printShard(ostream, *it);
     ostream << "\n";
     ++it;
@@ -141,7 +141,7 @@ std::ostream& cluster_repairs::operator<<(
       ostream << "\n";
     }
 
-    ostream << "  [";
+    ostream << "  ]";
   };
 
   ostream << "FinishRepairsOperation" << std::endl

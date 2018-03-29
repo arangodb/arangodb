@@ -47,10 +47,10 @@ std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth4Healthy0Bad = R"=(
 }
 )="_vpack;
 
-std::map<CollectionID, std::vector<RepairOperation>>
-    expectedOperationsWithRepairingDistributeShardsLike{
+std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
+    expectedResultsWithRepairingDistributeShardsLike{
         {"22222222",
-         {
+         {{
              // begin without rename
              BeginRepairsOperation{
                  .database = "someDb",
@@ -81,4 +81,4 @@ std::map<CollectionID, std::vector<RepairOperation>>
                      },
                  .replicationFactor = 3,
              },
-         }}};
+         }}}};

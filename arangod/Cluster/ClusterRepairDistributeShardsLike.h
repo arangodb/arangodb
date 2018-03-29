@@ -149,17 +149,6 @@ class ResultT : public arangodb::Result {
       : Result(errorNumber, errorMessage), _val(val_) {}
 };
 
-template <typename T>
-std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
-  return stream << "ResultT<" << typeid(T).name() << "> "
-                << ": Result { "
-                << "errorNumber = " << result.errorNumber() << ", "
-                << "errorMessage = \"" << result.errorMessage() << "\" "
-                << "} { "
-                << "val = " << result.get() << " "
-                << "}";
-}
-
 struct Collection {
   DatabaseID database;
   std::string name;

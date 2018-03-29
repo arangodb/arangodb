@@ -49,15 +49,10 @@ std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth3Healthy0Bad = R"=(
 }
 )="_vpack;
 
-// std::shared_ptr<VPackBuffer<uint8_t>>
-//  collName22222222vpack = R"=("22222222")="_vpack;
-// Slice
-//  collName22222222slice = Slice(collName22222222vpack->data());
-
-std::map<CollectionID, std::vector<RepairOperation>>
-    expectedOperationsWithTwoSwappedDBServers{
+std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
+    expectedResultsWithTwoSwappedDBServers{
         {"11111111",
-         {
+         {{
              // rename distributeShardsLike to repairingDistributeShardsLike
              BeginRepairsOperation{
                  .database = "someDb",
@@ -118,5 +113,5 @@ std::map<CollectionID, std::vector<RepairOperation>>
                      },
                  .replicationFactor = 2,
              },
-         }},
+         }}},
     };
