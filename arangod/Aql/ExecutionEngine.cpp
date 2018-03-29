@@ -360,7 +360,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
  public:
   CoordinatorInstanciator(Query* query)
-      : _isCoordinator(true), _lastClosed(0), _query(query) {}
+      : _isCoordinator(true),
+        _lastClosed(0),
+        _query(query) {
+    TRI_ASSERT(_query);
+  }
 
   ~CoordinatorInstanciator() {}
 
@@ -382,6 +386,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         case ExecutionNode::SHORTEST_PATH:
           _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
           break;
+#ifdef USE_IRESEARCH
+        case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
+          _dbserverParts.addIResearchViewNode(*_query, *en);
+        } break;
+#endif
         default:
           // Do nothing
           break;
@@ -517,11 +526,11 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           lockedShards = std::make_unique<std::unordered_set<std::string>>();
         }
 
-        auto inst = std::make_unique<CoordinatorInstanciator>(query);
+        CoordinatorInstanciator inst(query);
 
-        plan->root()->walk(inst.get());
+        plan->root()->walk(&inst);
 
-        auto result = inst->buildEngines(queryRegistry, lockedShards.get());
+        auto result = inst.buildEngines(queryRegistry, lockedShards.get());
         if (!result.ok()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(),
                                          result.errorMessage());
@@ -557,9 +566,9 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     } else {
       // instantiate the engine on a local server
       engine = new ExecutionEngine(query);
-      auto inst = std::make_unique<Instanciator>(engine);
-      plan->root()->walk(inst.get());
-      root = inst.get()->root;
+      Instanciator inst(engine);
+      plan->root()->walk(&inst);
+      root = inst.root;
       TRI_ASSERT(root != nullptr);
     }
 

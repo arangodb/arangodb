@@ -39,6 +39,9 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#ifdef USE_IRESEARCH
+#include "IResearch/IResearchViewNode.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -696,6 +699,43 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
 
   _graphNodes.emplace_back(node);
 }
+
+#ifdef USE_IRESEARCH
+void EngineInfoContainerDBServer::addIResearchViewNode(
+    Query& query,
+    ExecutionNode const& node
+) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto& viewNode = dynamic_cast<iresearch::IResearchViewNode const&>(node);
+#else
+  auto& viewNode = static_cast<iresearch::IResearchViewNode const&>(node);
+#endif
+
+  auto& view = viewNode.view();
+
+  auto visitor = [this, &view](TRI_voc_cid_t cid)->bool{
+    auto logicalCollection = view.vocbase()->lookupCollection(cid);
+
+    if (!logicalCollection) {
+      return false;
+    }
+
+    // FIXME where to store collections?
+    // In execution node probably?
+    Collection col(
+      logicalCollection->name(),
+      view.vocbase(),
+      AccessMode::Type::READ
+    );
+
+    handleCollection(&col, AccessMode::Type::READ, false);
+
+    return true;
+  };
+
+  view.visitCollections(visitor);
+}
+#endif
 
 /**
  * @brief Will send a shutdown to all engines registered in the list of
