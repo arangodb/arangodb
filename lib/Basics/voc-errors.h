@@ -1649,9 +1649,10 @@ constexpr int TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_FAILED                                  = 5000;
 
 /// 5001:
-/// "not enough healthy db servers"
-/// Will be raised when, during repairDistributeShardsLike, there should be a
-/// free db server to move a shard, but none of the candidates is healthy.
+/// "not enough (healthy) db servers"
+/// Will be raised when, during repairDistributeShardsLike, there must be a
+/// free db server to move a shard, but there is no candidate or none is
+/// healthy.
 constexpr int TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY                      = 5001;
 
 /// 5002:

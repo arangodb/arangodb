@@ -191,7 +191,7 @@ class DistributeShardsLikeRepairer {
   boost::optional<ServerID const> static findFreeServer(
       DBServers const& availableDbServers, DBServers const& shardDbServers);
 
-  ResultT<std::vector<CollectionID>> static findCollectionsToFix(
+  std::vector<std::pair<CollectionID, Result>> static findCollectionsToFix(
       std::map<CollectionID, struct Collection> collections);
 
   DBServers static serverSetDifference(DBServers setA, DBServers setB);

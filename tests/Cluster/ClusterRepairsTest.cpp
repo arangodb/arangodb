@@ -97,6 +97,25 @@ std::ostream& operator<<(std::ostream& ostream,
   return ostream;
 }
 
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& ostream,
+                         std::map<K, V> const& map) {
+  std::string const typeNameK =
+    boost::core::demangle(typeid(K).name());
+  std::string const typeNameV =
+    boost::core::demangle(typeid(V).name());
+  ostream << "std::map<"<< typeNameK << ", " << typeNameV << "> {\n";
+  if (!map.empty()) {
+    auto it = map.begin();
+    ostream << it->first << " => " << it->second << "\n";
+    for (++it; it != map.end(); ++it) {
+      ostream << ", " << it->first << " => " << it->second << "\n";
+    }
+  }
+  ostream << "}" << std::endl;
+  return ostream;
+}
+
 template <typename T>
 std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
   std::string const typeName =
@@ -145,6 +164,7 @@ void checkAgainstExpectedOperations(
           VPackSlice(planCollections->data()),
           VPackSlice(supervisionHealth->data()));
 
+  INFO(repairOperationsByCollectionResult);
   REQUIRE(repairOperationsByCollectionResult.ok());
   std::map<CollectionID, ResultT<std::list<RepairOperation>>>&
       repairOperationsByCollection = repairOperationsByCollectionResult.get();
@@ -215,6 +235,9 @@ void checkAgainstExpectedOperations(
         REQUIRE(repairOpIt == expectedRepairOpIt);
       }
     }
+    else {
+      REQUIRE(repairResult == expectedResult);
+    }
   }
 }
 
@@ -226,6 +249,9 @@ void checkAgainstExpectedOperations(
 // repairingDistributeShardsLike, but the replicationFactor differs
 // TODO Add a test with multiple broken shards in one collection. Don't order
 // them the same, so the sorting is tested as well.
+// TODO Maybe add failure tests via TRI_AddFailurePointDebugging. Especially
+// if errors stay contained in their respective collection. Think about how to
+// trigger such errors only for a specific collection.
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -267,7 +293,7 @@ SCENARIO("Broken distributeShardsLike collections",
         REQUIRE(collectionResult.errorNumber() ==
                 TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
         REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough healthy db servers"));
+                            "not enough (healthy) db servers"));
         REQUIRE(collectionResult.fail());
       }
 
@@ -292,7 +318,7 @@ SCENARIO("Broken distributeShardsLike collections",
         REQUIRE(collectionResult.errorNumber() ==
                 TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
         REQUIRE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                            "not enough healthy db servers"));
+                            "not enough (healthy) db servers"));
         REQUIRE(collectionResult.fail());
       }
     }
