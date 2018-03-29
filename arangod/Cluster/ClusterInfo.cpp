@@ -37,6 +37,7 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
@@ -671,7 +672,17 @@ void ClusterInfo::loadPlan() {
 
             try {
               std::shared_ptr<LogicalView> newView;
-              newView = std::make_shared<LogicalView>(vocbase, viewSlice);
+              auto const* viewTypes 
+                  = application_features::ApplicationServer::getFeature
+                    <ViewTypesFeature>("ViewTypes");
+              auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(viewPairSlice.value, "type", ""));
+              auto const& viewFactory = viewTypes->factory(dataSourceType);
+              if (!viewFactory) {
+                LOG_TOPIC(ERR, Logger::AGENCY) << "Found view type "
+                  "for which there is no factory, viewId: " << viewId;
+                continue;
+              }
+              newView = viewFactory(*vocbase, viewSlice, false);
               newView->setPlanVersion(newPlanVersion);
               std::string const viewName = newView->name();
               // register with name as well as with id:
