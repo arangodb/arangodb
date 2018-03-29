@@ -671,18 +671,18 @@ void ClusterInfo::loadPlan() {
                 viewPairSlice.key.copyString();
 
             try {
-              std::shared_ptr<LogicalView> newView;
-              auto const* viewTypes 
-                  = application_features::ApplicationServer::getFeature
-                    <ViewTypesFeature>("ViewTypes");
-              auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(arangodb::basics::VelocyPackHelper::getStringRef(viewPairSlice.value, "type", ""));
-              auto const& viewFactory = viewTypes->factory(dataSourceType);
-              if (!viewFactory) {
-                LOG_TOPIC(ERR, Logger::AGENCY) << "Found view type "
-                  "for which there is no factory, viewId: " << viewId;
-                continue;
+              const auto newView = LogicalView::create(
+                *vocbase, viewPairSlice.value, false
+              );
+
+              if (!newView) {
+                LOG_TOPIC(ERR, Logger::AGENCY)
+                  << "Failed to create view '" << viewId
+                  << "'. The view will be ignored for now and the invalid information "
+                  "will be repaired. VelocyPack: "
+                  << viewSlice.toJson();
               }
-              newView = viewFactory(*vocbase, viewSlice, false);
+
               newView->setPlanVersion(newPlanVersion);
               std::string const viewName = newView->name();
               // register with name as well as with id:
@@ -696,8 +696,8 @@ void ClusterInfo::loadPlan() {
               // cluster should not fail.
               LOG_TOPIC(ERR, Logger::AGENCY)
                 << "Failed to load information for view '" << viewId
-                << "': " << ex.what() << ". invalid information in Plan. The"
-                "view  will be ignored for now and the invalid information"
+                << "': " << ex.what() << ". invalid information in Plan. The "
+                "view  will be ignored for now and the invalid information "
                 "will be repaired. VelocyPack: "
                 << viewSlice.toJson();
 
