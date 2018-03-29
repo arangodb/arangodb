@@ -54,7 +54,9 @@ endif()
 
 add_definitions(-std=c++11)
 
-if (NOT WINDOWS)
+if (WINDOWS)
+    add_definitions(-J -D_USE_MATH_DEFINES)
+else
     add_definitions(-Wno-deprecated-declarations)
 endif()
 
