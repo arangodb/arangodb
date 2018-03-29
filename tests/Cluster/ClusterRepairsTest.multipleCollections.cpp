@@ -1,6 +1,4 @@
 // Agency output of .[0].arango.Plan.Collections
-// TODO Use a collection with differing number of shard to its proto collection
-// to induce an error
 std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
 {
   "someDb": {
@@ -217,7 +215,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                 .database = "someDb",
                 .collectionId = "99999999",
                 .collectionName = "follower99999999of88888888",
-                .shard = "s31",
+                .shard = "s91",
                 .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                 .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                 .isLeader = true,
@@ -231,9 +229,8 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                 .shards =
                     {
                         std::make_tuple<ShardID, ShardID, DBServers>(
-                            "s31", "s21",
-                            {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                             "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
+                            "s91", "s81",
+                            {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"}),
                     },
                 .replicationFactor = 1,
             }}}}},
