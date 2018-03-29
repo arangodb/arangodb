@@ -52,7 +52,12 @@ if (APPLE)
     set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
-add_definitions(-Wno-deprecated-declarations -std=c++11)
+add_definitions(-std=c++11)
+
+if (NOT WINDOWS)
+    add_definitions(-Wno-deprecated-declarations)
+endif()
+
 
 # If OpenSSL is installed in a non-standard location, configure with
 # something like:
