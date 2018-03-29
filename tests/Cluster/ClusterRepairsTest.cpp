@@ -85,6 +85,7 @@ VPackBufferPtr operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
+// TODO Allow a ResultT per collection. Rewrite the tests for that.
 void checkAgainstExpectedOperations(
     VPackBufferPtr const& planCollections,
     VPackBufferPtr const& supervisionHealth,
@@ -177,10 +178,10 @@ void checkAgainstExpectedOperations(
 // "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
-// TODO Add a test where multiple collections are fixed
-// TODO Add a test where multiple collections are fixed and one is broken
 // TODO Add a test where distributeShardsLike is already renamed to
 // repairingDistributeShardsLike, but the replicationFactor differs
+// TODO Add a test with multiple broken shards in one collection. Don't order them the same, so the sorting is tested as well.
+
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -267,6 +268,13 @@ SCENARIO("Broken distributeShardsLike collections",
       checkAgainstExpectedOperations(
           planCollections, supervisionHealth4Healthy0Bad,
           expectedOperationsWithRepairingDistributeShardsLike);
+    }
+
+    GIVEN("An agency with multiple collections") {
+#include "ClusterRepairsTest.multipleCollections.cpp"
+      checkAgainstExpectedOperations(
+        planCollections, supervisionHealth4Healthy0Bad,
+        expectedResultsWithMultipleCollections);
     }
 
   } catch (...) {
