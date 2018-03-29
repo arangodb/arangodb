@@ -511,7 +511,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
       repairOperationsByCollection.emplace(
           collection.id,
           Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
-      break;
+      continue;
     }
 
     struct Collection& proto = collectionMap.at(protoId);
@@ -520,7 +520,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     if (beginRepairsOperation.fail()) {
       repairOperationsByCollection.emplace(collection.id,
                                            std::move(beginRepairsOperation));
-      break;
+      continue;
     }
     std::list<RepairOperation> repairOperations;
     repairOperations.emplace_back(std::move(beginRepairsOperation.get()));
@@ -531,7 +531,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     if (shardRepairOperationsResult.fail()) {
       repairOperationsByCollection.emplace(
           collection.id, std::move(shardRepairOperationsResult));
-      break;
+      continue;
     }
 
     repairOperations.splice(repairOperations.end(),
@@ -542,7 +542,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     if (finishRepairsOperation.fail()) {
       repairOperationsByCollection.emplace(collection.id,
                                            std::move(finishRepairsOperation));
-      break;
+      continue;
     }
     repairOperations.emplace_back(std::move(finishRepairsOperation.get()));
 
