@@ -44,7 +44,6 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -1690,31 +1689,15 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    auto const* viewTypes =
-        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-            "ViewTypes");
-
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
-      arangodb::velocypack::StringRef const type(it.get("type"));
-      auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-      auto const& viewFactory = viewTypes->factory(dataSourceType);
-
-      if (!viewFactory) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "no handler found for view type"
-        );
-      }
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      auto view = viewFactory(*vocbase, it, false);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
-        auto const message =
-          "failed to instantiate view of type "
-          + dataSourceType.name();
+        auto const message = "failed to instantiate view '" + name + "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
       }
