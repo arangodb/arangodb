@@ -39,6 +39,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -47,6 +48,7 @@
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -1124,6 +1126,12 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const noexcept {
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string viewId = StringUtils::itoa(id);
+    return ci->getView(name(), viewId);
+  }
+
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
       lookupDataSource(id)
@@ -1140,6 +1148,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const noexcept{
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    return ci->getView(name(), nameOrId);
+  }
+
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
       lookupDataSource(nameOrId)
@@ -1653,6 +1666,51 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     VPackSlice parameters, TRI_voc_cid_t id) {
+
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    if (id == 0) {
+      id = ci->uniqid();
+    }
+    std::string viewId = StringUtils::itoa(id);
+    // Now put together the JSON we need for the agency:
+    VPackBuilder builder;
+    { VPackObjectBuilder guard(&builder);
+      builder.add("id", VPackValue(viewId));
+      builder.add(VPackValue("properties"));
+      std::string name;
+      { VPackObjectBuilder guard(&builder);
+        for (auto const& p : VPackObjectIterator(parameters)) {
+          if (p.key.copyString() == "name" && p.value.isString()) {
+            name = p.value.copyString();
+          } else {
+            builder.add(p.key);
+            builder.add(p.value);
+          }
+        }
+      }
+      if (name.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "Could not create view in agency, error: no name given.";
+        return nullptr;
+      }
+      builder.add("name", VPackValue(name));
+      builder.add(VPackValue("collections"));
+      { VPackArrayBuilder guard2(&builder);
+      }
+    }
+    std::string errorMsg;
+    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
+        errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      return ci->getView(name(), viewId);
+    }
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "Could not create view in agency, error: " << errorMsg
+      << ", errorCode: " << res;
+    return nullptr;
+  }
+
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: id may be modified by this function call
@@ -1691,7 +1749,22 @@ int TRI_vocbase_t::dropView(std::string const& name) {
 
 /// @brief drops a view
 int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
+
   TRI_ASSERT(view != nullptr);
+
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string errorMsg;
+    int res = ci->dropViewCoordinator(name(), StringUtils::itoa(view->id()),
+          errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "Could not drop view in agency, error: " << errorMsg
+      << ", errorCode: " << res;
+    return res;
+  }
 
   READ_LOCKER(readLocker, _inventoryLock);
 
