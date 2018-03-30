@@ -37,7 +37,6 @@
 #include "Logger/Logger.h"
 #include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
