@@ -145,6 +145,11 @@
 #include "s2/third_party/absl/strings/string_view.h"
 #include "s2/util/gtl/subtle/compressed_tuple.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
 namespace gtl {
 
 // A helper type used to indicate that a key-compare-to functor has been

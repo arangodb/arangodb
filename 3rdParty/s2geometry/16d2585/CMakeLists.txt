@@ -54,7 +54,7 @@ endif()
 
 add_definitions(-std=c++11)
 
-if(WINDOWS)
+if(WIN32)
     add_definitions(-J -D_USE_MATH_DEFINES -DNOMINMAX)
 else()
     add_definitions(-Wno-deprecated-declarations)
