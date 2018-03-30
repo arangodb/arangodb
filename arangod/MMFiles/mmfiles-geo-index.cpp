@@ -23,7 +23,9 @@
 
 /* GeoIndex.c -   GeoIndex algorithms                */
 /* Version 2.1   8.1.2012  R. A. Parker              */
+#ifndef _USE_MATH_DEFINES
 #define _USE_MATH_DEFINES
+#endif
 #include <math.h>
 
 #include "mmfiles-geo-index.h"
@@ -2047,7 +2049,7 @@ GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c) {
   if (gcr == nullptr) {
     return (GeoCursor*)gcr;
   }
-  
+
   GeoIx* gix = (GeoIx*)gi;
   gcr->Ix = gix;
 
@@ -2108,7 +2110,7 @@ GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistanc
           gcr->slotheap.push_back(hs);
           std::push_heap(gcr->slotheap.begin(), gcr->slotheap.end(),
                          hslotcompare);
-          /* 
+          /*
             TODO: skip useless results early here
           if (hs.snmd <= (maxsnmd * 1.00000000000001)) {
             gcr->slotheap.push_back(hs);
