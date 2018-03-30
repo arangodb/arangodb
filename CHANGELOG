@@ -1,6 +1,10 @@
 devel
 -----
 
+* removed option `--cluster.my-local-info` in favor of persisted server UUIDs
+
+  The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
