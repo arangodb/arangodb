@@ -263,7 +263,7 @@ target_link_libraries(${LIB_ARANGO_GEO}
     boost_boost
 )
 
-if (WINDOWS)
+if (WIN32)
   target_compile_definitions(${LIB_ARANGO_GEO} PUBLIC "-J")
 endif()
 
