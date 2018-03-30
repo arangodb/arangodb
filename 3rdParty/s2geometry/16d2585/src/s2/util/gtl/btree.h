@@ -146,9 +146,11 @@
 #include "s2/util/gtl/subtle/compressed_tuple.h"
 
 #if defined(_WIN32) || defined(_WIN64)
+#undef small
+#ifdef NEED_ALT_SSIZE
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
-#undef small
+#endif
 #endif
 
 namespace gtl {

@@ -222,7 +222,7 @@ option(HOMEBREW
 if (WIN32)
   set(WINDOWS TRUE)
   set(MSBUILD TRUE)
-  add_definitions(-J -D_USE_MATH_DEFINES -DNOMINMAX)
+  add_definitions(-D_USE_MATH_DEFINES -DNOMINMAX)
 elseif (UNIX AND NOT APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
