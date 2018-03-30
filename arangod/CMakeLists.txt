@@ -518,6 +518,7 @@ add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_
 
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
+  ${LIB_ARANGO_GEO}
   ${LIB_ARANGO_V8}
   ${LIB_ARANGO}
   ${LINENOISE_LIBS}
