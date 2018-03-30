@@ -26,6 +26,12 @@
 #include "s2/s2builder_layer.h"
 #include "s2/value_lexicon.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#ifdef DIFFERENCE
+#undef DIFFERENCE
+#endif
+#endif
+
 // This class implements boolean operations (intersection, union, difference,
 // and symmetric difference) for regions whose boundaries are defined by
 // geodesic edges.
