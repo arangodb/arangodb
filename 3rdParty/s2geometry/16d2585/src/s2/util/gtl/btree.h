@@ -148,6 +148,7 @@
 #if defined(_WIN32) || defined(_WIN64)
 #include <BaseTsd.h>
 typedef SSIZE_T ssize_t;
+#undef small
 #endif
 
 namespace gtl {
