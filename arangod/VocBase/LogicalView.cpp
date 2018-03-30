@@ -23,6 +23,7 @@
 
 #include "LogicalView.h"
 
+#include "RestServer/ViewTypesFeature.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/VelocyPackHelper.h"
@@ -85,6 +86,35 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       LogicalView
 // -----------------------------------------------------------------------------
+
+/*static*/ std::shared_ptr<LogicalView> LogicalView::create(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    bool isNew
+) {
+  auto const* viewTypes = application_features::ApplicationServer::getFeature
+      <ViewTypesFeature>("ViewTypes");
+  TRI_ASSERT(viewTypes);
+
+  auto const viewType = arangodb::basics::VelocyPackHelper::getStringRef(
+    definition, "type", ""
+  );
+
+  auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(
+    viewType
+  );
+
+  auto const& viewFactory = viewTypes->factory(dataSourceType);
+
+  if (!viewFactory) {
+    LOG_TOPIC(ERR, Logger::VIEWS)
+      << "Found view type for which there is no factory, type: "
+      << viewType.toString();
+    return nullptr;
+  }
+
+  return viewFactory(vocbase, definition, isNew);
+}
 
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
   static const Category category;

@@ -1728,6 +1728,11 @@ bool AgencyComm::tryInitializeStructure() {
         VPackObjectBuilder d(&builder);
         addEmptyVPackObject("_system", builder);
       }
+      builder.add(VPackValue("Views"));
+      {
+        VPackObjectBuilder d(&builder);
+        addEmptyVPackObject("_system", builder);
+      }
     }
 
     builder.add(VPackValue("Sync")); // Sync ----------------------------------
