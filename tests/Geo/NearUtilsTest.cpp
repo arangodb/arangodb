@@ -34,6 +34,10 @@
 #include <s2/s2metrics.h>
 #include <s2/s2latlng.h>
 
+#ifdef WIN32
+#undef near
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -64,7 +68,7 @@ static std::vector<LocalDocumentId> nearSearch(index_t const& index,
 
       while (it != index.end() && it->first <= interval.max) {
         REQUIRE(it->first >= interval.min);
-        
+
         S2Point center = coords.at(it->second).ToPoint();
         near.reportFound(it->second, center);
         it++;
