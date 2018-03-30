@@ -23,6 +23,7 @@
 
 #include "GeoJson.h"
 
+#include <cctype>
 #include <string>
 #include <vector>
 
@@ -212,7 +213,7 @@ Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
   size_t n = coordinates.length();
-  
+
   // Coordinates of a Polygon are an array of LinearRing coordinate arrays.
   // The first element in the array represents the exterior ring. Any subsequent
   // elements
@@ -232,13 +233,13 @@ Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
       return res;
     }
     ::removeAdjacentDuplicates(vtx);  // s2loop doesn't like duplicates
-    
+
     if (vtx.size() < 3+1) { // last vertex must be same as first
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon, "
                     "must have at least 3 distinct vertices");
     }
     vtx.resize(vtx.size() - 1);  // remove redundant last vertex
-    
+
     if (n == 1) { // rectangle detection
       if (vtx.size() == 1) {
         S2LatLng v0(vtx[0]);
@@ -255,7 +256,7 @@ Result parsePolygon(VPackSlice const& geoJSON, ShapeContainer& region) {
         }
       }
     }
-    
+
     loops.push_back(std::make_unique<S2Loop>(vtx));
     if (!loops.back()->IsValid()) {  // will check first and last for us
       return Result(TRI_ERROR_BAD_PARAMETER, "Invalid loop in polygon");
