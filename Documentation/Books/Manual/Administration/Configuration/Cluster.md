@@ -90,6 +90,18 @@ have a unique local info. This is ignored if my-id below is specified.
 This option is deprecated and will be removed in a future release. The
 cluster node ids have been dropped in favour of once generated UUIDs.
 
+Require existing ID
+-------------------
+ 
+Require an existing server id: `--cluster.require-persisted-id bool`
+
+If set to true, then the instance will only start if a UUID file is found 
+in the database on startup. Setting this option will make sure the instance 
+is started using an already existing database directory from a previous
+start, and not a new one. For the first start, the UUID file must either be 
+created manually in the database directory, or the option must be set to 
+false for the initial startup and only turned on for restarts.
+
 More advanced options
 ---------------------
 
@@ -100,7 +112,7 @@ These options should generally remain untouched.
 <!-- arangod/Cluster/ClusterFeature.h -->
 
 
-Synchroneous replication timing: `--cluster.synchronous-replication-timeout-factor double`
+Synchronous replication timing: `--cluster.synchronous-replication-timeout-factor double`
 
 Strech or clinch timeouts for internal synchroneous replication
 mechanism between db servers. All such timeouts are affected by this

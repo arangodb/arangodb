@@ -1,6 +1,15 @@
 devel
 -----
 
+* added option `--cluster.require-persisted-id`
+
+  If set to true, then the instance will only start if a UUID file is found 
+  in the database on startup. Setting this option will make sure the instance 
+  is started using an already existing database directory from a previous
+  start, and not a new one. For the first start, the UUID file must either be 
+  created manually in the database directory, or the option must be set to 
+  false for the initial startup and only turned on for restarts.
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)

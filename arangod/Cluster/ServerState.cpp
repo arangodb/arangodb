@@ -461,9 +461,7 @@ std::string ServerState::getUuidFilename() {
     application_features::ApplicationServer::getFeature<DatabasePathFeature>(
       "DatabasePath");
   TRI_ASSERT(dbpath != nullptr);
-  mkdir (dbpath->directory());
-
-  return dbpath->directory() + "/UUID";
+  return FileUtils::buildFilename(dbpath->directory(), "UUID");
 }
 
 bool ServerState::hasPersistedId() {
@@ -473,6 +471,7 @@ bool ServerState::hasPersistedId() {
 
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
+  mkdir(FileUtils::dirname(uuidFilename));
   std::ofstream ofs(uuidFilename);
   if (!ofs.is_open()) {
     LOG_TOPIC(FATAL, Logger::CLUSTER)
@@ -494,18 +493,20 @@ std::string ServerState::generatePersistedId(RoleEnum const& role) {
 }
 
 std::string ServerState::getPersistedId() {
-  std::string uuidFilename = getUuidFilename(); 
-  std::ifstream ifs(uuidFilename);
+  if (hasPersistedId()) {
+    std::string uuidFilename = getUuidFilename(); 
+    std::ifstream ifs(uuidFilename);
 
-  std::string id;
-  if (ifs.is_open()) {
-    std::getline(ifs, id);
-    ifs.close();
-  } else {
-    LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open " << uuidFilename;
-    FATAL_ERROR_EXIT();
+    std::string id;
+    if (ifs.is_open()) {
+      std::getline(ifs, id);
+      ifs.close();
+      return id;
+    }
   }
-  return id;
+    
+  LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't open UUID file '" << getUuidFilename() << "'";
+  FATAL_ERROR_EXIT();
 }
 
 //////////////////////////////////////////////////////////////////////////////
