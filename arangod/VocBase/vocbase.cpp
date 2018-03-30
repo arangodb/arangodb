@@ -54,7 +54,6 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1596,37 +1595,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  auto const type =
-    arangodb::basics::VelocyPackHelper::getStringRef(parameters, "type", "");
-  auto const* viewTypes =
-      application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-          "ViewTypes");
-
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'"
-    );
-  }
-
-  auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-
-  auto const& viewFactory = viewTypes->factory(dataSourceType);
-
-  if (!viewFactory) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "no handler found for view type"
-    );
-  }
-
   // Try to create a new view. This is not registered yet
-  auto view = viewFactory(*this, parameters, true);
+  auto const view = LogicalView::create(*this, parameters, true);
 
   if (!view) {
-    auto const message =
-      "failed to instantiate view of type "
-      + dataSourceType.name();
+    auto const message = "failed to instantiate view '" + name + "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
   }
