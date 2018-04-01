@@ -449,10 +449,16 @@ bool IndexBlock::readIndex(
 
     TRI_ASSERT(atMost >= _returned);
  
-
-    // TODO: optimize for the case when produceResult() is false
-    // in this case we do not need to fetch the documents at all 
-    bool res = _cursor->nextDocument(callback, atMost - _returned);
+    bool res;
+    if (produceResult()) {
+      // fetch entire documents
+      res = _cursor->nextDocument(callback, atMost - _returned);
+    } else {
+      // optimization: iterate over index, but do not fetch documents
+      res = _cursor->next([&callback](LocalDocumentId const& id) {
+        callback(id, VPackSlice::nullSlice());
+      }, atMost - _returned);
+    }
 
     if (res) {
       // We have returned enough.
@@ -547,7 +553,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     };
   } else {
     // No uniqueness checks
-    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
+    callback = [&](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
