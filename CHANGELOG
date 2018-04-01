@@ -1,3 +1,16 @@
+v3.3.6 (XXXX-XX-XX)
+-------------------
+
+* added index-only optimization for AQL queries that iterate over indexes and
+  that do not need to look into the actual document values
+  Not fetching the document values from the storage engine will provide a 
+  considerable speedup when using the RocksDB engine, but may also help a bit
+  in case of MMFiles
+
+  if the optimization is applied, it will show up as "index only" in an AQL
+  query's execution plan 
+
+
 v3.3.5 (2018-03-28)
 -------------------
 
