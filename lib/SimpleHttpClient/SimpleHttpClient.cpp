@@ -553,15 +553,13 @@ void SimpleHttpClient::setRequest(
   }
 
   // do basic authorization
-  if (!_params._basicAuth.empty()) {
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
-    _writeBuffer.appendText(_params._basicAuth);
-    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-  }
-
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
     _writeBuffer.appendText(_params._jwt);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
+  } else if (!_params._basicAuth.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    _writeBuffer.appendText(_params._basicAuth);
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
 

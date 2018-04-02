@@ -68,11 +68,12 @@ std::string V8ClientConnection::jwtToken(std::string const& secret) {
   }
 
   std::string fullMessage(StringUtils::encodeBase64(headerBuilder.toJson()) +
-                          "." + StringUtils::encodeBase64(bodyBuilder.toJson()));
+                          "." +
+                          StringUtils::encodeBase64(bodyBuilder.toJson()));
 
-  std::string signature =
-      sslHMAC(secret.c_str(), secret.length(), fullMessage.c_str(),
-              fullMessage.length(), rest::SslInterface::Algorithm::ALGORITHM_SHA256);
+  std::string signature = sslHMAC(
+      secret.c_str(), secret.length(), fullMessage.c_str(),
+      fullMessage.length(), rest::SslInterface::Algorithm::ALGORITHM_SHA256);
 
   return fullMessage + "." + StringUtils::encodeBase64U(signature);
 }
@@ -104,7 +105,11 @@ void V8ClientConnection::init(
   SimpleHttpClientParams params(_requestTimeout, false);
   params.setLocationRewriter(this, &rewriteLocation);
   params.setUserNamePassword("/", _username, _password);
-  params.setJwt(jwtToken(JWT_SECRET));
+
+  if (!JWT_SECRET.empty()) {
+    params.setJwt(jwtToken(JWT_SECRET));
+  }
+
   _client.reset(new SimpleHttpClient(connection, params));
 
   // connect to server and get version number
