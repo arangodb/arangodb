@@ -21,9 +21,9 @@
 #include <Windows.h>
 #else
 #include <sys/resource.h>   // for rusage, RUSAGE_SELF
+#include <sys/time.h>
 #endif
 
-#include <sys/time.h>
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
