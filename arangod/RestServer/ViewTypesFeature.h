@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "VocBase/LogicalDataSource.h"
-#include "VocBase/ViewImplementation.h"
+#include "VocBase/LogicalView.h"
 
 namespace arangodb {
 
@@ -35,10 +35,10 @@ class ViewTypesFeature final: public application_features::ApplicationFeature {
 
  public:
   /// @return 'factory' for 'type' was added successfully
-  bool emplace(LogicalDataSource::Type const& type, ViewCreator factory);
+  bool emplace(LogicalDataSource::Type const& type, ViewFactory const& factory);
 
   /// @return factory for the specified type or false if no such type
-  ViewCreator const& factory(
+  ViewFactory const& factory(
     LogicalDataSource::Type const& type
   ) const noexcept;
 
@@ -47,7 +47,7 @@ class ViewTypesFeature final: public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
-  std::unordered_map<LogicalDataSource::Type const*, arangodb::ViewCreator> _factories;
+  std::unordered_map<LogicalDataSource::Type const*, arangodb::ViewFactory> _factories;
 };
 
 }
