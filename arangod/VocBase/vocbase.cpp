@@ -1357,7 +1357,7 @@ int TRI_vocbase_t::renameView(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || arangodb::LogicalView::category() == itr1->second->category()) {
+      || arangodb::LogicalView::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
@@ -1614,9 +1614,29 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
+  // Coordinators are not allowed to have local views!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  arangodb::velocypack::Builder builder;
+  auto res = engine->getViews(this, builder);
+  TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
+  auto slice  = builder.slice();
+  TRI_ASSERT(slice.isArray());
+  auto viewId = std::to_string(view->id());
+
+  // We have not yet persisted this view
+  for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
+    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getStringRef(entry, "id", arangodb::velocypack::StringRef()).compare(viewId));
+  }
+
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
+    // Let's try to persist it.
+    engine->createView(this, view->id(), view.get());
+
     // And lets open it.
     view->open();
 
@@ -1781,6 +1801,9 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   view->drop();
   unregisterView(view);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropView(this, view.get());
 
   locker.unlock();
   writeLocker.unlock();
