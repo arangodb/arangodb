@@ -91,18 +91,17 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new StringParameter(&_password));
 
   if (_allowJwtSecret) {
+    // currently the option is only present for arangosh, but none
+    // of the other client tools 
     options->addHiddenOption(
         "--server.ask-jwt-secret",
         "if this option is specified, the user will be prompted "
-        "for an jwt secret. This option is not compatible with "
-        "--server.password. If specified it will be used for all "
-        "connection - even when a new connection  to another server is "
+        "for a JWT secret. This option is not compatible with "
+        "--server.username or --server.password. If specified, it will be used for all "
+        "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret));
-  } else {
-    options->addObsoleteOption("--server.ask-jwt-secret",
-                               "this option is not supported", false);
-  }
+  } 
 
   options->addOption("--server.connection-timeout",
                      "connection timeout in seconds",
@@ -218,7 +217,7 @@ void ClientFeature::readJwtSecret() {
   }
 
   std::cout << "Please specify the JWT secret: " << std::flush;
-  _password = ConsoleFeature::readPassword();
+  _jwtSecret = ConsoleFeature::readPassword();
   std::cout << std::endl << std::flush;
 }
 
