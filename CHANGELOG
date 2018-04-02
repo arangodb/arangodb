@@ -1,3 +1,16 @@
+v3.3.6 (XXXX-XX-XX)
+-------------------
+
+* added ArangoShell helper function for packaging all information about an
+  AQL query so it can be run and analyzed elsewhere:
+
+  query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
+  require("@arangodb/aql/explainer").debugDump("/tmp/query-debug-info", query);
+
+  Entitled users can send the generated file to the ArangoDB support to facilitate 
+  reproduction and debugging.
+
+
 v3.3.5 (2018-03-28)
 -------------------
 
