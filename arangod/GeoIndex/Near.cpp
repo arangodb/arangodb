@@ -122,6 +122,9 @@ void NearUtils<CMP>::estimateDensity(S2Point const& found) {
   }
 }
 
+/// Makes sure we do not have a search area already covered by cell_ids.
+/// The parameter cell_ids must be normalized, otherwise result is undefined
+/// Calculates id - cell_ids and adds the remaining cell(s) to result
 static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
                           std::vector<S2CellId>* result) {
   // If they intersect but the difference is non-empty, divide and conquer.
@@ -132,9 +135,9 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
   bool intersects = (i != cell_ids.end() && i->range_min() <= id.range_max()) ||
                     (i != cell_ids.begin() && (--i)->range_max() >= id.range_min());
 
-  if (!intersects) {
+  if (!intersects) { // does not intersect cell_ids, just add to result
     result->push_back(id);
-  } else {
+  } else { // find child cells of id which might still remain
     // cell_ids.Intersects(id) == true
     bool contains = (j != cell_ids.end() && j->range_min() <= id) ||
                     (j != cell_ids.begin() && (--j)->range_max() >= id);
@@ -231,7 +234,9 @@ std::vector<geo::Interval> NearUtils<CMP>::intervals() {
   if (!cover.empty()) {
     geo::GeoUtils::scanIntervals(_params, cover, intervals);
     _scannedCells.insert(_scannedCells.end(), cover.begin(), cover.end());
-    S2CellUnion::Normalize(&_scannedCells); // will sort the IDs
+    // needed for difference calculation, will sort the IDs replace
+    // 4 child cells with one parent cell and remove duplicates
+    S2CellUnion::Normalize(&_scannedCells);
   }
 
   return intervals;
