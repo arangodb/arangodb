@@ -17,7 +17,12 @@
 
 #include "s2/s2testing.h"
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <Windows.h>
+#else
 #include <sys/resource.h>   // for rusage, RUSAGE_SELF
+#endif
+
 #include <sys/time.h>
 #include <algorithm>
 #include <cmath>
@@ -320,9 +325,21 @@ void S2Testing::CheckCovering(const S2Region& region,
 }
 
 double S2Testing::GetCpuTime() {
+#if defined(_WIN32) || defined(_WIN64)
+  FILETIME creation, exit, kernel, user;
+  int res = GetProcessTimes(GetCurrentProcess(), &creation,
+                            &exit, &kernel, &user);
+  if (res == 0) {  // something went wrong
+    return 0.0;    // is this right for an error case?
+  }
+  // high and low combine to 64-bit int, time uses 100-nanosecond intervals
+  return static_cast<double>((static_cast<uint64_t>(user.dwHighDateTime) << 32)
+                            + static_cast<uint64_t>(user.dwLowDateTime)) / 1e7;
+#else
   struct rusage ru;
   S2_CHECK_EQ(getrusage(RUSAGE_SELF, &ru), 0);
   return ru.ru_utime.tv_sec + ru.ru_utime.tv_usec / 1e6;
+#endif
 }
 
 S2Testing::Fractal::Fractal()
