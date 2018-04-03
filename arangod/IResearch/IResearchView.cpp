@@ -1769,14 +1769,14 @@ arangodb::Result IResearchView::link(
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  if (!impl._meta.init(properties, error)) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-      << "failed to initialize iResearch view from definition, error: " << error;
-
-    return nullptr;
+  if (impl._meta.init(properties, error)) {
+    return view;
   }
 
-  return std::move(view);
+  LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    << "failed to initialize iResearch view from definition, error: " << error;
+
+  return nullptr;
 }
 
 size_t IResearchView::memory() const {
