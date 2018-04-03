@@ -742,9 +742,9 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   auto trx = _plan->getAst()->query()->trx();
   TRI_ASSERT(trx != nullptr);
 
-  auto ctxt = std::make_unique<FixedVarExpressionContext>();
-  ctxt->setVariableValue(pathVar, {});
-  AqlValue res = tmpExp.execute(trx, ctxt.get(), mustDestroy);
+  FixedVarExpressionContext ctxt;
+  ctxt.setVariableValue(pathVar, {});
+  AqlValue res = tmpExp.execute(trx, &ctxt, mustDestroy);
   TRI_ASSERT(res.isBoolean());
 
   if (mustDestroy) {

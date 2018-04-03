@@ -722,9 +722,8 @@ int revisionOnCoordinator(std::string const& dbname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -794,9 +793,8 @@ int warmupOnCoordinator(std::string const& dbname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -842,9 +840,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
 
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest(
         "", coordTransactionID, "shard:" + p.first,
         arangodb::rest::RequestType::GET,
@@ -1487,9 +1484,8 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   // We have to contact everybody:
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     cc->asyncRequest("", coordTransactionID, "shard:" + p.first,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
@@ -1543,12 +1539,10 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
   unsigned int expected = 0;
   auto shards = collinfo->shardIds();
   CoordTransactionID coordTransactionID = TRI_NewTickServer();
+  std::unordered_map<std::string, std::string> headers;
   for (auto const& p : *shards) {
     auto serverList = ci->getResponsibleServer(p.first);
-
     for (auto& s : *serverList) {
-      auto headers =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
       cc->asyncRequest("", coordTransactionID, "server:" + s,
                       arangodb::rest::RequestType::PUT,
                       "/_db/" + StringUtils::urlEncode(dbname) +
@@ -2555,9 +2549,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector, double maxWa
   }
 
   auto body = std::make_shared<std::string const>();
+  std::unordered_map<std::string, std::string> headers;
   for (auto it = DBservers.begin(); it != DBservers.end(); ++it) {
-    auto headers =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
     // set collection name (shard id)
     cc->asyncRequest("", coordTransactionID, "server:" + *it,
                      arangodb::rest::RequestType::PUT, url, body,

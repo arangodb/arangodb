@@ -362,12 +362,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsUsedLater.reserve(varsUsedLater.length());
   for (auto const& it : VPackArrayIterator(varsUsedLater)) {
-    auto oneVarUsedLater = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
+    Variable oneVarUsedLater(it);
+    Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarUsedLater->id);
+                           StringUtils::itoa(oneVarUsedLater.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsUsedLater.emplace(oneVariable);
@@ -382,12 +382,12 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan,
 
   _varsValid.reserve(varsValidList.length());
   for (auto const& it : VPackArrayIterator(varsValidList)) {
-    auto oneVarValid = std::make_unique<Variable>(it);
-    Variable* oneVariable = allVars->getVariable(oneVarValid->id);
+    Variable oneVarValid(it);
+    Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
     if (oneVariable == nullptr) {
       std::string errmsg = "varsValid: ID not found in all-array: " +
-                           StringUtils::itoa(oneVarValid->id);
+                           StringUtils::itoa(oneVarValid.id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
     }
     _varsValid.emplace(oneVariable);

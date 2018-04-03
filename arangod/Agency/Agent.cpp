@@ -572,8 +572,7 @@ void Agent::sendAppendEntriesRPC() {
         << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       // Send request
-      auto headerFields =
-        std::make_unique<std::unordered_map<std::string, std::string>>();
+      std::unordered_map<std::string, std::string> headerFields;
       cc->asyncRequest(
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
@@ -650,8 +649,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   }
 
   // Send request
-  auto headerFields =
-    std::make_unique<std::unordered_map<std::string, std::string>>();
+  std::unordered_map<std::string, std::string> headerFields;
   cc->asyncRequest(
     "1", 1, _config.poolAt(followerId),
     arangodb::rest::RequestType::POST, path.str(),
@@ -1386,10 +1384,9 @@ void Agent::notifyInactive() const {
     out.add("timeoutMult", VPackValue(_config.timeoutMult()));
   }
 
+  std::unordered_map<std::string, std::string> headerFields;
   for (auto const& p : pool) {
     if (p.first != id()) {
-      auto headerFields =
-          std::make_unique<std::unordered_map<std::string, std::string>>();
       cc->asyncRequest("1", 1, p.second, arangodb::rest::RequestType::POST,
                        path, std::make_shared<std::string>(out.toJson()),
                        headerFields, nullptr, 1.0, true);

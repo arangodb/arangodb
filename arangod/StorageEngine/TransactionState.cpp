@@ -45,7 +45,7 @@ TransactionState::TransactionState(TRI_vocbase_t* vocbase,
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
-      _resolver(new CollectionNameResolver(vocbase)),
+      _resolver(vocbase),
       _hints(),
       _nestingLevel(0),
       _options(options) {}
@@ -60,8 +60,6 @@ TransactionState::~TransactionState() {
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
     delete (*it);
   }
-
-  delete _resolver;
 }
 
 std::vector<std::string> TransactionState::collectionNames() const {
@@ -331,7 +329,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
       LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
-    std::string const colName = _resolver->getCollectionNameCluster(cid);
+    std::string const colName = _resolver.getCollectionNameCluster(cid);
     
     auth::Level level = exec->collectionAuthLevel(_vocbase->name(), colName);
     TRI_ASSERT(level != auth::Level::UNDEFINED); // not allowed here
