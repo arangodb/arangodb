@@ -2935,7 +2935,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
       if (!checkDatafileHeader(datafile, filename)) {
         result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-        stop = true;
+        stop = !ignoreErrors;
         break;
       }
 
