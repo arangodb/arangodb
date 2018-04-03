@@ -27,3 +27,12 @@ Please note that the query options `cache`, `count` and `fullCount` will not wor
 queries. Additionally query statistics, warnings and profiling data will only be available
 after the query is finished. 
 The default value is *false*
+
+Miscellaneous features
+----------------------
+
+- new optional collection property `cacheEnabled` which enables in-memory caching
+  for documents and primary index entries. This can potentially speed up point-lookups
+  significantly, especially if your collections has a subset of frequently accessed
+  keys. Please test this feature carefully to ensure that it does not adversely
+  affect the performance of your system.

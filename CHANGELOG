@@ -1,6 +1,9 @@
 devel
 -----
 
+* added new collection property `cacheEnabled` which enables in-memory caching for
+  documents and primary index entries. Available only when using RocksDB
+
 * arangodump now supports `--threads` option to dump collections in parallel
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
