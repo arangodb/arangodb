@@ -443,7 +443,7 @@ Return an array with its elements reversed.
 
 @startDocuBlockInline aqlArrayReverse_1
 @EXAMPLE_AQL{aqlArrayReverse_1}
-RETURN REVERSE ( 2,4,6,8,10 )
+RETURN REVERSE ( [2,4,6,8,10] )
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArrayReverse_1
 
