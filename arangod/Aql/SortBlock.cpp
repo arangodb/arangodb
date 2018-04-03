@@ -233,7 +233,7 @@ int SortBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();  
 }
 
-int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+int SortBlock::getOrSkipSome(size_t atMost, bool skipping,
                              AqlItemBlock*& result, size_t& skipped) {
   DEBUG_BEGIN_BLOCK(); 
   
@@ -241,7 +241,7 @@ int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
   
   if (_mustFetchAll) {
     // suck all blocks into _buffer
-    while (getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+    while (getBlock(DefaultBatchSize())) {
     }
 
     _mustFetchAll = false;
@@ -250,7 +250,7 @@ int SortBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
     }
   }
 
-  return ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, result, skipped);
+  return ExecutionBlock::getOrSkipSome(atMost, skipping, result, skipped);
   
   // cppcheck-suppress style
   DEBUG_END_BLOCK();  

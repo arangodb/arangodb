@@ -19,7 +19,6 @@ the name of the AQL user function.
   qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
 
 @RESTDESCRIPTION
-
 Removes an existing AQL user function or function group, identified by *name*.
 
 @RESTRETURNCODES

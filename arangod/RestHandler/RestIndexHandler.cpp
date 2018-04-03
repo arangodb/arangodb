@@ -91,7 +91,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -134,7 +134,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -179,7 +179,7 @@ RestStatus RestIndexHandler::createIndex() {
   std::string cName = _request->value("collection", found);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -187,7 +187,7 @@ RestStatus RestIndexHandler::createIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -244,7 +244,7 @@ RestStatus RestIndexHandler::dropIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 

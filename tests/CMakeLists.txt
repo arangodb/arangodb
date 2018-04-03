@@ -48,7 +48,9 @@ if (USE_IRESEARCH)
     IResearch/ExpressionContextMock.cpp
     IResearch/VelocyPackHelper-test.cpp
     IResearch/ExecutionBlockMock-test.cpp
+    Utils/CollectionNameResolver-test.cpp
     VocBase/LogicalDataSource-test.cpp
+    VocBase/vocbase-test.cpp
   )
 endif ()
 
@@ -64,12 +66,16 @@ add_executable(
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
+  Aql/DateFunctions.cpp
+  Aql/EngineInfoContainerCoordinatorTest.cpp
+  Aql/RestAqlHandlerTest.cpp
   Auth/UserManagerTest.cpp
   Basics/icu-helper.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
+  Basics/datetime.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/files-test.cpp

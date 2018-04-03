@@ -340,9 +340,9 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice(), 0)
+  );
   REQUIRE((false == !view));
 
   // add logical collection with the same name as view
@@ -365,11 +365,15 @@ TEST_CASE("IResearchQueryTestJoinDuplicateDataSource", "[iresearch][iresearch-qu
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
-    auto tmpSlice = slice.get("links");
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -547,9 +551,9 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   }
 
   // add view
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+  auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
+    vocbase.createView(createJson->slice(), 0)
+  );
   REQUIRE((false == !view));
 
   // add link to collection
@@ -565,11 +569,15 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->getPropertiesVPack(builder, false);
+    view->toVelocyPack(builder, true, false);
     builder.close();
 
     auto slice = builder.slice();
-    auto tmpSlice = slice.get("links");
+    CHECK(slice.isObject());
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchView::type().name());
+    CHECK(slice.get("deleted").isNone()); // no system properties
+    auto tmpSlice = slice.get("properties").get("links");
     CHECK((true == tmpSlice.isObject() && 2 == tmpSlice.length()));
   }
 
@@ -1333,6 +1341,17 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
     }
     CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // Invalid bound collection name
+  {
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN @@collection FILTER d.seq == x.seq RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"@collection\": \"invlaidCollectionName\" }")
+    );
+
+    REQUIRE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == queryResult.code);
   }
 
   // dependent sort condition in inner loop + custom scorer

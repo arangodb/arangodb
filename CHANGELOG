@@ -1,9 +1,18 @@
 devel
 -----
 
-
 * added new collection property `cacheEnabled` which enables in-memory caching for
   documents and primary index entries. Available only when using RocksDB
+
+* arangodump now supports `--threads` option to dump collections in parallel
+
+* fix issue #4924: removeFollower now prefers to remove the last follower(s)
+
+* Improvement: The AQL query planner in cluster is now a bit more clever and
+  can prepare AQL queries with less network overhead.
+  This should speed up simple queries in cluster mode, on complex queries it
+  will most likely not show any performance effect.
+  It will especially show effects on collections with a very high amount of Shards.
 
 * removed remainders of dysfunctional `/_admin/cluster-test` and `/_admin/clusterCheckPort`
   API endpoints and removed them from documentation
@@ -35,7 +44,7 @@ devel
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
 
-* renamed startup option `--replication.automatic-failover` to 
+* renamed startup option `--replication.automatic-failover` to
   `--replication.active-failover`
   using the old option name will still work in ArangoDB 3.4, but the old option
   will be removed afterwards
@@ -105,13 +114,6 @@ devel
 
 * issue #1190: added option `--create-database` for arangoimport
 
-  with this option set to true, it is possible to make any arangorestore attempt
-  fail if the specified target database does not match the database name
-  specified in the source dump's "dump.json" file. it can thus be used to
-  prevent restoring data into the "wrong" database
-
-  The option is set to `false` by default to ensure backwards-compatibility
-
 * UI: updated dygraph js library to version 2.1.0
 
 * honor specified COLLECT method in AQL COLLECT options
@@ -156,6 +158,13 @@ devel
 * internal issue #1726: Supervision to remove deleted nodes from
   Health did not function for multiple servers at the same time, as
   agency transaction was malformed.
+
+* added C++ implementation for AQL functions `DATE_NOW()`, `DATE_ISO8601()`,
+  `DATE_TIMESTAMP()`, `IS_DATESTRING()`, `DATE_DAYOFWEEK()`, `DATE_YEAR()`,
+  `DATE_MONTH()`, `DATE_DAY()`, `DATE_HOUR()`, `DATE_MINUTE()`, `DATE_SECOND()`,
+  `DATE_MILLISECOND()`, `DATE_DAYOFYEAR()`, `DATE_ISOWEEK()`, `DATE_LEAPYEAR()`,
+  `DATE_QUARTER()`, `DATE_DAYS_IN_MONTH()`, `DATE_ADD()`, `DATE_SUBTRACT()`,
+  `DATE_DIFF()` and `DATE_COMPARE()`
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 

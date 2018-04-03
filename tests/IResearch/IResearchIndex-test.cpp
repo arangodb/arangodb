@@ -32,6 +32,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/files.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
@@ -149,6 +150,8 @@ struct IResearchIndexSetup {
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
+    auto d = static_cast<arangodb::DatabasePathFeature*>(features.back().first);
+    d->setDirectory(TRI_GetTempPath());
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true); // required by TRI_vocbase_t::createView(...)
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required by TRI_vocbase_t(...)
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first); // QueryRegistryFeature required to be present before calling TRI_vocbase_t(...)
@@ -224,9 +227,7 @@ SECTION("test_analyzer") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // populate collections
@@ -343,9 +344,7 @@ SECTION("test_async_index") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // link collections with view
@@ -371,12 +370,19 @@ SECTION("test_async_index") {
   // populate collections asynchronously
   {
     std::thread thread0([collection0, &resThread0]()->void {
-      irs::utf8_path resource;
-      resource/=irs::string_ref(IResearch_test_resource_dir);
-      resource/=irs::string_ref("simple_sequential.json");
+      arangodb::velocypack::Builder builder;
+
+      try {
+        irs::utf8_path resource;
+
+        resource/=irs::string_ref(IResearch_test_resource_dir);
+        resource/=irs::string_ref("simple_sequential.json");
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      } catch (...) {
+        return; // velocyPackFromFile(...) may throw exception
+      }
 
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 40, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
       resThread0 = slice.isArray();
       if (!resThread0) return;
@@ -402,12 +408,19 @@ SECTION("test_async_index") {
     });
 
     std::thread thread1([collection1, &resThread1]()->void {
-      irs::utf8_path resource;
-      resource/=irs::string_ref(IResearch_test_resource_dir);
-      resource/=irs::string_ref("simple_sequential.json");
+      arangodb::velocypack::Builder builder;
+
+      try {
+        irs::utf8_path resource;
+
+        resource/=irs::string_ref(IResearch_test_resource_dir);
+        resource/=irs::string_ref("simple_sequential.json");
+        builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      } catch (...) {
+        return; // velocyPackFromFile(...) may throw exception
+      }
 
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"seq\": 50, \"same\": \"xyz\", \"duplicated\": \"abcd\" }");
-      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
       auto slice = builder.slice();
       resThread1 = slice.isArray();
       if (!resThread1) return;
@@ -530,9 +543,7 @@ SECTION("test_fields") {
   REQUIRE((nullptr != collection0));
   auto* collection1 = vocbase.createCollection(createCollection1->slice());
   REQUIRE((nullptr != collection1));
-  auto logicalView = vocbase.createView(createView->slice(), 0);
-  REQUIRE((false == !logicalView));
-  auto* viewImpl = logicalView->getImplementation();
+  auto viewImpl = vocbase.createView(createView->slice(), 0);
   REQUIRE((nullptr != viewImpl));
 
   // populate collections

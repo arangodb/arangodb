@@ -42,7 +42,7 @@ class ModificationBlock : public ExecutionBlock {
   virtual ~ModificationBlock();
 
   /// @brief getSome
-  AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  AqlItemBlock* getSome(size_t atMost) override final;
 
  protected:
   /// @brief the actual work horse

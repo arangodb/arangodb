@@ -130,7 +130,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
       result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
@@ -184,7 +184,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
       result = AQL_EXECUTE(query, { "@collection": "UnitTestsAhuacatlQueryCache2" });
@@ -224,7 +224,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
     },
 
@@ -256,7 +256,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
       }
 
       // re-create collection with same name
@@ -311,7 +311,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err1) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err1.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err1.errorNum);
       }
 
       // nothing should have been cached, so we shall be getting the same error again
@@ -320,7 +320,7 @@ function ahuacatlQueryCacheTestSuite () {
         fail();
       }
       catch (err2) {
-        assertEqual(internal.errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, err2.errorNum);
+        assertEqual(internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err2.errorNum);
       }
     },
 

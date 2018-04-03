@@ -193,12 +193,6 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 struct AstNode {
   friend class Ast;
 
-  enum class DataSourceType : uintptr_t {
-    Invalid = 0,
-    Collection,
-    View,
-  };
-
   static std::unordered_map<int, std::string const> const Operators;
   static std::unordered_map<int, std::string const> const TypeNames;
   static std::unordered_map<int, std::string const> const ValueTypeNames;
@@ -384,10 +378,6 @@ struct AstNode {
       default:
         return false;
     }
-  }
-
-  inline DataSourceType getDataSourceType() const noexcept {
-    return dataSourceType;
   }
 
   /// @brief whether or not a value node is of type attribute access that
@@ -733,13 +723,8 @@ struct AstNode {
   AstNodeValue value;
 
  private:
-  union {
-    /// @brief precomputed VPack value (used when executing expressions)
-    uint8_t mutable* computedValue;
-
-    /// @brief type of the data source
-    DataSourceType dataSourceType;
-  };
+  /// @brief precomputed VPack value (used when executing expressions)
+  uint8_t mutable* computedValue;
 
   /// @brief the node's sub nodes
   std::vector<AstNode*> members;

@@ -287,7 +287,7 @@ int MMFilesWalRecoverState::executeSingleOperation(
     if (res.errorNumber() == TRI_ERROR_ARANGO_CORRUPTED_COLLECTION) {
       return res.errorNumber();
     }
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
   auto mmfiles = static_cast<MMFilesCollection*>(collection->getPhysical());
@@ -543,7 +543,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "unable to insert document in collection " << collectionId
               << " of database " << databaseId << ": " << TRI_errno_string(res);
@@ -625,7 +625,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
 
         if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_CONFLICT &&
             res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND &&
-            res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND &&
+            res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
             res != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
           LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
               << "unable to remove document in collection " << collectionId
@@ -766,7 +766,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "cannot change properties of collection " << collectionId
               << " in database " << databaseId << ": "
-              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+              << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
           return true;
         }
 
@@ -826,7 +826,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           // if the underlying collection is gone, we can go on
           LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "cannot rename view " << viewId << " in database " << databaseId << ": "
-              << TRI_errno_string(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+              << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
           return true;
         }
 
@@ -906,7 +906,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "cannot change properties of view " << viewId
               << " in database " << databaseId << ": "
-              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+              << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
           return true;
         }
 
@@ -971,7 +971,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
               << "cannot create index for collection " << collectionId
               << " in database " << databaseId << ": "
-              << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+              << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
           return true;
         }
 

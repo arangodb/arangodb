@@ -38,14 +38,14 @@ class QueryRegistry {
  public:
   QueryRegistry() {}
 
-  ~QueryRegistry();
+  TEST_VIRTUAL ~QueryRegistry();
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will
   /// be thrown in that case. The time to live <ttl> is in seconds and the
   /// query will be deleted if it is not opened for that amount of time.
-  void insert(QueryId id, Query* query, double ttl = 600.0);
+  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl = 600.0);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -69,7 +69,7 @@ class QueryRegistry {
   /// from the same thread that has opened it! Note that if the query is
   /// "open", then this will set the "killed" flag in the query and do not
   /// more.
-  void destroy(std::string const& vocbase, QueryId id, int errorCode);
+  TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode);
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 

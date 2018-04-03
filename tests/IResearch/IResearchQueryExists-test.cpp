@@ -30,6 +30,7 @@
   #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
+#include "Basics/files.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -131,6 +132,13 @@ struct IResearchQuerySetup {
 
     analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
     analyzers->emplace("test_csv_analyzer", "TestDelimAnalyzer", ","); // cache analyzer
+
+    auto* dbPathFeature = arangodb::application_features::ApplicationServer::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
+    irs::utf8_path testFilesystemPath;
+
+    testFilesystemPath /= TRI_GetTempPath();
+    testFilesystemPath /= std::string("arangodb_tests.") + std::to_string(TRI_microtime());
+    const_cast<std::string&>(dbPathFeature->directory()) = testFilesystemPath.utf8();
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress WARNING DefaultCustomTypeHandler called
@@ -251,7 +259,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     REQUIRE((false == !logicalView));
 
     view = logicalView.get();
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     REQUIRE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
@@ -823,6 +831,20 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     }
 
     CHECK((i == expected.size()));
+  }
+
+  // test existent (bool) with invalid bound view name
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[1].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW @@testView FILTER EXISTS(d.value, @type, 'bool') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d",
+      arangodb::velocypack::Parser::fromJson("{ \"type\" : \"type\", \"@testView\": \"invlaidViewName\" }")
+    );
+
+    REQUIRE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.code);
   }
 
   // test existent (bool) via []

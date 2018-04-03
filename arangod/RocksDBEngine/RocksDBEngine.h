@@ -109,9 +109,6 @@ public:
   PhysicalCollection* createPhysicalCollection(LogicalCollection*,
                                                velocypack::Slice const&) override;
 
-  // create storage-engine specific view
-  PhysicalView* createPhysicalView(LogicalView*, velocypack::Slice const&) override;
-
   void getStatistics(velocypack::Builder& builder) const override;
 
   // inventory functionality
@@ -211,6 +208,14 @@ public:
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*) override;
 
+  virtual void getViewProperties(
+     TRI_vocbase_t* /*vocbase*/,
+     arangodb::LogicalView const* /*view*/,
+     VPackBuilder& /*builder*/
+  ) override {
+    // does nothing
+  }
+
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
   arangodb::Result renameView(TRI_vocbase_t* vocbase,
@@ -220,9 +225,8 @@ public:
   arangodb::Result persistView(TRI_vocbase_t* vocbase,
                                arangodb::LogicalView const*) override;
 
-  arangodb::Result dropView(TRI_vocbase_t* vocbase,
-                            arangodb::LogicalView*) override;
-  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
+  void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept override;
   void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*, bool doSync) override;
   void signalCleanup(TRI_vocbase_t* vocbase) override;
