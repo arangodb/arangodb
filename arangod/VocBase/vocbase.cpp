@@ -39,6 +39,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -47,12 +48,12 @@
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/InitialSyncer.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1124,6 +1125,12 @@ std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const noexcept {
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string viewId = StringUtils::itoa(id);
+    return ci->getView(name(), viewId);
+  }
+
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
       lookupDataSource(id)
@@ -1140,6 +1147,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const noexcept{
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    return ci->getView(name(), nameOrId);
+  }
+
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     return std::dynamic_pointer_cast<arangodb::LogicalView>(
       lookupDataSource(nameOrId)
@@ -1345,7 +1357,7 @@ int TRI_vocbase_t::renameView(
   auto itr1 = _dataSourceByName.find(oldName);
 
   if (itr1 == _dataSourceByName.end()
-      || arangodb::LogicalView::category() == itr1->second->category()) {
+      || arangodb::LogicalView::category() != itr1->second->category()) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
@@ -1583,37 +1595,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
-  auto const type =
-    arangodb::basics::VelocyPackHelper::getStringRef(parameters, "type", "");
-  auto const* viewTypes =
-      application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-          "ViewTypes");
-
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'"
-    );
-  }
-
-  auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-
-  auto const& viewFactory = viewTypes->factory(dataSourceType);
-
-  if (!viewFactory) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_BAD_PARAMETER,
-      "no handler found for view type"
-    );
-  }
-
   // Try to create a new view. This is not registered yet
-  auto view = viewFactory(*this, parameters, true);
+  auto const view = LogicalView::create(*this, parameters, true);
 
   if (!view) {
-    auto const message =
-      "failed to instantiate view of type "
-      + dataSourceType.name();
+    auto const message = "failed to instantiate view '" + name + "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
   }
@@ -1628,9 +1614,29 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
   }
 
+  // Coordinators are not allowed to have local views!
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  arangodb::velocypack::Builder builder;
+  auto res = engine->getViews(this, builder);
+  TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
+  auto slice  = builder.slice();
+  TRI_ASSERT(slice.isArray());
+  auto viewId = std::to_string(view->id());
+
+  // We have not yet persisted this view
+  for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
+    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getStringRef(entry, "id", arangodb::velocypack::StringRef()).compare(viewId));
+  }
+
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
   try {
+    // Let's try to persist it.
+    engine->createView(this, view->id(), view.get());
+
     // And lets open it.
     view->open();
 
@@ -1653,6 +1659,51 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 /// but the functionality is not advertised
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     VPackSlice parameters, TRI_voc_cid_t id) {
+
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    if (id == 0) {
+      id = ci->uniqid();
+    }
+    std::string viewId = StringUtils::itoa(id);
+    // Now put together the JSON we need for the agency:
+    VPackBuilder builder;
+    { VPackObjectBuilder guard(&builder);
+      builder.add("id", VPackValue(viewId));
+      builder.add(VPackValue("properties"));
+      std::string name;
+      { VPackObjectBuilder guard(&builder);
+        for (auto const& p : VPackObjectIterator(parameters)) {
+          if (p.key.copyString() == "name" && p.value.isString()) {
+            name = p.value.copyString();
+          } else {
+            builder.add(p.key);
+            builder.add(p.value);
+          }
+        }
+      }
+      if (name.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+          << "Could not create view in agency, error: no name given.";
+        return nullptr;
+      }
+      builder.add("name", VPackValue(name));
+      builder.add(VPackValue("collections"));
+      { VPackArrayBuilder guard2(&builder);
+      }
+    }
+    std::string errorMsg;
+    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
+        errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      return ci->getView(name(), viewId);
+    }
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "Could not create view in agency, error: " << errorMsg
+      << ", errorCode: " << res;
+    return nullptr;
+  }
+
   READ_LOCKER(readLocker, _inventoryLock);
 
   // note: id may be modified by this function call
@@ -1691,7 +1742,22 @@ int TRI_vocbase_t::dropView(std::string const& name) {
 
 /// @brief drops a view
 int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
+
   TRI_ASSERT(view != nullptr);
+
+  if (ServerState::instance()->isCoordinator()) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    std::string errorMsg;
+    int res = ci->dropViewCoordinator(name(), StringUtils::itoa(view->id()),
+          errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      << "Could not drop view in agency, error: " << errorMsg
+      << ", errorCode: " << res;
+    return res;
+  }
 
   READ_LOCKER(readLocker, _inventoryLock);
 
@@ -1735,6 +1801,9 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
   view->drop();
   unregisterView(view);
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->dropView(this, view.get());
 
   locker.unlock();
   writeLocker.unlock();

@@ -47,15 +47,18 @@ class LogicalView : public LogicalDataSource {
   typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates view accoridn to a definition
+  //////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<LogicalView> create(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    bool isNew
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invoke visitor on all collections that a view will return
-  /// @return visitation was successful
-  //////////////////////////////////////////////////////////////////////////////
-  virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -93,14 +96,20 @@ class LogicalView : public LogicalDataSource {
     bool doSync
   ) = 0;
 
- protected:
-  static TRI_voc_cid_t readViewId(velocypack::Slice slice);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that a view will return
+  /// @return visitation was successful
+  //////////////////////////////////////////////////////////////////////////////
+  virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
+ protected:
   LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
 
  private:
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
+
+  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified asynchronously
   mutable basics::ReadWriteLock _lock;
 }; // LogicalView
 
@@ -126,9 +135,9 @@ class DBServerLogicalView : public LogicalView {
  public:
   ~DBServerLogicalView() override;
 
-  void open() override;
-
   void drop() override;
+
+  void open() override;
 
   Result rename(
     std::string&& newName,
@@ -139,13 +148,13 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Builder& result,
     bool includeProperties,
     bool includeSystem
-  ) const override;
+  ) const override final;
 
   arangodb::Result updateProperties(
     velocypack::Slice const& properties,
     bool partialUpdate,
     bool doSync
-  ) override;
+  ) override final;
 
  protected:
   DBServerLogicalView(
@@ -153,6 +162,22 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Slice const& definition,
     bool isNew
   );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a View object implementation
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void getPropertiesVPack(
+    velocypack::Builder& builder,
+    bool forPersistence
+  ) const = 0;
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  ///////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result updateProperties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) = 0;
 
  private:
   bool _isNew;

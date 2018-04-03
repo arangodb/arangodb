@@ -59,7 +59,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -2056,42 +2055,25 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    auto const* viewTypes =
-        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-            "ViewTypes");
-
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
       LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
-
-      arangodb::velocypack::StringRef const type(it.get("type"));
-      auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-      auto const& viewFactory = viewTypes->factory(dataSourceType);
-
-      if (!viewFactory) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "no handler found for view type"
-        );
-      }
 
       TRI_ASSERT(!it.get("id").isNone());
 
       auto const viewPath = readPath(it);
 
-      if (!viewPath.empty()) {
+      if (viewPath.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
           "view path cannot be empty"
         );
       }
 
-      auto view = viewFactory(*vocbase, it, false);
+      auto const view = LogicalView::create(*vocbase, it, false);
 
       if (!view) {
-        auto const message =
-          "failed to instantiate view of type "
-          + dataSourceType.name();
+        auto const message = "failed to instantiate view '" + name + "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
       }
@@ -2953,7 +2935,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
       if (!checkDatafileHeader(datafile, filename)) {
         result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-        stop = true;
+        stop = !ignoreErrors;
         break;
       }
 

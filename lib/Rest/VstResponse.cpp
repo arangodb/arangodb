@@ -73,18 +73,14 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      // just copy
-      _vpackPayloads.emplace_back(slice.byteSize());
-      _vpackPayloads.back().append(slice.startAs<char const>(),
-                                   slice.byteSize());
+      return;
     }
-  } else {
-    // just copy
-    _vpackPayloads.emplace_back(slice.byteSize());
-    _vpackPayloads.back().append(slice.startAs<char const>(),
-                                 slice.byteSize());
   }
+    
+  // just copy
+  _vpackPayloads.emplace_back(slice.byteSize());
+  _vpackPayloads.back().append(slice.startAs<char const>(),
+                               slice.byteSize());
 }
 
 void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
@@ -105,12 +101,10 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
                                                builder, options, true, true);
       _vpackPayloads.push_back(std::move(tmpBuffer));
-    } else {
-      _vpackPayloads.push_back(std::move(buffer));
+      return;
     }
-  } else {
-    _vpackPayloads.push_back(std::move(buffer));
   }
+  _vpackPayloads.push_back(std::move(buffer));
 }
 
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
