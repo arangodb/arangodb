@@ -145,6 +145,7 @@ SET(ARANGOD_SOURCES
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
+  Agency/AsyncFailedLeader.cpp
   Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp

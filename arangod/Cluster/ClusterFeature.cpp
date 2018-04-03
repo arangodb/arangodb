@@ -424,8 +424,8 @@ void ClusterFeature::start() {
     }
 
     // start heartbeat thread
-    _heartbeatThread = std::make_shared<HeartbeatThread>(
-        _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5);
+    _heartbeatThread = std::make_shared<HeartbeatThread>(_agencyCallbackRegistry.get(),
+                              std::chrono::microseconds(_heartbeatInterval * 1000), 5);
 
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("

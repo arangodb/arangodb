@@ -937,6 +937,12 @@ Slice Node::getArray() const {
   return Slice(_vecBuf.data());
 }
 
+int Node::compareString(std::string const& cmp) const {
+  if (type() == NODE) {
+    throw StoreException("Must not convert NODE type to string");
+  }
+  return slice().compareString(cmp);
+}
 
 void Node::clear() {
   _children.clear();

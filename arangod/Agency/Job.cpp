@@ -47,6 +47,8 @@ std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
+std::string const curAsyncReplPrefix = "/Current/AsyncReplication/";
+std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 
 }  // namespace arangodb::consensus
 }  // namespace arangodb
@@ -217,7 +219,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-  // Remove cleaned servers from ist
+  // Remove cleaned servers from list
   try {
     for (auto const& srv :
            VPackArrayIterator(snapshot(cleanedPrefix).slice())) {
@@ -321,7 +323,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
   std::unordered_map<std::string,bool> good;
 
   for (const auto& i : snap(healthPrefix).children()) {
-    good[i.first] = ((*i.second)("Status").getString() == "GOOD");
+    good[i.first] = ((*i.second)("Status").getString() == Supervision::HEALTH_STATUS_GOOD);
   }
 
   std::unordered_map<std::string,size_t> currentServers;
@@ -413,7 +415,8 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   }
   auto const& type = job("type").getString();
 
-  if (type == "failedServer" || type == "failedLeader") {
+  if (type == "failedServer" || type == "failedLeader" ||
+      type == "asyncFailedLeader") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {
@@ -500,11 +503,12 @@ void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& serve
 	}
 }
 
-void Job::addPreconditionServerGood(Builder& pre, std::string const& server) {
-	pre.add(VPackValue(healthPrefix + server + "/Status"));
-	{ VPackObjectBuilder serverGood(&pre);
-		pre.add("old", VPackValue("GOOD"));
-	}
+void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
+                                      std::string const& health) {
+  pre.add(VPackValue(healthPrefix + server + "/Status"));
+  { VPackObjectBuilder serverGood(&pre);
+    pre.add("old", VPackValue(health));
+  }
 }
 
 void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
@@ -544,13 +548,14 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
-std::string Job::checkServerGood(Node const& snapshot,
-                                 std::string const& server) {
+std::string Job::checkServerHealth(Node const& snapshot,
+                                   std::string const& server) {
   if (!snapshot.has(healthPrefix + server + "/Status")) {
     return "UNCLEAR";
   }
-  if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
+  return snapshot(healthPrefix + server + "/Status").getString();
+  /*if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
     return "UNHEALTHY";
   }
-  return "GOOD";
+  return Supervision::HEALTH_STATUS_GOOD;*/
 }

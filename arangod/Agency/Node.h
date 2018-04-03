@@ -254,6 +254,9 @@ class Node {
 
   /// @brief Get array value
   Slice getArray() const;
+  
+  /// @brief compare string value (eqv to getString().compare(...))
+  int compareString(std::string const& cmp) const;
 
   /// @brief Clear key value store
   void clear();

@@ -87,14 +87,6 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   std::string now(timepointToString(std::chrono::system_clock::now()));
-  
-  // DBservers
-  std::string planPath =
-    planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-
-  Slice plan = _snapshot.get(planPath).slice();
-  TRI_ASSERT(plan.isArray());
-  TRI_ASSERT(plan[0].isString());
 
   if (selfCreate) {
     _jb->openArray();
@@ -187,8 +179,8 @@ bool MoveShard::start() {
   }
 
   // Check that the toServer is in state "GOOD":
-  std::string health = checkServerGood(_snapshot, _to);
-  if (health != "GOOD") {
+  std::string health = checkServerHealth(_snapshot, _to);
+  if (health != Supervision::HEALTH_STATUS_GOOD) {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _to
       << " is currently " << health << ", not starting MoveShard job "
       << _jobId;
@@ -348,7 +340,7 @@ bool MoveShard::start() {
       addPreconditionUnchanged(pending, planPath, planned);
       addPreconditionShardNotBlocked(pending, _shard);
       addPreconditionServerNotBlocked(pending, _to);
-      addPreconditionServerGood(pending, _to);
+      addPreconditionServerHealth(pending, _to, "GOOD");
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }   // precondition done
