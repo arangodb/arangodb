@@ -557,7 +557,7 @@ be made unique.
 
 @startDocuBlockInline aqlArraySortedUnique_1
 @EXAMPLE_AQL{aqlArraySortedUnique_1}
-RETURN SORTED_UNIQUE( 8,4,2,10,6,2,8,6,4 )
+RETURN SORTED_UNIQUE( [ 8,4,2,10,6,2,8,6,4 ] )
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArraySortedUnique_1
 
@@ -634,7 +634,7 @@ function will use the comparison order.
 
 @startDocuBlockInline aqlArrayUnique_1
 @EXAMPLE_AQL{aqlArrayUnique_1}
-RETURN UNIQUE(1,2,2,3,3,3,4,4,4,4,5,5,5,5,5)
+RETURN UNIQUE( [ 1,2,2,3,3,3,4,4,4,4,5,5,5,5,5 ] )
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArrayUnique_1
 
