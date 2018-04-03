@@ -82,9 +82,7 @@ bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->openObject();
   }
 
-  std::string path = toDoPrefix + _jobId;
-
-  _jb->add(VPackValue(path));
+  _jb->add(VPackValue(toDoPrefix + _jobId));
   { VPackObjectBuilder guard(_jb.get());
     _jb->add("creator", VPackValue(_creator));
     _jb->add("type", VPackValue("addFollower"));

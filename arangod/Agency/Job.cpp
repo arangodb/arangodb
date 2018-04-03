@@ -207,7 +207,7 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap,
 
 }
 
-
+/// @brief Get servers from plan, which are not failed or cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   std::vector<std::string> ret;
@@ -238,6 +238,17 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   return ret;
 
+}
+
+/// @brief Get servers from Supervision with health status GOOD
+std::vector<std::string> Job::healthyServers(arangodb::consensus::Node const& snapshot) {
+  std::vector<std::string> ret;
+  for (auto const& srv : snapshot(healthPrefix).children()) {
+    if (srv.second->get("Status").getString() == Supervision::HEALTH_STATUS_GOOD) {
+      ret.emplace_back(srv.first);
+    }
+  }
+  return ret;
 }
 
 template<typename T> std::vector<size_t> idxsort (const std::vector<T> &v) {

@@ -73,9 +73,7 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb = envelope;
   }
   
-  auto now = timepointToString(std::chrono::system_clock::now());
-  
-  _jb = std::make_shared<Builder>();
+  auto now = timepointToString(std::chrono::system_clock::now());  
   { VPackArrayBuilder transaction(_jb.get());
     { VPackObjectBuilder operations(_jb.get());
       // Todo entry
@@ -83,7 +81,8 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       { VPackObjectBuilder todo(_jb.get());
         _jb->add("creator", VPackValue(_creator));
         _jb->add("type", VPackValue("activeFailover"));
-        _jb->add("creator", VPackValue(_creator));
+        _jb->add("server", VPackValue(_server));
+        _jb->add("jobId", VPackValue(_jobId));
         _jb->add("timeCreated", VPackValue(now));
       } // todo
       
@@ -107,11 +106,21 @@ bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
       } // Preconditions
     } // transactions
   
-  if (selfCreate) {
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
-    return (res.accepted && res.indices.size() == 1 && res.indices[0] != 0);
+  _status = TODO;
+  
+  if (!selfCreate) {
+    return true;
   }
-  return true;
+  
+  write_ret_t res = singleWriteTransaction(_agent, *_jb);
+  if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
+    return true;
+  }
+  
+  _status = NOTFOUND;
+  
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+  return false;
 }
 
 bool ActiveFailoverJob::start() {
@@ -139,7 +148,7 @@ bool ActiveFailoverJob::start() {
   try {
     std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
     if (!abortable(_snapshot, jobId)) {
-      return false;
+      return false; // job will retry later
     } else {
       JobContext(PENDING, jobId, _snapshot, _agent).abort();
     }
@@ -163,8 +172,10 @@ bool ActiveFailoverJob::start() {
   // FIXME do I need to put this into pending ???
   std::string newLeader = findBestFollower(_snapshot);
   if (newLeader.empty()) {
-    return false;
+    LOG_TOPIC(INFO, Logger::SUPERVISION) << "No server available, will retry job later";
+    return false; // job will retry later
   }
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Selected '" << newLeader << "' as leader";
   
   // Enter pending, remove todo
   Builder pending;
@@ -237,18 +248,9 @@ arangodb::Result ActiveFailoverJob::abort() {
 typedef std::pair<std::string, std::string> ServerTick;
 /// Try to select the follower most in-sync with failed leader
 std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
-  std::vector<std::string> as = availableServers(snapshot);
+  std::vector<std::string> as = healthyServers(snapshot);
   
-  // ungood;
-  try {
-    for (auto const& srv : snapshot(healthPrefix).children()) {
-      if ((*srv.second)("Status").getString() != Supervision::HEALTH_STATUS_GOOD) {
-        as.erase(std::remove(as.begin(), as.end(), srv.first), as.end());
-      }
-    }
-  } catch (...) {}
-  
-  // blocked;
+  // blocked; (not sure if this can even happen)
   try {
     for (auto const& srv : snapshot(blockedServersPrefix).children()) {
       as.erase(std::remove(as.begin(), as.end(), srv.first), as.end());
@@ -256,20 +258,20 @@ std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
   } catch (...) {}
   
   std::vector<ServerTick> ticks;
-  
-  // collect tick values
-  try {
+  try { // collect tick values from transient state
     _agent->executeLockedRead([&]() {
-      Node asyncState = _agent->transient().get(asyncReplPrefix);
+      Node asyncState = _agent->transient().get(agencyPrefix + asyncReplPrefix);
       for (auto const& srv : asyncState.children()) {
         if (std::find(as.begin(), as.end(), srv.first) == as.end()) {
-          continue;
+          continue; // skip inaccessible servers
         }
+        
         TRI_ASSERT(srv.second->type() == NodeType::NODE);
-        std::shared_ptr<Node> info = srv.second;
-        if (info->has("leader") && info->has("lastTick") &&
-            (*info)("leader").compareString(_server) == 0) {
-          ticks.emplace_back(srv.first, (*info)("lastTick").getString());
+        std::shared_ptr<Node> n = srv.second;
+        //std::string tick =  ?  : "0";
+        if (n->has("leader") && n->get("leader").compareString(_server) == 0 &&
+            n->has("lastTick")) {
+          ticks.emplace_back(srv.first, n->get("lastTick").getString());
         }
       }
     });

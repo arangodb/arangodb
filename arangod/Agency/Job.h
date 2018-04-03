@@ -126,8 +126,12 @@ struct Job {
   static std::string randomIdleGoodAvailableServer(
     Node const& snap, VPackSlice const& exclude);
   
+  /// @brief Get servers from plan, which are not failed or cleaned out
   static std::vector<std::string> availableServers(
     const arangodb::consensus::Node&);
+  
+  /// @brief Get servers from Supervision with health status GOOD
+  static std::vector<std::string> healthyServers(arangodb::consensus::Node const&);
 
   static std::vector<shard_t> clones(
     Node const& snap, std::string const& db, std::string const& col,

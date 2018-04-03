@@ -431,7 +431,7 @@ void HeartbeatThread::runSingleServer() {
   myIdBuilder.add(VPackValue(_myId));
  
   uint64_t lastSentVersion = 0;
-  auto start = std::chrono::steady_clock::now(); // no wait time initially
+  auto start = std::chrono::steady_clock::now();
   while (!isStopping()) {
     auto remain = _interval - (std::chrono::steady_clock::now() - start);
     std::this_thread::sleep_for(remain);
@@ -488,8 +488,7 @@ void HeartbeatThread::runSingleServer() {
       VPackSlice agentPool = response.get(std::vector<std::string>{".agency", "pool"});
       updateAgentPool(agentPool);
       
-      VPackSlice shutdownSlice =
-      response.get({AgencyCommManager::path(), "Shutdown"});
+      VPackSlice shutdownSlice = response.get({AgencyCommManager::path(), "Shutdown"});
       if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
         ApplicationServer::server->beginShutdown();
         break;
@@ -541,9 +540,10 @@ void HeartbeatThread::runSingleServer() {
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Current leader: " << _myId;
-        
         if (applier->isActive()) {
           applier->stopAndJoin();
+          // preemtily remove the transient entry from the agency
+          _agency.setTransient(transientPath, VPackSlice::emptyObjectSlice(), 0);
         }
         
         // ensure everyone has server access
@@ -632,11 +632,9 @@ void HeartbeatThread::runSingleServer() {
             debug.openObject();
             applier->toVelocyPack(debug);
             debug.close();
-            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << debug.slice().toJson();
-            applier->startTailing(0, false, 0); // triggers full re-sync
-            continue;
-          } else {
-            
+            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << debug.toJson();
+            applier->startTailing(0, false, 0); // reads ticks from configuration
+            continue; // check again next time
           }
         }
         // complete resync next round
