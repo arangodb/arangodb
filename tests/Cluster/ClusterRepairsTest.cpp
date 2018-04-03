@@ -97,14 +97,11 @@ std::ostream& operator<<(std::ostream& ostream,
   return ostream;
 }
 
-template<typename K, typename V>
-std::ostream& operator<<(std::ostream& ostream,
-                         std::map<K, V> const& map) {
-  std::string const typeNameK =
-    boost::core::demangle(typeid(K).name());
-  std::string const typeNameV =
-    boost::core::demangle(typeid(V).name());
-  ostream << "std::map<"<< typeNameK << ", " << typeNameV << "> {\n";
+template <typename K, typename V>
+std::ostream& operator<<(std::ostream& ostream, std::map<K, V> const& map) {
+  std::string const typeNameK = boost::core::demangle(typeid(K).name());
+  std::string const typeNameV = boost::core::demangle(typeid(V).name());
+  ostream << "std::map<" << typeNameK << ", " << typeNameV << "> {\n";
   if (!map.empty()) {
     auto it = map.begin();
     ostream << it->first << " => " << it->second << "\n";
@@ -119,10 +116,13 @@ std::ostream& operator<<(std::ostream& ostream,
 template <typename T>
 std::ostream& operator<<(std::ostream& stream, ResultT<T> const& result) {
   std::string const typeName =
-    typeid(T) == typeid(RepairOperation) ? "RepairOperation" :
-    typeid(T) == typeid(std::list<RepairOperation>) ? "std::list<RepairOperation>" :
-    typeid(T) == typeid(std::vector<RepairOperation>) ? "std::vector<RepairOperation>" :
-    boost::core::demangle(typeid(T).name());
+      typeid(T) == typeid(RepairOperation)
+          ? "RepairOperation"
+          : typeid(T) == typeid(std::list<RepairOperation>)
+                ? "std::list<RepairOperation>"
+                : typeid(T) == typeid(std::vector<RepairOperation>)
+                      ? "std::vector<RepairOperation>"
+                      : boost::core::demangle(typeid(T).name());
 
   if (result.ok()) {
     return stream << "ResultT<" << typeName << "> {"
@@ -178,8 +178,9 @@ void checkAgainstExpectedOperations(
           it.second;
 
       expectedOperationsStringStream << "\"" << collection
-                                     << "\": " << std::endl;
-      expectedOperationsStringStream << expectedRepairResult;
+                                     << "\": \n";
+      expectedOperationsStringStream << expectedRepairResult
+        << std::endl;
     }
     expectedOperationsStringStream << "}";
 
@@ -189,13 +190,12 @@ void checkAgainstExpectedOperations(
       std::string const& collection = it.first;
       ResultT<std::list<RepairOperation>> const repairOperationsResult =
           it.second;
-      repairOperationsStringStream << "\"" << collection << "\": " << std::endl;
-      repairOperationsStringStream << repairOperationsResult;
+      repairOperationsStringStream << "\"" << collection << "\": \n";
+      repairOperationsStringStream << repairOperationsResult << std::endl;
     }
     repairOperationsStringStream << "}";
 
-    INFO("Expected operations are:\n"
-         << expectedOperationsStringStream.str());
+    INFO("Expected operations are:\n" << expectedOperationsStringStream.str());
     INFO("Actual operations are:\n" << repairOperationsStringStream.str());
 
     REQUIRE(repairOperationsByCollection.size() ==
@@ -204,6 +204,9 @@ void checkAgainstExpectedOperations(
                                          repairOperationsByCollection)) {
       auto const& expectedResult = it.get<0>().second;
       auto const& actualResult = it.get<1>().second;
+
+      INFO("Expected operations are:\n" << expectedOperationsStringStream.str());
+      INFO("Actual operations are:\n" << repairOperationsStringStream.str());
       REQUIRE(expectedResult.ok() == actualResult.ok());
       if (expectedResult.ok()) {
         REQUIRE(expectedResult.get().size() == actualResult.get().size());
@@ -234,8 +237,7 @@ void checkAgainstExpectedOperations(
 
         REQUIRE(repairOpIt == expectedRepairOpIt);
       }
-    }
-    else {
+    } else {
       REQUIRE(repairResult == expectedResult);
     }
   }
@@ -351,6 +353,30 @@ SCENARIO("Broken distributeShardsLike collections",
                                      supervisionHealth3Healthy0Bad,
                                      expectedResultsWithMultipleShards);
     }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    GIVEN("Collections with triggered failures") {
+#include "ClusterRepairsTest.triggeredFailures.cpp"
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS");
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS"); // fail_mismatching_followers
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
+          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
+          "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth2Healthy0Bad,
+                                     expectedResultsWithTriggeredFailures);
+    }
+#endif
 
   } catch (...) {
     // restore old manager

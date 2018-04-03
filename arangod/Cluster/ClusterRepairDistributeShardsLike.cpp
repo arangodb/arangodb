@@ -29,6 +29,19 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+bool strHasSuffix(std::string const& haystackStr, char const* needle) {
+  char const* haystack = haystackStr.c_str();
+  size_t needleLength = strlen(needle);
+  if (needleLength > haystackStr.length()) {
+    return false;
+  }
+
+  char const* suffix = haystack + (haystackStr.length() - needleLength);
+  return 0 == strcmp(suffix, needle);
+}
+#endif // ARANGODB_ENABLE_FAILURE_TESTS
+
 bool VersionSort::operator()(std::string const& a, std::string const& b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
@@ -507,6 +520,17 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
         << collection.fullName();
 
     ShardID protoId;
+
+    TRI_IF_FAILURE(
+      "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+      if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_repairDistributeShardsLike")) {
+        repairOperationsByCollection.emplace(
+          collection.id,
+          Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
+        continue;
+      }
+    }
     if (collection.distributeShardsLike) {
       protoId = collection.distributeShardsLike.get();
     } else if (collection.repairingDistributeShardsLike) {
@@ -602,12 +626,26 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
   }
+  TRI_IF_FAILURE(
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS") {
+    if (strHasSuffix(collection.name, "|fail_mismatching_leaders")) {
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
+    }
+  }
   ServerID leader = protoDbServers[0];
 
   TRI_ASSERT(serverSetSymmetricDifference(dbServers, protoDbServers).empty());
   if (!serverSetSymmetricDifference(dbServers, protoDbServers).empty()) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
+  }
+  TRI_IF_FAILURE(
+    "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+    "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
+    if (strHasSuffix(collection.name, "|fail_mismatching_followers")) {
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
+    }
   }
 
   if (dbServers == protoDbServers) {
@@ -651,6 +689,13 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
+  TRI_IF_FAILURE(
+    "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
+    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+    if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
+    }
+  }
 
   bool renameDistributeShardsLike = distributeShardsLikeExists;
 
@@ -684,6 +729,13 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
       collection.distributeShardsLike) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
+  }
+  TRI_IF_FAILURE(
+    "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
+    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+    if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_createFinishRepairsOperation")) {
+      return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
+    }
   }
 
   if (collection.replicationFactor != proto.replicationFactor) {
