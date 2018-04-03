@@ -498,9 +498,9 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* IndexBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
@@ -566,7 +566,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   do {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -580,7 +580,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
           _done = true;
           break;
         }
@@ -644,7 +644,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t IndexBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
@@ -652,10 +652,10 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
   _returned = 0;
 
-  while (_returned < atLeast) {
+  while (_returned < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -670,7 +670,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
           _done = true;
           break;
         }

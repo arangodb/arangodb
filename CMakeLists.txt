@@ -441,6 +441,8 @@ include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/date/include)
+
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -565,6 +567,13 @@ if (USE_MAINTAINER_MODE)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()
+
+option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
+if (USE_CATCH_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
 
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
@@ -1012,7 +1021,6 @@ add_subdirectory(arangod)
 
 add_subdirectory(Documentation)
 
-option(USE_CATCH_TESTS "Compile catch C++ tests" ON)
 if (USE_CATCH_TESTS)
   add_subdirectory(tests)
 endif()

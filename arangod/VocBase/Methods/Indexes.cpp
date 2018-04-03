@@ -28,6 +28,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -309,9 +310,11 @@ Result Indexes::ensureIndexCoordinator(
   auto& dbName = collection->vocbase()->name();
   auto cid = std::to_string(collection->id());
   std::string errorMsg;
+
+  auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   int res = ClusterInfo::instance()->ensureIndexCoordinator(
       dbName, cid, indexDef, create, &arangodb::Index::Compare, resultBuilder,
-      errorMsg, 360.0);
+      errorMsg, cluster->indexCreationTimeout());
   return Result(res, errorMsg);
 }
 

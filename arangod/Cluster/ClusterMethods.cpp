@@ -320,7 +320,7 @@ static int distributeBabyOnShards(
   ShardID shardID;
   int error = ci->getResponsibleShard(collinfo.get(), node, false, shardID,
                                       usesDefaultShardingAttributes);
-  if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+  if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
     return TRI_ERROR_CLUSTER_SHARD_GONE;
   }
   if (error != TRI_ERROR_NO_ERROR) {
@@ -397,7 +397,7 @@ static int distributeBabyOnShards(
       error = ci->getResponsibleShard(collinfo.get(), node, true, shardID,
                                       usesDefaultShardingAttributes, _key);
     }
-    if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+    if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
 
@@ -711,7 +711,7 @@ int revisionOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -785,7 +785,7 @@ int warmupOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, cid);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -833,7 +833,7 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -888,7 +888,8 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 ////////////////////////////////////////////////////////////////////////////////
 
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
-                       std::vector<std::pair<std::string, uint64_t>>& result) {
+                       std::vector<std::pair<std::string, uint64_t>>& result,
+                       bool sendNoLockHeader) {
   // Set a few variables needed for our work:
   ClusterInfo* ci = ClusterInfo::instance();
   auto cc = ClusterComm::instance();
@@ -904,19 +905,31 @@ int countOnCoordinator(std::string const& dbname, std::string const& collname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
   auto shards = collinfo->shardIds();
   std::vector<ClusterCommRequest> requests;
   auto body = std::make_shared<std::string>();
-  for (auto const& p : *shards) {
-    requests.emplace_back("shard:" + p.first,
-                          arangodb::rest::RequestType::GET,
-                          "/_db/" + StringUtils::urlEncode(dbname) +
-                          "/_api/collection/" +
-                          StringUtils::urlEncode(p.first) + "/count", body);
+  if (sendNoLockHeader) {
+    for (auto const& p : *shards) {
+      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      headers->emplace("x-arango-nolock", p.first);
+      requests.emplace_back(
+          "shard:" + p.first, arangodb::rest::RequestType::GET,
+          "/_db/" + StringUtils::urlEncode(dbname) + "/_api/collection/" +
+              StringUtils::urlEncode(p.first) + "/count",
+          body, headers);
+    }
+  } else {
+    for (auto const& p : *shards) {
+      requests.emplace_back("shard:" + p.first,
+                            arangodb::rest::RequestType::GET,
+                            "/_db/" + StringUtils::urlEncode(dbname) +
+                            "/_api/collection/" +
+                            StringUtils::urlEncode(p.first) + "/count", body);
+    }
   }
   size_t nrDone = 0;
   cc->performRequests(requests, CL_DEFAULT_TIMEOUT, nrDone, Logger::QUERIES, true);
@@ -970,7 +983,7 @@ int selectivityEstimatesOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1092,7 +1105,7 @@ int createDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1233,7 +1246,7 @@ int deleteDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
   bool useDefaultSharding = collinfo->usesDefaultShardKeys();
@@ -1280,7 +1293,7 @@ int deleteDocumentOnCoordinator(
             arangodb::basics::VelocyPackHelper::EmptyObjectValue(), true,
             shardID, usesDefaultShardingAttributes, _key.toString());
 
-        if (error == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+        if (error == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
           return TRI_ERROR_CLUSTER_SHARD_GONE;
         }
       }
@@ -1466,7 +1479,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1521,7 +1534,7 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 
@@ -1589,7 +1602,7 @@ int getDocumentOnCoordinator(
   try {
     collinfo = ci->getCollection(dbname, collname);
   } catch (...) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
   TRI_ASSERT(collinfo != nullptr);
 

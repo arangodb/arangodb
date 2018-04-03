@@ -194,8 +194,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
       _globallyUniqueId(other._globallyUniqueId),
       _physical(other.getPhysical()->clone(this)),
-      _clusterEstimateTTL(0),
-      _planVersion(other._planVersion) {
+      _clusterEstimateTTL(0) {
   
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
@@ -244,8 +243,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _globallyUniqueId(Helper::getStringValue(info, "globallyUniqueId", "")),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
-      _clusterEstimateTTL(0),
-      _planVersion(0) {
+      _clusterEstimateTTL(0) {
   TRI_ASSERT(info.isObject());
 
   if (!TRI_vocbase_t::IsAllowedName(info)) {
@@ -677,7 +675,7 @@ Result LogicalCollection::rename(std::string&& newName, bool doSync) {
     case TRI_VOC_COL_STATUS_CORRUPTED:
       return TRI_ERROR_ARANGO_CORRUPTED_COLLECTION;
     case TRI_VOC_COL_STATUS_DELETED:
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     default:
       // Fall through intentional
       break;

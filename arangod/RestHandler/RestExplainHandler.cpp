@@ -124,7 +124,7 @@ void RestExplainHandler::explainQuery() {
     auto code = rest::ResponseCode::BAD;
 
     switch (queryResult.code) {
-      case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+      case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
         code = rest::ResponseCode::NOT_FOUND;
         break;
     }

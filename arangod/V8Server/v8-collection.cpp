@@ -37,6 +37,7 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/CollectionLockState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Cluster/FollowerInfo.h"
@@ -197,14 +198,14 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
         auto colCopy = col->clone();
         collection = colCopy.release();
       } catch (...) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
     } else {
       collection = resolver->getCollectionStruct(collectionName);
     }
     if (collection == nullptr) {
       // collection not found
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
   }
   TRI_ASSERT(collection != nullptr);
@@ -951,7 +952,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       allowDropSystem = TRI_ObjectToBoolean(args[0]);
     }
   }
-  
+ 
   Result res = methods::Collections::drop(vocbase, collection,
                                           allowDropSystem, timeout);
   if (res.fail()) {
@@ -1044,7 +1045,7 @@ static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string collectionName = v8Collection->name();
     auto collection = vocbase->lookupCollection(collectionName);
     if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
     std::string theLeader;
     if (args.Length() >= 1 && args[0]->IsString()) {
@@ -1099,7 +1100,7 @@ static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     auto realCollection = vocbase->lookupCollection(collectionName);
     if (realCollection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
     theLeader = realCollection->followers()->getLeader();
   }
@@ -1148,7 +1149,7 @@ static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string collectionName = v8Collection->name();
     auto collection = vocbase->lookupCollection(collectionName);
     if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
     collection->followers()->add(serverId);
   }
@@ -1196,7 +1197,7 @@ static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string collectionName = v8Collection->name();
     auto collection = vocbase->lookupCollection(collectionName);
     if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
     collection->followers()->remove(serverId);
   }
@@ -1236,7 +1237,7 @@ static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::string collectionName = v8Collection->name();
     auto collection = vocbase->lookupCollection(collectionName);
     if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
     std::unique_ptr<arangodb::FollowerInfo> const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
@@ -1299,7 +1300,7 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(collection->name());
 
   if (collectionName.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, collectionName);
   TRI_V8_RETURN(result);
@@ -1950,17 +1951,17 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "Cannot use pregel on system collection");
         }
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
       } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase->lookupCollection(name);
 
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
           || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1987,19 +1988,19 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           }
         }
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
         // smart edge collections contain multiple actual collections
         std::vector<std::string> actual = coll->realNamesForRead();
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase->lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
       std::vector<std::string> actual = coll->realNamesForRead();
       edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
@@ -2812,6 +2813,11 @@ static void JS_CountVocbaseCol(
 
   SingleCollectionTransaction trx(transaction::V8Context::Create(vocbase, true), collectionName, AccessMode::Type::READ);
 
+  if (CollectionLockState::_noLockHeaders != nullptr) {
+    if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
+      trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
+    }
+  }
   Result res = trx.begin();
 
   if (!res.ok()) {

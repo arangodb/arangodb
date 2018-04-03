@@ -28,6 +28,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/IndexBlock.h"
 #include "Aql/Query.h"
+#include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -63,7 +64,6 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _reverse(base.get("reverse").getBoolean()) {
-
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 
@@ -71,7 +71,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
     msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
   }
 
   VPackSlice indexes = base.get("indexes");
