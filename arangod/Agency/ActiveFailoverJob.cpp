@@ -20,23 +20,24 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AsyncFailedLeader.h"
+#include "ActiveFailoverJob.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Agency/Store.h"
 #include "Cluster/ClusterHelpers.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-AsyncFailedLeader::AsyncFailedLeader(Node const& snapshot, AgentInterface* agent,
-                     std::string const& jobId, std::string const& creator,
-                     std::string const& failed)
+ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
+                                     std::string const& jobId, std::string const& creator,
+                                     std::string const& failed)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
       _server(failed) { }
 
-AsyncFailedLeader::AsyncFailedLeader(Node const& snapshot, AgentInterface* agent,
+ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
                                      JOB_STATUS status, std::string const& jobId)
     : Job(status, snapshot, agent, jobId) {
   // Get job details from agency:
@@ -53,13 +54,13 @@ AsyncFailedLeader::AsyncFailedLeader(Node const& snapshot, AgentInterface* agent
   }
 }
 
-AsyncFailedLeader::~AsyncFailedLeader() {}
+ActiveFailoverJob::~ActiveFailoverJob() {}
 
-void AsyncFailedLeader::run() {
+void ActiveFailoverJob::run() {
   runHelper(_server, "");
 }
 
-bool AsyncFailedLeader::create(std::shared_ptr<VPackBuilder> envelope) {
+bool ActiveFailoverJob::create(std::shared_ptr<VPackBuilder> envelope) {
 
   LOG_TOPIC(DEBUG, Logger::SUPERVISION)
     << "Todo: Handle failover for leader " + _server;
@@ -81,7 +82,7 @@ bool AsyncFailedLeader::create(std::shared_ptr<VPackBuilder> envelope) {
       _jb->add(VPackValue(toDoPrefix + _jobId));
       { VPackObjectBuilder todo(_jb.get());
         _jb->add("creator", VPackValue(_creator));
-        _jb->add("type", VPackValue("asyncFailedLeader"));
+        _jb->add("type", VPackValue("activeFailover"));
         _jb->add("creator", VPackValue(_creator));
         _jb->add("timeCreated", VPackValue(now));
       } // todo
@@ -113,14 +114,14 @@ bool AsyncFailedLeader::create(std::shared_ptr<VPackBuilder> envelope) {
   return true;
 }
 
-bool AsyncFailedLeader::start() {
+bool ActiveFailoverJob::start() {
   // If anything throws here, the run() method catches it and finishes
   // the job.
   
   // Fail job, if Health back to not FAILED
   if (checkServerHealth(_snapshot, _server) != Supervision::HEALTH_STATUS_FAILED) {
     std::string reason = "Server " + _server + " is no longer failed. " +
-                         "Not starting AsyncFailedLeader job";
+                         "Not starting ActiveFailoverJob job";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
     finish(_server, "", false, reason);
     return false;
@@ -195,15 +196,15 @@ bool AsyncFailedLeader::start() {
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
     _status = FINISHED;
     LOG_TOPIC(INFO, Logger::SUPERVISION)
-    << "Finished: AsyncFailedLeader server " << _server << " failover to " << newLeader;
+    << "Finished: ActiveFailoverJob server " << _server << " failover to " << newLeader;
     return true;
   }
   
-  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Precondition failed for AsyncFailedLeader " + _jobId;
+  LOG_TOPIC(INFO, Logger::SUPERVISION) << "Precondition failed for ActiveFailoverJob " + _jobId;
   return false;
 }
 
-JOB_STATUS AsyncFailedLeader::status() {
+JOB_STATUS ActiveFailoverJob::status() {
   if (_status != PENDING) {
     return _status;
   }
@@ -213,7 +214,7 @@ JOB_STATUS AsyncFailedLeader::status() {
   return _status;
 }
 
-arangodb::Result AsyncFailedLeader::abort() {
+arangodb::Result ActiveFailoverJob::abort() {
 
   // We can assume that the job is in ToDo or not there:
   if (_status == NOTFOUND || _status == FINISHED || _status == FAILED) {
@@ -235,7 +236,7 @@ arangodb::Result AsyncFailedLeader::abort() {
 
 typedef std::pair<std::string, std::string> ServerTick;
 /// Try to select the follower most in-sync with failed leader
-std::string AsyncFailedLeader::findBestFollower(Node const& snapshot) {
+std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
   std::vector<std::string> as = availableServers(snapshot);
   
   // ungood;
@@ -255,19 +256,23 @@ std::string AsyncFailedLeader::findBestFollower(Node const& snapshot) {
   } catch (...) {}
   
   std::vector<ServerTick> ticks;
+  
   // collect tick values
   try {
-    for (auto const& srv : snapshot(curAsyncReplPrefix).children()) {
-      if (std::find(as.begin(), as.end(), srv.first) == as.end()) {
-        continue;
+    _agent->executeLockedRead([&]() {
+      Node asyncState = _agent->transient().get(asyncReplPrefix);
+      for (auto const& srv : asyncState.children()) {
+        if (std::find(as.begin(), as.end(), srv.first) == as.end()) {
+          continue;
+        }
+        TRI_ASSERT(srv.second->type() == NodeType::NODE);
+        std::shared_ptr<Node> info = srv.second;
+        if (info->has("leader") && info->has("lastTick") &&
+            (*info)("leader").compareString(_server) == 0) {
+          ticks.emplace_back(srv.first, (*info)("lastTick").getString());
+        }
       }
-      TRI_ASSERT(srv.second->type() == NodeType::NODE);
-      std::shared_ptr<Node> info = srv.second;
-      if (info->has("endpoint") && info->has("lastTick") &&
-          (*info)("endpoint").compareString(_server) == 0) {
-        ticks.emplace_back(srv.first, (*info)("lastTick").getString());
-      }
-    }
+    });
   } catch (...) {}
   
   std::sort(ticks.begin(), ticks.end(), [&](ServerTick const& a,

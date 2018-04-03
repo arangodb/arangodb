@@ -25,9 +25,9 @@
 
 #include <thread>
 
+#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
-#include "Agency/AsyncFailedLeader.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedServer.h"
 #include "Agency/Job.h"
@@ -350,7 +350,7 @@ void handleOnStatusSingle(
              transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
-      AsyncFailedLeader(snapshot, agent, std::to_string(jobId),
+      ActiveFailoverJob(snapshot, agent, std::to_string(jobId),
                         "supervision", serverID).create(envelope);
     }
   }

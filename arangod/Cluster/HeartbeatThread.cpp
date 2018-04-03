@@ -424,6 +424,9 @@ void HeartbeatThread::runSingleServer() {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(applier != nullptr && ci != nullptr);
   
+  std::string const leaderPath = "Plan/AsyncReplication/Leader";
+  std::string const transientPath = "AsyncReplication/" + _myId;
+
   VPackBuilder myIdBuilder;
   myIdBuilder.add(VPackValue(_myId));
  
@@ -511,7 +514,6 @@ void HeartbeatThread::runSingleServer() {
         
         // if we stay a slave, the redirect will be turned on again
         ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-        std::string const leaderPath = "Plan/AsyncReplication/Leader";
         if (leader.isNone()) {
           result = _agency.casValue(leaderPath, myIdBuilder.slice(), /*prevExist*/ false,
                                     /*ttl*/ 0, /*timeout*/ 5.0);
@@ -580,13 +582,26 @@ void HeartbeatThread::runSingleServer() {
         std::this_thread::sleep_for(std::chrono::seconds(10));
       }
       
-      if (applier->endpoint() != endpoint) {
-        // configure applier for new endpoint
+      TRI_voc_tick_t lastTick = 0; // we always want to set lastTick
+      auto sendTransient = [&]() {
+        VPackBuilder builder;
+        builder.openObject();
+        builder.add("leader", leader);
+        builder.add("lastTick", VPackValue(std::to_string(lastTick)));
+        builder.close();
+        double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
+        _agency.setTransient(transientPath, builder.slice(), ttl);
+      };
+      TRI_DEFER(sendTransient());
+
+      if (applier->isActive() && applier->endpoint() == endpoint) {
+        lastTick = applier->lastTick();
+      } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
         while (applier->isShuttingDown() && !isStopping()) {
-          std::this_thread::sleep_for(std::chrono::microseconds(50 * 1000));
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
         
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Starting replication from " << endpoint;
@@ -597,13 +612,9 @@ void HeartbeatThread::runSingleServer() {
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
-        // TODO: how do we initially configure the applier
-        
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "start initial sync from leader";
         TRI_ASSERT(!config._skipCreateDrop);
 
-        // forget about any existing replication applier configuration
-        applier->forget();
+        applier->forget(); // forget about any existingconfiguration
         applier->reconfigure(config);
         applier->startReplication();
         
@@ -616,25 +627,23 @@ void HeartbeatThread::runSingleServer() {
             continue;
           } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
-            // restart applier if possible
             LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier... ";
+            VPackBuilder debug;
+            debug.openObject();
+            applier->toVelocyPack(debug);
+            debug.close();
+            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << debug.slice().toJson();
+            applier->startTailing(0, false, 0); // triggers full re-sync
+            continue;
+          } else {
             
-            VPackBuilder builder;
-            builder.openObject();
-            applier->toVelocyPack(builder);
-            builder.close();
-            LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "previous applier state was: " << builder.slice().toJson();
-
-            applier->startTailing(0, false, 0);
-            continue; // check again next time
-          } 
+          }
         }
-      
         // complete resync next round
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "forgetting previous applier state. Will trigger a full resync now";
         applier->forget();
       }
-            
+      
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "got an exception in single server heartbeat: " << e.what();

@@ -23,8 +23,8 @@
 
 #include "JobContext.h"
 
+#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
-#include "Agency/AsyncFailedLeader.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
@@ -55,8 +55,8 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
   } else if (type == "removeFollower") {
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
-  } else if (type == "asyncFailedLeader") {
-    _job = std::make_unique<AsyncFailedLeader>(snapshot, agent, status, id);
+  } else if (type == "activeFailover") {
+    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) <<
       "Failed to run supervision job " << type << " with id " << id;

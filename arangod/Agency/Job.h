@@ -53,12 +53,11 @@ extern std::string const planColPrefix;
 extern std::string const curColPrefix;
 extern std::string const blockedServersPrefix;
 extern std::string const blockedShardsPrefix;
-extern std::string const serverStatePrefix;
 extern std::string const planVersion;
 extern std::string const plannedServers;
 extern std::string const healthPrefix;
-extern std::string const curAsyncReplPrefix;
 extern std::string const asyncReplLeader;
+extern std::string const asyncReplPrefix;
 
 struct Job {
 

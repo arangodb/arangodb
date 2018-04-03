@@ -43,12 +43,11 @@ std::string const planColPrefix = "/Plan/Collections/";
 std::string const curColPrefix = "/Current/Collections/";
 std::string const blockedServersPrefix = "/Supervision/DBServers/";
 std::string const blockedShardsPrefix = "/Supervision/Shards/";
-std::string const serverStatePrefix = "/Sync/ServerStates/";
 std::string const planVersion = "/Plan/Version";
 std::string const plannedServers = "/Plan/DBServers";
 std::string const healthPrefix = "/Supervision/Health/";
-std::string const curAsyncReplPrefix = "/Current/AsyncReplication/";
 std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
+std::string const asyncReplPrefix = "/AsyncReplication/";
 
 }  // namespace arangodb::consensus
 }  // namespace arangodb
@@ -416,7 +415,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
   auto const& type = job("type").getString();
 
   if (type == "failedServer" || type == "failedLeader" ||
-      type == "asyncFailedLeader") {
+      type == "activeFailover") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer") {

@@ -28,6 +28,9 @@
 
 namespace arangodb {
 namespace consensus {
+
+class Store;
+  
 class AgentInterface {
  public:
   /// @brief Possible outcome of write process
@@ -47,6 +50,16 @@ class AgentInterface {
 
   /// @brief Wait for slaves to confirm appended entries
   virtual bool isCommitted(index_t last_entry) = 0;
+  
+  /// @brief execute a callback while holding _ioLock
+  ///  and read lock for _readDB
+  virtual void executeLockedRead(std::function<void()> const& cb) = 0;
+  
+  /// @brief Get transient store
+  ///  WARNING: this assumes caller holds appropriate
+  ///  locks or will use executeLockedRead() or
+  ///  executeLockedWrite() with a lambda function
+  virtual Store const& transient() const = 0;
 
   // Suffice warnings
   virtual ~AgentInterface() {};

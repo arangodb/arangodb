@@ -139,13 +139,13 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
-  Agency/AsyncFailedLeader.cpp
   Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp

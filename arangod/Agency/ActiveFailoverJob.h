@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CONSENSUS_ASYNC_FAILED_LEADER_H
-#define ARANGOD_CONSENSUS_ASYNC_FAILED_LEADER_H 1
+#ifndef ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H
+#define ARANGOD_CONSENSUS_ACTIVE_FAILOVER_JOB_H 1
 
 #include "Job.h"
 #include "Supervision.h"
@@ -29,16 +29,16 @@
 namespace arangodb {
 namespace consensus {
 
-struct AsyncFailedLeader final : public Job {
+struct ActiveFailoverJob final : public Job {
   
-  AsyncFailedLeader(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
+  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent, std::string const& jobId,
                     std::string const& creator,
                     std::string const& failed);
 
-  AsyncFailedLeader(Node const& snapshot, AgentInterface* agent,
+  ActiveFailoverJob(Node const& snapshot, AgentInterface* agent,
                     JOB_STATUS status, std::string const& jobId);
 
-  virtual ~AsyncFailedLeader();
+  virtual ~ActiveFailoverJob();
 
   virtual JOB_STATUS status() override final;
   virtual void run() override final;
@@ -46,9 +46,6 @@ struct AsyncFailedLeader final : public Job {
     override final;
   virtual bool start() override final;
   virtual Result abort() override final;
-  
-  /*JOB_STATUS pendingLeader();
-  JOB_STATUS pendingFollower();*/
   
 private:
   
