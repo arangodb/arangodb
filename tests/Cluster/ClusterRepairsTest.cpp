@@ -247,8 +247,6 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where distributeShardsLike is already renamed to
 // repairingDistributeShardsLike, but the replicationFactor differs
-// TODO Add a test with multiple broken shards in one collection. Don't order
-// them the same, so the sorting is tested as well.
 // TODO Maybe add failure tests via TRI_AddFailurePointDebugging. Especially
 // if errors stay contained in their respective collection. Think about how to
 // trigger such errors only for a specific collection.
@@ -345,6 +343,13 @@ SCENARIO("Broken distributeShardsLike collections",
       checkAgainstExpectedOperations(planCollections,
                                      supervisionHealth4Healthy0Bad,
                                      expectedResultsWithMultipleCollections);
+    }
+
+    GIVEN("A collection with multiple shards") {
+#include "ClusterRepairsTest.multipleShards.cpp"
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth3Healthy0Bad,
+                                     expectedResultsWithMultipleShards);
     }
 
   } catch (...) {

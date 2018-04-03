@@ -760,7 +760,8 @@ DistributeShardsLikeRepairer::fixAllShardsOfCollection(
     if (dbServers != protoDbServers) {
       LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
-          << "fixing shard " << collection.fullName() << "/" << shardId;
+          << "fixing shard " << collection.fullName() << "/" << shardId
+          << " regarding its prototype shard " << proto.fullName() << "/" << protoShardId;
       // TODO Do we need to check that dbServers and protoDbServers are not
       // empty?
       // TODO Do we need to check that dbServers and protoDbServers are of equal
