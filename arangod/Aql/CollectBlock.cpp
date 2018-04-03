@@ -1066,8 +1066,7 @@ int CountCollectBlock::initializeCursor(AqlItemBlock* items,
   return TRI_ERROR_NO_ERROR;
 }
 
-int CountCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
-                                     bool skipping, AqlItemBlock*& result,
+int CountCollectBlock::getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result,
                                      size_t& skipped) {
   TRI_ASSERT(result == nullptr && skipped == 0);
 
@@ -1077,7 +1076,7 @@ int CountCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   std::unique_ptr<AqlItemBlock> res;
   if (_buffer.empty()) {
-    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+    if (!ExecutionBlock::getBlock(atMost)) {
       // done
       _done = true;
       if (!skipping) {
@@ -1122,7 +1121,7 @@ int CountCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           TRI_IF_FAILURE("CountCollectBlock::hasMore") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
-          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+          hasMore = ExecutionBlock::getBlock(atMost);
         } catch (...) {
           // prevent leak
           returnBlock(cur);

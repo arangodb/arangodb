@@ -182,8 +182,7 @@ class CountCollectBlock : public ExecutionBlock {
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
  private:
-  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
-                    AqlItemBlock*& result, size_t& skipped) override;
+  int getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) override;
 
  private:
   RegisterId _collectRegister;
