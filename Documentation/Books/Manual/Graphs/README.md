@@ -30,17 +30,17 @@ In queries you can define in which directions the edge relations may be followed
 Named Graphs
 ------------
 
-Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Administration/WebInterface/Graphs.md).
+Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Programs/WebInterface/Graphs.md).
 They use the full spectrum of ArangoDB's graph features. You may access them via several interfaces.
 
 - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs
   - [AQL Shortest Path](../../AQL/Graphs/ShortestPath.html) on both named and anonymous graph
 - [JavaScript General Graph implementation, as you may use it in Foxx Services](GeneralGraphs/README.md)
-  - [Graph Management](GeneralGraphs/Management.md); creating & manipualating graph definitions; inserting, updating and deleting vertices and edges into graphs
+  - [Graph Management](GeneralGraphs/Management.md); creating & manipulating graph definitions; inserting, updating and deleting vertices and edges into graphs
   - [Graph Functions](GeneralGraphs/Functions.md) for working with edges and vertices, to analyze them and their relations
 - [JavaScript Smart Graph implementation, for scalable graphs](SmartGraphs/README.md)
-  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipualating SmartGraph definitions; Differences to General Graph 
+  - [Smart Graph Management](SmartGraphs/Management.md); creating & manipulating SmartGraph definitions; Differences to General Graph 
 - [RESTful General Graph interface](../../HTTP/Gharial/index.html) used to implement graph management in client drivers
 
 ### Manipulating collections of named graphs with regular document functions
@@ -91,14 +91,14 @@ To only follow friend edges, you would specify `friend_edges` as sole edge colle
 
 Both approaches have advantages and disadvantages. `FILTER` operations on ede attributes will do comparisons on
 each traversed edge, which may become CPU-intense. When not *finding* the edges in the first place because of the
-collection containing them is not traversed at all, there will never be a reason to actualy check for their
+collection containing them is not traversed at all, there will never be a reason to actually check for their
 `type` attribute with `FILTER`.
 
 The multiple edge collections approach is limited by the [number of collections that can be used simultaneously in one query](../../AQL/Fundamentals/Syntax.html#collection-names).
 Every collection used in a query requires some resources inside of ArangoDB and the number is therefore limited
 to cap the resource requirements. You may also have constraints on other edge attributes, such as a hash index
 with a unique constraint, which requires the documents to be in a single collection for the uniqueness guarantee,
-and it may thus not be possible to store the different types of edges in multiple edeg collections.
+and it may thus not be possible to store the different types of edges in multiple edge collections.
 
 So, if your edges have about a dozen different types, it's okay to choose the collection approach, otherwise
 the `FILTER` approach is preferred. You can still use `FILTER` operations on edges of course. You can get rid
@@ -152,8 +152,8 @@ flexible ways, whereas it would cause headache to handle it in a relational data
 Backup and restore
 ------------------
 
-For sure you want to have backups of your graph data, you can use [Arangodump](../Administration/Arangodump.md) to create the backup,
-and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into a new ArangoDB. You should however note that:
+For sure you want to have backups of your graph data, you can use [Arangodump](../Programs/Arangodump/README.md) to create the backup,
+and [Arangorestore](../Programs/Arangorestore/README.md) to restore a backup into a new ArangoDB. You should however note that:
 
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
@@ -170,7 +170,7 @@ Example Graphs
 
 ArangoDB comes with a set of easily graspable graphs that are used to demonstrate the APIs.
 You can use the `add samples` tab in the `create graph` window in the webinterface, or load the module `@arangodb/graph-examples/example-graph` in arangosh and use it to create instances of these graphs in your ArangoDB.
-Once you've created them, you can [inspect them in the webinterface](../Administration/WebInterface/Graphs.md) - which was used to create the pictures below.
+Once you've created them, you can [inspect them in the webinterface](../Programs/WebInterface/Graphs.md) - which was used to create the pictures below.
 
 You [can easily look into the innards of this script](https://github.com/arangodb/arangodb/blob/devel/js/common/modules/%40arangodb/graph-examples/example-graph.js) for reference about howto manage graphs programatically.
 

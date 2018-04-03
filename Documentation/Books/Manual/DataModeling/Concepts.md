@@ -9,7 +9,7 @@ transported using [JSON](https://en.wikipedia.org/wiki/JSON) via a TCP connectio
 using the HTTP protocol. A [REST API](https://en.wikipedia.org/wiki/Representational_state_transfer)
 is provided to interact with the database system.
 
-The [web interface](../Administration/WebInterface/README.md) that comes with
+The [web interface](../Programs/WebInterface/README.md) that comes with
 ArangoDB, called *Aardvark*, provides graphical user interface that is easy to use.
 An [interactive shell](../GettingStarted/Arangosh.md), called *Arangosh*, is also
 shipped. In addition, there are so called [drivers](https://arangodb.com/downloads/arangodb-drivers/)

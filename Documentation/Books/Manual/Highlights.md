@@ -12,7 +12,7 @@ Version 3.3
   support means you can fallback to a replica of your cluster in case of a
   disaster in one datacenter.
 
-- [**Encrypted Backups**](Administration/Arangodump.md#encryption):
+- [**Encrypted Backups**](Programs/Arangodump.md#encryption):
   Arangodump can create backups encrypted with a secret key using AES256
   block cipher.
 
@@ -90,6 +90,6 @@ Version 3.0
 - [**Foxx 3.0**](Foxx/README.md): overhauled JS framework for data-centric
   microservices
 
-- Significantly improved [**Web Interface**](Administration/WebInterface/README.md)
+- Significantly improved [**Web Interface**](Programs/WebInterface/README.md)
   
 Also see [What's New in 3.0](ReleaseNotes/NewFeatures30.md).

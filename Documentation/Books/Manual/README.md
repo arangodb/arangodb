@@ -23,7 +23,7 @@ The documentation is organized in four handbooks:
   solutions.
 
 Features are illustrated with interactive usage examples; you can cut'n'paste them
-into [arangosh](Administration/Arangosh/README.md) to try them out. The HTTP
+into [arangosh](Programs/Arangosh/README.md) to try them out. The HTTP
 [REST-API](../HTTP/index.html) for driver developers is demonstrated with cut'n'paste
 recepies intended to be used with the [cURL](http://curl.haxx.se). Drivers may provide
 their own examples based on these .js based examples to improve understandeability

@@ -4,8 +4,7 @@ Details about the ArangoDB Shell
 After the server has been started,
 you can use the ArangoDB shell (_arangosh_) to administrate the
 server. Without any arguments, the ArangoDB shell will try to contact
-the server on port 8529 on the localhost. For more information see the
-[ArangoDB Shell documentation](../Administration/Arangosh/README.md). You might need to set additional options
+the server on port 8529 on the localhost. You might need to set additional options
 (endpoint, username and password) when connecting:
 
 ```
