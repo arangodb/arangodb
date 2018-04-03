@@ -76,11 +76,16 @@ IResearchLink::IResearchLink(
   arangodb::LogicalCollection* collection
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
+   _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
 }
 
 IResearchLink::~IResearchLink() {
+  if (_dropCollectionInDestructor) {
+    drop();
+  }
+
   unload(); // disassociate from view if it has not been done yet
 }
 
@@ -181,7 +186,8 @@ int IResearchLink::drop() {
     }
   }
 
-  // FIXME TODO remove link via update properties on view
+  _dropCollectionInDestructor = false; // will do drop now
+
   return _view->drop(_collection->id());
 }
 
@@ -260,6 +266,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
+      _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
 
@@ -541,6 +548,7 @@ int IResearchLink::unload() {
     }
   }
 
+  _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 

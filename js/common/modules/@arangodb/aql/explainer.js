@@ -256,6 +256,7 @@ function printIndexes (indexes) {
       } else {
         ranges = '[ ' + indexes[i].ranges + ' ]';
       }
+
       var selectivity = (indexes[i].hasOwnProperty('selectivityEstimate') ?
         (indexes[i].selectivityEstimate * 100).toFixed(2) + ' %' :
         'n/a'
@@ -845,7 +846,7 @@ function processQuery (query, explain) {
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
         collectionVariables[node.outVariable.id] = node.collection;
-        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + ' */');
+        return keyword('FOR') + ' ' + variableName(node.outVariable) +  ' ' + keyword('IN') + ' ' + collection(node.collection) + '   ' + annotation('/* full collection scan' + (node.random ? ', random order' : '') + projection(node) + (node.satellite ? ', satellite' : '') + (node.producesResult ? '' : ', index only') + ' */');
       case 'EnumerateListNode':
         return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */');
       case 'EnumerateViewNode':
@@ -854,7 +855,7 @@ function processQuery (query, explain) {
         collectionVariables[node.outVariable.id] = node.collection;
         var types = [];
         node.indexes.forEach(function (idx, i) {
-          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan';
+          var what = (node.reverse ? 'reverse ' : '') + idx.type + ' index scan' + (node.producesResult ? '' : ', index only');
           if (types.length === 0 || what !== types[types.length - 1]) {
             types.push(what);
           }
@@ -1141,6 +1142,9 @@ function processQuery (query, explain) {
         return keyword('SCATTER');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
+            if (node.path && node.path.length) {
+              return variableName(node.inVariable) + node.path.map(function(n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
+            }
             return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }).join(', ');
     }
