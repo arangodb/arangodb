@@ -93,10 +93,7 @@ struct SimpleHttpClientParams {
 
   void setJwt(std::string const& jwt) { _jwt = jwt; }
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief sets username and password
-  ////////////////////////////////////////////////////////////////////////////////
-
+  // sets username and password
   void setUserNamePassword(char const* prefix,
                            std::string const& username,
                            std::string const& password) {
