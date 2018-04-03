@@ -1,6 +1,10 @@
 devel
 -----
 
+* removed option `--cluster.my-local-info` in favor of persisted server UUIDs
+
+  The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
 * added new collection property `cacheEnabled` which enables in-memory caching for
   documents and primary index entries. Available only when using RocksDB
 
