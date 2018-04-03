@@ -140,6 +140,13 @@ IResearchViewNode::IResearchViewNode(
     _filterCondition(filterCondition ? filterCondition : &ALL),
     _sortCondition(std::move(sortCondition)) {
   TRI_ASSERT(IResearchView::type() == _view->type());
+
+  view.visitCollections([this](TRI_voc_cid_t cid)->bool{
+    _collections.emplace_back(
+      basics::StringUtils::itoa(cid), _vocbase, AccessMode::Type::READ
+    );
+    return true;
+  });
 }
 
 IResearchViewNode::IResearchViewNode(

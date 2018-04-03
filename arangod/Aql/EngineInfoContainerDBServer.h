@@ -193,10 +193,7 @@ class EngineInfoContainerDBServer {
   void addGraphNode(Query* query, GraphNode* node);
 
 #ifdef USE_IRESEARCH
-  void addIResearchViewNode(
-    Query& query,
-    ExecutionNode const& node
-  );
+  void addIResearchViewNode(ExecutionNode const& node);
 #endif
 
  private:

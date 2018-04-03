@@ -26,6 +26,9 @@
 
 #include "VocBase/LogicalView.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 namespace arangodb {
 namespace iresearch {
 
@@ -34,7 +37,7 @@ namespace iresearch {
 /// @brief an abstraction over the distributed IResearch index implementing the
 ///        LogicalView interface
 ///////////////////////////////////////////////////////////////////////////////
-class IResearchViewCoordinator final: public arangodb::LogicalView {
+class IResearchViewCoordinator final : public arangodb::LogicalView {
  public:
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
@@ -42,7 +45,7 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   ///////////////////////////////////////////////////////////////////////////////
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& info,
+    velocypack::Slice const& info,
     bool isNew
   );
 
@@ -52,27 +55,33 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
 
   void open() override { }
 
-  void drop() override { }
+  void drop() override;
 
-  virtual Result rename(std::string&& newName, bool doSync) {
+  virtual Result rename(
+      std::string&& /*newName*/,
+      bool /*doSync*/
+  ) override {
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
   virtual void toVelocyPack(
-    arangodb::velocypack::Builder& result,
-    bool includeProperties = false,
-    bool includeSystem = false
-  ) const {
-    // FIXME: implement
-  }
+    velocypack::Builder& result,
+    bool includeProperties,
+    bool includeSystem
+  ) const override;
 
   virtual arangodb::Result updateProperties(
-      arangodb::velocypack::Slice const& properties,
-      bool partialUpdate,
-      bool doSync
-  ) {
-    return { TRI_ERROR_NOT_IMPLEMENTED };
-  }
+    velocypack::Slice const& properties,
+    bool partialUpdate,
+    bool doSync
+  ) override;
+
+ private:
+  IResearchViewCoordinator(
+    TRI_vocbase_t& vocbase, velocypack::Slice info
+  );
+
+  velocypack::Builder _info;
 }; // IResearchViewCoordinator
 
 } // iresearch

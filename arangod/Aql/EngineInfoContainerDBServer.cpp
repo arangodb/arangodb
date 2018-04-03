@@ -702,7 +702,6 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
 
 #ifdef USE_IRESEARCH
 void EngineInfoContainerDBServer::addIResearchViewNode(
-    Query& query,
     ExecutionNode const& node
 ) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -711,29 +710,9 @@ void EngineInfoContainerDBServer::addIResearchViewNode(
   auto& viewNode = static_cast<iresearch::IResearchViewNode const&>(node);
 #endif
 
-  auto& view = viewNode.view();
-
-  auto visitor = [this, &view](TRI_voc_cid_t cid)->bool{
-    auto logicalCollection = view.vocbase()->lookupCollection(cid);
-
-    if (!logicalCollection) {
-      return false;
-    }
-
-    // FIXME where to store collections?
-    // In execution node probably?
-    Collection col(
-      logicalCollection->name(),
-      view.vocbase(),
-      AccessMode::Type::READ
-    );
-
+  for (auto const& col : viewNode.collections()) {
     handleCollection(&col, AccessMode::Type::READ, false);
-
-    return true;
-  };
-
-  view.visitCollections(visitor);
+  }
 }
 #endif
 

@@ -388,7 +388,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
 #ifdef USE_IRESEARCH
         case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-          _dbserverParts.addIResearchViewNode(*_query, *en);
+          _dbserverParts.addIResearchViewNode(*en);
         } break;
 #endif
         default:

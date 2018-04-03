@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/Collection.h"
 
 namespace arangodb {
 
@@ -141,6 +142,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     return _sortCondition;
   }
 
+  /// @brief return the list of collections involved
+  std::deque<aql::Collection> const& collections() const noexcept {
+    return _collections;
+  }
+
   /// @brief getVariablesUsedHere, returning a vector
   std::vector<aql::Variable const*> getVariablesUsedHere() const override final;
 
@@ -186,6 +192,9 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief sortCondition to pass to the view
   std::vector<IResearchSort> _sortCondition;
 
+  /// @brief list of collections involved, need this for cluster
+  /// deque becuase aql::Collection can't be copied or moved
+  std::deque<aql::Collection> _collections;
 }; // EnumerateViewNode
 
 /// @brief class IResearchScatterNode
