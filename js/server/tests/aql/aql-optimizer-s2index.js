@@ -101,39 +101,86 @@ function optimizerRuleTestSuite() {
     assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
   };
 
+  let locations;
+
+  // Test queries with index usage and without
+  function runQuery(query) {
+    var result1 = getQueryResults(query.string, query.bindVars || {}, false);
+    var result2 = getQueryResults(query.string, query.bindVars || {}, false,
+      { optimizer: { rules: ["-all"] } });
+    let expected = query.expected.slice().sort();
+    /*
+    result1.forEach(k => internal.print("Res: ", locations.document(k)));
+    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
+
+    assertEqual(expected, result1.sort(), query.string);
+    assertEqual(expected, result2.sort(), query.string);
+  }
+
+  // GeoJSON test data. https://gist.github.com/aaronlidman/7894176?short_path=2b56a92
+  // Mostly from the spec: http://geojson.org/geojson-spec.html.
+  // stuff over Java island
+  let indonesia = [
+    { "type": "Polygon", "coordinates": [[[100.0, 0.0], [101.0, 0.0], [101.0, 1.0], [100.0, 1.0], [100.0, 0.0]]] },
+    { "type": "LineString", "coordinates": [[102.0, 0.0], [103.0, 1.0], [104.0, 0.0], [105.0, 1.0]] },
+    { "type": "Point", "coordinates": [102.0, 0.5] }];
+  let indonesiaKeys = [];
+
+  // EMEA region
+  let emea = [ // TODO implement multi-polygon
+    /*{ "type": "MultiPolygon", "coordinates": [ [[[40, 40], [20, 45], [45, 30], [40, 40]]],
+      [[[20, 35], [10, 30], [10, 10], [30, 5], [45, 20], [20, 35]],  [[30, 20], [20, 15], [20, 25], [30, 20]]]] }*/
+      { "type": "Polygon",  "coordinates": [ [[35, 10], [45, 45], [15, 40], [10, 20], [35, 10]], [[20, 30], [35, 35], [30, 20], [20, 30]]]},
+      { "type": "LineString", "coordinates": [[25,10],[10,30],[25,40]] },
+      { "type": "MultiLineString", "coordinates": [ [[10, 10], [20, 20], [10, 40]], [[40, 40], [30, 30], [40, 20], [30, 10]]] },
+      { "type": "MultiPoint",  "coordinates": [ [10, 40], [40, 30], [20, 20], [30, 10] ] }
+  ];
+  let emeaKeys = [];
+  let rectEmea1 = {"type":"Polygon","coordinates":[[[2,4],[26,4],[26,49],[2,49],[2,4]]]};
+  let rectEmea2 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,51],[35,42]]]};
+  let rectEmea3 = {"type":"Polygon","coordinates":[[[35,42],[49,42],[49,50],[35,50],[35,42]]]};
+
+
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
+    ////////////////////////////////////////////////////////////////////////////
     setUp : function () {
       var loopto = 10;
 
-        internal.db._drop(colName);
-        geocol = internal.db._create(colName);
-        /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
-        geocol.ensureIndex({type:"geo", fields:["geo"]});
-        geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
-        geocol.ensureIndex({type: "s2index", fields:["lat","lon"]});  
-        geocol.ensureIndex({type: "s2index", fields:["geo"]});  
-        geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"]});  
-        var lat, lon;
-        for (lat=-40; lat <=40 ; ++lat) {
-            for (lon=-40; lon <= 40; ++lon) {
-                //geocol.insert({lat,lon});
-                geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
-            }
-        }
+      internal.db._drop(colName);
+      geocol = internal.db._create(colName);
+      /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
+      geocol.ensureIndex({type:"geo", fields:["geo"]});
+      geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
+      geocol.ensureIndex({type: "s2index", fields:["lat","lon"]});
+      geocol.ensureIndex({type: "s2index", fields:["geo"]});
+      geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"]});
+      var lat, lon;
+      for (lat=-40; lat <=40 ; ++lat) {
+          for (lon=-40; lon <= 40; ++lon) {
+              //geocol.insert({lat,lon});
+              geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
+          }
+      }
+
+      db._drop("UnitTestsGeoJsonTestSuite");
+
+      locations = db._create("UnitTestsGeoJsonTestSuite");
+      locations.ensureIndex({ type: "s2index", fields: ["geometry"], geoJson: true });
+
+      indonesiaKeys = indonesia.map(doc => locations.save({ geometry: doc })._key);
+      emeaKeys = emea.map(doc => locations.save({ geometry: doc })._key);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
+    ////////////////////////////////////////////////////////////////////////////
     tearDown : function () {
       internal.db._drop(colName);
       geocol = null;
+      db._drop("UnitTestsGeoJsonTestSuite");
     },
 
     testRuleBasics : function () {
@@ -265,12 +312,197 @@ function optimizerRuleTestSuite() {
         var result = AQL_EXECUTE(query);
         var distances = result.json.map(d => { return parseFloat(d.toFixed(5)); });
         old=0;
-        distances.forEach(d => { 
-          assertTrue( d >= old, d + " >= " + old); 
+        distances.forEach(d => {
+          assertTrue( d >= old, d + " >= " + old);
           old = d;
         });
       }
-    } //testSorted
+    }, //testSorted
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle1: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_DISTANCE([102, 0], x.geometry) <= 450000
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere (without circle edge included)
+    ////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle2: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_DISTANCE([101, 0], x.geometry) < 283439.318405
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle3: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_DISTANCE([101, 0], x.geometry) <= 100000
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple circle on sphere
+    ////////////////////////////////////////////////////////////////////////////
+
+    testContainsCircle4: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_DISTANCE([101, 0], x.geometry) <= 100000
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////
+
+    testContainsPolygon1: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(@poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////
+
+    /*testContainsPolygon2: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(@poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea2
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },*/
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon1: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(@poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon2: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(@poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea2
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple rectangle contains
+    ////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygon3: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(@poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea3
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
 
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
