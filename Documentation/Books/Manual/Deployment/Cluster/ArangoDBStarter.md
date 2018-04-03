@@ -1,11 +1,8 @@
-Native and Docker Clusters
+Using the ArangoDB Starter
 ==========================
 
-Automatic native Clusters
--------------------------
-Similarly to how the Mesos framework aranges an ArangoDB cluster in a
-DC/OS environment for you, `arangodb` can do this for you in a plain
-environment.
+This section describes how to start a Cluster using the tool [_Starter_](../../Programs/Starter/README.md)
+(the _arangodb_ binary program).
 
 By invoking the first `arangodb` you launch a primary node. It will
 bind a network port, and output the commands you need to cut'n'paste
@@ -49,8 +46,8 @@ Once the two other processes joined the cluster, and started their ArangoDB serv
 At this point you may access your cluster at either coordinator
 endpoint, http://h01:4002/, http://h02:4002/ or http://h03:4002/.
 
-Automatic native local test Clusters
-------------------------------------
+Local test Clusters
+-------------------
 
 If you only want a local test cluster, you can run a single starter with the `--starter.local` argument.
 It will start a 3 "machine" cluster on your local PC.
@@ -64,12 +61,14 @@ a single PC will bring down the entire cluster.
 
 Automatic Docker Clusters
 -------------------------
-ArangoDBStarter can also be used to [launch clusters based on docker containers](https://github.com/arangodb-helper/arangodb#running-in-docker).
+The [_Starter_](../../Programs/Starter/README.md) can also be used to launch clusters based on docker containers.
 Its a bit more complicated, since you need to provide information about your environment that can't be autodetected.
 
 In the Docker world you need to take care about where persistant data is stored, since containers are intended to be volatile. We use a volume named `arangodb1` here: 
 
-    docker volume create arangodb1
+```
+docker volume create arangodb1
+```        
 
 (You can use any type of docker volume that fits your setup instead.)
 
@@ -78,15 +77,19 @@ intend to run ArangoDB starter on. Depending on your operating system
 execute `ip addr, ifconfig or ipconfig` to determine your local ip
 address. 
 
-    192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.32
+```
+192.168.1.0/24 dev eth0 proto kernel scope link src 192.168.1.32
+```
 
 So this example uses the IP `192.168.1.32`:
 
-    docker run -it --name=adb1 --rm -p 8528:8528 \
-        -v arangodb1:/data \
-        -v /var/run/docker.sock:/var/run/docker.sock \
-        arangodb/arangodb-starter \
-        --starter.address=192.168.1.32
+```
+docker run -it --name=adb1 --rm -p 8528:8528 \
+   -v arangodb1:/data \
+   -v /var/run/docker.sock:/var/run/docker.sock \
+   arangodb/arangodb-starter \
+   --starter.address=192.168.1.32
+```
 
 It will start the master instance, and command you to start the slave instances:
 
@@ -132,10 +135,7 @@ And at least it tells you where you can work with your cluster:
 
 Under the hood
 --------------
-The first `arangodb` you ran (as shown above) will become the master in your setup, the `--starter.join` will be the slaves.
+The first `arangodb` you ran (as shown above) will become the _master_ in your setup, the `--starter.join` will be the slaves.
 
 The master determines which ArangoDB server processes to launch on which slave, and how they should communicate. 
 It will then launch the server processes and monitor them. Once it has detected that the setup is complete you will get the prompt. The master will save the setup for subsequent starts. 
-
-More complicated setup options [can be found in ArangoDBStarters Readme](https://github.com/arangodb-helper/arangodb#starting-an-arangodb-cluster-the-easy-way). 
-
