@@ -76,11 +76,16 @@ IResearchLink::IResearchLink(
   arangodb::LogicalCollection* collection
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
+   _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
 }
 
 IResearchLink::~IResearchLink() {
+  if (_dropCollectionInDestructor) {
+    drop();
+  }
+
   unload(); // disassociate from view if it has not been done yet
 }
 
@@ -170,8 +175,7 @@ int IResearchLink::drop() {
 
   // if the collection is in the process of being removed then drop it from the view
   if (_collection->deleted()) {
-    auto result =
-      _view->updateLogicalProperties(emptyObjectSlice(), true, false); // revalidate all links
+    auto result = _view->updateProperties(emptyObjectSlice(), true, false); // revalidate all links
 
     if (!result.ok()) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
@@ -182,7 +186,8 @@ int IResearchLink::drop() {
     }
   }
 
-  // FIXME TODO remove link via update properties on view
+  _dropCollectionInDestructor = false; // will do drop now
+
   return _view->drop(_collection->id());
 }
 
@@ -231,9 +236,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
       // TODO FIXME find a better way to look up an iResearch View
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        auto* view = dynamic_cast<IResearchView*>(logicalView->getImplementation());
+        auto* view = dynamic_cast<IResearchView*>(logicalView.get());
       #else
-        auto* view = static_cast<IResearchView*>(logicalView->getImplementation());
+        auto* view = static_cast<IResearchView*>(logicalView.get());
       #endif
 
       if (!view) {
@@ -261,6 +266,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
+      _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
 
@@ -542,6 +548,7 @@ int IResearchLink::unload() {
     }
   }
 
+  _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 

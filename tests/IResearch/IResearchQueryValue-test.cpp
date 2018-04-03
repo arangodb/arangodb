@@ -251,7 +251,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
     REQUIRE((false == !logicalView));
 
     view = logicalView.get();
-    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view->getImplementation());
+    auto* impl = dynamic_cast<arangodb::iresearch::IResearchView*>(view);
     REQUIRE((false == !impl));
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(

@@ -134,7 +134,9 @@ class TransactionStateMock: public arangodb::TransactionState {
 
 class StorageEngineMock: public arangodb::StorageEngine {
  public:
+  static std::function<void()> before;
   static bool inRecoveryResult;
+  std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
   std::vector<std::unique_ptr<TRI_vocbase_t>> vocbases; // must allocate on heap because TRI_vocbase_t does not have a 'noexcept' move constructor
 
   StorageEngineMock();

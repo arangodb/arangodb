@@ -919,7 +919,7 @@ function executePlanForCollections(plannedCollections) {
 
                 // collection exists, now compare collection properties
                 let cmp = [ 'journalSize', 'waitForSync', 'doCompact',
-                  'indexBuckets' ];
+                  'indexBuckets', 'cacheEnabled' ];
 
                 let properties = cmp.reduce((obj, key) => {
                   if (localCollections[shardName].hasOwnProperty(key) &&

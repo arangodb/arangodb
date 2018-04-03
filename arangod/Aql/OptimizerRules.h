@@ -140,6 +140,9 @@ void distributeInClusterRuleSmartEdgeCollection(
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
 #endif
 
+/// @brief move collect to the DB servers in cluster
+void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                         OptimizerRule const*);
 

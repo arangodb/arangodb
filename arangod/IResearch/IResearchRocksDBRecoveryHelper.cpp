@@ -218,9 +218,9 @@ void dropCollectionFromAllViews(
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #else
-      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #endif
 
       if (!view) {
@@ -276,9 +276,9 @@ void dropCollectionFromView(
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #else
-    auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #endif
 
     if (!view) {

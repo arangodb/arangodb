@@ -160,7 +160,16 @@ if (USE_IRESEARCH)
     "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
   )
 
-  file(COPY "${IRESEARCH_ROOT}.build/" DESTINATION "${IRESEARCH_BUILD_DIR}" FILES_MATCHING PATTERN "*")
+  # cmake will seemingly randomly delete files from ${IRESEARCH_BUILD_DIR} during configuration
+  # so must copy required files only after the cmake configuration phase is complete, not via file(COPY ...)
+  # this command must _always_ be executed because the subsequent cmake configuration runs will once again delete files
+  add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
+    COMMAND ${CMAKE_COMMAND} -E copy_directory "${IRESEARCH_ROOT}.build/" "${IRESEARCH_BUILD_DIR}/"
+  )
+  add_custom_target("copy_iresearch.build" ALL
+    DEPENDS "${IRESEARCH_BUILD_DIR}/copy_iresearch.build"
+  )
+
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
   unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32

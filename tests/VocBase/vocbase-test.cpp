@@ -33,22 +33,30 @@
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
 
+#include <memory>
+
 namespace {
 
-std::unique_ptr<arangodb::ViewImplementation> makeTestView(
-    arangodb::LogicalView* view,
+std::unique_ptr<arangodb::LogicalView> makeTestView(
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     bool isNew
   ) {
-  struct Impl: public arangodb::ViewImplementation {
-    Impl(): ViewImplementation(nullptr, arangodb::velocypack::Slice::emptyObjectSlice()) {
+  struct Impl: public arangodb::LogicalView{
+    Impl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info)
+      : LogicalView(&vocbase, info) {
     }
-    virtual void drop() override {}
-    virtual void getPropertiesVPack(
-        arangodb::velocypack::Builder&, bool
+    virtual void drop() override {
+      deleted(true);
+    }
+    virtual void toVelocyPack(
+        arangodb::velocypack::Builder&, bool, bool
     ) const override {
     }
     virtual void open() override {}
+    virtual arangodb::Result rename(std::string&& newName, bool doSync) {
+      return {};
+    }
     virtual arangodb::Result updateProperties(
         arangodb::velocypack::Slice const&, bool, bool
     ) override {
@@ -61,7 +69,7 @@ std::unique_ptr<arangodb::ViewImplementation> makeTestView(
     }
   };
 
-  return std::unique_ptr<arangodb::ViewImplementation>(new Impl());
+  return std::make_unique<Impl>(vocbase, info);
 }
 
 }

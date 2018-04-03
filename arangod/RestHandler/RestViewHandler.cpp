@@ -124,7 +124,7 @@ void RestViewHandler::createView() {
     if (view != nullptr) {
       VPackBuilder props;
       props.openObject();
-      view->toVelocyPack(props);
+      view->toVelocyPack(props, true, false);
       props.close();
       generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
@@ -194,12 +194,14 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
-    auto result = view->updateProperties(body, partialUpdate,
-                                         true);  // TODO: not force sync?
+    auto const result = view->updateProperties(
+      body, partialUpdate, true
+    );  // TODO: not force sync?
+
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();
-      view->getImplementation()->getPropertiesVPack(updated, false);
+      view->toVelocyPack(updated, false, false);
       updated.close();
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
@@ -283,7 +285,7 @@ void RestViewHandler::getListOfViews() {
   for (std::shared_ptr<LogicalView> view : views) {
     if (view.get() != nullptr) {
       props.openObject();
-      view->toVelocyPack(props, true);
+      view->toVelocyPack(props, true, false);
       props.close();
     }
   }
@@ -297,7 +299,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props, true);
+    view->toVelocyPack(props, true, false);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
@@ -312,9 +314,9 @@ void RestViewHandler::getViewProperties(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->getImplementation()->getPropertiesVPack(props, false);
+    view->toVelocyPack(props, true, false);
     props.close();
-    generateResult(rest::ResponseCode::OK, props.slice());
+    generateResult(rest::ResponseCode::OK, props.slice().get("properties"));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
