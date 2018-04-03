@@ -537,7 +537,7 @@ order for AQL value types.
 
 @startDocuBlockInline aqlArraySorted_1
 @EXAMPLE_AQL{aqlArraySorted_1}
-RETURN SORTED( 8,4,2,10,6 )
+RETURN SORTED( [ 8,4,2,10,6 ] )
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArraySorted_1
 
