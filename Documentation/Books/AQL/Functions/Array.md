@@ -249,7 +249,7 @@ RETURN NTH( [ "foo", "bar", "baz" ], 3 )
 
 @startDocuBlockInline aqlArrayNth_3
 @EXAMPLE_AQL{aqlArrayNth_3}
-NTH( [ "foo", "bar", "baz" ], -1 )
+RETURN NTH( [ "foo", "bar", "baz" ], -1 )
 @END_EXAMPLE_AQL
 @endDocuBlock aqlArrayNth_3
 
