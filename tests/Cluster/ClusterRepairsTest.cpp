@@ -249,9 +249,6 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with different replicationFactors on leader and follower
 // TODO Add a test where distributeShardsLike is already renamed to
 // repairingDistributeShardsLike, but the replicationFactor differs
-// TODO Maybe add failure tests via TRI_AddFailurePointDebugging. Especially
-// if errors stay contained in their respective collection. Think about how to
-// trigger such errors only for a specific collection.
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
