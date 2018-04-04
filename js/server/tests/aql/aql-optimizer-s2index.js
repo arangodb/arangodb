@@ -103,20 +103,6 @@ function optimizerRuleTestSuite() {
 
   let locations;
 
-  // Test queries with index usage and without
-  function runQuery(query) {
-    var result1 = getQueryResults(query.string, query.bindVars || {}, false);
-    var result2 = getQueryResults(query.string, query.bindVars || {}, false,
-      { optimizer: { rules: ["-all"] } });
-    let expected = query.expected.slice().sort();
-    /*
-    result1.forEach(k => internal.print("Res: ", locations.document(k)));
-    expected.forEach(k => internal.print("Exp: ", locations.document(k)));//*/
-
-    assertEqual(expected, result1.sort(), query.string);
-    assertEqual(expected, result2.sort(), query.string);
-  }
-
   // GeoJSON test data. https://gist.github.com/aaronlidman/7894176?short_path=2b56a92
   // Mostly from the spec: http://geojson.org/geojson-spec.html.
   // stuff over Java island
@@ -502,6 +488,59 @@ function optimizerRuleTestSuite() {
       var result = AQL_EXPLAIN(query.string, query.bindVars);
       hasIndexNode(result, query);
       hasNoFilterNode(result, query);
+    },
+
+    testSortDistance: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            SORT GEO_DISTANCE([102, 0], x.geometry)
+            LIMIT 1
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoSortNode(result, query);
+    },
+
+    testSortContains: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            SORT GEO_CONTAINS(@poly, x.geometry)
+            LIMIT 1
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea1
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasSortNode(result, query);
+    },
+
+    testSortIntersects: function () {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            SORT GEO_INTERSECTS(@poly, x.geometry)
+            LIMIT 1
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly": rectEmea3
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasNoIndexNode(result, query);
+      hasSortNode(result, query);
     },
 
   }; // test dictionary (return)
