@@ -220,7 +220,10 @@ struct OptimizerRule {
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6
+    reduceExtractionToProjectionRule_pass10,
+    
+    // final removal of calculations that are redundant
+    removeUnnecessaryCalculationsRule_pass10,
   };
 
   std::string name;

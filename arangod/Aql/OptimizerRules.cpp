@@ -1349,6 +1349,10 @@ class arangodb::aql::RedundantCalculationsReplacer final
         for (auto& variable : node->_groupVariables) {
           variable.second = Variable::replace(variable.second, _replacements);
         }
+        for (auto& variable : node->_keepVariables) {
+          auto old = variable;
+          variable = Variable::replace(old, _replacements);
+        }
         for (auto& variable : node->_aggregateVariables) {
           variable.second.first =
               Variable::replace(variable.second.first, _replacements);
@@ -1369,6 +1373,14 @@ class arangodb::aql::RedundantCalculationsReplacer final
 
       case EN::SORT: {
         auto node = static_cast<SortNode*>(en);
+        for (auto& variable : node->_elements) {
+          variable.var = Variable::replace(variable.var, _replacements);
+        }
+        break;
+      }
+      
+      case EN::GATHER: {
+        auto node = static_cast<GatherNode*>(en);
         for (auto& variable : node->_elements) {
           variable.var = Variable::replace(variable.var, _replacements);
         }

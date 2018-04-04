@@ -321,6 +321,7 @@ class DistributeNode : public ExecutionNode {
 class GatherNode : public ExecutionNode {
   friend class ExecutionBlock;
   friend class GatherBlock;
+  friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with an id
  public:
