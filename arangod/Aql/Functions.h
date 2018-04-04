@@ -55,7 +55,7 @@ struct Functions {
 
     static AqlValue AddOrSubtractUnitFromTimestamp(arangodb::aql::Query* query,
                                                    tp_sys_clock_ms const& tp,
-                                                   double durationUnits,
+                                                   arangodb::velocypack::Slice durationUnits,
                                                    arangodb::velocypack::Slice durationType,
                                                    bool isSubtract);
 
@@ -144,6 +144,8 @@ struct Functions {
                              VPackFunctionParameters const&);
    static AqlValue FindLast(arangodb::aql::Query*, transaction::Methods*,
                              VPackFunctionParameters const&);
+  static AqlValue Reverse(arangodb::aql::Query*, transaction::Methods*,
+                          VPackFunctionParameters const&);
    static AqlValue First(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Last(arangodb::aql::Query*, transaction::Methods*,
@@ -167,6 +169,9 @@ struct Functions {
                               transaction::Methods*,
                               VPackFunctionParameters const&);
    static AqlValue Substring(arangodb::aql::Query*,
+                              transaction::Methods*,
+                              VPackFunctionParameters const&);
+   static AqlValue Substitute(arangodb::aql::Query*,
                               transaction::Methods*,
                               VPackFunctionParameters const&);
    static AqlValue Left(arangodb::aql::Query*,

@@ -158,9 +158,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // dig out vocbase from context and query from ID, handle errors
   bool findQuery(std::string const& idString, Query*& query);
 
-  // name of the queue
-  static std::string const QUEUE_NAME;
-
   // our query registry
   QueryRegistry* _queryRegistry;
 

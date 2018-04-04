@@ -52,7 +52,6 @@
 #include "MMFiles/MMFilesTransactionManager.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
-#include "MMFiles/MMFilesView.h"
 #include "MMFiles/MMFilesWalAccess.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "MMFiles/mmfiles-replication-dump.h"
@@ -60,7 +59,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -140,6 +138,19 @@ struct DatabaseIdStringComparator {
            getNumericFilenamePartFromDatabase(rhs);
   }
 };
+
+/// @brief reads 'path' propety from a specified
+/// object slice and return value as string
+/// @returns empty string in case if something gone wrong
+std::string readPath(VPackSlice info) {
+  if (info.isObject()) {
+    VPackSlice path = info.get("path");
+    if (path.isString()) {
+      return path.copyString();
+    }
+  }
+  return "";
+}
 }
 
 std::string const MMFilesEngine::EngineName("mmfiles");
@@ -287,13 +298,6 @@ PhysicalCollection* MMFilesEngine::createPhysicalCollection(
     LogicalCollection* collection, VPackSlice const& info) {
   TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
   return new MMFilesCollection(collection, info);
-}
-
-// create storage-engine specific view
-PhysicalView* MMFilesEngine::createPhysicalView(LogicalView* view,
-                                                VPackSlice const& info) {
-  TRI_ASSERT(EngineSelectorFeature::ENGINE == this);
-  return new MMFilesView(view, info);
 }
 
 void MMFilesEngine::recoveryDone(TRI_vocbase_t* vocbase) {
@@ -1327,6 +1331,15 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   saveViewInfo(vocbase, id, parameters, doSync);
 }
 
+void MMFilesEngine::getViewProperties(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const* view,
+    VPackBuilder& result
+) {
+  TRI_ASSERT(result.isOpenObject());
+  result.add("path", VPackValue(viewDirectory(vocbase->id(), view->id())));
+}
+
 arangodb::Result MMFilesEngine::persistView(TRI_vocbase_t* vocbase,
                                             arangodb::LogicalView const* view) {
   TRI_ASSERT(view != nullptr);
@@ -1373,8 +1386,13 @@ arangodb::Result MMFilesEngine::persistView(TRI_vocbase_t* vocbase,
   return {res, TRI_errno_string(res)};
 }
 
-arangodb::Result MMFilesEngine::dropView(TRI_vocbase_t* vocbase,
-                                         arangodb::LogicalView* view) {
+arangodb::Result MMFilesEngine::dropView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) {
+  auto* db = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+  TRI_ASSERT(db);
+  saveViewInfo(vocbase, view->id(), view, db->forceSyncProperties());
+
   if (inRecovery()) {
     // nothing to do here
     return {};
@@ -1411,93 +1429,19 @@ arangodb::Result MMFilesEngine::dropView(TRI_vocbase_t* vocbase,
   return {res, TRI_errno_string(res)};
 }
 
-void MMFilesEngine::destroyView(TRI_vocbase_t* vocbase,
-                                arangodb::LogicalView* view) {
-  std::string const name(view->name());
-  auto physical = static_cast<MMFilesView*>(view->getPhysical());
-  TRI_ASSERT(physical != nullptr);
+void MMFilesEngine::destroyView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) noexcept {
+  try {
+    std::string const directory = viewDirectory(vocbase->id(), view->id());
 
-  // rename view directory
-  if (physical->path().empty()) {
-    return;
-  }
-
-  std::string const viewPath = physical->path();
-
-#ifdef _WIN32
-  size_t pos = viewPath.find_last_of('\\');
-#else
-  size_t pos = viewPath.find_last_of('/');
-#endif
-
-  bool invalid = false;
-
-  if (pos == std::string::npos || pos + 1 >= viewPath.size()) {
-    invalid = true;
-  }
-
-  std::string path;
-  std::string relName;
-  if (!invalid) {
-    // extract path part
-    if (pos > 0) {
-      path = viewPath.substr(0, pos);
+    if (directory.empty()) {
+      return;
     }
 
-    // extract relative filename
-    relName = viewPath.substr(pos + 1);
-
-    if (!StringUtils::isPrefix(relName, "view-") ||
-        StringUtils::isSuffix(relName, ".tmp")) {
-      invalid = true;
-    }
-  }
-
-  if (invalid) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot rename dropped view '"
-                                            << name << "': unknown path '"
-                                            << physical->path() << "'";
-  } else {
-    // prefix the collection name with "deleted-"
-
-    std::string const newFilename = FileUtils::buildFilename(
-        path, "deleted-" + relName.substr(std::string("view-").size()));
-
-    // check if target directory already exists
-    if (TRI_IsDirectory(newFilename.c_str())) {
-      // remove existing target directory
-      TRI_RemoveDirectory(newFilename.c_str());
-    }
-
-    // perform the rename
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-        << "renaming view directory from '" << physical->path() << "' to '"
-        << newFilename << "'";
-
-    std::string systemError;
-    int res = TRI_RenameFile(physical->path().c_str(), newFilename.c_str(),
-                             nullptr, &systemError);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (!systemError.empty()) {
-        systemError = ", error details: " + systemError;
-      }
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "cannot rename directory of dropped view '" << name << "' from '"
-          << physical->path() << "' to '" << newFilename
-          << "': " << TRI_errno_string(res) << systemError;
-    } else {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "wiping dropped view '"
-                                                << name << "' from disk";
-
-      res = TRI_RemoveDirectory(newFilename.c_str());
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "cannot wipe dropped view '" << name
-            << "' from disk: " << TRI_errno_string(res);
-      }
-    }
+    TRI_RemoveDirectory(directory.c_str());
+  } catch (...) {
+    // must ignore errors here as we are noexcpet
   }
 }
 
@@ -1532,8 +1476,35 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // fail.
 // the WAL entry for the propery change will be written *after* the call
 // to "changeView" returns
-void MMFilesEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const* view, bool doSync) {
+void MMFilesEngine::changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const* view,
+    bool doSync
+) {
+  // FIXME make noexcept and return Result???
+
+  if (!inRecovery()) {
+    VPackBuilder infoBuilder;
+    infoBuilder.openObject();
+    view->toVelocyPack(infoBuilder, true, true);
+    infoBuilder.close();
+
+    MMFilesViewMarker marker(
+      TRI_DF_MARKER_VPACK_CHANGE_VIEW, vocbase->id(), id, infoBuilder.slice()
+    );
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          slotInfo.errorCode,
+          "could not save view change marker in log"
+       );
+    }
+  }
+
   saveViewInfo(vocbase, id, view, doSync);
 }
 
@@ -2068,8 +2039,9 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
                                                    std::string const& name,
                                                    bool wasCleanShutdown,
                                                    bool isUpgrade) {
-  auto vocbase =
-      std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, id, name);
+  auto vocbase = std::make_unique<TRI_vocbase_t>(
+    TRI_VOCBASE_TYPE_NORMAL, id, name
+  );
 
   // scan the database path for views
   try {
@@ -2083,43 +2055,34 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
     VPackSlice slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    ViewTypesFeature* viewTypesFeature =
-        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-            "ViewTypes");
-
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
       LOG_TOPIC(TRACE, Logger::FIXME) << "processing view: " << it.toJson();
 
-      arangodb::velocypack::StringRef type(it.get("type"));
-      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-      auto& creator = viewTypesFeature->factory(dataSourceType);
+      TRI_ASSERT(!it.get("id").isNone());
 
-      if (!creator) {
+      auto const viewPath = readPath(it);
+
+      if (!viewPath.empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          "no handler found for view type"
+          "view path cannot be empty"
         );
       }
 
-      TRI_ASSERT(!it.get("id").isNone());
+      auto const view = LogicalView::create(*vocbase, it, false);
 
-      std::shared_ptr<LogicalView> view =
-          std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      if (!view) {
+        auto const message = "failed to instantiate view '" + name + "'";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+      }
 
       StorageEngine::registerView(vocbase.get(), view);
 
-      auto physical = static_cast<MMFilesView*>(view->getPhysical());
-      TRI_ASSERT(physical != nullptr);
+      registerViewPath(vocbase->id(), view->id(), viewPath);
 
-      registerViewPath(vocbase->id(), view->id(), physical->path());
-
-      view->spawnImplementation(creator, it, false);
-
-      if (view->getImplementation() == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to spawn view implementation");
-      }
-      view->getImplementation()->open();
+      view->open();
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database views: "

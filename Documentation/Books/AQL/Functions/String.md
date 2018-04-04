@@ -574,6 +574,10 @@ Alternatively, *search* and *replace* can be specified in a combined value.
 - **value** (string): a string
 - **mapping** (object): a lookup map with search strings as keys and replacement
   strings as values. Empty strings and *null* as values remove matches.
+  Please note that no sequence of search strings can be warrantied by this; 
+  Means, if you have overlapping search results, one time the first may win, 
+  another time the second. If you need to ensure the precedence of the sequence
+  choose the array based invocation method.
 - **limit** (number, *optional*): cap the number of replacements to this value
 - returns **substitutedString** (string): a new string with matches replaced
   (or removed)

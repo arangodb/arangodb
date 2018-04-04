@@ -279,9 +279,9 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = dynamic_cast<IResearchView*>(view().get());
 #else
-  auto* impl = static_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = static_cast<IResearchView*>(view().get());
 #endif
 
   if (!impl) {

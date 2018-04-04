@@ -33,7 +33,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -436,7 +435,7 @@ static void JS_PropertiesViewVocbase(
 
   VPackBuilder vpackProperties;
   vpackProperties.openObject();
-  view->toVelocyPack(vpackProperties, true);
+  view->toVelocyPack(vpackProperties, true, false);
   vpackProperties.close();
 
   // return the current parameter set
