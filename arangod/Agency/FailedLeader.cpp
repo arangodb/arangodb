@@ -79,7 +79,7 @@ void FailedLeader::rollback() {
   std::string planPath
     = planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   auto const& planned = _snapshot(planPath).slice();
-std:;shared_ptr<Builder> payload = nullptr;
+  std::shared_ptr<Builder> payload = nullptr;
 
   if (_status == PENDING) { // Only payload if pending. Otherwise just fail.
     VPackBuilder rb;
