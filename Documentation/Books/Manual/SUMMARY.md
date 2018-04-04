@@ -20,7 +20,7 @@
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
-  * [Kubernetes](GettingStarted/Kubernetes/README.md)	  
+  * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [ArangoDB Programs](Programs/README.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
