@@ -30,10 +30,6 @@
 
 #include <Windows.h>
 
-#ifdef DIFFERENCE
-#undef DIFFERENCE
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief undefine this so anonymous memory mapping is disabled
 ///
