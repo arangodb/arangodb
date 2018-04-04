@@ -356,7 +356,9 @@ SECTION("if the follower is healthy again we fail the job") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE_FALSE(failedFollower.start());
+  Verify(Method(mockAgent, transact));
+  Verify(Method(mockAgent, write));
 }
 
 SECTION("if there is no healthy free server when trying to start just wait") {
@@ -404,7 +406,7 @@ SECTION("if there is no healthy free server when trying to start just wait") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE_FALSE(failedFollower.start());
 }
 
 SECTION("abort any moveShard job blocking the shard and start") {
@@ -493,7 +495,7 @@ SECTION("abort any moveShard job blocking the shard and start") {
     JOB_STATUS::TODO,
     jobId
   );
-  failedFollower.start();
+  REQUIRE(failedFollower.start());
   Verify(Method(mockAgent, transact));
   Verify(Method(mockAgent, write));
 }

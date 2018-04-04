@@ -1,0 +1,50 @@
+R"=(
+{
+	"arango": {
+		"Current": {
+			"Version": 1,
+			"DBServers": {},
+			"Singles": {
+				"SNGL-follower1": "none",
+				"SNGL-follower2": "none",
+				"SNGL-follower3": "none",
+				"SNGL-leader": "none"
+			}
+		},
+		"Plan": {
+			"Version": 1,
+			"DBServers": {},
+			"Singles": {
+				"SNGL-follower1": "none",
+				"SNGL-follower2": "none",
+				"SNGL-follower3": "none",
+				"SNGL-leader": "none"
+			}
+		},
+		"Supervision": {
+			"DBServers": {},
+			"Health": {
+				"SNGL-follower1": {
+					"Status": "GOOD"
+				},
+				"SNGL-follower2": {
+					"Status": "GOOD"
+				},
+				"SNGL-follower3": {
+					"Status": "GOOD"
+				},
+				"SNGL-leader": {
+					"Status": "FAILED"
+				}
+			},
+			"Shards": {}
+		},
+		"Target": {
+      "FailedServers": {},
+			"Failed": {},
+			"Finished": {},
+			"ToDo": {}
+		}
+	}
+}
+)="

@@ -327,18 +327,19 @@ SECTION("if the leader is healthy again we fail the job") {
     auto writes = q->slice()[0][0]; \
     REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
     CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
-
     return fakeWriteResult;
   });
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   AgentInterface &agent = mockAgent.get();
   auto failedLeader = FailedLeader(
-    agency("arango"),
+    agency(PREFIX),
     &agent,
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  REQUIRE_FALSE(failedLeader.start());
+  Verify(Method(mockAgent, transact));
+  Verify(Method(mockAgent, write));
 }
 
 SECTION("the job must not be started if there is no server that is in sync for every shard") {
@@ -382,7 +383,7 @@ SECTION("the job must not be started if there is no server that is in sync for e
     JOB_STATUS::TODO,
     jobId
   );
-  failedLeader.start();
+  REQUIRE_FALSE(failedLeader.start());
 }
 
 SECTION("the job must not be started if there if one of the linked shards (distributeShardsLike) is not in sync") {

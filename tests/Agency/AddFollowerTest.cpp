@@ -149,7 +149,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
     auto  addFollower = AddFollower(
-      baseStructure, &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD);
+      baseStructure(PREFIX), &agent, jobId, "unittest", DATABASE, COLLECTION, SHARD);
     
     addFollower.create();
     

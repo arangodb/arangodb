@@ -1,0 +1,20 @@
+R"=(
+{
+  "arango": {
+    "AsyncReplication": {
+      "SNGL-follower1": {
+        "lastTick": "72",
+        "leader": "SNGL-leader"
+      },
+      "SNGL-follower2": {
+        "lastTick": "79",
+        "leader": "SNGL-leader"
+      },
+      "SNGL-follower3": {
+        "lastTick": "120",
+        "leader": "SNGL-leader"
+      }
+    }
+  }
+}
+)="

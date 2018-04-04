@@ -324,7 +324,7 @@ bool FailedLeader::start() {
     // Still healthy _to?
     slice = result.get(
       std::vector<std::string>(
-        {agencyPrefix, "Supervision", "Health", _to, "Status"}));
+        {"/" + agencyPrefix, "Supervision", "Health", _to, "Status"}));
     if (slice.isString() && slice.copyString() != "GOOD") {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
         << "Will not failover from " << _from << " to " << _to
