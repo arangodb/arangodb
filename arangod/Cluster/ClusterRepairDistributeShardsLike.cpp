@@ -512,12 +512,14 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     ShardID protoId;
 
     TRI_IF_FAILURE(
-      "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
-      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-      if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_repairDistributeShardsLike")) {
+        "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+        "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+      if (StringUtils::isSuffix(collection.name,
+                                "---fail_inconsistent_attributes_in_"
+                                "repairDistributeShardsLike")) {
         repairOperationsByCollection.emplace(
-          collection.id,
-          Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
+            collection.id,
+            Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
         continue;
       }
     }
@@ -631,9 +633,10 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
   }
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
-    if (StringUtils::isSuffix(collection.name, "---fail_mismatching_followers")) {
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
+    if (StringUtils::isSuffix(collection.name,
+                              "---fail_mismatching_followers")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
     }
   }
@@ -680,9 +683,11 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-    if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
+      "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+    if (StringUtils::isSuffix(
+            collection.name,
+            "---fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
     }
   }
@@ -721,9 +726,11 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-    if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_createFinishRepairsOperation")) {
+      "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+    if (StringUtils::isSuffix(collection.name,
+                              "---fail_inconsistent_attributes_in_"
+                              "createFinishRepairsOperation")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
     }
   }
@@ -803,11 +810,39 @@ DistributeShardsLikeRepairer::fixAllShardsOfCollection(
       LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "fixing shard " << collection.fullName() << "/" << shardId
-          << " regarding its prototype shard " << proto.fullName() << "/" << protoShardId;
-      // TODO Do we need to check that dbServers and protoDbServers are not
-      // empty?
-      // TODO Do we need to check that dbServers and protoDbServers are of equal
-      // size?
+          << " regarding its prototype shard " << proto.fullName() << "/"
+          << protoShardId;
+
+      TRI_IF_FAILURE(
+          "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+          "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS") {
+        if (StringUtils::isSuffix(collection.name, "---fail_no_proto_dbservers")) {
+          return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
+        }
+      }
+      if (protoDbServers.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+            << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+            << "prototype shard " << proto.fullName() << "/" << protoShardId
+            << " of shard " << collection.fullName() << "/" << shardId
+            << " has no DBServers!";
+        return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
+      }
+      TRI_IF_FAILURE(
+        "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+        "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS") {
+        if (StringUtils::isSuffix(collection.name, "---fail_no_dbservers")) {
+          return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
+        }
+      }
+      if (dbServers.empty()) {
+        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+            << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
+            << " shard " << collection.fullName() << "/" << shardId
+            << " has no DBServers!";
+        return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
+      }
+
       auto newRepairOperationsResult = fixShard(availableDbServers, collection,
                                                 proto, shardId, protoShardId);
       if (newRepairOperationsResult.fail()) {

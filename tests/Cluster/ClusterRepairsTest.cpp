@@ -374,6 +374,9 @@ SCENARIO("Broken distributeShardsLike collections",
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
           "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
+      TRI_AddFailurePointDebugging(
+          "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
+          "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS");
       try {
         checkAgainstExpectedOperations(
           planCollections,

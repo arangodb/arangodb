@@ -71,6 +71,26 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
         ]
       }
     },
+    "10000008": {
+      "name": "follower10000008of10000002---fail_no_dbservers",
+      "replicationFactor": 1,
+      "distributeShardsLike": "10000002",
+      "shards": {
+        "s81": [
+          "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
+        ]
+      }
+    },
+    "10000009": {
+      "name": "follower10000009of10000002---fail_no_proto_dbservers",
+      "replicationFactor": 1,
+      "distributeShardsLike": "10000002",
+      "shards": {
+        "s91": [
+          "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"
+        ]
+      }
+    },
     "10000098": {
       "name": "prototype10000098",
       "replicationFactor": 1,
@@ -164,6 +184,14 @@ ResultT<std::vector<RepairOperation>>::error(
 {"10000007",
 ResultT<std::vector<RepairOperation>>::error(
   TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES)
+},
+{"10000008",
+Result(
+  TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS)
+},
+{"10000009",
+Result(
+  TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS)
 },
 {"10000099",
 {{{BeginRepairsOperation{
