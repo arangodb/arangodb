@@ -57,6 +57,7 @@
 #include <windows.h>
 #undef ERROR
 #undef DELETE
+#undef DIFFERENCE
 #define STDIN_FILENO 0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
