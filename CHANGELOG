@@ -1,6 +1,9 @@
 v3.3.6 (2018-XX-XX)
 -------------------
 
+* remove post-sort from GatherNode in cluster AQL queries that do use indexes
+  but that do not require a sorted result
+
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
 
