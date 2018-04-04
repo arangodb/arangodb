@@ -22,6 +22,8 @@
 
 #include "ClusterRepairDistributeShardsLike.h"
 
+#include <lib/Basics/StringUtils.h>
+
 #include <boost/range/combine.hpp>
 
 using namespace arangodb;
@@ -29,18 +31,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-bool strHasSuffix(std::string const& haystackStr, char const* needle) {
-  char const* haystack = haystackStr.c_str();
-  size_t needleLength = strlen(needle);
-  if (needleLength > haystackStr.length()) {
-    return false;
-  }
-
-  char const* suffix = haystack + (haystackStr.length() - needleLength);
-  return 0 == strcmp(suffix, needle);
-}
-#endif // ARANGODB_ENABLE_FAILURE_TESTS
 
 bool VersionSort::operator()(std::string const& a, std::string const& b) const {
   std::vector<CharOrInt> va = splitVersion(a);
@@ -524,7 +514,7 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
     TRI_IF_FAILURE(
       "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
       "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-      if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_repairDistributeShardsLike")) {
+      if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_repairDistributeShardsLike")) {
         repairOperationsByCollection.emplace(
           collection.id,
           Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
@@ -629,7 +619,7 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
   TRI_IF_FAILURE(
       "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
       "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS") {
-    if (strHasSuffix(collection.name, "|fail_mismatching_leaders")) {
+    if (StringUtils::isSuffix(collection.name, "---fail_mismatching_leaders")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
     }
   }
@@ -643,7 +633,7 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
   TRI_IF_FAILURE(
     "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
     "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
-    if (strHasSuffix(collection.name, "|fail_mismatching_followers")) {
+    if (StringUtils::isSuffix(collection.name, "---fail_mismatching_followers")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS);
     }
   }
@@ -692,7 +682,7 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
   TRI_IF_FAILURE(
     "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
     "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-    if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
+    if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
     }
   }
@@ -733,7 +723,7 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
   TRI_IF_FAILURE(
     "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
     "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
-    if (strHasSuffix(collection.name, "|fail_inconsistent_attributes_in_createFinishRepairsOperation")) {
+    if (StringUtils::isSuffix(collection.name, "---fail_inconsistent_attributes_in_createFinishRepairsOperation")) {
       return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
     }
   }

@@ -75,6 +75,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   Result executeRepairOperations(
       DatabaseID const& databaseId, CollectionID const& collectionId,
+      std::string const& dbAndCollectionName,
       std::list<cluster_repairs::RepairOperation> const& list);
 
   template <std::size_t N>
@@ -91,6 +92,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   bool repairCollection(
       DatabaseID const& databaseId, CollectionID const& collectionId,
+      std::string const& dbAndCollectionName,
       std::list<cluster_repairs::RepairOperation> const& repairOperations,
       VPackBuilder& response);
 

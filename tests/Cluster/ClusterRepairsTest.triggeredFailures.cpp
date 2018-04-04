@@ -22,7 +22,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
       }
     },
     "10000003": {
-      "name": "follower10000003of10000002|fail_mismatching_leaders",
+      "name": "follower10000003of10000002---fail_mismatching_leaders",
       "replicationFactor": 1,
       "distributeShardsLike": "10000002",
       "shards": {
@@ -32,7 +32,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
       }
     },
     "10000004": {
-      "name": "follower10000004of10000002|fail_mismatching_followers",
+      "name": "follower10000004of10000002---fail_mismatching_followers",
       "replicationFactor": 1,
       "distributeShardsLike": "10000002",
       "shards": {
@@ -42,7 +42,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
       }
     },
     "10000005": {
-      "name": "follower10000005of10000002|fail_inconsistent_attributes_in_repairDistributeShardsLike",
+      "name": "follower10000005of10000002---fail_inconsistent_attributes_in_repairDistributeShardsLike",
       "replicationFactor": 1,
       "distributeShardsLike": "10000002",
       "shards": {
@@ -52,7 +52,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
       }
     },
     "10000006": {
-      "name": "follower10000006of10000002|fail_inconsistent_attributes_in_createBeginRepairsOperation",
+      "name": "follower10000006of10000002---fail_inconsistent_attributes_in_createBeginRepairsOperation",
       "replicationFactor": 1,
       "distributeShardsLike": "10000002",
       "shards": {
@@ -62,7 +62,7 @@ std::shared_ptr<VPackBuffer<uint8_t>> planCollections = R"=(
       }
     },
     "10000007": {
-      "name": "follower10000007of10000002|fail_inconsistent_attributes_in_createFinishRepairsOperation",
+      "name": "follower10000007of10000002---fail_inconsistent_attributes_in_createFinishRepairsOperation",
       "replicationFactor": 1,
       "distributeShardsLike": "10000002",
       "shards": {

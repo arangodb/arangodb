@@ -216,7 +216,7 @@ bool RestRepairHandler::repairAllCollections(
 
     bool success;
     if (repairOperationsResult.ok()) {
-      success = this->repairCollection(databaseId, collectionId,
+      success = this->repairCollection(databaseId, collectionId, name,
                                        repairOperationsResult.get(), response);
     } else {
       response.add(StaticStrings::ErrorMessage,
@@ -236,6 +236,7 @@ bool RestRepairHandler::repairAllCollections(
 
 bool RestRepairHandler::repairCollection(
     DatabaseID const& databaseId, CollectionID const& collectionId,
+    std::string const& dbAndCollectionName,
     std::list<RepairOperation> const& repairOperations,
     VPackBuilder& response) {
   bool success = true;
@@ -252,7 +253,7 @@ bool RestRepairHandler::repairCollection(
 
   if (!pretendOnly()) {
     Result result =
-        executeRepairOperations(databaseId, collectionId, repairOperations);
+        executeRepairOperations(databaseId, collectionId, dbAndCollectionName, repairOperations);
     if (result.fail()) {
       success = false;
       response.add(StaticStrings::ErrorMessage,
@@ -313,6 +314,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
 
 Result RestRepairHandler::executeRepairOperations(
     DatabaseID const& databaseId, CollectionID const& collectionId,
+    std::string const& dbAndCollectionName,
     std::list<RepairOperation> const& repairOperations) {
   AgencyComm comm;
 
@@ -343,6 +345,14 @@ Result RestRepairHandler::executeRepairOperations(
           << "RestRepairHandler::executeRepairOperations: " << errMsg.str();
 
       return Result(TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, errMsg.str());
+    }
+
+    TRI_IF_FAILURE("RestRepairHandler::executeRepairOperations") {
+      std::string failOnSuffix { "---fail_on_operation_nr-" };
+      failOnSuffix.append(std::to_string(opNum));
+      if (StringUtils::isSuffix(dbAndCollectionName, failOnSuffix)) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
     }
 
     // If the transaction posted a job, we wait for it to finish.

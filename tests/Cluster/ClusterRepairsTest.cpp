@@ -356,13 +356,15 @@ SCENARIO("Broken distributeShardsLike collections",
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     GIVEN("Collections with triggered failures") {
+      // NOTE: Some of the collection names used in in the following file would
+      // usually be invalid because they are too long.
 #include "ClusterRepairsTest.triggeredFailures.cpp"
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
           "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS");
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS"); // fail_mismatching_followers
+          "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS");
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
           "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
@@ -372,9 +374,17 @@ SCENARIO("Broken distributeShardsLike collections",
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
           "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES");
-      checkAgainstExpectedOperations(planCollections,
-                                     supervisionHealth2Healthy0Bad,
-                                     expectedResultsWithTriggeredFailures);
+      try {
+        checkAgainstExpectedOperations(
+          planCollections,
+          supervisionHealth2Healthy0Bad,
+          expectedResultsWithTriggeredFailures
+        );
+        TRI_ClearFailurePointsDebugging();
+      } catch (...) {
+        TRI_ClearFailurePointsDebugging();
+        throw;
+      }
     }
 #endif
 
