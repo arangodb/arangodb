@@ -24,6 +24,7 @@ arangosh&gt; stmt.explain({ <span class="hljs-attr">maxNumberOfPlans</span>: <sp
           <span class="hljs-string">"id"</span> : <span class="hljs-number">0</span>, 
           <span class="hljs-string">"name"</span> : <span class="hljs-string">"i"</span> 
         }, 
+        <span class="hljs-string">"producesResult"</span> : <span class="hljs-literal">true</span>, 
         <span class="hljs-string">"indexes"</span> : [ 
           { 
             <span class="hljs-string">"id"</span> : <span class="hljs-string">"7277"</span>, 
