@@ -19,7 +19,7 @@
   * [ArangoDB Starter](GettingStarted/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
   * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
-* [ArangoDB Programs](Programs/README.md)
+* [Programs & Tools](Programs/README.md)
   * [ArangoDB server](Programs/Arangod.md)
   * [Web Interface](Programs/WebInterface/README.md)
     * [Dashboard](Programs/WebInterface/Dashboard.md)
@@ -53,9 +53,9 @@
   * [Arangoexport](Programs/Arangoexport/README.md)
     * [Examples](Programs/Arangoexport/Examples.md)
     * [Options](Programs/Arangoexport/Options.md)
-  * [Arangobench](Troubleshooting/Arangobench/README.md)
-    * [Examples](Troubleshooting/Arangobench/Examples.md)
-    * [Options](Troubleshooting/Arangobench/Options.md)
+  * [Arangobench](Programs/Arangobench/README.md)
+    * [Examples](Programs/Arangobench/Examples.md)
+    * [Options](Programs/Arangobench/Options.md)
   * [Datafile Debugger](Programs/DatafileDebugger.md)
 
 ## CORE TOPICS	
@@ -63,10 +63,10 @@
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
 <!--
-  * [Multi-model]()
-    * [Key-value]()
-    * [Document]()
-    * [Graph]()
+  * [Multi-model]
+    * [Key-value]
+    * [Document]
+    * [Graph]
 -->
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)

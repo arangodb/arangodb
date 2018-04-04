@@ -57,12 +57,12 @@ CLIENT options:
 Database Wrappers
 -----------------
 
-The [`db` object](../Appendix/References/DBObject.md) is available in *arangosh*
-as well as on *arangod* i.e. if you're using [Foxx](../Foxx/README.md). While its
+The [`db` object](../../Appendix/References/DBObject.md) is available in *arangosh*
+as well as on *arangod* i.e. if you're using [Foxx](../../Foxx/README.md). While its
 interface is persistant between the *arangosh* and the *arangod* implementations,
 its underpinning is not. The *arangod* implementation are JavaScript wrappers
 around ArangoDB's native C++ implementation, whereas the *arangosh* implementation
-wraps HTTP accesses to ArangoDB's [RESTfull API](../../HTTP/index.html).
+wraps HTTP accesses to ArangoDB's [RESTfull API](../../../HTTP/index.html).
 
 So while this code may produce similar results when executed in *arangosh* and
 *arangod*, the cpu usage and time required will be really different:

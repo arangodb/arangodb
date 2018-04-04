@@ -1,7 +1,7 @@
 The "db" Object
 ===============
 
-The `db` object is available in [arangosh](../../GettingStarted/Arangosh.md) by
+The `db` object is available in [arangosh](../../Programs/Arangosh/README.md) by
 default, and can also be imported and used in Foxx services.
 
 *db.name* returns a [collection object](CollectionObject.md) for the collection *name*.

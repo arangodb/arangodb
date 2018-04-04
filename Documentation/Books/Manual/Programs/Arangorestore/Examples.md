@@ -1,7 +1,7 @@
 Arangorestore
 =============
 
-To reload data from a dump previously created with [arangodump](Arangodump.md),
+To reload data from a dump previously created with [arangodump](../Arangodump/README.md),
 ArangoDB provides the _arangorestore_ tool.
 
 Please note that arangorestore
@@ -52,7 +52,7 @@ will abort instantly.
 The `--force-same-database` option is set to `false` by default to ensure backwards-compatibility.
 
 Here's an example of reloading data to a non-standard endpoint, using a dedicated
-[database name](../Appendix/Glossary.md#database-name):
+[database name](../../Appendix/Glossary.md#database-name):
 
     unix> arangorestore --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --input-directory "dump"
 
@@ -113,13 +113,13 @@ It can be specified multiple times if required:
     unix> arangorestore --collection myusers --collection myvalues --input-directory "dump"
 
 Collections will be processed by in alphabetical order by _arangorestore_, with all document
-collections being processed before all [edge collection](../Appendix/Glossary.md#edge-collection)s. This is to ensure that reloading
+collections being processed before all [edge collection](../../Appendix/Glossary.md#edge-collection)s. This is to ensure that reloading
 data into edge collections will have the document collections linked in edges (*_from* and
 *_to* attributes) loaded.
 
 ### Encryption
 
-See [arangodump](Arangodump.md) for details.
+See [arangodump](../Arangodump/README.md) for details.
 
 ### Restoring Revision Ids and Collection Ids
  
@@ -198,7 +198,7 @@ follows:
 
 Of course you can restore data into a password protected ArangoDB as well.
 However this requires certain user rights for the user used in the restore process.
-The rights are described in detail in the [Managing Users](ManagingUsers/README.md) chapter.
+The rights are described in detail in the [Managing Users](../../Administration/ManagingUsers/README.md) chapter.
 For restore this short overview is sufficient:
 
 * When importing into an existing database, the given user needs `Administrate` access on this database.

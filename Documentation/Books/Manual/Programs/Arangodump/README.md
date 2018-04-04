@@ -2,7 +2,7 @@ Arangodump
 ==========
 
 Arangodump is a command-line client tool to create backups of the data and
-structures stored in [ArangoDB servers](../Arangod/README.md).
+structures stored in [ArangoDB servers](../Arangod.md).
 
 Dumps are meant to be restored with [Arangorestore](../Arangorestore/README.md).
 

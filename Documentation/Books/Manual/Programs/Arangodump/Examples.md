@@ -28,7 +28,7 @@ or use authentication, you can use the following command-line options:
 * *--server.authentication <bool>*: whether or not to use authentication
 
 Here's an example of dumping data from a non-standard endpoint, using a dedicated
-[database name](../Appendix/Glossary.md#database-name):
+[database name](../../Appendix/Glossary.md#database-name):
 
     unix> arangodump --server.endpoint tcp://192.168.173.13:8531 --server.username backup --server.database mydb --output-directory "dump"
 
@@ -107,7 +107,7 @@ prototype collection along:
     
     Processed 2 collection(s), wrote 81920 byte(s) into datafiles, sent 1 batch(es)
 
-Or override that behaviour to be able to dump the collection
+Or override that behavior to be able to dump the collection
 individually.
 
     unix> arangodump --collection B clonedCollection --output-directory "dump" --ignore-distribute-shards-like-errors
@@ -115,7 +115,7 @@ individually.
     Processed 1 collection(s), wrote 34217 byte(s) into datafiles, sent 1 batch(es)
 
 No that in consequence, restoring such a collection without its
-prototype is affected. [arangorestore](Arangorestore.md)
+prototype is affected. [arangorestore](../Arangorestore/README.md)
 
 
 Encryption
