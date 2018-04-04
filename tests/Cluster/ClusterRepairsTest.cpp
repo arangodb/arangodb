@@ -242,8 +242,6 @@ void checkAgainstExpectedOperations(
   }
 }
 
-// TODO Add a test with a smart collection (i.e. with {"isSmart": true,
-// "shards": []})
 // TODO Add a test with a deleted collection
 
 SCENARIO("Broken distributeShardsLike collections",
@@ -363,6 +361,14 @@ SCENARIO("Broken distributeShardsLike collections",
       checkAgainstExpectedOperations(
           planCollections, supervisionHealth3Healthy0Bad,
           expectedResultsWithUnequalReplicationFactor);
+    }
+
+    GIVEN(
+        "A smart graph with some broken collections") {
+#include "ClusterRepairsTest.smartCollections.cpp"
+      checkAgainstExpectedOperations(
+          planCollections, supervisionHealth3Healthy0Bad,
+        expectedResultsWithSmartGraph);
     }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
