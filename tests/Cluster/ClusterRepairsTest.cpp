@@ -247,8 +247,6 @@ void checkAgainstExpectedOperations(
 // "shards": []})
 // TODO Add a test with a deleted collection
 // TODO Add a test with different replicationFactors on leader and follower
-// TODO Add a test where distributeShardsLike is already renamed to
-// repairingDistributeShardsLike, but the replicationFactor differs
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -332,6 +330,15 @@ SCENARIO("Broken distributeShardsLike collections",
         "An agency where a collection has repairingDistributeShardsLike, but "
         "nothing else is broken") {
 #include "ClusterRepairsTest.repairingDistributeShardsLike.cpp"
+      checkAgainstExpectedOperations(
+          planCollections, supervisionHealth4Healthy0Bad,
+          expectedResultsWithRepairingDistributeShardsLike);
+    }
+
+    GIVEN(
+        "An agency where a collection has repairingDistributeShardsLike, but "
+        "the replicationFactor differs") {
+#include "ClusterRepairsTest.repairingDslChangedRf.cpp"
       checkAgainstExpectedOperations(
           planCollections, supervisionHealth4Healthy0Bad,
           expectedResultsWithRepairingDistributeShardsLike);
