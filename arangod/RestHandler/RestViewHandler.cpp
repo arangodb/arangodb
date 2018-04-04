@@ -124,7 +124,7 @@ void RestViewHandler::createView() {
     if (view != nullptr) {
       VPackBuilder props;
       props.openObject();
-      view->toVelocyPack(props, false, false);
+      view->toVelocyPack(props, true, false);
       props.close();
       generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
@@ -314,9 +314,9 @@ void RestViewHandler::getViewProperties(std::string const& name) {
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props, false, false);
+    view->toVelocyPack(props, true, false);
     props.close();
-    generateResult(rest::ResponseCode::OK, props.slice());
+    generateResult(rest::ResponseCode::OK, props.slice().get("properties"));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

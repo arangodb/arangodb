@@ -278,6 +278,9 @@ void OptimizerRulesFeature::addRules() {
 
     registerRule("distribute-in-cluster", distributeInClusterRule,
                  OptimizerRule::distributeInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
+    
+    registerRule("collect-in-cluster", collectInClusterRule,
+                 OptimizerRule::collectInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 
     // distribute operations in cluster
     registerRule("distribute-filtercalc-to-cluster",
