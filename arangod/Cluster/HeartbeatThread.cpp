@@ -452,6 +452,7 @@ void HeartbeatThread::runSingleServer() {
     try {
       // send our state to the agency.
       // we don't care if this fails
+      sendState();
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
