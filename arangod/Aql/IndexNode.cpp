@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -46,7 +47,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         _collection(collection),
         _indexes(indexes),
         _condition(condition),
-        _reverse(reverse) {
+        _reverse(reverse),
+        _needsGatherNodeSort(false) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
   TRI_ASSERT(_condition != nullptr);
@@ -61,7 +63,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
           base.get("collection").copyString())),
       _indexes(),
       _condition(nullptr),
-      _reverse(base.get("reverse").getBoolean()) {
+      _reverse(base.get("reverse").getBoolean()),
+      _needsGatherNodeSort(basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)) {
 
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
@@ -120,6 +123,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add(VPackValue("condition"));
   _condition->toVelocyPack(nodes, verbose);
   nodes.add("reverse", VPackValue(_reverse));
+  nodes.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
 
   // And close it:
   nodes.close();
@@ -137,6 +141,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
                          _indexes, _condition->clone(), _reverse);
   
   c->projections(_projections);
+
+  c->needsGatherNodeSort(_needsGatherNodeSort);
 
   cloneHelper(c, withDependencies, withProperties);
 
