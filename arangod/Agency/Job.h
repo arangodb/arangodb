@@ -146,6 +146,7 @@ struct Job {
   AgentInterface* _agent;
   std::string _jobId;
   std::string _creator;
+  
   static std::string agencyPrefix;  // will be initialized in AgencyFeature
 
   std::shared_ptr<Builder> _jb;
@@ -195,13 +196,13 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
       VPackArrayBuilder onePair(envelope.get());
       { VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
     }
@@ -235,19 +236,19 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
           VPackArrayBuilder onePair(envelope.get());
           { VPackObjectBuilder mutationPart(envelope.get());
             for (auto const& pair : VPackObjectIterator(singleTrans[0])) {
-              envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
           if (singleTrans.length() > 1) {
             VPackObjectBuilder preconditionPart(envelope.get());
             for (auto const& pair : VPackObjectIterator(singleTrans[1])) {
-              envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+              envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
             }
           }
         } else if (singleTrans[0].isString()) {
           VPackArrayBuilder reads(envelope.get());
           for (auto const& path : VPackArrayIterator(singleTrans)) {
-            envelope->add(VPackValue(Job::agencyPrefix + path.copyString()));
+            envelope->add(VPackValue("/" + Job::agencyPrefix + path.copyString()));
           }
         }
       }
@@ -268,8 +269,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
 }
 
 inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
-                                                  Builder const& transaction,
-                                                  bool waitForCommit = true) {
+                                                  Builder const& transaction) {
   query_t envelope = std::make_shared<Builder>();
 
   Slice trx = transaction.slice();
@@ -278,13 +278,13 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
       VPackArrayBuilder onePair(envelope.get());
       { VPackObjectBuilder mutationPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[0])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
       if (trx.length() > 1) {
         VPackObjectBuilder preconditionPart(envelope.get());
         for (auto const& pair : VPackObjectIterator(trx[1])) {
-          envelope->add(Job::agencyPrefix + pair.key.copyString(), pair.value);
+          envelope->add("/" + Job::agencyPrefix + pair.key.copyString(), pair.value);
         }
       }
     }
@@ -292,7 +292,6 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
     LOG_TOPIC(ERR, Logger::SUPERVISION)
         << "Supervision failed to build transaction for transient: " << e.what();
   }
-
   
   return _agent->transient(envelope);
 }

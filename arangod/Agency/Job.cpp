@@ -68,7 +68,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
 Job::~Job() {}
 
 // this will be initialized in the AgencyFeature
-std::string Job::agencyPrefix = "/arango";
+std::string Job::agencyPrefix = "arango";
 
 bool Job::finish(
   std::string const& server, std::string const& shard,

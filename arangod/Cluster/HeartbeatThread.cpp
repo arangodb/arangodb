@@ -571,8 +571,7 @@ void HeartbeatThread::runSingleServer() {
         // on this server may prevent us from being a proper follower. We wait for
         // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
-        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change, "
-                                           << "this might take a few seconds";
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to follower switch";
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "

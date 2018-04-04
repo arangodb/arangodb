@@ -203,7 +203,7 @@ class Agent final : public arangodb::Thread,
 
   /// @brief execute a callback while holding _ioLock
   ///  and read lock for _readDB
-  void executeLockedRead(std::function<void()> const& cb) override;
+  void executeLockedRead(std::function<void()> const& cb);
 
   /// @brief execute a callback while holding _ioLock
   ///  and write lock for _readDB
@@ -228,7 +228,7 @@ class Agent final : public arangodb::Thread,
   ///  WARNING: this assumes caller holds appropriate
   ///  locks or will use executeLockedRead() or
   ///  executeLockedWrite() with a lambda function
-  Store const& transient() const override;
+  Store const& transient() const;
 
   /// @brief Serve active agent interface
   bool serveActiveAgent();

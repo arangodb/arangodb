@@ -259,22 +259,34 @@ std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
   
   std::vector<ServerTick> ticks;
   try { // collect tick values from transient state
-    _agent->executeLockedRead([&]() {
-      Node asyncState = _agent->transient().get(agencyPrefix + asyncReplPrefix);
-      for (auto const& srv : asyncState.children()) {
-        if (std::find(as.begin(), as.end(), srv.first) == as.end()) {
+    query_t trx = std::make_unique<VPackBuilder>();
+    {
+      VPackArrayBuilder transactions(trx.get());
+      VPackArrayBuilder operations(trx.get());
+      trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplPrefix));
+    }
+    trans_ret_t res = _agent->transient(std::move(trx));
+    
+    if (res.accepted) {
+      VPackSlice resp = res.result->slice();
+      if (!resp.isArray() || resp.length() == 0) {
+        return "";
+      }
+      VPackSlice obj = resp.at(0).get({ Job::agencyPrefix, "AsyncReplication"});
+      for (VPackObjectIterator::ObjectPair pair : VPackObjectIterator(obj)) {
+        std::string srvUUID = pair.key.copyString();
+        if (std::find(as.begin(), as.end(), srvUUID) == as.end()) {
           continue; // skip inaccessible servers
         }
         
-        TRI_ASSERT(srv.second->type() == NodeType::NODE);
-        std::shared_ptr<Node> n = srv.second;
-        //std::string tick =  ?  : "0";
-        if (n->has("leader") && n->get("leader").compareString(_server) == 0 &&
-            n->has("lastTick")) {
-          ticks.emplace_back(srv.first, n->get("lastTick").getString());
+        VPackSlice leader = pair.value.get("leader"); // broken leader
+        VPackSlice lastTick = pair.value.get("lastTick");
+        if (leader.isString() && leader.compareString(_server) == 0 &&
+            lastTick.isString()) {
+          ticks.emplace_back(std::move(srvUUID), lastTick.copyString());
         }
       }
-    });
+    }
   } catch (...) {}
   
   std::sort(ticks.begin(), ticks.end(), [&](ServerTick const& a,
