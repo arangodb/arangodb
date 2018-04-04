@@ -34,7 +34,6 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/ticks.h"
 
-using namespace arangodb;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
@@ -69,19 +68,24 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
   // Somehow the id is now propagated to dbservers
   TRI_voc_cid_t id = Helper::extractIdValue(info);
 
-  if (id == 0) {
-    if (ServerState::instance()->isDBServer()) {
-      id = ClusterInfo::instance()->uniqid(1);
-    } else if (ServerState::instance()->isCoordinator()) {
-      id = ClusterInfo::instance()->uniqid(1);
-    } else {
-      id = TRI_NewTickServer();
-    }
+  if (id) {
+    return id;
   }
-  return id;
+
+  if (arangodb::ServerState::instance()->isDBServer()) {
+    return arangodb::ClusterInfo::instance()->uniqid(1);
+  }
+
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return arangodb::ClusterInfo::instance()->uniqid(1);
+  }
+
+  return TRI_NewTickServer();
 }
 
 } // namespace
+
+namespace arangodb {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       LogicalView
@@ -90,19 +94,23 @@ TRI_voc_cid_t ReadPlanId(VPackSlice info, TRI_voc_cid_t vid) {
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
-LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
-    : LogicalDataSource(
-        category(),
-        LogicalDataSource::Type::emplace(
-          arangodb::basics::VelocyPackHelper::getStringRef(info, "type", "")
-        ),
-        vocbase,
-        ReadViewId(info),
-        ReadPlanId(info, 0),
-        arangodb::basics::VelocyPackHelper::getStringValue(info, "name", ""),
-        Helper::readBooleanValue(info, "deleted", false)
-      ) {
-  if (!TRI_vocbase_t::IsAllowedName(info)) {
+LogicalView::LogicalView(
+    TRI_vocbase_t* vocbase,
+    VPackSlice const& definition,
+    uint64_t planVersion
+): LogicalDataSource(
+     category(),
+     LogicalDataSource::Type::emplace(
+       arangodb::basics::VelocyPackHelper::getStringRef(definition, "type", "")
+     ),
+     vocbase,
+     ReadViewId(definition),
+     ReadPlanId(definition, 0),
+     arangodb::basics::VelocyPackHelper::getStringValue(definition, "name", ""),
+     planVersion,
+     Helper::readBooleanValue(definition, "deleted", false)
+   ) {
+  if (!TRI_vocbase_t::IsAllowedName(definition)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -120,30 +128,33 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
 /*static*/ std::shared_ptr<LogicalView> LogicalView::create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
-    bool isNew
+    uint64_t planVersion /*= 0*/
 ) {
-  auto const* viewTypes = application_features::ApplicationServer::getFeature
-      <ViewTypesFeature>("ViewTypes");
-  TRI_ASSERT(viewTypes);
+  auto const* viewTypes =
+    application_features::ApplicationServer::getFeature<ViewTypesFeature>("ViewTypes");
 
-  auto const viewType = arangodb::basics::VelocyPackHelper::getStringRef(
-    definition, "type", ""
-  );
+  if (!viewTypes) {
+    LOG_TOPIC(ERR, Logger::VIEWS)
+      << "Failure to get 'ViewTypes' feature while creating LogicalView";
 
-  auto const& dataSourceType = arangodb::LogicalDataSource::Type::emplace(
-    viewType
-  );
+    return nullptr;
+  }
 
+  auto const viewType =
+    basics::VelocyPackHelper::getStringRef(definition, "type", "");
+  auto const& dataSourceType =
+    arangodb::LogicalDataSource::Type::emplace(viewType);
   auto const& viewFactory = viewTypes->factory(dataSourceType);
 
   if (!viewFactory) {
     LOG_TOPIC(ERR, Logger::VIEWS)
       << "Found view type for which there is no factory, type: "
       << viewType.toString();
+
     return nullptr;
   }
 
-  return viewFactory(vocbase, definition, isNew);
+  return viewFactory(vocbase, definition, planVersion);
 }
 
 /*static*/ LogicalDataSource::Category const& LogicalView::category() noexcept {
@@ -158,10 +169,9 @@ LogicalView::LogicalView(TRI_vocbase_t* vocbase, VPackSlice const& info)
 
 DBServerLogicalView::DBServerLogicalView(
     TRI_vocbase_t* vocbase,
-    VPackSlice const& info,
-    bool isNew
-) : LogicalView(vocbase, info),
-    _isNew(isNew) {
+    VPackSlice const& definition,
+    uint64_t planVersion
+): LogicalView(vocbase, definition, planVersion) {
 }
 
 DBServerLogicalView::~DBServerLogicalView() {
@@ -177,20 +187,6 @@ void DBServerLogicalView::drop() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   engine->dropView(vocbase(), this);
-}
-
-void DBServerLogicalView::open() {
-  // Coordinators are not allowed to have local views!
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  if (!_isNew) {
-    return;
-  }
-
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine);
-  engine->createView(vocbase(), id(), this);
-  _isNew = false;
 }
 
 Result DBServerLogicalView::rename(std::string&& newName, bool doSync) {
@@ -286,6 +282,8 @@ arangodb::Result DBServerLogicalView::updateProperties(
 
   return {};
 }
+
+} // arangodb
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

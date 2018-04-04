@@ -207,18 +207,21 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     VPackSlice const& info,
-                                     bool isAStub)
-    : LogicalDataSource(
-        category(),
-        ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
-        vocbase,
-        ReadCid(info),
-        ReadPlanId(info, 0),
-        ReadStringValue(info, "name", ""),
-        Helper::readBooleanValue(info, "deleted", false)
-      ),
+LogicalCollection::LogicalCollection(
+    TRI_vocbase_t* vocbase,
+    VPackSlice const& info,
+    bool isAStub,
+    uint64_t planVersion /*= 0*/
+): LogicalDataSource(
+     category(),
+     ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
+     vocbase,
+     ReadCid(info),
+     ReadPlanId(info, 0),
+     ReadStringValue(info, "name", ""),
+     planVersion,
+     Helper::readBooleanValue(info, "deleted", false)
+   ),
       _internalVersion(0),
       _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
@@ -783,7 +786,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false, false);
-  result.add("planVersion", VPackValue(getPlanVersion()));
+  result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo

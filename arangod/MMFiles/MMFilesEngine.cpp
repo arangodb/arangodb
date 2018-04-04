@@ -2070,7 +2070,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         );
       }
 
-      auto const view = LogicalView::create(*vocbase, it, false);
+      auto const view = LogicalView::create(*vocbase, it);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
