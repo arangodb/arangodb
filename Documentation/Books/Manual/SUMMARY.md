@@ -16,9 +16,9 @@
   * [Next Steps](GettingStarted/NextSteps.md)
 * [Tutorials](Tutorials/README.md)
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](GettingStarted/Starter/README.md)
+  * [ArangoDB Starter](Tutorials/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
-  * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
+  * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 * [Programs & Tools](Programs/README.md)
   * [ArangoDB server](Programs/Arangod.md)
   * [Web Interface](Programs/WebInterface/README.md)
@@ -37,8 +37,8 @@
     * [Details](Programs/Arangosh/Details.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
-    * [Options](Programs/Starter/options.md)
-    * [Security](Programs/Starter/security.md)
+    * [Options](Programs/Starter/Options.md)
+    * [Security](Programs/Starter/Security.md)
   * [Arangodump](Programs/Arangodump/README.md)
     * [Examples](Programs/Arangodump/Examples.md)
     * [Options](Programs/Arangodump/Options.md)
@@ -62,12 +62,12 @@
 
 * [Data models & modeling](DataModeling/README.md)
   * [Concepts](DataModeling/Concepts.md)
-<!--
-  * [Multi-model]
-    * [Key-value]
-    * [Document]
-    * [Graph]
--->
+{###
+Multi-model
+  Key-value store
+  Document store
+  Graph store
+###}
   * [Databases](DataModeling/Databases/README.md)
     * [Working with Databases](DataModeling/Databases/WorkingWith.md)
     * [Notes about Databases](DataModeling/Databases/Notes.md)
