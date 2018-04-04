@@ -177,10 +177,8 @@ void checkAgainstExpectedOperations(
       ResultT<std::vector<RepairOperation>> const& expectedRepairResult =
           it.second;
 
-      expectedOperationsStringStream << "\"" << collection
-                                     << "\": \n";
-      expectedOperationsStringStream << expectedRepairResult
-        << std::endl;
+      expectedOperationsStringStream << "\"" << collection << "\": \n";
+      expectedOperationsStringStream << expectedRepairResult << std::endl;
     }
     expectedOperationsStringStream << "}";
 
@@ -205,7 +203,8 @@ void checkAgainstExpectedOperations(
       auto const& expectedResult = it.get<0>().second;
       auto const& actualResult = it.get<1>().second;
 
-      INFO("Expected operations are:\n" << expectedOperationsStringStream.str());
+      INFO("Expected operations are:\n"
+           << expectedOperationsStringStream.str());
       INFO("Actual operations are:\n" << repairOperationsStringStream.str());
       REQUIRE(expectedResult.ok() == actualResult.ok());
       if (expectedResult.ok()) {
@@ -246,7 +245,6 @@ void checkAgainstExpectedOperations(
 // TODO Add a test with a smart collection (i.e. with {"isSmart": true,
 // "shards": []})
 // TODO Add a test with a deleted collection
-// TODO Add a test with different replicationFactors on leader and follower
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -358,10 +356,19 @@ SCENARIO("Broken distributeShardsLike collections",
                                      expectedResultsWithMultipleShards);
     }
 
+    GIVEN(
+        "A collection where the replicationFactor doesn't conform with its "
+        "prototype") {
+#include "ClusterRepairsTest.unequalReplicationFactor.cpp"
+      checkAgainstExpectedOperations(
+          planCollections, supervisionHealth3Healthy0Bad,
+          expectedResultsWithUnequalReplicationFactor);
+    }
+
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     GIVEN("Collections with triggered failures") {
-      // NOTE: Some of the collection names used in in the following file would
-      // usually be invalid because they are too long.
+// NOTE: Some of the collection names used in in the following file would
+// usually be invalid because they are too long.
 #include "ClusterRepairsTest.triggeredFailures.cpp"
       TRI_AddFailurePointDebugging(
           "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
@@ -382,11 +389,9 @@ SCENARIO("Broken distributeShardsLike collections",
           "DistributeShardsLikeRepairer::repairDistributeShardsLike/"
           "TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS");
       try {
-        checkAgainstExpectedOperations(
-          planCollections,
-          supervisionHealth2Healthy0Bad,
-          expectedResultsWithTriggeredFailures
-        );
+        checkAgainstExpectedOperations(planCollections,
+                                       supervisionHealth2Healthy0Bad,
+                                       expectedResultsWithTriggeredFailures);
         TRI_ClearFailurePointsDebugging();
       } catch (...) {
         TRI_ClearFailurePointsDebugging();
