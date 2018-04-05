@@ -257,6 +257,7 @@ const createBrokenClusterState = function ({failOnOperation = null} = {}) {
             "collection": localColName,
             "distributeShardsLike": protoColName,
             "renameDistributeShardsLike": true,
+            "replicationFactor": replicationFactor,
           }
         },
         {
@@ -551,7 +552,8 @@ describe('Collections with distributeShardsLike', function () {
           "database": internal.db._name(),
           "collection": collection.name(),
           "distributeShardsLike": protoCollection.name(),
-          "renameDistributeShardsLike": false
+          "renameDistributeShardsLike": false,
+          "replicationFactor": protoCollection.properties().replicationFactor,
         });
         expect(plannedOperations[1]).to.have.property('MoveShardOperation');
         expect(plannedOperations[1]).to.eql(originalExpectedOperations[2]);

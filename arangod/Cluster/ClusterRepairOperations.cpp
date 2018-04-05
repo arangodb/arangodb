@@ -583,6 +583,7 @@ void RepairOperationToVPackVisitor::operator()(
     builder().add("distributeShardsLike", VPackValue(op.protoCollectionName));
     builder().add("renameDistributeShardsLike",
                   VPackValue(op.renameDistributeShardsLike));
+    builder().add("replicationFactor", VPackValue(op.protoReplicationFactor));
   }
 }
 
