@@ -25,6 +25,7 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_VIEW_COORDINATOR_H 1
 
 #include "VocBase/LogicalView.h"
+#include "IResearch/IResearchViewMeta.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -49,11 +50,16 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     uint64_t planVersion
   );
 
-  bool visitCollections(CollectionVisitor const& visitor) const override {
-    return false;
-  }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the view type as used when selecting which view to instantiate
+  ////////////////////////////////////////////////////////////////////////////////
+  static arangodb::LogicalDataSource::Type const& type() noexcept;
 
-  void open() override { }
+  bool visitCollections(CollectionVisitor const& visitor) const override;
+
+  void open() override {
+    // NOOP
+  }
 
   void drop() override;
 
@@ -61,6 +67,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
       std::string&& /*newName*/,
       bool /*doSync*/
   ) override {
+    // not supported in a cluster
     return { TRI_ERROR_NOT_IMPLEMENTED };
   }
 
@@ -78,10 +85,10 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
  private:
   IResearchViewCoordinator(
-    TRI_vocbase_t& vocbase, velocypack::Slice info
+    TRI_vocbase_t& vocbase, velocypack::Slice info, uint64_t planVersion
   );
 
-  velocypack::Builder _info;
+  IResearchViewMeta _meta;
 }; // IResearchViewCoordinator
 
 } // iresearch

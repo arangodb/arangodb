@@ -25,6 +25,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "IResearch/IResearchFeature.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
@@ -37,16 +38,49 @@ namespace iresearch {
     velocypack::Slice const& info,
     uint64_t planVersion
 ) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-
-  return std::unique_ptr<IResearchViewCoordinator>(
-    new IResearchViewCoordinator(vocbase, info)
+  auto view = std::unique_ptr<IResearchViewCoordinator>(
+    new IResearchViewCoordinator(vocbase, info, planVersion)
   );
+
+  std::string error;
+
+  if (view->_meta.init(info, error)) {
+    return view;
+  }
+
+  LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    << "failed to initialize IResearch view from definition, error: " << error;
+
+  return nullptr;
+}
+
+// noexcept since 'IResearchFeature::type()' has to be already inserted
+/*static*/ arangodb::LogicalDataSource::Type const& IResearchViewCoordinator::type() noexcept {
+  static auto const& type = arangodb::LogicalDataSource::Type::emplace(
+    arangodb::velocypack::StringRef(IResearchFeature::type())
+  );
+
+  return type;
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(
-    TRI_vocbase_t& vocbase, velocypack::Slice info
-) : LogicalView(&vocbase, info), _info(info) {
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice info,
+    uint64_t planVersion
+) : LogicalView(&vocbase, info, planVersion) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+}
+
+bool IResearchViewCoordinator::visitCollections(
+    CollectionVisitor const& visitor
+) const {
+  for (auto& cid: _meta._collections) {
+    if (!visitor(cid)) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 void IResearchViewCoordinator::toVelocyPack(
@@ -54,7 +88,26 @@ void IResearchViewCoordinator::toVelocyPack(
     bool includeProperties,
     bool includeSystem
 ) const {
-  result.add(velocypack::ObjectIterator(_info.slice()));
+  // We write into an open object
+  TRI_ASSERT(result.isOpenObject());
+
+  // Meta Information
+  result.add("id", VPackValue(std::to_string(id())));
+  result.add("name", VPackValue(name()));
+  result.add("type", VPackValue(type().name()));
+
+  if (includeSystem) {
+    result.add("deleted", VPackValue(deleted()));
+    result.add("planId", VPackValue(std::to_string(planId())));
+  }
+
+  if (includeProperties) {
+    result.add("properties", VPackValue(VPackValueType::Object));
+    _meta.json(result);
+    result.close();
+  }
+
+  TRI_ASSERT(result.isOpenObject()); // We leave the object open
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(

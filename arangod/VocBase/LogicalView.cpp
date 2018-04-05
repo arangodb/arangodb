@@ -172,6 +172,7 @@ DBServerLogicalView::DBServerLogicalView(
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 DBServerLogicalView::~DBServerLogicalView() {
