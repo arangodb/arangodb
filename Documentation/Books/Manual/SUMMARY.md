@@ -16,9 +16,11 @@
   * [Next Steps](GettingStarted/NextSteps.md) 
 * [Tutorials](Tutorials/README.md)  
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](GettingStarted/Starter/README.md)
+  * [ArangoDB Starter](Tutorials/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
-  * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
+  * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
+#   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+  * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [ArangoDB Programs](Programs/README.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
@@ -177,6 +179,18 @@
     * [ArangoSync Master](Deployment/DC2DC/ArangoSyncMaster.md)
     * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
+#   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+  * [Kubernetes](Deployment/Kubernetes/README.md)
+    * [Using the Operator](Deployment/Kubernetes/Usage.md)
+    * [Deployment Resource](Deployment/Kubernetes/DeploymentResource.md)
+    * [ArangoDB Configuration & Secrets](Deployment/Kubernetes/ConfigAndSecrets.md)
+    * [Metrics](Deployment/Kubernetes/Metrics.md)
+    * [Scaling](Deployment/Kubernetes/Scaling.md)
+    * [Services & Load balancer](Deployment/Kubernetes/ServicesAndLoadBalancer.md)
+    * [Storage](Deployment/Kubernetes/Storage.md)
+    * [Storage Resource](Deployment/Kubernetes/StorageResource.md)
+    * [TLS](Deployment/Kubernetes/Tls.md)
+    * [Upgrading](Deployment/Kubernetes/Upgrading.md)
 * [Administration](Administration/README.md)
   * [Web Interface](Administration/WebInterface/README.md)
     * [Dashboard](Administration/WebInterface/Dashboard.md)

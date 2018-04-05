@@ -52,7 +52,7 @@ the console, the starter uses the next few ports above the starter
 port. That is, if one uses port 8528 for the starter, the coordinator
 will use 8529 (=8528+1), the dbserver 8530 (=8528+2), and the agent 8531
 (=8528+3). You can change the default starter port with the `--starter.port`
-[option](../../Programs/Starter/options.md).
+[option](../../Programs/Starter/Options.md).
 
 Additional servers can be added in the same way.
 
@@ -271,6 +271,6 @@ Make sure to match the arguments given to start the starter (`--starter.port` & 
 
 ## More information
 
-- [Options](../../Programs/Starter/options.md) contains a list of all commandline options supported by the starter.
-- [Security](../../Programs/Starter/security.md) contains instructions of how to create certificates & tokens needed
+- [Options](../../Programs/Starter/Options.md) contains a list of all commandline options supported by the starter.
+- [Security](../../Programs/Starter/Security.md) contains instructions of how to create certificates & tokens needed
   to secure an ArangoDB deployment.
