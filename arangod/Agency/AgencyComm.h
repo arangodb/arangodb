@@ -33,10 +33,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-#include <lib/Logger/LogMacros.h>
-#include <lib/Logger/Logger.h>
 #include <velocypack/Slice.h>
-#include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
@@ -50,7 +47,6 @@ class Endpoint;
 namespace velocypack {
 class Builder;
 class Slice;
-class Parser;
 }
 
 // -----------------------------------------------------------------------------
@@ -655,63 +651,6 @@ class AgencyComm {
   bool exists(std::string const&);
 
   AgencyCommResult getValues(std::string const&);
-
-  template<typename Container>
-  typename std::enable_if<
-    std::is_convertible<typename Container::value_type, std::string const>::value,
-    AgencyCommResult
-  >::type
-  getValues(Container const& keyStrings) {
-    std::string url = AgencyComm::AGENCY_URL_PREFIX + "/read";
-
-    VPackBuilder builder;
-    {
-      VPackArrayBuilder root(&builder);
-      {
-        VPackArrayBuilder keys(&builder);
-        for (auto const &key : keyStrings) {
-          builder.add(VPackValue(AgencyCommManager::path(key)));
-        }
-      }
-    }
-
-    AgencyCommResult result =
-      sendWithFailover(arangodb::rest::RequestType::POST,
-        AgencyCommManager::CONNECTION_OPTIONS._requestTimeout,
-        url, builder.slice());
-
-    if (!result.successful()) {
-      return result;
-    }
-
-    try {
-      result.setVPack(VPackParser::fromJson(result.bodyRef()));
-
-      if (!result.slice().isArray()) {
-        result.set(500, "got invalid result structure for getValues response");
-        return result;
-      }
-
-      if (result.slice().length() != 1) {
-        result.set(500, "got invalid result structure length for getValues response");
-        return result;
-      }
-
-      result._body.clear();
-      result._statusCode = 200;
-
-    } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: "
-                                         << e.what();
-      result.clear();
-    } catch (...) {
-      LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Error transforming result: out of memory";
-      result.clear();
-    }
-
-    return result;
-  }
 
   AgencyCommResult removeValues(std::string const&, bool);
 
