@@ -337,11 +337,9 @@ Result RestRepairHandler::executeRepairOperations(
     if (!result.successful()) {
       std::stringstream errMsg;
       errMsg << "Failed to send and execute operation. "
-             << "Collection: " << databaseId << "/" << collectionId << ", "
-             << "agency error: "
-             << "[" << result.errorCode() << "] " << result.errorMessage()
-             << ", "
-             << "operation#" << opNum << ": " << op;
+             << "Agency error: "
+             << "[" << result.errorCode() << "] `" << result.errorMessage()
+             << "' during operation#" << opNum << ": " << op;
 
       LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: " << errMsg.str();

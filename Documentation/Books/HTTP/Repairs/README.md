@@ -182,7 +182,8 @@ This line is of notable importance:
   X-Arango-Async-Id: 152223973119118
 ```
 as it contains the job id which can be used to fetch the state and results
-of the job later.
+of the job later. `GET`ting `/_api/job/pending` and `/_api/job/done` will list
+job ids of jobs that are pending or done, respectively.
 
 This can also be done with the `GET` method for testing.
 
