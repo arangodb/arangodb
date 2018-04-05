@@ -122,11 +122,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 }
 
 Result IResearchViewCoordinator::drop() {
-  ClusterInfo* ci = ClusterInfo::instance();
-
   std::string errorMsg;
 
-  int const res = ci->dropViewCoordinator(
+  int const res = ClusterInfo::instance()->dropViewCoordinator(
     vocbase()->name(), // database name
     basics::StringUtils::itoa(id()), // view id
     errorMsg

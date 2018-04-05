@@ -1919,6 +1919,10 @@ void TRI_vocbase_t::garbageCollectReplicationClients(double expireStamp) {
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
+  if (ServerState::instance()->isCoordinator()) {
+    return ClusterInfo::instance()->getViews(name());
+  }
+
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;
 
   {
