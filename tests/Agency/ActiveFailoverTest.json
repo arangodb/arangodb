@@ -9,6 +9,7 @@ R"=(
 				"SNGL-follower2": "none",
         "SNGL-follower3": "none",
         "SNGL-follower4": "none",
+        "SNGL-follower5": "none",
 				"SNGL-leader": "none"
 			}
 		},
@@ -23,6 +24,7 @@ R"=(
 				"SNGL-follower2": "none",
         "SNGL-follower3": "none",
         "SNGL-follower4": "none",
+        "SNGL-follower5": "none",
 				"SNGL-leader": "none"
 			}
 		},
@@ -36,9 +38,12 @@ R"=(
 					"Status": "GOOD"
 				},
 				"SNGL-follower3": {
-					"Status": "BAD"
+					"Status": "GOOD"
         },
         "SNGL-follower4": {
+					"Status": "BAD"
+        },
+        "SNGL-follower5": {
 					"Status": "GOOD"
 				},
 				"SNGL-leader": {

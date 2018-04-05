@@ -27,6 +27,7 @@
 #include "Agency/JobContext.h"
 #include "Agency/Store.h"
 #include "Cluster/ClusterHelpers.h"
+#include "VocBase/voc-types.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -246,7 +247,7 @@ arangodb::Result ActiveFailoverJob::abort() {
   
 }
 
-typedef std::pair<std::string, std::string> ServerTick;
+typedef std::pair<std::string, TRI_voc_tick_t> ServerTick;
 /// Try to select the follower most in-sync with failed leader
 std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
   std::vector<std::string> as = healthyServers(snapshot);
@@ -283,8 +284,8 @@ std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
         VPackSlice leader = pair.value.get("leader"); // broken leader
         VPackSlice lastTick = pair.value.get("lastTick");
         if (leader.isString() && leader.compareString(_server) == 0 &&
-            lastTick.isString()) {
-          ticks.emplace_back(std::move(srvUUID), lastTick.copyString());
+            lastTick.isNumber()) {
+          ticks.emplace_back(std::move(srvUUID), lastTick.getUInt());
         }
       }
     }
@@ -292,7 +293,7 @@ std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
   
   std::sort(ticks.begin(), ticks.end(), [&](ServerTick const& a,
                                             ServerTick const& b) {
-    return b.second.compare(a.second);
+    return a.second > b.second;
   });
   if (!ticks.empty()) {
     return ticks[0].first;

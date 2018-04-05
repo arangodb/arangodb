@@ -586,7 +586,7 @@ void HeartbeatThread::runSingleServer() {
         VPackBuilder builder;
         builder.openObject();
         builder.add("leader", leader);
-        builder.add("lastTick", VPackValue(std::to_string(lastTick)));
+        builder.add("lastTick", VPackValue(lastTick));
         builder.close();
         double ttl = std::chrono::duration_cast<std::chrono::seconds>(_interval).count() * 5.0;
         _agency.setTransient(transientPath, builder.slice(), ttl);

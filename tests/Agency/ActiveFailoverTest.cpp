@@ -48,10 +48,11 @@ namespace active_failover_test {
 
 const std::string PREFIX = "arango";
 const std::string LEADER = "SNGL-leader";
-const std::string FOLLOWER1 = "SNGL-follower1"; // tick 90, STATE GOOD
+const std::string FOLLOWER1 = "SNGL-follower1"; // tick 10, STATE GOOD
 const std::string FOLLOWER2 = "SNGL-follower2"; // tick 1, STATE GOOD
-const std::string FOLLOWER3 = "SNGL-follower3"; // tick 100, STATE BAD
-const std::string FOLLOWER4 = "SNGL-follower4"; // tick 1000, STATE GOOD wrong leader
+const std::string FOLLOWER3 = "SNGL-follower23"; // tick 9, STATE GOOD
+const std::string FOLLOWER4 = "SNGL-follower4"; // tick 100, STATE BAD
+const std::string FOLLOWER5 = "SNGL-follower5"; // tick 1000, STATE GOOD wrong leader
 
 
 const char *agency =
@@ -104,7 +105,6 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
   std::string jobId = "1";
 
   write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
-  trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
   
   SECTION("creating a job should create a job in todo") {
     Mock<AgentInterface> mockAgent;
@@ -116,7 +116,8 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
         REQUIRE(typeName(q->slice()) == "array" );
         REQUIRE(q->slice().length() == 1);
         REQUIRE(typeName(q->slice()[0]) == "array");
-        REQUIRE(q->slice()[0].length() == 2); // with preconditions...
+        // operations + preconditions
+        REQUIRE(q->slice()[0].length() == 2);
         REQUIRE(typeName(q->slice()[0][0]) == "object");
         REQUIRE(q->slice()[0][0].length() == 2); // should do an entry in todo and failedservers
         REQUIRE(typeName(q->slice()[0][0].get(expectedJobKey)) == "object");
@@ -144,8 +145,6 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent, write));
   }
   
-  //When(Method(mockAgent, transient)).AlwaysReturn(fakeTransient);
-  
   SECTION("The state is already 'GOOD' and 'Target/FailedServers' is still as in the snapshot. Violate: GOOD") {
     
     const char* tt = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}}}})=";
@@ -158,7 +157,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
-      // we always simply override! no preconditions...
+      // operations + preconditions
       REQUIRE(q->slice()[0].length() == 2);
       REQUIRE(typeName(q->slice()[0][0]) == "object");
       REQUIRE(typeName(q->slice()[0][1]) == "object");
@@ -185,7 +184,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write));
   } // SECTION
   
-  SECTION("Server is healthy again, job needs to be canceled") {
+  SECTION("Server is healthy again, job fails") {
     
     const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
                                         "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
@@ -196,7 +195,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       REQUIRE(typeName(q->slice()) == "array" );
       REQUIRE(q->slice().length() == 1);
       REQUIRE(typeName(q->slice()[0]) == "array");
-      // we always simply override! no preconditions...
+      // operations + preconditions
       REQUIRE(q->slice()[0].length() == 2);
       REQUIRE(typeName(q->slice()[0][0]) == "object");
       REQUIRE(typeName(q->slice()[0][1]) == "object");
@@ -221,7 +220,6 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     REQUIRE(job.status() == JOB_STATUS::TODO);
     Verify(Method(mockAgent,write)).Exactly(1);
     
-    //When(Method(mockAgent, transient)).AlwaysReturn(fakeTransient);
     When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
       // check that the job fails now
       auto writes = q->slice()[0][0];
@@ -236,13 +234,180 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     
   } // SECTION
 
+  SECTION("Current leader is different from server in job, job fails") {
+    
+    const char* health = R"=({"arango":{"Plan":{"AsyncReplication":{"Leader":"SNGL-follower1"}},
+    "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
+    VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
   
-  // TODO Current leader is different from server the job started with
+    Mock<AgentInterface> mockAgent;
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      REQUIRE(typeName(q->slice()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(typeName(q->slice()[0]) == "array");
+      // operations + preconditions
+      REQUIRE(q->slice()[0].length() == 2);
+      REQUIRE(typeName(q->slice()[0][0]) == "object");
+      REQUIRE(typeName(q->slice()[0][1]) == "object");
+      
+      auto writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+      
+      auto precond = q->slice()[0][1];
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
+      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
+      
+      return fakeWriteResult;
+    });
+    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+    auto& agent = mockAgent.get();
+    Node snapshot = createNodeFromBuilder(mod); //snapshort contains different leader
   
-  // TODO no suitable follower found
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
+    REQUIRE(job.status() == JOB_STATUS::TODO);
+    Verify(Method(mockAgent,write)).Exactly(1);
   
-  // TODO follower with best tick value used (correct leader, state GOOD)
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      // check that the job fails now
+      auto writes = q->slice()[0][0];
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
+      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+      return fakeWriteResult;
+    });
   
+    REQUIRE_FALSE(job.start());
+    REQUIRE(job.status() == JOB_STATUS::FAILED);
+    Verify(Method(mockAgent,write)).Exactly(2);
+  
+  } // SECTION
+
+  SECTION("no in-sync follower found, job fails") {
+    
+    // follower follows wrong leader
+    const char* noInSync = R"=({"arango":{"AsyncReplication":{"SNGL-follower1":{"leader":"abc","lastTick":9}}}})=";
+    trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(noInSync))};
+    
+    Mock<AgentInterface> mockAgent;
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      REQUIRE(typeName(q->slice()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(typeName(q->slice()[0]) == "array");
+      // operations + preconditions
+      REQUIRE(q->slice()[0].length() == 2);
+      REQUIRE(typeName(q->slice()[0][0]) == "object");
+      REQUIRE(typeName(q->slice()[0][1]) == "object");
+      
+      auto writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+      
+      auto precond = q->slice()[0][1];
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
+      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
+      
+      return fakeWriteResult;
+    });
+    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+    auto& agent = mockAgent.get();
+    Node snapshot = createNodeFromBuilder(base);
+
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
+    REQUIRE(job.status() == JOB_STATUS::TODO);
+    Verify(Method(mockAgent,write)).Exactly(1);
+    
+    When(Method(mockAgent, transient)).Return(fakeTransient);
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      // check that the job fails now
+      auto writes = q->slice()[0][0];
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
+      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+      return fakeWriteResult;
+    });
+
+    REQUIRE_FALSE(job.start());
+    // job status stays on TODO and can retry later
+    REQUIRE(job.status() == JOB_STATUS::TODO);
+    Verify(Method(mockAgent,transient)).Exactly(1);
+    Verify(Method(mockAgent,write)).Exactly(1); // finish is not called
+
+  } // SECTION
+
+  SECTION("follower with best tick value used, job succeeds") {
+    
+    // 2 in-sync followers, follower1 should be used
+    trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
+    
+    Mock<AgentInterface> mockAgent;
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      REQUIRE(typeName(q->slice()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(typeName(q->slice()[0]) == "array");
+      // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2);
+      REQUIRE(typeName(q->slice()[0][0]) == "object");
+      REQUIRE(typeName(q->slice()[0][1]) == "object");
+      
+      auto writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+      
+      auto precond = q->slice()[0][1];
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
+      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
+      
+      return fakeWriteResult;
+    });
+    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+    auto& agent = mockAgent.get();
+    Node snapshot = createNodeFromBuilder(base);
+    
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
+    REQUIRE(job.status() == JOB_STATUS::TODO);
+    Verify(Method(mockAgent,write)).Exactly(1);
+    
+    When(Method(mockAgent, transient)).Return(fakeTransient);
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      REQUIRE(typeName(q->slice()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(typeName(q->slice()[0]) == "array");
+      // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2);
+      REQUIRE(typeName(q->slice()[0][0]) == "object");
+      REQUIRE(typeName(q->slice()[0][1]) == "object");
+      
+      INFO(q->toString());
+      
+      // check that the job succeeds now
+      auto writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string"); \
+      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+      REQUIRE(typeName(writes.get("/arango/Plan/AsyncReplication/Leader")) == "string");
+      REQUIRE(writes.get("/arango/Plan/AsyncReplication/Leader").copyString() == FOLLOWER1);
+      
+      auto precond = q->slice()[0][1];
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "FAILED");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-follower1/Status").get("old").copyString() == "GOOD");
+      REQUIRE(precond.get("/arango/Plan/AsyncReplication/Leader").get("old").copyString() == LEADER);
+      
+      return fakeWriteResult;
+    });
+        
+    REQUIRE(job.start());
+    // job status stays on TODO and can retry later
+    REQUIRE(job.status() == JOB_STATUS::FINISHED);
+    Verify(Method(mockAgent,transient)).Exactly(1);
+    Verify(Method(mockAgent,write)).Exactly(2);
+    
+  } // SECTION
+
 };
 
 }}}
