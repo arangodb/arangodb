@@ -548,10 +548,12 @@ void ClusterInfo::loadPlan() {
                     vocbase, collectionSlice, newPlanVersion
                   );
                 }
+                TRI_ASSERT(newCollection->isSmart());
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
                   vocbase, collectionSlice, true, newPlanVersion
                 );
+                TRI_ASSERT(!newCollection->isSmart());
               }
 #endif
 

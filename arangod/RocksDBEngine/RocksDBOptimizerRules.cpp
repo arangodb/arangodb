@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptimizerRules.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -52,6 +53,16 @@ class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
     if (en->getType() == EN::CALCULATION) {
       auto node = static_cast<CalculationNode*>(en);
       node->expression()->replaceAttributeAccess(_variable, _attribute);
+    } else if (en->getType() == EN::GATHER) {
+      auto node = static_cast<GatherNode*>(en);
+      // intentional copy
+      auto sortVars = node->getElements();
+      for (auto& it : sortVars) {
+        if (it.var == _variable && it.attributePath == _attribute) {
+          it.attributePath.clear();
+        }
+      }
+      node->setElements(sortVars);
     }
 
     // always continue
@@ -65,7 +76,7 @@ class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
 
 void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule_pass6, false, true);
+               OptimizerRule::reduceExtractionToProjectionRule_pass10, false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
@@ -77,7 +88,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION}; 
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
   plan->findNodesOfType(nodes, types, true);
 
   bool modified = false;
@@ -140,6 +151,18 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
             }
           }
         }
+      } else if (current->getType() == EN::GATHER) {
+        // compare sort attributes of GatherNode
+        auto gn = static_cast<GatherNode*>(current);
+        auto const& sortVars = gn->getElements();
+        for (auto& it : sortVars) {
+          auto path = it.attributePath;
+          std::reverse(path.begin(), path.end());
+          if (it.var == v && path != attributeNames) {
+            stop = true;
+            break;
+          }
+        }
       } else {
         vars.clear();
         current->getVariablesUsedHere(vars);
@@ -147,11 +170,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         if (vars.find(v) != vars.end()) {
           // original variable is still used here
           stop = true;
-          break;
         }
       }
 
-      TRI_ASSERT(!stop);
+      if (stop) {
+        break;
+      }
 
       current = current->getFirstParent();
     }

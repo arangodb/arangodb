@@ -298,6 +298,11 @@ void OptimizerRulesFeature::addRules() {
 
   // finally add the storage-engine specific rules
   addStorageEngineRules();
+  
+  // remove calculations that are never necessary
+  registerRule("remove-unnecessary-calculations-3",
+               removeUnnecessaryCalculationsRule,
+               OptimizerRule::removeUnnecessaryCalculationsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
 }
 
 void OptimizerRulesFeature::addStorageEngineRules() {

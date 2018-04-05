@@ -1441,8 +1441,10 @@ void Ast::injectBindParameters(BindParameters& parameters) {
 
           if (length > 0 && stringValue[0] >= '0' && stringValue[0] <= '9') {
             dataSource = resolver.getDataSource(basics::StringUtils::uint64(stringValue, length));
-          } else {
+          } else if (length > 0) {
             dataSource = resolver.getDataSource(std::string(stringValue, length));
+          } else {
+            dataSource = nullptr;
           }
 
           if (!dataSource) {

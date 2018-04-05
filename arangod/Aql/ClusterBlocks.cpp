@@ -847,7 +847,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _alternativeRegId(ExecutionNode::MaxRegisterId),
       _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
-  VariableId varId = ep->_varId;
+  VariableId varId = ep->_variable->id;
 
   // get the register id of the variable to inspect . . .
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
@@ -856,9 +856,9 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
 
-  if (ep->_alternativeVarId != ep->_varId) {
+  if (ep->_alternativeVariable != ep->_variable) {
     // use second variable
-    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
+    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVariable->id);
     TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     _alternativeRegId = (*it).second.registerId;
 

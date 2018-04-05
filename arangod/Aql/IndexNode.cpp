@@ -145,6 +145,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _reverse);
+  
+  c->setProjection(_projection);
 
   cloneHelper(c, withDependencies, withProperties);
 
