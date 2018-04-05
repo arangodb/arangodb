@@ -32,6 +32,7 @@
 #include "lib/Basics/StringUtils.h"
 #include "lib/Random/RandomGenerator.h"
 #include <iostream>
+#include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -47,8 +48,11 @@ namespace active_failover_test {
 
 const std::string PREFIX = "arango";
 const std::string LEADER = "SNGL-leader";
-const std::string FOLLOWER = "SNGL-follower1";
-const std::string FOLLOWER2 = "SNGL-follower2";
+const std::string FOLLOWER1 = "SNGL-follower1"; // tick 90, STATE GOOD
+const std::string FOLLOWER2 = "SNGL-follower2"; // tick 1, STATE GOOD
+const std::string FOLLOWER3 = "SNGL-follower3"; // tick 100, STATE BAD
+const std::string FOLLOWER4 = "SNGL-follower4"; // tick 1000, STATE GOOD wrong leader
+
 
 const char *agency =
 #include "ActiveFailoverTest.json"
@@ -83,14 +87,6 @@ Builder createBuilder(char const* c) {
   
 }
 
-Node createNode(char const* c) {
-  return createNodeFromBuilder(createBuilder(c));
-}
-
-Node createRootNode() {
-  return createNode(agency);
-}
-
 typedef std::function<std::unique_ptr<Builder>(
   Slice const&, std::string const&)> TestStructType;
 
@@ -100,20 +96,20 @@ inline static std::string typeName (Slice const& slice) {
 
 TEST_CASE("ActiveFailover", "[agency][supervision]") {
   
-  auto baseStructure = createRootNode();
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
-    
-  Builder builder;
-  baseStructure.toBuilder(builder);
+
+  Builder base = createBuilder(agency);
+  //baseStructure.toBuilder(builder);*/
 
   std::string jobId = "1";
 
   write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
-  trans_ret_t fakeTransResult {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
+  trans_ret_t fakeTransient {true, "", 1, 0, std::make_shared<Builder>(createBuilder(transient))};
   
   SECTION("creating a job should create a job in todo") {
     Mock<AgentInterface> mockAgent;
 
+    write_ret_t fakeWriteResult {true, "", std::vector<bool> {true}, std::vector<index_t> {1}};
     When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
         INFO(q->slice().toJson());
         auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
@@ -141,47 +137,20 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     
     auto& agent = mockAgent.get();
-    auto  activeFailover = ActiveFailoverJob(baseStructure(PREFIX), &agent, jobId, "tests", LEADER);
+    Node snapshot = createNodeFromBuilder(base);
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "tests", LEADER);
     
-    activeFailover.create();
+    REQUIRE(job.create());
     Verify(Method(mockAgent, write));
-
   }
   
-  //When(Method(mockAgent, transient)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+  //When(Method(mockAgent, transient)).AlwaysReturn(fakeTransient);
   
-  /*SECTION("The state is still 'BAD' and 'Target/FailedServers' is still as in the snapshot. Violate: GOOD") {
+  SECTION("The state is already 'GOOD' and 'Target/FailedServers' is still as in the snapshot. Violate: GOOD") {
     
-    auto createTestStructure = [&](Slice const& s, std::string const& path) -> std::unique_ptr<Builder> {
-      
-      std::unique_ptr<Builder> builder;
-      if (path == "/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION) {
-        return builder;
-      }
-      builder = std::make_unique<Builder>();
-      
-      if (s.isObject()) {
-        VPackObjectBuilder b(builder.get());
-        for (auto const& it: VPackObjectIterator(s)) {
-          auto childBuilder =
-          createTestStructure(it.value, path + "/" + it.key.copyString());
-          if (childBuilder) {
-            builder->add(it.key.copyString(), childBuilder->slice());
-          }
-        }
-        if (path == "/arango/Supervision/Health/leader") {
-          builder->add("Status", VPackValue("GOOD"));
-        }
-      } else {
-        builder->add(s);
-      }
-      
-      return builder;
-    };
-    
-    auto builder = createTestStructure(agency.toBuilder().slice(), "");
-    REQUIRE(builder);
-    Node agency = createNodeFromBuilder(*builder);
+    const char* tt = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}}}})=";
+    VPackBuilder overw = createBuilder(tt);
+    VPackBuilder mod = VPackCollection::merge(base.slice(), overw.slice(), true);
     
     Mock<AgentInterface> mockAgent;
     When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, bool d) -> write_ret_t {
@@ -196,23 +165,84 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       
       auto writes = q->slice()[0][0];
       REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
-      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == SHARD_LEADER);
+      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
       
       auto precond = q->slice()[0][1];
-      REQUIRE(typeName(precond.get("/arango/Supervision/Health/leader/Status")) == "object");
-      REQUIRE(precond.get("/arango/Supervision/Health/leader/Status").get("old").copyString() == "BAD");
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
       REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
       
-      return fakeWriteResult;
+      return write_ret_t{false, "", std::vector<bool> {false}, std::vector<index_t> {0}};
     });
     
     When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
     auto& agent = mockAgent.get();
-    FailedServer(agency(PREFIX), &agent, jobId, "unittest", SHARD_LEADER).create();
+    Node snapshot = createNodeFromBuilder(mod);
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
     
+    REQUIRE_FALSE(job.create());
+    REQUIRE(job.status() == JOB_STATUS::NOTFOUND);
     Verify(Method(mockAgent,write));
-  }*/ // SECTION
+  } // SECTION
+  
+  SECTION("Server is healthy again, job needs to be canceled") {
+    
+    const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
+                                        "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
+    VPackBuilder mod = VPackCollection::merge(base.slice(), createBuilder(health).slice(), true);
+    
+    Mock<AgentInterface> mockAgent;
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      REQUIRE(typeName(q->slice()) == "array" );
+      REQUIRE(q->slice().length() == 1);
+      REQUIRE(typeName(q->slice()[0]) == "array");
+      // we always simply override! no preconditions...
+      REQUIRE(q->slice()[0].length() == 2);
+      REQUIRE(typeName(q->slice()[0][0]) == "object");
+      REQUIRE(typeName(q->slice()[0][1]) == "object");
+      
+      auto writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1")) == "object");
+      REQUIRE(writes.get("/arango/Target/ToDo/1").get("server").copyString() == LEADER);
+      
+      auto precond = q->slice()[0][1];
+      REQUIRE(typeName(precond.get("/arango/Supervision/Health/SNGL-leader/Status")) == "object");
+      REQUIRE(precond.get("/arango/Supervision/Health/SNGL-leader/Status").get("old").copyString() == "BAD");
+      REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
+      
+      return fakeWriteResult;
+    });
+    When(Method(mockAgent, waitFor)).AlwaysReturn(AgentInterface::raft_commit_t::OK);
+    auto& agent = mockAgent.get();
+    Node snapshot = createNodeFromBuilder(mod); //snapshort contains GOOD leader
+    
+    ActiveFailoverJob job(snapshot(PREFIX), &agent, jobId, "unittest", LEADER);
+    REQUIRE(job.create()); // we already put the TODO entry in the snapshot for finish
+    REQUIRE(job.status() == JOB_STATUS::TODO);
+    Verify(Method(mockAgent,write)).Exactly(1);
+    
+    //When(Method(mockAgent, transient)).AlwaysReturn(fakeTransient);
+    When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
+      // check that the job fails now
+      auto writes = q->slice()[0][0];
+      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
+      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+      return fakeWriteResult;
+    });
+    
+    REQUIRE_FALSE(job.start());
+    REQUIRE(job.status() == JOB_STATUS::FAILED);
+    Verify(Method(mockAgent,write)).Exactly(2);
+    
+  } // SECTION
 
+  
+  // TODO Current leader is different from server the job started with
+  
+  // TODO no suitable follower found
+  
+  // TODO follower with best tick value used (correct leader, state GOOD)
+  
 };
 
 }}}

@@ -157,7 +157,7 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
 
   SECTION("<collection> still exists, if missing, job is finished, move to "
           "Target/Finished") {
-
+    
     TestStructType createTestStructure = [&](
       Slice const& s, std::string const& path) {
 
@@ -178,7 +178,6 @@ TEST_CASE("AddFollower", "[agency][supervision]") {
         if (path == "/arango/Target/ToDo") {
           builder->add(jobId, createBuilder(todo).slice());
         }
-        builder->close();
       } else {
         builder->add(s);
       }

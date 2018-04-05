@@ -7,17 +7,22 @@ R"=(
 			"Singles": {
 				"SNGL-follower1": "none",
 				"SNGL-follower2": "none",
-				"SNGL-follower3": "none",
+        "SNGL-follower3": "none",
+        "SNGL-follower4": "none",
 				"SNGL-leader": "none"
 			}
 		},
 		"Plan": {
 			"Version": 1,
-			"DBServers": {},
+      "DBServers": {},
+      "AsyncReplication": {
+        "Leader": "SNGL-leader"
+      },
 			"Singles": {
 				"SNGL-follower1": "none",
 				"SNGL-follower2": "none",
-				"SNGL-follower3": "none",
+        "SNGL-follower3": "none",
+        "SNGL-follower4": "none",
 				"SNGL-leader": "none"
 			}
 		},
@@ -31,6 +36,9 @@ R"=(
 					"Status": "GOOD"
 				},
 				"SNGL-follower3": {
+					"Status": "BAD"
+        },
+        "SNGL-follower4": {
 					"Status": "GOOD"
 				},
 				"SNGL-leader": {

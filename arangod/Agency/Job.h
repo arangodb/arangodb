@@ -57,7 +57,7 @@ extern std::string const planVersion;
 extern std::string const plannedServers;
 extern std::string const healthPrefix;
 extern std::string const asyncReplLeader;
-extern std::string const asyncReplPrefix;
+extern std::string const asyncReplTransientPrefix;
 
 struct Job {
 

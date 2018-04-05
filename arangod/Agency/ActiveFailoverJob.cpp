@@ -146,11 +146,13 @@ bool ActiveFailoverJob::start() {
   
   // Abort job blocking server if abortable (should prop never happen)
   try {
-    std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
-    if (!abortable(_snapshot, jobId)) {
-      return false; // job will retry later
-    } else {
-      JobContext(PENDING, jobId, _snapshot, _agent).abort();
+    if (_snapshot.has(blockedServersPrefix + _server)) {
+      std::string jobId = _snapshot(blockedServersPrefix + _server).getString();
+      if (!abortable(_snapshot, jobId)) {
+        return false; // job will retry later
+      } else {
+        JobContext(PENDING, jobId, _snapshot, _agent).abort();
+      }
     }
   } catch (...) {}
   
@@ -169,9 +171,8 @@ bool ActiveFailoverJob::start() {
       todo.add(_jb->slice()[0].get(toDoPrefix + _jobId));
     }} // Todo entry
   
-  // FIXME do I need to put this into pending ???
   std::string newLeader = findBestFollower(_snapshot);
-  if (newLeader.empty()) {
+  if (newLeader.empty() || leader.compareString(newLeader) == 0) {
     LOG_TOPIC(INFO, Logger::SUPERVISION) << "No server available, will retry job later";
     return false; // job will retry later
   }
@@ -263,7 +264,7 @@ std::string ActiveFailoverJob::findBestFollower(Node const& snapshot) {
     {
       VPackArrayBuilder transactions(trx.get());
       VPackArrayBuilder operations(trx.get());
-      trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplPrefix));
+      trx->add(VPackValue("/" + Job::agencyPrefix + asyncReplTransientPrefix));
     }
     trans_ret_t res = _agent->transient(std::move(trx));
     
