@@ -339,7 +339,7 @@ SECTION("if the leader is healthy again we fail the job") {
   );
   REQUIRE_FALSE(failedLeader.start());
   Verify(Method(mockAgent, transact));
-  Verify(Method(mockAgent, write));
+  Verify(Method(mockAgent, write)).Exactly(Once);
 }
 
 SECTION("the job must not be started if there is no server that is in sync for every shard") {
