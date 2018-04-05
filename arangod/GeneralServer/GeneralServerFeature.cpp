@@ -230,9 +230,9 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     vocbase->release();
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
+  request->setRequestContext(VocbaseContext::create(request, *vocbase), true);
 
   // the "true" means the request is the owner of the context
   return true;

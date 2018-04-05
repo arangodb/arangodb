@@ -120,11 +120,12 @@ void RestViewHandler::createView() {
 
   TRI_voc_cid_t id = 0;
   try {
-    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
+    auto view = _vocbase.createView(body, id);
+
     if (view != nullptr) {
       VPackBuilder props;
       props.openObject();
-      view->toVelocyPack(props);
+      view->toVelocyPack(props, true, false);
       props.close();
       generateResult(rest::ResponseCode::CREATED, props.slice());
     } else {
@@ -158,7 +159,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   std::string const& name = suffixes[0];
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
+
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -184,7 +186,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return;
       }
 
-      int res = _vocbase->renameView(view, newName.copyString());
+      int res = _vocbase.renameView(view, newName.copyString());
 
       if (res == TRI_ERROR_NO_ERROR) {
         getSingleView(newName.copyString());
@@ -194,12 +196,14 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
 
-    auto result = view->updateProperties(body, partialUpdate,
-                                         true);  // TODO: not force sync?
+    auto const result = view->updateProperties(
+      body, partialUpdate, true
+    );  // TODO: not force sync?
+
     if (result.ok()) {
       VPackBuilder updated;
       updated.openObject();
-      view->getImplementation()->getPropertiesVPack(updated, false);
+      view->toVelocyPack(updated, false, false);
       updated.close();
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
@@ -228,7 +232,7 @@ void RestViewHandler::deleteView() {
 
   std::string const& name = suffixes[0];
 
-  int res = _vocbase->dropView(name);
+  int res = _vocbase.dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
@@ -270,7 +274,8 @@ void RestViewHandler::getViews() {
 }
 
 void RestViewHandler::getListOfViews() {
-  std::vector<std::shared_ptr<LogicalView>> views = _vocbase->views();
+  auto views = _vocbase.views();
+
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
                std::shared_ptr<LogicalView> const& rhs) -> bool {
@@ -283,7 +288,7 @@ void RestViewHandler::getListOfViews() {
   for (std::shared_ptr<LogicalView> view : views) {
     if (view.get() != nullptr) {
       props.openObject();
-      view->toVelocyPack(props, true);
+      view->toVelocyPack(props, true, false);
       props.close();
     }
   }
@@ -292,12 +297,12 @@ void RestViewHandler::getListOfViews() {
 }
 
 void RestViewHandler::getSingleView(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->toVelocyPack(props, true);
+    view->toVelocyPack(props, true, false);
     props.close();
     generateResult(rest::ResponseCode::OK, props.slice());
   } else {
@@ -307,14 +312,14 @@ void RestViewHandler::getSingleView(std::string const& name) {
 }
 
 void RestViewHandler::getViewProperties(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;
     props.openObject();
-    view->getImplementation()->getPropertiesVPack(props, false);
+    view->toVelocyPack(props, true, false);
     props.close();
-    generateResult(rest::ResponseCode::OK, props.slice());
+    generateResult(rest::ResponseCode::OK, props.slice().get("properties"));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

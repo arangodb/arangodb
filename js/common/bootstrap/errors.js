@@ -39,6 +39,7 @@
     "ERROR_ONLY_ENTERPRISE"        : { "code" : 31, "message" : "only enterprise version" },
     "ERROR_RESOURCE_LIMIT"         : { "code" : 32, "message" : "resource limit exceeded" },
     "ERROR_ARANGO_ICU_ERROR"       : { "code" : 33, "message" : "icu error: %s" },
+    "ERROR_CANNOT_READ_FILE"       : { "code" : 34, "message" : "cannot read file" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
@@ -178,6 +179,7 @@
     "ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS" : { "code" : 1494, "message" : "conflicting shard number with distributeShardsLike parameter assignment" },
     "ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING" : { "code" : 1495, "message" : "leadership challenge is ongoing" },
     "ERROR_CLUSTER_NOT_LEADER"     : { "code" : 1496, "message" : "not a leader" },
+    "ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN" : { "code" : 1497, "message" : "could not create view in plan" },
     "ERROR_QUERY_KILLED"           : { "code" : 1500, "message" : "query killed" },
     "ERROR_QUERY_PARSE"            : { "code" : 1501, "message" : "%s" },
     "ERROR_QUERY_EMPTY"            : { "code" : 1502, "message" : "query is empty" },
@@ -340,4 +342,3 @@
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" }
   };
 }());
-

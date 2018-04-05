@@ -67,8 +67,21 @@ SECTION("test_category") {
 
   // LogicalView
   {
+    class LogicalViewImpl: public arangodb::LogicalView {
+     public:
+      LogicalViewImpl(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& definition)
+        : LogicalView(vocbase, definition, 0) {
+      }
+      virtual void drop() override {}
+      virtual void open() override {}
+      virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
+      virtual void toVelocyPack(arangodb::velocypack::Builder& result, bool includeProperties, bool includeSystem) const override {}
+      virtual arangodb::Result updateProperties(arangodb::velocypack::Slice const& properties, bool partialUpdate, bool doSync) override { return arangodb::Result(); }
+      virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+    };
+
     auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\" }");
-    arangodb::LogicalView instance(nullptr, json->slice());
+    LogicalViewImpl instance(nullptr, json->slice());
 
     CHECK((arangodb::LogicalView::category() == instance.category()));
   }

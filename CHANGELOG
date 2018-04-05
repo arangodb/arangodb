@@ -5,6 +5,15 @@ devel
   distributeShardsLike where the shards aren't actually distributed like in the
   prototype collection, as could happen due to internal issue #1770
 
+* removed option `--cluster.my-local-info` in favor of persisted server UUIDs
+
+  The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
+* added new collection property `cacheEnabled` which enables in-memory caching for
+  documents and primary index entries. Available only when using RocksDB
+
+* arangodump now supports `--threads` option to dump collections in parallel
+
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
 * Improvement: The AQL query planner in cluster is now a bit more clever and
@@ -43,7 +52,7 @@ devel
   * PUT /_api/foxx/service: Respect force flag
   * PATCH /_api/foxx/service: Check whether a service under given mount exists
 
-* renamed startup option `--replication.automatic-failover` to 
+* renamed startup option `--replication.automatic-failover` to
   `--replication.active-failover`
   using the old option name will still work in ArangoDB 3.4, but the old option
   will be removed afterwards
@@ -112,13 +121,6 @@ devel
   documents overview of a collection.
 
 * issue #1190: added option `--create-database` for arangoimport
-
-  with this option set to true, it is possible to make any arangorestore attempt
-  fail if the specified target database does not match the database name
-  specified in the source dump's "dump.json" file. it can thus be used to
-  prevent restoring data into the "wrong" database
-
-  The option is set to `false` by default to ensure backwards-compatibility
 
 * UI: updated dygraph js library to version 2.1.0
 
