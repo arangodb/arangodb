@@ -211,7 +211,7 @@ bool FailedFollower::start() {
         // shard not blocked
         addPreconditionShardNotBlocked(job, _shard);
         // toServer in good condition 
-        addPreconditionServerGood(job, _to);
+        addPreconditionServerHealth(job, _to, "GOOD");
       } 
         
     }
