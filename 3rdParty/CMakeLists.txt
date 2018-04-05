@@ -170,7 +170,7 @@ if (USE_IRESEARCH)
   else()
     # 'cmake -E copy_directory' does not preserve timestamps, use 'cp' directly where avalable
     add_custom_command(OUTPUT "${IRESEARCH_BUILD_DIR}/copy_iresearch.build" # non-existent file
-      COMMAND cp -rup "${IRESEARCH_ROOT}.build" "${IRESEARCH_BUILD_DIR}/"
+      COMMAND cp -rp "${IRESEARCH_ROOT}.build" "${IRESEARCH_BUILD_DIR}/"
     )
   endif()
 
