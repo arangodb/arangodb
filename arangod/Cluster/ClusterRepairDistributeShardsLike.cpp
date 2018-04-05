@@ -320,15 +320,18 @@ MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
     DBServers& dbServers = collection.shardsById.at(shardId);
     DBServers dbServersAfterMove;
 
+    // If moving the leader, the new server will be the first in the list.
     if (isLeader) {
       dbServersAfterMove.push_back(toServerId);
     }
 
+    // Copy all but the 'from' server. Relative order stays unchanged.
     std::copy_if(
         dbServers.begin(), dbServers.end(),
         std::back_inserter(dbServersAfterMove),
         [&fromServerId](ServerID const& it) { return it != fromServerId; });
 
+    // If moving a follower, the new server will be the last in the list.
     if (!isLeader) {
       dbServersAfterMove.push_back(toServerId);
     }
