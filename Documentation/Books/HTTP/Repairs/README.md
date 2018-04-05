@@ -64,7 +64,8 @@ this:
             "database": "_system",
             "collection": "someCollection",
             "distributeShardsLike": "aPrototypeCollection",
-            "renameDistributeShardsLike": true
+            "renameDistributeShardsLike": true,
+            "replicationFactor": 4
           }
         },
         {
