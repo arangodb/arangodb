@@ -110,6 +110,9 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   cluster_repairs::ResultT<bool> checkReplicationFactor(
       DatabaseID const& databaseId, CollectionID const& collectionId);
+
+  void generateResult(rest::ResponseCode code,
+                      const velocypack::Builder& payload, bool error);
 };
 }
 

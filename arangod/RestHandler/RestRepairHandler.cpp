@@ -104,6 +104,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::FAIL;
     }
 
+    clusterInfo->loadPlan();
     std::shared_ptr<VPackBuilder> planBuilder = clusterInfo->getPlan();
 
     VPackSlice plan = planBuilder->slice();
@@ -123,7 +124,6 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     }
 
     VPackSlice supervisionHealth(healthResult.get()->data());
-
 
     ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
         repairOperationsByCollectionResult =
@@ -148,8 +148,11 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     VPackBuilder response;
     response.add(VPackValue(VPackValueType::Object));
 
+    bool errorOccurred;
+
     if (repairOperationsByCollection.empty()) {
       response.add("message", VPackValue("Nothing to do."));
+      errorOccurred = false;
     } else {
       std::stringstream message;
       message << "Repairing " << repairOperationsByCollection.size()
@@ -164,12 +167,16 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
         responseCode = rest::ResponseCode::SERVER_ERROR;
       }
 
+      errorOccurred = !allCollectionsSucceeded;
+
       response.close();
     }
 
     response.close();
 
-    generateOk(responseCode, response);
+    generateResult(responseCode, response, errorOccurred);
+
+    clusterInfo->loadPlan();
 
     return RestStatus::DONE;
   } catch (Exception& e) {
@@ -177,6 +184,10 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
+
+    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
+      clusterInfo->loadPlan();
+    }
 
     return RestStatus::FAIL;
   }
@@ -254,8 +265,8 @@ bool RestRepairHandler::repairCollection(
   response.close();
 
   if (!pretendOnly()) {
-    Result result =
-        executeRepairOperations(databaseId, collectionId, dbAndCollectionName, repairOperations);
+    Result result = executeRepairOperations(
+        databaseId, collectionId, dbAndCollectionName, repairOperations);
     if (result.fail()) {
       success = false;
       response.add(StaticStrings::ErrorMessage,
@@ -334,6 +345,9 @@ Result RestRepairHandler::executeRepairOperations(
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
+    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
+      clusterInfo->loadPlan();
+    }
     if (!result.successful()) {
       std::stringstream errMsg;
       errMsg << "Failed to send and execute operation. "
@@ -348,7 +362,7 @@ Result RestRepairHandler::executeRepairOperations(
     }
 
     TRI_IF_FAILURE("RestRepairHandler::executeRepairOperations") {
-      std::string failOnSuffix { "---fail_on_operation_nr-" };
+      std::string failOnSuffix{"---fail_on_operation_nr-"};
       failOnSuffix.append(std::to_string(opNum));
       if (StringUtils::isSuffix(dbAndCollectionName, failOnSuffix)) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -658,4 +672,26 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(
   }
 
   return true;
+}
+
+void RestRepairHandler::generateResult(rest::ResponseCode code,
+                                       const VPackBuilder& payload,
+                                       bool error) {
+  resetResponse(code);
+
+  try {
+    VPackBuilder tmp;
+    tmp.add(VPackValue(VPackValueType::Object, true));
+    tmp.add(StaticStrings::Error, VPackValue(error));
+    tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    tmp.close();
+
+    tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
+
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
+    writeResult(tmp.slice(), options);
+  } catch (...) {
+    // Building the error response failed
+  }
 }
