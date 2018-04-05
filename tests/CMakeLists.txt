@@ -115,6 +115,7 @@ add_executable(
   Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Geo/GeoConstructorTest.cpp
+  Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/NearUtilsTest.cpp
   Graph/ClusterTraverserCacheTest.cpp

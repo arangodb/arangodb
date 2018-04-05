@@ -63,27 +63,30 @@ struct Fields {
   static constexpr auto kType = "type";  // mandatory
 };
 
-Type type(velocypack::Slice const& geoJSON);
+Type type(velocypack::Slice const& vpack);
 
 /// @brief Convenience function to build a region from a GeoJson type.
-Result parseRegion(velocypack::Slice const& geoJSON, ShapeContainer& region);
+Result parseRegion(velocypack::Slice const& vpack, ShapeContainer& region);
 
 /// @brief Expects an GeoJson point or an array [lon, lat]
-Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng);
+Result parsePoint(velocypack::Slice const& vpack, S2LatLng& latLng);
+
+/// @brief Expects an GeoJson array of points [[lon1, lat1], [lon2, lat2],...]
+Result parseMultiPoint(velocypack::Slice const& vpack, ShapeContainer& region);
 
 /// @brief parse GeoJson polygon or array of loops. Each loop consists of
 /// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
-Result parsePolygon(velocypack::Slice const& geoJSON, ShapeContainer& region);
+Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
 
-Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
+Result parseLinestring(velocypack::Slice const& vpack, S2Polyline& ll);
 /// @brief parse GeoJson multi linestring
-Result parseMultiLinestring(velocypack::Slice const& geoJSON,
+Result parseMultiLinestring(velocypack::Slice const& vpack,
                             std::vector<S2Polyline>& ll);
 
 // ============= Helpers ============
 
 /// Parses lat/lng arrays and {coordinates:[[lng, lat], ...]}
-Result parsePoints(velocypack::Slice const& geoJSON, bool geoJson,
+Result parsePoints(velocypack::Slice const& vpack, bool geoJson,
                    std::vector<S2Point>& vertices);
 
 /// @brief Parse a loop (LinearRing)
