@@ -1273,9 +1273,9 @@ void arangodb::aql::moveFiltersUpRule(Optimizer* opt,
 class arangodb::aql::RedundantCalculationsReplacer final
     : public WalkerWorker<ExecutionNode> {
  public:
-  explicit RedundantCalculationsReplacer(
+  RedundantCalculationsReplacer(ExecutionPlan* plan,
       std::unordered_map<VariableId, Variable const*> const& replacements)
-      : _replacements(replacements) {}
+      : _plan(plan), _replacements(replacements) {}
 
   template <typename T>
   void replaceStartTargetVariables(ExecutionNode* en) {
@@ -1382,8 +1382,19 @@ class arangodb::aql::RedundantCalculationsReplacer final
       case EN::GATHER: {
         auto node = static_cast<GatherNode*>(en);
         for (auto& variable : node->_elements) {
-          variable.var = Variable::replace(variable.var, _replacements);
+          auto v = Variable::replace(variable.var, _replacements);
+          if (v != variable.var) {
+            variable.var = v;
+          }
+          variable.attributePath.clear();
         }
+        break;
+      }
+      
+      case EN::DISTRIBUTE: {
+        auto node = static_cast<DistributeNode*>(en);
+        node->_variable = Variable::replace(node->_variable, _replacements);
+        node->_alternativeVariable = Variable::replace(node->_alternativeVariable, _replacements);
         break;
       }
 
@@ -1453,6 +1464,8 @@ class arangodb::aql::RedundantCalculationsReplacer final
   }
 
  private:
+  ExecutionPlan* _plan;
+  
   std::unordered_map<VariableId, Variable const*> const& _replacements;
 };
 
@@ -1581,7 +1594,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
 
   if (!replacements.empty()) {
     // finally replace the variables
-    RedundantCalculationsReplacer finder(replacements);
+    RedundantCalculationsReplacer finder(plan.get(), replacements);
     plan->root()->walk(&finder);
   }
 
@@ -1673,7 +1686,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
           replacements.emplace(outvars[0]->id, static_cast<Variable const*>(
                                                    rootNode->getData()));
 
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan.get(), replacements);
           plan->root()->walk(&finder);
           toUnlink.emplace(n);
           continue;
@@ -3002,7 +3015,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       inputVariable = node->getVariablesUsedHere()[0];
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, createKeys, true);
+                             inputVariable, inputVariable, createKeys, true);
     } else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
@@ -3014,7 +3027,7 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, false, v.size() > 1);
+                             inputVariable, inputVariable, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
@@ -3028,14 +3041,14 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
       }
       distNode =
           new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                             inputVariable->id, false, v.size() > 1);
+                             inputVariable, inputVariable, false, v.size() > 1);
     } else if (nodeType == ExecutionNode::UPSERT) {
       // an UPSERT node has two input variables!
       std::vector<Variable const*> v(node->getVariablesUsedHere());
       TRI_ASSERT(v.size() >= 2);
 
       auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, v[0]->id, v[1]->id, true, true);
+                                  collection, v[0], v[1], true, true);
       d->setAllowSpecifiedKeys(true);
       distNode = static_cast<ExecutionNode*>(d);
     } else {
@@ -4663,7 +4676,7 @@ void arangodb::aql::inlineSubqueriesRule(Optimizer* opt,
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.emplace(listNode->outVariable()->id,
                                returnNode->inVariable());
-          RedundantCalculationsReplacer finder(replacements);
+          RedundantCalculationsReplacer finder(plan.get(), replacements);
           plan->root()->walk(&finder);
 
           plan->clearVarUsageComputed();

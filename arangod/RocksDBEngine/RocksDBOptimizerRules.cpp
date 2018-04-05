@@ -156,7 +156,9 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         auto gn = static_cast<GatherNode*>(current);
         auto const& sortVars = gn->getElements();
         for (auto& it : sortVars) {
-          if (it.var == v && it.attributePath != attributeNames) {
+          auto path = it.attributePath;
+          std::reverse(path.begin(), path.end());
+          if (it.var == v && path != attributeNames) {
             stop = true;
             break;
           }
@@ -168,11 +170,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         if (vars.find(v) != vars.end()) {
           // original variable is still used here
           stop = true;
-          break;
         }
       }
 
-      TRI_ASSERT(!stop);
+      if (stop) {
+        break;
+      }
 
       current = current->getFirstParent();
     }
