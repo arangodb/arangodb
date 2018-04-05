@@ -314,6 +314,18 @@ SCENARIO("Broken distributeShardsLike collections",
       }
     }
 
+    GIVEN("An agency where differently ordered followers have to be moved") {
+#include "ClusterRepairsTest.moveFollower.cpp"
+      // This test should ensure that the (internal) order in the repairer
+      // after a shard move resembles the one after a real shard move.
+      // i.e., moving a follower puts it to the end of the list, e.g., given
+      // [a, b, c, d] (where a is the leader), moving b to e results in
+      // [a, c, d, e] rather than [a, e, c, d].
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth4Healthy0Bad,
+                                     expectedResultsWithFollowerOrder);
+    }
+
     GIVEN(
         "An agency where a follower-shard has erroneously ordered DBServers") {
 #include "ClusterRepairsTest.unorderedFollowers.cpp"
@@ -363,12 +375,11 @@ SCENARIO("Broken distributeShardsLike collections",
           expectedResultsWithUnequalReplicationFactor);
     }
 
-    GIVEN(
-        "A smart graph with some broken collections") {
+    GIVEN("A smart graph with some broken collections") {
 #include "ClusterRepairsTest.smartCollections.cpp"
-      checkAgainstExpectedOperations(
-          planCollections, supervisionHealth3Healthy0Bad,
-        expectedResultsWithSmartGraph);
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth3Healthy0Bad,
+                                     expectedResultsWithSmartGraph);
     }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
