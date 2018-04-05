@@ -31,7 +31,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::cluster_repairs;
 
-
 bool VersionSort::operator()(std::string const& a, std::string const& b) const {
   std::vector<CharOrInt> va = splitVersion(a);
   std::vector<CharOrInt> vb = splitVersion(b);
@@ -317,11 +316,24 @@ MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
       .isLeader = isLeader,
   };
 
-  // "Move" the shard in `collection`
-  for (auto& it : collection.shardsById.at(shardId)) {
-    if (it == fromServerId) {
-      it = toServerId;
+  {  // "Move" the shard in `collection`
+    DBServers& dbServers = collection.shardsById.at(shardId);
+    DBServers dbServersAfterMove;
+
+    if (isLeader) {
+      dbServersAfterMove.push_back(toServerId);
     }
+
+    std::copy_if(
+        dbServers.begin(), dbServers.end(),
+        std::back_inserter(dbServersAfterMove),
+        [&fromServerId](ServerID const& it) { return it != fromServerId; });
+
+    if (!isLeader) {
+      dbServersAfterMove.push_back(toServerId);
+    }
+
+    dbServers.swap(dbServersAfterMove);
   }
 
   return moveShardOperation;
@@ -345,8 +357,8 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixLeader(
     return Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS);
   }
 
-  ServerID const& protoLeader = protoShardDbServers.front();
-  ServerID const& shardLeader = shardDbServers.front();
+  ServerID const protoLeader = protoShardDbServers.front();
+  ServerID const shardLeader = shardDbServers.front();
 
   std::list<RepairOperation> repairOperations;
 
@@ -614,25 +626,26 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
   bool leadersMatch = dbServers[0] == protoDbServers[0];
   TRI_ASSERT(leadersMatch);
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS") {
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS") {
     if (StringUtils::isSuffix(collection.name, "---fail_mismatching_leaders")) {
       leadersMatch = false;
     }
   }
-  if (! leadersMatch) {
+  if (!leadersMatch) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS);
   }
-  ServerID leader = protoDbServers[0];
+  ServerID const leader = protoDbServers[0];
 
-  bool followersMatch = serverSetSymmetricDifference(dbServers, protoDbServers).empty();
+  bool followersMatch =
+      serverSetSymmetricDifference(dbServers, protoDbServers).empty();
   TRI_ASSERT(followersMatch);
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
+      "DistributeShardsLikeRepairer::createFixServerOrderOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS") {
     if (StringUtils::isSuffix(collection.name,
-      "---fail_mismatching_followers")) {
+                              "---fail_mismatching_followers")) {
       followersMatch = false;
     }
   }
@@ -677,18 +690,19 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
   bool repairingDistributeShardsLikeExists =
       collection.repairingDistributeShardsLike.is_initialized();
 
-  bool exactlyOneDslAttrIsSet = distributeShardsLikeExists != repairingDistributeShardsLikeExists;
+  bool exactlyOneDslAttrIsSet =
+      distributeShardsLikeExists != repairingDistributeShardsLikeExists;
   TRI_ASSERT(exactlyOneDslAttrIsSet);
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+      "DistributeShardsLikeRepairer::createBeginRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
     if (StringUtils::isSuffix(
-      collection.name,
-      "---fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
+            collection.name,
+            "---fail_inconsistent_attributes_in_createBeginRepairsOperation")) {
       exactlyOneDslAttrIsSet = false;
     }
   }
-  if (! exactlyOneDslAttrIsSet) {
+  if (!exactlyOneDslAttrIsSet) {
     // this should never happen.
     return Result(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES);
   }
@@ -723,11 +737,11 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
                                !collection.distributeShardsLike;
   TRI_ASSERT(onlyRepairingDslIsSet);
   TRI_IF_FAILURE(
-    "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
-    "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
+      "DistributeShardsLikeRepairer::createFinishRepairsOperation/"
+      "TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES") {
     if (StringUtils::isSuffix(collection.name,
-      "---fail_inconsistent_attributes_in_"
-      "createFinishRepairsOperation")) {
+                              "---fail_inconsistent_attributes_in_"
+                              "createFinishRepairsOperation")) {
       onlyRepairingDslIsSet = false;
     }
   }
