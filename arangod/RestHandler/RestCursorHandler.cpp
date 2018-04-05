@@ -108,7 +108,7 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   auto options = std::make_shared<VPackBuilder>(buildOptions(slice));
   VPackSlice opts = options->slice();
 
-  CursorRepository* cursors = _vocbase->cursorRepository();
+  CursorRepository* cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
@@ -133,9 +133,14 @@ void RestCursorHandler::processQuery(VPackSlice const& slice) {
   char const* queryStr = querySlice.getString(l);
   TRI_ASSERT(l > 0);
 
-  aql::Query query(false, _vocbase,
-                   arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
-                   bindVarsBuilder, options, arangodb::aql::PART_MAIN);
+  aql::Query query(
+    false,
+    &_vocbase,
+    arangodb::aql::QueryString(queryStr, static_cast<size_t>(l)),
+    bindVarsBuilder,
+    options,
+    arangodb::aql::PART_MAIN
+  );
 
   registerQuery(&query);
   aql::QueryResult queryResult = query.execute(_queryRegistry);
@@ -412,7 +417,7 @@ void RestCursorHandler::modifyQueryCursor() {
 
   std::string const& id = suffixes[0];
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -450,7 +455,7 @@ void RestCursorHandler::deleteQueryCursor() {
 
   std::string const& id = suffixes[0];
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(

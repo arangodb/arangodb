@@ -103,19 +103,19 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t* vocbase, bool isUpgrade, bool igno
 
   VersionResult vinfo = Version::check(vocbase);
 
-  if (ignoreFileErrors) {
-    if (vinfo.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
-        vinfo.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+  if (vinfo.status == methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
+      vinfo.status == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+    if (ignoreFileErrors) {
       // try to install a fresh new, empty VERSION file instead
       if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
         // give it another try
         LOG_TOPIC(WARN, Logger::STARTUP) << "overwriting unparsable VERSION file with default value because option `--database.ignore-logfile-errors` is set";
         vinfo = methods::Version::check(vocbase);
       }
+    } else {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
+                                       << "please start the server with option `--database.ignore-logfile-errors true`";
     }
-  } else {
-    LOG_TOPIC(WARN, Logger::STARTUP) << "in order to automatically fix the VERSION file on startup, "
-                                     << "please start the server with option `--database.ignore-logfile-errors true`";
   }
 
   switch (vinfo.status) {

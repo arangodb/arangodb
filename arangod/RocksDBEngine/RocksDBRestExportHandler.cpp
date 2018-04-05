@@ -232,14 +232,21 @@ void RocksDBRestExportHandler::createCursor() {
   bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
       options, "count", false);
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
   {
     auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize,
-        ttl, count);
+      &_vocbase,
+      name,
+      _restrictions,
+      TRI_NewTickServer(),
+      limit,
+      batchSize,
+      ttl,
+      count
+    );
 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
@@ -276,7 +283,7 @@ void RocksDBRestExportHandler::modifyCursor() {
 
   std::string const& id = suffixes[0];
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -322,7 +329,7 @@ void RocksDBRestExportHandler::deleteCursor() {
 
   std::string const& id = suffixes[0];
 
-  CursorRepository* cursors = _vocbase->cursorRepository();
+  CursorRepository* cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
