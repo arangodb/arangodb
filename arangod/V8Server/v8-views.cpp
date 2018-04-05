@@ -186,9 +186,7 @@ static void JS_CreateViewVocbase(
   infoSlice = full.slice();
 
   try {
-    TRI_voc_cid_t id = 0;
-    std::shared_ptr<arangodb::LogicalView> view =
-        vocbase->createView(infoSlice, id);
+    auto view = vocbase->createView(infoSlice);
 
     TRI_ASSERT(view != nullptr);
 
@@ -228,11 +226,14 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
+  auto view = vocbase->lookupView(name);
 
-  int res = vocbase->dropView(name);
+  if (view) {
+    auto res = vocbase->dropView(*view).errorNumber();
 
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -257,7 +258,7 @@ static void JS_DropViewVocbaseObj(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  int res = view->vocbase()->dropView(view->name());
+  auto res = view->vocbase()->dropView(*view).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");

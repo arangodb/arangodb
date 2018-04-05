@@ -255,12 +255,6 @@ class MMFilesEngine final : public StorageEngine {
                                     arangodb::LogicalCollection const*,
                                     std::string const& oldName) override;
 
-  // asks the storage engine to persist renaming of a view
-  // This will write a renameMarker if not in recovery
-  arangodb::Result renameView(TRI_vocbase_t* vocbase,
-                              std::shared_ptr<arangodb::LogicalView> view,
-                              std::string const& oldName) override;
-
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id
   // and index data are passed in the Slice object. Note that this function
@@ -296,8 +290,18 @@ class MMFilesEngine final : public StorageEngine {
   void unloadCollection(TRI_vocbase_t* vocbase,
                         arangodb::LogicalCollection* collection) override;
 
-  void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  arangodb::LogicalView const*) override;
+  void changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const&,
+    bool doSync
+  ) override;
+
+  void createView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view
+  ) override;
 
   void getViewProperties(
      TRI_vocbase_t* vocbase,
@@ -305,15 +309,22 @@ class MMFilesEngine final : public StorageEngine {
      VPackBuilder& builder
   ) override;
 
-  arangodb::Result persistView(TRI_vocbase_t* vocbase,
-                               arangodb::LogicalView const*) override;
+  arangodb::Result persistView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view
+  ) override;
+
+  // asks the storage engine to persist renaming of a view
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& oldName
+  ) override;
 
   arangodb::Result dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) override;
 
   void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept override;
-
-  void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                  arangodb::LogicalView const*, bool doSync) override;
 
   std::string createViewDirectoryName(std::string const& basePath,
                                       TRI_voc_cid_t id);

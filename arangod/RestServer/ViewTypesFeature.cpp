@@ -29,7 +29,7 @@
 namespace {
 
 std::string const FEATURE_NAME("ViewTypes");
-arangodb::ViewFactory const INVALID{};
+arangodb::ViewTypesFeature::ViewFactory const INVALID{};
 
 } // namespace
 
@@ -43,14 +43,28 @@ ViewTypesFeature::ViewTypesFeature(
   startsAfter("WorkMonitor");
 }
 
-bool ViewTypesFeature::emplace(
+arangodb::Result ViewTypesFeature::emplace(
     LogicalDataSource::Type const& type,
-    ViewFactory const& creator
+    ViewFactory const& factory
 ) {
-  return _factories.emplace(&type, creator).second;
+  if (!factory) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("view factory undefined during view factory registration for view type '") + type.name() + "'"
+    );
+  }
+
+  if (!_factories.emplace(&type, factory).second) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+      std::string("view factory previously registered during view factory registration for view type '") + type.name() + "'"
+    );
+  }
+
+  return arangodb::Result();
 }
 
-ViewFactory const& ViewTypesFeature::factory(
+ViewTypesFeature::ViewFactory const& ViewTypesFeature::factory(
     LogicalDataSource::Type const& type
 ) const noexcept {
   auto itr = _factories.find(&type);
