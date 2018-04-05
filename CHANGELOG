@@ -1,5 +1,14 @@
-v3.3.6 (2018-XX-XX)
+v3.3.6 (XXXX-XX-XX)
 -------------------
+
+* added ArangoShell helper function for packaging all information about an
+  AQL query so it can be run and analyzed elsewhere:
+
+  query = "FOR doc IN mycollection FILTER doc.value > 42 RETURN doc";
+  require("@arangodb/aql/explainer").debugDump("/tmp/query-debug-info", query);
+
+  Entitled users can send the generated file to the ArangoDB support to facilitate 
+  reproduction and debugging.
 
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
