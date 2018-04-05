@@ -104,7 +104,9 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::FAIL;
     }
 
-    VPackSlice plan = clusterInfo->getPlan()->slice();
+    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo->getPlan();
+
+    VPackSlice plan = planBuilder->slice();
 
     VPackSlice planCollections = plan.get("Collections");
 
