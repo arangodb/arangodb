@@ -52,7 +52,7 @@ class LogicalView : public LogicalDataSource {
   static std::shared_ptr<LogicalView> create(
     TRI_vocbase_t& vocbase,
     velocypack::Slice definition,
-    bool isNew
+    uint64_t planVersion = 0
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -103,7 +103,11 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
+  LogicalView(
+    TRI_vocbase_t* vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
 
  private:
   // FIXME seems to be ugly
@@ -113,21 +117,6 @@ class LogicalView : public LogicalDataSource {
   mutable basics::ReadWriteLock _lock;
 }; // LogicalView
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for a LogicalView factory function
-/// This typedef is used when registering the creator function for any view
-/// type. the creator function is called when a view is first created or
-/// re-opened after a server restart. the VelocyPack Slice will contain all
-/// information about the view's general and implementation-specific properties.
-/// the isNew flag will be true if the view is first created, and false if a
-/// view is re-opened on a server restart.
-//////////////////////////////////////////////////////////////////////////////
-typedef std::function<std::shared_ptr<LogicalView>(
-  TRI_vocbase_t& vocbase, // database
-  arangodb::velocypack::Slice const& properties, // view properties
-  bool isNew
-)> ViewFactory;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class DBServerLogicalView
 ////////////////////////////////////////////////////////////////////////////////
@@ -136,8 +125,6 @@ class DBServerLogicalView : public LogicalView {
   ~DBServerLogicalView() override;
 
   void drop() override;
-
-  void open() override;
 
   Result rename(
     std::string&& newName,
@@ -160,7 +147,7 @@ class DBServerLogicalView : public LogicalView {
   DBServerLogicalView(
     TRI_vocbase_t* vocbase,
     velocypack::Slice const& definition,
-    bool isNew
+    uint64_t planVersion
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -178,9 +165,6 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Slice const& slice,
     bool partialUpdate
   ) = 0;
-
- private:
-  bool _isNew;
 }; // LogicalView
 
 }  // namespace arangodb
