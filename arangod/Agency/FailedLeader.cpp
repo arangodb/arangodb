@@ -316,7 +316,7 @@ bool FailedLeader::start() {
     auto slice = result.get(
       std::vector<std::string>({
           agencyPrefix, "Supervision", "Health", _from, "Status"}));
-    if (slice.isString() && slice.copyString() != "FAILED") {
+    if (slice.isString() && slice.copyString() == "GOOD") {
       finish("", _shard, false, "Server " + _from + " no longer failing.");
       return false;
     }
