@@ -164,6 +164,31 @@ void registerRecoveryHelper() {
   }
 }
 
+void registerViewFactory() {
+  auto& viewType = arangodb::iresearch::IResearchView::type();
+  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+
+  if (!viewTypes) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "' while registering view type '" + viewType.name() + "'"
+    );
+  }
+
+  // DB server in custer or single-server
+  auto res = arangodb::ServerState::instance()->isCoordinator()
+    ? viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make)
+    : viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make)
+    ;
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      res.errorNumber(),
+      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+    );
+  }
+}
+
 arangodb::Result transactionStateRegistrationCallback(
     arangodb::LogicalDataSource& dataSource,
     arangodb::TransactionState& state
@@ -261,23 +286,8 @@ void IResearchFeature::prepare() {
   // load all known scorers
   ::iresearch::scorers::init();
 
-  auto* viewTypes = getFeature<arangodb::ViewTypesFeature>();
-
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'  while starting " + name()
-    );
-  }
-
   // register 'arangosearch' view
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    viewTypes->emplace(IResearchView::type(), IResearchViewCoordinator::make);
-  } else {
-    // DB server in custer or single-server
-    viewTypes->emplace(IResearchView::type(), IResearchView::make);
-  }
-
+  registerViewFactory();
 
   // register 'arangosearch' TransactionState state-change callback factory
   arangodb::transaction::Methods::addStateRegistrationCallback(

@@ -530,11 +530,7 @@ void ClusterInfo::loadPlan() {
             try {
               std::shared_ptr<LogicalCollection> newCollection;
 
-#ifndef USE_ENTERPRISE
-              newCollection = std::make_shared<LogicalCollection>(
-                vocbase, collectionSlice, true, newPlanVersion
-              );
-#else
+            #if defined(USE_ENTERPRISE)
               VPackSlice isSmart = collectionSlice.get("isSmart");
 
               if (isSmart.isTrue()) {
@@ -548,12 +544,13 @@ void ClusterInfo::loadPlan() {
                     vocbase, collectionSlice, newPlanVersion
                   );
                 }
-              } else {
+              } else
+            #endif
+              {
                 newCollection = std::make_shared<LogicalCollection>(
                   vocbase, collectionSlice, true, newPlanVersion
                 );
               }
-#endif
 
               auto& collectionName = newCollection->name();
 

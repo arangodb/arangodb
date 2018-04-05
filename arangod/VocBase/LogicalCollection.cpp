@@ -736,7 +736,7 @@ void LogicalCollection::unload() {
   _physical->unload();
 }
 
-void LogicalCollection::drop() {
+arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
   this->close();
 
@@ -746,6 +746,8 @@ void LogicalCollection::drop() {
   engine->destroyCollection(vocbase(), this);
   deleted(true);
   _physical->drop();
+
+  return arangodb::Result();
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {

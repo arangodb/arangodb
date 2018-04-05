@@ -52,7 +52,7 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
 
   void open() override { }
 
-  void drop() override { }
+  arangodb::Result drop() override { return TRI_ERROR_NOT_IMPLEMENTED; }
 
   virtual Result rename(std::string&& newName, bool doSync) override {
     return { TRI_ERROR_NOT_IMPLEMENTED };
