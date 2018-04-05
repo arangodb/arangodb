@@ -16,9 +16,9 @@
   * [Next Steps](GettingStarted/NextSteps.md) 
 * [Tutorials](Tutorials/README.md)  
 #   https://@github.com/arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
-  * [ArangoDB Starter](GettingStarted/Starter/README.md)
+  * [ArangoDB Starter](Tutorials/Starter/README.md)
 # https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/  
-  * [Datacenter to datacenter Replication](GettingStarted/DC2DC/README.md)
+  * [Datacenter to datacenter Replication](Tutorials/DC2DC/README.md)
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
   * [Kubernetes](Tutorials/Kubernetes/README.md)
 * [ArangoDB Programs](Programs/README.md)
