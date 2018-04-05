@@ -31,9 +31,9 @@
 
 #include <velocypack/velocypack-aliases.h>
 
-using namespace arangodb;
 using namespace arangodb::basics;
-using namespace arangodb::rest;
+
+namespace arangodb {
 
 RestViewHandler::RestViewHandler(GeneralRequest* request,
                                  GeneralResponse* response)
@@ -118,9 +118,8 @@ void RestViewHandler::createView() {
     return;
   }
 
-  TRI_voc_cid_t id = 0;
   try {
-    auto view = _vocbase.createView(body, id);
+    auto view = _vocbase.createView(body);
 
     if (view != nullptr) {
       VPackBuilder props;
@@ -227,12 +226,23 @@ void RestViewHandler::deleteView() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting DELETE /_api/view/<view-name>");
+
     return;
   }
 
   std::string const& name = suffixes[0];
+  auto view = _vocbase.lookupView(name);
 
-  int res = _vocbase.dropView(name);
+  if (!view) {
+    generateError(
+      rest::ResponseCode::NOT_FOUND,
+      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+    );
+
+    return;
+  }
+
+  auto res = _vocbase.dropView(*view).errorNumber();
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
@@ -325,3 +335,5 @@ void RestViewHandler::getViewProperties(std::string const& name) {
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 }
+
+} // arangodb

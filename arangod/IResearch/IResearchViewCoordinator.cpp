@@ -121,8 +121,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
   return { TRI_ERROR_NOT_IMPLEMENTED };
 }
 
-// FIXME return int???
-void IResearchViewCoordinator::drop() {
+Result IResearchViewCoordinator::drop() {
   ClusterInfo* ci = ClusterInfo::instance();
 
   std::string errorMsg;
@@ -137,7 +136,11 @@ void IResearchViewCoordinator::drop() {
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
       << "Could not drop view in agency, error: " << errorMsg
       << ", errorCode: " << res;
+
+    return { res, errorMsg };
   }
+
+  return {};
 }
 } // iresearch
 } // arangodb

@@ -1214,8 +1214,11 @@ void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
   collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
-void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const*) {
+void RocksDBEngine::createView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& /*view*/
+) {
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;
 
@@ -1237,24 +1240,29 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
 // asks the storage engine to persist renaming of a view
 // This will write a renameMarker if not in recovery
-Result RocksDBEngine::renameView(TRI_vocbase_t* vocbase,
-                                 std::shared_ptr<arangodb::LogicalView> view,
-                                 std::string const& /*oldName*/) {
-  return persistView(vocbase, view.get());
+Result RocksDBEngine::renameView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& /*oldName*/
+) {
+  return persistView(vocbase, view);
 }
 
 arangodb::Result RocksDBEngine::persistView(
     TRI_vocbase_t* vocbase,
-    arangodb::LogicalView const* view) {
+    arangodb::LogicalView const& view
+) {
   auto db = rocksutils::globalRocksDB();
-
   RocksDBKey key;
-  key.constructView(vocbase->id(), view->id());
+
+  key.constructView(vocbase->id(), view.id());
 
   VPackBuilder infoBuilder;
+
   infoBuilder.openObject();
-  view->toVelocyPack(infoBuilder, true, true);
+  view.toVelocyPack(infoBuilder, true, true);
   infoBuilder.close();
+
   auto const value = RocksDBValue::View(infoBuilder.slice());
 
   rocksdb::WriteOptions options;  // TODO: check which options would make sense
@@ -1299,8 +1307,9 @@ void RocksDBEngine::destroyView(
 void RocksDBEngine::changeView(
     TRI_vocbase_t* vocbase,
     TRI_voc_cid_t /*id*/,
-    arangodb::LogicalView const* view,
-    bool /*doSync*/) {
+    arangodb::LogicalView const& view,
+    bool /*doSync*/
+) {
   if (inRecovery()) {
     // nothing to do
     return;

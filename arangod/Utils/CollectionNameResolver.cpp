@@ -305,15 +305,14 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         }
       }
     }
-  } else {
-    // exactly as in the non-cluster case
-    name = _vocbase->collectionName(cid);
+
+    return !name.empty() ? name : std::string("_unknown");
   }
 
-  if (name.empty()) {
-    name = "_unknown";
-  }
-  return name;
+  // exactly as in the non-cluster case
+  auto collection = _vocbase->lookupCollection(cid);
+
+  return collection ? collection->name() : std::string("_unknown");
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
@@ -417,7 +416,9 @@ std::string CollectionNameResolver::getViewNameCluster(
 ) const {
   if (!ServerState::isClusterRole(_serverRole)) {
     // This handles the case of a standalone server
-    return _vocbase->viewName(cid);
+    auto view = _vocbase->lookupView(cid);
+
+    return view ? view->name() : StaticStrings::Empty;
   }
 
   // FIXME not supported

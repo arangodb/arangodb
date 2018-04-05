@@ -72,7 +72,8 @@ SECTION("test_category") {
       LogicalViewImpl(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& definition)
         : LogicalView(vocbase, definition, 0) {
       }
-      virtual void drop() override {}
+      virtual arangodb::Result create() noexcept override { return arangodb::Result(); }
+      virtual arangodb::Result drop() override { return arangodb::Result(); }
       virtual void open() override {}
       virtual arangodb::Result rename(std::string&& newName, bool doSync) override { return arangodb::Result(); }
       virtual void toVelocyPack(arangodb::velocypack::Builder& result, bool includeProperties, bool includeSystem) const override {}

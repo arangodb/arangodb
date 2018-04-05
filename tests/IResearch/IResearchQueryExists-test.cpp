@@ -255,7 +255,7 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
   // create view
   {
     auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    auto logicalView = vocbase.createView(createJson->slice());
     REQUIRE((false == !logicalView));
 
     view = logicalView.get();

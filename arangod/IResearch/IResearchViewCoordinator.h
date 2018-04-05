@@ -61,7 +61,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     // NOOP
   }
 
-  void drop() override;
+  Result drop() override;
 
   virtual Result rename(
       std::string&& /*newName*/,
@@ -82,6 +82,11 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     bool partialUpdate,
     bool doSync
   ) override;
+
+ protected:
+  arangodb::Result create() noexcept override {
+    return {};
+  }
 
  private:
   IResearchViewCoordinator(

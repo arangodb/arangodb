@@ -158,7 +158,7 @@ SECTION("construct") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   // dummy query
@@ -199,7 +199,7 @@ SECTION("clone") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   // dummy query
@@ -337,7 +337,7 @@ SECTION("searialize") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   // dummy query
@@ -430,7 +430,7 @@ SECTION("construct") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   arangodb::aql::Query query(
@@ -462,7 +462,7 @@ SECTION("clone") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   // dummy query
@@ -573,7 +573,7 @@ SECTION("searialize") {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
   // create view
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\" }");
-  auto logicalView = vocbase.createView(createJson->slice(), 0);
+  auto logicalView = vocbase.createView(createJson->slice());
   REQUIRE((false == !logicalView));
 
   // dummy query
