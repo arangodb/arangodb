@@ -57,7 +57,7 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     ) const override {
     }
     virtual void open() override {}
-    virtual arangodb::Result rename(std::string&& newName, bool doSync) {
+    virtual arangodb::Result rename(std::string&& newName, bool doSync) override {
       return {};
     }
     virtual arangodb::Result updateProperties(

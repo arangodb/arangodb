@@ -63,12 +63,12 @@ class FakeResponse : public GeneralResponse {
 
   void addPayload(VPackSlice const&,
                   arangodb::velocypack::Options const* = nullptr,
-                  bool resolveExternals = true) {
+                  bool resolveExternals = true) override {
     // TODO
   };
   void addPayload(VPackBuffer<uint8_t>&&,
                   arangodb::velocypack::Options const* = nullptr,
-                  bool resolveExternals = true) {
+                  bool resolveExternals = true) override {
     // TODO
   };
 
