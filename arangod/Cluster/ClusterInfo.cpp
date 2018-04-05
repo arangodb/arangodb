@@ -680,6 +680,7 @@ void ClusterInfo::loadPlan() {
                   << "'. The view will be ignored for now and the invalid information "
                   "will be repaired. VelocyPack: "
                   << viewSlice.toJson();
+                continue;
               }
 
               newView->setPlanVersion(newPlanVersion);

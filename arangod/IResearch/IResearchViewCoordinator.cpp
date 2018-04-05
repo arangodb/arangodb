@@ -31,8 +31,7 @@ void IResearchViewCoordinator::toVelocyPack(
     bool includeProperties,
     bool includeSystem
 ) const {
-  // ???
-  result.add(_info.slice());
+  result.add(velocypack::ObjectIterator(_info.slice()));
 }
 
 arangodb::Result IResearchViewCoordinator::updateProperties(

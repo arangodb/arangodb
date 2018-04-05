@@ -1662,45 +1662,53 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
-    if (id == 0) {
-      id = ci->uniqid();
-    }
-    std::string viewId = StringUtils::itoa(id);
-    // Now put together the JSON we need for the agency:
-    VPackBuilder builder;
-    { VPackObjectBuilder guard(&builder);
-      builder.add("id", VPackValue(viewId));
-      builder.add(VPackValue("properties"));
-      std::string name;
-      { VPackObjectBuilder guard(&builder);
-        for (auto const& p : VPackObjectIterator(parameters)) {
-          if (p.key.copyString() == "name" && p.value.isString()) {
-            name = p.value.copyString();
-          } else {
-            builder.add(p.key);
-            builder.add(p.value);
-          }
-        }
-      }
-      if (name.empty()) {
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
-          << "Could not create view in agency, error: no name given.";
-        return nullptr;
-      }
-      builder.add("name", VPackValue(name));
-      builder.add(VPackValue("collections"));
-      { VPackArrayBuilder guard2(&builder);
-      }
-    }
+//    if (id == 0) {
+//      id = ci->uniqid();
+//    }
+//    std::string viewId = StringUtils::itoa(id);
+//    // Now put together the JSON we need for the agency:
+//    VPackBuilder builder;
+//    { VPackObjectBuilder guard(&builder);
+//      builder.add("id", VPackValue(viewId));
+//      builder.add(VPackValue("properties"));
+//      std::string name;
+//      { VPackObjectBuilder guard(&builder);
+//        for (auto const& p : VPackObjectIterator(parameters)) {
+//          if (p.key.copyString() == "name" && p.value.isString()) {
+//            name = p.value.copyString();
+//          } else {
+//            builder.add(p.key);
+//            builder.add(p.value);
+//          }
+//        }
+//      }
+//      if (name.empty()) {
+//        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+//          << "Could not create view in agency, error: no name given.";
+//        return nullptr;
+//      }
+//      builder.add("name", VPackValue(name));
+//      builder.add(VPackValue("collections"));
+//      { VPackArrayBuilder guard2(&builder);
+//      }
+//    }
+
     std::string errorMsg;
-    int res = ci->createViewCoordinator(name(), viewId, builder.slice(),
-        errorMsg);
+
+    auto const viewId = basics::StringUtils::itoa(ci->uniqid());
+
+    int const res = ci->createViewCoordinator(
+      name(), viewId, parameters, errorMsg
+    );
+
     if (res == TRI_ERROR_NO_ERROR) {
       return ci->getView(name(), viewId);
     }
+
     LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
       << "Could not create view in agency, error: " << errorMsg
       << ", errorCode: " << res;
+
     return nullptr;
   }
 
