@@ -24,8 +24,8 @@
 * [ArangoDB Programs](Programs/README.md)
 #   https://@github.com//arangodb-helper/arangodb.git;arangodb;docs/Manual;;/ 
   * [ArangoDB Starter](Programs/Starter/README.md)
-    * [Options](Programs/Starter/options.md)
-    * [Security](Programs/Starter/security.md)
+    * [Options](Programs/Starter/Options.md)
+    * [Security](Programs/Starter/Security.md)
 
 ## CORE TOPICS	
 
