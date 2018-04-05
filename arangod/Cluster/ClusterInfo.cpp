@@ -543,9 +543,11 @@ void ClusterInfo::loadPlan() {
                   newCollection = std::make_shared<SmartVertexCollection>(
                       vocbase, collectionSlice);
                 }
+                TRI_ASSERT(newCollection->isSmart());
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
                     vocbase, collectionSlice, true);
+                TRI_ASSERT(!newCollection->isSmart());
               }
 #endif
               newCollection->setPlanVersion(newPlanVersion);
