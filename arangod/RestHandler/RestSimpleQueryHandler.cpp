@@ -103,7 +103,7 @@ void RestSimpleQueryHandler::allDocuments() {
     return;
   }
 
-  auto col = _vocbase->lookupCollection(collectionName);
+  auto col = _vocbase.lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
     // user has probably passed in a numeric collection id.
@@ -198,7 +198,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
     return;
   }
 
-  auto col = _vocbase->lookupCollection(collectionName);
+  auto col = _vocbase.lookupCollection(collectionName);
 
   if (col != nullptr && collectionName != col->name()) {
     // user has probably passed in a numeric collection id.
@@ -219,7 +219,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
   } else if (returnType == "id") {
     aql.append("doc._id");
   } else {
-    aql.append(std::string("CONCAT('/_db/") + _vocbase->name() +
+    aql.append(std::string("CONCAT('/_db/") + _vocbase.name() +
                 "/_api/document/', doc._id)");
   }
 
@@ -309,7 +309,7 @@ void RestSimpleQueryHandler::byExample() {
     return;
   }
 
-  auto col = _vocbase->lookupCollection(cname);
+  auto col = _vocbase.lookupCollection(cname);
 
   if (col != nullptr && cname != col->name()) {
     // user has probably passed in a numeric collection id.

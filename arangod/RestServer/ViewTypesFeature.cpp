@@ -29,7 +29,7 @@
 namespace {
 
 std::string const FEATURE_NAME("ViewTypes");
-arangodb::ViewFactory const INVALID{};
+arangodb::ViewTypesFeature::ViewFactory const INVALID{};
 
 } // namespace
 
@@ -50,7 +50,7 @@ bool ViewTypesFeature::emplace(
   return _factories.emplace(&type, creator).second;
 }
 
-ViewFactory const& ViewTypesFeature::factory(
+ViewTypesFeature::ViewFactory const& ViewTypesFeature::factory(
     LogicalDataSource::Type const& type
 ) const noexcept {
   auto itr = _factories.find(&type);
