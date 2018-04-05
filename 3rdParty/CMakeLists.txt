@@ -188,6 +188,13 @@ if (USE_IRESEARCH)
     # cmake does not build ICU without this (cmake does not inherit dependencies)
     add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
   endif()
+
+  # ensure the 'copy_iresearch.build' target is executed before start of build of the 'iresearch' target
+  if(MSVC)
+    add_dependencies(iresearch-static-scrt "copy_iresearch.build") # use static + staticCRT to match ArangoDB
+  else()
+    add_dependencies(iresearch-static "copy_iresearch.build") # use static to match ArangoDB
+  endif()
 endif()
 
 ################################################################################

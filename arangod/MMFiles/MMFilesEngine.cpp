@@ -1192,25 +1192,29 @@ Result MMFilesEngine::renameCollection(
 // asks the storage engine to persist renaming of a view
 // This will write a renameMarker if not in recovery
 Result MMFilesEngine::renameView(
-    TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,
-    std::string const& oldName) {
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& oldName
+) {
   if (inRecovery()) {
     // Nothing todo. Marker already there
     return {};
   }
+
   int res = TRI_ERROR_NO_ERROR;
+
   try {
     VPackBuilder builder;
+
     builder.openObject();
-    builder.add("id", VPackValue(std::to_string(view->id())));
+    builder.add("id", VPackValue(std::to_string(view.id())));
     builder.add("oldName", VPackValue(oldName));
-    builder.add("name", VPackValue(view->name()));
+    builder.add("name", VPackValue(view.name()));
     builder.close();
 
-    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_RENAME_VIEW,
-                             vocbase->id(), view->id(),
-                             builder.slice());
-
+    MMFilesViewMarker marker(
+      TRI_DF_MARKER_VPACK_RENAME_VIEW, vocbase->id(), view.id(), builder.slice()
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -1230,11 +1234,15 @@ Result MMFilesEngine::renameView(
         << "could not save view rename marker in log: "
         << TRI_errno_string(res);
   }
+
   return {res, TRI_errno_string(res)};
 }
 
-void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const* parameters) {
+void MMFilesEngine::createView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view
+) {
   std::string const path = databasePath(vocbase);
 
   if (!TRI_IsDirectory(path.c_str())) {
@@ -1252,7 +1260,7 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot create view '" << parameters->name() << "' in directory '"
+        << "cannot create view '" << view.name() << "' in directory '"
         << dirname << "': directory already exists";
     THROW_ARANGO_EXCEPTION(
         TRI_ERROR_ARANGO_COLLECTION_DIRECTORY_ALREADY_EXISTS);  // TODO: change
@@ -1270,7 +1278,7 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot create view '" << parameters->name() << "' in directory '"
+        << "cannot create view '" << view.name() << "' in directory '"
         << path << "': " << TRI_errno_string(res) << " - " << systemError
         << " - " << errorMessage;
     THROW_ARANGO_EXCEPTION(res);
@@ -1295,7 +1303,7 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot create view '" << parameters->name() << "' in directory '"
+        << "cannot create view '" << view.name() << "' in directory '"
         << path << "': " << TRI_errno_string(res) << " - " << systemError
         << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -1310,7 +1318,7 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot create view '" << parameters->name() << "' in directory '"
+        << "cannot create view '" << view.name() << "' in directory '"
         << path << "': " << TRI_errno_string(res) << " - " << systemError
         << " - " << errorMessage;
     TRI_RemoveDirectory(tmpname.c_str());
@@ -1328,7 +1336,8 @@ void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database")
           ->forceSyncProperties();
-  saveViewInfo(vocbase, id, parameters, doSync);
+
+  saveViewInfo(vocbase, id, &view, doSync);
 }
 
 void MMFilesEngine::getViewProperties(
@@ -1340,23 +1349,26 @@ void MMFilesEngine::getViewProperties(
   result.add("path", VPackValue(viewDirectory(vocbase->id(), view->id())));
 }
 
-arangodb::Result MMFilesEngine::persistView(TRI_vocbase_t* vocbase,
-                                            arangodb::LogicalView const* view) {
-  TRI_ASSERT(view != nullptr);
+arangodb::Result MMFilesEngine::persistView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view
+) {
   TRI_ASSERT(vocbase != nullptr);
+
   if (inRecovery()) {
     // Nothing to do. In recovery we do not write markers.
     return {};
   }
 
   VPackBuilder builder;
+
   builder.openObject();
-  view->toVelocyPack(builder, true, true);
+  view.toVelocyPack(builder, true, true);
   builder.close();
 
   VPackSlice const slice = builder.slice();
+  auto id = view.id();
 
-  auto id = view->id();
   TRI_ASSERT(id != 0);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
@@ -1479,7 +1491,7 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 void MMFilesEngine::changeView(
     TRI_vocbase_t* vocbase,
     TRI_voc_cid_t id,
-    arangodb::LogicalView const* view,
+    arangodb::LogicalView const& view,
     bool doSync
 ) {
   // FIXME make noexcept and return Result???
@@ -1487,7 +1499,7 @@ void MMFilesEngine::changeView(
   if (!inRecovery()) {
     VPackBuilder infoBuilder;
     infoBuilder.openObject();
-    view->toVelocyPack(infoBuilder, true, true);
+    view.toVelocyPack(infoBuilder, true, true);
     infoBuilder.close();
 
     MMFilesViewMarker marker(
@@ -1505,7 +1517,7 @@ void MMFilesEngine::changeView(
     }
   }
 
-  saveViewInfo(vocbase, id, view, doSync);
+  saveViewInfo(vocbase, id, &view, doSync);
 }
 
 // asks the storage engine to create an index as specified in the VPack
