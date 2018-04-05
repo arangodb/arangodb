@@ -2070,7 +2070,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         );
       }
 
-      auto const view = LogicalView::create(*vocbase, it, false);
+      auto const view = LogicalView::create(*vocbase, it);
 
       if (!view) {
         auto const message = "failed to instantiate view '" + name + "'";
@@ -2935,7 +2935,7 @@ int MMFilesEngine::openCollection(TRI_vocbase_t* vocbase,
 
       if (!checkDatafileHeader(datafile, filename)) {
         result = TRI_ERROR_ARANGO_CORRUPTED_DATAFILE;
-        stop = true;
+        stop = !ignoreErrors;
         break;
       }
 

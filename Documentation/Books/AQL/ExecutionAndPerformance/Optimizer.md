@@ -478,6 +478,9 @@ The following optimizer rules may appear in the `rules` attribute of cluster pla
 * `undistribute-remove-after-enum-coll`: will appear if a RemoveNode can be pushed into
   the same query part that enumerates over the documents of a collection. This saves
   inter-cluster roundtrips between the EnumerateCollectionNode and the RemoveNode.
+* `collect-in-cluster`: will appear when a collect node on a coordinator is accompanied
+  by extra collect nodes on the database servers, which will do the heavy processing and
+  allow the collect node on the coordinator to a light-weight aggregation only.
 
 Note that some rules may appear multiple times in the list, with number suffixes.
 This is due to the same rule being applied multiple times, at different positions

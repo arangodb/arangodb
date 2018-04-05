@@ -882,8 +882,8 @@ IResearchView::IResearchView(
     TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
-    bool isNew
-): DBServerLogicalView(vocbase, info, isNew),
+    uint64_t planVersion
+): DBServerLogicalView(vocbase, info, planVersion),
     FlushTransaction(toString(*this)),
    _asyncMetaRevision(1),
    _asyncSelf(irs::memory::make_unique<AsyncSelf>(this)),
@@ -1715,42 +1715,10 @@ int IResearchView::insert(
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result IResearchView::link(
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Slice const link
-) {
-  auto* vocbase = this->vocbase();
-
-  if (!vocbase) {
-    return arangodb::Result(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to find vocbase while linking IResearch view '") + std::to_string(id()) + "'"
-    );
-  }
-
-  arangodb::velocypack::Builder builder;
-
-  builder.openObject();
-  builder.add(
-    std::to_string(cid),
-    arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null)
-  );
-
-  if (link.isObject()) {
-    builder.add(std::to_string(cid), link);
-  }
-
-  builder.close();
-
-  std::unordered_set<TRI_voc_cid_t> collections;
-
-  return updateLinks(collections, *vocbase, *this, builder.slice());
-}
-
 /*static*/ std::shared_ptr<LogicalView> IResearchView::make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    bool isNew
+    uint64_t planVersion
 ) {
   auto* feature =
     arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
@@ -1762,7 +1730,7 @@ arangodb::Result IResearchView::link(
     return nullptr;
   }
 
-  PTR_NAMED(IResearchView, view, &vocbase, info, *feature, isNew);
+  PTR_NAMED(IResearchView, view, &vocbase, info, *feature, planVersion);
   auto& impl = reinterpret_cast<IResearchView&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   auto props = json.get("properties");
@@ -2120,7 +2088,7 @@ arangodb::Result IResearchView::updateProperties(
     if (!meta.init(slice, error, initialMeta, &mask)) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, std::move(error));
     }
-
+/*FIXME TODO remove?
     // FIXME TODO remove once View::updateProperties(...) will be fixed to write
     // the update delta into the WAL marker instead of the full persisted state
     // below is a very dangerous hack as it allows multiple links from the same
@@ -2184,7 +2152,7 @@ arangodb::Result IResearchView::updateProperties(
         _meta._collections = std::move(collections);
       }
     }
-
+*/
     // reset non-updatable values to match current meta
     meta._collections = _meta._collections;
 
@@ -2299,7 +2267,7 @@ void IResearchView::FlushCallbackUnregisterer::operator()(IResearchView* view) c
 }
 
 void IResearchView::verifyKnownCollections() {
-  std::unordered_set<TRI_voc_cid_t> cids;
+  auto cids = _meta._collections;
 
   {
     static const arangodb::transaction::Options defaults;

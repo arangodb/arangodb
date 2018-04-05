@@ -120,7 +120,8 @@ void RestViewHandler::createView() {
 
   TRI_voc_cid_t id = 0;
   try {
-    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
+    auto view = _vocbase.createView(body, id);
+
     if (view != nullptr) {
       VPackBuilder props;
       props.openObject();
@@ -158,7 +159,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
   }
 
   std::string const& name = suffixes[0];
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
+
   if (view == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -184,7 +186,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
         return;
       }
 
-      int res = _vocbase->renameView(view, newName.copyString());
+      int res = _vocbase.renameView(view, newName.copyString());
 
       if (res == TRI_ERROR_NO_ERROR) {
         getSingleView(newName.copyString());
@@ -230,7 +232,7 @@ void RestViewHandler::deleteView() {
 
   std::string const& name = suffixes[0];
 
-  int res = _vocbase->dropView(name);
+  int res = _vocbase.dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
@@ -272,7 +274,8 @@ void RestViewHandler::getViews() {
 }
 
 void RestViewHandler::getListOfViews() {
-  std::vector<std::shared_ptr<LogicalView>> views = _vocbase->views();
+  auto views = _vocbase.views();
+
   std::sort(views.begin(), views.end(),
             [](std::shared_ptr<LogicalView> const& lhs,
                std::shared_ptr<LogicalView> const& rhs) -> bool {
@@ -294,7 +297,7 @@ void RestViewHandler::getListOfViews() {
 }
 
 void RestViewHandler::getSingleView(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;
@@ -309,7 +312,7 @@ void RestViewHandler::getSingleView(std::string const& name) {
 }
 
 void RestViewHandler::getViewProperties(std::string const& name) {
-  std::shared_ptr<LogicalView> view = _vocbase->lookupView(name);
+  auto view = _vocbase.lookupView(name);
 
   if (view.get() != nullptr) {
     VPackBuilder props;

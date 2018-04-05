@@ -188,15 +188,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     IResearchLinkMeta const& meta
   );
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief link the specified 'cid' to the view using the specified 'link'
-  ///        definition (!link.isObject() == remove only)
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result link(
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Slice const link
-  );
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -204,7 +195,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    bool isNew
+    uint64_t planVersion
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -338,13 +329,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     TRI_vocbase_t* vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
-    bool isNew
+    uint64_t planVersion
   );
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Called in post-recovery to remove any dangling documents old links
-  //////////////////////////////////////////////////////////////////////////////
-  void verifyKnownCollections();
+  MemoryStore& activeMemoryStore() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief process a finished transaction and release resources held by it
@@ -356,7 +344,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   void registerFlushCallback();
 
-  MemoryStore& activeMemoryStore() const;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Called in post-recovery to remove any dangling documents old links
+  //////////////////////////////////////////////////////////////////////////////
+  void verifyKnownCollections();
 
   std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
@@ -380,4 +371,5 @@ class IResearchView final: public arangodb::DBServerLogicalView,
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif

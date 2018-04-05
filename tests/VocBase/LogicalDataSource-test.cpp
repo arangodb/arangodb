@@ -70,7 +70,7 @@ SECTION("test_category") {
     class LogicalViewImpl: public arangodb::LogicalView {
      public:
       LogicalViewImpl(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice const& definition)
-        : LogicalView(vocbase, definition) {
+        : LogicalView(vocbase, definition, 0) {
       }
       virtual void drop() override {}
       virtual void open() override {}

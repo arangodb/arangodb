@@ -529,27 +529,34 @@ void ClusterInfo::loadPlan() {
 
             try {
               std::shared_ptr<LogicalCollection> newCollection;
+
 #ifndef USE_ENTERPRISE
               newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice, true);
+                vocbase, collectionSlice, true, newPlanVersion
+              );
 #else
               VPackSlice isSmart = collectionSlice.get("isSmart");
+
               if (isSmart.isTrue()) {
                 VPackSlice type = collectionSlice.get("type");
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
-                      vocbase, collectionSlice);
+                    vocbase, collectionSlice, newPlanVersion
+                  );
                 } else {
                   newCollection = std::make_shared<SmartVertexCollection>(
-                      vocbase, collectionSlice);
+                    vocbase, collectionSlice, newPlanVersion
+                  );
                 }
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
-                    vocbase, collectionSlice, true);
+                  vocbase, collectionSlice, true, newPlanVersion
+                );
               }
 #endif
-              newCollection->setPlanVersion(newPlanVersion);
-              std::string const collectionName = newCollection->name();
+
+              auto& collectionName = newCollection->name();
+
               if (isCoordinator && !selectivityEstimates.empty()){
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
                 newCollection->clusterIndexEstimates(std::move(selectivityEstimates));
@@ -671,7 +678,7 @@ void ClusterInfo::loadPlan() {
 
             try {
               const auto newView = LogicalView::create(
-                *vocbase, viewPairSlice.value, false
+                *vocbase, viewPairSlice.value, newPlanVersion
               );
 
               if (!newView) {
@@ -683,7 +690,6 @@ void ClusterInfo::loadPlan() {
                 continue;
               }
 
-              newView->setPlanVersion(newPlanVersion);
               std::string const viewName = newView->name();
               // register with name as well as with id:
               databaseViews.emplace(std::make_pair(viewName, newView));

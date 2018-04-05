@@ -40,11 +40,14 @@ namespace {
 std::unique_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    bool isNew
+    uint64_t planVersion
   ) {
   struct Impl: public arangodb::LogicalView{
-    Impl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info)
-      : LogicalView(&vocbase, info) {
+    Impl(
+        TRI_vocbase_t& vocbase,
+        arangodb::velocypack::Slice const& info,
+        uint64_t planVersion
+    ): LogicalView(&vocbase, info, planVersion) {
     }
     virtual void drop() override {
       deleted(true);
@@ -69,7 +72,7 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>(vocbase, info);
+  return std::make_unique<Impl>(vocbase, info, planVersion);
 }
 
 }

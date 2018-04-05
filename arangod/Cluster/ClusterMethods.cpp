@@ -2603,7 +2603,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
   TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
   bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
   bool enforceReplicationFactor) {
-  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, true);  
+  auto col = std::make_unique<LogicalCollection>(vocbase, parameters, 0, true);
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.

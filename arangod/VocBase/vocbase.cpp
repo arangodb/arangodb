@@ -1586,17 +1586,18 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 
 /// @brief creates a new view, worker function
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
-    VPackSlice parameters, TRI_voc_cid_t& id) {
-  std::string name = arangodb::basics::VelocyPackHelper::getStringValue(
-      parameters, "name", "");
-
+    VPackSlice parameters, TRI_voc_cid_t& id
+) {
   // check that the name does not contain any strange characters
   if (!IsAllowedName(parameters)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
+  auto name =
+    arangodb::basics::VelocyPackHelper::getStringValue(parameters, "name", "");
+
   // Try to create a new view. This is not registered yet
-  auto const view = LogicalView::create(*this, parameters, true);
+  auto const view = LogicalView::create(*this, parameters);
 
   if (!view) {
     auto const message = "failed to instantiate view '" + name + "'";
@@ -1619,17 +1620,20 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createViewWorker(
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
-  arangodb::velocypack::Builder builder;
-  auto res = engine->getViews(this, builder);
-  TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
-  auto slice  = builder.slice();
-  TRI_ASSERT(slice.isArray());
-  auto viewId = std::to_string(view->id());
 
-  // We have not yet persisted this view
-  for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
-    TRI_ASSERT(arangodb::basics::VelocyPackHelper::getStringRef(entry, "id", arangodb::velocypack::StringRef()).compare(viewId));
-  }
+  #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    arangodb::velocypack::Builder builder;
+    auto res = engine->getViews(this, builder);
+    TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
+    auto slice  = builder.slice();
+    TRI_ASSERT(slice.isArray());
+    auto viewId = std::to_string(view->id());
+
+    // We have not yet persisted this view
+    for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
+      TRI_ASSERT(arangodb::basics::VelocyPackHelper::getStringRef(entry, "id", arangodb::velocypack::StringRef()).compare(viewId));
+    }
+  #endif
 
   registerView(basics::ConditionalLocking::DoNotLock, view);
 
