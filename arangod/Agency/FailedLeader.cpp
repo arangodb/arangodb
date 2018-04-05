@@ -325,7 +325,7 @@ bool FailedLeader::start() {
     slice = result.get(
       std::vector<std::string>(
         {agencyPrefix, "Supervision", "Health", _to, "Status"}));
-    if (slice.isString() && slice.copyString() == "GOOD") {
+    if (slice.isString() && slice.copyString() != "GOOD") {
       LOG_TOPIC(INFO, Logger::SUPERVISION)
         << "Will not failover from " << _from << " to " << _to
         << " as target server is no longer in good condition. Will retry.";
