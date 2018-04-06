@@ -1,6 +1,8 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* fix restoring of smart graph edge collections (may have run into timeout before)
+
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
 
