@@ -53,32 +53,25 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
          {{
              // begin without rename
              BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "followingCollection",
-                 .protoCollectionId = "11111111",
-                 .protoCollectionName = "leadingCollection",
-                 .collectionReplicationFactor = 3,
-                 .protoReplicationFactor = 3,
-                 .renameDistributeShardsLike = false,
+                 "someDb", "22222222", "followingCollection", "11111111",
+                 "leadingCollection", 3, 3, false,
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "followingCollection",
-                 .protoCollectionId = "11111111",
-                 .protoCollectionName = "leadingCollection",
-                 .shards =
-                     {
-                         std::make_tuple<ShardID, ShardID, DBServers>(
-                             "s22", "s11",
-                             {
-                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                                 "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                             }),
-                     },
-                 .replicationFactor = 3,
+                 "someDb",
+                 "22222222",
+                 "followingCollection",
+                 "11111111",
+                 "leadingCollection",
+                 {
+                     std::make_tuple<ShardID, ShardID, DBServers>(
+                         "s22", "s11",
+                         {
+                             "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                             "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                             "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                         }),
+                 },
+                 3,
              },
          }}}};

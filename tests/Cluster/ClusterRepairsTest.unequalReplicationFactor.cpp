@@ -55,43 +55,32 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
          {{
              // rename distributeShardsLike to repairingDistributeShardsLike
              BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000002",
-                 .collectionName = "follower",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "prototype",
-                 .collectionReplicationFactor = 4,
-                 .protoReplicationFactor = 2,
-                 .renameDistributeShardsLike = true,
+                 "someDb", "10000002", "follower", "10000001", "prototype", 4,
+                 2, true,
              },
              // shard s21 of collection 10000002
              // move follower
              MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "10000002",
-                 .collectionName = "follower",
-                 .shard = "s21",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .isLeader = false,
+                 "someDb", "10000002", "follower", "s21",
+                 "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB", false,
              },
              // rename repairingDistributeShardsLike to distributeShardsLike
              FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000002",
-                 .collectionName = "follower",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "prototype",
-                 .shards =
-                     {
-                         std::make_tuple<ShardID, ShardID, DBServers>(
-                             "s21", "s11",
-                             {
-                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                             }),
-                     },
-                 .replicationFactor = 2,
+                 "someDb",
+                 "10000002",
+                 "follower",
+                 "10000001",
+                 "prototype",
+                 {
+                     std::make_tuple<ShardID, ShardID, DBServers>(
+                         "s21", "s11",
+                         {
+                             "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                             "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                         }),
+                 },
+                 2,
              },
          }}},
     };

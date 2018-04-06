@@ -64,6 +64,15 @@ struct BeginRepairsOperation {
   bool renameDistributeShardsLike;
 
   BeginRepairsOperation() = delete;
+
+  BeginRepairsOperation(const DatabaseID& database,
+                        const CollectionID& collectionId,
+                        const std::string& collectionName,
+                        const CollectionID& protoCollectionId,
+                        const std::string& protoCollectionName,
+                        size_t collectionReplicationFactor,
+                        size_t protoReplicationFactor,
+                        bool renameDistributeShardsLike);
 };
 
 // Elements are (shardId, protoShardId, dbServers). The dbServers are
@@ -80,6 +89,14 @@ struct FinishRepairsOperation {
   size_t replicationFactor;
 
   FinishRepairsOperation() = delete;
+
+  FinishRepairsOperation(const DatabaseID& database,
+                         const CollectionID& collectionId,
+                         const std::string& collectionName,
+                         const CollectionID& protoCollectionId,
+                         const std::string& protoCollectionName,
+                         const std::vector<ShardWithProtoAndDbServers>& shards,
+                         size_t replicationFactor);
 };
 
 struct MoveShardOperation {
@@ -92,6 +109,11 @@ struct MoveShardOperation {
   bool isLeader;
 
   MoveShardOperation() = delete;
+
+  MoveShardOperation(const DatabaseID& database,
+                     const CollectionID& collectionId,
+                     const std::string& collectionName, const ShardID& shard,
+                     const ServerID& from, const ServerID& to, bool isLeader);
 
   VPackBufferPtr toVpackTodo(
       uint64_t jobId,
@@ -111,6 +133,16 @@ struct FixServerOrderOperation {
   std::vector<ServerID> protoFollowers;
 
   FixServerOrderOperation() = delete;
+
+  FixServerOrderOperation(const DatabaseID& database,
+                          const CollectionID& collectionId,
+                          const std::string& collectionName,
+                          const CollectionID& protoCollectionId,
+                          const std::string& protoCollectionName,
+                          const ShardID& shard, const ShardID& protoShard,
+                          const ServerID& leader,
+                          const std::vector<ServerID>& followers,
+                          const std::vector<ServerID>& protoFollowers);
 };
 
 bool operator==(BeginRepairsOperation const& left,

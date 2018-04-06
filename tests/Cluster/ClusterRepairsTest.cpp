@@ -463,14 +463,14 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
         "A BeginRepairsOperation with equal replicationFactors and "
         "rename=true") {
       BeginRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .collectionReplicationFactor = 3,
-          .protoReplicationFactor = 3,
-          .renameDistributeShardsLike = true,
+          "myDbName",
+          "123456",
+          "myCollection",
+          "789876",
+          "myProtoCollection",
+          3,
+          3,
+          true,
       };
 
       WHEN("Converted into an AgencyTransaction") {
@@ -679,19 +679,18 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
 
     GIVEN("A FinishRepairsOperation") {
       FinishRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .shards =
-              {
+          "myDbName",
+          "123456",
+          "myCollection",
+          "789876",
+          "myProtoCollection",
+                        {
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard2", "protoShard2", {"dbServer2", "dbServer3"}),
               },
-          .replicationFactor = 3,
+          3,
       };
 
       WHEN("Converted into an AgencyTransaction") {
