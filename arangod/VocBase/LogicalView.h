@@ -45,20 +45,24 @@ class Builder;
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates view accoridn to a definition
-  //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> create(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice definition,
-    bool isNew
-  );
+  typedef std::function<bool(std::shared_ptr<LogicalView>const& view)> PreCommitCallback;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
   //////////////////////////////////////////////////////////////////////////////
   static Category const& category() noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief creates view according to a definition
+  /// @param preCommit called before completing view creation (IFF returns true)
+  ///                  e.g. before persisting definition to filesystem
+  //////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<LogicalView> create(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    uint64_t planVersion = 0,
+    PreCommitCallback const& preCommit = PreCommitCallback() // called before
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -68,7 +72,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual void drop() = 0;
+  virtual arangodb::Result drop() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
@@ -103,7 +107,16 @@ class LogicalView : public LogicalDataSource {
   virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
  protected:
-  LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
+  LogicalView(
+    TRI_vocbase_t* vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called during view creation to complete creation e.g. persist to FS
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result create() noexcept = 0;
 
  private:
   // FIXME seems to be ugly
@@ -113,21 +126,6 @@ class LogicalView : public LogicalDataSource {
   mutable basics::ReadWriteLock _lock;
 }; // LogicalView
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for a LogicalView factory function
-/// This typedef is used when registering the creator function for any view
-/// type. the creator function is called when a view is first created or
-/// re-opened after a server restart. the VelocyPack Slice will contain all
-/// information about the view's general and implementation-specific properties.
-/// the isNew flag will be true if the view is first created, and false if a
-/// view is re-opened on a server restart.
-//////////////////////////////////////////////////////////////////////////////
-typedef std::function<std::shared_ptr<LogicalView>(
-  TRI_vocbase_t& vocbase, // database
-  arangodb::velocypack::Slice const& properties, // view properties
-  bool isNew
-)> ViewFactory;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class DBServerLogicalView
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,9 +133,7 @@ class DBServerLogicalView : public LogicalView {
  public:
   ~DBServerLogicalView() override;
 
-  void drop() override;
-
-  void open() override;
+  arangodb::Result drop() override final;
 
   Result rename(
     std::string&& newName,
@@ -160,8 +156,15 @@ class DBServerLogicalView : public LogicalView {
   DBServerLogicalView(
     TRI_vocbase_t* vocbase,
     velocypack::Slice const& definition,
-    bool isNew
+    uint64_t planVersion
   );
+
+  virtual arangodb::Result create() noexcept override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop implementation-specific parts of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result dropImpl() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a View object implementation
@@ -178,9 +181,6 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Slice const& slice,
     bool partialUpdate
   ) = 0;
-
- private:
-  bool _isNew;
 }; // LogicalView
 
 }  // namespace arangodb

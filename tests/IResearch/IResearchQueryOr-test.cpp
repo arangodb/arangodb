@@ -202,7 +202,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
 
   // add view
   auto view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
-    vocbase.createView(createJson->slice(), 0)
+    vocbase.createView(createJson->slice())
   );
   REQUIRE((false == !view));
 
