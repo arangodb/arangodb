@@ -1,5 +1,5 @@
-v3.3.6 (XXXX-XX-XX)
--------------------
+v3.3.6.1 (XXXX-XX-XX)
+---------------------
 
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified

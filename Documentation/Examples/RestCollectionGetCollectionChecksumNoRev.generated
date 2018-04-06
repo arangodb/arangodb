@@ -8,12 +8,12 @@ location: <span class="hljs-regexp">/_api/</span>collection/products/checksum
 { 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"hFF791A58BF28/9684"</span>, 
+  <span class="hljs-string">"globallyUniqueId"</span> : <span class="hljs-string">"h22049D61979D/9715"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_WjL839y--_"</span>, 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_WnyOd0a--_"</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"17237020643789659764"</span>, 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9684"</span>, 
+  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"9069002549065218885"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9715"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span> 
 }
