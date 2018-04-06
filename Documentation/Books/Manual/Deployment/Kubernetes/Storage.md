@@ -7,7 +7,7 @@ the storage to Pods that need them.
 
 ## Storage configuration
 
-In the cluster resource, one can specify the type of storage
+In the `ArangoDeployment` resource, one can specify the type of storage
 used by groups of servers using the `spec.<group>.storageClassName`
 setting.
 
@@ -23,7 +23,11 @@ server.
 For optimal performance, ArangoDB should be configured with locally attached
 SSD storage.
 
-To accomplish this, one must create `PersistentVolumes` for all servers that
+The easiest way to accomplish this is to deploy an
+[`ArangoLocalStorage` resource](./StorageResource.md).
+The ArangoDB Storage Operator will use it to provide `PersistentVolumes` for you.
+
+The alternative is to create `PersistentVolumes` manually, for all servers that
 need persistent storage (single, agents & dbservers).
 E.g. for a `Cluster` with 3 agents and 5 dbservers, you must create 8 volumes.
 
