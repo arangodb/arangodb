@@ -51,45 +51,43 @@
 // -----------------------------------------------------------------------------
 
 TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
-  using arangodb::velocypack::ArrayBuilder;
-  using arangodb::velocypack::ObjectBuilder;
+  using arangodb::geo::ShapeContainer;
+  using arangodb::geo::geojson::parseLinestring;
+  using arangodb::geo::geojson::parseLoop;
+  using arangodb::geo::geojson::parseMultiLinestring;
+  using arangodb::geo::geojson::parseMultiPoint;
+  using arangodb::geo::geojson::parsePoint;
+  using arangodb::geo::geojson::parsePolygon;
+  using arangodb::geo::geojson::parseRegion;
   using arangodb::geo::geojson::Type;
   using arangodb::geo::geojson::type;
-  using arangodb::geo::geojson::parsePoint;
-  using arangodb::geo::geojson::parsePoints;
-  using arangodb::geo::geojson::parseLinestring;
-  using arangodb::geo::geojson::parseMultiLinestring;
-  using arangodb::geo::geojson::parseRegion;
-  using arangodb::geo::geojson::parsePolygon;
-  using arangodb::geo::geojson::parseLoop;
-  using arangodb::geo::ShapeContainer;
+  using arangodb::velocypack::ArrayBuilder;
+  using arangodb::velocypack::ObjectBuilder;
 
-  ShapeContainer shape;
   S2LatLng point;
-  std::vector<S2Point> points;
   S2Polyline line;
   std::vector<S2Polyline> multiline;
   S2Loop loop;
+  ShapeContainer shape;
 
   VPackBuilder builder;
 
   SECTION("Empty object") {
-    {
-      ObjectBuilder object(&builder);
-    }
+    { ObjectBuilder object(&builder); }
     VPackSlice vpack = builder.slice();
 
     REQUIRE(Type::UNKNOWN == type(vpack));
 
     REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
-    REQUIRE(parsePoints(vpack, true, points).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
 
     REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
     REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
 
-    REQUIRE(parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
-    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
     REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+
+    REQUIRE(parseRegion(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
   SECTION("Wrong type, expecting Point") {
@@ -101,6 +99,17 @@ TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
 
     REQUIRE(Type::LINESTRING == type(vpack));
     REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Wrong type, expecting MultiPoint") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Point"));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POINT == type(vpack));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
   SECTION("Wrong type, expecting Linestring") {
@@ -217,7 +226,7 @@ TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
     VPackSlice vpack = builder.slice();
 
     REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
   SECTION("Bad MultiPoint, no coordinates (empty)") {
@@ -229,7 +238,7 @@ TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
     VPackSlice vpack = builder.slice();
 
     REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
   SECTION("Bad MultiPoint, numbers instead of points") {
@@ -243,7 +252,7 @@ TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
     VPackSlice vpack = builder.slice();
 
     REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
   SECTION("Bad MultiPoint, extra numbers in bad points") {
@@ -267,31 +276,587 @@ TEST_CASE("Invalid GeoJSON input", "[geo][s2index]") {
     VPackSlice vpack = builder.slice();
 
     REQUIRE(Type::MULTI_POINT == type(vpack));
-    REQUIRE(parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+    REQUIRE(parseMultiPoint(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  SECTION("Bad Linestring, no coordinates") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Linestring, no coordinates (empty)") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+      ArrayBuilder points(&builder, "coordinates");
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Linestring, numbers instead of points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+      ArrayBuilder points(&builder, "coordinates");
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Linestring, extra numbers in bad points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseLinestring(vpack, line).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, no coordinates") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, no coordinates (empty)") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, numbers instead of lines") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      lines->add(VPackValue(0.0));
+      lines->add(VPackValue(0.0));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, numbers instead of points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        points->add(VPackValue(0.0));
+        points->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, extra numbers in bad points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      ArrayBuilder points(&builder);
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad MultiLinestring, points outside of line") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      // don't open linestring, just add points directly
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad loop, object not array") {
+    { ObjectBuilder object(&builder); }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad loop, empty array") {
+    { ArrayBuilder object(&builder); }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad loop, numbers instead of points") {
+    {
+      ArrayBuilder points(&builder);
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad loop, extra numbers in bad points") {
+    {
+      ArrayBuilder points(&builder);
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad loop, full-GeoJSON input") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(parseLoop(vpack, true, loop).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, no coordinates") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, no coordinates (empty)") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder points(&builder, "coordinates");
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, numbers instead of rings") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder points(&builder, "coordinates");
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+      points->add(VPackValue(0.0));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, points instead of rings") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, extra numbers in bad points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, too few points") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, not closed") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, non-nested rings") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  SECTION("Bad Polygon, outer ring not first") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).is(TRI_ERROR_BAD_PARAMETER));
+  }
 }
 
 TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
-  using arangodb::velocypack::ArrayBuilder;
-  using arangodb::velocypack::ObjectBuilder;
+  using arangodb::geo::ShapeContainer;
+  using arangodb::geo::geojson::parseLinestring;
+  using arangodb::geo::geojson::parseLoop;
+  using arangodb::geo::geojson::parseMultiLinestring;
+  using arangodb::geo::geojson::parseMultiPoint;
+  using arangodb::geo::geojson::parsePoint;
+  using arangodb::geo::geojson::parsePolygon;
+  using arangodb::geo::geojson::parseRegion;
   using arangodb::geo::geojson::Type;
   using arangodb::geo::geojson::type;
-  using arangodb::geo::geojson::parsePoint;
-  using arangodb::geo::geojson::parsePoints;
-  using arangodb::geo::geojson::parseLinestring;
-  using arangodb::geo::geojson::parseMultiLinestring;
-  using arangodb::geo::geojson::parseRegion;
-  using arangodb::geo::geojson::parsePolygon;
-  using arangodb::geo::geojson::parseLoop;
-  using arangodb::geo::ShapeContainer;
+  using arangodb::velocypack::ArrayBuilder;
+  using arangodb::velocypack::ObjectBuilder;
 
-  ShapeContainer shape;
   S2LatLng point;
-  std::vector<S2Point> points;
   S2Polyline line;
   std::vector<S2Polyline> multiline;
   S2Loop loop;
+  ShapeContainer shape;
 
   VPackBuilder builder;
 
@@ -301,10 +866,286 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
       object->add("type", VPackValue("Point"));
       ArrayBuilder coords(&builder, "coordinates");
       coords->add(VPackValue(0.0));
-      coords->add(VPackValue(0.0));
+      coords->add(VPackValue(1.0));
     }
     VPackSlice vpack = builder.slice();
 
+    REQUIRE(Type::POINT == type(vpack));
     REQUIRE(parsePoint(vpack, point).ok());
+    REQUIRE(0.0 == point.lng().degrees());
+    REQUIRE(1.0 == point.lat().degrees());
+  }
+
+  SECTION("Valid MultiPoint") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiPoint"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_POINT == type(vpack));
+    REQUIRE(parseMultiPoint(vpack, shape).ok());
+
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+
+    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+}
+
+  SECTION("Valid Linestring") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseLinestring(vpack, line).ok());
+
+    REQUIRE(4 == line.num_vertices());
+    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == line.vertex(0));
+    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == line.vertex(1));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == line.vertex(2));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == line.vertex(3));
+  }
+
+  SECTION("Valid MultiLinestring") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(2.0));
+        }
+      }
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseMultiLinestring(vpack, multiline).ok());
+
+    REQUIRE(2 == multiline.size());
+
+    REQUIRE(4 == multiline[0].num_vertices());
+    REQUIRE(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint() == multiline[0].vertex(0));
+    REQUIRE(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint() == multiline[0].vertex(1));
+    REQUIRE(S2LatLng::FromDegrees(2.0, 2.0).ToPoint() == multiline[0].vertex(2));
+    REQUIRE(S2LatLng::FromDegrees(2.0, -1.0).ToPoint() == multiline[0].vertex(3));
+
+    REQUIRE(4 == multiline[1].num_vertices());
+    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == multiline[1].vertex(0));
+    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == multiline[1].vertex(1));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == multiline[1].vertex(2));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == multiline[1].vertex(3));
+  }
+
+  SECTION("Valid Polygon, triangle") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).ok());
+
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+
+    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+  }
+
+  SECTION("Valid Polygon, nested rings") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+      }
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parsePolygon(vpack, shape).ok());
+
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(2.0, -1.0).ToPoint()));
+
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
+    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
+
+    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
   }
 }

@@ -42,7 +42,6 @@ namespace geo {
 class ShapeContainer;
 
 namespace geojson {
-
 /// Simple GeoJson parser should be more or less forgiving
 /// and complies with most of https://tools.ietf.org/html/rfc7946
 
@@ -74,25 +73,21 @@ Result parsePoint(velocypack::Slice const& vpack, S2LatLng& latLng);
 /// @brief Expects an GeoJson array of points [[lon1, lat1], [lon2, lat2],...]
 Result parseMultiPoint(velocypack::Slice const& vpack, ShapeContainer& region);
 
-/// @brief parse GeoJson polygon or array of loops. Each loop consists of
-/// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
-Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
-
 Result parseLinestring(velocypack::Slice const& vpack, S2Polyline& ll);
 /// @brief parse GeoJson multi linestring
 Result parseMultiLinestring(velocypack::Slice const& vpack,
                             std::vector<S2Polyline>& ll);
 
-// ============= Helpers ============
-
-/// Parses lat/lng arrays and {coordinates:[[lng, lat], ...]}
-Result parsePoints(velocypack::Slice const& vpack, bool geoJson,
-                   std::vector<S2Point>& vertices);
+/// @brief parse GeoJson polygon or array of loops. Each loop consists of
+/// an array of coordinates: Example [[[lon, lat], [lon, lat], ...],...]
+Result parsePolygon(velocypack::Slice const& vpack, ShapeContainer& region);
 
 /// @brief Parse a loop (LinearRing)
 ///
 /// Note that at the moment we do not enforce that the final coordinate must
 /// match the first, as is required of a proper LinearRing in GeoJSON format.
+///
+/// Note: Subject to removal when deprecated IS_IN_POLYGON function is removed.
 ///
 /// @param coords  an array of arrays with 2 elements each, representing the
 ///                points of the polygon

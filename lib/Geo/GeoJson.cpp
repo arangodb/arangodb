@@ -80,6 +80,9 @@ arangodb::Result verifyClosedLoop(std::vector<S2Point> const& vertices) {
 
 namespace {
 void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
+  if (vertices.size() < 2) {
+    return;
+  }
   TRI_ASSERT(!vertices.empty());
   for (size_t i = 0; i < vertices.size() - 1; i++) {
     if (vertices[i] == vertices[i + 1]) {
@@ -88,6 +91,38 @@ void removeAdjacentDuplicates(std::vector<S2Point>& vertices) {
     }
   }
   TRI_ASSERT(!vertices.empty());
+}
+}  // namespace
+
+namespace {
+// parse geojson coordinates into s2 points
+arangodb::Result parsePoints(VPackSlice const& vpack, bool geoJson,
+                             std::vector<S2Point>& vertices) {
+  vertices.clear();
+  VPackSlice coordinates = vpack;
+  if (vpack.isObject()) {
+    coordinates = vpack.get("coordinates");
+  }
+
+  if (!coordinates.isArray()) {
+    return {TRI_ERROR_BAD_PARAMETER, "Coordinates missing"};
+  }
+
+  for (VPackSlice pt : VPackArrayIterator(coordinates)) {
+    if (!pt.isArray() || pt.length() != 2) {
+      return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
+    }
+
+    VPackSlice lat = pt.at(geoJson ? 1 : 0);
+    VPackSlice lon = pt.at(geoJson ? 0 : 1);
+    if (!lat.isNumber() || !lon.isNumber()) {
+      return {TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson()};
+    }
+    vertices.push_back(
+        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
+            .ToPoint());
+  }
+  return {TRI_ERROR_NO_ERROR};
 }
 }  // namespace
 
@@ -143,13 +178,7 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
       return res;
     }
     case Type::MULTI_POINT: {
-      std::vector<S2Point> vertices;
-      Result res = parsePoints(vpack, true, vertices);
-      if (res.ok()) {
-        region.reset(new S2MultiPointRegion(&vertices),
-                     ShapeContainer::Type::S2_MULTIPOINT);
-      }
-      return res;
+      return parseMultiPoint(vpack, region);
     }
     case Type::LINESTRING: {
       auto line = std::make_unique<S2Polyline>();
@@ -182,7 +211,6 @@ Result parseRegion(VPackSlice const& vpack, ShapeContainer& region) {
   return badParam;
 }
 
-
 /// @brief create s2 latlng
 Result parsePoint(VPackSlice const& vpack, S2LatLng& latLng) {
   if (Type::POINT != type(vpack)) {
@@ -201,6 +229,7 @@ Result parsePoint(VPackSlice const& vpack, S2LatLng& latLng) {
   return TRI_ERROR_BAD_PARAMETER;
 }
 
+/// https://tools.ietf.org/html/rfc7946#section-3.1.3
 Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
   Result badParam(TRI_ERROR_BAD_PARAMETER, "Invalid GeoJSON Geometry Object.");
   if (!vpack.isObject()) {
@@ -212,8 +241,12 @@ Result parseMultiPoint(VPackSlice const& vpack, ShapeContainer& region) {
   }
 
   std::vector<S2Point> vertices;
-  Result res = parsePoints(vpack, true, vertices);
+  Result res = ::parsePoints(vpack, true, vertices);
   if (res.ok()) {
+    if (vertices.empty()) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "Invalid MultiPoint, must contain at least one point.");
+    }
     region.reset(new S2MultiPointRegion(&vertices),
                  ShapeContainer::Type::S2_MULTIPOINT);
   }
@@ -253,7 +286,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
   std::vector<std::unique_ptr<S2Loop>> loops;
   for (VPackSlice loopVertices : VPackArrayIterator(coordinates)) {
     std::vector<S2Point> vtx;
-    Result res = parsePoints(loopVertices, /*geoJson*/ true, vtx);
+    Result res = ::parsePoints(loopVertices, /*geoJson*/ true, vtx);
     if (res.fail()) {
       return res;
     }
@@ -332,7 +365,7 @@ Result parseLinestring(VPackSlice const& vpack, S2Polyline& linestring) {
   }
 
   std::vector<S2Point> vertices;
-  Result res = parsePoints(vpack, /*geoJson*/ true, vertices);
+  Result res = ::parsePoints(vpack, /*geoJson*/ true, vertices);
   if (res.ok()) {
     ::removeAdjacentDuplicates(vertices);  // no need for duplicates
     if (vertices.size() < 2) {
@@ -358,7 +391,7 @@ Result parseMultiLinestring(VPackSlice const& vpack,
   TRI_ASSERT(Type::MULTI_LINESTRING == type(vpack));
 
   if (!vpack.isObject()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLineString");
+    return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
   }
   VPackSlice coordinates = vpack.get(Fields::kCoordinates);
   if (!coordinates.isArray()) {
@@ -367,44 +400,28 @@ Result parseMultiLinestring(VPackSlice const& vpack,
 
   for (VPackSlice linestring : VPackArrayIterator(coordinates)) {
     if (!linestring.isArray()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLineString");
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
     }
     ll.emplace_back(S2Polyline());
     // can handle linestring array
-    Result res = parseLinestring(linestring, ll.back());
-    if (res.fail()) {
-      return res;
+    std::vector<S2Point> vertices;
+    Result res = ::parsePoints(linestring, /*geoJson*/ true, vertices);
+    if (res.ok()) {
+      ::removeAdjacentDuplicates(vertices);  // no need for duplicates
+      if (vertices.size() < 2) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "Invalid embedded LineString, adjacent "
+                      "vertices must not be identical or antipodal.");
+      }
+      ll.back().Init(vertices);
+      TRI_ASSERT(ll.back().IsValid());
+    } else {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid MultiLinestring");
     }
   }
-  return TRI_ERROR_NO_ERROR;
-}
-
-// parse geojson coordinates into s2 points
-Result parsePoints(VPackSlice const& vpack, bool geoJson,
-                   std::vector<S2Point>& vertices) {
-  vertices.clear();
-  VPackSlice coordinates = vpack;
-  if (vpack.isObject()) {
-    coordinates = vpack.get("coordinates");
-  }
-
-  if (!coordinates.isArray()) {
-    return Result(TRI_ERROR_BAD_PARAMETER, "Coordinates missing");
-  }
-
-  for (VPackSlice pt : VPackArrayIterator(coordinates)) {
-    if (!pt.isArray() || pt.length() < 2) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson());
-    }
-
-    VPackSlice lat = pt.at(geoJson ? 1 : 0);
-    VPackSlice lon = pt.at(geoJson ? 0 : 1);
-    if (!lat.isNumber() || !lon.isNumber()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Bad coordinate " + pt.toJson());
-    }
-    vertices.push_back(
-        S2LatLng::FromDegrees(lat.getNumber<double>(), lon.getNumber<double>())
-            .ToPoint());
+  if (ll.empty()) {
+    return {TRI_ERROR_BAD_PARAMETER,
+            "Invalid MultiLinestring, must contain at least one Linestring."};
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -415,7 +432,7 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop) {
   }
 
   std::vector<S2Point> vertices;
-  Result res = parsePoints(coords, geoJson, vertices);
+  Result res = ::parsePoints(coords, geoJson, vertices);
   if (res.fail()) {
     return res;
   }
@@ -427,6 +444,9 @@ Result parseLoop(velocypack::Slice const& coords, bool geoJson, S2Loop& loop) {
       }*/
 
   ::removeAdjacentDuplicates(vertices);  // s2loop doesn't like duplicates
+  if (vertices.empty()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "No adjacent duplicates allowed");
+  }
   if (vertices.front() == vertices.back()) {
     vertices.resize(vertices.size() - 1);  // remove redundant last vertex
   }

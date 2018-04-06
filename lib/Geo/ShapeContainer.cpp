@@ -188,7 +188,7 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
   if (_data == nullptr) {
     return;
   }
-  
+
   S2Point origin = this->centroid();
   S2LatLngRect rect = _data->GetRectBound();
   S2LatLng ll(origin);
@@ -221,7 +221,7 @@ bool ShapeContainer::contains(S2Polyline const* other) const {
       S2Polyline const* ll = static_cast<S2Polyline const*>(_data);
       return ll->ApproxEquals(*other, S1Angle::Radians(1e-6));
     }
-      
+
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
       for (int k = 0; k < other->num_vertices(); k++) {
@@ -266,7 +266,7 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
         return static_cast<S2PointRegion*>(_data)->point() == other->lo().ToPoint();
       }
       return false;
-      
+
     case ShapeContainer::Type::S2_POLYLINE: {
       if (other->is_point()) {
         S2Point pp = other->lo().ToPoint();
@@ -279,12 +279,12 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       }
       return false;
     }
-      
+
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
       return self->Contains(*other);
     }
-      
+
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
       for (int k = 0; k < 4; k++) {
@@ -294,7 +294,7 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       }
       return true;
     }
-      
+
     case ShapeContainer::Type::S2_MULTIPOINT: {
       if (other->is_point()) {
         S2Point pp = other->lo().ToPoint();
@@ -307,7 +307,7 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       }
       return false;
     }
-      
+
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       if (other->is_point()) {
         S2Point pp = other->lo().ToPoint();
@@ -323,7 +323,7 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
       }
       return false;
     }
-      
+
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
@@ -421,7 +421,7 @@ bool ShapeContainer::equals(Coordinate const& point, Coordinate const& other) co
   if (point.latitude == other.latitude && point.longitude == other.longitude) {
     return true;
   }
- 
+
   return false;
 }
 
@@ -564,12 +564,12 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     case ShapeContainer::Type::S2_POINT:
     case ShapeContainer::Type::S2_POLYLINE:
       return contains(other); // same
-      
+
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
       return self->Intersects(*other);
     }
-      
+
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
       for (int k = 0; k < 4; k++) {
@@ -579,12 +579,12 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
       }
       return false;
     }
-      
+
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       return contains(other); // same
     }
-      
+
     case ShapeContainer::Type::EMPTY:
       TRI_ASSERT(false);
   }
@@ -661,4 +661,8 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
       TRI_ASSERT(false);
   }
   return false;
+}
+
+S2Region const* ShapeContainer::region() const {
+  return _data;
 }

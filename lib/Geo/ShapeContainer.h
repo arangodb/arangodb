@@ -122,6 +122,8 @@ class ShapeContainer final {
   bool equals(S2Polygon const*) const;
   bool equals(ShapeContainer const*) const;
 
+  S2Region const* region() const;
+
  private:
   S2Region* _data;
   Type _type;
