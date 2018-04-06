@@ -143,6 +143,10 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
   auto shardKeys = collection->shardKeys();
   std::unordered_set<std::string> toFind;
   for (auto const& it : shardKeys) {
+    if (it.find('.') != std::string::npos) {
+      // shard key containing a "." (sub-attribute). this is not yet supported
+      return std::string();
+    }
     toFind.emplace(it);
   }
       
