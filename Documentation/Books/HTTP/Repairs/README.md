@@ -25,6 +25,12 @@ allow to restart it safely. However, changing the `replicationFactor` during
 repairs may leave it in a state that is not repairable without manual
 intervention!
 
+Shutting down the coordinator which executes the job will abort it, but it can
+safely be restarted on another coordinator. However, there may still be a shard
+move ongoing even after the job stopped. If the job is started again before the
+move is finished, repairing the affected collection will fail, but the repair
+can be restarted safely.
+
 If there is any affected collection which `replicationFactor` is equal to
 the total number of DBServers, the repairs might abort. In this case, it is
 necessary to reduce the `replicationFactor` by one (or add a DBServer). The

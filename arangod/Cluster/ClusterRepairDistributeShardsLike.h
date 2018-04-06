@@ -202,6 +202,9 @@ class DistributeShardsLikeRepairer {
       Collection& collection, ShardID const& shardId,
       ServerID const& fromServerId, ServerID const& toServerId, bool isLeader);
 
+  // "proto collection" always means the collection referred to in the
+  // "distributeShardsLike" attribute of "collection"
+
   ResultT<std::list<RepairOperation>> static fixLeader(
       DBServers const& availableDbServers, Collection& collection,
       Collection const& proto, ShardID const& shardId,

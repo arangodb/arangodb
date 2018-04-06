@@ -50,6 +50,9 @@ class VersionSort {
   std::vector<CharOrInt> static splitVersion(std::string const& str);
 };
 
+// "proto collection" always means the collection referred to in the
+// "distributeShardsLike" attribute of "collection"
+
 struct BeginRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
