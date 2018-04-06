@@ -1,6 +1,8 @@
 v3.3.6 (XXXX-XX-XX)
 -------------------
 
+* added /_admin/status for debugging
+
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
 
