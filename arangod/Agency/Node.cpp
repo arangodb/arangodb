@@ -46,23 +46,30 @@ struct Empty {
 };
 
 /// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str,
-                                             char separator) {
+inline static std::vector<std::string> split(
+  const std::string& str, char separator) noexcept {
 
   std::vector<std::string> result;
   if (str.empty()) {
     return result;
   }
   std::regex reg("/+");
-  std::string key = std::regex_replace(str, reg, "/");
+  std::string key;
+  try {
+    key = std::regex_replace(str, reg, "/");
+  } catch (std::regex_error const& e) {
+    // This should never happen.
+    key = str;
+    TRI_ASSERT(false);
+  }
 
   if (!key.empty() && key.front() == '/') { key.erase(0,1); }
   if (!key.empty() && key.back()  == '/') { key.pop_back(); }
   
-  std::string::size_type p = 0;
-  std::string::size_type q;
+  std::string::size_type p = 0, q;
+
   while ((q = key.find(separator, p)) != std::string::npos) {
-    result.emplace_back(key, p, q - p);
+    result.emplace_back(key, p, q - p); 
     p = q + 1;
   }
   result.emplace_back(key, p);
@@ -827,7 +834,7 @@ std::string Node::toJson() const {
 Node const* Node::parent() const { return _parent; }
 
 std::vector<std::string> Node::exists(
-  std::vector<std::string> const& rel) const {
+  std::vector<std::string> const& rel) const noexcept {
   std::vector<std::string> result;
   Node const* cur = this;
   for (auto const& sub : rel) {
@@ -836,7 +843,11 @@ std::vector<std::string> Node::exists(
         (it->second->_ttl == std::chrono::system_clock::time_point() ||
          it->second->_ttl >= std::chrono::system_clock::now())) {
       cur = it->second.get();
-      result.push_back(sub);
+      try { // std::allocate() in which case we break
+        result.push_back(sub);
+      } catch (std::exception const& e) {
+        break;
+      }
     } else {
       break;
     }
@@ -844,15 +855,15 @@ std::vector<std::string> Node::exists(
   return result;
 }
 
-std::vector<std::string> Node::exists(std::string const& rel) const {
+std::vector<std::string> Node::exists(std::string const& rel) const noexcept {
   return exists(split(rel, '/'));
 }
 
-bool Node::has(std::vector<std::string> const& rel) const {
+bool Node::has(std::vector<std::string> const& rel) const noexcept {
   return exists(rel).size() == rel.size();
 }
 
-bool Node::has(std::string const& rel) const {
+bool Node::has(std::string const& rel) const noexcept {
   return has(split(rel, '/'));
 }
 
