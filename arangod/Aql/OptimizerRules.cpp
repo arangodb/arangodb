@@ -193,9 +193,9 @@ std::string getSingleShardId(ExecutionPlan const* plan, ExecutionNode const* nod
             // builder
             builder.add(VPackValue(sub->getString()));
             v->toVelocyPackValue(builder);
+            // remove the attribute from our to-do list
+            toFind.erase(it);
           }
-          // remove the attribute from our to-do list
-          toFind.erase(it);
         }
       }
     } else {
