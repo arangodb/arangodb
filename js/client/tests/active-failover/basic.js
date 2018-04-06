@@ -27,6 +27,7 @@
 
 const jsunity = require('jsunity');
 const internal = require('internal');
+const fs = require('fs');
 const arangosh = require('@arangodb/arangosh');
 const request = require("@arangodb/request");
 const tasks = require("@arangodb/tasks");
@@ -36,10 +37,23 @@ const compareTicks = require("@arangodb/replication").compareTicks;
 const wait = internal.wait;
 const db = internal.db;
 
-const suspendExternal = require('internal').suspendExternal;
-const continueExternal = require("internal").continueExternal;
+const suspendExternal = internal.suspendExternal;
+const continueExternal = internal.continueExternal;
+
+if (!internal.env.hasOwnProperty('INSTANCEINFO')) {
+  throw new Error('env.INSTANCEINFO was not set by caller!');
+}
+const instanceinfo = JSON.parse(internal.env.INSTANCEINFO);
 
 const cname = "UnitTestActiveFailover";
+
+/*try {
+  let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
+  Object.keys(globals).forEach(g => {
+    global[g] = globals[g];
+  });
+} catch (e) {
+}*/
 
 function getUrl(endpoint) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
@@ -87,56 +101,6 @@ function getApplierState(endpoint) {
   return arangosh.checkRequestResult(res.json);
 }
 
-/*
-try {
-  let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
-  Object.keys(globals).forEach(g => {
-    global[g] = globals[g];
-  });
-} catch (e) {
-}*/
-/*
-let executeOnServer = function(code) {
-  let httpOptions = {};
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 3600;
-
-  httpOptions.returnBodyOnError = true;
-  const reply = download(instanceInfo.url + '/_admin/execute?returnAsJSON=true',
-      code,
-      httpOptions);
-
-  if (!reply.error && reply.code === 200) {
-    return JSON.parse(reply.body);
-  } else {
-    throw new Error('Could not send to server ' + JSON.stringify(reply));
-  }
-};*/
-/*
-function serverSetup() {
-  let directory = require('./js/client/assets/queuetest/dirname.js');
-  foxxManager.install(directory, '/queuetest');
-  db._create('foxxqueuetest', {numberOfShards: 1, replicationFactor: 1});
-  db.foxxqueuetest.insert({'_key': 'test', 'date': null, 'server': null});
-  
-  const serverCode = `
-const queues = require('@arangodb/foxx/queues');
-
-let queue = queues.create('q');
-queue.push({mount: '/queuetest', name: 'queuetest', 'repeatTimes': -1, 'repeatDelay': 1000}, {});
-`;
-  executeOnServer(serverCode);
-}
-
-function serverTeardown() {
-  const serverCode = `
-const queues = require('@arangodb/foxx/queues');
-`;
-  executeOnServer(serverCode);
-  foxxManager.uninstall('/queuetest');
-  db._drop('foxxqueuetest');
-}*/
-
 // self contained function for use as task
 function createData () {
   const db2 = require('@arangodb').db;
@@ -148,9 +112,10 @@ function createData () {
 }
 
 // check the servers are in sync with the leader
-function checkInSync(leader, servers) {
+function checkInSync(leader, servers, ignore) {
+  print ("Checking in-sync state with: ", leader);
   let check = (endpoint) => {
-    if (endpoint === leader) {
+    if (endpoint === leader || endpoint === ignore) {
       return true;
     }
     let applier = getApplierState(endpoint);
@@ -159,7 +124,7 @@ function checkInSync(leader, servers) {
   };
     
   const leaderTick = getLoggerState(leader).state.lastLogTick;
-  let loop = 1000;
+  let loop = 100;
   while(loop-- > 0) {
     if (servers.every(check)) {
       break;
@@ -169,18 +134,95 @@ function checkInSync(leader, servers) {
   return loop > 0;
 }
 
-function ActiveFailoverSuite() {
-  let servers = [];
-  let leader = "";
-  let collection;
+function checkData(server, expected) {
+  print ("Checking data of ", server);
+  let res = request.get({
+    url: getUrl(server) + "/_api/collection/" + cname + "/count"
+  });
+  print ("Done collection count ", expected);
 
+  assertTrue(res instanceof request.Response);
+  //assertTrue(res.hasOwnProperty('statusCode'));
+  assertTrue(res.statusCode === 200);
+  //assertTrue(res.hasOwnProperty('json'));
+  print ("sdsdssddata 2", res.json);
+  return res.json.count === expected;
+}
+
+function readAgencyValue(path) {
+  print("Querying agency: ", path);
+
+  let agents = instanceinfo.arangods.filter(arangod => arangod.role === "agent");
+  assertTrue(agents.length > 0);
+  var res = request.post({
+    url: agents[0].url + "/_api/agency/read",
+    body: JSON.stringify([[path]])
+  });
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('json'));
+  //print("Agency response ", res.json);
+  return arangosh.checkRequestResult(res.json);
+}
+
+function checkForFailover(leader) {
+  print("Checking for failover");
+
+  let oldLeader = "";
+  let i = 100;
+  do {
+    let res = readAgencyValue("/arango/Supervision/Health");
+    let srvHealth = res[0].arango.Supervision.Health;
+    //print(srvHealth);
+    Object.keys(srvHealth).forEach(key => {
+      let srv = srvHealth[key];
+      if (srv['Endpoint'] === leader && srv.Status === 'FAILED') {
+        oldLeader = key;
+      }
+    });
+    if (oldLeader !== "") {
+      break;
+    }
+    internal.wait(1.0);
+  } while (i-- > 0);
+
+  let nextLeader = "";
+  do {
+    let res = readAgencyValue("/arango/Plan/AsyncReplication/Leader");
+    nextLeader = res[0].arango.Plan.AsyncReplication.Leader;
+    if (nextLeader !== oldLeader) {
+      res = readAgencyValue("/arango/Supervision/Health");
+      return res[0].arango.Supervision.Health[nextLeader].Endpoint;
+    }
+    internal.wait(1.0);
+  } while (i-- > 0);
+  throw "No failover occured";
+}
+
+
+function checkForNewLeader(leader) {
+  let i = 1000;
+  do {
+    let res = readAgencyValue("/arango/Supervision/Health");
+    let srvHealth = res[0].arango.Supervision.Health;
+    assertTrue(srvHealth instanceof Array);
+    let srv = srvHealth.filter( server => server.Endpoint === leader);
+    if (srv.Status === 'FAILED') {
+      break;
+    }
+  } while (i-- > 0);
+}
+
+function ActiveFailoverSuite() {
+
+  let servers = getEndpoints();
+  assertTrue(servers.length > 2);
+  let leader = servers[0];
+  let collection = db._create(cname);
+ 
 
   return {
     setUp: function() {
-      servers = getEndpoints();
-      assertTrue(servers.length > 2);
-      leader = servers[0];
-      collection = db._create(cname);
 
       /*var task = tasks.register({ 
         name: "UnitTests1", 
@@ -192,24 +234,45 @@ function ActiveFailoverSuite() {
     },
 
     tearDown : function () {
-      db._collection(cname).drop();
+      //db._collection(cname).drop();
       //serverTeardown();
     },
 
     testFollowerInSync: function() {
       createData();
       assertTrue(checkInSync(leader, servers));
-      /*let document = db._collection('foxxqueuetest').document('test');
-      assertNotNull(document.server);*/
+      checkData(leader, 10000);
     },
 
-    
-    /*testQueueFailover: function() {
-      let document = db._collection('foxxqueuetest').document('test');
-      let server = document.server;
-      assertNotNull(server);
+    testSuspendLeader: function() {
+      //createData();
+      //assertTrue(checkInSync(leader, servers));
+      checkData(leader, 10000);
 
-      let instance = instanceInfo.arangods.filter(arangod => {
+      let suspended = instanceinfo.arangods.filter(arangod => arangod.endpoint === leader);
+      suspended.forEach(arangod => {
+        assertTrue(suspendExternal(arangod.pid));
+      });
+
+      // await failover and check that follower get in sync
+      let nextLeader = checkForFailover(leader);
+      assertTrue(nextLeader !== leader);
+      print ("Next Leader: ", nextLeader);
+      checkData(nextLeader, 10000);
+      print ("ddddddd");
+
+      assertTrue(checkInSync(nextLeader, servers, leader));
+      print ("bbbbbbbb");
+
+
+      // restart the old leader
+      leader = nextLeader;
+      suspended.forEach(arangod => assertTrue(continueExternal(arangod.pid)));
+      print ("kkkkkkkkkkkk");
+
+      assertTrue(checkInSync(leader, servers));
+
+      /*let instance = instanceInfo.arangods.filter(arangod => {
         if (arangod.role === 'agent') {
           return false;
         }
@@ -220,34 +283,13 @@ function ActiveFailoverSuite() {
           assertTrue(suspendExternal(arangod.pid));
         }
         return parsed.id === server;
-      })[0];
+      })[0];*/
 
-      assertNotUndefined(instance);
-      assertTrue(suspendExternal(instance.pid));
 
-      let newEndpoint = instanceInfo.arangods.filter(arangod => {
-        return arangod.role === 'coordinator' && arangod.pid !== instance.pid;
-      })[0];
-      arango.reconnect(newEndpoint.endpoint, db._name(), 'root', '');
-      let waitInterval = 0.1;
-      let waited = 0;
-      let ok = false;
-      while (waited <= 20) {
-        document = db._collection('foxxqueuetest').document('test');
-        let newServer = document.server;
-        if (server !== newServer) {
-          ok = true;
-          break;
-        }
-        wait(waitInterval);
-        waited += waitInterval;
-      }
-      assertTrue(continueExternal(instance.pid));
-      // mop: currently supervision would run every 5s
-      if (!ok) {
-        throw new Error('Supervision should have moved the foxxqueues and foxxqueues should have been started to run on a new coordinator');
-      }
-    }*/
+      //assertTrue(suspendExternal(arangod.pid));
+    }
+
+    
   };
 }
 
