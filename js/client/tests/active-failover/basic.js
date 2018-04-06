@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true */
-/*global print, arango, assertTrue, assertNotNull, assertNotUndefined */
+/*global print, assertTrue, assertNotNull, assertNotUndefined */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -26,44 +26,67 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const arangodb = require('@arangodb');
 const internal = require('internal');
+const arangosh = require('@arangodb/arangosh');
 const request = require("@arangodb/request");
-const pu = require('@arangodb/process-utils')
+const tasks = require("@arangodb/tasks");
 
 const arango = internal.arango;
+const compareTicks = require("@arangodb/replication").compareTicks;
 const wait = internal.wait;
 const db = internal.db;
 
 const suspendExternal = require('internal').suspendExternal;
 const continueExternal = require("internal").continueExternal;
 
+const cname = "UnitTestActiveFailover";
 
 function getUrl(endpoint) {
   return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 }
 
 function baseUrl() {
-  return getUrl(arango.getEndpoint())
+  return getUrl(arango.getEndpoint());
 };
 
 // getEndponts works with any server
 function getEndpoints() {
   //let jwt = crypto.jwtEncode(options['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
   var res = request.get({
-    url: baseUrl() + "/_api/cluster/endpoints",
+    url: baseUrl() + "/_api/cluster/endpoints"
     /*auth: {
       bearer: jwt,
     }*/
   });
   assertTrue(res instanceof request.Response);
-  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode == 200);
+  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
   assertTrue(res.hasOwnProperty('json'));
   assertTrue(res.json.hasOwnProperty('endpoints'));
   assertTrue(res.json.endpoints instanceof Array);
   assertTrue(res.json.endpoints.length > 0);
   return res.json.endpoints.map( e => e.endpoint);
 }
+
+function getLoggerState(endpoint) {
+  var res = request.get({
+    url: getUrl(endpoint) + "/_db/_system/_api/replication/logger-state"
+  });
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('json'));
+  return arangosh.checkRequestResult(res.json);
+}
+
+function getApplierState(endpoint) {
+  var res = request.get({
+    url: getUrl(endpoint) + "/_db/_system/_api/replication/applier-state?global=true"
+  });
+  assertTrue(res instanceof request.Response);
+  assertTrue(res.hasOwnProperty('statusCode') && res.statusCode === 200);
+  assertTrue(res.hasOwnProperty('json'));
+  return arangosh.checkRequestResult(res.json);
+}
+
 /*
 try {
   let globals = JSON.parse(process.env.ARANGOSH_GLOBALS);
@@ -72,7 +95,7 @@ try {
   });
 } catch (e) {
 }*/
-
+/*
 let executeOnServer = function(code) {
   let httpOptions = {};
   httpOptions.method = 'POST';
@@ -88,7 +111,7 @@ let executeOnServer = function(code) {
   } else {
     throw new Error('Could not send to server ' + JSON.stringify(reply));
   }
-};
+};*/
 /*
 function serverSetup() {
   let directory = require('./js/client/assets/queuetest/dirname.js');
@@ -114,30 +137,74 @@ const queues = require('@arangodb/foxx/queues');
   db._drop('foxxqueuetest');
 }*/
 
+// self contained function for use as task
+function createData () {
+  const db2 = require('@arangodb').db;
+  let col = db2._collection("UnitTestActiveFailover");
+  let cc = col.count();
+  for (let i = 0; i < 10000; i++) {
+    col.save({attr: i + cc});
+  }
+}
+
+// check the servers are in sync with the leader
+function checkInSync(leader, servers) {
+  let check = (endpoint) => {
+    if (endpoint === leader) {
+      return true;
+    }
+    let applier = getApplierState(endpoint);
+    return applier.state.running && applier.endpoint === leader && 
+          compareTicks(applier.state.lastProcessedContinuousTick, leaderTick);
+  };
+    
+  const leaderTick = getLoggerState(leader).state.lastLogTick;
+  let loop = 1000;
+  while(loop-- > 0) {
+    if (servers.every(check)) {
+      break;
+    }
+    wait(1.0);
+  }
+  return loop > 0;
+}
+
 function ActiveFailoverSuite() {
+  let servers = [];
   let leader = "";
   let collection;
+
+
   return {
     setUp: function() {
-      let servers = getEndpoints();
-      assertTrue(servers.length > 1);
+      servers = getEndpoints();
+      assertTrue(servers.length > 2);
       leader = servers[0];
-      collection = db._create("UnitTestActiveFailover");
+      collection = db._create(cname);
+
+      /*var task = tasks.register({ 
+        name: "UnitTests1", 
+        command: createData
+      });*/
 
       /*serverSetup();
       wait(2.1);*/
     },
 
     tearDown : function () {
-      serverTeardown();
+      db._collection(cname).drop();
+      //serverTeardown();
     },
 
-    testQueueWorks: function() {
-      let document = db._collection('foxxqueuetest').document('test');
-      assertNotNull(document.server);
+    testFollowerInSync: function() {
+      createData();
+      assertTrue(checkInSync(leader, servers));
+      /*let document = db._collection('foxxqueuetest').document('test');
+      assertNotNull(document.server);*/
     },
+
     
-    testQueueFailover: function() {
+    /*testQueueFailover: function() {
       let document = db._collection('foxxqueuetest').document('test');
       let server = document.server;
       assertNotNull(server);
@@ -180,7 +247,7 @@ function ActiveFailoverSuite() {
       if (!ok) {
         throw new Error('Supervision should have moved the foxxqueues and foxxqueues should have been started to run on a new coordinator');
       }
-    }
+    }*/
   };
 }
 

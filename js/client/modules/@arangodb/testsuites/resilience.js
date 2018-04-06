@@ -28,7 +28,8 @@
 const functionsDocumentation = {
   'resilience': 'resilience tests',
   'client_resilience': 'client resilience tests',
-  'cluster_sync': 'cluster sync tests'
+  'cluster_sync': 'cluster sync tests',
+  'active_failover': 'active failover tests'
 };
 const optionsDocumentation = [
 ];
@@ -93,8 +94,8 @@ function clusterSync (options) {
 function activeFailover (options) {
   let testCases = tu.scanTestPath('js/client/tests/active-failover');
   options.activefailover = true;
-  if (!options.singles || options.singles < 2) {
-    options.singles = 2;
+  if (!options.singles || options.singles < 3) {
+    options.singles = 3;
   }
 
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
@@ -104,6 +105,7 @@ function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['resilience'] = resilience;
   testFns['client_resilience'] = clientResilience;
   testFns['cluster_sync'] = clusterSync;
+  testFns['active_failover'] = activeFailover;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 }
