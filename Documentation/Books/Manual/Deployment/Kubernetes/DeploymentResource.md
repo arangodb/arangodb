@@ -1,5 +1,5 @@
 <!-- don't edit here, its from https://@github.com/arangodb/kube-arangodb.git / docs/Manual/ -->
-# ArangoLocalStorage Custom Resource
+# ArangoDeployment Custom Resource
 
 The ArangoDB Deployment Operator creates and maintains ArangoDB deployments
 in a Kubernetes cluster, given a deployment specification.
