@@ -118,7 +118,7 @@ class LogicalDataSource {
 
   Category const& category() const noexcept { return _category; }
   bool deleted() const noexcept { return _deleted; }
-  virtual void drop() = 0;
+  virtual arangodb::Result drop() = 0;
   TRI_voc_cid_t const& id() const noexcept { return _id; } // reference required for ShardDistributionReporterTest
   std::string const& name() const noexcept { return _name; }
   TRI_voc_cid_t planId() const noexcept { return _planId; }
