@@ -44,7 +44,14 @@ namespace iresearch {
 
   std::string error;
 
-  if (view->_meta.init(info, error)) {
+  auto properties = info.get("properties");
+
+  if (!properties.isObject()) {
+    // set to defaults
+    properties = VPackSlice::emptyObjectSlice();
+  }
+
+  if (view->_meta.init(properties, error)) {
     return view;
   }
 

@@ -1564,6 +1564,11 @@ void TRI_vocbase_t::releaseCollection(arangodb::LogicalCollection* collection) {
 std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
     arangodb::velocypack::Slice parameters
 ) {
+  // check that the name does not contain any strange characters
+  if (!IsAllowedName(parameters)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+  }
+
   if (ServerState::instance()->isCoordinator()) {
     ClusterInfo* ci = ClusterInfo::instance();
 
@@ -1575,6 +1580,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       name(), viewId, parameters, errorMsg
     );
 
+    // FIXME don't forget to open created view
     if (res == TRI_ERROR_NO_ERROR) {
       return ci->getView(name(), viewId);
     }
@@ -1584,11 +1590,6 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
       << ", errorCode: " << res;
 
     return nullptr;
-  }
-
-  // check that the name does not contain any strange characters
-  if (!IsAllowedName(parameters)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
   std::shared_ptr<arangodb::LogicalView> registeredView;

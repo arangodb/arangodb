@@ -210,116 +210,145 @@ SECTION("test_type") {
   CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::IResearchViewCoordinator::type()));
 }
 
+SECTION("visit_collections") {
+  auto json = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\", \"properties\": { \"collections\": [1,2,3] } }");
+
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
+
+  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(0 == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(1 == view->id());
+  CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(&vocbase == view->vocbase());
+
+  // visit view
+  TRI_voc_cid_t expectedCollections[] = {1,2,3};
+  auto* begin = expectedCollections;
+  CHECK(true == view->visitCollections([&begin](TRI_voc_cid_t cid) {
+    return *begin++ = cid; })
+  );
+  CHECK(3 == (begin-expectedCollections));
+}
+
 SECTION("test_defaults") {
   auto json = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"arangosearch\", \"id\": \"1\" }");
 
   // view definition with LogicalView (for persistence)
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
+
+  auto view = arangodb::LogicalView::create(vocbase, json->slice());
+
+  CHECK(nullptr != view);
+  CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
+  CHECK(0 == view->planVersion());
+  CHECK("testView" == view->name());
+  CHECK(false == view->deleted());
+  CHECK(1 == view->id());
+  CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
+  CHECK(arangodb::LogicalView::category() == view->category());
+  CHECK(&vocbase == view->vocbase());
+
+  // visit default view
+  CHECK(true == view->visitCollections([](TRI_voc_cid_t) { return false; }));
+
+  // +system, +properties
   {
-    Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, 1, "testVocbase");
+    arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->toVelocyPack(builder, true, true);
+    builder.close();
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
 
-    auto view = arangodb::LogicalView::create(vocbase, json->slice());
+    CHECK(6 == slice.length());
+    CHECK(slice.get("id").copyString() == "1");
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(slice.hasKey("planId"));
+    CHECK(false == slice.get("deleted").getBool());
+    slice = slice.get("properties");
+    CHECK(slice.isObject());
+    CHECK((5 == slice.length()));
+    CHECK((!slice.hasKey("links"))); // for persistence so no links
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
+  }
 
-    CHECK(nullptr != view);
-    CHECK(nullptr != std::dynamic_pointer_cast<arangodb::iresearch::IResearchViewCoordinator>(view));
-    CHECK(0 == view->planVersion());
-    CHECK("testView" == view->name());
-    CHECK(false == view->deleted());
-    CHECK(1 == view->id());
-    CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
-    CHECK(arangodb::LogicalView::category() == view->category());
-    CHECK(&vocbase == view->vocbase());
+  // -system, +properties
+  {
+    arangodb::iresearch::IResearchViewMeta expectedMeta;
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->toVelocyPack(builder, true, false);
+    builder.close();
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
 
-    // visit default view
-    CHECK(true == view->visitCollections([](TRI_voc_cid_t) { return false; }));
+    CHECK(4 == slice.length());
+    CHECK(slice.get("id").copyString() == "1");
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(!slice.hasKey("planId"));
+    CHECK(!slice.hasKey("deleted"));
+    slice = slice.get("properties");
+    CHECK(slice.isObject());
+    CHECK((5 == slice.length()));
+    CHECK((!slice.hasKey("links")));
+    CHECK((meta.init(slice, error) && expectedMeta == meta));
+  }
 
-    // +system, +properties
-    {
-      arangodb::iresearch::IResearchViewMeta expectedMeta;
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->toVelocyPack(builder, true, true);
-      builder.close();
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      std::string error;
+  // -system, -properties
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->toVelocyPack(builder, false, false);
+    builder.close();
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
 
-      CHECK(6 == slice.length());
-      CHECK(slice.get("id").copyString() == "1");
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
-      CHECK(slice.hasKey("planId"));
-      CHECK(false == slice.get("deleted").getBool());
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((5 == slice.length()));
-      CHECK((!slice.hasKey("links"))); // for persistence so no links
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-    }
+    CHECK(3 == slice.length());
+    CHECK(slice.get("id").copyString() == "1");
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(!slice.hasKey("planId"));
+    CHECK(!slice.hasKey("deleted"));
+    CHECK(!slice.hasKey("properties"));
+  }
 
-    // -system, +properties
-    {
-      arangodb::iresearch::IResearchViewMeta expectedMeta;
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->toVelocyPack(builder, true, false);
-      builder.close();
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      std::string error;
+  // +system, -properties
+  {
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->toVelocyPack(builder, false, true);
+    builder.close();
+    auto slice = builder.slice();
 
-      CHECK(4 == slice.length());
-      CHECK(slice.get("id").copyString() == "1");
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
-      CHECK(!slice.hasKey("planId"));
-      CHECK(!slice.hasKey("deleted"));
-      slice = slice.get("properties");
-      CHECK(slice.isObject());
-      CHECK((5 == slice.length()));
-      CHECK((!slice.hasKey("links")));
-      CHECK((meta.init(slice, error) && expectedMeta == meta));
-    }
-
-    // -system, -properties
-    {
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->toVelocyPack(builder, false, false);
-      builder.close();
-      auto slice = builder.slice();
-      arangodb::iresearch::IResearchViewMeta meta;
-      std::string error;
-
-      CHECK(3 == slice.length());
-      CHECK(slice.get("id").copyString() == "1");
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
-      CHECK(!slice.hasKey("planId"));
-      CHECK(!slice.hasKey("deleted"));
-      CHECK(!slice.hasKey("properties"));
-    }
-
-    // +system, -properties
-    {
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->toVelocyPack(builder, false, true);
-      builder.close();
-      auto slice = builder.slice();
-
-      CHECK(5 == slice.length());
-      CHECK(slice.get("id").copyString() == "1");
-      CHECK(slice.get("name").copyString() == "testView");
-      CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
-      CHECK(false == slice.get("deleted").getBool());
-      CHECK(slice.hasKey("planId"));
-      CHECK(!slice.hasKey("properties"));
-    }
+    CHECK(5 == slice.length());
+    CHECK(slice.get("id").copyString() == "1");
+    CHECK(slice.get("name").copyString() == "testView");
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(false == slice.get("deleted").getBool());
+    CHECK(slice.hasKey("planId"));
+    CHECK(!slice.hasKey("properties"));
   }
 }
 
 SECTION("test_drop") {
+  // FIXME implement
 }
 
+SECTION("modify_view") {
+  // FIXME implement
+}
 
 }
