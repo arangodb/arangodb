@@ -147,6 +147,10 @@ struct IResearchIndexSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true); // required for arangodb::aql::Query(...)
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false); // requires for IResearchView::open()
@@ -185,6 +189,7 @@ struct IResearchIndexSetup {
 
   ~IResearchIndexSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 

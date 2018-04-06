@@ -43,7 +43,8 @@ class IResearchViewCoordinator final: public arangodb::LogicalView {
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit
   );
 
   bool visitCollections(CollectionVisitor const& visitor) const override {

@@ -183,10 +183,15 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     ExecContext const* exe = ExecContext::CURRENT;
     AuthenticationFeature* af = AuthenticationFeature::instance();
     if (ServerState::instance()->isCoordinator()) {
-      std::shared_ptr<LogicalCollection> col =
-          ClusterMethods::createCollectionOnCoordinator(
-              collectionType, vocbase, infoSlice, false,
-              createWaitsForSyncReplication, enforceReplicationFactor);
+      auto col = ClusterMethods::createCollectionOnCoordinator(
+        collectionType,
+        *vocbase,
+        infoSlice,
+        false,
+        createWaitsForSyncReplication,
+        enforceReplicationFactor
+      );
+
       if (!col) {
         return Result(TRI_ERROR_INTERNAL, "createCollectionOnCoordinator");
       }

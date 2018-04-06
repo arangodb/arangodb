@@ -341,7 +341,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   IndexFactory const* idxFactory = engine->indexFactory();
   int res = idxFactory->enhanceIndexDefinition(
-      definition, defBuilder, create, ServerState::instance()->isCoordinator());
+    definition, defBuilder, create, ServerState::instance()->isCoordinator()
+  ).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);

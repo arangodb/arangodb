@@ -95,7 +95,7 @@ namespace arangodb {
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalDataSource(
@@ -161,29 +161,11 @@ LogicalView::LogicalView(
     return nullptr;
   }
 
-  auto view = viewFactory(vocbase, definition, planVersion);
+  auto view = viewFactory(vocbase, definition, planVersion, preCommit);
 
   if (!view) {
     LOG_TOPIC(ERR, Logger::VIEWS)
       << "Failure to instantiate view of type: " << viewType.toString();
-
-    return nullptr;
-  }
-
-  if (preCommit && !preCommit(view)) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure during pre-commit callback for view of type: "
-      << viewType.toString();
-
-    return nullptr;
-  }
-
-  auto res = view->create();
-
-  if (!res.ok()) {
-    LOG_TOPIC(ERR, Logger::VIEWS)
-      << "Failure during commit of creation for view of type: "
-      << viewType.toString();
 
     return nullptr;
   }
@@ -196,7 +178,7 @@ LogicalView::LogicalView(
 // -----------------------------------------------------------------------------
 
 DBServerLogicalView::DBServerLogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& definition,
     uint64_t planVersion
 ): LogicalView(vocbase, definition, planVersion) {
@@ -211,7 +193,9 @@ DBServerLogicalView::~DBServerLogicalView() {
   }
 }
 
-arangodb::Result DBServerLogicalView::create() noexcept {
+/*static*/ arangodb::Result DBServerLogicalView::create(
+    DBServerLogicalView const& view
+) noexcept {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
@@ -221,11 +205,11 @@ arangodb::Result DBServerLogicalView::create() noexcept {
       // during recovery entry is being played back from the engine
       if (!engine->inRecovery()) {
         arangodb::velocypack::Builder builder;
-        auto res = engine->getViews(vocbase(), builder);
+        auto res = engine->getViews(view.vocbase(), builder);
         TRI_ASSERT(TRI_ERROR_NO_ERROR == res);
         auto slice  = builder.slice();
         TRI_ASSERT(slice.isArray());
-        auto viewId = std::to_string(id());
+        auto viewId = std::to_string(view.id());
 
         // We have not yet persisted this view
         for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
@@ -243,18 +227,18 @@ arangodb::Result DBServerLogicalView::create() noexcept {
       }
     #endif
 
-    engine->createView(vocbase(), id(), *this);
+    engine->createView(view.vocbase(), view.id(), view);
 
-    return engine->persistView(vocbase(), *this);
+    return engine->persistView(view.vocbase(), view);
   } catch (std::exception const& e) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + name() + "': " + e.what()
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "': " + e.what()
     );
   } catch (...) {
     return arangodb::Result(
       TRI_ERROR_INTERNAL,
-      std::string("caught exception during storage engine persistance of view '") + name() + "'"
+      std::string("caught exception during storage engine persistance of view '") + view.name() + "'"
     );
   }
 }

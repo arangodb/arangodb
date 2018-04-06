@@ -1088,7 +1088,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
       collectionType,
-      &_vocbase,
+      _vocbase,
       merged,
       ignoreDistributeShardsLikeErrors,
       createWaitsForSyncReplication,

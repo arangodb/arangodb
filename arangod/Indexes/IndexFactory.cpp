@@ -25,11 +25,129 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
+namespace arangodb {
+
+Result IndexFactory::emplaceFactory(
+  std::string const& type,
+  IndexTypeFactory const& factory
+) {
+  if (!factory) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("index factory undefined during index factory registration for index type '") + type + "'"
+    );
+  }
+
+  if (!_factories.emplace(type, factory).second) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+      std::string("index factory previously registered during index factory registration for index type '") + type + "'"
+    );
+  }
+
+  return arangodb::Result();
+}
+
+Result IndexFactory::emplaceNormalizer(
+  std::string const& type,
+  IndexNormalizer const& normalizer
+) {
+  if (!normalizer) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("index normalizer undefined during index normalizer registration for index type '") + type + "'"
+    );
+  }
+
+  if (!_normalizers.emplace(type, normalizer).second) {
+    return arangodb::Result(
+      TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+      std::string("index normalizer previously registered during index normalizer registration for index type '") + type + "'"
+    );
+  }
+
+  return arangodb::Result();
+}
+
+Result IndexFactory::enhanceIndexDefinition(
+  velocypack::Slice const definition,
+  velocypack::Builder& normalized,
+  bool isCreation,
+  bool isCoordinator
+) const {
+  auto type = definition.get("type");
+
+  if (!type.isString()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  auto typeString = type.copyString();
+  auto itr = _normalizers.find(typeString);
+
+  if (itr == _normalizers.end()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  TRI_ASSERT(ServerState::instance()->isCoordinator() == isCoordinator);
+  TRI_ASSERT(normalized.isEmpty());
+
+  try {
+    velocypack::ObjectBuilder b(&normalized);
+    auto idSlice = definition.get("id");
+    uint64_t id = 0;
+
+    if (idSlice.isNumber()) {
+      id = idSlice.getNumericValue<uint64_t>();
+    } else if (idSlice.isString()) {
+      id = basics::StringUtils::uint64(idSlice.copyString());
+    }
+
+    if (id) {
+      normalized.add("id", VPackValue(std::to_string(id)));
+    }
+
+    return itr->second(normalized, definition, isCreation);
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (std::exception const&) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
+  }
+}
+
+std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
+  velocypack::Slice definition,
+  bool generateKey,
+  LogicalCollection* collection,
+  bool isClusterConstructor
+) const {
+  auto id = validateSlice(definition, generateKey, isClusterConstructor);
+  auto type = definition.get("type");
+
+  if (!type.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER, "invalid index type definition"
+    );
+  }
+
+  auto typeString = type.copyString();
+  auto itr = _factories.find(typeString);
+
+  if (itr == _factories.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      std::string("invalid or unsupported index type '") + typeString + "'"
+    );
+  }
+
+  return itr->second(collection, definition, id, isClusterConstructor);
+}
 
 TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info, 
                                           bool generateKey, 
@@ -59,3 +177,5 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
 
   return iid;
 }
+
+} // arangodb
