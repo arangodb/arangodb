@@ -307,13 +307,13 @@ MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
     Collection& collection, ShardID const& shardId,
     ServerID const& fromServerId, ServerID const& toServerId, bool isLeader) {
   MoveShardOperation moveShardOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .shard = shardId,
-      .from = fromServerId,
-      .to = toServerId,
-      .isLeader = isLeader,
+      collection.database,
+      collection.id,
+      collection.name,
+      shardId,
+      fromServerId,
+      toServerId,
+      isLeader,
   };
 
   {  // "Move" the shard in `collection`
@@ -666,17 +666,16 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
   }
 
   FixServerOrderOperation fixServerOrderOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .shard = shardId,
-      .protoShard = protoShardId,
-      .leader = leader,
-      .followers = DBServers{dbServers.begin() + 1, dbServers.end()},
-      .protoFollowers =
-          DBServers{protoDbServers.begin() + 1, protoDbServers.end()},
+      collection.database,
+      collection.id,
+      collection.name,
+      proto.id,
+      proto.name,
+      shardId,
+      protoShardId,
+      leader,
+      DBServers{dbServers.begin() + 1, dbServers.end()},
+      DBServers{protoDbServers.begin() + 1, protoDbServers.end()},
   };
 
   // Change order for the rest of the repairs as well
@@ -722,14 +721,14 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
   collection.replicationFactor = proto.replicationFactor;
 
   return BeginRepairsOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .collectionReplicationFactor = previousReplicationFactor,
-      .protoReplicationFactor = proto.replicationFactor,
-      .renameDistributeShardsLike = renameDistributeShardsLike,
+      collection.database,
+      collection.id,
+      collection.name,
+      proto.id,
+      proto.name,
+      previousReplicationFactor,
+      proto.replicationFactor,
+      renameDistributeShardsLike,
   };
 }
 
@@ -774,13 +773,13 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
       collection.repairingDistributeShardsLike);
 
   return FinishRepairsOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .shards = createShardVector(collection.shardsById, proto.shardsById),
-      .replicationFactor = proto.replicationFactor,
+      collection.database,
+      collection.id,
+      collection.name,
+      proto.id,
+      proto.name,
+      createShardVector(collection.shardsById, proto.shardsById),
+      proto.replicationFactor,
   };
 }
 
