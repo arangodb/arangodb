@@ -94,10 +94,7 @@ function clusterSync (options) {
 function activeFailover (options) {
   let testCases = tu.scanTestPath('js/client/tests/active-failover');
   options.activefailover = true;
-  if (!options.singles || options.singles < 3) {
-    options.singles = 3;
-  }
-
+  options.singles = 4;
   return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
 }
 
