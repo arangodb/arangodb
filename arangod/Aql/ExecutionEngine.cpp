@@ -387,15 +387,20 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
           break;
 #ifdef USE_IRESEARCH
-        case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
-          _dbserverParts.addIResearchViewNode(*en);
-        } break;
+        case ExecutionNode::SCATTER_IRESEARCH_VIEW: {
+          // _dbserverParts.addIResearchViewNode(*en);
+          break;
+        }
 #endif
         default:
           // Do nothing
           break;
       }
     } else {
+      if (ExecutionNode::ENUMERATE_IRESEARCH_VIEW == nodeType) {
+        return false;
+      }
+
       // on dbserver
       _dbserverParts.addNode(en);
       if (nodeType == ExecutionNode::REMOTE) {

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewCoordinator.h"
+#include "IResearchView.h" // FIXME remove dependency
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -61,13 +62,9 @@ namespace iresearch {
   return nullptr;
 }
 
-// noexcept since 'IResearchFeature::type()' has to be already inserted
 /*static*/ arangodb::LogicalDataSource::Type const& IResearchViewCoordinator::type() noexcept {
-  static auto const& type = arangodb::LogicalDataSource::Type::emplace(
-    arangodb::velocypack::StringRef(IResearchFeature::type())
-  );
-
-  return type;
+  // retrieve type from IResearchFeature
+  return IResearchView::type();
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(

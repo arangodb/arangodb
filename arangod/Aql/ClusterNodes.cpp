@@ -59,7 +59,10 @@ void RemoteNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
+  if (_collection) {
+    // FIXME why do we need collection?
+    nodes.add("collection", VPackValue(_collection->getName()));
+  }
   nodes.add("server", VPackValue(_server));
   nodes.add("ownName", VPackValue(_ownName));
   nodes.add("queryId", VPackValue(_queryId));
@@ -199,7 +202,10 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
                                            verbose);  // call base class method
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("collection", VPackValue(_collection->getName()));
+  if (_collection) {
+    // FIXME why do we need collection
+    nodes.add("collection", VPackValue(_collection->getName()));
+  }
 
   if(_sortmode == 'h'){
     nodes.add("sortmode", VPackValue("heap"));

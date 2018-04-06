@@ -156,6 +156,9 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       handleCollection(static_cast<IndexNode*>(node)->collection(),
                        AccessMode::Type::READ, true);
       break;
+    case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+      addIResearchViewNode(*node);
+      break;
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
