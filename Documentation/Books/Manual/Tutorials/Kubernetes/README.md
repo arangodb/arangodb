@@ -40,6 +40,8 @@ Then run (replace `<version>` with the version of the operator that you want to 
 ```bash
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/crd.yaml
 kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-deployment.yaml
+# Optional
+kubectl apply -f https://raw.githubusercontent.com/arangodb/kube-arangodb/<version>/manifests/arango-storage.yaml
 ```
 
 The first command installs two `CustomResourceDefinitions` in your Kubernetes cluster:
@@ -49,6 +51,11 @@ The first command installs two `CustomResourceDefinitions` in your Kubernetes cl
 
 The second command installs a `Deployment` that runs the operator that controls
 `ArangoDeployment` resources.
+
+The optional third command installs a `Deployment` that runs the operator that
+provides `PersistentVolumes` on local disks of the cluster nodes.
+Use this when running on bare-metal or if there is no provisioner for fast
+storage in your Kubernetes cluster.
 
 ## Deploying your first ArangoDB database
 
