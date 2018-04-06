@@ -5,6 +5,8 @@ v3.3.6 (XXXX-XX-XX)
   may have sent documents to a wrong shard in AQL INSERT queries that specified
   the value for `_key` using an expression (and not a constant value)
   
+* fix restoring of smart graph edge collections (may have run into timeout before)
+
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
 

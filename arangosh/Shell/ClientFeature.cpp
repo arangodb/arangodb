@@ -32,7 +32,9 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "Ssl/ssl-helper.h"
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -184,7 +186,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClientFeature::readPassword() {
-  usleep(10 * 1000);
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
     ConsoleFeature* console =
@@ -203,7 +205,7 @@ void ClientFeature::readPassword() {
 }
 
 void ClientFeature::readJwtSecret() {
-  usleep(10 * 1000);
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
     ConsoleFeature* console =
