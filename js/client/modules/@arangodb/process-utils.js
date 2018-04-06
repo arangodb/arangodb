@@ -920,8 +920,8 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
 
 function startInstanceCluster (instanceInfo, protocol, options,
   addArgs, rootDir) {
-  if (options.cluster && options.resilientsingle ||
-     !options.cluster && !options.resilientsingle) {
+  if (options.cluster && options.activefailover ||
+     !options.cluster && !options.activefailover) {
     throw "invalid call to startInstanceCluster";
   }
 
@@ -977,9 +977,9 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
-  } else if (options.resilientsingle) {
+  } else if (options.activefailover) {
     // for now start just two (TODO config parameter)
-    for (i = 0; i < 2; i++) {
+    for (i = 0; i < options.singles; i++) {
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
@@ -988,7 +988,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       singleArgs['cluster.my-address'] = endpoint;
       singleArgs['cluster.my-role'] = 'SINGLE';
       singleArgs['cluster.agency-endpoint'] = agencyEndpoint;
-      singleArgs['replication.automatic-failover'] = true;
+      singleArgs['replication.active-failover'] = true;
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('single' + i, 'single', singleArgs), 'single');
       sleep(1.0);
     }
@@ -1051,7 +1051,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   }
 
   // we need to find the leading server
-  if (options.resilientsingle) {
+  if (options.activefailover) {
     const internal = require('internal');
     const reply = download(instanceInfo.url + '/_api/cluster/endpoints', '', makeAuthorizationHeaders(authOpts));
     if (!reply.error && reply.code === 200) {
@@ -1248,7 +1248,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
                };
       arango.reconnect(rc.endpoint, '_system', 'root', '');
       return rc;
-    } else if (options.cluster || options.resilientsingle) {
+    } else if (options.cluster || options.activefailover) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
     } else if (options.agency) {

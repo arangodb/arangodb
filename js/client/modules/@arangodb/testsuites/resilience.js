@@ -85,6 +85,21 @@ function clusterSync (options) {
   return tu.performTests(options, testCases, 'cluster_sync', tu.runThere);
 }
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: active failover
+// //////////////////////////////////////////////////////////////////////////////
+
+function activeFailover (options) {
+  let testCases = tu.scanTestPath('js/client/tests/active-failover');
+  options.activefailover = true;
+  if (!options.singles || options.singles < 2) {
+    options.singles = 2;
+  }
+
+  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
+}
+
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
   testFns['resilience'] = resilience;
   testFns['client_resilience'] = clientResilience;
