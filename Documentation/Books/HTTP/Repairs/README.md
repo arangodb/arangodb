@@ -12,11 +12,18 @@ distributed on the DBServers exactly as the prototype collection from the
 **Please read everything carefully before using this API!** 
 
 There is a job that can restore this property safely. However, while the
-job is running, the `replicationFactor` *should not be changed* for any
-affected collection or prototype collection (i.e. set in `distributeShardsLike`,
-including [SmartGraphs](../../Manual/Graphs/SmartGraphs/)). Neither should
-or shards of one of those prototypes be moved during repairs. Also only
-one repair job should run at any given time.
+job is running,
+- the `replicationFactor` *must not be changed* for any affected collection or
+  prototype collection (i.e. set in `distributeShardsLike`, including
+  [SmartGraphs](../../Manual/Graphs/SmartGraphs/)),
+- affected collections or prototype collections *should not be renamed*,
+- *neither should shards be moved* of one of those prototypes
+- and shutdown of DBServers *should be avoided*
+during the repairs. Also only one repair job should run at any given time.
+Failure to meet those requirements will mostly cause the job to abort, but still
+allow to restart it safely. However, changing the `replicationFactor` during
+repairs may leave it in a state that is not repairable without manual
+intervention!
 
 If there is any affected collection which `replicationFactor` is equal to
 the total number of DBServers, the repairs might abort. In this case, it is
