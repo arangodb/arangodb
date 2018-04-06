@@ -172,7 +172,10 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
-* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
+* fixed a bug where clusterinfo missed changes to plan after agency
+  callback is registred for create collection
+
+* fixed internal #2215's failedleader timeout, when in todo
 
 v3.3.4 (XXXX-XX-XX)
 -------------------
