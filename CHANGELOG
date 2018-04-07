@@ -7,6 +7,8 @@ v3.3.6.1 (XXXX-XX-XX)
   
 * fix restoring of smart graph edge collections (may have run into timeout before)
 
+* added /_admin/status for debugging
+
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
 
