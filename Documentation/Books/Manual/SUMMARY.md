@@ -171,7 +171,6 @@
 	* [Kubernetes](Deployment/Cluster/Kubernetes.md)	
 	* [Mesos, DC/OS](Deployment/Cluster/Mesos.md)	
 	* [OLD-WIP](Deployment/Cluster/tmp.md)	
-	  * [Advanced Topics](Deployment/Cluster/Advanced.md)
 	    * [Standalone Agency](Deployment/Cluster/Agency.md)
 		* [Docker](Deployment/Cluster/Docker.md)	
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
@@ -182,6 +181,7 @@
     * [ArangoSync Workers](Deployment/DC2DC/ArangoSyncWorkers.md)
     * [Prometheus & Grafana](Deployment/DC2DC/PrometheusGrafana.md)  
 #   https://@github.com/arangodb/kube-arangodb.git;kube-arangodb;docs/Manual;;/
+  * [Docker](Deployment/Docker/README.md)
   * [Kubernetes](Deployment/Kubernetes/README.md)
     * [Using the Operator](Deployment/Kubernetes/Usage.md)
     * [Deployment Resource](Deployment/Kubernetes/DeploymentResource.md)
@@ -193,6 +193,7 @@
     * [Storage Resource](Deployment/Kubernetes/StorageResource.md)
     * [TLS](Deployment/Kubernetes/Tls.md)
     * [Upgrading](Deployment/Kubernetes/Upgrading.md)
+  * [Mesos, DC/OS](Deployment/DCOS/README.md)
 * [Upgrading](Upgrading/README.md)
   * [General Upgrade Information](Upgrading/General.md)
   * [Upgrading in Windows](Upgrading/Windows.md)

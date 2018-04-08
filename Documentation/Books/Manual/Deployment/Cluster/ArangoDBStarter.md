@@ -49,22 +49,24 @@ endpoint, http://h01:4002/, http://h02:4002/ or http://h03:4002/.
 Local test Clusters
 -------------------
 
-If you only want a local test cluster, you can run a single starter with the `--starter.local` argument.
-It will start a 3 "machine" cluster on your local PC.
+If you only want a local test Cluster, you can run a single _Starter_ with the 
+`--starter.local` argument. It will start a 3 "machine" Cluster on your local PC:
 
 ```
 arangodb --starter.local
 ```
 
-Note. A local cluster is intended only for test purposes since a failure of 
-a single PC will bring down the entire cluster.
+**Note:** a local Cluster is intended only for test purposes since a failure of 
+a single PC will bring down the entire Cluster.
 
 Automatic Docker Clusters
 -------------------------
-The [_Starter_](../../Programs/Starter/README.md) can also be used to launch clusters based on docker containers.
+The [_Starter_](../../Programs/Starter/README.md) can also be used to launch clusters
+based on _docker_ containers.
 Its a bit more complicated, since you need to provide information about your environment that can't be autodetected.
 
-In the Docker world you need to take care about where persistant data is stored, since containers are intended to be volatile. We use a volume named `arangodb1` here: 
+In the Docker world you need to take care about where persistent data is stored,
+since containers are intended to be volatile. We use a volume named `arangodb1` here: 
 
 ```
 docker volume create arangodb1
@@ -74,7 +76,7 @@ docker volume create arangodb1
 
 We then need to determine the the IP of the docker host where you
 intend to run ArangoDB starter on. Depending on your operating system
-execute `ip addr, ifconfig or ipconfig` to determine your local ip
+execute `ip addr, ifconfig or ipconfig` to determine your local IP
 address. 
 
 ```

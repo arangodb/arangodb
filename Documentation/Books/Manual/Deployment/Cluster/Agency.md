@@ -1,4 +1,4 @@
-Launching ArangoDB's standalone "agency"
+Launching ArangoDB's standalone _Agency_
 ========================================
 
 Multiple ArangoDB instances can be deployed as a fault-tolerant distributed state machine.
@@ -174,5 +174,5 @@ curl -L localhost:8529/_api/agency/write -d '[[{"foo":["bar","baz","qux"]}]]'
 
 are equivalent for example and will create and fill an array at `/foo`. Here, again, the outermost array is the container for the transaction arrays.
 
-We documentent a complete guide of the API in the [API section](../../HTTP/Agency/index.html).
+We documented a complete guide of the API in the [API section](../../HTTP/Agency/index.html).
 
