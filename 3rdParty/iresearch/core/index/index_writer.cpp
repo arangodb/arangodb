@@ -102,7 +102,7 @@ void index_writer::flush_context::reset() {
   modification_queries_.clear();
   pending_segments_.clear();
   segment_mask_.clear();
-  writers_pool_.visit([this](segment_writer& writer)->bool {
+  writers_pool_.visit([](segment_writer& writer)->bool {
     writer.reset();
     return true;
   });

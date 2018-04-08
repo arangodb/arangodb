@@ -55,7 +55,6 @@ start() {
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --log.level trace \
                 --server.statistics false
@@ -76,7 +75,6 @@ startTerminal() {
                 --cluster.agency-endpoint tcp://127.0.0.1:4001 \
                 --cluster.my-address tcp://127.0.0.1:$PORT \
                 --server.endpoint tcp://127.0.0.1:$PORT \
-                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
                 --cluster.my-role $ROLE \
                 --server.statistics false \
                 --console &

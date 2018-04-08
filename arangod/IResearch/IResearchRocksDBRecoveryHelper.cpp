@@ -193,13 +193,47 @@ void ensureLink(
       << "found create index marker, databaseId: '" << dbId
       << "', collectionId: '" << cid << "'";
 
-  // re-insert link
-  if (link->recover().fail()) {
+  arangodb::velocypack::Builder json;
+
+  json.openObject();
+
+  if (!link->json(json, false)) {
     LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Failed to recover the link '" << iid
+        << "Failed to generate jSON definition for link '" << iid
         << "' to the collection '" << cid
         << "' in the database '" << dbId;
     return;
+  }
+
+  json.close();
+
+  static std::vector<std::string> const EMPTY;
+  arangodb::SingleCollectionTransaction trx(
+    arangodb::transaction::StandaloneContext::Create(vocbase),
+    col->id(),
+    arangodb::AccessMode::Type::EXCLUSIVE
+  );
+
+  auto res = trx.begin();
+  bool created;
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Failed to begin transaction while recovering link '" << iid
+        << "' to the collection '" << cid
+        << "' in the database '" << dbId;
+    return;
+  }
+
+  // re-insert link
+  if (!col->dropIndex(link->id())
+      || !col->createIndex(&trx, json.slice(), created)
+      || !created
+      || !trx.commit().ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Failed to recreate the link '" << iid
+        << "' to the collection '" << cid
+        << "' in the database '" << dbId;
   }
 }
 

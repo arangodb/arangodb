@@ -103,7 +103,7 @@ To use an existing server key file use the `--ssl.keyfile` option like this:
 arangodb --ssl.keyfile=myServer.pem
 ```
 
-Use [`arangodb create tls keyfile`](./security.md) to create a server key file.
+Use [`arangodb create tls keyfile`](./Security.md) to create a server key file.
 
 To let the starter created a self-signed server key file, use the `--ssl.auto-key` option like this:
 

@@ -45,15 +45,7 @@ class Builder;
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates view accoridn to a definition
-  //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<LogicalView> create(
-    TRI_vocbase_t& vocbase,
-    velocypack::Slice definition,
-    bool isNew
-  );
+  typedef std::function<bool(std::shared_ptr<LogicalView>const& view)> PreCommitCallback;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
@@ -61,10 +53,16 @@ class LogicalView : public LogicalDataSource {
   static Category const& category() noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief invoke visitor on all collections that a view will return
-  /// @return visitation was successful
+  /// @brief creates view according to a definition
+  /// @param preCommit called before completing view creation (IFF returns true)
+  ///                  e.g. before persisting definition to filesystem
   //////////////////////////////////////////////////////////////////////////////
-  virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
+  static std::shared_ptr<LogicalView> create(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice definition,
+    uint64_t planVersion = 0,
+    PreCommitCallback const& preCommit = PreCommitCallback() // called before
+  );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
@@ -74,7 +72,7 @@ class LogicalView : public LogicalDataSource {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop an existing view
   //////////////////////////////////////////////////////////////////////////////
-  virtual void drop() = 0;
+  virtual arangodb::Result drop() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief renames an existing view
@@ -102,31 +100,31 @@ class LogicalView : public LogicalDataSource {
     bool doSync
   ) = 0;
 
- protected:
-  static TRI_voc_cid_t readViewId(velocypack::Slice slice);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief invoke visitor on all collections that a view will return
+  /// @return visitation was successful
+  //////////////////////////////////////////////////////////////////////////////
+  virtual bool visitCollections(CollectionVisitor const& visitor) const = 0;
 
-  LogicalView(TRI_vocbase_t* vocbase, velocypack::Slice const& definition);
+ protected:
+  LogicalView(
+    TRI_vocbase_t* vocbase,
+    velocypack::Slice const& definition,
+    uint64_t planVersion
+  );
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called during view creation to complete creation e.g. persist to FS
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result create() noexcept = 0;
 
  private:
   // FIXME seems to be ugly
   friend struct ::TRI_vocbase_t;
+
+  // ensure LogicalDataSource members (e.g. _deleted/_name) are not modified asynchronously
   mutable basics::ReadWriteLock _lock;
 }; // LogicalView
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief typedef for a LogicalView factory function
-/// This typedef is used when registering the creator function for any view
-/// type. the creator function is called when a view is first created or
-/// re-opened after a server restart. the VelocyPack Slice will contain all
-/// information about the view's general and implementation-specific properties.
-/// the isNew flag will be true if the view is first created, and false if a
-/// view is re-opened on a server restart.
-//////////////////////////////////////////////////////////////////////////////
-typedef std::function<std::shared_ptr<LogicalView>(
-  TRI_vocbase_t& vocbase, // database
-  arangodb::velocypack::Slice const& properties, // view properties
-  bool isNew
-)> ViewFactory;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class DBServerLogicalView
@@ -135,9 +133,7 @@ class DBServerLogicalView : public LogicalView {
  public:
   ~DBServerLogicalView() override;
 
-  void open() override;
-
-  void drop() override;
+  arangodb::Result drop() override final;
 
   Result rename(
     std::string&& newName,
@@ -148,23 +144,43 @@ class DBServerLogicalView : public LogicalView {
     velocypack::Builder& result,
     bool includeProperties,
     bool includeSystem
-  ) const override;
+  ) const override final;
 
   arangodb::Result updateProperties(
     velocypack::Slice const& properties,
     bool partialUpdate,
     bool doSync
-  ) override;
+  ) override final;
 
  protected:
   DBServerLogicalView(
     TRI_vocbase_t* vocbase,
     velocypack::Slice const& definition,
-    bool isNew
+    uint64_t planVersion
   );
 
- private:
-  bool _isNew;
+  virtual arangodb::Result create() noexcept override final;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop implementation-specific parts of an existing view
+  //////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result dropImpl() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a jSON description of a View object implementation
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void getPropertiesVPack(
+    velocypack::Builder& builder,
+    bool forPersistence
+  ) const = 0;
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  ///////////////////////////////////////////////////////////////////////////////
+  virtual arangodb::Result updateProperties(
+    velocypack::Slice const& slice,
+    bool partialUpdate
+  ) = 0;
 }; // LogicalView
 
 }  // namespace arangodb
