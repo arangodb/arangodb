@@ -171,8 +171,6 @@
 	* [OLD-WIP](Deployment/Cluster/tmp.md)	
 	  * [Advanced Topics](Deployment/Cluster/Advanced.md)
 	    * [Standalone Agency](Deployment/Cluster/Agency.md)
-		* [Local test setups](Deployment/Cluster/Local.md)
-		* [Processes](Deployment/Cluster/Distributed.md)
 		* [Docker](Deployment/Cluster/Docker.md)
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
   * [Multiple Datacenters](Deployment/DC2DC.md)
