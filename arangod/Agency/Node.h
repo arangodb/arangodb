@@ -36,19 +36,8 @@ namespace arangodb {
 namespace consensus {
 
 enum NodeType { NODE, LEAF };
-enum Operation {
-  SET,
-  INCREMENT,
-  DECREMENT,
-  PUSH,
-  POP,
-  PREPEND,
-  SHIFT,
-  OBSERVE,
-  UNOBSERVE,
-  ERASE,
-  REPLACE
-};
+enum Operation {SET, INCREMENT, DECREMENT, PUSH, POP, PREPEND, SHIFT, OBSERVE,
+                UNOBSERVE, ERASE, REPLACE};
 
 using namespace arangodb::velocypack;
 
@@ -211,16 +200,16 @@ class Node {
   Node const* parent() const;
 
   /// @brief Part of relative path vector which exists
-  std::vector<std::string> exists(std::vector<std::string> const&) const;
+  std::vector<std::string> exists(std::vector<std::string> const&) const noexcept;;
 
   /// @brief Part of relative path which exists
-  std::vector<std::string> exists(std::string const&) const;
+  std::vector<std::string> exists(std::string const&) const noexcept;
 
   /// @brief Part of relative path vector which exists
-  bool has(std::vector<std::string> const&) const;
+  bool has(std::vector<std::string> const&) const noexcept;
 
   /// @brief Part of relative path which exists
-  bool has(std::string const&) const;
+  bool has(std::string const&) const noexcept;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
   int64_t getInt() const;

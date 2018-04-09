@@ -108,7 +108,7 @@ class Supervision : public arangodb::Thread {
   void beginShutdown() override final;
 
   /// @brief Upgrade agency
-  void upgradeAgency();
+  void upgradeAgency() noexcept;
 
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
@@ -146,21 +146,21 @@ class Supervision : public arangodb::Thread {
   bool removeShard(std::string const& from);
 
   /// @brief Check machines in agency
-  std::vector<check_t> check(std::string const&);
+  std::vector<check_t> check(std::string const&) noexcept;
 
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  void workJobs();
+  void workJobs() noexcept;
 
   /// @brief Get unique ids from agency
-  void getUniqueIds();
+  bool getUniqueIds() noexcept;
 
   /// @brief Perform sanity checking
-  bool doChecks();
+  bool doChecks() noexcept;
 
   /// @brief update my local agency snapshot
-  bool updateSnapshot();
+  bool updateSnapshot() noexcept;
 
   void shrinkCluster();
 
@@ -201,6 +201,8 @@ class Supervision : public arangodb::Thread {
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
+
+  std::vector<std::string> report;
 
 };
 
