@@ -1619,7 +1619,8 @@ static bool UnloadCollectionCallback(LogicalCollection* collection) {
     // as the cleanup thread has already popped the unload ditch from the
     // ditches list,
     // we need to insert a new one to really execute the unload
-    collection->vocbase()->unloadCollection(collection, false);
+    collection->vocbase().unloadCollection(collection, false);
+
     return false;
   }
 

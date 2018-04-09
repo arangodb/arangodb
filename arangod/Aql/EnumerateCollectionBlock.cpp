@@ -57,8 +57,7 @@ int EnumerateCollectionBlock::initialize() {
   if (_collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
-    TRI_ASSERT(logicalCollection->vocbase());
-    auto dbName = logicalCollection->vocbase()->name();
+    auto& dbName = logicalCollection->vocbase().name();
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
     unsigned long waitInterval = 10000;

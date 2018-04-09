@@ -66,7 +66,7 @@ static void WeakViewCallback(
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  TRI_ASSERT(!view->vocbase()->isDangling());
+  TRI_ASSERT(!view->vocbase().isDangling());
 
 // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -78,7 +78,7 @@ static void WeakViewCallback(
   v8g->JSViews[view].Reset();
   v8g->JSViews.erase(view);
 
-  view->vocbase()->release();
+  view->vocbase().release();
   delete v;  // delete the shared_ptr on the heap
 }
 
@@ -100,8 +100,9 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
 
     if (it == v8g->JSViews.end()) {
       // increase the reference-counter for the database
-      TRI_ASSERT(!view->vocbase()->isDangling());
-      view->vocbase()->forceUse();
+      TRI_ASSERT(!view->vocbase().isDangling());
+      view->vocbase().forceUse();
+
       try {
         auto v = new std::shared_ptr<arangodb::LogicalView>(view);
         auto externalView = v8::External::New(isolate, v);
@@ -116,7 +117,7 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
                                          v8::WeakCallbackType::kFinalizer);
         v8g->increaseActiveExternals();
       } catch (...) {
-        view->vocbase()->release();
+        view->vocbase().release();
         throw;
       }
     } else {
@@ -130,7 +131,7 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     result->ForceSet(_IdKey,
                      TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
                      v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase()->name()));
+    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
   }
 
   return scope.Escape<v8::Object>(result);
@@ -258,7 +259,7 @@ static void JS_DropViewVocbaseObj(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  auto res = view->vocbase()->dropView(*view).errorNumber();
+  auto res = view->vocbase().dropView(*view).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");
@@ -479,7 +480,7 @@ static void JS_RenameViewVocbase(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  int res = view->vocbase()->renameView(view, name);
+  int res = view->vocbase().renameView(view, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename view");

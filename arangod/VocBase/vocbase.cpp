@@ -428,26 +428,26 @@ bool TRI_vocbase_t::DropCollectionCallback(
   }  // release status lock
 
   // remove from list of collections
-  TRI_vocbase_t* vocbase = collection->vocbase();
+  auto& vocbase = collection->vocbase();
 
   {
-    RECURSIVE_WRITE_LOCKER(vocbase->_dataSourceLock, vocbase->_dataSourceLockWriteOwner);
-    auto it = vocbase->_collections.begin();
+    RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner);
+    auto it = vocbase._collections.begin();
 
-    for (auto end = vocbase->_collections.end(); it != end; ++it) {
+    for (auto end = vocbase._collections.end(); it != end; ++it) {
       if (it->get() == collection) {
         break;
       }
     }
 
-    if (it != vocbase->_collections.end()) {
+    if (it != vocbase._collections.end()) {
       auto col = *it;
 
-      vocbase->_collections.erase(it);
+      vocbase._collections.erase(it);
 
       // we need to clean up the pointers later so we insert it into this vector
       try {
-        vocbase->_deadCollections.emplace_back(col);
+        vocbase._deadCollections.emplace_back(col);
       } catch (...) {
       }
     }
@@ -1284,9 +1284,9 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
       } else {
         collection->deferDropCollection(DropCollectionCallback);
         // wake up the cleanup thread
-        engine->signalCleanup(collection->vocbase());
+        engine->signalCleanup(&(collection->vocbase()));
       }
-      
+
       if (DatabaseFeature::DATABASE != nullptr &&
           DatabaseFeature::DATABASE->versionTracker() != nullptr) {
         DatabaseFeature::DATABASE->versionTracker()->track("drop collection");

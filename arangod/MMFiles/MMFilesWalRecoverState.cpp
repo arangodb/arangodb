@@ -110,7 +110,7 @@ void MMFilesWalRecoverState::releaseResources() {
   for (auto it = openedCollections.begin(); it != openedCollections.end();
        ++it) {
     arangodb::LogicalCollection* collection = it->second;
-    collection->vocbase()->releaseCollection(collection);
+    collection->vocbase().releaseCollection(collection);
   }
 
   openedCollections.clear();
@@ -162,9 +162,9 @@ TRI_vocbase_t* MMFilesWalRecoverState::releaseDatabase(
 
     TRI_ASSERT(collection != nullptr);
 
-    if (collection->vocbase()->id() == databaseId) {
+    if (collection->vocbase().id() == databaseId) {
       // correct database, now release the collection
-      TRI_ASSERT(vocbase == collection->vocbase());
+      TRI_ASSERT(vocbase == &(collection->vocbase()));
       vocbase->releaseCollection(collection);
       // get new iterator position
       it2 = openedCollections.erase(it2);
@@ -192,7 +192,7 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::releaseCollection(
   arangodb::LogicalCollection* collection = it->second;
 
   TRI_ASSERT(collection != nullptr);
-  collection->vocbase()->releaseCollection(collection);
+  collection->vocbase().releaseCollection(collection);
   openedCollections.erase(collectionId);
 
   return collection;
@@ -1608,7 +1608,7 @@ int MMFilesWalRecoverState::fillIndexes() {
     // activate secondary indexes
     physical->useSecondaryIndexes(true);
 
-    auto ctx = transaction::StandaloneContext::Create(collection->vocbase());
+    auto ctx = transaction::StandaloneContext::Create(&(collection->vocbase()));
     arangodb::SingleCollectionTransaction trx(
       ctx, collection->id(), AccessMode::Type::WRITE
     );
