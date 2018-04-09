@@ -230,7 +230,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     });
     
     REQUIRE(job.start());
-    REQUIRE(job.status() == JOB_STATUS::FAILED);
+    REQUIRE(job.status() == JOB_STATUS::FINISHED);
     Verify(Method(mockAgent,write)).Exactly(2);
     
   } // SECTION
@@ -280,8 +280,8 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
       return fakeWriteResult;
     });
   
-    REQUIRE_FALSE(job.start());
-    REQUIRE(job.status() == JOB_STATUS::FAILED);
+    REQUIRE(job.start());
+    REQUIRE(job.status() == JOB_STATUS::FINISHED);
     Verify(Method(mockAgent,write)).Exactly(2);
   
   } // SECTION
