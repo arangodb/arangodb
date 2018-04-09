@@ -3376,7 +3376,11 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
     }
 
     auto const dep = n->getFirstDependency();
-    if (dep->getType() != EN::SCATTER) {
+    if (dep->getType() != EN::SCATTER
+#ifdef USE_IRESEARCH
+        && dep->getType() != EN::SCATTER_IRESEARCH_VIEW
+#endif
+        ) {
       continue;
     }
 
