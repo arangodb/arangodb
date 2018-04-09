@@ -170,7 +170,7 @@
 	* [Manual Start](Deployment/Cluster/ManualStart.md)
 	* [Kubernetes](Deployment/Cluster/Kubernetes.md)	
 	* [Mesos, DC/OS](Deployment/Cluster/Mesos.md)	
-	* [OLD-WIP](Deployment/Cluster/tmp.md)	
+	* [OLD-WIP](Deployment/Cluster/README.md)	
 	    * [Standalone Agency](Deployment/Cluster/Agency.md)
 		* [Docker](Deployment/Cluster/Docker.md)	
 #   https://@github.com/arangodb/arangosync.git;arangosync;docs/Manual;;/
