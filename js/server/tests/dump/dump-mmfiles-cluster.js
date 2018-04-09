@@ -516,22 +516,22 @@ function dumpTestEnterpriseSuite () {
       let remove = `FOR x IN ${edges} FILTER x.needRemove REMOVE x INTO ${edges}`;
       // Note: Order is important here, we first insert, than update those inserted docs, then remoe them again
       let resInsSame = db._query(insertSameValue, {vertices: verticesList});
-      // assertEqual(100, resInsSame.getExtra().stats.writesExecuted);
+      assertEqual(100, resInsSame.getExtra().stats.writesExecuted);
       assertEqual(0, resInsSame.getExtra().stats.writesIgnored);
       assertEqual(400, c.count());
 
       let resInsOther = db._query(insertOtherValue, {vertices: verticesList});
-      // assertEqual(100, resInsOther.getExtra().stats.writesExecuted);
+      assertEqual(100, resInsOther.getExtra().stats.writesExecuted);
       assertEqual(0, resInsOther.getExtra().stats.writesIgnored);
       assertEqual(500, c.count());
 
       let resUp = db._query(update);
-      // assertEqual(200, resUp.getExtra().stats.writesExecuted);
+      assertEqual(200, resUp.getExtra().stats.writesExecuted);
       assertEqual(0, resUp.getExtra().stats.writesIgnored);
       assertEqual(500, c.count());
 
       let resRem = db._query(remove);
-      // assertEqual(200, resRem.getExtra().stats.writesExecuted);
+      assertEqual(200, resRem.getExtra().stats.writesExecuted);
       assertEqual(0, resRem.getExtra().stats.writesIgnored);
       assertEqual(300, c.count());
     },

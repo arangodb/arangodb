@@ -28,8 +28,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
+const internal = require("internal");
+const jsunity = require("jsunity");
+const isEnterprise = internal.isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
