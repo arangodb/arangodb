@@ -6,9 +6,76 @@ Introduction to Geo Indexes
 
 This is an introduction to ArangoDB's geo indexes.
 
-AQL's geographic utility functions are described in [Geo functions](../../AQL/Functions/Geo.html).
-ArangoDB features an [Google S2](https://github.com/google/s2geometry) based geospatial index.
+AQL's geospatial utility functions are described in [Geo functions](../../AQL/Functions/Geo.html).
+ArangoDB features an [Google S2](http://s2geometry.io/) based geospatial index.
+We support indexing on a subset of the **GeoJSON** standard (as well as simple latitude longitude pairs), 
+for more information see the [GeoJSON section](#GeoJSON).
 
+### Using a Geo-Spatial Index
+
+The s2index is a geo-spatial index which supports containment and intersection queries
+on a various geometric 2D shapes. You should be mainly using AQL queries to perform these types
+of operations. The index can operate in **two different modi**, depending on if you want to use the GeoJSON 
+data-format or not. 
+
+#### GeoJSON Mode
+
+To create an index in GeoJSON mode execute:
+
+```collection.ensureIndex({ type: "s2index", fields: [ "geometry" ], geoJson:true })```
+
+This creates the index on all documents and uses _geometry_ as the attributed field where the value
+is either a [Geometry Object](https://tools.ietf.org/html/rfc7946#section-3.1) **or**
+a _coordinate array_. The array must contain at least two
+numeric values with longitude (first value) and the latitude (second value). This 
+corresponds to the format described in [RFC 7946 Position](https://tools.ietf.org/html/rfc7946#section-3.1.1)
+
+
+All documents, which do not have the attribute path or have a non-conforming
+value in it are excluded from the index.
+
+A geo index is implicitly sparse, and there is no way to control its sparsity.
+In case that the index was successfully created, an object with the index
+details, including the index-identifier, is returned.
+
+
+#### Non-GeoJSON mode
+
+This index mode exlusively supports indexing on coordinate arrays. Values that 
+contain GeoJSON or other types of data will be ignores.
+
+To create a geo-spatial index on all documents using *latitude* and
+*longitude* as separate attribute paths, two paths need to be specified
+in the *fields* array:
+
+`collection.ensureIndex({ type: "geo", fields: [ "latitude", "longitude" ] })`
+
+The first field is always defined to be the _latitude_ and the second is the _longitude_.
+
+
+Alternatively you can specify only one field:
+
+`collection.ensureIndex({ type: "geo", fields: [ "location" ], geoJson:false })`
+
+Creates a geo-spatial index on all documents using *location* as path to
+the coordinates. The value of the attribute has to be an array with at least two
+numeric values. The array must contain the latitude (first value) and the
+longitude (second value).
+
+All documents, which do not have the attribute path(s) or have a non-conforming
+value in it are excluded from the index.
+
+A geo index is implicitly sparse, and there is no way to control its sparsity.
+In case that the index was successfully created, an object with the index
+details, including the index-identifier, is returned.
+
+In case that the index was successfully created, an object with the index
+details, including the index-identifier, is returned.
+
+
+### Example Queries
+
+TODO
 
 ### GeoJSON
 
@@ -167,15 +234,12 @@ The "coordinates" member is an array of Polygon coordinate arrays.
 }
 ```
 
-Deprecated info below:
 
---------------------------------
 
-The legacy geo index uses Hilbert curves to implement geo-spatial indexes.
-See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
-for details.
+## Legacy Geo index
 
-A geo-spatial index assumes that the latitude is between -90 and 90 degree and
+The legacy geoindex only supports point based operations:
+This index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
 
