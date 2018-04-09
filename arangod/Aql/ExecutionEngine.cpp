@@ -386,12 +386,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         case ExecutionNode::SHORTEST_PATH:
           _dbserverParts.addGraphNode(_query, static_cast<GraphNode*>(en));
           break;
-#ifdef USE_IRESEARCH
-        case ExecutionNode::SCATTER_IRESEARCH_VIEW: {
-          // _dbserverParts.addIResearchViewNode(*en);
-          break;
-        }
-#endif
         default:
           // Do nothing
           break;
