@@ -1125,16 +1125,13 @@ static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-
     std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
+    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
+
     if (collection == nullptr) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
+
     collection->followers()->add(serverId);
   }
 
