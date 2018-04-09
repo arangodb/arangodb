@@ -208,7 +208,7 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     VPackSlice const& info,
     bool isAStub,
     uint64_t planVersion /*= 0*/

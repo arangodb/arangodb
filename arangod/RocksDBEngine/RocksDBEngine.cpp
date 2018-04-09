@@ -1742,7 +1742,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
+        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol);

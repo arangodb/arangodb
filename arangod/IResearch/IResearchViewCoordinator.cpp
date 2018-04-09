@@ -37,7 +37,8 @@ namespace iresearch {
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit
 ) {
   auto view = std::unique_ptr<IResearchViewCoordinator>(
     new IResearchViewCoordinator(vocbase, info, planVersion)
@@ -71,7 +72,7 @@ IResearchViewCoordinator::IResearchViewCoordinator(
     TRI_vocbase_t& vocbase,
     velocypack::Slice info,
     uint64_t planVersion
-) : LogicalView(&vocbase, info, planVersion) {
+) : LogicalView(vocbase, info, planVersion) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 

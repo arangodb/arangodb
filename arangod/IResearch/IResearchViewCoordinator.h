@@ -47,7 +47,8 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -82,11 +83,6 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     bool partialUpdate,
     bool doSync
   ) override;
-
- protected:
-  arangodb::Result create() noexcept override {
-    return {};
-  }
 
  private:
   IResearchViewCoordinator(

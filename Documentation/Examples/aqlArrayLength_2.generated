@@ -1,0 +1,7 @@
+@Q:
+RETURN LENGTH( <span class="hljs-number">1234</span> )
+
+@R
+[
+  <span class="hljs-number">4</span>
+]

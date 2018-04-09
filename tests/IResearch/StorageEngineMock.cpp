@@ -577,7 +577,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     index = EdgeIndexMock::make(++lastId, _logicalCollection, info);
 #ifdef USE_IRESEARCH
   } else if (0 == type.compare(arangodb::iresearch::IResearchFeature::type())) {
-    index = arangodb::iresearch::IResearchMMFilesLink::make(++lastId, _logicalCollection, info);
+    index = arangodb::iresearch::IResearchMMFilesLink::make(_logicalCollection, info, ++lastId, false);
 #endif
   }
 

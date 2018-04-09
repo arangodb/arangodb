@@ -129,8 +129,8 @@ x-content-type-options: nosniff
       <span class="hljs-string">"max"</span> : <span class="hljs-number">16</span> 
     }, 
     <span class="hljs-string">"threads"</span> : { 
-      <span class="hljs-string">"running"</span> : <span class="hljs-number">4</span>, 
-      <span class="hljs-string">"working"</span> : <span class="hljs-number">2</span>, 
+      <span class="hljs-string">"running"</span> : <span class="hljs-number">5</span>, 
+      <span class="hljs-string">"working"</span> : <span class="hljs-number">3</span>, 
       <span class="hljs-string">"blocked"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"queued"</span> : <span class="hljs-number">1</span> 
     } 

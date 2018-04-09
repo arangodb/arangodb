@@ -537,18 +537,18 @@ void ClusterInfo::loadPlan() {
                 VPackSlice type = collectionSlice.get("type");
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
-                    vocbase, collectionSlice, newPlanVersion
+                    *vocbase, collectionSlice, newPlanVersion
                   );
                 } else {
                   newCollection = std::make_shared<SmartVertexCollection>(
-                    vocbase, collectionSlice, newPlanVersion
+                    *vocbase, collectionSlice, newPlanVersion
                   );
                 }
               } else
             #endif
               {
                 newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice, true, newPlanVersion
+                  *vocbase, collectionSlice, true, newPlanVersion
                 );
               }
 

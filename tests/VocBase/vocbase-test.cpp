@@ -37,18 +37,20 @@
 
 namespace {
 
-std::unique_ptr<arangodb::LogicalView> makeTestView(
+std::shared_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    arangodb::LogicalView::PreCommitCallback const& preCommit
   ) {
   struct Impl: public arangodb::DBServerLogicalView{
     Impl(
         TRI_vocbase_t& vocbase,
         arangodb::velocypack::Slice const& info,
         uint64_t planVersion
-    ): DBServerLogicalView(&vocbase, info, planVersion) {
+    ): DBServerLogicalView(vocbase, info, planVersion) {
     }
+    arangodb::Result create() { return DBServerLogicalView::create(*this); }
     virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
     virtual void getPropertiesVPack(
       arangodb::velocypack::Builder&,
@@ -69,7 +71,12 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>(vocbase, info, planVersion);
+  auto view = std::make_shared<Impl>(vocbase, info, planVersion);
+
+  return
+    (!preCommit || preCommit(std::static_pointer_cast<arangodb::LogicalView>(view)))
+    && view->create().ok()
+    ? view : nullptr;
 }
 
 }
