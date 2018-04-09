@@ -28,6 +28,7 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const isEnterprise = internal.isEnterprise();
@@ -332,6 +333,7 @@ function dumpTestEnterpriseSuite () {
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
   const gm = require("@arangodb/smart-graph");
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
 
   return {
 
@@ -347,6 +349,31 @@ function dumpTestEnterpriseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+    testHiddenCollectionsOmitted : function () {
+      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+
+      const smartEdgeCollectionPath = fs.join(dumpDir, 'UnitTestsDumpEdges.structure.json');
+      const localEdgeCollectionPath = fs.join(dumpDir, '_local_UnitTestsDumpEdges.structure.json');
+      const fromEdgeCollectionPath = fs.join(dumpDir, '_from_UnitTestsDumpEdges.structure.json');
+      const toEdgeCollectionPath = fs.join(dumpDir, '_to_UnitTestsDumpEdges.structure.json');
+
+      assertTrue(fs.exists(smartEdgeCollectionPath));
+      assertFalse(fs.exists(localEdgeCollectionPath));
+      assertFalse(fs.exists(fromEdgeCollectionPath));
+      assertFalse(fs.exists(toEdgeCollectionPath));
+    },
+
+    testShadowCollectionsOmitted : function () {
+      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      const collStructure = JSON.parse(
+        fs.read(fs.join(dumpDir, 'UnitTestsDumpEdges.structure.json'))
+      );
+
+      assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
+      let parameters = collStructure['parameters'];
+      assertFalse(parameters.hasOwnProperty('shadowCollections'), parameters);
     },
 
     testVertices : function () {
