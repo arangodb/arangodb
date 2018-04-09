@@ -192,7 +192,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +326,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   > FlushTransactionPtr;
 
   IResearchView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion

@@ -879,7 +879,7 @@ IResearchView::PersistedStore::PersistedStore(irs::utf8_path&& path)
 }
 
 IResearchView::IResearchView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
     arangodb::DatabasePathFeature const& dbPathFeature,
     uint64_t planVersion
@@ -1736,7 +1736,8 @@ int IResearchView::insert(
 /*static*/ std::shared_ptr<LogicalView> IResearchView::make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit /*= LogicalView::PreCommitCallback()*/
 ) {
   auto* feature =
     arangodb::iresearch::getFeature<arangodb::DatabasePathFeature>("DatabasePath");
@@ -1748,21 +1749,37 @@ int IResearchView::insert(
     return nullptr;
   }
 
-  PTR_NAMED(IResearchView, view, &vocbase, info, *feature, planVersion);
+  PTR_NAMED(IResearchView, view, vocbase, info, *feature, planVersion);
   auto& impl = reinterpret_cast<IResearchView&>(*view);
   auto& json = info.isObject() ? info : emptyObjectSlice(); // if no 'info' then assume defaults
   auto props = json.get("properties");
   auto& properties = props.isObject() ? props : emptyObjectSlice(); // if no 'info' then assume defaults
   std::string error;
 
-  if (impl._meta.init(properties, error)) {
-    return view;
+  if (!impl._meta.init(properties, error)) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+      << "failed to initialize iResearch view from definition, error: " << error;
+
+    return nullptr;
   }
 
-  LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-    << "failed to initialize iResearch view from definition, error: " << error;
+  if (preCommit && !preCommit(view)) {
+    LOG_TOPIC(ERR, IResearchFeature::IRESEARCH)
+      << "Failure during pre-commit while constructing IResearch View in database '" << vocbase.id() << "'";
 
-  return nullptr;
+    return nullptr;
+  }
+
+  auto res = create(static_cast<arangodb::DBServerLogicalView&>(*view));
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, IResearchFeature::IRESEARCH)
+      << "Failure during commit of created view while constructing IResearch View in database '" << vocbase.id() << "', error: " << res.errorMessage();
+
+    return nullptr;
+  }
+
+  return view;
 }
 
 size_t IResearchView::memory() const {
