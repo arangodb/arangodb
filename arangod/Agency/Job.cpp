@@ -564,8 +564,4 @@ std::string Job::checkServerHealth(Node const& snapshot,
     return "UNCLEAR";
   }
   return snapshot(healthPrefix + server + "/Status").getString();
-  /*if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
-    return "UNHEALTHY";
-  }
-  return Supervision::HEALTH_STATUS_GOOD;*/
 }

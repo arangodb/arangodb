@@ -467,8 +467,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 
   // Try to create a new collection. This is not registered yet
 
-  std::shared_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
+  auto collection =
+    std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);

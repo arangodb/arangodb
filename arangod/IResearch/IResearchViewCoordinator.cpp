@@ -29,7 +29,8 @@ namespace iresearch {
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    uint64_t planVersion
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit
 ) {
   // FIXME implement
   return nullptr;

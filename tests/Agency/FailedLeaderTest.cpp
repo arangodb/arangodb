@@ -27,10 +27,9 @@
 #include "catch.hpp"
 #include "fakeit.hpp"
 
-#include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
 #include "Agency/AgentInterface.h"
+#include "Agency/MoveShard.h"
 #include "Agency/Node.h"
 #include "lib/Basics/StringUtils.h"
 #include "lib/Random/RandomGenerator.h"

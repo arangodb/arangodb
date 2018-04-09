@@ -59,7 +59,7 @@ JobContext::JobContext (JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
     LOG_TOPIC(ERR, Logger::AGENCY) <<
-      "Failed to run supervision job " << type << " with id " << id;
+    "Failed to run supervision job " << type << " with id " << id;
   }
 
 }

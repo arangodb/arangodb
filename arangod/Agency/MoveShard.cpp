@@ -180,7 +180,7 @@ bool MoveShard::start() {
 
   // Check that the toServer is in state "GOOD":
   std::string health = checkServerHealth(_snapshot, _to);
-  if (health != Supervision::HEALTH_STATUS_GOOD) {
+  if (health != "GOOD") {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _to
       << " is currently " << health << ", not starting MoveShard job "
       << _jobId;
@@ -340,7 +340,7 @@ bool MoveShard::start() {
       addPreconditionUnchanged(pending, planPath, planned);
       addPreconditionShardNotBlocked(pending, _shard);
       addPreconditionServerNotBlocked(pending, _to);
-      addPreconditionServerHealth(pending, _to, "GOOD");
+      addPreconditionServerHealth(pending, _to, "GOOD"); 
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }   // precondition done

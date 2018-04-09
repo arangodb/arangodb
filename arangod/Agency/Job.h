@@ -178,9 +178,7 @@ struct Job {
   static void addPreconditionShardNotBlocked(Builder& pre, std::string const& shard);
   static void addPreconditionUnchanged(Builder& pre,
     std::string const& key, Slice value);
-  static std::string checkServerHealth(Node const& snapshot,
-                                       std::string const& server);
-
+  static std::string checkServerHealth(Node const& snapshot, std::string const& server);
 };
 
 inline arangodb::consensus::write_ret_t singleWriteTransaction(

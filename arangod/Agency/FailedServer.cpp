@@ -230,7 +230,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     //Preconditions
     { VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      addPreconditionServerHealth(*_jb, _server, Supervision::HEALTH_STATUS_BAD);
+      addPreconditionServerHealth(*_jb, _server, "BAD");
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       { VPackObjectBuilder old(_jb.get());
