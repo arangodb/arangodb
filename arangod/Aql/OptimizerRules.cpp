@@ -2916,7 +2916,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
-    if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
+    if (!elements.empty() && gatherNode->collection()->numberOfShards() != 1) {
       gatherNode->setElements(elements);
     }
 
@@ -3443,7 +3443,7 @@ void arangodb::aql::distributeSortToClusterRule(
           if (thisSortNode->_reinsertInCluster) {
             plan->insertDependency(rn, inspectNode);
           }
-          if (gatherNode->collection()->numberOfShards() > 1) {
+          if (gatherNode->collection()->numberOfShards() != 1) {
             gatherNode->setElements(thisSortNode->getElements());
           }
           modified = true;
