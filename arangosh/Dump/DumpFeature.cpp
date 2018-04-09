@@ -1260,7 +1260,7 @@ bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
           << "Dump ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
              "dump this collection anyway use 'arangodump --force'. "
