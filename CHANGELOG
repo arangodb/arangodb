@@ -21,6 +21,8 @@ v3.3.6.1 (XXXX-XX-XX)
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
 
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
 
 v3.3.5 (2018-03-28)
 -------------------
