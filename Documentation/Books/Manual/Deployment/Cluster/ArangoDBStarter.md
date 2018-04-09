@@ -70,7 +70,7 @@ since containers are intended to be volatile. We use a volume named `arangodb1` 
 
 ```
 docker volume create arangodb1
-```        
+```
 
 (You can use any type of docker volume that fits your setup instead.)
 
