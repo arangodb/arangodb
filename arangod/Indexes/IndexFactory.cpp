@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "RestServer/BootstrapFeature.h"
 
 #include <velocypack/Slice.h>
 
@@ -40,6 +41,18 @@ Result IndexFactory::emplaceFactory(
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("index factory undefined during index factory registration for index type '") + type + "'"
+    );
+  }
+
+  auto* feature =
+    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
+
+  // ensure new factories are not added at runtime since that would require additional locks
+  if (bootstrapFeature && bootstrapFeature->isReady()) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("index factory registration is only allowed during server startup")
     );
   }
 
@@ -61,6 +74,18 @@ Result IndexFactory::emplaceNormalizer(
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("index normalizer undefined during index normalizer registration for index type '") + type + "'"
+    );
+  }
+
+  auto* feature =
+    arangodb::application_features::ApplicationServer::lookupFeature("Bootstrap");
+  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
+
+  // ensure new normalizers are not added at runtime since that would require additional locks
+  if (bootstrapFeature && bootstrapFeature->isReady()) {
+    return arangodb::Result(
+      TRI_ERROR_INTERNAL,
+      std::string("index normalizer registration is only allowed during server startup")
     );
   }
 
