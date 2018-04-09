@@ -22,8 +22,6 @@
 
 #include "catch.hpp"
 
-#include <s2/s1angle.h>
-#include <s2/s2cap.h>
 #include <s2/s2latlng.h>
 #include <s2/s2loop.h>
 #include <s2/s2point.h>

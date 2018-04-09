@@ -108,16 +108,21 @@ S2Point ShapeContainer::centroid() const noexcept {
         c += pts->point(k);
       }
       c = (c / pts->num_points());
-      return c.Normalize(); // FIXME probably broken
+      return c.Normalize();  // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* lines =
           (static_cast<S2MultiPolyline const*>(_data));
       S2Point c(0, 0, 0);
+      double totalWeight = 0.0;
       for (size_t k = 0; k < lines->num_lines(); k++) {
-        c += lines->line(k).GetCentroid();
+        totalWeight += lines->line(k).GetLength().radians();
       }
-      c /= lines->num_lines();
+      for (size_t k = 0; k < lines->num_lines(); k++) {
+        c += lines->line(k).GetCentroid() *
+             (lines->line(k).GetLength().radians() / totalWeight);
+      }
+      //c /= totalWeight;
       return c.Normalize();
     }
 
@@ -263,7 +268,8 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
       if (other->is_point()) {
-        return static_cast<S2PointRegion*>(_data)->point() == other->lo().ToPoint();
+        return static_cast<S2PointRegion*>(_data)->point() ==
+               other->lo().ToPoint();
       }
       return false;
 
@@ -298,9 +304,9 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
     case ShapeContainer::Type::S2_MULTIPOINT: {
       if (other->is_point()) {
         S2Point pp = other->lo().ToPoint();
-        S2MultiPointRegion* mpr =  static_cast<S2MultiPointRegion*>(_data);
+        S2MultiPointRegion* mpr = static_cast<S2MultiPointRegion*>(_data);
         for (int k = 0; mpr->num_points() < k; k++) {
-          if (mpr->point(k) == pp)  {
+          if (mpr->point(k) == pp) {
             return true;
           }
         }
@@ -329,7 +335,6 @@ bool ShapeContainer::contains(S2LatLngRect const* other) const {
   }
   return false;
 }
-
 
 bool ShapeContainer::contains(S2Polygon const* poly) const {
   switch (_type) {
@@ -417,7 +422,8 @@ bool ShapeContainer::equals(Coordinate const* cc) const {
   return false;
 }
 
-bool ShapeContainer::equals(Coordinate const& point, Coordinate const& other) const {
+bool ShapeContainer::equals(Coordinate const& point,
+                            Coordinate const& other) const {
   if (point.latitude == other.latitude && point.longitude == other.longitude) {
     return true;
   }
@@ -442,7 +448,8 @@ bool ShapeContainer::equals(S2Polyline const* other) const {
   return ll->Equals(other);
 }
 
-bool ShapeContainer::equals(S2Polyline const* poly, S2Polyline const* other) const {
+bool ShapeContainer::equals(S2Polyline const* poly,
+                            S2Polyline const* other) const {
   return poly->Equals(other);
 }
 
@@ -468,7 +475,8 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
   switch (cc->_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(cc->_data)->point();
-      return equals(S2LatLng::Latitude(p).degrees(), S2LatLng::Longitude(p).degrees());
+      return equals(S2LatLng::Latitude(p).degrees(),
+                    S2LatLng::Longitude(p).degrees());
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       return equals(static_cast<S2Polyline const*>(cc->_data));
@@ -489,11 +497,10 @@ bool ShapeContainer::equals(ShapeContainer const* cc) const {
 
       for (int k = 0; k < pts1->num_points(); k++) {
         if (!equals(
-              Coordinate(S2LatLng::Latitude(pts1->point(k)).degrees(),
-                         S2LatLng::Longitude(pts1->point(k)).degrees()),
-              Coordinate(S2LatLng::Latitude(pts2->point(k)).degrees(),
-                         S2LatLng::Longitude(pts2->point(k)).degrees())
-              )) {
+                Coordinate(S2LatLng::Latitude(pts1->point(k)).degrees(),
+                           S2LatLng::Longitude(pts1->point(k)).degrees()),
+                Coordinate(S2LatLng::Latitude(pts2->point(k)).degrees(),
+                           S2LatLng::Longitude(pts2->point(k)).degrees()))) {
           return false;
         }
       }
@@ -563,7 +570,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT:
     case ShapeContainer::Type::S2_POLYLINE:
-      return contains(other); // same
+      return contains(other);  // same
 
     case ShapeContainer::Type::S2_LATLNGRECT: {
       S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
@@ -582,7 +589,7 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
 
     case ShapeContainer::Type::S2_MULTIPOINT:
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
-      return contains(other); // same
+      return contains(other);  // same
     }
 
     case ShapeContainer::Type::EMPTY:
@@ -590,7 +597,6 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   }
   return false;
 }
-
 
 bool ShapeContainer::intersects(S2Polygon const* poly) const {
   switch (_type) {
@@ -663,6 +669,4 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   return false;
 }
 
-S2Region const* ShapeContainer::region() const {
-  return _data;
-}
+S2Region const* ShapeContainer::region() const { return _data; }

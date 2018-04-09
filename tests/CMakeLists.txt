@@ -118,6 +118,7 @@ add_executable(
   Geo/GeoJsonTest.cpp
   Geo/GeoFunctionsTest.cpp
   Geo/NearUtilsTest.cpp
+  Geo/ShapeContainerTest.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
