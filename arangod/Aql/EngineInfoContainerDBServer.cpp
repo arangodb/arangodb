@@ -707,6 +707,8 @@ void EngineInfoContainerDBServer::addGraphNode(Query* query, GraphNode* node) {
 void EngineInfoContainerDBServer::addIResearchViewNode(
     ExecutionNode const& node
 ) {
+  TRI_ASSERT(ExecutionNode::ENUMERATE_IRESEARCH_VIEW == node.getType());
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto& viewNode = dynamic_cast<iresearch::IResearchViewNode const&>(node);
 #else
