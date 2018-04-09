@@ -162,7 +162,7 @@ IResearchViewNode::IResearchViewNode(
     _sortCondition(fromVelocyPack(&plan, base.get("sortCondition"))) {
   // FIXME how to check properly
   auto view = _vocbase->lookupView(
-    basics::StringUtils::uint64(base.get("view").copyString())
+    basics::StringUtils::uint64(base.get("viewId").copyString())
   );
   TRI_ASSERT(view && IResearchView::type() == view->type());
   _view = view.get();
@@ -238,7 +238,8 @@ void IResearchViewNode::toVelocyPackHelper(
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("view", VPackValue(basics::StringUtils::itoa(_view->id())));
+  nodes.add("view", VPackValue(_view->name()));
+  nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
@@ -402,7 +403,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
     //_view(plan.getAst()->query()->collections()->get(base.get("view").copyString())) { // FIXME: where to find a view
     _view(nullptr) {
   auto view = _vocbase->lookupView(
-    basics::StringUtils::uint64(base.get("view").copyString())
+    basics::StringUtils::uint64(base.get("viewId").copyString())
   );
 
   // FIXME how to check properly
@@ -432,7 +433,8 @@ void IResearchViewScatterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verb
   ExecutionNode::toVelocyPackHelperGeneric(nodes, verbose);
 
   nodes.add("database", VPackValue(_vocbase->name()));
-  nodes.add("view", VPackValue(basics::StringUtils::itoa(_view->id())));
+  nodes.add("view", VPackValue(_view->name()));
+  nodes.add("viewId", VPackValue(basics::StringUtils::itoa(_view->id())));
 
   // And close it
   nodes.close();

@@ -1140,6 +1140,8 @@ function processQuery (query, explain) {
         return keyword('DISTRIBUTE');
       case 'ScatterNode':
         return keyword('SCATTER');
+      case 'ScatterViewNode':
+        return keyword('SCATTER VIEW');
       case 'GatherNode':
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
             if (node.path && node.path.length) {
