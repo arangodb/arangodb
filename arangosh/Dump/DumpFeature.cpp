@@ -24,6 +24,7 @@
 
 #include <iostream>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -53,46 +54,6 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
-
-class DumpCollectionAttributeExcludeHandler
-    : public VPackAttributeExcludeHandler {
- public:
-  bool shouldExclude(const velocypack::Slice& keySlice, int nesting) override {
-#ifdef USE_ENTERPRISE
-    if (!keySlice.isString()) {
-      return false;
-    }
-
-    std::string key = keySlice.copyString();
-
-    if (nesting != 0) {
-      return false;
-    }
-
-    if (_isSmart && key == "shadowCollections") {
-      return true;
-    }
-#endif
-
-    return false;
-  }
-
-  DumpCollectionAttributeExcludeHandler() = delete;
-
-  explicit DumpCollectionAttributeExcludeHandler(const VPackSlice& collection_)
-      : _collection(collection_), _isSmart(false) {
-    {
-      VPackSlice isSmartSlice = _collection.get("isSmart");
-      if (isSmartSlice.isBool()) {
-        _isSmart = isSmartSlice.getBool();
-      }
-    }
-  }
-
- private:
-  VPackSlice _collection;
-  bool _isSmart;
-};
 
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
@@ -644,10 +605,6 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
-    if (isIgnoredHiddenEnterpriseCollection(name)) {
-      continue;
-    }
-
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
@@ -683,12 +640,7 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
-      VPackOptions conversionOptions = VPackOptions::Defaults;
-      conversionOptions.attributeExcludeHandler =
-        dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
-
-      std::string const collectionInfo = collection.toJson(&conversionOptions);
+      std::string const collectionInfo = collection.toJson();
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -1007,12 +959,13 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
-      VPackOptions conversionOptions = VPackOptions::Defaults;
-      conversionOptions.attributeExcludeHandler =
-          dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
+      VPackBuilder collectionWithExcludedParametersBuilder;
+      copyAndExclude(collectionWithExcludedParametersBuilder, collection,
+                     {{"parameters", "shadowCollections"}});
 
-      std::string const collectionInfo = collection.toJson(&conversionOptions);
+      std::string const collectionInfo =
+          collectionWithExcludedParametersBuilder.slice().toJson();
+
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -1303,7 +1256,7 @@ bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
     if (strncmp(name.c_str(), "_local_", 7) == 0 ||
         strncmp(name.c_str(), "_from_", 6) == 0 ||
         strncmp(name.c_str(), "_to_", 4) == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
           << "Dump ignoring collection " << name
           << ". Will be created via SmartGraphs of a full dump. If you want to "
              "dump this collection anyway use 'arangodump --force'. "
@@ -1314,4 +1267,52 @@ bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
   }
 #endif
   return false;
+}
+
+void DumpFeature::copyAndExclude(
+    VPackBuilder& b, velocypack::Slice slice,
+    std::set<std::vector<std::string>> const& ignorePaths,
+    std::vector<std::string>& path) {
+  // ignore
+  if (ignorePaths.find(path) != ignorePaths.end()) {
+    return;
+  }
+
+  // don't recurse into objects, just add them
+  if (!slice.isObject()) {
+    if (path.empty()) {
+      b.add(slice);
+    } else {
+      b.add(path.back(), slice);
+    }
+    return;
+  }
+
+  // recursive add for objects
+
+  if (path.empty()) {
+    b.add(VPackValue(VPackValueType::Object));
+  } else {
+    b.add(path.back(), VPackValue(VPackValueType::Object));
+  }
+
+  VPackObjectIterator it(slice);
+
+  while (it.valid()) {
+    auto key = it.key(true).copyString();
+
+    path.push_back(key);
+    copyAndExclude(b, it.value(), ignorePaths, path);
+    path.pop_back();
+    it.next();
+  }
+
+  b.close();
+}
+
+void DumpFeature::copyAndExclude(
+    VPackBuilder& builder, velocypack::Slice sliceToCopy,
+    std::set<std::vector<std::string>> const& ignorePaths) {
+  std::vector<std::string> paths;
+  copyAndExclude(builder, sliceToCopy, ignorePaths, paths);
 }
