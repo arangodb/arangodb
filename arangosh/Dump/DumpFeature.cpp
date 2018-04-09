@@ -604,6 +604,10 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
+      continue;
+    }
+
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
@@ -900,6 +904,10 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
     if (!restrictList.empty() &&
         restrictList.find(name) == restrictList.end()) {
       // collection name not in list
+      continue;
+    }
+
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
       continue;
     }
 
@@ -1236,4 +1244,24 @@ void DumpFeature::endEncryption(int fd) {
     _encryption->endEncryption(fd);
   }
 #endif
+}
+
+bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
+    std::string const& name) const {
+#ifdef USE_ENTERPRISE
+  if (!_force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Dump ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+             "dump this collection anyway use 'arangodump --force'. "
+             "However this is not recommended and you should instead dump "
+             "the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
 }
