@@ -67,7 +67,7 @@ Agent::Agent(config_t const& config)
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
   } else {
-    _leaderSince = std::chrono::steady_clock::now();
+    _leaderSince = 0; std::chrono::steady_clock::now();
   }
 }
 
@@ -1319,7 +1319,6 @@ bool Agent::prepareLead() {
     for (auto const& i : _config.active()) {
       _lastAcked[i] = steady_clock::now();
     }
-    _leaderSince = steady_clock::now();
   }
 
   return true;
@@ -1359,8 +1358,9 @@ void Agent::lead() {
 }
 
 // When did we take on leader ship?
-SteadyTimePoint const& Agent::leaderSince() const {
-  return _leaderSince;
+long long Agent::leaderSince() const {
+  return std::chrono::duration_cast<std::chrono::seconds>(
+    std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
 // Notify inactive pool members of configuration change()

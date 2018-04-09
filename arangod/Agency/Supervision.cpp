@@ -634,30 +634,29 @@ void Supervision::run() {
           if (!_upgraded) {
             upgradeAgency();
           }
+          TRI_ASSERT(_agent->leaderSince() > 0);
 
-          // Do nothing unless leader for over 10 seconds
-          auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::steady_clock::now() - _agent->leaderSince()).count();
-          if (secondsSinceLeader > 10.0) {
+          if (_agent->leaderSince() > 10ll) {
             try {
               doChecks();
             } catch (std::exception const& e) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << " " << __LINE__;
+              LOG_TOPIC(ERR, Logger::SUPERVISION)
+                << e.what() << " " << __FILE__ << " " << __LINE__;
             } catch (...) {
               LOG_TOPIC(ERR, Logger::SUPERVISION) <<
                 "Supervision::doChecks() generated an uncaught exception.";
             }
           }
-        }
 
-        if (isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        } else if (_agent->leading()) {
-          if (!handleJobs()) {
+          if (isShuttingDown()) {
+            handleShutdown();
+          } else if (_selfShutdown) {
+            shutdown = true;
             break;
+          } else if (_agent->leading()) {
+            if (!handleJobs()) {
+              break;
+            }
           }
         }
       }
