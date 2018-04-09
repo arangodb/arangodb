@@ -54,6 +54,46 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+class DumpCollectionAttributeExcludeHandler
+    : public VPackAttributeExcludeHandler {
+ public:
+  bool shouldExclude(const velocypack::Slice& keySlice, int nesting) override {
+#ifdef USE_ENTERPRISE
+    if (!keySlice.isString()) {
+      return false;
+    }
+
+    std::string key = keySlice.copyString();
+
+    if (nesting != 0) {
+      return false;
+    }
+
+    if (_isSmart && key == "shadowCollections") {
+      return true;
+    }
+#endif
+
+    return false;
+  }
+
+  DumpCollectionAttributeExcludeHandler() = delete;
+
+  explicit DumpCollectionAttributeExcludeHandler(const VPackSlice& collection_)
+      : _collection(collection_), _isSmart(false) {
+    {
+      VPackSlice isSmartSlice = _collection.get("isSmart");
+      if (isSmartSlice.isBool()) {
+        _isSmart = isSmartSlice.getBool();
+      }
+    }
+  }
+
+ private:
+  VPackSlice _collection;
+  bool _isSmart;
+};
+
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
     : ApplicationFeature(server, "Dump"),
@@ -604,6 +644,10 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
+      continue;
+    }
+
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
@@ -639,7 +683,12 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      std::string const collectionInfo = collection.toJson();
+      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
+      VPackOptions conversionOptions = VPackOptions::Defaults;
+      conversionOptions.attributeExcludeHandler =
+        dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
+
+      std::string const collectionInfo = collection.toJson(&conversionOptions);
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -903,6 +952,10 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
       continue;
     }
 
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
+      continue;
+    }
+
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
           arangodb::basics::VelocyPackHelper::getStringValue(
@@ -954,7 +1007,12 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      std::string const collectionInfo = collection.toJson();
+      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
+      VPackOptions conversionOptions = VPackOptions::Defaults;
+      conversionOptions.attributeExcludeHandler =
+          dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
+
+      std::string const collectionInfo = collection.toJson(&conversionOptions);
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -1236,4 +1294,24 @@ void DumpFeature::endEncryption(int fd) {
     _encryption->endEncryption(fd);
   }
 #endif
+}
+
+bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
+    std::string const& name) const {
+#ifdef USE_ENTERPRISE
+  if (!_force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Dump ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+             "dump this collection anyway use 'arangodump --force'. "
+             "However this is not recommended and you should instead dump "
+             "the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
 }
