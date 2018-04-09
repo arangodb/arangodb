@@ -574,7 +574,7 @@ function dumpTestEnterpriseSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-// jsunity.run(dumpTestSuite);
+jsunity.run(dumpTestSuite);
 if (isEnterprise) {
   jsunity.run(dumpTestEnterpriseSuite);
 }
