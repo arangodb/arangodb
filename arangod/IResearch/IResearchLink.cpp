@@ -76,11 +76,16 @@ IResearchLink::IResearchLink(
   arangodb::LogicalCollection* collection
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
+   _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
 }
 
 IResearchLink::~IResearchLink() {
+  if (_dropCollectionInDestructor) {
+    drop();
+  }
+
   unload(); // disassociate from view if it has not been done yet
 }
 
@@ -181,7 +186,8 @@ int IResearchLink::drop() {
     }
   }
 
-  // FIXME TODO remove link via update properties on view
+  _dropCollectionInDestructor = false; // will do drop now
+
   return _view->drop(_collection->id());
 }
 
@@ -260,6 +266,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
+      _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
 
@@ -475,30 +482,6 @@ Result IResearchLink::remove(
   return true;
 }
 
-arangodb::Result IResearchLink::recover() {
-  if (!_collection) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // current link isn't associated with the collection
-  }
-
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex); // FIXME TODO check for deadlock
-
-  if (!_view) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // slice has identifier but the current object does not
-  }
-
-  arangodb::velocypack::Builder link;
-
-  link.openObject();
-  if (!json(link, false)) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  link.close();
-
-  // re-insert link into the view
-  return _view->link(_collection->id(), link.slice());
-}
-
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -541,6 +524,7 @@ int IResearchLink::unload() {
     }
   }
 
+  _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 

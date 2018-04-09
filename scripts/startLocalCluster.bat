@@ -62,7 +62,7 @@ SET ROLE=PRIMARY
 CALL ECHO Starting %NRDBSERVERS% db servers
 for /l %%I in (1, 1, %NRDBSERVERS%) do (
   SET /a PORT=%%I+%BASE%
-  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-local-info %TYPE%:127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
+  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
 )
 
 :: Coordinators
@@ -71,6 +71,6 @@ SET ROLE=COORDINATOR
 CALL ECHO Starting %NRCOORDINATORS% coordinators
 for /l %%I in (1, 1, %NRCOORDINATORS%) do (
   SET /a PORT=%%I+%BASE%
-  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-local-info %TYPE%:127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
+  START /B CMD /c arangod -c none --database.directory cluster/data%%PORT%% --cluster.agency-endpoint tcp://127.0.0.1:4001 --cluster.my-address tcp://127.0.0.1:%%PORT%% --server.endpoint tcp://127.0.0.1:%%PORT%% --cluster.my-role %ROLE% --log.file cluster/%%PORT%%.log --log.level info --server.statistics true --server.threads 5 --javascript.startup-directory %JS_STARTUP_PATH% --server.authentication false --javascript.app-path %JS_APP_PATH% --log.force-direct true ^> cluster/%%PORT%%.stdout
 )
 

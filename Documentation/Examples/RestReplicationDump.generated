@@ -1,9 +1,9 @@
 shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
 
 HTTP/1.1 200 OK
-content-type: application/x-arango-dump; charset=utf-8
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 13003
+content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 12912
 
-"{\"tick\":\"12997\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_WmxgsOS--B\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"13001\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_WmxgsOS--F\"}}\n{\"tick\":\"13003\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_WmxgsOS--H\"}}\n"
+"{\"tick\":\"12906\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_WnWW2PC--_\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"12910\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_WnWW2PG--_\"}}\n{\"tick\":\"12912\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_WnWW2PG--B\"}}\n"

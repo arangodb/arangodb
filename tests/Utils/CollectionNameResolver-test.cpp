@@ -39,25 +39,25 @@ namespace {
 std::unique_ptr<arangodb::LogicalView> makeTestView(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    bool isNew
+    uint64_t planVersion
   ) {
-  struct Impl: public arangodb::LogicalView{
-    Impl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& info)
-      : arangodb::LogicalView(&vocbase, info) {
+  struct Impl: public arangodb::DBServerLogicalView {
+    Impl(
+        TRI_vocbase_t& vocbase,
+        arangodb::velocypack::Slice const& info,
+        uint64_t planVersion
+    ): arangodb::DBServerLogicalView(&vocbase, info, planVersion) {
     }
-    virtual void drop() override {
-      deleted(true);
-    }
-    virtual void toVelocyPack(
-        arangodb::velocypack::Builder&, bool, bool
+    virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
+    virtual void getPropertiesVPack(
+      arangodb::velocypack::Builder&,
+      bool
     ) const override {
     }
     virtual void open() override {}
-    virtual arangodb::Result rename(std::string&& newName, bool doSync) {
-      return {};
-    }
     virtual arangodb::Result updateProperties(
-        arangodb::velocypack::Slice const&, bool, bool
+      arangodb::velocypack::Slice const&,
+      bool
     ) override {
       return arangodb::Result();
     }
@@ -68,7 +68,7 @@ std::unique_ptr<arangodb::LogicalView> makeTestView(
     }
   };
 
-  return std::make_unique<Impl>(vocbase, info);
+  return std::make_unique<Impl>(vocbase, info, planVersion);
 }
 
 }
@@ -173,7 +173,7 @@ SECTION("test_getDataSource") {
   }
 
   auto* collection = vocbase.createCollection(collectionJson->slice());
-  auto view = vocbase.createView(viewJson->slice(), 42);
+  auto view = vocbase.createView(viewJson->slice());
 
   CHECK((false == collection->deleted()));
   CHECK((false == view->deleted()));
@@ -227,7 +227,7 @@ SECTION("test_getDataSource") {
   }
 
   CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(collection, true, 0)));
-  CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView(view)));
+  CHECK((true == vocbase.dropView(*view).ok()));
   CHECK((true == collection->deleted()));
   CHECK((true == view->deleted()));
 

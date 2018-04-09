@@ -249,7 +249,8 @@ void MMFilesRestExportHandler::createCursor() {
 
   // this may throw!
   auto collectionExport =
-      std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
+    std::make_unique<MMFilesCollectionExport>(&_vocbase, name, _restrictions);
+
   collectionExport->run(waitTime, limit);
 
   size_t batchSize =
@@ -259,22 +260,27 @@ void MMFilesRestExportHandler::createCursor() {
       options, "ttl", 30);
   bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
       options, "count", false);
-
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
   {
-    auto cursor = std::make_unique<MMFilesExportCursor>(_vocbase, TRI_NewTickServer(),
-                                                        collectionExport.get(), batchSize, ttl, count);
+    auto cursor = std::make_unique<MMFilesExportCursor>(
+      &_vocbase,
+      TRI_NewTickServer(),
+      collectionExport.get(),
+      batchSize,
+      ttl,
+      count
+    );
+
     collectionExport.release();
- 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
   }
+
   TRI_ASSERT(c != nullptr);
   TRI_DEFER(cursors->release(c));
-
 
   resetResponse(rest::ResponseCode::CREATED);
 
@@ -304,8 +310,7 @@ void MMFilesRestExportHandler::modifyCursor() {
   }
 
   std::string const& id = suffixes[0];
-
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -353,8 +358,7 @@ void MMFilesRestExportHandler::deleteCursor() {
   }
 
   std::string const& id = suffixes[0];
-
-  CursorRepository* cursors = _vocbase->cursorRepository();
+  CursorRepository* cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
