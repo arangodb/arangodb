@@ -619,18 +619,17 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-
+      
       {
         MUTEX_LOCKER(locker, _lock);
 
-        // Get bunch of job IDs from agency for future jobs
-        if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
-          getUniqueIds();  // cannot fail but only hang
-        }
+        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
 
-        updateSnapshot();
+          if (_jobId == 0 || _jobId == _jobIdMax) {
+            getUniqueIds();  // cannot fail but only hang
+          }
 
-        if (_agent->leading()) {
+          updateSnapshot();
 
           if (!_upgraded) {
             upgradeAgency();
@@ -665,6 +664,7 @@ void Supervision::run() {
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
+  
   if (shutdown) {
     ApplicationServer::server->beginShutdown();
   }
