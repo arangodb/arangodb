@@ -581,25 +581,20 @@ void Supervision::run() {
         MUTEX_LOCKER(locker, _lock);
 
         // Get bunch of job IDs from agency for future jobs
-        if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
-          getUniqueIds();  // cannot fail but only hang
-        }
+        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
 
-        updateSnapshot();
-
-        if (_agent->leading()) {
+          if (_jobId == 0 || _jobId == _jobIdMax) {
+            getUniqueIds();  // cannot fail but only hang
+          }
+          
+          updateSnapshot();
 
           if (!_upgraded) {
             upgradeAgency();
           }
+          TRI_ASSERT(_agent->leaderSince() > 0);
 
-          // Do nothing unless leader for over 10 seconds
-          auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::system_clock::now() - _agent->leaderSince()).count();
-
-          // 10 seconds should be plenty of time for all servers to send
-          //  heartbeat status to new leader (heartbeat is once per second)
-          if (secondsSinceLeader > 10.0) {
+          if (_agent->leaderSince() > 10ll) {
             try {
             doChecks();
             } catch (std::exception const& e) {
@@ -609,16 +604,16 @@ void Supervision::run() {
                 "Supervision::doChecks() generated an uncaught exception.";
             }
           }
-        }
 
-        if (isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        } else if (_agent->leading()) {
-          if (!handleJobs()) {
+          if (isShuttingDown()) {
+            handleShutdown();
+          } else if (_selfShutdown) {
+            shutdown = true;
             break;
+          } else if (_agent->leading()) {
+            if (!handleJobs()) {
+              break;
+            }
           }
         }
       } catch (std::exception const& ex) {

@@ -67,7 +67,7 @@ Agent::Agent(config_t const& config)
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
   } else {
-    _leaderSince = std::chrono::system_clock::now();
+    _leaderSince = 0;
   }
 }
 
@@ -1301,7 +1301,6 @@ bool Agent::prepareLead() {
     for (auto const& i : _config.active()) {
       _lastAcked[i] = system_clock::now();
     }
-    _leaderSince = system_clock::now();
   }
 
   return true;
@@ -1341,7 +1340,7 @@ void Agent::lead() {
 }
 
 // When did we take on leader ship?
-TimePoint const& Agent::leaderSince() const {
+long long Agent::leaderSince() const {
   return _leaderSince;
 }
 

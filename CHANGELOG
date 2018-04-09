@@ -1,13 +1,15 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
-
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
 
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
+
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
 
 
 v3.2.12 (2018-02-27)
