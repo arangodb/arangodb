@@ -287,7 +287,6 @@ arangod --server.authentication=false \
 	--database.directory coordinator &
 ```
 
-
 **Note:** in the above commands, you can use host names, if they can be resolved,
 instead of IP addresses.
 
