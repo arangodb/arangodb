@@ -354,26 +354,27 @@ function dumpTestEnterpriseSuite () {
     testHiddenCollectionsOmitted : function () {
       const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
 
-      const smartEdgeCollectionPath = fs.join(dumpDir, 'UnitTestsDumpEdges.structure.json');
-      const localEdgeCollectionPath = fs.join(dumpDir, '_local_UnitTestsDumpEdges.structure.json');
-      const fromEdgeCollectionPath = fs.join(dumpDir, '_from_UnitTestsDumpEdges.structure.json');
-      const toEdgeCollectionPath = fs.join(dumpDir, '_to_UnitTestsDumpEdges.structure.json');
+      const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
+      const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
+      const fromEdgeCollectionPath = fs.join(dumpDir, `_from_${edges}.structure.json`);
+      const toEdgeCollectionPath = fs.join(dumpDir, `_to_${edges}.structure.json`);
 
-      assertTrue(fs.exists(smartEdgeCollectionPath));
-      assertFalse(fs.exists(localEdgeCollectionPath));
-      assertFalse(fs.exists(fromEdgeCollectionPath));
-      assertFalse(fs.exists(toEdgeCollectionPath));
+      assertTrue(fs.exists(smartEdgeCollectionPath), 'Smart edge collection missing in dump!');
+      assertFalse(fs.exists(localEdgeCollectionPath), '_local edge collection should not have been dumped!');
+      assertFalse(fs.exists(fromEdgeCollectionPath), '_from edge collection should not have been dumped!');
+      assertFalse(fs.exists(toEdgeCollectionPath), '_to edge collection should not have been dumped!');
     },
 
     testShadowCollectionsOmitted : function () {
       const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
       const collStructure = JSON.parse(
-        fs.read(fs.join(dumpDir, 'UnitTestsDumpEdges.structure.json'))
+        fs.read(fs.join(dumpDir, `${edges}.structure.json`))
       );
 
       assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
-      let parameters = collStructure['parameters'];
-      assertFalse(parameters.hasOwnProperty('shadowCollections'), parameters);
+      const parameters = collStructure['parameters'];
+      assertFalse(parameters.hasOwnProperty('shadowCollections'),
+        `Property 'shadowCollections' should be hidden in collection ${edges}!`);
     },
 
     testVertices : function () {
