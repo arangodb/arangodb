@@ -605,10 +605,6 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
       continue;
     }
 
-    if (isIgnoredHiddenEnterpriseCollection(name)) {
-      continue;
-    }
-
     std::string const hexString(arangodb::rest::SslInterface::sslMD5(name));
 
     // found a collection!
