@@ -184,7 +184,7 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write));
   } // SECTION
   
-  SECTION("Server is healthy again, job fails") {
+  SECTION("Server is healthy again, job finishes") {
     
     const char* health = R"=({"arango":{"Supervision":{"Health":{"SNGL-leader":{"Status":"GOOD"}}},
                                         "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
@@ -221,20 +221,21 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write)).Exactly(1);
     
     When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-      // check that the job fails now
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
-      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+      // check that the job finishes now, without changing leader
+      VPackSlice writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
+      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+      REQUIRE_FALSE(writes.hasKey("/arango" + asyncReplLeader)); // no change to leader
       return fakeWriteResult;
     });
     
-    REQUIRE_FALSE(job.start());
+    REQUIRE(job.start());
     REQUIRE(job.status() == JOB_STATUS::FAILED);
     Verify(Method(mockAgent,write)).Exactly(2);
     
   } // SECTION
 
-  SECTION("Current leader is different from server in job, job fails") {
+  SECTION("Current leader is different from server in job, job finishes") {
     
     const char* health = R"=({"arango":{"Plan":{"AsyncReplication":{"Leader":"SNGL-follower1"}},
     "Target":{"ToDo":{"1":{"jobId":"1","type":"activeFailover"}}}}})=";
@@ -271,10 +272,11 @@ TEST_CASE("ActiveFailover", "[agency][supervision]") {
     Verify(Method(mockAgent,write)).Exactly(1);
   
     When(Method(mockAgent, write)).Do([&](query_t const& q, bool d) -> write_ret_t {
-      // check that the job fails now
-      auto writes = q->slice()[0][0];
-      REQUIRE(std::string(writes.get("/arango/Target/ToDo/1").get("op").typeName()) == "string"); \
-      CHECK(std::string(writes.get("/arango/Target/Failed/1").typeName()) == "object");
+      // check that the job finishes now, without changing leader
+      VPackSlice writes = q->slice()[0][0];
+      REQUIRE(typeName(writes.get("/arango/Target/ToDo/1").get("op")) == "string");
+      REQUIRE(typeName(writes.get("/arango/Target/Finished/1")) == "object");
+      REQUIRE_FALSE(writes.hasKey("/arango" + asyncReplLeader)); // no change to leader
       return fakeWriteResult;
     });
   

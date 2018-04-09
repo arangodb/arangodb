@@ -133,16 +133,14 @@ bool ActiveFailoverJob::start() {
     std::string reason = "Server " + _server + " is no longer failed. " +
                          "Not starting ActiveFailoverJob job";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
-    finish(_server, "", false, reason);
-    return false;
+    return finish(_server, "", true, reason); // move to /Target/Finished
   }
   
   Node const& leader = _snapshot(asyncReplLeader);
   if (leader.compareString(_server) != 0) {
     std::string reason = "Server " + _server + " is not the current replication leader";
     LOG_TOPIC(INFO, Logger::SUPERVISION) << reason;
-    finish(_server, "", false, reason);
-    return false;
+    return finish(_server, "", true, reason); // move to /Target/Finished
   }
   
   // Abort job blocking server if abortable (should prop never happen)
