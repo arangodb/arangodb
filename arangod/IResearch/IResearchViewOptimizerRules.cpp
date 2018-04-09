@@ -521,7 +521,6 @@ void scatterViewInClusterRule(
         plan.get(),
         plan->nextId(),
         &vocbase,
-        nullptr, //FIXME collection,
         "", "", ""
     ));
     TRI_ASSERT(scatterNode);
@@ -534,7 +533,6 @@ void scatterViewInClusterRule(
         plan.get(),
         plan->nextId(),
         &vocbase,
-        nullptr, //FIXME collection,
         "", "", ""
     ));
     TRI_ASSERT(node);

@@ -2454,8 +2454,9 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     ExecutionNode* rootNode = plan->root();
 
     // insert a remote node
-    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, c,
-                                  "", "", "");
+    ExecutionNode* remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(rootNode);
 
@@ -2787,7 +2788,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 
     // insert a remote node
     ExecutionNode* remoteNode = new RemoteNode(
-        plan.get(), plan->nextId(), vocbase, collection, "", "", "");
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     TRI_ASSERT(scatterNode);
     remoteNode->addDependency(scatterNode);
@@ -2796,8 +2798,9 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
     node->addDependency(remoteNode);
 
     // insert another remote node
-    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase,
-                                collection, "", "", "");
+    remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     TRI_ASSERT(node);
     remoteNode->addDependency(node);
@@ -3038,8 +3041,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     distNode->addDependency(deps[0]);
 
     // insert a remote node
-    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(),
-                                               vocbase, collection, "", "", "");
+    ExecutionNode* remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(distNode);
 
@@ -3047,8 +3051,9 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
     node->addDependency(remoteNode);
 
     // insert another remote node
-    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, collection,
-                                "", "", "");
+    remoteNode = new RemoteNode(
+      plan.get(), plan->nextId(), vocbase, "", "", ""
+    );
     plan->registerNode(remoteNode);
     remoteNode->addDependency(node);
 
