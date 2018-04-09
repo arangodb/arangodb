@@ -54,6 +54,46 @@ using namespace arangodb::httpclient;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+class DumpCollectionAttributeExcludeHandler
+    : public VPackAttributeExcludeHandler {
+ public:
+  bool shouldExclude(const velocypack::Slice& keySlice, int nesting) override {
+#ifdef USE_ENTERPRISE
+    if (!keySlice.isString()) {
+      return false;
+    }
+
+    std::string key = keySlice.copyString();
+
+    if (nesting != 0) {
+      return false;
+    }
+
+    if (_isSmart && key == "shadowCollections") {
+      return true;
+    }
+#endif
+
+    return false;
+  }
+
+  DumpCollectionAttributeExcludeHandler() = delete;
+
+  explicit DumpCollectionAttributeExcludeHandler(const VPackSlice& collection_)
+      : _collection(collection_), _isSmart(false) {
+    {
+      VPackSlice isSmartSlice = _collection.get("isSmart");
+      if (isSmartSlice.isBool()) {
+        _isSmart = isSmartSlice.getBool();
+      }
+    }
+  }
+
+ private:
+  VPackSlice _collection;
+  bool _isSmart;
+};
+
 DumpFeature::DumpFeature(application_features::ApplicationServer* server,
                          int* result)
     : ApplicationFeature(server, "Dump"),
@@ -643,7 +683,12 @@ int DumpFeature::runDump(std::string& dbName, std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      std::string const collectionInfo = collection.toJson();
+      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
+      VPackOptions conversionOptions = VPackOptions::Defaults;
+      conversionOptions.attributeExcludeHandler =
+        dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
+
+      std::string const collectionInfo = collection.toJson(&conversionOptions);
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
@@ -962,7 +1007,12 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      std::string const collectionInfo = collection.toJson();
+      DumpCollectionAttributeExcludeHandler excludeHandler{collection};
+      VPackOptions conversionOptions = VPackOptions::Defaults;
+      conversionOptions.attributeExcludeHandler =
+          dynamic_cast<VPackAttributeExcludeHandler*>(&excludeHandler);
+
+      std::string const collectionInfo = collection.toJson(&conversionOptions);
       bool result =
           writeData(fd, collectionInfo.c_str(), collectionInfo.size());
 
