@@ -204,7 +204,7 @@ class RDBNearIterator final : public IndexIterator {
         _iter->Next();
       }
     }
-    
+
     _near.didScanIntervals(); // calculate next bounds
     // LOG_TOPIC(INFO, Logger::FIXME) << "# seeks: " << seeks;
   }
@@ -371,8 +371,8 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-  
-  
+
+
   if (params.ascending) {
     return new RDBNearIterator<geo_index::DocumentsAscending>(
         _collection, trx, mmdr, this, std::move(params));
@@ -389,7 +389,9 @@ Result RocksDBGeoS2Index::insertInternal(transaction::Methods* trx,
                                          velocypack::Slice const& doc,
                                          OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
+  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
+  cells.reserve(reserve);
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
   if (res.fail()) {
