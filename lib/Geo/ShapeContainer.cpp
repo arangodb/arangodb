@@ -103,27 +103,28 @@ S2Point ShapeContainer::centroid() const noexcept {
     case ShapeContainer::Type::S2_MULTIPOINT: {
       S2MultiPointRegion const* pts =
           (static_cast<S2MultiPointRegion const*>(_data));
-      S2Point c(0, 0, 0);
+      S2LatLng c = S2LatLng::FromDegrees(0.0, 0.0);
       for (int k = 0; k < pts->num_points(); k++) {
-        c += pts->point(k);
+        c = c + ((1 / static_cast<double>(pts->num_points())) *
+                 S2LatLng(pts->point(k)));
       }
-      c = (c / pts->num_points());
-      return c.Normalize();  // FIXME probably broken
+      return c.ToPoint().Normalize();  // FIXME probably broken
     }
     case ShapeContainer::Type::S2_MULTIPOLYLINE: {
       S2MultiPolyline const* lines =
           (static_cast<S2MultiPolyline const*>(_data));
-      S2Point c(0, 0, 0);
+      S2LatLng c = S2LatLng::FromDegrees(0.0, 0.0);
       double totalWeight = 0.0;
       for (size_t k = 0; k < lines->num_lines(); k++) {
         totalWeight += lines->line(k).GetLength().radians();
       }
       for (size_t k = 0; k < lines->num_lines(); k++) {
-        c += lines->line(k).GetCentroid() *
-             (lines->line(k).GetLength().radians() / totalWeight);
+        double weight = (lines->line(k).GetLength().radians() / totalWeight);
+        S2LatLng point(lines->line(k).GetCentroid());
+        S2LatLng weightedPoint = weight * point;
+        c = c + weightedPoint;
       }
-      //c /= totalWeight;
-      return c.Normalize();
+      return c.ToPoint().Normalize();
     }
 
     case ShapeContainer::Type::EMPTY:

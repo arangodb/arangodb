@@ -49,7 +49,7 @@
 // -----------------------------------------------------------------------------
 
 namespace {
-double AcceptableDistanceError = 10.0;
+double AcceptableDistanceError = 30.0;
 }
 
 namespace {
@@ -67,7 +67,10 @@ bool pointsEqual(S2Point const& a, S2Point const& b) {
   bool equal = (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters) <=
                AcceptableDistanceError;
   if (!equal) {
-    std::cout << "EXPECTING EQUAL POINTS, GOT " << S2LatLng(a).ToStringInDegrees() << " AND " << S2LatLng(b).ToStringInDegrees();
+    std::cout << "EXPECTING EQUAL POINTS, GOT "
+              << S2LatLng(a).ToStringInDegrees() << " AND "
+              << S2LatLng(b).ToStringInDegrees() << " AT DISTANCE "
+              << (a.Angle(b) * arangodb::geo::kEarthRadiusInMeters);
   }
   return equal;
 }
