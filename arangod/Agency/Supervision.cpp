@@ -577,7 +577,7 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-      try {
+      {
         MUTEX_LOCKER(locker, _lock);
 
         if (isShuttingDown()) {
