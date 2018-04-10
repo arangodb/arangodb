@@ -303,7 +303,7 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
     }
     vtx.resize(vtx.size() - 1);  // remove redundant last vertex
 
-    if (n == 1) {  // rectangle detection
+    if (n == 1) {  // cheap rectangle detection
       if (vtx.size() == 1) {
         S2LatLng v0(vtx[0]);
         region.reset(std::make_unique<S2LatLngRect>(v0, v0),
@@ -311,9 +311,14 @@ Result parsePolygon(VPackSlice const& vpack, ShapeContainer& region) {
         return TRI_ERROR_NO_ERROR;
       } else if (vtx.size() == 4) {
         S2LatLng v0(vtx[0]), v1(vtx[1]), v2(vtx[2]), v3(vtx[3]);
-        if (v0.lat() == v1.lat() && v1.lng() == v2.lng() &&
-            v2.lat() == v3.lat() && v3.lng() == v0.lng()) {
-          region.reset(std::make_unique<S2LatLngRect>(v0, v3),
+        S1Angle eps = S1Angle::Radians(1e-6);
+        if ((v0.lat() - v1.lat()).abs() < eps &&
+            (v1.lng() - v2.lng()).abs() < eps &&
+            (v2.lat() - v3.lat()).abs() < eps &&
+            (v3.lng() - v0.lng()).abs() < eps) {
+          /*auto rect = std::make_unique<S2LatLngRect>(v0, v2);
+          LOG_TOPIC(ERR, Logger::FIXME) << "LO: " << rect->lo() << " HI: " << rect->hi();*/
+          region.reset(std::make_unique<S2LatLngRect>(v0, v2),
                        ShapeContainer::Type::S2_LATLNGRECT);
           return TRI_ERROR_NO_ERROR;
         }

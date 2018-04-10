@@ -418,7 +418,7 @@ TEST_CASE("Query points contained in", "[geo][s2index]") {
       docs.emplace(rev, cc);
     }
   }
-  REQUIRE(1681 == counter);
+  REQUIRE(6561 == counter);
   REQUIRE(docs.size() == counter);
   REQUIRE(index.size() == counter);
   
@@ -435,7 +435,7 @@ TEST_CASE("Query points contained in", "[geo][s2index]") {
     for (LocalDocumentId const& rev : result) {
       // check sort order
       S2LatLng const& cords = docs.at(rev);
-      latLngResult.emplace_back(cords.lat().radians(), cords.lng().radians());
+      latLngResult.emplace_back(cords.lat().degrees(), cords.lng().degrees());
     }
     
     std::sort(latLngResult.begin(), latLngResult.end());
@@ -443,45 +443,37 @@ TEST_CASE("Query points contained in", "[geo][s2index]") {
     auto it = latLngResult.begin();
     auto it2 = expected.begin();
     for(; it != latLngResult.end(); it++) {
-      REQUIRE(std::fabs(std::max(it->first - it2->first,
-                                 it->second - it2->second) < 0.00001));
+      double diff = std::fabs(std::max(it->first - it2->first, it->second - it2->second));
+      REQUIRE(diff < 0.00001);
       it2++;
     }
   };
   
+  params.filterType = geo::FilterType::CONTAINS;
+
   SECTION("polygon") {
-    
     auto polygon = createBuilder(R"=({"type": "Polygon", "coordinates":
-                    [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
+                                 [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
     
-    //params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
-    params.filterType = geo::FilterType::CONTAINS;
     geo::geojson::parsePolygon(polygon->slice(), params.filterShape);
     params.filterShape.updateBounds(params);
     
     AscIterator near(std::move(params));
-    checkResult(nearSearch(index, docs, near, 7),
-      {{ 24.0, -11.0 }, { 25.0, -10.0 }, { 25.0, -9.0 },
-      { 26.0, -10.0 }, { 26.0, -9.0 }, { 26.0, -8.0 }, { 26.0, -7.0 }, { 26.0, -6.0 }});
+    checkResult(nearSearch(index, docs, near, 10000),
+                {{ 24.0, -11.0 }, { 25.0, -10.0 }, { 25.0, -9.0 },
+                  { 26.0, -10.0 }, { 26.0, -9.0 }, { 26.0, -8.0 }, { 26.0, -7.0 }, { 26.0, -6.0 }});
   }
   
-  /*SECTION("southpole (2)") {
-    params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
-    AscIterator near(std::move(params));
+  SECTION("rectangle") {
+    auto rect = createBuilder(R"=({"type": "Polygon", "coordinates":[[[0,0],[1.5,0],[1.5,1.5],[0,1.5],[0,0]]]})=");
+    geo::geojson::parsePolygon(rect->slice(), params.filterShape);
+    REQUIRE(params.filterShape.type() == geo::ShapeContainer::Type::S2_LATLNGRECT);
+    params.filterShape.updateBounds(params);
     
-    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
-    REQUIRE(result.size() == 100);
-    checkResult(near.origin(), result);
+    AscIterator near(std::move(params));
+    checkResult(nearSearch(index, docs, near, 10000),
+                {{ 0.0, 0.0 }, { 1.0, 0.0 }, { 1.0, 1.0 }, { 0.0, 1.0 }});
   }
-  
-  SECTION("southpole (3)") {
-    params.origin = S2LatLng::FromDegrees(-89.9, 0);
-    AscIterator near(std::move(params));
-    
-    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
-    REQUIRE(result.size() == 100);
-    checkResult(near.origin(), result);
-  }*/
 }
 
 /* end of NearUtilsTest.cpp  */

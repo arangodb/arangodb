@@ -195,18 +195,22 @@ void ShapeContainer::updateBounds(QueryParams& qp) const noexcept {
     return;
   }
 
-  S2Point origin = this->centroid();
-  S2LatLngRect rect = _data->GetRectBound();
-  S2LatLng ll(origin);
-  S1Angle a1(ll, rect.lo());
-  S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
-  S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
-  S1Angle a4(ll, rect.hi());
-
+  S2LatLng ll(this->centroid());
   qp.origin = ll;
-  qp.maxDistance = std::max(std::max(a1.radians(), a2.radians()),
-                            std::max(a3.radians(), a4.radians())) *
-                   kEarthRadiusInMeters;
+  
+  S2LatLngRect rect = _data->GetRectBound();
+  if (!rect.is_empty() && !rect.is_point()) {
+    S1Angle a1(ll, rect.lo());
+    S1Angle a2(ll, S2LatLng(rect.lat_lo(), rect.lng_hi()));
+    S1Angle a3(ll, S2LatLng(rect.lat_hi(), rect.lng_lo()));
+    S1Angle a4(ll, rect.hi());
+    
+    double rad = geo::kRadEps + std::max(std::max(a1.radians(), a2.radians()),
+                                         std::max(a3.radians(), a4.radians()));
+    qp.maxDistance = rad * kEarthRadiusInMeters;
+  } else {
+    qp.maxDistance = 0;
+  }
 }
 
 bool ShapeContainer::contains(S2Point const& pp) const {
@@ -579,13 +583,18 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
     }
 
     case ShapeContainer::Type::S2_POLYGON: {
-      S2Polygon const* poly = static_cast<S2Polygon const*>(_data);
-      for (int k = 0; k < 4; k++) {
-        if (poly->Contains(other->GetVertex(k).ToPoint())) {
-          return true;
-        }
+      S2Polygon const* self = static_cast<S2Polygon const*>(_data);
+      if (other->is_full()) {
+        return true; // rectangle spans entire sphere
+      } else if (other->is_point()) {
+        return self->Contains(other->lo().ToPoint()); // easy case
+      } else if (!other->Intersects(self->GetRectBound())) {
+        return false; // cheap rejection
       }
-      return false;
+      // construct bounding polyline of rect
+      S2Polyline rectBound({other->GetVertex(0), other->GetVertex(1),
+        other->GetVertex(2), other->GetVertex(3)});
+      return self->Intersects(rectBound);
     }
 
     case ShapeContainer::Type::S2_MULTIPOINT:
@@ -599,11 +608,11 @@ bool ShapeContainer::intersects(S2LatLngRect const* other) const {
   return false;
 }
 
-bool ShapeContainer::intersects(S2Polygon const* poly) const {
+bool ShapeContainer::intersects(S2Polygon const* other) const {
   switch (_type) {
     case ShapeContainer::Type::S2_POINT: {
       S2Point const& p = static_cast<S2PointRegion*>(_data)->point();
-      return poly->Contains(p);
+      return other->Contains(p);
     }
     case ShapeContainer::Type::S2_POLYLINE: {
       LOG_TOPIC(ERR, Logger::FIXME)
@@ -611,17 +620,22 @@ bool ShapeContainer::intersects(S2Polygon const* poly) const {
       return false;  // numerically not well defined
     }
     case ShapeContainer::Type::S2_LATLNGRECT: {
-      S2LatLngRect const* rect = static_cast<S2LatLngRect const*>(_data);
-      for (int k = 0; k < 4; k++) {
-        if (poly->Contains(rect->GetVertex(k).ToPoint())) {
-          return true;
-        }
+      S2LatLngRect const* self = static_cast<S2LatLngRect const*>(_data);
+      if (self->is_full()) {
+        return true; // rectangle spans entire sphere
+      } else if (self->is_point()) {
+        return other->Contains(self->lo().ToPoint()); // easy case
+      } else if (!self->Intersects(other->GetRectBound())) {
+        return false; // cheap rejection
       }
-      return false;
+      // construct bounding polyline of rect
+      S2Polyline rectBound({self->GetVertex(0), self->GetVertex(1),
+                            self->GetVertex(2), self->GetVertex(3)});
+      return other->Intersects(rectBound);
     }
     case ShapeContainer::Type::S2_POLYGON: {
       S2Polygon const* self = static_cast<S2Polygon const*>(_data);
-      return self->Intersects(poly);
+      return self->Intersects(other);
     }
     case ShapeContainer::Type::EMPTY:
     case ShapeContainer::Type::S2_MULTIPOINT:
