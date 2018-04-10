@@ -316,7 +316,9 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
-  std::vector<S2CellId> cells; // TODO reserve space if possible?
+  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
+  std::vector<S2CellId> cells;
+  cells.reserve(reserve);
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
 
