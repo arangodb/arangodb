@@ -1,6 +1,12 @@
 v3.3.6.1 (XXXX-XX-XX)
 ---------------------
 
+* Fixed internal issue #2237: AQL queries on collections with replicationFactor:
+  "satellite" crashed arangod in single server mode
+
+* Fixed restore of satellite collections: replicationFactor was set to 1 during
+  restore
+
 * Fixed dump and restore of smart graphs:
   a) The dump will not include the hidden shadow collections anymore, they were dumped
      accidentially and only contain duplicated data.
