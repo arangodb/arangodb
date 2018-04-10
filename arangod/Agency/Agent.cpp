@@ -1359,7 +1359,7 @@ void Agent::lead() {
 
 // When did we take on leader ship?
 long long Agent::leaderSince() const {
-  return std::chrono::duration_cast<std::chrono::seconds>(
+  return std::chrono::duration_cast<std::chrono::duration<int64_t,std::ratio<1>>>(
     std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
