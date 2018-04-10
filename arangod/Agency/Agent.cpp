@@ -1357,9 +1357,9 @@ void Agent::lead() {
   // Then we will copy the _readDB to the _spearhead and start service.
 }
 
-// How long back did I take over leadership
-int64_t Agent::leaderSince() const {
-  return std::chrono::duration_cast<std::chrono::duration<int64_t,std::ratio<1>>>(
+// How long back did I take over leadership, result in seconds
+int64_t Agent::leaderFor() const {
+  return std::chrono::duration_cast<std::chrono::duration<int64_t>>(
     std::chrono::steady_clock::now().time_since_epoch()).count() - _leaderSince;
 }
 
