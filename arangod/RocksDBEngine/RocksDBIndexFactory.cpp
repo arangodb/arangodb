@@ -290,7 +290,7 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition);
+    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "geo1");
   });
 
   emplaceFactory("geo2", [](
@@ -299,7 +299,16 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     TRI_idx_iid_t id,
     bool isClusterConstructor
   )->std::shared_ptr<Index> {
-    return std::make_shared<RocksDBGeoIndex>(id, collection, definition);
+    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "geo2");
+  });
+  
+  emplaceFactory("s2index", [](
+    LogicalCollection* collection,
+    velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  )->std::shared_ptr<Index> {
+    return std::make_shared<RocksDBGeoS2Index>(id, collection, definition, "s2index");
   });
 
   emplaceFactory("hash", [](

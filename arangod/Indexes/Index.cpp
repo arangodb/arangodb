@@ -320,7 +320,8 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
     }
   }
 
-  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX) {
+  if (type == IndexType::TRI_IDX_TYPE_GEO1_INDEX ||
+      type == IndexType::TRI_IDX_TYPE_S2_INDEX) {
     // geoJson must be identical if present
     value = lhs.get("geoJson");
     if (value.isBoolean()) {
