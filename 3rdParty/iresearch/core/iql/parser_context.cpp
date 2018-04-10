@@ -815,12 +815,12 @@ parser_context::query_state parser_context::current_state() const {
 parser_context::query_node const& parser_context::find_node(
   parser::semantic_type const& value
 ) const {
-  #if defined (__GNUC__)
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wtype-limits"
-  #elif defined(__APPLE__)
+  #if defined(__APPLE__)
     #pragma clang diagnostic push
     #pragma clang diagnostic ignored "-Wtautological-compare"
+  #elif defined (__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wtype-limits"
   #elif defined(_MSC_VER)
     #pragma warning(disable: 4127) // conditional expression is constant
   #endif
@@ -830,10 +830,10 @@ parser_context::query_node const& parser_context::find_node(
       return m_nodes[0];
     }
 
-  #if defined (__GNUC__)
-    #pragma GCC diagnostic pop
-  #elif defined(__APPLE__)
+  #if defined(__APPLE__)
     #pragma clang diagnostic pop
+  #elif defined (__GNUC__)
+    #pragma GCC diagnostic pop
   #elif defined(_MSC_VER)
     #pragma warning(default: 4127)
   #endif

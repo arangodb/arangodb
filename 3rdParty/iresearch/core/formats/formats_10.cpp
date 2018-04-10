@@ -296,19 +296,24 @@ class doc_iterator : public iresearch::doc_iterator {
   }
 
   doc_id_t read_skip(skip_state& state, index_input& in) {
-    state.doc = in.read_vint();
+    state.doc = in.read_vlong();
     state.doc_ptr += in.read_vlong();
+
     if (features_.position()) {
       state.pend_pos = in.read_vint();
       state.pos_ptr += in.read_vlong();
+
       const bool has_pay = features_.payload();
+
       if (has_pay || features_.offset()) {
         if (has_pay) {
           state.pay_pos = in.read_vint();
         }
+
         state.pay_ptr += in.read_vlong();
       }
     }
+
     return state.doc;
   }
 
@@ -4225,10 +4230,10 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
 }
 
 void postings_writer::write_skip(size_t level, index_output& out) {
-  const uint32_t doc_delta = doc.block_last; //- doc.skip_doc[level];
+  const uint64_t doc_delta = doc.block_last; //- doc.skip_doc[level];
   const uint64_t doc_ptr = doc.out->file_pointer();
 
-  out.write_vint(doc_delta);
+  out.write_vlong(doc_delta);
   out.write_vlong(doc_ptr - doc.skip_ptr[level]);
 
   doc.skip_doc[level] = doc.block_last;

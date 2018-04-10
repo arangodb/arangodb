@@ -50,9 +50,9 @@ class StringLeftWeight {
   typedef StringLeftWeight<Label> ReverseWeight;
   typedef std::basic_string<Label> str_t;
   typedef typename str_t::const_iterator iterator;
-  
+
   static const StringLeftWeight<Label>& Zero() {
-    static const StringLeftWeight<Label> zero(kStringInfinity);
+    static const StringLeftWeight<Label> zero((Label)kStringInfinity); // cast same as in FST
     return zero;
   }
 
@@ -62,7 +62,7 @@ class StringLeftWeight {
   }
 
   static const StringLeftWeight<Label>& NoWeight() {
-    static const StringLeftWeight<Label> no_weight(kStringBad);
+    static const StringLeftWeight<Label> no_weight((Label)kStringBad); // cast same as in FST
     return no_weight;
   }
 
