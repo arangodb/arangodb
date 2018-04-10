@@ -4120,18 +4120,20 @@ void postings_writer::end_term(version10::term_meta& meta, const uint64_t* tfreq
     /* write remaining documents using
      * variable length encoding */
     data_output& out = *doc.out;
+
     for (uint32_t i = 0; i < doc.size; ++i) {
-      const uint32_t doc_delta = doc.deltas[i];
+      const uint64_t doc_delta = doc.deltas[i];
 
       if (!features_.freq()) {
-        out.write_vint(doc_delta);
+        out.write_vlong(doc_delta);
       } else {
         assert(doc.freqs);
-        const uint32_t freq = doc.freqs[i];
+        const uint64_t freq = doc.freqs[i];
+
         if (1 == freq) {
-          out.write_vint(shift_pack_32(doc_delta, true));
+          out.write_vlong(shift_pack_64(doc_delta, true));
         } else {
-          out.write_vint(shift_pack_32(doc_delta, false));
+          out.write_vlong(shift_pack_64(doc_delta, false));
           out.write_vlong(freq);
         }
       }
