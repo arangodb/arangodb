@@ -959,9 +959,17 @@ int DumpFeature::runClusterDump(std::string& errorMsg) {
 
       beginEncryption(fd);
 
-      VPackBuilder collectionWithExcludedParametersBuilder;
-      copyAndExclude(collectionWithExcludedParametersBuilder, collection,
-                     {{"parameters", "shadowCollections"}});
+      VPackBuilder excludes;
+      { // { parameters: { shadowCollections: null } }
+        excludes.add(VPackValue(VPackValueType::Object));
+        excludes.add("parameters", VPackValue(VPackValueType::Object));
+        excludes.add("shadowCollections", VPackSlice::nullSlice());
+        excludes.close();
+        excludes.close();
+      }
+
+      VPackBuilder collectionWithExcludedParametersBuilder
+        = VPackCollection::merge(collection, excludes.slice(), true, true);
 
       std::string const collectionInfo =
           collectionWithExcludedParametersBuilder.slice().toJson();
@@ -1267,52 +1275,4 @@ bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
   }
 #endif
   return false;
-}
-
-void DumpFeature::copyAndExclude(
-    VPackBuilder& b, velocypack::Slice slice,
-    std::set<std::vector<std::string>> const& ignorePaths,
-    std::vector<std::string>& path) {
-  // ignore
-  if (ignorePaths.find(path) != ignorePaths.end()) {
-    return;
-  }
-
-  // don't recurse into objects, just add them
-  if (!slice.isObject()) {
-    if (path.empty()) {
-      b.add(slice);
-    } else {
-      b.add(path.back(), slice);
-    }
-    return;
-  }
-
-  // recursive add for objects
-
-  if (path.empty()) {
-    b.add(VPackValue(VPackValueType::Object));
-  } else {
-    b.add(path.back(), VPackValue(VPackValueType::Object));
-  }
-
-  VPackObjectIterator it(slice);
-
-  while (it.valid()) {
-    auto key = it.key(true).copyString();
-
-    path.push_back(key);
-    copyAndExclude(b, it.value(), ignorePaths, path);
-    path.pop_back();
-    it.next();
-  }
-
-  b.close();
-}
-
-void DumpFeature::copyAndExclude(
-    VPackBuilder& builder, velocypack::Slice sliceToCopy,
-    std::set<std::vector<std::string>> const& ignorePaths) {
-  std::vector<std::string> paths;
-  copyAndExclude(builder, sliceToCopy, ignorePaths, paths);
 }

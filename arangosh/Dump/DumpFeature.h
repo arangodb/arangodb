@@ -94,19 +94,6 @@ class DumpFeature final : public application_features::ApplicationFeature,
     uint64_t _totalWritten;
   } _stats;
 
-  // Add slice to builder but omits all ignorePaths, e.g. with
-  // ignorePaths = {{"a", "c"}}
-  // and slice `=` { a: { b: 1, c: 2 }, d: 4}
-  // the result is
-  // { a: { b: 1 }, d: 4}
-  void copyAndExclude(VPackBuilder& builder,
-                      velocypack::Slice sliceToCopy,
-                      std::set<std::vector<std::string>> const& ignorePaths);
-
-  void copyAndExclude(VPackBuilder& builder,
-                      velocypack::Slice sliceToCopy,
-                      std::set<std::vector<std::string>> const& ignorePaths,
-                      std::vector<std::string>& path);
 };
 }
 
