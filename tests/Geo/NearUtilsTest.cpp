@@ -25,6 +25,7 @@
 #include "Basics/Common.h"
 #include "Logger/Logger.h"
 #include "Basics/StringUtils.h"
+#include "Geo/GeoJson.h"
 #include "Geo/GeoUtils.h"
 #include "GeoIndex/Near.h"
 #include "VocBase/voc-types.h"
@@ -33,6 +34,9 @@
 #include <s2/s1angle.h>
 #include <s2/s2metrics.h>
 #include <s2/s2latlng.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/velocypack-aliases.h>
 
 #ifdef WIN32
 #undef near
@@ -305,7 +309,7 @@ TEST_CASE("Simple near queries", "[geo][s2index]") {
 }
 
 
-/* first main batch of tests                       */
+/* second main batch of tests                      */
 /* insert 10 x 10 array of points near south pole  */
 /* then do some searches, results checked against  */
 /* the same run with full table scan               */
@@ -377,6 +381,107 @@ TEST_CASE("Query point around", "[geo][s2index]") {
     REQUIRE(result.size() == 100);
     checkResult(near.origin(), result);
   }
+}
+
+/* third main batch of tests                      */
+/* adding grid of 40x40 point                     */
+/* performing query sorted by result with  */
+/*                */
+
+static std::shared_ptr<VPackBuilder> createBuilder(char const* c) {
+  
+  VPackOptions options;
+  options.checkAttributeUniqueness = true;
+  VPackParser parser(&options);
+  parser.parse(c);
+  
+  return parser.steal();
+}
+
+
+TEST_CASE("Query points contained in", "[geo][s2index]") {
+  
+  index_t index;
+  coords_t docs;
+  size_t counter = 0;
+  
+  // add some entries to it
+  for (double lat=-40; lat <=40 ; ++lat) {
+    for (double lon=-40; lon <= 40; ++lon) {
+      //geocol.insert({lat,lon});
+      S2LatLng cc = S2LatLng::FromDegrees(lat, lon);
+      S2CellId cell(cc.ToPoint());
+      REQUIRE(cell.level() == S2::kMaxCellLevel);
+      
+      LocalDocumentId rev(counter++);
+      index.emplace(cell, rev);
+      docs.emplace(rev, cc);
+    }
+  }
+  REQUIRE(1681 == counter);
+  REQUIRE(docs.size() == counter);
+  REQUIRE(index.size() == counter);
+  
+
+  geo::QueryParams params;
+  params.sorted = true;
+  params.ascending = true;
+  
+  auto checkResult = [&](std::vector<LocalDocumentId> const& result,
+                         std::vector<std::pair<double,double>> expected) {
+    REQUIRE(result.size() == expected.size());
+
+    std::vector<std::pair<double,double>> latLngResult;
+    for (LocalDocumentId const& rev : result) {
+      // check sort order
+      S2LatLng const& cords = docs.at(rev);
+      latLngResult.emplace_back(cords.lat().radians(), cords.lng().radians());
+    }
+    
+    std::sort(latLngResult.begin(), latLngResult.end());
+    std::sort(expected.begin(), expected.end());
+    auto it = latLngResult.begin();
+    auto it2 = expected.begin();
+    for(; it != latLngResult.end(); it++) {
+      REQUIRE(std::fabs(std::max(it->first - it2->first,
+                                 it->second - it2->second) < 0.00001));
+      it2++;
+    }
+  };
+  
+  SECTION("polygon") {
+    
+    auto polygon = createBuilder(R"=({"type": "Polygon", "coordinates":
+                    [[[-11.5, 23.5], [-6, 26], [-10.5, 26.1], [-11.5, 23.5]]]})=");
+    
+    //params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
+    params.filterType = geo::FilterType::CONTAINS;
+    geo::geojson::parsePolygon(polygon->slice(), params.filterShape);
+    params.filterShape.updateBounds(params);
+    
+    AscIterator near(std::move(params));
+    checkResult(nearSearch(index, docs, near, 7),
+      {{ 24.0, -11.0 }, { 25.0, -10.0 }, { 25.0, -9.0 },
+      { 26.0, -10.0 }, { 26.0, -9.0 }, { 26.0, -8.0 }, { 26.0, -7.0 }, { 26.0, -6.0 }});
+  }
+  
+  /*SECTION("southpole (2)") {
+    params.origin = S2LatLng::FromDegrees(-83.2, 19.2);
+    AscIterator near(std::move(params));
+    
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
+    REQUIRE(result.size() == 100);
+    checkResult(near.origin(), result);
+  }
+  
+  SECTION("southpole (3)") {
+    params.origin = S2LatLng::FromDegrees(-89.9, 0);
+    AscIterator near(std::move(params));
+    
+    std::vector<LocalDocumentId> result = nearSearch(index, docs, near, 110);
+    REQUIRE(result.size() == 100);
+    checkResult(near.origin(), result);
+  }*/
 }
 
 /* end of NearUtilsTest.cpp  */

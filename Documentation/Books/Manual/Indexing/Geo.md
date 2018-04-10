@@ -7,15 +7,17 @@ Introduction to Geo Indexes
 This is an introduction to the legacy geo indexe in ArangoDB. This is a metric
 index which is optimized to index 2D coordinate points on a sphere. 
 
-**Note:** Should you be requiring more advanced geospatial functionality like support for GeoJSON
-or if you are using the _RocksDB_ storage engine we suggest to use the 
-new [Geo-Spatial index](GeoSpatial.md), which also supports more complex queries.
-
 A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
 
 AQL's geographic features are described in [Geo functions](../../AQL/Functions/Geo.html).
+
+{% hint 'info' %}
+Should you be requiring more advanced geospatial functionality like support for GeoJSON
+or if you are using the _RocksDB_ storage engine we suggest to use the 
+new [Geo-Spatial index](GeoSpatial.md), which also supports more complex queries.
+{% endhint %}
 
 ## Legacy Geo index
 

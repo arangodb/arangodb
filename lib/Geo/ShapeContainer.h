@@ -60,7 +60,7 @@ class ShapeContainer final {
     S2_MULTIPOLYLINE
   };
 
-  ShapeContainer() : _data(nullptr), _type(Type::EMPTY) {}
+  ShapeContainer() noexcept : _data(nullptr), _type(Type::EMPTY) {}
   ShapeContainer(ShapeContainer&& other) noexcept;
   /*ShapeContainer(std::unique_ptr<S2Region>&& ptr, Type tt)
       : _data(ptr.release()), _type(tt) {}
