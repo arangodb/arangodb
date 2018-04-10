@@ -254,8 +254,8 @@ class Agent : public arangodb::Thread,
   /// @brief Reset RAFT timeout intervals
   void resetRAFTTimes(double, double);
 
-  /// @brief Get start time of leadership
-  long long leaderSince() const;
+  /// @brief How long back did I take over leadership, result in seconds
+  int64_t leaderFor() const;
 
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(query_t const& message);
@@ -271,8 +271,7 @@ class Agent : public arangodb::Thread,
   void donePrepareLeadership() { _preparing = 2; }
   void endPrepareLeadership()  {
     _preparing = 0;
-    _leaderSince = std::chrono::duration_cast<
-      std::chrono::duration<uint64_t,std::ratio<1>>>(
+    _leaderSince = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
         std::chrono::steady_clock::now().time_since_epoch()).count();
   }
   int getPrepareLeadership() { return _preparing; }
@@ -440,9 +439,15 @@ class Agent : public arangodb::Thread,
                                 // waiting until _commitIndex is at end of
                                 // our log
 
+<<<<<<< HEAD
   std::atomic<uint64_t> _leaderSince;
   /// @brief Keep track of when I last took on leadership
   //SteadyTimePoint _leaderSince;
+=======
+  /// @brief Keep track of when I last took on leadership, this is seconds
+  /// since the epoch of the steady clock.
+  std::atomic<int64_t> _leaderSince;
+>>>>>>> 9b89d25... More consistent use of integer types.
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
