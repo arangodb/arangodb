@@ -8,6 +8,9 @@ v3.2.13 (XXXX-XX-XX)
 * fixed the bahaviour of clusterinfo when waiting for current to catch
   up with plan in create collection.
 
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
+
 * fixed interal issue #2215 FailedLeader timeout bug
 
 v3.2.12 (2018-02-27)
