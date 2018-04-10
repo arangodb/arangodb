@@ -115,7 +115,7 @@ Good
 
     unix> arangoexport --type xgmml --graph-name mygraph --collection vertex --collection edge
 
-This exports the a unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
+This exports an unnamed graph with vertex collection *vertex* and edge collection *edge* into the xgmml file *mygraph.xgmml*.
 
 
 **Export based on a named graph**
