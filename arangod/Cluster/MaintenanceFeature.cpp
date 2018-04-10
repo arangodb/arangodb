@@ -142,6 +142,27 @@ void MaintenanceFeature::stop() {
 } // MaintenanceFeature::stop
 
 
+/// @brief Move an incomplete action to failed state
+Result MaintenanceFeature::deleteAction(uint64_t action_id) {
+  Result result;
+
+  // pointer to action, or nullptr
+  auto action = findActionId(action_id);
+
+  if (action) {
+    if (maintenance::MaintenanceAction::COMPLETE != action->getState()) {
+      action->setState(maintenance::MaintenanceAction::FAILED);
+    } else {
+      result.reset(TRI_ERROR_BAD_PARAMETER,"deleteAction called after action complete.");
+    } // else
+  } else {
+    result.reset(TRI_ERROR_BAD_PARAMETER,"deleteAction could not find action to delete.");
+  } // else
+
+  return result;
+
+} // MaintenanceFeature::deleteAction
+
 /// @brief This is the  API for creating an Action and executing it.
 ///  Execution can be immediate by calling thread, or asynchronous via thread pool.
 ///  not yet:  ActionDescription parameter will be MOVED to new object.

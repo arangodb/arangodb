@@ -87,7 +87,8 @@ void MaintenanceWorker::run() {
 void MaintenanceWorker::nextState(bool actionMore) {
 
   // bad result code forces actionMore to false
-  if (_curAction && !_curAction->result().ok())
+  if (_curAction && (!_curAction->result().ok()
+                     || MaintenanceAction::FAILED == _curAction->getState()))
   {
     actionMore = false;
   } // if

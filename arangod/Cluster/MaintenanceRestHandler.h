@@ -65,6 +65,10 @@ protected:
   /// @brief GET method returns worklist
   void getAction();
 
+  /// @brief DELETE method shifts non-finished action to Failed list.
+  ///  (finished actions are untouched)
+  void deleteAction();
+
 
   /// @brief internal routine to convert PUT body into _actionDesc and _actionProp
   bool parsePutBody(VPackSlice const & parameters);

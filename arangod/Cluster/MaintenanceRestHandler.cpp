@@ -61,6 +61,7 @@ RestStatus MaintenanceRestHandler::execute() {
 
     // remove an action, stopping it if executing
     case rest::RequestType::DELETE_REQ:
+      deleteAction();
       break;
 
     default:
@@ -159,175 +160,33 @@ void MaintenanceRestHandler::getAction() {
 } // MaintenanceRestHandler::getAction
 
 
-#if 0
-void MaintenanceRestHandler::putJob() {
+void MaintenanceRestHandler::deleteAction() {
+  auto maintenance = ApplicationServer::getFeature<MaintenanceFeature>("Maintenance");
+
   std::vector<std::string> const& suffixes = _request->suffixes();
-  std::string const& value = suffixes[0];
-  uint64_t jobId = StringUtils::uint64(value);
 
-  AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true); //gets job and removes it form the manager
+  // must be one parameter: "all" or number
+  if (1 == suffixes.size()) {
+    std::string param = suffixes[0];
+    Result result;
 
-  if (status == AsyncJobResult::JOB_UNDEFINED) {
-    // unknown or already fetched job
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return;
-  }
-
-  if (status == AsyncJobResult::JOB_PENDING) {
-    // job is still pending
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-    return;
-  }
-
-  TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
-  TRI_ASSERT(response != nullptr);
-
-  // return the original response
-  _response.reset(response);
-
-  // plus a new header
-  static std::string const xArango = "x-arango-async-id";
-  _response->setHeaderNC(xArango, value);
-}
-
-void MaintenanceRestHandler::putJobMethod() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-  std::string const& value = suffixes[0];
-  std::string const& method = suffixes[1];
-  uint64_t jobId = StringUtils::uint64(value);
-
-  if (method == "cancel") {
-    Result status = _jobManager->cancelJob(jobId);
-
-    // unknown or already fetched job
-    if (status.fail()) {
-      generateError(status);
+    if (param == "all") {
+      // Jobs supports all.  Should Action too?  Going with "no" for now.
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    result.errorMessage());
     } else {
-      VPackBuilder json;
-      json.add(VPackValue(VPackValueType::Object));
-      json.add("result", VPackValue(true));
-      json.close();
+      uint64_t action_id = StringUtils::uint64(param);
+      result = maintenance->deleteAction(action_id);
 
-      VPackSlice slice(json.start());
-      generateResult(rest::ResponseCode::OK, slice);
-    }
-    return;
+      // can fail on bad id or if action already succeeded.
+      if (!result.ok()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      result.errorMessage());
+      }  // if
+    } // else
+
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
   }
-}
 
-void MaintenanceRestHandler::getJob() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  std::string const type = suffixes[0];
-
-  if (!type.empty() && type[0] >= '1' && type[0] <= '9') {
-    getJobById(type);
-  } else {
-    getJobByType(type);
-  }
-}
-
-void MaintenanceRestHandler::getJobById(std::string const& value) {
-  uint64_t jobId = StringUtils::uint64(value);
-
-  // numeric job id, just pull the job status and return it
-  AsyncJobResult::Status status;
-  TRI_ASSERT(_jobManager != nullptr);
-  _jobManager->getJobResult(jobId, status, false); //just gets status
-
-  if (status == AsyncJobResult::JOB_UNDEFINED) {
-    // unknown or already fetched job
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return;
-  }
-
-  if (status == AsyncJobResult::JOB_PENDING) {
-    // job is still pending
-    resetResponse(rest::ResponseCode::NO_CONTENT);
-    return;
-  }
-
-  resetResponse(rest::ResponseCode::OK);
-}
-
-void MaintenanceRestHandler::getJobByType(std::string const& type) {
-  size_t count = 100;
-
-  // extract "count" parameter
-  bool found;
-  std::string const& value = _request->value("count", found);
-
-  if (found) {
-    count = (size_t)StringUtils::uint64(value);
-  }
-
-  std::vector<AsyncJobResult::IdType> ids;
-  if (type == "done") {
-    ids = _jobManager->done(count);
-  } else if (type == "pending") {
-    ids = _jobManager->pending(count);
-  } else {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  VPackBuilder result;
-  result.openArray();
-  size_t const n = ids.size();
-  for (size_t i = 0; i < n; ++i) {
-    result.add(VPackValue(std::to_string(ids[i])));
-  }
-  result.close();
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void MaintenanceRestHandler::deleteJob() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  if (suffixes.size() != 1) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    return;
-  }
-
-  std::string const& value = suffixes[0];
-
-  if (value == "all") {
-    _jobManager->deleteJobs();
-  } else if (value == "expired") {
-    bool found;
-    std::string const& value = _request->value("stamp", found);
-
-    if (!found) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-      return;
-    }
-
-    double stamp = StringUtils::doubleDecimal(value);
-    _jobManager->deleteExpiredJobResults(stamp);
-  } else {
-    uint64_t jobId = StringUtils::uint64(value);
-
-    bool found = _jobManager->deleteJobResult(jobId);
-
-    if (!found) {
-      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-      return;
-    }
-  }
-
-  VPackBuilder json;
-  json.add(VPackValue(VPackValueType::Object));
-  json.add("result", VPackValue(true));
-  json.close();
-  VPackSlice slice(json.start());
-  generateResult(rest::ResponseCode::OK, slice);
-}
-#endif // if 0
+} // MaintenanceRestHandler::deleteAction
