@@ -1953,6 +1953,55 @@ int ClusterInfo::dropViewCoordinator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief set view properties in coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+Result ClusterInfo::setViewPropertiesCoordinator(
+    std::string const& databaseName,
+    std::string const& viewID,
+    VPackSlice const& json
+) {
+  AgencyComm ac;
+  AgencyCommResult res;
+
+  AgencyPrecondition databaseExists("Plan/Databases/" + databaseName,
+                                    AgencyPrecondition::Type::EMPTY, false);
+  AgencyOperation incrementVersion("Plan/Version",
+                                   AgencySimpleOperationType::INCREMENT_OP);
+
+  res = ac.getValues("Plan/Views/" + databaseName + "/" + viewID);
+
+  if (!res.successful()) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  velocypack::Slice collection = res.slice()[0].get(
+      std::vector<std::string>({AgencyCommManager::path(), "Plan",
+                                "Views", databaseName, viewID}));
+
+  if (!collection.isObject()) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
+
+  res.clear();
+
+  AgencyOperation setColl(
+      "Plan/Views/" + databaseName + "/" + viewID,
+      AgencyValueOperationType::SET, json);
+
+  AgencyWriteTransaction trans({setColl, incrementVersion}, databaseExists);
+
+  res = ac.sendTransactionWithFailover(trans);
+
+  if (res.successful()) {
+    loadPlan();
+    return Result();
+  }
+
+  return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, res.errorMessage());
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief set collection status in coordinator
 ////////////////////////////////////////////////////////////////////////////////
 

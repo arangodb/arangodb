@@ -117,20 +117,21 @@ void IResearchViewCoordinator::toVelocyPack(
 
 arangodb::Result IResearchViewCoordinator::updateProperties(
     velocypack::Slice const& properties,
-    bool partialUpdate,
-    bool doSync
+    bool /*partialUpdate*/,
+    bool /*doSync*/
 ) {
-  // FIXME something like:
-  // ClusterInfo* ci = ClusterInfo::instance();
-  // ci->setViewPropertiesCoordinator(properties);
-  return { TRI_ERROR_NOT_IMPLEMENTED };
+  return ClusterInfo::instance()->setViewPropertiesCoordinator(
+    vocbase().name(), // database name,
+    basics::StringUtils::itoa(id()), // view id
+    properties
+  );
 }
 
 Result IResearchViewCoordinator::drop() {
   std::string errorMsg;
 
   int const res = ClusterInfo::instance()->dropViewCoordinator(
-    vocbase()->name(), // database name
+    vocbase().name(), // database name
     basics::StringUtils::itoa(id()), // view id
     errorMsg
   );

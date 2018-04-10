@@ -226,7 +226,7 @@ SECTION("visit_collections") {
   CHECK(1 == view->id());
   CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(&vocbase == view->vocbase());
+  CHECK(&vocbase == &view->vocbase());
 
   // visit view
   TRI_voc_cid_t expectedCollections[] = {1,2,3};
@@ -253,7 +253,7 @@ SECTION("test_defaults") {
   CHECK(1 == view->id());
   CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
-  CHECK(&vocbase == view->vocbase());
+  CHECK(&vocbase == &view->vocbase());
 
   // visit default view
   CHECK(true == view->visitCollections([](TRI_voc_cid_t) { return false; }));
