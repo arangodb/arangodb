@@ -19,7 +19,9 @@ v3.3.6.1 (XXXX-XX-XX)
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified
   the value for `_key` using an expression (and not a constant value)
-  
+
+* added /_admin/status for debugging
+
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
 
@@ -32,6 +34,10 @@ v3.3.6.1 (XXXX-XX-XX)
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
 
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
+
+* fixed internal issue #2215's FailedLeader timeout bug
 
 v3.3.5 (2018-03-28)
 -------------------
