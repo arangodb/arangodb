@@ -86,7 +86,7 @@ TEST_ARANGODB_URL=http://myserver.local:8530 npm test
 
 ```sh
 yarn add arangojs
-# - or -
+## - or -
 npm install --save arangojs
 ```
 
@@ -151,31 +151,38 @@ When loading the browser build with a script tag make sure to load the polyfill 
 
 ```js
 // Modern JavaScript
-import {Database, aql} from 'arangojs';
+import { Database, aql } from "arangojs";
 const db = new Database();
-const now = Date.now();
-try {
-  const cursor = await db.query(aql`RETURN ${now}`);
-  const result = await cursor.next();
-  // ...
-} catch (err) {
-  // ...
-}
+(async function() {
+  const now = Date.now();
+  try {
+    const cursor = await db.query(aql`
+      RETURN ${now}
+    `);
+    const result = await cursor.next();
+    // ...
+  } catch (err) {
+    // ...
+  }
+})();
 
 // or plain old Node-style
-var arangojs = require('arangojs');
+var arangojs = require("arangojs");
 var db = new arangojs.Database();
 var now = Date.now();
-db.query({
-  query: 'RETURN @arg0',
-  bindVars: {arg0: now}
-}).then(function (cursor) {
-  return cursor.next().then(function (result) {
+db
+  .query({
+    query: "RETURN @value",
+    bindVars: { value: now }
+  })
+  .then(function(cursor) {
+    return cursor.next().then(function(result) {
+      // ...
+    });
+  })
+  .catch(function(err) {
     // ...
   });
-}).catch(function (err) {
-  // ...
-});
 
 // Using different databases
 const db = new Database({

@@ -12,3 +12,4 @@ EXTERNAL_DOC_arangodb-java-driver=master
 EXTERNAL_DOC_arangodbjs=master
 EXTERNAL_DOC_arangosync=master
 EXTERNAL_DOC_arangodb=master
+EXTERNAL_DOC_spring-data=master

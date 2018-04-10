@@ -3347,6 +3347,23 @@ ArangoDB 3.0 as it is redundant when specifying the _rev_ option.
     If set to `false`, object properties that already exist in the old document
     will be overwritten rather than merged. This does not affect arrays.
 
+  * **returnOld**: `boolean` (Default: `false`)
+
+    If set to `false`, return additionally the complete previous revision of the
+    changed documents under the attribute `old` in the result.
+
+  * **returnNew**: `boolean` (Default: `false`)
+
+    If set to `false`, return additionally the complete new documents under the
+    attribute `new` in the result.
+
+  * **ignoreRevs**: `boolean` (Default: `true`)
+
+    By default, or if this is set to true, the _rev attributes in the given
+    documents are ignored. If this is set to false, then any _rev attribute
+    given in a body document is taken as a precondition. The document is only
+    updated if the current revision is the one specified.
+
   * **rev**: `string` (optional)
 
     Only update the document if it matches this revision.

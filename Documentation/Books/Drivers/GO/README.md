@@ -1,4 +1,0 @@
-ArangoDB GO Driver
-==================
-
-

@@ -1,4 +1,0 @@
-ArangoDB PHP Driver
-===================
-
-
