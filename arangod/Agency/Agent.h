@@ -254,8 +254,8 @@ class Agent final : public arangodb::Thread,
   /// @brief Reset RAFT timeout intervals
   void resetRAFTTimes(double, double);
 
-  /// @brief Get start time of leadership
-  SteadyTimePoint const& leaderSince() const;
+  /// @brief How long back did I take over leadership, result in seconds
+  int64_t leaderFor() const;
 
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(query_t const& message);
@@ -269,7 +269,11 @@ class Agent final : public arangodb::Thread,
   /// @brief Guarding taking over leadership
   void beginPrepareLeadership() { _preparing = 1; }
   void donePrepareLeadership() { _preparing = 2; }
-  void endPrepareLeadership()  { _preparing = 0; }
+  void endPrepareLeadership()  {
+    _preparing = 0;
+    _leaderSince = std::chrono::duration_cast<std::chrono::duration<int64_t>>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+  }
   int getPrepareLeadership() { return _preparing; }
 
   // #brief access Inception thread
@@ -435,8 +439,9 @@ class Agent final : public arangodb::Thread,
                                 // waiting until _commitIndex is at end of
                                 // our log
 
-  /// @brief Keep track of when I last took on leadership
-  SteadyTimePoint _leaderSince;
+  /// @brief Keep track of when I last took on leadership, this is seconds
+  /// since the epoch of the steady clock.
+  std::atomic<int64_t> _leaderSince;
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
