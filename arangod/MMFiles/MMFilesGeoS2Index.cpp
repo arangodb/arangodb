@@ -179,7 +179,7 @@ struct NearIterator final : public IndexIterator {
         it++;
       }
     }
-    
+
     _near.didScanIntervals(); // calculate next bounds
   }
 
@@ -316,11 +316,10 @@ Result MMFilesGeoS2Index::insert(transaction::Methods*,
                                  LocalDocumentId const& documentId,
                                  VPackSlice const& doc, OperationMode mode) {
   // covering and centroid of coordinate / polygon / ...
-  size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
-  std::vector<S2CellId> cells(reserve);
+  std::vector<S2CellId> cells; // TODO reserve space if possible?
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
-  
+
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -346,7 +345,7 @@ Result MMFilesGeoS2Index::remove(transaction::Methods*,
   std::vector<S2CellId> cells(reserve);
   S2Point centroid;
   Result res = geo_index::Index::indexCells(doc, cells, centroid);
-  
+
   if (res.fail()) {  // might occur if insert is rolled back
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
@@ -402,7 +401,7 @@ IndexIterator* MMFilesGeoS2Index::iteratorForCondition(
     // it is unnessesary to use a better level than configured
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-  
+
   // why does this have to be shit?
   if (params.ascending) {
     return new NearIterator<geo_index::DocumentsAscending>(_collection, trx, mmdr,
