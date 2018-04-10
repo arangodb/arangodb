@@ -271,8 +271,9 @@ class Agent : public arangodb::Thread,
   void donePrepareLeadership() { _preparing = 2; }
   void endPrepareLeadership()  {
     _preparing = 0;
-    _leaderSince = std::chrono::duration_cast<std::chrono::seconds>(
-      std::chrono::steady_clock::now().time_since_epoch()).count();
+    _leaderSince = std::chrono::duration_cast<
+      std::chrono::duration<uint64_t,std::ratio<1>>>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
   }
   int getPrepareLeadership() { return _preparing; }
 
@@ -439,7 +440,7 @@ class Agent : public arangodb::Thread,
                                 // waiting until _commitIndex is at end of
                                 // our log
 
-  std::atomic<unsigned long long> _leaderSince;
+  std::atomic<uint64_t> _leaderSince;
   /// @brief Keep track of when I last took on leadership
   //SteadyTimePoint _leaderSince;
 
