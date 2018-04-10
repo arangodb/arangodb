@@ -1,5 +1,8 @@
-v3.3.6.1 (XXXX-XX-XX)
----------------------
+v3.3.6 (XXXX-XX-XX)
+-------------------
+
+* return an empty result set instead of an "out of memory" exception when
+  querying the geo index with invalid (out of range) coordinates
 
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified
