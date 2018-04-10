@@ -876,6 +876,22 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(1.0 == point.lat().degrees());
   }
 
+  SECTION("Valid point as region") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Point"));
+      ArrayBuilder coords(&builder, "coordinates");
+      coords->add(VPackValue(0.0));
+      coords->add(VPackValue(1.0));
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POINT == type(vpack));
+    REQUIRE(parseRegion(vpack, shape).ok());
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+  }
+
   SECTION("Valid MultiPoint") {
     {
       ObjectBuilder object(&builder);
@@ -907,14 +923,54 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(Type::MULTI_POINT == type(vpack));
     REQUIRE(parseMultiPoint(vpack, shape).ok());
 
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
 
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-}
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+  }
+
+  SECTION("Valid MultiPoint as region") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiPoint"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_POINT == type(vpack));
+    REQUIRE(parseRegion(vpack, shape).ok());
+
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
+
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
+  }
 
   SECTION("Valid Linestring") {
     {
@@ -952,6 +1008,39 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == line.vertex(1));
     REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == line.vertex(2));
     REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == line.vertex(3));
+  }
+
+  SECTION("Valid Linestring as region") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Linestring"));
+      ArrayBuilder points(&builder, "coordinates");
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(0.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(1.0));
+        point->add(VPackValue(1.0));
+      }
+      {
+        ArrayBuilder point(&builder);
+        point->add(VPackValue(0.0));
+        point->add(VPackValue(1.0));
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::LINESTRING == type(vpack));
+    REQUIRE(parseRegion(vpack, shape).ok());
+    REQUIRE(ShapeContainer::Type::S2_POLYLINE == shape.type());
   }
 
   SECTION("Valid MultiLinestring") {
@@ -1014,16 +1103,83 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(2 == multiline.size());
 
     REQUIRE(4 == multiline[0].num_vertices());
-    REQUIRE(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint() == multiline[0].vertex(0));
-    REQUIRE(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint() == multiline[0].vertex(1));
-    REQUIRE(S2LatLng::FromDegrees(2.0, 2.0).ToPoint() == multiline[0].vertex(2));
-    REQUIRE(S2LatLng::FromDegrees(2.0, -1.0).ToPoint() == multiline[0].vertex(3));
+    REQUIRE(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint() ==
+            multiline[0].vertex(0));
+    REQUIRE(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint() ==
+            multiline[0].vertex(1));
+    REQUIRE(S2LatLng::FromDegrees(2.0, 2.0).ToPoint() ==
+            multiline[0].vertex(2));
+    REQUIRE(S2LatLng::FromDegrees(2.0, -1.0).ToPoint() ==
+            multiline[0].vertex(3));
 
     REQUIRE(4 == multiline[1].num_vertices());
-    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() == multiline[1].vertex(0));
-    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() == multiline[1].vertex(1));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() == multiline[1].vertex(2));
-    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() == multiline[1].vertex(3));
+    REQUIRE(S2LatLng::FromDegrees(0.0, 0.0).ToPoint() ==
+            multiline[1].vertex(0));
+    REQUIRE(S2LatLng::FromDegrees(0.0, 1.0).ToPoint() ==
+            multiline[1].vertex(1));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 1.0).ToPoint() ==
+            multiline[1].vertex(2));
+    REQUIRE(S2LatLng::FromDegrees(1.0, 0.0).ToPoint() ==
+            multiline[1].vertex(3));
+  }
+
+  SECTION("Valid MultiLinestring as region") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("MultiLinestring"));
+      ArrayBuilder lines(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(-1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(2.0));
+          point->add(VPackValue(2.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(-1.0));
+          point->add(VPackValue(2.0));
+        }
+      }
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::MULTI_LINESTRING == type(vpack));
+    REQUIRE(parseRegion(vpack, shape).ok());
+    REQUIRE(ShapeContainer::Type::S2_MULTIPOLYLINE == shape.type());
   }
 
   SECTION("Valid Polygon, triangle") {
@@ -1060,12 +1216,12 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(Type::POLYGON == type(vpack));
     REQUIRE(parsePolygon(vpack, shape).ok());
 
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.0, 1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.0, 0.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
 
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   }
 
   SECTION("Valid Polygon, nested rings") {
@@ -1135,17 +1291,59 @@ TEST_CASE("Valid GeoJSON input", "[geo][s2index]") {
     REQUIRE(Type::POLYGON == type(vpack));
     REQUIRE(parsePolygon(vpack, shape).ok());
 
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-1.0, -1.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-1.0, 2.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(2.0, 2.0).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(2.0, -1.0).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.99, -0.99).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.99, 1.99).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.99, 1.99).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.99, -0.99).ToPoint()));
 
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
-    REQUIRE(shape.intersects(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.5, -0.5).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(1.5, 0.5).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.5, 1.5).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(-0.5, 0.5).ToPoint()));
 
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
-    REQUIRE(!shape.intersects(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(0.5, 0.5).ToPoint()));
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(3.0, 3.0).ToPoint()));
+  }
+
+  SECTION("Valid Polygon, as region") {
+    {
+      ObjectBuilder object(&builder);
+      object->add("type", VPackValue("Polygon"));
+      ArrayBuilder rings(&builder, "coordinates");
+      {
+        ArrayBuilder points(&builder);
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(1.0));
+          point->add(VPackValue(0.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(1.0));
+        }
+        {
+          ArrayBuilder point(&builder);
+          point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));
+        }
+      }
+    }
+    VPackSlice vpack = builder.slice();
+
+    REQUIRE(Type::POLYGON == type(vpack));
+    REQUIRE(parseRegion(vpack, shape).ok());
+
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.01).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.01, 0.99).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.99, 0.01).ToPoint()));
+    REQUIRE(shape.contains(S2LatLng::FromDegrees(0.49, 0.49).ToPoint()));
+
+    REQUIRE(!shape.contains(S2LatLng::FromDegrees(1.0, 1.0).ToPoint()));
   }
 }
