@@ -35,8 +35,6 @@
 
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
-#include "utils/fst_utils.hpp"
-#include "utils/fst_decl.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/attributes.hpp"
@@ -45,25 +43,6 @@
 #include "utils/fst_matcher.hpp"
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-  #if (__GNUC__ >= 6)
-    #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-  #endif
-#endif
-
-#include <fst/equivalent.h>
-
-#if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#if defined(_MSC_VER)
-  #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
   #pragma warning(disable : 4291)
 #elif defined (__GNUC__)
   // NOOP
@@ -72,7 +51,6 @@
 #include <fst/matcher.h>
 
 #if defined(_MSC_VER)
-  #pragma warning(default: 4267)
   #pragma warning(default: 4291)
 #elif defined (__GNUC__)
   // NOOP

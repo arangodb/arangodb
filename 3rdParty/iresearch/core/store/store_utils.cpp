@@ -275,7 +275,7 @@ uint32_t write_block(
 uint32_t write_block(
     data_output& out,
     const uint64_t* RESTRICT decoded,
-    uint32_t size,
+    uint64_t size,
     uint64_t* RESTRICT encoded) {
   assert(size);
   assert(encoded);
@@ -453,3 +453,7 @@ size_t bytes_input::read_bytes(byte_type* b, size_t size) {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
