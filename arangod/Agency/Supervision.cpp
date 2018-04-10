@@ -580,6 +580,13 @@ void Supervision::run() {
       try {
         MUTEX_LOCKER(locker, _lock);
 
+        if (isShuttingDown()) {
+          handleShutdown();
+        } else if (_selfShutdown) {
+          shutdown = true;
+          break;
+        }
+
         // Only modifiy this condition with extreme care:
         // Supervision needs to wait until the agent has finished leadership
         // preparation or else the local agency snapshot might be behind its
@@ -609,19 +616,6 @@ void Supervision::run() {
 
           handleJobs();
         }
-        
-        
-        if (isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        }
-        
-      } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught exception in supervision thread: " << ex.what();
-      } catch (...) {
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught unknown exception in supervision thread";
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
