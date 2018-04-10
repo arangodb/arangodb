@@ -554,6 +554,9 @@ var tests = function (mount, options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var run = function (args) {
+  arangodb.print('NOTE: foxx-manager is deprecated and will be removed in ArangoDB 4.');
+  arangodb.print('Please use foxx-cli instead: https://www.npmjs.com/package/foxx-cli\n');
+
   if (args === undefined || args.length === 0) {
     arangodb.print('Expecting a command, please try:\n');
     cmdUsage();
