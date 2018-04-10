@@ -595,9 +595,8 @@ void Supervision::run() {
           if (!_upgraded) {
             upgradeAgency();
           }
-          TRI_ASSERT(_agent->leaderSince() > 0);
 
-          if (_agent->leaderSince() > 10ll) {
+          if (_agent->leaderFor() > 10) {
             try {
             doChecks();
             } catch (std::exception const& e) {
