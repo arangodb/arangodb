@@ -1262,8 +1262,8 @@ function processQuery (query, explain) {
   printWarnings(explain.warnings);
 }
 
-/* the exposed function */
-function explain (data, options, shouldPrint) {
+/* the exposed explain function */
+function explain(data, options, shouldPrint) {
   'use strict';
   if (typeof data === 'string') {
     data = { query: data };
@@ -1278,9 +1278,8 @@ function explain (data, options, shouldPrint) {
   options = options || { };
   setColors(options.colors === undefined ? true : options.colors);
 
-  var stmt = db._createStatement(data);
-
-  var result = stmt.explain(options);
+  let stmt = db._createStatement(data);
+  let result = stmt.explain(options);
 
   stringBuilder.clearOutput();
   processQuery(data.query, result, true);
@@ -1292,4 +1291,160 @@ function explain (data, options, shouldPrint) {
   }
 }
 
+/* the exposed debug function */
+function debug(query, bindVars, options) {
+  'use strict';
+  let input = {};
+  if (query instanceof Object) {
+    if (typeof query.toAQL === 'function') {
+      query = query.toAQL();
+    }
+    input = query;
+  } else {
+    input.query = query;
+    if (bindVars !== undefined) {
+      input.bindVars = bindVars;
+    }
+    if (options !== undefined) {
+      input.options = options;
+    }
+  }
+  if (!input.options) {
+    input.options = {};
+  }
+
+  let anonymize = function(doc) {
+    if (Array.isArray(doc)) {
+      return doc.map(anonymize);
+    }
+    if (typeof doc === 'string') {
+      return Array(doc.length).join("X");
+    }
+    if (doc === null || typeof doc === 'number' || typeof doc === 'boolean') {
+      return doc;
+    } 
+    if (typeof doc === 'object') {
+      let result = {};
+      Object.keys(doc).forEach(function(key) {
+        result[key] = anonymize(doc[key]);
+      });
+      return result;
+    }
+    return doc;
+  };
+
+  let result = {
+    engine: db._engine(),
+    version: db._version(true),
+    query: input,
+    collections: {}
+  };
+
+  result.fancy = require("@arangodb/aql/explainer").explain(input, { colors: false }, false);
+
+  let stmt = db._createStatement(input);
+  result.explain = stmt.explain(input.options);
+
+  // add collection information
+  result.explain.plan.collections.forEach(function(collection) {
+    let c = db._collection(collection.name);
+    let examples;
+    if (input.options.examples) {
+      // include example data from collections
+      let max = 10; // default number of documents 
+      if (typeof input.options.examples === 'number') {
+        max = input.options.examples;
+      }
+      if (max > 100) {
+        max = 100;
+      } else if (max < 0) {
+        max = 0;
+      }
+      examples = db._query("FOR doc IN @@collection LIMIT @max RETURN doc", { max, "@collection": collection.name }).toArray();
+      if (input.options.anonymize) {
+        examples = examples.map(anonymize);
+      }
+    }
+    result.collections[collection.name] = { 
+      type: c.type() === 2,
+      properties: c.properties(),
+      indexes: c.getIndexes(true),
+      count: c.count(),
+      counts: c.count(true),
+      examples
+    };
+  });
+  return result;
+}
+
+function debugDump(filename, query, bindVars, options) {
+  let result = debug(query, bindVars, options);
+  require("fs").write(filename, JSON.stringify(result));
+  require("console").log("stored query debug information in file '" + filename + "'");
+}
+
+function inspectDump(filename) {
+  let data = JSON.parse(require("fs").read(filename));
+  if (db._engine().name !== data.engine.name) {
+    print("/* using different storage engine (' " + db._engine().name + "') than in debug information ('" + data.engine.name + "') */");
+  }
+
+  // all collections and indexes first, as data insertion may go wrong later
+  print("/* collections and indexes setup */");
+  Object.keys(data.collections).forEach(function(collection) {
+    let details = data.collections[collection];
+    print("db._drop(" + JSON.stringify(collection) + ");");
+    if (details.type === 3) {
+      print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+    } else {
+      print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
+    }
+    details.indexes.forEach(function(index) {
+      delete index.figures;
+      delete index.selectivityEstimate;
+      if (index.type !== 'primary' && index.type !== 'edge') {
+        print("db[" + JSON.stringify(collection) + "].ensureIndex(" + JSON.stringify(index) + ");");
+      }
+    });
+    print();
+  });
+  print();
+  
+  // insert example data
+  print("/* example data */");
+  Object.keys(data.collections).forEach(function(collection) {
+    let details = data.collections[collection];
+    if (details.examples) {
+      details.examples.forEach(function(example) {
+        print("db[" + JSON.stringify(collection) + "].insert(" + JSON.stringify(example) + ");");
+      });
+    }
+    let missing = details.count;
+    if (details.examples) {
+      missing -= details.examples.length;
+    }
+    if (missing > 0) {
+      print("/* collection '" + collection + "' needs " + missing + " more document(s) */");
+    }
+    print();
+  });
+  print();
+  
+  print("/* explain result */"); 
+  print(data.fancy.trim().split(/\n/).map(function(line) { return "// " + line; }).join("\n"));
+  print();
+ 
+  print("/* explain command */"); 
+  if (data.query.options) {
+    delete data.query.options.anonymize;
+    delete data.query.options.colors;
+    delete data.query.options.examples;
+  }
+  print("db._explain(" + JSON.stringify(data.query) + ");");
+  print();
+}
+
 exports.explain = explain;
+exports.debug = debug;
+exports.debugDump = debugDump;
+exports.inspectDump = inspectDump;

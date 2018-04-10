@@ -70,12 +70,13 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 }
 
 /*static*/ IResearchMMFilesLink::ptr IResearchMMFilesLink::make(
-    TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
 ) noexcept {
   try {
-    PTR_NAMED(IResearchMMFilesLink, ptr, iid, collection);
+    PTR_NAMED(IResearchMMFilesLink, ptr, id, collection);
 
     #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       auto* link = dynamic_cast<arangodb::iresearch::IResearchMMFilesLink*>(ptr.get());
@@ -85,9 +86,11 @@ IResearchMMFilesLink::~IResearchMMFilesLink() {
 
     return link && link->init(definition) ? ptr : nullptr;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view MMFiles link '" << iid << "'" << e.what();
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view MMFiles link '" << id << "'" << e.what();
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::DEVEL) << "caught exception while creating IResearch view MMFiles link '" << iid << "'";
+    LOG_TOPIC(WARN, Logger::DEVEL)
+      << "caught exception while creating IResearch view MMFiles link '" << id << "'";
   }
 
   return nullptr;

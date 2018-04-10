@@ -77,9 +77,9 @@ RestStatus RestQueryHandler::execute() {
 }
 
 bool RestQueryHandler::readQueryProperties() {
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
@@ -99,10 +99,10 @@ bool RestQueryHandler::readQueryProperties() {
 }
 
 bool RestQueryHandler::readQuery(bool slow) {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
-
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Array));
 
   for (auto const& q : queries) {
@@ -157,10 +157,11 @@ bool RestQueryHandler::readQuery() {
 }
 
 bool RestQueryHandler::deleteQuerySlow() {
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   queryList->clearSlow();
 
   VPackBuilder result;
+
   result.add(VPackValue(VPackValueType::Object));
   result.add(StaticStrings::Error, VPackValue(false));
   result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
@@ -173,7 +174,7 @@ bool RestQueryHandler::deleteQuerySlow() {
 
 bool RestQueryHandler::deleteQuery(std::string const& name) {
   auto id = StringUtils::uint64(name);
-  auto queryList = _vocbase->queryList();
+  auto queryList = _vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
   auto res = queryList->kill(id);
@@ -238,8 +239,7 @@ bool RestQueryHandler::replaceProperties() {
                   "expecting a JSON object as body");
   };
 
-  auto queryList = _vocbase->queryList();
-
+  auto queryList = _vocbase.queryList();
   bool enabled = queryList->enabled();
   bool trackSlowQueries = queryList->trackSlowQueries();
   bool trackBindVars = queryList->trackBindVars();
@@ -316,9 +316,14 @@ bool RestQueryHandler::parseQuery() {
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString),
-              nullptr, nullptr, PART_MAIN);
-
+  Query query(
+    false,
+    &_vocbase,
+    QueryString(queryString),
+    nullptr,
+    nullptr,
+    PART_MAIN
+  );
   auto parseResult = query.parse();
 
   if (parseResult.code != TRI_ERROR_NO_ERROR) {

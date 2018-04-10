@@ -77,7 +77,13 @@ class LogicalCollection: public LogicalDataSource {
   friend struct ::TRI_vocbase_t;
 
  public:
-  LogicalCollection(TRI_vocbase_t*, velocypack::Slice const&, bool isAStub);
+  LogicalCollection() = delete;
+  LogicalCollection(
+    TRI_vocbase_t& vocbase,
+    velocypack::Slice const& info,
+    bool isAStub,
+    uint64_t planVersion = 0
+  );
 
   virtual ~LogicalCollection();
 
@@ -90,7 +96,6 @@ class LogicalCollection: public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
 
  public:
-  LogicalCollection() = delete;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -223,7 +228,7 @@ class LogicalCollection: public LogicalDataSource {
   void load();
   void unload();
 
-  virtual void drop() override;
+  virtual arangodb::Result drop() override;
   virtual Result rename(std::string&& name, bool doSync) override;
   virtual void setStatus(TRI_vocbase_col_status_e);
 

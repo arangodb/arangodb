@@ -67,7 +67,7 @@ RocksDBIndex::RocksDBIndex(
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
   engine->addIndexMapping(
-    _objectId, collection->vocbase()->id(), collection->id(), _iid
+    _objectId, collection->vocbase().id(), collection->id(), _iid
   );
 }
 
@@ -92,7 +92,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
 
   engine->addIndexMapping(
-    _objectId, collection->vocbase()->id(), collection->id(), _iid
+    _objectId, collection->vocbase().id(), collection->id(), _iid
   );
 }
 
