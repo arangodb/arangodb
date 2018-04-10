@@ -177,6 +177,9 @@ devel
 * fixed a bug where clusterinfo missed changes to plan after agency
   callback is registred for create collection
 
+* fixed a bug related to internal issue #2215. supervision started
+  working before its agent's leadership preparation had not finished.
+
 * fixed internal #2215's failedleader timeout, when in todo
 
 v3.3.4 (XXXX-XX-XX)
