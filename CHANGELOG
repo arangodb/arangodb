@@ -1,5 +1,5 @@
-v3.3.6.1 (XXXX-XX-XX)
----------------------
+v3.3.6 (XXXX-XX-XX)
+-------------------
 
 * Fixed internal issue #2237: AQL queries on collections with replicationFactor:
   "satellite" crashed arangod in single server mode
@@ -19,6 +19,9 @@ v3.3.6.1 (XXXX-XX-XX)
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified
   the value for `_key` using an expression (and not a constant value)
+  Important: if you were affected by this bug in v.3.3.5 it is required that you
+  recreate your dataset in v.3.3.6 (e.g. dumping and restoring) instead of doing
+  a simple binary upgrade
 
 * added /_admin/status for debugging
 
