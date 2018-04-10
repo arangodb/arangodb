@@ -12,7 +12,6 @@ server is not running in cluster mode.
 
 @RESTRETURNCODE{200}
 Is returned in when the server is running in cluster mode.
-@endDocuBlock
 
 @RESTRETURNCODE{500}
 Is returned when the server is not running in cluster mode.
