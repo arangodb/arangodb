@@ -583,8 +583,8 @@ Optionally the collection can be deleted, if it is not used in any other graph.
 
 
 
-Maniuplating Vertices
----------------------
+Maniplating Vertices
+--------------------
 
 ### Save a vertex
 
