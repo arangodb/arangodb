@@ -439,15 +439,9 @@ class Agent : public arangodb::Thread,
                                 // waiting until _commitIndex is at end of
                                 // our log
 
-<<<<<<< HEAD
-  std::atomic<uint64_t> _leaderSince;
-  /// @brief Keep track of when I last took on leadership
-  //SteadyTimePoint _leaderSince;
-=======
   /// @brief Keep track of when I last took on leadership, this is seconds
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
->>>>>>> 9b89d25... More consistent use of integer types.
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
