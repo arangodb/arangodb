@@ -49,6 +49,8 @@
 
 using namespace arangodb;
 
+static char const* ReasonCorrupted =
+    "skipped compaction because collection has corrupted datafile(s)";
 static char const* ReasonNoDatafiles =
     "skipped compaction because collection has no datafiles";
 static char const* ReasonCompactionBlocked =
@@ -433,8 +435,12 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return true;
   };
 
-  arangodb::SingleCollectionTransaction trx(arangodb::transaction::StandaloneContext::Create(collection->vocbase()), 
-      collection->cid(), AccessMode::Type::WRITE);
+  arangodb::SingleCollectionTransaction trx(
+    arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
+    collection->id(),
+    AccessMode::Type::WRITE
+  );
+
   trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
   trx.addHint(transaction::Hints::Hint::NO_COMPACTION_LOCK);
@@ -451,7 +457,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compaction writes to be executed for collection '" << collection->cid() << "', number of source datafiles: " << n << ", target datafile size: " << initial._targetSize;
+  LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compaction writes to be executed for collection '" << collection->id() << "', number of source datafiles: " << n << ", target datafile size: " << initial._targetSize;
 
   // now create a new compactor file
   // we are re-using the _fid of the first original datafile!
@@ -710,6 +716,15 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t totalSize = 0;
   char const* reason = nullptr;
   char const* firstReason = nullptr;
+  
+  for (size_t i = start; i < n; ++i) {
+    MMFilesDatafile* df = datafiles[i];
+    if (df->state() == TRI_DF_STATE_OPEN_ERROR || df->state() == TRI_DF_STATE_WRITE_ERROR) {
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "cannot compact datafile " << df->fid() << " of collection '" << collection->name() << "' because it has errors";
+      physical->setCompactionStatus(ReasonCorrupted);
+      return false;
+    }
+  }
 
   for (size_t i = start; i < n; ++i) {
     MMFilesDatafile* df = datafiles[i];
@@ -937,6 +952,8 @@ void MMFilesCompactorThread::run() {
                       }
                       // if we worked or were blocked, then we don't set the compaction stamp to
                       // force another round of compaction
+                    } catch (std::exception const& ex) {
+                      LOG_TOPIC(ERR, Logger::COMPACTOR) << "caught exception during compaction: " << ex.what();
                     } catch (...) {
                       LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
                       // in case an error occurs, we must still free this ditch
@@ -947,6 +964,8 @@ void MMFilesCompactorThread::run() {
                         ->freeDitch(ce);
                   }
                 }
+              } catch (std::exception const& ex) {
+                LOG_TOPIC(ERR, Logger::COMPACTOR) << "caught exception during compaction: " << ex.what();
               } catch (...) {
                 // in case an error occurs, we must still relase the lock
                 LOG_TOPIC(ERR, Logger::COMPACTOR) << "an unknown exception occurred during compaction";
@@ -995,8 +1014,11 @@ void MMFilesCompactorThread::run() {
 /// @brief determine the number of documents in the collection
 uint64_t MMFilesCompactorThread::getNumberOfDocuments(LogicalCollection* collection) {
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-      AccessMode::Type::READ);
+    transaction::StandaloneContext::Create(_vocbase),
+    collection->id(),
+    AccessMode::Type::READ
+  );
+
   // only try to acquire the lock here
   // if lock acquisition fails, we go on and report an (arbitrary) positive number
   trx.addHint(transaction::Hints::Hint::TRY_LOCK); 

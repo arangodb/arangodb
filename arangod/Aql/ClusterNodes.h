@@ -380,6 +380,8 @@ class GatherNode : public ExecutionNode {
   SortElementVector const& getElements() const { return _elements; }
 
   void setElements(SortElementVector const& src) { _elements = src; }
+  
+  void clearElements() { _elements.clear(); }
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const { return _vocbase; }

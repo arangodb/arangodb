@@ -149,11 +149,13 @@ bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
 }
 
 bool RestEdgesHandler::validateCollection(std::string const& name) {
-  CollectionNameResolver resolver(_vocbase);
-  TRI_col_type_e colType = resolver.getCollectionTypeCluster(name);
+  CollectionNameResolver resolver(&_vocbase);
+  auto collection = resolver.getCollection(name);
+  auto colType = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
+
   if (colType == TRI_COL_TYPE_UNKNOWN) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
 
@@ -205,8 +207,14 @@ bool RestEdgesHandler::readEdges() {
     VPackBuilder resultDocument(buffer);
     resultDocument.openObject();
     int res = getFilteredEdgesOnCoordinator(
-        _vocbase->name(), collectionName, vertexString, direction,
-        responseCode, resultDocument);
+      _vocbase.name(),
+      collectionName,
+      vertexString,
+      direction,
+      responseCode,
+      resultDocument
+    );
+
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(responseCode, res);
       return false;
@@ -222,7 +230,7 @@ bool RestEdgesHandler::readEdges() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
@@ -343,21 +351,28 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     rest::ResponseCode responseCode;
     VPackBuffer<uint8_t> buffer;
     VPackBuilder resultDocument(buffer);
-    
+
     resultDocument.openObject();
+
     for (auto const& it : VPackArrayIterator(body)) {
       if (it.isString()) {
         std::string vertexString(it.copyString());
-
         int res = getFilteredEdgesOnCoordinator(
-            _vocbase->name(), collectionName, vertexString, direction,
-            responseCode, resultDocument);
+          _vocbase.name(),
+          collectionName,
+          vertexString,
+          direction,
+          responseCode,
+          resultDocument
+        );
+
         if (res != TRI_ERROR_NO_ERROR) {
           generateError(responseCode, res);
           return false;
         }
       }
     }
+
     resultDocument.add(StaticStrings::Error, VPackValue(false));
     resultDocument.add("code", VPackValue(200));
     resultDocument.close();
@@ -367,7 +382,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................

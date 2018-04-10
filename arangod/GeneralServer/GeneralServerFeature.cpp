@@ -71,6 +71,7 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestStatusHandler.h"
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
@@ -229,9 +230,9 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     vocbase->release();
     return false;
   }
-  
+
   // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
+  request->setRequestContext(VocbaseContext::create(request, *vocbase), true);
 
   // the "true" means the request is the owner of the context
   return true;
@@ -334,6 +335,11 @@ void GeneralServerFeature::defineHandlers() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
       TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  if (_combinedRegistries == nullptr) {
+    _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   // ...........................................................................
   // /_msg
@@ -421,11 +427,15 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
-  
+
+  // This is the only handler were we need to inject
+  // more than one data object. So we created the combinedRegistries
+  // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      RestHandlerCreator<aql::RestAqlHandler>::createData<
+          std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
+          _combinedRegistries.get());
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
@@ -505,6 +515,9 @@ void GeneralServerFeature::defineHandlers() {
   // /_admin
   // ...........................................................................
 
+  _handlerFactory->addHandler(
+      "/_admin/status", RestHandlerCreator<RestStatusHandler>::createNoData);
+  
   _handlerFactory->addPrefixHandler(
       "/_admin/job", RestHandlerCreator<arangodb::RestJobHandler>::createData<
                          AsyncJobManager*>,

@@ -44,7 +44,6 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -71,11 +70,11 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
-#include "RocksDBEngine/RocksDBView.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "Transaction/Context.h"
 #include "Transaction/Options.h"
 #include "VocBase/ticks.h"
+#include "VocBase/LogicalView.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -686,12 +685,6 @@ PhysicalCollection* RocksDBEngine::createPhysicalCollection(
   return new RocksDBCollection(collection, info);
 }
 
-// create storage-engine specific view
-PhysicalView* RocksDBEngine::createPhysicalView(LogicalView* view,
-                                                VPackSlice const& info) {
-  return new RocksDBView(view, info);
-}
-
 // inventory functionality
 // -----------------------
 
@@ -1091,12 +1084,12 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Prepare collection remove batch
   RocksDBLogValue logValue = RocksDBLogValue::CollectionDrop(
-      vocbase->id(), collection->cid(),
-      StringRef(collection->globallyUniqueId()));
+    vocbase->id(), collection->id(), StringRef(collection->globallyUniqueId())
+  );
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   RocksDBKey key;
-  key.constructCollection(vocbase->id(), collection->cid());
+  key.constructCollection(vocbase->id(), collection->id());
   batch.Delete(RocksDBColumnFamily::definitions(), key.string());
   rocksdb::Status res = _db->Write(wo, &batch);
 
@@ -1115,7 +1108,7 @@ arangodb::Result RocksDBEngine::dropCollection(
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(collection->cid());
+    _collectionMap.erase(collection->id());
   }
 
   // delete documents
@@ -1200,9 +1193,14 @@ arangodb::Result RocksDBEngine::renameCollection(
   VPackBuilder builder =
       collection->toVelocyPackIgnore({"path", "statusString"}, true, true);
   int res = writeCreateCollectionMarker(
-      vocbase->id(), collection->cid(), builder.slice(),
-      RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        StringRef(oldName)));
+    vocbase->id(),
+    collection->id(),
+    builder.slice(),
+    RocksDBLogValue::CollectionRename(
+      vocbase->id(), collection->id(), StringRef(oldName)
+    )
+  );
+
   return arangodb::Result(res);
 }
 
@@ -1216,8 +1214,11 @@ void RocksDBEngine::unloadCollection(TRI_vocbase_t* vocbase,
   collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
 }
 
-void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const*) {
+void RocksDBEngine::createView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& /*view*/
+) {
   rocksdb::WriteBatch batch;
   rocksdb::WriteOptions wo;
 
@@ -1239,31 +1240,89 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
 // asks the storage engine to persist renaming of a view
 // This will write a renameMarker if not in recovery
-Result RocksDBEngine::renameView(TRI_vocbase_t* vocbase,
-                                 std::shared_ptr<arangodb::LogicalView> view,
-                                 std::string const& oldName) {
-  return persistView(vocbase, view.get());
+Result RocksDBEngine::renameView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& /*oldName*/
+) {
+  return persistView(vocbase, view);
 }
 
 arangodb::Result RocksDBEngine::persistView(
-    TRI_vocbase_t* vocbase, arangodb::LogicalView const* logical) {
-  auto physical = static_cast<RocksDBView*>(logical->getPhysical());
-  return physical->persistProperties();
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view
+) {
+  auto db = rocksutils::globalRocksDB();
+  RocksDBKey key;
+
+  key.constructView(vocbase->id(), view.id());
+
+  VPackBuilder infoBuilder;
+
+  infoBuilder.openObject();
+  view.toVelocyPack(infoBuilder, true, true);
+  infoBuilder.close();
+
+  auto const value = RocksDBValue::View(infoBuilder.slice());
+
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+
+  rocksdb::Status const status = db->Put(
+    options, RocksDBColumnFamily::definitions(), key.string(), value.string()
+  );
+
+  return rocksutils::convertStatus(status);
 }
 
-arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t* vocbase,
-                                         arangodb::LogicalView* view) {
-  return {TRI_ERROR_NO_ERROR};
+arangodb::Result RocksDBEngine::dropView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView* view) {
+  VPackBuilder builder;
+  builder.openObject();
+  view->toVelocyPack(builder, true, true);
+  builder.close();
+  RocksDBLogValue logValue = RocksDBLogValue::ViewDrop(
+    vocbase->id(), view->id(), builder.slice()
+  );
+
+  RocksDBKey key;
+  key.constructView(vocbase->id(), view->id());
+
+  rocksdb::WriteBatch batch;
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  auto db = rocksutils::globalRocksDB();
+
+  batch.PutLogData(logValue.slice());
+  batch.Delete(RocksDBColumnFamily::definitions(), key.string());
+
+  return rocksutils::convertStatus(db->Write(wo, &batch));
 }
 
-void RocksDBEngine::destroyView(TRI_vocbase_t* vocbase,
-                                arangodb::LogicalView*) {
+void RocksDBEngine::destroyView(
+    TRI_vocbase_t* /*vocbase*/,
+    arangodb::LogicalView* /*view*/) noexcept {
   // nothing to do here
 }
 
-void RocksDBEngine::changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                               arangodb::LogicalView const*, bool doSync) {
-  // nothing to do here
+void RocksDBEngine::changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t /*id*/,
+    arangodb::LogicalView const& view,
+    bool /*doSync*/
+) {
+  if (inRecovery()) {
+    // nothing to do
+    return;
+  }
+
+  auto const res = persistView(vocbase, view);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      res.errorNumber(),
+      "could not save view properties"
+    );
+  }
 }
 
 void RocksDBEngine::signalCleanup(TRI_vocbase_t*) {
@@ -1636,38 +1695,25 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    VPackSlice slice = builder.slice();
+    VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
-
-    ViewTypesFeature* viewTypesFeature =
-        application_features::ApplicationServer::getFeature<ViewTypesFeature>(
-            "ViewTypes");
 
     for (auto const& it : VPackArrayIterator(slice)) {
       // we found a view that is still active
-      arangodb::velocypack::StringRef type(it.get("type"));
-      auto& dataSourceType = arangodb::LogicalDataSource::Type::emplace(type);
-      auto& creator = viewTypesFeature->factory(dataSourceType);
-
-      if (!creator) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "no handler found for view type"
-        );
-      }
 
       TRI_ASSERT(!it.get("id").isNone());
 
-      std::shared_ptr<LogicalView> view =
-          std::make_shared<arangodb::LogicalView>(vocbase.get(), it);
+      auto const view = LogicalView::create(*vocbase, it);
+
+      if (!view) {
+        auto const message = "failed to instantiate view '" + name + "'";
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
+      }
 
       StorageEngine::registerView(vocbase.get(), view);
 
-      auto physical = static_cast<RocksDBView*>(view->getPhysical());
-      TRI_ASSERT(physical != nullptr);
-
-      view->spawnImplementation(creator, it, false);
-      view->getImplementation()->open();
+      view->open();
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error while opening database: "
@@ -1696,7 +1742,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
+        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol);
@@ -2012,3 +2058,7 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
 }
 
 }  // namespace arangodb
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -126,9 +126,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   // note: the ditch also protects against unloading the collection
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::READ);
-
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -152,9 +153,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::READ);
-
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::READ
+    );
     Result res = trx.begin();
 
     if (!res.ok()) {
@@ -285,9 +287,11 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::WRITE);
-    
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::WRITE
+    );
+
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
@@ -360,8 +364,10 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer.vocbase()), coll->cid(),
-        AccessMode::Type::WRITE);
+      transaction::StandaloneContext::Create(syncer.vocbase()),
+      coll->id(),
+      AccessMode::Type::WRITE
+    );
 
     trx.addHint(
         transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
@@ -372,7 +378,7 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
-    trx.pinData(coll->cid());  // will throw when it fails
+    trx.pinData(coll->id()); // will throw when it fails
 
     // We do not take responsibility for the index.
     // The LogicalCollection is protected by trx.

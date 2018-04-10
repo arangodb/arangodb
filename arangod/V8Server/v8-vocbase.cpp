@@ -1387,14 +1387,14 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->vocbase() == vocbase) {
+    if (collection != nullptr && &(collection->vocbase()) == vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
       // caller may have already acquired the collection's status lock
       // with that transaction. if we now lock again, we may deadlock!
       TRI_vocbase_col_status_e status = collection->status();
-      TRI_voc_cid_t cid = collection->cid();
+      TRI_voc_cid_t cid = collection->id();
       uint32_t internalVersion = collection->internalVersion();
 
       // check if the collection is still alive
@@ -1436,7 +1436,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
       auto colCopy = ci->clone();
       collection = colCopy.release();  // will be delete on garbage collection
     } else {
-      collection = vocbase->lookupCollection(std::string(key));
+      collection = vocbase->lookupCollection(std::string(key)).get();
     }
   } catch (...) {
     // do not propagate exception from here

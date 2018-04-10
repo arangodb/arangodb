@@ -33,7 +33,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbaseprivate.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/PhysicalView.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -67,7 +66,7 @@ static void WeakViewCallback(
   v8g->decreaseActiveExternals();
 
   // decrease the reference-counter for the database
-  TRI_ASSERT(!view->vocbase()->isDangling());
+  TRI_ASSERT(!view->vocbase().isDangling());
 
 // find the persistent handle
 #if ARANGODB_ENABLE_MAINTAINER_MODE
@@ -79,7 +78,7 @@ static void WeakViewCallback(
   v8g->JSViews[view].Reset();
   v8g->JSViews.erase(view);
 
-  view->vocbase()->release();
+  view->vocbase().release();
   delete v;  // delete the shared_ptr on the heap
 }
 
@@ -101,8 +100,9 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
 
     if (it == v8g->JSViews.end()) {
       // increase the reference-counter for the database
-      TRI_ASSERT(!view->vocbase()->isDangling());
-      view->vocbase()->forceUse();
+      TRI_ASSERT(!view->vocbase().isDangling());
+      view->vocbase().forceUse();
+
       try {
         auto v = new std::shared_ptr<arangodb::LogicalView>(view);
         auto externalView = v8::External::New(isolate, v);
@@ -117,7 +117,7 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
                                          v8::WeakCallbackType::kFinalizer);
         v8g->increaseActiveExternals();
       } catch (...) {
-        view->vocbase()->release();
+        view->vocbase().release();
         throw;
       }
     } else {
@@ -131,7 +131,7 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     result->ForceSet(_IdKey,
                      TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
                      v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase()->name()));
+    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase().name()));
   }
 
   return scope.Escape<v8::Object>(result);
@@ -187,9 +187,7 @@ static void JS_CreateViewVocbase(
   infoSlice = full.slice();
 
   try {
-    TRI_voc_cid_t id = 0;
-    std::shared_ptr<arangodb::LogicalView> view =
-        vocbase->createView(infoSlice, id);
+    auto view = vocbase->createView(infoSlice);
 
     TRI_ASSERT(view != nullptr);
 
@@ -229,11 +227,14 @@ static void JS_DropViewVocbase(
 
   // extract the name
   std::string const name = TRI_ObjectToString(args[0]);
+  auto view = vocbase->lookupView(name);
 
-  int res = vocbase->dropView(name);
+  if (view) {
+    auto res = vocbase->dropView(*view).errorNumber();
 
-  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
-    TRI_V8_THROW_EXCEPTION(res);
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -258,7 +259,7 @@ static void JS_DropViewVocbaseObj(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  int res = view->vocbase()->dropView(view->name());
+  auto res = view->vocbase().dropView(*view).errorNumber();
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop view");
@@ -371,7 +372,7 @@ static void JS_NameViewVocbase(
   std::string const name(view->name());
 
   if (name.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, name);
@@ -436,7 +437,7 @@ static void JS_PropertiesViewVocbase(
 
   VPackBuilder vpackProperties;
   vpackProperties.openObject();
-  view->toVelocyPack(vpackProperties, true);
+  view->toVelocyPack(vpackProperties, true, false);
   vpackProperties.close();
 
   // return the current parameter set
@@ -479,7 +480,7 @@ static void JS_RenameViewVocbase(
 
   PREVENT_EMBEDDED_TRANSACTION();
 
-  int res = view->vocbase()->renameView(view, name);
+  int res = view->vocbase().renameView(view, name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot rename view");

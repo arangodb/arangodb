@@ -63,8 +63,12 @@ RocksDBIndex::RocksDBIndex(
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection->vocbase().id(), collection->id(), _iid
+  );
 }
 
 RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
@@ -84,8 +88,12 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
   if (_cacheEnabled) {
     createCache();
   }
+
   RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
-  engine->addIndexMapping(_objectId, collection->vocbase()->id(), collection->cid(), _iid);
+
+  engine->addIndexMapping(
+    _objectId, collection->vocbase().id(), collection->id(), _iid
+  );
 }
 
 RocksDBIndex::~RocksDBIndex() {
@@ -159,6 +167,7 @@ void RocksDBIndex::createCache() {
              !ServerState::instance()->isCoordinator());
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating index cache";
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
@@ -171,13 +180,11 @@ void RocksDBIndex::destroyCache() {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying index cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 rocksdb::SequenceNumber RocksDBIndex::serializeEstimate(

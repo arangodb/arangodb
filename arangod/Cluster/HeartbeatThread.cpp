@@ -385,7 +385,7 @@ void HeartbeatThread::runDBServer() {
 
         if (!wasNotified) {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Lock reached timeout";
-          planAgencyCallback->refetchAndUpdate(true);
+          planAgencyCallback->refetchAndUpdate(true, false);
         } else {
           // mop: a plan change returned successfully...
           // recheck and redispatch in case our desired versions increased
@@ -452,6 +452,7 @@ void HeartbeatThread::runSingleServer() {
     try {
       // send our state to the agency.
       // we don't care if this fails
+      sendState();
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
@@ -468,7 +469,7 @@ void HeartbeatThread::runSingleServer() {
         if (res.successful()) {
           LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "successfully increased plan version in agency";
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "could not increase version number in agency";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not increase version number in agency";
         }
       }
 
@@ -697,6 +698,8 @@ void HeartbeatThread::runCoordinator() {
   uint64_t lastPlanVersionNoticed = 0;
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
+  // For periodic update of the current DBServer list:
+  int DBServerUpdateCounter = 0;
 
   while (!isStopping()) {
     try {
@@ -892,6 +895,12 @@ void HeartbeatThread::runCoordinator() {
         ClusterInfo::instance()->invalidateCurrentCoordinators();
       }
       invalidateCoordinators = !invalidateCoordinators;
+
+      // Periodically update the list of DBServers:
+      if (++DBServerUpdateCounter >= 60) {
+        ClusterInfo::instance()->loadCurrentDBServers();
+        DBServerUpdateCounter = 0;
+      }
 
       double remain = interval - (TRI_microtime() - start);
 

@@ -1687,7 +1687,7 @@ NS_BEGIN(iresearch)
     .field(DocumentPrimaryKey::CID()) // set field
     .term(DocumentPrimaryKey::encode(cid)); // set value
 
-  return std::move(filter);
+  return filter;
 }
 
 /*static*/ irs::filter::ptr FilterFactory::filter(
@@ -1698,7 +1698,7 @@ NS_BEGIN(iresearch)
 
   FilterFactory::filter(static_cast<irs::And&>(*filter), cid, rid);
 
-  return std::move(filter);
+  return filter;
 }
 
 /*static*/ irs::filter& FilterFactory::filter(

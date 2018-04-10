@@ -290,10 +290,11 @@ void ShardDistributionReporter::helperDistributionForDatabase(
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();
-      auto const col = todoSyncStateCheck.front();
 
+      auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
@@ -480,12 +481,15 @@ bool ShardDistributionReporter::testAllShardsInSync(
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);
+
     if (!TestIsShardInSync(s.second, curServers)) {
       return false;
     }
   }
+
   return true;
 }

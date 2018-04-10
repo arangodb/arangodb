@@ -62,14 +62,16 @@ LogicalCollection* RestIndexHandler::collection(
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
+        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
+
         return coll.get();
       } catch (...) {
       }
     } else {
-      return _vocbase->lookupCollection(cName);
+      return _vocbase.lookupCollection(cName).get();
     }
   }
+
   return nullptr;
 }
 
@@ -90,7 +92,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -133,7 +135,7 @@ RestStatus RestIndexHandler::getIndexes() {
     LogicalCollection* coll = collection(cName, tmpColl);
     if (coll == nullptr) {
       generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                    TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
       return RestStatus::DONE;
     }
 
@@ -178,7 +180,7 @@ RestStatus RestIndexHandler::createIndex() {
   std::string cName = _request->value("collection", found);
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -186,7 +188,7 @@ RestStatus RestIndexHandler::createIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 
@@ -243,7 +245,7 @@ RestStatus RestIndexHandler::dropIndex() {
   LogicalCollection* coll = collection(cName, tmpColl);
   if (coll == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return RestStatus::DONE;
   }
 

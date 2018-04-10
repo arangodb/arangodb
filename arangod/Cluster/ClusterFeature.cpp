@@ -113,11 +113,8 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix));
-  // FIXME: make obsolete in > 3.3
-  //options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
-  options->addHiddenOption("--cluster.my-local-info", "this server's local info",
-                           new StringParameter(&_myLocalInfo));
 
+  options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addOption("--cluster.my-role", "this server's role",
@@ -133,6 +130,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--cluster.create-waits-for-sync-replication",
                      "active coordinator will wait for all replicas to create collection",
                      new BooleanParameter(&_createWaitsForSyncReplication));
+  
+  options->addHiddenOption("--cluster.index-create-timeout",
+                     "amount of time (in seconds) the coordinator will wait for an index to be created before giving up",
+                     new DoubleParameter(&_indexCreationTimeout));
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -286,8 +287,7 @@ void ClusterFeature::prepare() {
     AgencyCommManager::MANAGER->addEndpoint(unified);
   }
 
-  // Now either _myId is set properly or _myId is empty and _myLocalInfo and
-  // _myAddress are set.
+  // Now either _myId is set properly or _myId is empty and _myAddress is set.
   if (!_myAddress.empty()) {
     ServerState::instance()->setAddress(_myAddress);
   }
@@ -301,8 +301,7 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  // FIXME: remove mylocalInfo > 3.3
-  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress, _myLocalInfo)) {
+  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress)) {
     LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
   }

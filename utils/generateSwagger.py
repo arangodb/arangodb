@@ -391,6 +391,7 @@ class Regexen:
         self.RESTRETURNCODES = re.compile('.*@RESTRETURNCODES')
         self.RESTURLPARAM = re.compile('.*@RESTURLPARAM{')
         self.RESTURLPARAMETERS = re.compile('.*@RESTURLPARAMETERS')
+        self.TRIPLENEWLINEATSTART = re.compile('^\n\n\n')
 
 ################################################################################
 ### @brief checks for end of comment
@@ -481,8 +482,6 @@ def generic_handler_desc(cargo, r, message, op, para, name):
         line = Typography(line)
         para[name] += line + '\n'
 
-    para[name] = removeTrailingBR.sub("", para[name])
-
 def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
@@ -520,7 +519,7 @@ def restheader(cargo, r=Regexen()):
 
     temp = parameters(last).split(',')
     if temp == "":
-        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + path)
+        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + last)
 
     (ucmethod, path) = temp[0].split()
 
@@ -864,9 +863,17 @@ def restqueryparam(cargo, r=Regexen()):
 def restdescription(cargo, r=Regexen()):
     global swagger, operation, httpPath, method
     swagger['paths'][httpPath][method]['description'] += '\n\n'
-    return generic_handler_desc(cargo, r, "restdescription", None,
+
+    ret = generic_handler_desc(cargo, r, "restdescription", None,
                                 swagger['paths'][httpPath][method],
                                 'description')
+
+    if r.TRIPLENEWLINEATSTART.match(swagger['paths'][httpPath][method]['description']):
+        (fp, last) = cargo
+        print >> sys.stderr, 'remove newline after @RESTDESCRIPTION in file %s' % (fp.name)
+        exit(1)
+
+    return ret
 
 ################################################################################
 ### @brief restreplybody

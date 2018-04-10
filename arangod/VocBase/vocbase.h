@@ -31,7 +31,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"
@@ -133,7 +132,7 @@ struct TRI_vocbase_t {
 
   TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
                 std::string const& name);
-  ~TRI_vocbase_t();
+  TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
   /// @brief sleep interval used when polling for a loading collection's status
@@ -185,7 +184,15 @@ struct TRI_vocbase_t {
  public:
   /// @brief checks if a database name is allowed
   /// returns true if the name is allowed and false otherwise
-  static bool IsAllowedName(bool allowSystem, std::string const& name);
+  static bool IsAllowedName(arangodb::velocypack::Slice slice) noexcept;
+  static bool IsAllowedName(
+    bool allowSystem,
+    arangodb::velocypack::StringRef const& name
+  ) noexcept;
+
+  /// @brief determine whether a data-source name is a system data-source name
+  static bool IsSystemName(std::string const& name) noexcept;
+
   TRI_voc_tick_t id() const { return _id; }
   std::string const& name() const { return _name; }
   std::string path() const;
@@ -261,15 +268,13 @@ struct TRI_vocbase_t {
   /// @brief returns names of all known collections
   std::vector<std::string> collectionNames();
 
-  /// @brief get a collection name by a collection id
-  /// the name is fetched under a lock to make this thread-safe.
-  /// returns empty string if the collection does not exist.
-  std::string collectionName(TRI_voc_cid_t id);
+  /// @brief creates a new view from parameter set
+  std::shared_ptr<arangodb::LogicalView> createView(
+    arangodb::velocypack::Slice parameters
+  );
 
-  /// @brief get a view name by a view id
-  /// the name is fetched under a lock to make this thread-safe.
-  /// returns empty string if the view does not exist.
-  std::string viewName(TRI_voc_cid_t id) const;
+  /// @brief drops a view
+  arangodb::Result dropView(arangodb::LogicalView& view);
 
   /// @brief returns all known collections with their parameters
   /// and optionally indexes
@@ -279,17 +284,17 @@ struct TRI_vocbase_t {
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief looks up a collection by identifier
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     TRI_voc_cid_t id
   ) const noexcept;
 
   /// @brief looks up a collection by name or stringified cid or uuid
-  arangodb::LogicalCollection* lookupCollection(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     std::string const& nameOrId
   ) const noexcept;
 
   /// @brief looks up a collection by uuid
-  arangodb::LogicalCollection* lookupCollectionByUuid(
+  std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(
     std::string const& uuid
   ) const noexcept;
 
@@ -345,18 +350,6 @@ struct TRI_vocbase_t {
 
   /// @brief unloads a collection
   int unloadCollection(arangodb::LogicalCollection* collection, bool force);
-
-  /// @brief creates a new view from parameter set
-  /// view id is normally passed with a value of 0
-  /// this means that the system will assign a new id automatically
-  /// using a cid of > 0 is supported to import dumps from other servers etc.
-  /// but the functionality is not advertised
-  std::shared_ptr<arangodb::LogicalView> createView(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t id);
-
-  /// @brief drops a view
-  int dropView(std::string const& name);
-  int dropView(std::shared_ptr<arangodb::LogicalView> view);
 
   /// @brief locks a collection for usage, loading or manifesting it
   /// Note that this will READ lock the collection you have to release the
@@ -418,10 +411,6 @@ struct TRI_vocbase_t {
   int dropCollectionWorker(arangodb::LogicalCollection* collection,
                            DropState& state, double timeout);
 
-  /// @brief creates a new view, worker function
-  std::shared_ptr<arangodb::LogicalView> createViewWorker(
-      arangodb::velocypack::Slice parameters, TRI_voc_cid_t& id);
-
   /// @brief adds a new view
   /// caller must hold _dataSourceLock in write mode or set doLock
   void registerView(
@@ -431,7 +420,7 @@ struct TRI_vocbase_t {
 
   /// @brief removes a view from the global list of views
   /// This function is called when a view is dropped.
-  bool unregisterView(std::shared_ptr<arangodb::LogicalView> view);
+  bool unregisterView(arangodb::LogicalView const& view);
 };
 
 /// @brief extract the _rev attribute from a slice

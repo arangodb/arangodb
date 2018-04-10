@@ -610,7 +610,7 @@ bool State::createCollection(std::string const& name) {
   { VPackObjectBuilder b(&body);
     body.add("type", VPackValue(static_cast<int>(TRI_COL_TYPE_DOCUMENT))); 
     body.add("name", VPackValue(name));
-    body.add("isSystem", VPackValue(LogicalCollection::IsSystemName(name)));
+    body.add("isSystem", VPackValue(TRI_vocbase_t::IsSystemName(name)));
   }
 
   arangodb::LogicalCollection const* collection =

@@ -585,7 +585,8 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(key != nullptr);
 
     bool const isInCluster = trx->state()->isRunningInCluster();
-    if (!isInCluster && cid != _collection->cid()) {
+
+    if (!isInCluster && cid != _collection->id()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;

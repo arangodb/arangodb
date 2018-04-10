@@ -247,8 +247,7 @@ void AgencyFeature::start() {
   if (!feature->agencyPrefix().empty()) {
     arangodb::consensus::Supervision::setAgencyPrefix(
       std::string("/") + feature->agencyPrefix());
-    arangodb::consensus::Job::agencyPrefix
-      = std::string("/") + feature->agencyPrefix();
+    arangodb::consensus::Job::agencyPrefix = feature->agencyPrefix();;
   }
   
   // TODO: Port this to new options handling

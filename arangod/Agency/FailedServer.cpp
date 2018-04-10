@@ -116,23 +116,16 @@ bool FailedServer::start() {
         }
       }
       // Delete todo
-      pending.add(VPackValue(toDoPrefix + _jobId));
-      { VPackObjectBuilder del(&pending);
-        pending.add("op", VPackValue("delete")); }
-
+      addRemoveJobFromSomewhere(pending, "ToDo", _jobId);
       addBlockServer(pending, _server, _jobId);
     } // <------------ Operations
     
     // Preconditions ----------->
     { VPackObjectBuilder prec(&pending);
       // Check that toServer not blocked
-      pending.add(VPackValue(blockedServersPrefix + _server));
-      { VPackObjectBuilder block(&pending);
-        pending.add("oldEmpty", VPackValue(true)); }
+      addPreconditionServerNotBlocked(pending, _server);
       // Status should still be FAILED
-      pending.add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(&pending);
-        pending.add("old", VPackValue("FAILED")); }
+      addPreconditionServerHealth(pending, _server, "FAILED");
     } // <--------- Preconditions
   }
 
@@ -237,9 +230,7 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
     //Preconditions
     { VPackObjectBuilder health(_jb.get());
       // Status should still be BAD
-      _jb->add(VPackValue(healthPrefix + _server + "/Status"));
-      { VPackObjectBuilder old(_jb.get());
-        _jb->add("old", VPackValue("BAD")); }
+      addPreconditionServerHealth(*_jb, _server, "BAD");
       // Target/FailedServers does not already include _server
       _jb->add(VPackValue(failedServersPrefix + "/" + _server));
       { VPackObjectBuilder old(_jb.get());

@@ -167,7 +167,8 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       if (!collectionName.empty() && collectionName[0] >= '0' &&
           collectionName[0] <= '9') {
         // If we have a numeric name we probably have to translate it.
-        CollectionNameResolver resolver(_vocbase);
+        CollectionNameResolver resolver(&_vocbase);
+
         collectionName = resolver.getCollectionName(collectionName);
       }
     }
@@ -220,8 +221,14 @@ void RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
       }
     }
 
-    arangodb::aql::Query query(false, _vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(
+      false,
+      &_vocbase,
+      arangodb::aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);
@@ -293,15 +300,17 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string collectionName;
     {
       VPackSlice const value = slice.get("collection");
+
       if (!value.isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                       "expecting string for <collection>");
         return;
       }
+
       collectionName = value.copyString();
 
       if (!collectionName.empty()) {
-        auto const* col = _vocbase->lookupCollection(collectionName);
+        auto col = _vocbase.lookupCollection(collectionName);
 
         if (col != nullptr && collectionName != col->name()) {
           // user has probably passed in a numeric collection id.
@@ -329,8 +338,14 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     std::string const aql(
         "FOR doc IN @@collection FILTER doc._key IN @keys RETURN doc");
 
-    arangodb::aql::Query query(false, _vocbase, aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(
+      false,
+      &_vocbase,
+      aql::QueryString(aql),
+      bindVars,
+      nullptr,
+      arangodb::aql::PART_MAIN
+    );
 
     registerQuery(&query);
     auto queryResult = query.execute(_queryRegistry);

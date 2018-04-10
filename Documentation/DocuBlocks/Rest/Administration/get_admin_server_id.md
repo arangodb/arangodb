@@ -5,13 +5,14 @@
 @RESTHEADER{GET /_admin/server/id, Return id of a server in a cluster}
 
 @RESTDESCRIPTION
-
-Returns the id of a server in a cluster.
-The id is empty if it is working in single server mode.
+Returns the id of a server in a cluster. The request will fail if the
+server is not running in cluster mode.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-Is returned in all cases.
-@endDocuBlock
+Is returned when the server is running in cluster mode.
 
+@RESTRETURNCODE{500}
+Is returned when the server is not running in cluster mode.
+@endDocuBlock

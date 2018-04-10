@@ -65,7 +65,6 @@ class ExecutionPlan;
 class Query;
 struct QueryProfile;
 class QueryRegistry;
-class V8Executor;
 
 /// @brief equery part
 enum QueryPart { PART_MAIN, PART_DEPENDENT };
@@ -87,12 +86,12 @@ class Query {
         std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
-  virtual ~Query();
+  TEST_VIRTUAL ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
 
@@ -108,7 +107,7 @@ class Query {
     return _profile.get();
   }
 
-  QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
@@ -200,22 +199,19 @@ class Query {
   /// @brief explain an AQL query
   QueryResult explain();
 
-  /// @brief get v8 executor
-  V8Executor* v8Executor();
-  
   /// @brief cache for regular expressions constructed by the query
   RegexCache* regexCache() { return &_regexCache; }
 
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() const { return _engine.get(); }
+  TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void setEngine(ExecutionEngine* engine);
+  TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
   
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
-  virtual transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
@@ -228,6 +224,11 @@ class Query {
 
   /// @brief exits a V8 context
   void exitContext();
+
+  /// @brief check if the query has a V8 context ready for use
+  bool hasEnteredContext() const {
+    return (_contextOwnedByExterior || _context != nullptr);
+  }
 
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
@@ -307,9 +308,6 @@ class Query {
 
   /// @brief pointer to vocbase the query runs in
   TRI_vocbase_t* _vocbase;
-
-  /// @brief V8 code executor
-  std::unique_ptr<V8Executor> _v8Executor;
 
   /// @brief the currently used V8 context
   V8Context* _context;

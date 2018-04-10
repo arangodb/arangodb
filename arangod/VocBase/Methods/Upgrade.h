@@ -63,7 +63,7 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 9)
   };
 
-  typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)>
+  typedef std::function<bool(TRI_vocbase_t*, velocypack::Slice const&)>
       TaskFunction;
   struct Task {
     std::string name;
@@ -84,7 +84,7 @@ struct Upgrade {
   /// @brief executed on startup
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
-  static UpgradeResult startup(TRI_vocbase_t* vocbase, bool upgrade);
+  static UpgradeResult startup(TRI_vocbase_t* vocbase, bool upgrade, bool ignoreFileErrors);
 
  private:
   static std::vector<Task> _tasks;

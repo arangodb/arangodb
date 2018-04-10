@@ -192,7 +192,7 @@ class ExecutionNode {
   }
 
   /// @brief get all dependencies
-  std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
+  TEST_VIRTUAL std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
 
   /// @brief returns the first dependency, or a nullptr if none present
   ExecutionNode* getFirstDependency() const {
@@ -451,6 +451,16 @@ class ExecutionNode {
       ids.emplace(it->id);
     }
     return ids;
+  }
+  
+  /// @brief tests whether the node sets one of the passed variables
+  bool setsVariable(std::unordered_set<Variable const*> const& which) const {
+    for (auto const& v : getVariablesSetHere()) {
+      if (which.find(v) != which.end()) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// @brief setVarsUsedLater
@@ -868,7 +878,7 @@ class LimitNode : public ExecutionNode {
         _fullCount(false) {}
 
   LimitNode(ExecutionPlan* plan, size_t id, size_t limit)
-      : ExecutionNode(plan, id), _offset(0), _limit(limit), _fullCount(false) {}
+      : LimitNode(plan, id, 0, limit) {}
 
   LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 

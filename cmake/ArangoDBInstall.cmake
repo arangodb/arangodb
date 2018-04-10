@@ -75,7 +75,6 @@ install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
-    ${PROJECT_SOURCE_DIR}/js/contrib
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/js
   REGEX       "^.*/server/tests$"                          EXCLUDE
@@ -242,10 +241,12 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     message(FATAL_ERROR, "BUNDLE_OPENSSL set but couldn't locate SSL DLLs. Please set LIB_EAY_RELEASE_DLL and SSL_EAY_RELEASE_DLL")
   endif()
 
+endif()
+
+if (SSL_NUGET)
   install (FILES "${LIB_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
   install (FILES "${SSL_EAY_RELEASE_DLL}" DESTINATION "${CMAKE_INSTALL_BINDIR}/" COMPONENT Libraries)  
 endif()
-
 
 if (THIRDPARTY_SBIN)
   install(FILES ${THIRDPARTY_SBIN}
