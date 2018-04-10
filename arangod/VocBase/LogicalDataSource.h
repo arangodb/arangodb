@@ -125,7 +125,7 @@ class LogicalDataSource {
   uint64_t planVersion() const noexcept { return _planVersion; }
   virtual Result rename(std::string&& newName, bool doSync) = 0;
   Type const& type() const noexcept { return _type; }
-  TRI_vocbase_t* vocbase() const noexcept { return &_vocbase; } // TODO change to reference
+  TRI_vocbase_t& vocbase() const noexcept { return _vocbase; }
 
  protected:
   void deleted(bool deleted) noexcept { _deleted = deleted; }

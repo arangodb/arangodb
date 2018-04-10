@@ -552,8 +552,8 @@ CloneShardDistribution(ClusterInfo* ci, LogicalCollection* col,
   auto result = std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
   TRI_ASSERT(cid != 0);
   std::string cidString = arangodb::basics::StringUtils::itoa(cid);
-  TRI_ASSERT(col->vocbase());
-  auto other = ci->getCollection(col->vocbase()->name(), cidString);
+  TRI_ASSERT(col);
+  auto other = ci->getCollection(col->vocbase().name(), cidString);
 
   // The function guarantees that no nullptr is returned
   TRI_ASSERT(other != nullptr);
@@ -2634,11 +2634,10 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> shards = nullptr;
 
   if (!distributeShardsLike.empty()) {
-
-    CollectionNameResolver resolver(col->vocbase());
+    CollectionNameResolver resolver(&(col->vocbase()));
     TRI_voc_cid_t otherCid =
       resolver.getCollectionIdCluster(distributeShardsLike);
-    
+
     if (otherCid != 0) {
       shards = CloneShardDistribution(ci, col, otherCid);
     } else {
@@ -2703,8 +2702,7 @@ std::shared_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);
 
-  TRI_ASSERT(col->vocbase());
-  auto& dbName = col->vocbase()->name();
+  auto& dbName = col->vocbase().name();
   std::string errorMsg;
   int myerrno = ci->createCollectionCoordinator(
       dbName,
