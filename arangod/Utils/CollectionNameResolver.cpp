@@ -290,9 +290,8 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         std::shared_ptr<LogicalCollection> ci;
 
         try {
-          TRI_ASSERT(it->second->vocbase());
           ci = ClusterInfo::instance()->getCollection(
-            it->second->vocbase()->name(), name
+            it->second->vocbase().name(), name
           );
         }
         catch (...) {
