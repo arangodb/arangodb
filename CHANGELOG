@@ -21,6 +21,7 @@ v3.3.6.1 (XXXX-XX-XX)
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
 
+* fixed internal issue #2215's FailedLeader timeout bug
 
 v3.3.5 (2018-03-28)
 -------------------
