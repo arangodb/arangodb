@@ -123,8 +123,8 @@ function collectionRepresentation (collection, showProperties, showCount, showFi
 function checkCollection (g, collection) {
   if (!g[collection]) {
     throw Object.assign(
-      new httperr.NotFound(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.message),
-      {errorNum: errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code}
+      new httperr.NotFound(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.message),
+      {errorNum: errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code}
     );
   }
 }

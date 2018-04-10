@@ -64,7 +64,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
       _qId(0) {
-  TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(_traverserRegistry != nullptr);
 }
@@ -286,8 +285,14 @@ bool RestAqlHandler::registerSnippets(
 
     // All snippets know all collections.
     // The first snippet will provide proper locking
-    auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                                         (needToLock ? PART_MAIN : PART_DEPENDENT));
+    auto query = std::make_unique<Query>(
+      false,
+      &_vocbase,
+      planBuilder,
+      options,
+      (needToLock ? PART_MAIN : PART_DEPENDENT)
+    );
+
     try {
       query->prepare(_queryRegistry, 0);
     } catch (std::exception const& ex) {
@@ -366,7 +371,8 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   for (auto const& te : VPackArrayIterator(traverserEngines)) {
     try {
       traverser::TraverserEngineID id =
-          _traverserRegistry->createNew(_vocbase, te, needToLock, ttl);
+        _traverserRegistry->createNew(&_vocbase, te, needToLock, ttl);
+
       needToLock = false;
       TRI_ASSERT(id != 0);
       answerBuilder.add(VPackValue(id));
@@ -419,9 +425,13 @@ void RestAqlHandler::createQueryFromVelocyPack() {
       VelocyPackHelper::getStringValue(querySlice, "part", "");
 
   auto planBuilder = std::make_shared<VPackBuilder>(VPackBuilder::clone(plan));
-  auto query =
-      std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                              (part == "main" ? PART_MAIN : PART_DEPENDENT));
+  auto query = std::make_unique<Query>(
+    false,
+    &_vocbase,
+    planBuilder,
+    options,
+    (part == "main" ? PART_MAIN : PART_DEPENDENT)
+  );
 
   try {
     query->prepare(_queryRegistry, 0);
@@ -506,9 +516,15 @@ void RestAqlHandler::parseQuery() {
   }
 
   auto query = std::make_unique<Query>(
-      false, _vocbase, QueryString(queryString),
-      std::shared_ptr<VPackBuilder>(), nullptr, PART_MAIN);
+    false,
+    &_vocbase,
+    QueryString(queryString),
+    std::shared_ptr<VPackBuilder>(),
+    nullptr,
+    PART_MAIN
+  );
   QueryResult res = query->parse();
+
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed to instantiate the Query: " << res.details;
@@ -583,8 +599,15 @@ void RestAqlHandler::explainQuery() {
       VPackBuilder::clone(querySlice.get("options")));
 
   auto query = std::make_unique<Query>(
-      false, _vocbase, QueryString(queryString), bindVars, options, PART_MAIN);
+    false,
+    &_vocbase,
+    QueryString(queryString),
+    bindVars,
+    options,
+    PART_MAIN
+  );
   QueryResult res = query->explain();
+
   if (res.code != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed to instantiate the Query: " << res.details;
@@ -658,8 +681,13 @@ void RestAqlHandler::createQueryFromString() {
       VPackBuilder::clone(querySlice.get("options")));
 
   auto query = std::make_unique<Query>(
-      false, _vocbase, QueryString(queryString), bindVars, options,
-      (part == "main" ? PART_MAIN : PART_DEPENDENT));
+    false,
+    &_vocbase,
+    QueryString(queryString),
+    bindVars,
+    options,
+    (part == "main" ? PART_MAIN : PART_DEPENDENT)
+  );
 
   try {
     query->prepare(_queryRegistry, 0);
@@ -727,30 +755,16 @@ void RestAqlHandler::createQueryFromString() {
 // "shutdown".
 // The body must be a Json with the following attributes:
 // For the "getSome" operation one has to give:
-//   "atLeast":
-//   "atMost": both must be positive integers, the cursor returns never
-//             more than "atMost" items and tries to return at least
-//             "atLeast". Note that it is possible to return fewer than
-//             "atLeast", for example if there are only fewer items
-//             left. However, the implementation may return fewer items
-//             than "atLeast" for internal reasons, for example to avoid
-//             excessive copying. The result is the JSON representation of an
-//             AqlItemBlock.
-//             If "atLeast" is not given it defaults to 1, if "atMost" is not
-//             given it defaults to ExecutionBlock::DefaultBatchSize.
+//   "atMost": must be a positive integer, the cursor returns never
+//             more than "atMost" items. The result is the JSON representation 
+//             of an AqlItemBlock.
+//             If "atMost" is not given it defaults to ExecutionBlock::DefaultBatchSize.
 // For the "skipSome" operation one has to give:
-//   "atLeast":
-//   "atMost": both must be positive integers, the cursor skips never
-//             more than "atMost" items and tries to skip at least
-//             "atLeast". Note that it is possible to skip fewer than
-//             "atLeast", for example if there are only fewer items
-//             left. However, the implementation may skip fewer items
-//             than "atLeast" for internal reasons, for example to avoid
-//             excessive copying. The result is a JSON object with a
+//   "atMost": must be a positive integer, the cursor skips never
+//             more than "atMost" items. The result is a JSON object with a
 //             single attribute "skipped" containing the number of
 //             skipped items.
-//             If "atLeast" is not given it defaults to 1, if "atMost" is not
-//             given it defaults to ExecutionBlock::DefaultBatchSize.
+//             If "atMost" is not given it defaults to ExecutionBlock::DefaultBatchSize.
 // For the "skip" operation one should give:
 //   "number": must be a positive integer, the cursor skips as many items,
 //             possibly exhausting the cursor.
@@ -781,26 +795,29 @@ void RestAqlHandler::useQuery(std::string const& operation,
   TRI_ASSERT(query->engine() != nullptr);
 
   std::shared_ptr<VPackBuilder> queryBuilder = parseVelocyPackBody();
+
   if (queryBuilder == nullptr) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
+
     return;
   }
 
   try {
     handleUseQuery(operation, query, queryBuilder->slice());
+
     if (_qId != 0) {
       try {
-        _queryRegistry->close(_vocbase, _qId);
+        _queryRegistry->close(&_vocbase, _qId);
       } catch (...) {
         // ignore errors on unregistering
         // an error might occur if "shutdown" is called
       }
     }
   } catch (arangodb::basics::Exception const& ex) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
 
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of Query: "
                                             << ex.what();
@@ -808,7 +825,7 @@ void RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed during use of Query: Unknown exception occurred";
 
@@ -894,7 +911,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
       answerBody.add("hasMore", VPackValue(hasMore));
     } else {
-      _queryRegistry->close(_vocbase, _qId);
+      _queryRegistry->close(&_vocbase, _qId);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "referenced query not found";
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return;
@@ -902,11 +919,11 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
 
     answerBody.add("error", VPackValue(false));
   } catch (arangodb::basics::Exception const& ex) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: " << ex.message();
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
 
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed during use of query: "
                                             << ex.what();
@@ -914,7 +931,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   ex.what());
   } catch (...) {
-    _queryRegistry->close(_vocbase, _qId);
+    _queryRegistry->close(&_vocbase, _qId);
 
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "failed during use of query: Unknown exception occurred";
@@ -923,7 +940,7 @@ void RestAqlHandler::getInfoQuery(std::string const& operation,
                   "an unknown exception occurred");
   }
 
-  _queryRegistry->close(_vocbase, _qId);
+  _queryRegistry->close(&_vocbase, _qId);
 
   sendResponse(rest::ResponseCode::OK, answerBody.slice(),
                query->trx()->transactionContext().get());
@@ -1016,7 +1033,7 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
   // probably need to cycle here until we can get hold of the query
   while (++iterations < MaxIterations) {
     try {
-      query = _queryRegistry->open(_vocbase, _qId);
+      query = _queryRegistry->open(&_vocbase, _qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
       break;
@@ -1080,13 +1097,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
-        auto atLeast =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         std::unique_ptr<AqlItemBlock> items;
         if (shardId.empty()) {
-          items.reset(query->engine()->getSome(atLeast, atMost));
+          items.reset(query->engine()->getSome(atMost));
         } else {
           auto block = static_cast<BlockWithClients*>(query->engine()->root());
           if (block->getPlanNode()->getType() != ExecutionNode::SCATTER &&
@@ -1094,7 +1109,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                            "unexpected node type");
           }
-          items.reset(block->getSomeForShard(atLeast, atMost, shardId));
+          items.reset(block->getSomeForShard(atMost, shardId));
         }
         if (items.get() == nullptr) {
           answerBuilder.add("exhausted", VPackValue(true));
@@ -1110,14 +1125,12 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
         }
       } else if (operation == "skipSome") {
-        auto atLeast =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atLeast", 1);
         auto atMost = VelocyPackHelper::getNumericValue<size_t>(
             querySlice, "atMost", ExecutionBlock::DefaultBatchSize());
         size_t skipped;
         try {
           if (shardId.empty()) {
-            skipped = query->engine()->skipSome(atLeast, atMost);
+            skipped = query->engine()->skipSome(atMost);
           } else {
             auto block =
                 static_cast<BlockWithClients*>(query->engine()->root());
@@ -1126,7 +1139,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
               THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                              "unexpected node type");
             }
-            skipped = block->skipSomeForShard(atLeast, atMost, shardId);
+            skipped = block->skipSomeForShard(atMost, shardId);
           }
         } catch (std::exception const& ex) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1234,10 +1247,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           query->addWarningsToVelocyPackObject(answerBuilder);
 
           // return the query to the registry
-          _queryRegistry->close(_vocbase, _qId);
+          _queryRegistry->close(&_vocbase, _qId);
 
           // delete the query from the registry
-          _queryRegistry->destroy(_vocbase, _qId, errorCode);
+          _queryRegistry->destroy(&_vocbase, _qId, errorCode);
           _qId = 0;
         } catch (arangodb::basics::Exception const& ex) {
           generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("shutdown lead to an exception: ") + ex.what());

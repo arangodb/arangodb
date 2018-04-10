@@ -208,12 +208,15 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
-      _nolockHeaderSet(nullptr) {}
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(
+    GeneralRequest* request,
+    GeneralResponse* response
+): RestBaseHandler(request, response),
+   _context(*static_cast<VocbaseContext*>(request->requestContext())),
+   _vocbase(_context.vocbase()),
+   _nolockHeaderSet(nullptr) {
+  TRI_ASSERT(request->requestContext());
+}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
@@ -353,7 +356,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
 
@@ -428,7 +432,7 @@ void RestVocbaseBaseHandler::generateTransactionError(
 
   int code = result.errorNumber();
   switch (code) {
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,

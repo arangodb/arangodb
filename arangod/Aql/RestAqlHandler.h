@@ -86,14 +86,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // <operation>: can be "getSome" or "skip".
   // The body must be a Json with the following attributes:
   // For the "getSome" operation one has to give:
-  //   "atLeast":
-  //   "atMost": both must be positive integers, the cursor returns never
-  //             more than "atMost" items and tries to return at least
-  //             "atLeast". Note that it is possible to return fewer than
-  //             "atLeast", for example if there are only fewer items
-  //             left. However, the implementation may return fewer items
-  //             than "atLeast" for internal reasons, for example to avoid
-  //             excessive copying. The result is the JSON representation of an
+  //   "atMost": must be a positiv integers, the cursor returns never
+  //             more than "atMost" items.
+  //             The result is the JSON representation of an
   //             AqlItemBlock.
   // For the "skip" operation one has to give:
   //   "number": must be a positive integer, the cursor skips as many items,
@@ -162,9 +157,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  private:
   // dig out vocbase from context and query from ID, handle errors
   bool findQuery(std::string const& idString, Query*& query);
-
-  // name of the queue
-  static std::string const QUEUE_NAME;
 
   // our query registry
   QueryRegistry* _queryRegistry;

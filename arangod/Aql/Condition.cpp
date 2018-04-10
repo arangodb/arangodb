@@ -317,7 +317,7 @@ static inline void clearAttributeAccess(
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
-    namespace {
+    /*namespace {
     size_t countNodes(AstNode* node) {
       if (node == nullptr) {
         return 0;
@@ -331,7 +331,7 @@ Condition::Condition(Ast* ast)
 
       return sum;
     }
-    }
+    }*/
 
 /// @brief destroy the condition
 Condition::~Condition() {
@@ -1156,6 +1156,8 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
     // return string representation
     return node->toString();
   };
+            
+  std::string temp;
 
   try {
     for (size_t i = 0; i < n; ++i) {
@@ -1171,18 +1173,22 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           clearAttributeAccess(result);
 
           if (lhs->isAttributeAccessForVariable(result, isFromTraverser)) {
-            if (rhs->isConstant()) {
-              ConditionPart indexCondition(result.first, result.second, operand,
-                                           ATTRIBUTE_LEFT, nullptr);
+            temp.clear();
+            TRI_AttributeNamesToString(result.second, temp);
+            if (temp == me.attributeName) {
+              if (rhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second, operand,
+                                            ATTRIBUTE_LEFT, nullptr);
 
-              if (me.isCoveredBy(indexCondition, false)) {
+                if (me.isCoveredBy(indexCondition, false)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else if (me.operatorType == operand->type &&
+                       normalize(me.valueNode) == normalize(rhs)) {
                 return true;
               }
-            }
-            // non-constant condition
-            else if (me.operatorType == operand->type &&
-                     normalize(me.valueNode) == normalize(rhs)) {
-              return true;
             }
           }
         }
@@ -1192,18 +1198,22 @@ bool Condition::CanRemove(ExecutionPlan const* plan, ConditionPart const& me,
           clearAttributeAccess(result);
 
           if (rhs->isAttributeAccessForVariable(result, isFromTraverser)) {
-            if (lhs->isConstant()) {
-              ConditionPart indexCondition(result.first, result.second, operand,
-                                           ATTRIBUTE_RIGHT, nullptr);
+            temp.clear();
+            TRI_AttributeNamesToString(result.second, temp);
+            if (temp == me.attributeName) {
+              if (lhs->isConstant()) {
+                ConditionPart indexCondition(result.first, result.second, operand,
+                                            ATTRIBUTE_RIGHT, nullptr);
 
-              if (me.isCoveredBy(indexCondition, true)) {
+                if (me.isCoveredBy(indexCondition, true)) {
+                  return true;
+                }
+              }
+              // non-constant condition
+              else if (me.operatorType == operand->type &&
+                      normalize(me.valueNode) == normalize(lhs)) {
                 return true;
               }
-            }
-            // non-constant condition
-            else if (me.operatorType == operand->type &&
-                     normalize(me.valueNode) == normalize(lhs)) {
-              return true;
             }
           }
         }

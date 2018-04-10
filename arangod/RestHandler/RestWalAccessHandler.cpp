@@ -72,7 +72,7 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   bool found = false;
   std::string const& value1 = _request->value("global", found);
   if (found && StringUtils::boolean(value1)) {
-    if (!_vocbase->isSystem()) {
+    if (!_vocbase.isSystem()) {
       generateError(
           rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
           "global tailing is only possible from within _system database");
@@ -80,16 +80,16 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     }
   } else {
     // filter for collection
-    filter.vocbase = _vocbase->id();
+    filter.vocbase = _vocbase.id();
 
     // extract collection
     std::string const& value2 = _request->value("collection", found);
     if (found) {
-      auto c = _vocbase->lookupCollection(value2);
+      auto c = _vocbase.lookupCollection(value2);
 
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         return false;
       }
 
@@ -248,7 +248,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                   "invalid from/to values");
     return;
   }
-  
+
   // check for serverId
   TRI_server_id_t serverId = _request->parsedValue("serverId", static_cast<TRI_server_id_t>(0));
   // check if a barrier id was specified in request
@@ -258,29 +258,29 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   if (!parseFilter(filter)) {
     return;
   }
-  
+
   grantTemporaryRights();
 
-  size_t chunkSize = 1024 * 1024;  
+  size_t chunkSize = 1024 * 1024;
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
     chunkSize = std::min((size_t)128 * 1024 * 1024, chunkSize);
   }
-  
+
   WalAccessResult result;
-  std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
+  std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t* vocbase) {
     auto const& it = handlers.find(vocbase->id());
     if (it == handlers.end()) {
-      auto const& res = handlers.emplace(vocbase->id(), MyTypeHandler(vocbase));
-      opts.customTypeHandler = &(res.first->second);
+      auto const& res = handlers.emplace(vocbase->id(), std::make_unique<MyTypeHandler>(vocbase));
+      opts.customTypeHandler = res.first->second.get();
     } else {
-      opts.customTypeHandler = &(it->second);
+      opts.customTypeHandler = it->second.get();
     }
   };
-  
+
   size_t length = 0;
   if (useVst) {
     result =
@@ -349,7 +349,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "No more data in WAL after " << tickStart;
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
-    
+
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
     vocbase->updateReplicationClient(serverId, tickStart, InitialSyncer::defaultBatchTimeout);
   });

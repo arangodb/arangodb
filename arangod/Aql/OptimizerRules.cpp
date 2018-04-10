@@ -1074,8 +1074,15 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // no need to run this specific rule again on the cloned plan
         opt->addPlan(std::move(newPlan), rule, true);
       }
+    } else if (groupVariables.empty() && 
+               collectNode->aggregateVariables().empty() &&
+               collectNode->count()) {
+      collectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
+      collectNode->specialized();
+      modified = true;
+      continue;
     }
-
+      
     // mark node as specialized, so we do not process it again
     collectNode->specialized();
 
@@ -3069,6 +3076,78 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
+void arangodb::aql::collectInClusterRule(Optimizer* opt,
+                                         std::unique_ptr<ExecutionPlan> plan,
+                                         OptimizerRule const* rule) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::COLLECT, true);
+
+  for (auto& node : nodes) {
+    // found a node we need to replace in the plan
+
+    auto const& deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    auto collectNode = static_cast<CollectNode*>(node);
+    
+    if (collectNode->aggregationMethod() != CollectOptions::CollectMethod::COUNT) {
+      // we can only optimize count so far
+      continue;
+    }
+
+    // look for next remote node
+    GatherNode* gatherNode = nullptr;
+    auto current = node->getFirstDependency();
+
+    while (current != nullptr) {
+      if (current->getType() == ExecutionNode::GATHER) {
+        gatherNode = static_cast<GatherNode*>(current);
+      } else if (current->getType() == ExecutionNode::REMOTE) {
+        auto previous = current->getFirstDependency();
+        // now we are on a DB server
+        if (previous != nullptr) {
+          // add a new CollectNode on the DB server to do the actual counting
+          auto outVariable = plan->getAst()->variables()->createTemporaryVariable();
+          auto dbCollectNode = new CollectNode(plan.get(), plan->nextId(), collectNode->getOptions(), collectNode->groupVariables(), collectNode->aggregateVariables(), nullptr, outVariable, std::vector<Variable const*>(), collectNode->variableMap(), true, false);
+      
+          plan->registerNode(dbCollectNode);
+      
+          dbCollectNode->addDependency(previous);
+          current->replaceDependency(previous, dbCollectNode);
+          
+          dbCollectNode->specialized();
+          dbCollectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
+
+          // re-use the existing CollectNode on the coordinator to aggregate the
+          // counts of the DB servers
+          std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+          aggregateVariables.emplace_back(std::make_pair(collectNode->outVariable(), std::make_pair(outVariable, "SUM")));
+
+          collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
+          collectNode->count(false);
+          collectNode->setAggregateVariables(aggregateVariables);
+          collectNode->clearOutVariable();
+
+          if (gatherNode != nullptr) {
+            gatherNode->clearElements();
+          }
+
+          wasModified = true;
+        }
+        break;
+      }
+
+      current = current->getFirstDependency();
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, wasModified);
+}
+
 /// @brief move filters up into the cluster distribution part of the plan
 /// this rule modifies the plan in place
 /// filters are moved as far up in the plan as possible to make result sets
@@ -4860,7 +4939,7 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
   if (node->numMembers() != 2) {
     return rv;
   }
-
+  
   AstNode* first = node->getMember(0);
   AstNode* second = node->getMember(1);
 
@@ -4876,15 +4955,16 @@ GeoIndexInfo isGeoFilterExpression(AstNode* node, AstNode* expressionParent) {
     return dist_fun;
   };
 
-  rv = eval_stuff(dist_first, lessEqual,
-                  isDistanceFunction(first, expressionParent),
-                  second);
-  if (!rv) {
+  if (dist_first) {
+    rv = eval_stuff(dist_first, lessEqual,
+                    isDistanceFunction(first, expressionParent),
+                    second);
+  }
+  if (!rv && !dist_first) {
     rv = eval_stuff(dist_first, lessEqual,
                     isDistanceFunction(second, expressionParent),
                     first);
   }
-
   if (rv) {
     // this must be set after checking if the node contains a distance node.
     rv.expressionNode = node;
@@ -5344,8 +5424,19 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           break;
         }
         case EN::FILTER: {
-          filterInfo =
-              identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+          if (filterInfo) {
+            // do not overwrite an already found condition, but test first if the
+            // new condition is actually valid
+            GeoIndexInfo test;
+            test =
+                identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+            if (test) {
+              filterInfo = test;
+            }
+          } else {
+            filterInfo =
+                identifyGeoOptimizationCandidate(EN::FILTER, plan.get(), current);
+          }
           break;
         }
         case EN::ENUMERATE_COLLECTION: {

@@ -115,7 +115,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
   }
 
   rocksutils::globalRocksEngine()->addCollectionMapping(
-    _objectId, _logicalCollection->vocbase()->id(), _logicalCollection->id()
+    _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );
 
   if (_cacheEnabled) {
@@ -136,7 +136,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _cacheEnabled(
           static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
   rocksutils::globalRocksEngine()->addCollectionMapping(
-    _objectId, _logicalCollection->vocbase()->id(), _logicalCollection->id()
+    _objectId, _logicalCollection->vocbase().id(), _logicalCollection->id()
   );
 
   if (_cacheEnabled) {
@@ -170,9 +170,11 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice,
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();
-  } else if (useCache()) {
+  } else {
+    // will do nothing if cache is not present
     destroyCache();
     primaryIndex()->destroyCache();
+    TRI_ASSERT(_cache.get() == nullptr);
   }
 
   // nothing else to do
@@ -529,11 +531,11 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   VPackBuilder indexInfo;
   idx->toVelocyPack(indexInfo, false, true);
   res = static_cast<RocksDBEngine*>(engine)->writeCreateCollectionMarker(
-    _logicalCollection->vocbase()->id(),
+    _logicalCollection->vocbase().id(),
     _logicalCollection->id(),
     builder.slice(),
     RocksDBLogValue::IndexCreate(
-      _logicalCollection->vocbase()->id(),
+      _logicalCollection->vocbase().id(),
       _logicalCollection->id(),
       indexInfo.slice()
     )
@@ -616,11 +618,11 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
         static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
     TRI_ASSERT(engine != nullptr);
     int res = engine->writeCreateCollectionMarker(
-      _logicalCollection->vocbase()->id(),
+      _logicalCollection->vocbase().id(),
       _logicalCollection->id(),
       builder.slice(),
       RocksDBLogValue::IndexCreate(
-        _logicalCollection->vocbase()->id(),
+        _logicalCollection->vocbase().id(),
         _logicalCollection->id(),
         indexInfo.slice()
       )
@@ -686,11 +688,11 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
 
         // log this event in the WAL and in the collection meta-data
         int res = engine->writeCreateCollectionMarker(
-          _logicalCollection->vocbase()->id(),
+          _logicalCollection->vocbase().id(),
           _logicalCollection->id(),
           builder.slice(),
           RocksDBLogValue::IndexDrop(
-            _logicalCollection->vocbase()->id(), _logicalCollection->id(), iid
+            _logicalCollection->vocbase().id(), _logicalCollection->id(), iid
           )
         );
 
@@ -1025,10 +1027,9 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                         options.mergeObjects, options.keepNull, *builder.get(),
                         options.isRestore, revisionId);
   if (_isDBServer) {
-    TRI_ASSERT(_logicalCollection->vocbase());
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection->vocbase()->name(),
+          _logicalCollection->vocbase().name(),
           trx->resolver()->getCollectionNameCluster(
             _logicalCollection->planId()
           ),
@@ -1134,10 +1135,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                       revisionId);
 
   if (_isDBServer) {
-    TRI_ASSERT(_logicalCollection->vocbase());
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(
-          _logicalCollection->vocbase()->name(),
+          _logicalCollection->vocbase().name(),
           trx->resolver()->getCollectionNameCluster(
             _logicalCollection->planId()
           ),
@@ -1358,12 +1358,12 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   }
 
   std::shared_ptr<VPackBuilder> builder = idx->toVelocyPack(false, true);
-  auto vocbase = _logicalCollection->vocbase();
+  auto& vocbase = _logicalCollection->vocbase();
   auto collectionId = _logicalCollection->id();
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(vocbase, collectionId, idx->id(), data);
+  engine->createIndex(&vocbase, collectionId, idx->id(), data);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1852,7 +1852,8 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  auto ctx =
+    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
   SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -1986,7 +1987,8 @@ void RocksDBCollection::recalculateIndexEstimates(
   // method or endpoint unless the implementation changes
 
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  auto ctx =
+    transaction::StandaloneContext::Create(&(_logicalCollection->vocbase()));
   arangodb::SingleCollectionTransaction trx(
     ctx, _logicalCollection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -2045,6 +2047,7 @@ void RocksDBCollection::createCache() const {
   TRI_ASSERT(_cacheEnabled);
   TRI_ASSERT(_cache.get() == nullptr);
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Creating document cache";
   _cache = CacheManagerFeature::MANAGER->createCache(
       cache::CacheType::Transactional);
   _cachePresent = (_cache.get() != nullptr);
@@ -2057,13 +2060,11 @@ void RocksDBCollection::destroyCache() const {
   }
   TRI_ASSERT(CacheManagerFeature::MANAGER != nullptr);
   // must have a cache...
-  TRI_ASSERT(_cacheEnabled);
-  TRI_ASSERT(_cachePresent);
   TRI_ASSERT(_cache.get() != nullptr);
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "Destroying document cache";
   CacheManagerFeature::MANAGER->destroyCache(_cache);
   _cache.reset();
   _cachePresent = false;
-  TRI_ASSERT(_cacheEnabled);
 }
 
 // blacklist given key from transactional cache

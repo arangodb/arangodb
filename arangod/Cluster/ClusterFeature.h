@@ -50,7 +50,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyEndpoints;
   }
 
-  std::string agencyPrefix() {
+  std::string agencyPrefix() const {
     return _agencyPrefix;
   }
 
@@ -61,6 +61,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::string _myAddress;
   uint32_t _systemReplicationFactor = 2;
   bool _createWaitsForSyncReplication = true;
+  double _indexCreationTimeout = 3600.0;
 
  private:
   void reportRole(ServerState::RoleEnum);
@@ -79,7 +80,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   };
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
+  bool createWaitsForSyncReplication() const { return _createWaitsForSyncReplication; };
+  double indexCreationTimeout() const { return _indexCreationTimeout; }
   uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
   void stop() override final;
@@ -92,8 +94,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
-  // FIXME: remove in > 3.3
-  std::string _myLocalInfo;
 };
 }
 

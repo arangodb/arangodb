@@ -77,7 +77,7 @@ std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
   return indexes;
 }
 
-arangodb::iresearch::IResearchLink* lookupLink(
+std::shared_ptr<arangodb::iresearch::IResearchLink> lookupLink(
     TRI_vocbase_t& vocbase,
     TRI_voc_cid_t cid,
     TRI_idx_iid_t iid
@@ -89,20 +89,22 @@ arangodb::iresearch::IResearchLink* lookupLink(
     return nullptr;
   }
 
-  auto indexes = col->getIndexes();
+  for (auto& index: col->getIndexes()) {
+    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an IRresearch Link
+    }
 
-  auto it = std::find_if(
-    indexes.begin(), indexes.end(),
-    [iid](std::shared_ptr<arangodb::Index> const& idx) {
-      return idx->id() == iid && idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK;
-  });
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link =
+      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
 
-  // TODO FIXME find a better way to retrieve an iResearch Link
-  // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    if (link && link->id() == iid) {
+      return link; // found required link
+    }
+  }
 
-  return it == indexes.end()
-    ? nullptr
-    : dynamic_cast<arangodb::iresearch::IResearchLink*>(it->get());
+  return nullptr;
 }
 
 void ensureLink(
@@ -173,11 +175,11 @@ void ensureLink(
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
         << "Cannot create index for the collection '" << cid
         << "' in the database '" << dbId << "' : "
-        << TRI_errno_string(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        << TRI_errno_string(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
-  auto* link = lookupLink(*vocbase, cid, iid);
+  auto link = lookupLink(*vocbase, cid, iid);
 
   if (!link) {
     LOG_TOPIC(TRACE, arangodb::iresearch::IResearchFeature::IRESEARCH)
@@ -191,13 +193,47 @@ void ensureLink(
       << "found create index marker, databaseId: '" << dbId
       << "', collectionId: '" << cid << "'";
 
-  // re-insert link
-  if (link->recover().fail()) {
+  arangodb::velocypack::Builder json;
+
+  json.openObject();
+
+  if (!link->json(json, false)) {
     LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "Failed to recover the link '" << iid
+        << "Failed to generate jSON definition for link '" << iid
         << "' to the collection '" << cid
         << "' in the database '" << dbId;
     return;
+  }
+
+  json.close();
+
+  static std::vector<std::string> const EMPTY;
+  arangodb::SingleCollectionTransaction trx(
+    arangodb::transaction::StandaloneContext::Create(vocbase),
+    col->id(),
+    arangodb::AccessMode::Type::EXCLUSIVE
+  );
+
+  auto res = trx.begin();
+  bool created;
+
+  if (!res.ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Failed to begin transaction while recovering link '" << iid
+        << "' to the collection '" << cid
+        << "' in the database '" << dbId;
+    return;
+  }
+
+  // re-insert link
+  if (!col->dropIndex(link->id())
+      || !col->createIndex(&trx, json.slice(), created)
+      || !created
+      || !trx.commit().ok()) {
+    LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Failed to recreate the link '" << iid
+        << "' to the collection '" << cid
+        << "' in the database '" << dbId;
   }
 }
 
@@ -216,9 +252,9 @@ void dropCollectionFromAllViews(
       }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+      auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #else
-      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+      auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #endif
 
       if (!view) {
@@ -254,7 +290,7 @@ void dropCollectionFromView(
       return;
     }
 
-    auto* link = lookupLink(*vocbase, collectionId, indexId);
+    auto link = lookupLink(*vocbase, collectionId, indexId);
 
     if (link) {
       // don't remove the link if it's there
@@ -274,9 +310,9 @@ void dropCollectionFromView(
     }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #else
-    auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    auto* view = static_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
 #endif
 
     if (!view) {

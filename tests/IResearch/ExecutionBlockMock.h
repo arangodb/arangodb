@@ -94,7 +94,6 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   ) override;
 
   arangodb::aql::AqlItemBlock* getSome(
-    size_t atLeast,
     size_t atMost
   ) override;
 
@@ -102,7 +101,6 @@ class ExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.
   size_t skipSome(
-    size_t atLeast,
     size_t atMost
   ) override;
 

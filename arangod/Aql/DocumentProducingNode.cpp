@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentProducingNode.h"
+#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Variable.h"
 
@@ -56,6 +57,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
 void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
+      
+  builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
   
   if (!_projection.empty()) {
     builder.add("projection", VPackValue(VPackValueType::Array));

@@ -48,7 +48,6 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesTransactionManager.cpp
   MMFiles/MMFilesTransactionState.cpp
   MMFiles/MMFilesV8Functions.cpp
-  MMFiles/MMFilesView.cpp
   MMFiles/MMFilesWalAccess.cpp
   MMFiles/MMFilesWalLogfile.cpp
   MMFiles/MMFilesWalRecoverState.cpp

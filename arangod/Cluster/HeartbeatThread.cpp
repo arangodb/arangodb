@@ -452,6 +452,7 @@ void HeartbeatThread::runSingleServer() {
     try {
       // send our state to the agency.
       // we don't care if this fails
+      sendState();
       double const timeout = 1.0;
 
       // check current local version of database objects version, and bump
@@ -468,7 +469,7 @@ void HeartbeatThread::runSingleServer() {
         if (res.successful()) {
           LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "successfully increased plan version in agency";
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "could not increase version number in agency";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not increase version number in agency";
         }
       }
 

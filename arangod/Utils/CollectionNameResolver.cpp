@@ -27,6 +27,7 @@
 #include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -155,15 +156,19 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionId(
 
 arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
     std::string const& name) const {
-  auto it = _resolvedNames.find(name);
+  {
+    READ_LOCKER(locker, _nameLock);
+    auto it = _resolvedNames.find(name);
 
-  if (it != _resolvedNames.end()) {
-    return (*it).second;
+    if (it != _resolvedNames.end()) {
+      return (*it).second;
+    }
   }
 
   auto* collection = _vocbase->lookupCollection(name).get();
 
   if (collection != nullptr) {
+    WRITE_LOCKER(locker, _nameLock);
     _resolvedNames.emplace(name, collection);
   }
 
@@ -177,14 +182,20 @@ arangodb::LogicalCollection const* CollectionNameResolver::getCollectionStruct(
 //////////////////////////////////////////////////////////////////////////////
 
 std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
-  auto it = _resolvedIds.find(cid);
+  {
+    READ_LOCKER(locker, _idLock);
+    auto it = _resolvedIds.find(cid);
 
-  if (it != _resolvedIds.end()) {
-    return (*it).second;
+    if (it != _resolvedIds.end()) {
+      return (*it).second;
+    }
   }
 
   std::string name = localNameLookup(cid);
-  _resolvedIds.emplace(cid, name);
+  {
+    WRITE_LOCKER(locker, _idLock);
+    _resolvedIds.emplace(cid, name);
+  }
 
   return name;
 }
@@ -197,10 +208,13 @@ std::string CollectionNameResolver::getCollectionName(TRI_voc_cid_t cid) const {
 std::string CollectionNameResolver::getCollectionNameCluster(
     TRI_voc_cid_t cid) const {
   // First check the cache:
-  auto it = _resolvedIds.find(cid);
+  {
+    READ_LOCKER(locker, _idLock);
+    auto it = _resolvedIds.find(cid);
 
-  if (it != _resolvedIds.end()) {
-    return (*it).second;
+    if (it != _resolvedIds.end()) {
+      return (*it).second;
+    }
   }
 
   if (!ServerState::isClusterRole(_serverRole)) {
@@ -209,25 +223,29 @@ std::string CollectionNameResolver::getCollectionNameCluster(
   }
 
   std::string name;
-  
+
   if (ServerState::isDBServer(_serverRole)) {
     // This might be a local system collection:
     name = localNameLookup(cid);
     if (name != "_unknown") {
+      WRITE_LOCKER(locker, _idLock);
       _resolvedIds.emplace(cid, name);
       return name;
     }
   }
- 
+
   int tries = 0;
 
   while (tries++ < 2) {
     try {
       auto ci = ClusterInfo::instance()->getCollection(
           _vocbase->name(), arangodb::basics::StringUtils::itoa(cid));
-    
+
       name = ci->name();
-      _resolvedIds.emplace(cid, name);
+      {
+        WRITE_LOCKER(locker, _idLock);
+        _resolvedIds.emplace(cid, name);
+      }
       return name;
     } catch (...) {
       // most likely collection not found. now try again
@@ -272,9 +290,8 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         std::shared_ptr<LogicalCollection> ci;
 
         try {
-          TRI_ASSERT(it->second->vocbase());
           ci = ClusterInfo::instance()->getCollection(
-            it->second->vocbase()->name(), name
+            it->second->vocbase().name(), name
           );
         }
         catch (...) {
@@ -287,15 +304,14 @@ std::string CollectionNameResolver::localNameLookup(TRI_voc_cid_t cid) const {
         }
       }
     }
-  } else {
-    // exactly as in the non-cluster case
-    name = _vocbase->collectionName(cid);
+
+    return !name.empty() ? name : std::string("_unknown");
   }
 
-  if (name.empty()) {
-    name = "_unknown";
-  }
-  return name;
+  // exactly as in the non-cluster case
+  auto collection = _vocbase->lookupCollection(cid);
+
+  return collection ? collection->name() : std::string("_unknown");
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
@@ -324,7 +340,7 @@ std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
 }
 
 std::shared_ptr<LogicalDataSource> CollectionNameResolver::getDataSource(
-  std::string const& nameOrId
+    std::string const& nameOrId
 ) const noexcept {
   auto itr = _dataSourceByName.find(nameOrId);
 
@@ -399,7 +415,9 @@ std::string CollectionNameResolver::getViewNameCluster(
 ) const {
   if (!ServerState::isClusterRole(_serverRole)) {
     // This handles the case of a standalone server
-    return _vocbase->viewName(cid);
+    auto view = _vocbase->lookupView(cid);
+
+    return view ? view->name() : StaticStrings::Empty;
   }
 
   // FIXME not supported

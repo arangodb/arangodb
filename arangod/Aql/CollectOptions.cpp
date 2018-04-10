@@ -69,6 +69,9 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
   if (method == "distinct") {
     return CollectMethod::DISTINCT;
   }
+  if (method == "count") {
+    return CollectMethod::COUNT;
+  }
 
   return CollectMethod::UNDEFINED;
 }
@@ -84,6 +87,9 @@ std::string CollectOptions::methodToString(
   }
   if (method == CollectMethod::DISTINCT) {
     return std::string("distinct");
+  }
+  if (method == CollectMethod::COUNT) {
+    return std::string("count");
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

@@ -198,14 +198,14 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
         auto colCopy = col->clone();
         collection = colCopy.release();
       } catch (...) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
     } else {
       collection = resolver->getCollectionStruct(collectionName);
     }
     if (collection == nullptr) {
       // collection not found
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
   }
   TRI_ASSERT(collection != nullptr);
@@ -310,7 +310,7 @@ static void ExistsVocbaseVPack(
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    vocbase = col->vocbase();
+    vocbase = &(col->vocbase());
   } else {
     // called as db._exists()
     vocbase = GetContextVocBase(isolate);
@@ -403,11 +403,8 @@ static void DocumentVocbaseCol(
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  TRI_vocbase_t* vocbase = col->vocbase();
+
   collectionName = col->name();
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
 
   VPackBuilder searchBuilder;
 
@@ -437,11 +434,11 @@ static void DocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
-
+  auto transactionContext =
+    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
+
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -605,13 +602,8 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  TRI_vocbase_t* vocbase = col->vocbase();
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
 
   std::string collectionName = col->name();
-
   VPackBuilder searchBuilder;
 
   auto workOnOneDocument = [&](v8::Local<v8::Value> const searchValue, bool isBabies) {
@@ -642,8 +634,10 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackSlice toRemove = searchBuilder.slice();
   
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  auto transactionContext =
+    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
+
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -818,12 +812,6 @@ static void JS_BinaryDocumentVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_vocbase_t* vocbase = col->vocbase();
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
   VPackBuilder searchBuilder;
   v8::Local<v8::Value> const searchValue = args[0];
   collectionName = col->name();
@@ -843,10 +831,8 @@ static void JS_BinaryDocumentVocbaseCol(
   }
 
   VPackSlice search = searchBuilder.slice();
-
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(vocbase, true);
-
+      std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
   SingleCollectionTransaction trx(transactionContext, collectionName,
                                   AccessMode::Type::READ);
 
@@ -994,7 +980,7 @@ static void JS_FiguresVocbaseCol(
   }
 
   SingleCollectionTransaction trx(
-    transaction::V8Context::Create(collection->vocbase(), true),
+    transaction::V8Context::Create(&(collection->vocbase()), true),
     collection->id(),
     AccessMode::Type::READ
   );
@@ -1037,22 +1023,22 @@ static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    std::string collectionName = v8Collection->name();
+    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
+
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
     std::string theLeader;
+
     if (args.Length() >= 1 && args[0]->IsString()) {
       TRI_Utf8ValueNFC l(args[0]);
       theLeader = std::string(*l, l.length());
     }
+
     collection->followers()->setTheLeader(theLeader);
+
     if (theLeader.empty()) {
       collection->followers()->clear();
     }
@@ -1092,16 +1078,14 @@ static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = collection->vocbase();
     std::string collectionName = collection->name();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto realCollection =
+      collection->vocbase().lookupCollection(collectionName);
+
+    if (realCollection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    auto realCollection = vocbase->lookupCollection(collectionName);
-    if (realCollection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
     theLeader = realCollection->followers()->getLeader();
   }
 
@@ -1141,16 +1125,13 @@ static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    std::string collectionName = v8Collection->name();
+    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
+
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
     collection->followers()->add(serverId);
   }
 
@@ -1189,16 +1170,13 @@ static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    std::string collectionName = v8Collection->name();
+    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
+
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
     collection->followers()->remove(serverId);
   }
 
@@ -1229,19 +1207,17 @@ static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
     }
 
-    TRI_vocbase_t* vocbase = v8Collection->vocbase();
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    std::string collectionName = v8Collection->name();
+    auto collection = v8Collection->vocbase().lookupCollection(collectionName);
+
+    if (collection == nullptr) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     }
 
-    std::string collectionName = v8Collection->name();
-    auto collection = vocbase->lookupCollection(collectionName);
-    if (collection == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    }
     std::unique_ptr<arangodb::FollowerInfo> const& followerInfo = collection->followers();
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
     uint32_t i = 0;
+
     for (auto const& n : *followers) {
       list->Set(i++, TRI_V8_STD_STRING(isolate, n));
     }
@@ -1300,7 +1276,7 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const collectionName(collection->name());
 
   if (collectionName.empty()) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, collectionName);
   TRI_V8_RETURN(result);
@@ -1369,7 +1345,6 @@ static void JS_PropertiesVocbaseCol(
   if (consoleColl == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  TRI_vocbase_t* vocbase = consoleColl->vocbase();
 
   bool const isModification = (args.Length() != 0);
   if (isModification) {
@@ -1394,8 +1369,10 @@ static void JS_PropertiesVocbaseCol(
   // in the cluster the collection object might contain outdated
   // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
-  methods::Collections::lookup(vocbase, consoleColl->name(),
-                               [&](LogicalCollection* coll) {
+  methods::Collections::lookup(
+    &(consoleColl->vocbase()),
+    consoleColl->name(),
+    [&](LogicalCollection* coll) {
     VPackObjectBuilder object(&builder, true);
     Result res = methods::Collections::properties(coll, builder);
     if (res.fail()) {
@@ -1587,15 +1564,9 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   if (col == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  TRI_vocbase_t* vocbase = col->vocbase();
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
 
   std::string collectionName = col->name();
-
   VPackBuilder updateBuilder;
-
   auto workOnOneSearchVal = [&](v8::Local<v8::Value> const searchVal, bool isBabies) {
     std::string collName;
     if (!ExtractDocumentHandle(isolate, searchVal, collName,
@@ -1672,7 +1643,8 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
   VPackSlice const update = updateBuilder.slice();
 
 
-  auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
+  auto transactionContext =
+    std::make_shared<transaction::V8Context>(&(col->vocbase()), true);
 
   // Now start the transaction:
   SingleCollectionTransaction trx(transactionContext, collectionName,
@@ -1951,17 +1923,17 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                        "Cannot use pregel on system collection");
         }
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
       } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else  if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase->lookupCollection(name);
 
       if (coll == nullptr || coll->status() == TRI_VOC_COL_STATUS_DELETED
           || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -1988,19 +1960,19 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
           }
         }
         if (coll->status() == TRI_VOC_COL_STATUS_DELETED || coll->deleted()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+          TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
         }
         // smart edge collections contain multiple actual collections
         std::vector<std::string> actual = coll->realNamesForRead();
         edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
       } catch (...) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
     } else if (ss->getRole() == ServerState::ROLE_SINGLE) {
       auto coll = vocbase->lookupCollection(name);
 
       if (coll == nullptr || coll->deleted()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, name);
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, name);
       }
       std::vector<std::string> actual = coll->realNamesForRead();
       edgeColls.insert(edgeColls.end(), actual.begin(), actual.end());
@@ -2111,8 +2083,10 @@ static void JS_RevisionVocbaseCol(
   }
 
   TRI_voc_rid_t revisionId;
-  Result res = methods::Collections::revisionId(collection->vocbase(),
-                                                collection, revisionId);
+  auto res = methods::Collections::revisionId(
+    &(collection->vocbase()), collection, revisionId
+  );
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -2277,7 +2251,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
 
   // load collection
   auto transactionContext =
-      std::make_shared<transaction::V8Context>(collection->vocbase(), true);
+      std::make_shared<transaction::V8Context>(&(collection->vocbase()), true);
   SingleCollectionTransaction trx(
     transactionContext, collection->id(), AccessMode::Type::WRITE
   );
@@ -2387,8 +2361,7 @@ static void JS_StatusVocbaseCol(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(collection->vocbase());
-    auto& databaseName = collection->vocbase()->name();
+    auto& databaseName = collection->vocbase().name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -2428,7 +2401,7 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+  auto ctx = transaction::V8Context::Create(&(collection->vocbase()), true);
   SingleCollectionTransaction trx(
     ctx, collection->id(), AccessMode::Type::EXCLUSIVE
   );
@@ -2469,8 +2442,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    TRI_ASSERT(collection->vocbase());
-    auto& databaseName = collection->vocbase()->name();
+    auto& databaseName = collection->vocbase().name();
 
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -2507,7 +2479,8 @@ static void JS_UnloadVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  Result res = methods::Collections::unload(collection->vocbase(), collection);
+  auto res = methods::Collections::unload(&(collection->vocbase()), collection);
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -2803,21 +2776,19 @@ static void JS_CountVocbaseCol(
     details = TRI_ObjectToBoolean(args[0]);
   }
 
-  TRI_vocbase_t* vocbase = col->vocbase();
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
   std::string collectionName(col->name());
-
-  SingleCollectionTransaction trx(transaction::V8Context::Create(vocbase, true), collectionName, AccessMode::Type::READ);
+  SingleCollectionTransaction trx(
+    transaction::V8Context::Create(&(col->vocbase()), true),
+    collectionName,
+    AccessMode::Type::READ
+  );
 
   if (CollectionLockState::_noLockHeaders != nullptr) {
     if (CollectionLockState::_noLockHeaders->find(collectionName) != CollectionLockState::_noLockHeaders->end()) {
       trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
     }
   }
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2860,8 +2831,8 @@ static void JS_WarmupVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_vocbase_t* vocbase = collection->vocbase();
-  Result res = methods::Collections::warmup(vocbase, collection);
+  auto res = methods::Collections::warmup(&(collection->vocbase()), collection);
+
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

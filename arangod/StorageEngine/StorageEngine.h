@@ -106,9 +106,6 @@ class StorageEngine : public application_features::ApplicationFeature {
   // create storage-engine specific collection
   virtual PhysicalCollection* createPhysicalCollection(LogicalCollection*, VPackSlice const&) = 0;
 
-  // create storage-engine specific view
-  virtual PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) = 0;
-
   // minimum timeout for the synchronous replication
   virtual double minimumSyncReplicationTimeout() const = 0;
 
@@ -273,10 +270,18 @@ class StorageEngine : public application_features::ApplicationFeature {
       TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
       std::string const& oldName) = 0;
 
-  // asks the storage engine to persist renaming of a view
-  virtual arangodb::Result renameView(
-      TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,
-      std::string const& oldName) = 0;
+  // asks the storage engine to change properties of the view as specified in
+  // the VPack Slice object and persist them. If this operation fails
+  // somewhere in the middle, the storage engine is required to fully revert the
+  // property changes and throw only then, so that subsequent operations will not fail.
+  // the WAL entry for the propery change will be written *after* the call
+  // to "changeView" returns
+  virtual void changeView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view,
+    bool doSync
+  ) = 0;
 
   //// Operations on Views
   // asks the storage engine to create a view as specified in the VPack
@@ -287,13 +292,33 @@ class StorageEngine : public application_features::ApplicationFeature {
   // and throw only then, so that subsequent view creation requests will not fail.
   // the WAL entry for the view creation will be written *after* the call
   // to "createCview" returns
-  virtual void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                          arangodb::LogicalView const*) = 0;
+  virtual void createView(
+    TRI_vocbase_t* vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalView const& view
+  ) = 0;
+
+  // asks storage engine to put some view
+  // specific properties into a specified builder
+  virtual void getViewProperties(
+     TRI_vocbase_t* vocbase,
+     arangodb::LogicalView const* view,
+     VPackBuilder& builder
+  ) = 0;
 
   // asks the storage engine to persist the view.
   // After this call the view is persisted over recovery.
   virtual arangodb::Result persistView(
-      TRI_vocbase_t* vocbase, arangodb::LogicalView const*) = 0;
+      TRI_vocbase_t* vocbase,
+      arangodb::LogicalView const& view
+  ) = 0;
+
+  // asks the storage engine to persist renaming of a view
+  virtual arangodb::Result renameView(
+    TRI_vocbase_t* vocbase,
+    arangodb::LogicalView const& view,
+    std::string const& oldName
+  ) = 0;
 
   // asks the storage engine to drop the specified view and persist the
   // deletion info. Note that physical deletion of the view data must not
@@ -308,16 +333,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   // perform a physical deletion of the view
   // After this call data of this view is corrupted, only perform if
   // assured that no one is using the view anymore
-  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) = 0;
-
-  // asks the storage engine to change properties of the view as specified in
-  // the VPack Slice object and persist them. If this operation fails
-  // somewhere in the middle, the storage engine is required to fully revert the
-  // property changes and throw only then, so that subsequent operations will not fail.
-  // the WAL entry for the propery change will be written *after* the call
-  // to "changeView" returns
-  virtual void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                          arangodb::LogicalView const*, bool doSync) = 0;
+  // 'noexcept' becuase it may be used in destructor
+  virtual void destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView*) noexcept = 0;
 
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id

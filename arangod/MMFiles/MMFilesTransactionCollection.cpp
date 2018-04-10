@@ -216,7 +216,7 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       _collection = _transaction->vocbase()->lookupCollection(_cid).get();
 
       if (_collection == nullptr) {
-        return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
       }
     }
 
