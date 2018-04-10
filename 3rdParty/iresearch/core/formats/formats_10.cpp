@@ -1148,9 +1148,12 @@ NS_END // detail
 // --SECTION--                                                index_meta_writer
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref index_meta_writer::FORMAT_PREFIX = "segments_";
 const string_ref index_meta_writer::FORMAT_PREFIX_TMP = "pending_segments_";
 const string_ref index_meta_writer::FORMAT_NAME = "iresearch_10_index_meta";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<index_meta_reader, index_meta>(const index_meta& meta) {
@@ -1344,8 +1347,11 @@ void index_meta_reader::read(
 // --SECTION--                                              segment_meta_writer 
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref segment_meta_writer::FORMAT_EXT = "sm";
 const string_ref segment_meta_writer::FORMAT_NAME = "iresearch_10_segment_meta";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<segment_meta_writer, segment_meta>(const segment_meta& meta) {
@@ -1440,8 +1446,11 @@ void segment_meta_reader::read(
 // --SECTION--                                             document_mask_writer 
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref document_mask_writer::FORMAT_NAME = "iresearch_10_doc_mask";
 const string_ref document_mask_writer::FORMAT_EXT = "doc_mask";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<document_mask_writer, segment_meta>(const segment_meta& meta) {
@@ -1580,8 +1589,11 @@ class meta_writer final : public iresearch::column_meta_writer {
   field_id count_{}; // number of written objects
 }; // meta_writer 
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref meta_writer::FORMAT_NAME = "iresearch_10_columnmeta";
 const string_ref meta_writer::FORMAT_EXT = "cm";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<column_meta_writer, segment_meta>(
@@ -2035,8 +2047,11 @@ class writer final : public iresearch::columnstore_writer {
   directory* dir_;
 }; // writer
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref writer::FORMAT_NAME = "iresearch_10_columnstore";
 const string_ref writer::FORMAT_EXT = "cs";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 template<>
 std::string file_name<columnstore_writer, segment_meta>(
@@ -3785,6 +3800,9 @@ NS_END // columns
 // --SECTION--                                                  postings_writer
 // ----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
+
 const string_ref postings_writer::TERMS_FORMAT_NAME = "iresearch_10_postings_terms";
 
 const string_ref postings_writer::DOC_FORMAT_NAME = "iresearch_10_postings_documents";
@@ -3795,6 +3813,8 @@ const string_ref postings_writer::POS_EXT = "pos";
 
 const string_ref postings_writer::PAY_FORMAT_NAME = "iresearch_10_postings_payloads";
 const string_ref postings_writer::PAY_EXT = "pay";
+
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 void postings_writer::doc_stream::flush(uint64_t* buf, bool freq) {
   encode::bitpack::write_block(*out, deltas, BLOCK_SIZE, buf);

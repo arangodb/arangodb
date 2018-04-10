@@ -63,12 +63,20 @@
 #endif
 
 #if defined(_MSC_VER)
+  #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
   #pragma warning(disable : 4291)
 #elif defined (__GNUC__)
   // NOOP
 #endif
 
 #include <fst/matcher.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+  #pragma warning(default: 4291)
+#elif defined (__GNUC__)
+  // NOOP
+#endif
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4244)
@@ -1224,10 +1232,13 @@ NS_END // detail
 // --SECTION--                                       field_writer implementation
 // -----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
 const string_ref field_writer::TERMS_EXT = "tm";
 const string_ref field_writer::FORMAT_TERMS_INDEX = "block_tree_terms_index";
 const string_ref field_writer::TERMS_INDEX_EXT = "ti";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;

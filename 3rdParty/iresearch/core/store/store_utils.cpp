@@ -21,13 +21,23 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#if defined(_MSC_VER)
+  #pragma warning(disable: 4244) // conversion from 'unsigned int' to 'unsigned char', possible loss of data
+  #pragma warning(disable: 4245) // conversion from 'int' to '...', signed/unsigned mismatch
+#endif
+
+  #include <boost/crc.hpp>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4244)
+  #pragma warning(default: 4245)
+#endif
+
 #include "shared.hpp"
 #include "store_utils.hpp"
 
 #include "utils/std.hpp"
 #include "utils/memory.hpp"
-
-#include <boost/crc.hpp>
 
 NS_ROOT
 
