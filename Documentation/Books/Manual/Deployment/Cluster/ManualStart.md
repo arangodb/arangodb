@@ -1,11 +1,11 @@
 Manual Start
 ============
 
-An ArangoDB Cluster consists of several running tasks (or server processeses) which
+An ArangoDB Cluster consists of several running _tasks_ or _processes_ which
 form the Cluster. 
 
 This section describes how to start a Cluster by manually starting all the needed
-processes. The required parameters for every role in an ArangoDB Cluster are discussed.
+processes.
 
 Before continuing, be sure to read the [Architecture](../Scalability/Cluster/Architecture.md)
 section to get a basic understanding of the underlying architecture and the involved
@@ -14,13 +14,14 @@ roles in an ArangoDB Cluster.
 We will include commands for a local test (all processes running on a single machine)
 and for a more real production scenario, which makes use of 3 different machines.
 
-Local Test: all processes in a single machine (testing only) 
-------------------------------------------------------------
+Local Tests
+-----------
 
 In this section we will include commands to manually start a Cluster with 3 _Agents_,
 2 _DBservers_ and 2 _Coordinators_
 
-We will assume that all processes runs on the same machine (127.0.0.1).
+We will assume that all processes runs on the same machine (127.0.0.1). Such scenario
+should be used for testing only.
 
 ### Agency
 
@@ -315,3 +316,42 @@ arangod --server.authentication=false \
 	--cluster.agency-endpoint tcp://192.168.1.3:8531 \
 	--database.directory coordinator &
 ```
+
+Manual Start in Docker
+----------------------
+
+Manually starting a Cluster via Docker is basically the same as described in the 
+sections above. 
+
+A bit of extra care has to be invested due to the way in which Docker isolates its network. 
+By default it fully isolates the network and by doing so an endpoint like `--server.endpoint tcp://0.0.0.0:8530`
+will only bind to all interfaces inside the Docker container which does not include
+any external interface on the host machine. This may be sufficient if you just want
+to access it locally but in case you want to expose it to the outside you must
+facilitate Dockers port forwarding using the `-p` command line option. Be sure to
+check the [official Docker documentation](https://docs.docker.com/engine/reference/run/).
+
+You can simply use the `-p` flag in Docker to make the individual task available on the host
+machine or you could use Docker's [links](https://docs.docker.com/engine/reference/run/)
+to enable task intercommunication.
+
+An example configuration might look like this:
+
+```
+docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8530 arangodb/arangodb arangod \
+--server.endpoint tcp://0.0.0.0:8530 \
+--cluster.my-address tcp://192.168.1.1:10000 \
+--cluster.my-role PRIMARY \
+--cluster.agency-endpoint tcp://192.168.1.1:5001 \
+--cluster.agency-endpoint tcp://192.168.1.2:5002 \
+--cluster.agency-endpoint tcp://192.168.1.3:5003 
+```
+
+This will start a _DBServer_ within a Docker container with an isolated network. 
+Within the Docker container it will bind to all interfaces (this will be 127.0.0.1:8530
+and some internal Docker IP on port 8530). By supplying `-p 192.168.1.1:10000:8530`
+we are establishing a port forwarding from our local IP (192.168.1.1 port 10000 in
+this example) to port 8530 inside the container. Within the command we are telling
+_arangod_ how it can be reached from the outside `--cluster.my-address tcp://192.168.1.1:10000`.
+This information will be forwarded to the _Agency_ so that the other processes in
+your Cluster can see how this particular _DBServer_ may be reached.

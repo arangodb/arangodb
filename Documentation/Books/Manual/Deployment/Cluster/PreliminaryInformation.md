@@ -1,5 +1,8 @@
-Preliminary package configuration for Debian & Ubuntu
-=====================================================
+Preliminary Information
+=======================
+
+For Debian/Ubuntu Systems
+-------------------------
 
 ### Use a different configuration file for the Cluster instance
 
