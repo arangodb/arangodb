@@ -255,7 +255,7 @@ class Agent : public arangodb::Thread,
   void resetRAFTTimes(double, double);
 
   /// @brief Get start time of leadership
-  long long leaderSince() const;
+  int64_t leaderSince() const;
 
   /// @brief Update a peers endpoint in my configuration
   void updatePeerEndpoint(query_t const& message);
@@ -440,7 +440,7 @@ class Agent : public arangodb::Thread,
                                 // our log
 
   /// @brief Keep track of when I last took on leadership
-  std::atomic<unsigned long long> _leaderSince;
+  std::atomic<uint64_t> _leaderSince;
   
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
