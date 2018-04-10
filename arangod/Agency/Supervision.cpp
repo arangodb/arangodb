@@ -623,6 +623,13 @@ void Supervision::run() {
       {
         MUTEX_LOCKER(locker, _lock);
 
+        if (isShuttingDown()) {
+          handleShutdown();
+        } else if (_selfShutdown) {
+          shutdown = true;
+          break;
+        }
+
         // Only modifiy this condition with extreme care:
         // Supervision needs to wait until the agent has finished leadership
         // preparation or else the local agency snapshot might be behind its
@@ -652,16 +659,7 @@ void Supervision::run() {
           }
 
           handleJobs();
-
         }
-        
-        if (isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        }
-        
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
