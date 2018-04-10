@@ -24,6 +24,8 @@ v3.3.6.1 (XXXX-XX-XX)
 * fix for internal issue #2215. supervision will now wait for agent to
   fully prepare before adding 10 second grace period after leadership change
 
+* fixed internal issue #2215's FailedLeader timeout bug
+
 v3.3.5 (2018-03-28)
 -------------------
 
