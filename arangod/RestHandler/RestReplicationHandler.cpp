@@ -1060,7 +1060,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // Replication Factor. Will be overwritten if not existent
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
-  if (!replFactorSlice.isInteger()) {
+  bool isValidReplFactorSlice =
+      replFactorSlice.isInteger() ||
+      replFactorSlice.isString() && replFactorSlice.isEqualString("satellite");
+  if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
