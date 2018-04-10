@@ -28,9 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
 const isEnterprise = internal.isEnterprise();
+const db = internal.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -38,7 +40,6 @@ const isEnterprise = internal.isEnterprise();
 
 function dumpTestSuite () {
   'use strict';
-  var db = internal.db;
 
   return {
 
@@ -312,7 +313,9 @@ function dumpTestEnterpriseSuite () {
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
+  const satellite = "UnitTestDumpSatelliteCollection";
   const gm = require("@arangodb/smart-graph");
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
 
   return {
 
@@ -328,6 +331,41 @@ function dumpTestEnterpriseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+    testSatelliteCollections : function () {
+      let c = db._collection(satellite);
+      let p = c.properties();
+      assertEqual(2, c.type()); // Document
+      assertEqual(1, p.numberOfShards);
+      assertEqual("satellite", p.replicationFactor);
+      assertEqual(100, c.count());
+    },
+
+    testHiddenCollectionsOmitted : function () {
+      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+
+      const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
+      const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
+      const fromEdgeCollectionPath = fs.join(dumpDir, `_from_${edges}.structure.json`);
+      const toEdgeCollectionPath = fs.join(dumpDir, `_to_${edges}.structure.json`);
+
+      assertTrue(fs.exists(smartEdgeCollectionPath), 'Smart edge collection missing in dump!');
+      assertFalse(fs.exists(localEdgeCollectionPath), '_local edge collection should not have been dumped!');
+      assertFalse(fs.exists(fromEdgeCollectionPath), '_from edge collection should not have been dumped!');
+      assertFalse(fs.exists(toEdgeCollectionPath), '_to edge collection should not have been dumped!');
+    },
+
+    testShadowCollectionsOmitted : function () {
+      const dumpDir = fs.join(instanceInfo.rootDir, 'dump');
+      const collStructure = JSON.parse(
+        fs.read(fs.join(dumpDir, `${edges}.structure.json`))
+      );
+
+      assertTrue(collStructure.hasOwnProperty('parameters'), collStructure);
+      const parameters = collStructure['parameters'];
+      assertFalse(parameters.hasOwnProperty('shadowCollections'),
+        `Property 'shadowCollections' should be hidden in collection ${edges}!`);
     },
 
     testVertices : function () {

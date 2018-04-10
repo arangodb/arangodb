@@ -355,8 +355,6 @@ function dumpTestEnterpriseSuite () {
     testSatelliteCollections : function () {
       let c = db._collection(satellite);
       let p = c.properties();
-      internal.print("p = ", p);
-      internal.print("p.rf = ", p.replicationFactor);
       assertEqual(2, c.type()); // Document
       assertEqual(1, p.numberOfShards);
       assertEqual("satellite", p.replicationFactor);

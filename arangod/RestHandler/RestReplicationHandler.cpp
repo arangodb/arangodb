@@ -1062,7 +1062,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const replFactorSlice = parameters.get("replicationFactor");
   bool isValidReplFactorSlice =
       replFactorSlice.isInteger() ||
-      replFactorSlice.isString() && replFactorSlice.isEqualString("satellite");
+        (replFactorSlice.isString() && replFactorSlice.isEqualString("satellite"));
   if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
       replicationFactor = 1;
