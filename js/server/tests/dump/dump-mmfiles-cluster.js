@@ -582,7 +582,7 @@ function dumpTestEnterpriseSuite () {
       let vC = db[vertices];
       assertEqual(100, vC.count());
 
-      let vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`
+      let vertexQuery = `FOR x IN ${vertices} FILTER x.value == "10" RETURN x._id`;
       let vertex = db._query(vertexQuery).toArray();
       assertEqual(1, vertex.length);
 
@@ -596,7 +596,7 @@ function dumpTestEnterpriseSuite () {
 
       //Validate that everything is wired to a smart graph correctly
       let res = db._query(q).toArray();
-      assertEqual(4, res.length)
+      assertEqual(4, res.length);
       assertEqual("8", res[0].value);
       assertEqual("9", res[1].value);
       assertEqual("11", res[2].value);
