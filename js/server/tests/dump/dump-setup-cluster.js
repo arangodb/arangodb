@@ -75,6 +75,26 @@ const setupSmartGraph = function () {
   db[orphans].save(vDocs);
 };
 
+/**
+ * @brief Only if enterprise mode:
+ *        Creates a satellite collection with 100 documents
+ */
+function setupSatelliteCollections() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const satelliteCollectionName = "UnitTestDumpSatelliteCollection";
+  db._drop(satelliteCollectionName);
+  db._create(satelliteCollectionName, {"replicationFactor": "satellite"});
+
+  let vDocs = [];
+  for (let i = 0; i < 100; ++i) {
+    vDocs.push({value: String(i)});
+  }
+  db[satelliteCollectionName].save(vDocs);
+}
+
 (function () {
   var i, c;
 
@@ -200,6 +220,7 @@ const setupSmartGraph = function () {
   });
 
   setupSmartGraph();
+  setupSatelliteCollections();
 })();
 
 return {

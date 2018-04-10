@@ -332,6 +332,7 @@ function dumpTestEnterpriseSuite () {
   const edges = "UnitTestDumpSmartEdges";
   const vertices = "UnitTestDumpSmartVertices";
   const orphans = "UnitTestDumpSmartOrphans";
+  const satellite = "UnitTestDumpSatelliteCollection";
   const gm = require("@arangodb/smart-graph");
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
 
@@ -349,6 +350,17 @@ function dumpTestEnterpriseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+    },
+
+    testSatelliteCollections : function () {
+      let c = db._collection(satellite);
+      let p = c.properties();
+      internal.print("p = ", p);
+      internal.print("p.rf = ", p.replicationFactor);
+      assertEqual(2, c.type()); // Document
+      assertEqual(1, p.numberOfShards);
+      assertEqual("satellite", p.replicationFactor);
+      assertEqual(100, c.count());
     },
 
     testHiddenCollectionsOmitted : function () {
