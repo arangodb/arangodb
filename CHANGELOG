@@ -1,11 +1,24 @@
 v3.3.6.1 (XXXX-XX-XX)
 ---------------------
 
+* Fixed internal issue #2237: AQL queries on collections with replicationFactor:
+  "satellite" crashed arangod in single server mode
+
+* Fixed restore of satellite collections: replicationFactor was set to 1 during
+  restore
+
+* Fixed dump and restore of smart graphs:
+  a) The dump will not include the hidden shadow collections anymore, they were dumped
+     accidentially and only contain duplicated data.
+  b) Restore will now ignore hidden shadow collections as all data is contained
+     in the smart-edge collection. You can manually include these collections from an
+     old dump (3.3.5 or earlier) by using `--force`.
+  c) Restore of a smart-graph will now create smart collections properly instead
+     of getting into `TIMEOUT_IN_CLUSTER_OPERATION`
+
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified
   the value for `_key` using an expression (and not a constant value)
-  
-* fix restoring of smart graph edge collections (may have run into timeout before)
 
 * added /_admin/status for debugging
 
