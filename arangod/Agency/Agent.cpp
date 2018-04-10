@@ -67,7 +67,7 @@ Agent::Agent(config_t const& config)
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
   } else {
-    _leaderSince = 0; std::chrono::steady_clock::now();
+    _leaderSince = 0;
   }
 }
 
