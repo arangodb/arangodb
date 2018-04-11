@@ -1107,9 +1107,8 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   TRI_voc_cid_t id
 ) const noexcept {
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    std::string viewId = StringUtils::itoa(id);
-    return ci->getView(name(), viewId);
+    std::string const viewId = StringUtils::itoa(id);
+    return ClusterInfo::instance()->getView(name(), viewId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1129,8 +1128,7 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::lookupView(
   std::string const& nameOrId
 ) const noexcept{
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-    return ci->getView(name(), nameOrId);
+    return ClusterInfo::instance()->getView(name(), nameOrId);
   }
 
   #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -1570,14 +1568,12 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
-
+    auto* ci = ClusterInfo::instance();
     std::string errorMsg;
-
-    auto const viewId = basics::StringUtils::itoa(ci->uniqid());
+    ViewID viewId;
 
     int const res = ci->createViewCoordinator(
-      name(), viewId, parameters, errorMsg
+      name(), parameters, viewId, errorMsg
     );
 
     // FIXME don't forget to open created view
@@ -1647,10 +1643,11 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(
 /// @brief drops a view
 arangodb::Result TRI_vocbase_t::dropView(arangodb::LogicalView& view) {
   if (ServerState::instance()->isCoordinator()) {
-    ClusterInfo* ci = ClusterInfo::instance();
     std::string errorMsg;
-    auto res =
-      ci->dropViewCoordinator(name(), std::to_string(view.id()), errorMsg);
+
+    auto const res = ClusterInfo::instance()->dropViewCoordinator(
+      name(), std::to_string(view.id()), errorMsg
+    );
 
     if (res == TRI_ERROR_NO_ERROR) {
       return res;

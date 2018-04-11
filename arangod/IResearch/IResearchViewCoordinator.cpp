@@ -117,13 +117,32 @@ void IResearchViewCoordinator::toVelocyPack(
 
 arangodb::Result IResearchViewCoordinator::updateProperties(
     velocypack::Slice const& properties,
-    bool /*partialUpdate*/,
+    bool partialUpdate,
     bool /*doSync*/
 ) {
+  IResearchViewMeta meta;
+  std::string error;
+
+  auto const& defaults = partialUpdate
+    ? _meta
+    : IResearchViewMeta::DEFAULT();
+
+  if (!meta.init(properties, error, defaults)) {
+    return { TRI_ERROR_BAD_PARAMETER, error };
+  }
+
+  VPackBuilder builder;
+  builder.openObject(); // {
+  toVelocyPack(builder, false, true); // only system properties
+  builder.add("properties", VPackValue(VPackValueType::Object)); // "properties" : {
+  meta.json(builder);
+  builder.close(); // }
+  builder.close(); // }
+
   return ClusterInfo::instance()->setViewPropertiesCoordinator(
     vocbase().name(), // database name,
-    basics::StringUtils::itoa(id()), // view id
-    properties
+    basics::StringUtils::itoa(id()), // cluster-wide view id
+    builder.slice()
   );
 }
 
@@ -132,7 +151,7 @@ Result IResearchViewCoordinator::drop() {
 
   int const res = ClusterInfo::instance()->dropViewCoordinator(
     vocbase().name(), // database name
-    basics::StringUtils::itoa(id()), // view id
+    basics::StringUtils::itoa(id()), // cluster-wide view id
     errorMsg
   );
 

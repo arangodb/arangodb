@@ -1024,7 +1024,7 @@ std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
 //////////////////////////////////////////////////////////////////////////////
 /// @brief ask about a view
 /// If it is not found in the cache, the cache is reloaded once. The second
-/// argument can be a collection ID or a view name (both cluster-wide).
+/// argument can be a view ID or a view name (both cluster-wide).
 //////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<LogicalView> ClusterInfo::getView(
@@ -1041,12 +1041,11 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     {
       READ_LOCKER(readLocker, _planProt.lock);
       // look up database by id
-      AllViews::const_iterator it = _plannedViews.find(databaseID);
+      auto it = _plannedViews.find(databaseID);
 
       if (it != _plannedViews.end()) {
         // look up view by id (or by name)
-        DatabaseViews::const_iterator it2 =
-            (*it).second.find(viewID);
+        auto it2 = (*it).second.find(viewID);
 
         if (it2 != (*it).second.end()) {
           return (*it2).second;
@@ -1060,9 +1059,11 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(
     // must load plan outside the lock
     loadPlan();
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-      "View not found: " + viewID + " in database " + databaseID);
+
+  LOG_TOPIC(INFO, Logger::CLUSTER)
+    << "View not found: '" << viewID << "' in database '" << databaseID << "'";
+
+  return nullptr;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1820,15 +1821,54 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int ClusterInfo::createViewCoordinator(std::string const& databaseName,
-                                       std::string const& viewID,
-                                       VPackSlice const& json,
+                                       VPackSlice json,
+                                       ViewID& viewID,
                                        std::string& errorMsg) {
   using arangodb::velocypack::Slice;
 
+  auto typeSlice = json.get("type");
+
+  if (!typeSlice.isString()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  auto nameSlice = json.get("name");
+
+  if (!nameSlice.isString()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
   AgencyComm ac;
 
-  std::string const name =
-      arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
+  std::string const name = basics::VelocyPackHelper::getStringValue(
+    json, "name", StaticStrings::Empty
+  );
+
+  viewID = basics::VelocyPackHelper::getStringValue(
+    json, "id", StaticStrings::Empty
+  );
+
+  VPackBuilder builder;
+  if (viewID.empty()) {
+    // view id is has not been provided
+    viewID = basics::StringUtils::itoa(uniqid());
+
+    builder.openObject(); // {
+    builder.add("name", nameSlice);
+    builder.add("type", typeSlice);
+    builder.add("id", VPackValue(viewID));
+    builder.add("planId", VPackValue(viewID));
+    builder.add(VPackValue("properties")); // properties : {
+    builder.add(VPackValue(VPackValueType::Object));
+    auto const props = json.get("properties");
+    if (props.isObject()) {
+      builder.add(VPackObjectIterator(props));
+    }
+    builder.close(); // }
+    builder.close(); // }
+
+    json = builder.slice();
+  }
 
   {
     // check if a view with the same name is already planned
@@ -1975,11 +2015,19 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  velocypack::Slice collection = res.slice()[0].get(
+  velocypack::Slice view = res.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Plan",
                                 "Views", databaseName, viewID}));
 
-  if (!collection.isObject()) {
+  if (!view.isObject()) {
+    AgencyCommResult ag = ac.getValues("");
+    if (ag.successful()) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Agency dump:\n"
+                                      << ag.slice().toJson();
+    } else {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not get agency dump!";
+    }
+
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
