@@ -355,313 +355,174 @@ RocksDBIndexFactory::RocksDBIndexFactory() {
     return std::make_shared<RocksDBSkiplistIndex>(id, collection, definition);
   });
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("edge", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      if (isCreation) {
-        // creating these indexes yourself is forbidden
-        return TRI_ERROR_FORBIDDEN;
-      }
 
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+  emplaceNormalizer("edge", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    if (isCreation) {
+      // creating these indexes yourself is forbidden
+      return TRI_ERROR_FORBIDDEN;
+    }
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
 
-      return TRI_ERROR_INTERNAL;
-    });
-  } else {
-    emplaceNormalizer("edge", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      if (isCreation) {
-        // creating these indexes yourself is forbidden
-        return TRI_ERROR_FORBIDDEN;
-      }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_EDGE_INDEX)));
+    return TRI_ERROR_INTERNAL;
+  });
 
-      return TRI_ERROR_INTERNAL;
-    });
-  }
+  emplaceNormalizer("fulltext", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("fulltext", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+    return EnhanceJsonIndexFulltext(definition, normalized, isCreation);
+  });
 
-      return EnhanceJsonIndexFulltext(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("fulltext", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_FULLTEXT_INDEX)));
+  emplaceNormalizer("geo", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    auto current = definition.get("fields");
+    TRI_ASSERT(normalized.isOpenObject());
 
-      return EnhanceJsonIndexFulltext(definition, normalized, isCreation);
-    });
-  }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("geo", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      auto current = definition.get("fields");
-      TRI_ASSERT(normalized.isOpenObject());
-
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
-
-      if (current.isArray() && current.length() == 2) {
-        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
-        return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
-      }
-
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
-      return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
-    });
-    emplaceNormalizer("geo1", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
-
-      return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
-    });
-    emplaceNormalizer("geo2", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
-
-      return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("geo", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      auto current = definition.get("fields");
-      TRI_ASSERT(normalized.isOpenObject());
-
-      if (current.isArray() && current.length() == 2) {
-        normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
-
-        return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
-      }
-
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
-      return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
-    });
-    emplaceNormalizer("geo1", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
-
-      return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
-    });
-    emplaceNormalizer("geo2", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
+    if (current.isArray() && current.length() == 2) {
       normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
 
       return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
-    });
-  }
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("hash", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+    return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+  });
 
-      return EnhanceJsonIndexHash(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("hash", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
+  emplaceNormalizer("geo1", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO1_INDEX)));
 
-      return EnhanceJsonIndexHash(definition, normalized, isCreation);
-    });
-  }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("primary", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      if (isCreation) {
-        // creating these indexes yourself is forbidden
-        return TRI_ERROR_FORBIDDEN;
-      }
+    return EnhanceJsonIndexGeo1(definition, normalized, isCreation);
+  });
 
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  emplaceNormalizer("geo2", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_GEO2_INDEX)));
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-      return TRI_ERROR_INTERNAL;
-    });
-  } else {
-    emplaceNormalizer("primary", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      if (isCreation) {
-        // creating these indexes yourself is forbidden
-        return TRI_ERROR_FORBIDDEN;
-      }
+    return EnhanceJsonIndexGeo2(definition, normalized, isCreation);
+  });
 
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PRIMARY_INDEX)));
+  emplaceNormalizer("hash", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_HASH_INDEX)));
 
-      return TRI_ERROR_INTERNAL;
-    });
-  }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("persistent", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
+    return EnhanceJsonIndexHash(definition, normalized, isCreation);
+  });
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+  emplaceNormalizer("primary", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    if (isCreation) {
+      // creating these indexes yourself is forbidden
+      return TRI_ERROR_FORBIDDEN;
+    }
 
-      return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("persistent", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PRIMARY_INDEX)));
 
-      return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
-    });
-  }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("rocksdb", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
+    return TRI_ERROR_INTERNAL;
+  });
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+  emplaceNormalizer("persistent", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
 
-      return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("rocksdb", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-      return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
-    });
-  }
+    return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
+  });
 
-  if (ServerState::instance()->isCoordinator()) {
-    emplaceNormalizer("skiplist", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_SKIPLIST_INDEX)));
+  emplaceNormalizer("rocksdb", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_PERSISTENT_INDEX)));
 
-      if (isCreation && !definition.hasKey("objectId")) {
-        normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
-      }
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
 
-      return EnhanceJsonIndexSkiplist(definition, normalized, isCreation);
-    });
-  } else {
-    emplaceNormalizer("skiplist", [](
-      velocypack::Builder& normalized,
-      velocypack::Slice definition,
-      bool isCreation
-    )->arangodb::Result {
-      TRI_ASSERT(normalized.isOpenObject());
-      normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_SKIPLIST_INDEX)));
+    return EnhanceJsonIndexPersistent(definition, normalized, isCreation);
+  });
 
-      return EnhanceJsonIndexSkiplist(definition, normalized, isCreation);
-    });
-  }
+  emplaceNormalizer("skiplist", [](
+    velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  )->arangodb::Result {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add("type", VPackValue(Index::oldtypeName(Index::TRI_IDX_TYPE_SKIPLIST_INDEX)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() && !definition.hasKey("objectId")) {
+      normalized.add("objectId", velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    return EnhanceJsonIndexSkiplist(definition, normalized, isCreation);
+  });
 }
 
 void RocksDBIndexFactory::fillSystemIndexes(
