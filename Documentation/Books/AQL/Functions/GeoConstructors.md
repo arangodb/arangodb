@@ -1,18 +1,18 @@
 GeoJSON Constructors
 ---------------------
 
-The following helper functions are available to easily create valid GeoJSON output. 
-In all cases you can write equivalent JSON yourself, but thes functions will help
-you to make all your AQL queries shorter and easier to read.
+The following helper functions are available to easily create valid GeoJSON
+output. In all cases you can write equivalent JSON yourself, but these functions
+will help you to make all your AQL queries shorter and easier to read.
 
 ### GEO_POINT()
 
-`GEO_POINT(latitude, longitude) → GeoJSON Point`
+`GEO_POINT(longitude, latitude) → GeoJSON Point`
 
 Returns a valid GeoJSON Point.
 
-- **latitude** (number): the latitude portion of the point
 - **longitude** (number): the longitude portion of the point
+- **latitude** (number): the latitude portion of the point
 
 ```js
 return GEO_POINT(1.0, 2.0)
@@ -38,14 +38,8 @@ return GEO_MULTIPOINT([
 
 //  {
 //    "coordinates": [
-//      [
-//        35,
-//        10
-//      ],
-//      [
-//        45,
-//        45
-//      ]
+//      [35, 10],
+//      [45, 45]
 //    ],
 //    "type": "MultiPoint"
 //  }
@@ -55,9 +49,12 @@ return GEO_MULTIPOINT([
 
 `GEO_POLYGON(array) → GeoJSON Polygon`
 
-Returns a valid GeoJSON Polygon. Needs at least three longitude/latitude pairs.
+Returns a valid GeoJSON Polygon. Needs at least one array representing a loop.
+Each loop consists of an array with at least three longitude/latitude pairs. The
+first loop must be the outermost, while any subsequent loops will be interpreted
+as holes.
 
-- **array** (points): array of longitude/latitude pairs
+- **array** (points): array of arrays of longitude/latitude pairs
 
 Simple Polygon Builder:
 
@@ -69,18 +66,9 @@ return GEO_POLYGON([
 // {
 //   "coordinates": [
 //     [
-//       [
-//         1,
-//         2
-//       ],
-//       [
-//         3,
-//         4
-//       ],
-//       [
-//         5,
-//         6
-//       ]
+//       [1, 2],
+//       [3, 4],
+//       [5, 6]
 //     ]
 //   ],
 //   "type": "Polygon"
@@ -98,44 +86,17 @@ return GEO_POLYGON([
 //  {
 //    "coordinates": [
 //      [
-//        [
-//          35,
-//          10
-//        ],
-//        [
-//          45,
-//          45
-//        ],
-//        [
-//          15,
-//          40
-//        ],
-//        [
-//          10,
-//          20
-//        ],
-//        [
-//          35,
-//          10
-//        ]
+//        [35, 10],
+//        [45, 45],
+//        [15, 40],
+//        [10, 20],
+//        [35, 10]
 //      ],
 //      [
-//        [
-//          20,
-//          30
-//        ],
-//        [
-//          35,
-//          35
-//        ],
-//        [
-//          30,
-//          20
-//        ],
-//        [
-//          20,
-//          30
-//        ]
+//        [20, 30],
+//        [35, 35],
+//        [30, 20],
+//        [20, 30]
 //      ]
 //    ],
 //    "type": "Polygon"
@@ -158,14 +119,8 @@ return GEO_LINESTRING([
 
 //  {
 //    "coordinates": [
-//      [
-//        35,
-//        10
-//      ],
-//      [
-//        45,
-//        45
-//      ]
+//      [35, 10],
+//      [45, 45]
 //    ],
 //    "type": "LineString"
 //  }
@@ -175,7 +130,8 @@ return GEO_LINESTRING([
 
 `GEO_MULTILINESTRING(array) → GeoJSON MultiLineString`
 
-Returns a valid GeoJSON MultiLineString. Needs at least two linestrings elements.
+Returns a valid GeoJSON MultiLineString. Needs at least two elements consisting
+valid linestring coordinate arrays.
 
 - **array** (points): array of linestrings
 
@@ -188,24 +144,12 @@ return GEO_MULTILINESTRING([
 //  {
 //    "coordinates": [
 //      [
-//        [
-//          100,
-//          0
-//        ],
-//        [
-//          101,
-//          1
-//        ]
+//        [100, 0],
+//        [101, 1]
 //      ],
 //      [
-//        [
-//          102,
-//          2
-//        ],
-//        [
-//          101,
-//          2.3
-//        ]
+//        [102, 2],
+//        [101, 2.3]
 //      ]
 //    ],
 //    "type": "MultiLineString"

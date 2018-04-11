@@ -71,8 +71,8 @@ function SphericalIndexCreationSuite() {
       collection.truncate();
 
       //collection.ensureGeoIndex("coordinates", true);
-      collection.ensureIndex({type: "s2index", 
-                              fields: ["coordinates"], 
+      collection.ensureIndex({type: "s2index",
+                              fields: ["coordinates"],
                               geoJson: true });
 
       [
@@ -94,10 +94,9 @@ function SphericalIndexCreationSuite() {
       });
 
       assertEqual(13, collection.count());
-      // FIXME this is not using the optimizer
       var query = "FOR doc IN " + collection.name() + " LET n = (" +
                   "LET c = doc.coordinates\n FOR other IN " + collection.name() + "\n" +
-                  "SORT DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) ASC\n" +                                    
+                  "SORT DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) ASC\n" +
                   "FILTER DISTANCE(c[1], c[0], other.coordinates[1], other.coordinates[0]) < 1000\n" +
                   "RETURN other._key) UPDATE doc WITH {others: n} IN " + collection.name();
 
@@ -154,7 +153,7 @@ function SphericalIndexCreationSuite() {
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc");
-      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});                        
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
 
       assertEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -164,7 +163,7 @@ function SphericalIndexCreationSuite() {
       assertFalse(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});                  
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});
 
       assertNotEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -176,7 +175,7 @@ function SphericalIndexCreationSuite() {
       collection.unload();
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});            
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});
 
       assertNotEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -192,7 +191,7 @@ function SphericalIndexCreationSuite() {
 
     testCreationIndexLocationListGeo : function () {
       //var idx = collection.ensureGeoIndex("loc", true);
-      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});      
+      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -203,7 +202,7 @@ function SphericalIndexCreationSuite() {
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoIndex("loc", true);
-      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});   
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: true});
 
       assertEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -262,7 +261,7 @@ function SphericalIndexCreationSuite() {
       collection.unload();
 
       //idx = collection.ensureGeoIndex("lat", "lon");
-      idx = collection.ensureIndex({type: "s2index", fields:["lat", "lon"]});      
+      idx = collection.ensureIndex({type: "s2index", fields:["lat", "lon"]});
 
       assertEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -277,7 +276,7 @@ function SphericalIndexCreationSuite() {
 
     testCreationConstraintLocationList : function () {
       //var idx = collection.ensureGeoConstraint("loc", false);
-      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});            
+      let idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
       var id = idx.id;
 
       assertNotEqual(0, id);
@@ -288,7 +287,7 @@ function SphericalIndexCreationSuite() {
       assertTrue(idx.isNewlyCreated);
 
       //idx = collection.ensureGeoConstraint("loc", false);
-      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});       
+      idx = collection.ensureIndex({type: "s2index", fields:["loc"], geoJson: false});
 
       assertEqual(id, idx.id);
       assertEqual("s2index", idx.type);
@@ -308,4 +307,3 @@ function SphericalIndexCreationSuite() {
 jsunity.run(SphericalIndexCreationSuite);
 
 return jsunity.done();
-
