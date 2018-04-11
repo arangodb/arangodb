@@ -86,7 +86,7 @@ TEST_ARANGODB_URL=http://myserver.local:8530 npm test
 
 ```sh
 yarn add arangojs
-## - or -
+# - or -
 npm install --save arangojs
 ```
 
