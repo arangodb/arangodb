@@ -45,20 +45,15 @@
 
 namespace {
 
-std::pair<TRI_vocbase_t*, arangodb::LogicalCollection*> lookupDatabaseAndCollection(
+std::shared_ptr<arangodb::LogicalCollection> lookupCollection(
     arangodb::DatabaseFeature& db,
     arangodb::RocksDBEngine& engine,
     uint64_t objectId
 ) {
   auto pair = engine.mapObjectToCollection(objectId);
-
   auto vocbase = db.useDatabase(pair.first);
 
-  if (vocbase == nullptr) {
-    return std::make_pair(nullptr, nullptr);
-  }
-
-  return std::make_pair(vocbase, vocbase->lookupCollection(pair.second).get());
+  return vocbase ? vocbase->lookupCollection(pair.second) : nullptr;
 }
 
 std::vector<std::shared_ptr<arangodb::Index>> lookupLinks(
@@ -344,9 +339,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
                                            const rocksdb::Slice& key,
                                            const rocksdb::Slice& value) {
   if (column_family_id == _documentCF) {
-    auto pair = lookupDatabaseAndCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-    TRI_vocbase_t* vocbase = pair.first;
-    LogicalCollection* coll = pair.second;
+    auto coll =
+      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+
     if (coll == nullptr) {
       return;
     }
@@ -359,9 +354,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 
     auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
     auto doc = RocksDBValue::data(value);
-
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->id(),
+      transaction::StandaloneContext::Create(&(coll->vocbase())),
+      coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 
@@ -387,9 +382,9 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
 void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
                                               const rocksdb::Slice& key) {
   if (column_family_id == _documentCF) {
-    auto pair = lookupDatabaseAndCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
-    TRI_vocbase_t* vocbase = pair.first;
-    LogicalCollection* coll = pair.second;
+    auto coll =
+      lookupCollection(*_dbFeature, *_engine, RocksDBKey::objectId(key));
+
     if (coll == nullptr) {
       return;
     }
@@ -401,9 +396,9 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     }
 
     auto docId = RocksDBKey::documentId(RocksDBEntryType::Document, key);
-
     SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(vocbase), coll->id(),
+      transaction::StandaloneContext::Create(&(coll->vocbase())),
+      coll->id(),
       arangodb::AccessMode::Type::WRITE
     );
 
