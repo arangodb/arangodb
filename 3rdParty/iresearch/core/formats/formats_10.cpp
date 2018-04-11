@@ -1623,13 +1623,13 @@ bool meta_writer::prepare(directory& dir, const segment_meta& meta) {
 }
 
 void meta_writer::write(const std::string& name, field_id id) {
-  out_->write_vint(id);
+  out_->write_vlong(id);
   write_string(*out_, name);
   ++count_;
 }
 
 void meta_writer::flush() {
-  out_->write_int(count_); // write total number of written objects
+  out_->write_vlong(count_); // write total number of written objects
   format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
@@ -1670,7 +1670,7 @@ bool meta_reader::prepare(
   in->seek(in->length() - sizeof(field_id) - format_utils::FOOTER_LEN);
 
   // read number of objects to read
-  count = in->read_int();
+  count = in->read_long();
 
   format_utils::check_footer(*in, checksum);
 
@@ -1693,7 +1693,7 @@ bool meta_reader::read(column_meta& column) {
     return false;
   }
 
-  const auto id = in_->read_vint();
+  const auto id = in_->read_vlong();
   column.name = read_string<std::string>(*in_);
   column.id = id;
   --count_;
