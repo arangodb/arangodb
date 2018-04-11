@@ -1629,7 +1629,7 @@ void meta_writer::write(const std::string& name, field_id id) {
 }
 
 void meta_writer::flush() {
-  out_->write_vlong(count_); // write total number of written objects
+  out_->write_long(count_); // write total number of written objects
   format_utils::write_footer(*out_);
   out_.reset();
   count_ = 0;
