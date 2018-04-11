@@ -267,5 +267,6 @@ target_link_libraries(${LIB_ARANGO_V8}
 
 # Enterprise
 if (USE_ENTERPRISE)
+  target_compile_definitions(${LIB_ARANGO_V8} PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(${LIB_ARANGO_V8} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
