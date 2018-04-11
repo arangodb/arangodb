@@ -57,6 +57,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   double _slowQueryThreshold;
   std::string _queryCacheMode;
   uint64_t _queryCacheEntries;
+  double _queryRegistryTTL;
 
  public:
   aql::QueryRegistry* queryRegistry() const { return _queryRegistry.get(); }

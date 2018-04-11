@@ -48,6 +48,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Logger/Logger.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -635,9 +636,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
 
+      double ttl = 600.0;
+      QueryRegistry* qr = QueryRegistryFeature::QUERY_REGISTRY;
+      if (qr != nullptr) {
+        ttl = qr->defaultTTL();
+      }
+      
       std::string const url("/_db/"
                             + arangodb::basics::StringUtils::urlEncode(collection->vocbase->name()) +
-                            "/_api/aql/instantiate");
+                            "/_api/aql/instantiate?ttl=" + std::to_string(ttl));
 
       auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
       (*headers)["X-Arango-Nolock"] = shardId;  // Prevent locking
