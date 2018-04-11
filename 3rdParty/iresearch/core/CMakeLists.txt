@@ -44,7 +44,7 @@ if (MSVC)
     ./utils/mman_win32.hpp
   )
 else()
-  add_definitions(-fvisibility=hidden -Wall)
+  add_definitions(-Wall)
   set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
 
   # set OS specific headers
