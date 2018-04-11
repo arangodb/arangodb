@@ -143,7 +143,7 @@ void IndexBlock::executeExpressions() {
   auto ast = en->_plan->getAst();
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
-    auto& toReplace = _nonConstExpressions[posInExpressions];
+    NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
 
     bool mustDestroy;
@@ -155,18 +155,18 @@ void IndexBlock::executeExpressions() {
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
-    auto oldCondition = _condition;
-    auto newCondition = ast->shallowCopyForModify(oldCondition);
+    AstNode const* oldCondition = _condition;
+    AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
     _condition = newCondition;
     TRI_DEFER(FINALIZE_SUBTREE(_condition));
 
-    auto oldOrMember = _condition->getMember(toReplace->orMember);
-    auto orMember = ast->shallowCopyForModify(oldOrMember);
+    AstNode* oldOrMember = _condition->getMember(toReplace->orMember);
+    AstNode* orMember = ast->shallowCopyForModify(oldOrMember);
     TRI_DEFER(FINALIZE_SUBTREE(orMember));
     newCondition->changeMember(toReplace->orMember, orMember);
 
-    auto oldAndMember = orMember->getMember(toReplace->andMember);
-    auto andMember = ast->shallowCopyForModify(oldAndMember);
+    AstNode* oldAndMember = orMember->getMember(toReplace->andMember);
+    AstNode* andMember = ast->shallowCopyForModify(oldAndMember);
     TRI_DEFER(FINALIZE_SUBTREE(andMember));
     orMember->changeMember(toReplace->andMember, andMember);
 
@@ -224,6 +224,9 @@ int IndexBlock::initialize() {
 
   auto outVariable = en->outVariable();
 
+  // conditions can be of the form (a [<|<=|>|=>] b) && ...
+  // in case of a geo spatial index a might take the form
+  // of a GEO_* function. We might need to evaluate fcall arguments
   for (size_t i = 0; i < _condition->numMembers(); ++i) {
     auto andCond = _condition->getMemberUnchecked(i);
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
@@ -251,13 +254,13 @@ int IndexBlock::initialize() {
           }
         }
       } else {
-        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
-          continue;
-        }
-        
         // Index is responsible for the right side, check if left side
         // has to be evaluated
-        if (!lhs->isConstant()) {
+        
+        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
+          // FIXME this is probably an S2 based index
+          continue;
+        } else if (!lhs->isConstant()) {
           instantiateExpression(i, j, 0, lhs);
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
