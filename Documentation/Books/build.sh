@@ -106,7 +106,7 @@ function book-check-restheader-leftovers()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for restheader leftovers in ${NAME}${RESET}"
-    ERRORS=$(find "ppbooks/${NAME}" -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
+    ERRORS=$(find "ppbooks/${NAME}" -not \( -path "ppbooks/Drivers/SpringData/*" -prune \) -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "found these unconverted Swagger Restapi tags: "
