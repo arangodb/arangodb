@@ -16,7 +16,7 @@ Spring Data ArangoDB requires ArangoDB 3.0 or higher - which you can download [h
 
 To use Spring Data ArangoDB in your project, your build automation tool needs to be configured to include and use the Spring Data ArangoDB dependency. Example with Maven:
 
-```xml
+``` xml
 <dependency>
   <groupId>com.arangodb</groupId>
   <artifactId>arangodb-spring-data</artifactId>
@@ -30,7 +30,7 @@ There is a [demonstration app](https://github.com/arangodb/spring-data-demo), wh
 
 You can use Java to configure your Spring Data environment as show below. Setting up the underlying driver (`ArangoDB.Builder`) with default configuration automatically loads a properties file `arangodb.properties`, if it exists in the classpath.
 
-```java
+``` java
 @Configuration
 @EnableArangoRepositories(basePackages = { "com.company.mypackage" })
 public class MyConfiguration extends AbstractArangoConfiguration {
@@ -62,7 +62,7 @@ arangodb.useSsl | use SSL connection | false
 
 To customize the configuration, the parameters can be changed in the Java code.
 
-```java
+``` java
 @Override
 public ArangoDB.Builder arango() {
   ArangoDB.Builder arango = new ArangoDB.Builder()
@@ -85,7 +85,7 @@ arangodb.password=
 ```
 
 *Custom properties file*
-```java
+``` java
 @Override
 public ArangoDB.Builder arango() {
   InputStream in = MyClass.class.getResourceAsStream("my.properties");
@@ -97,7 +97,7 @@ public ArangoDB.Builder arango() {
 
 **Note**: When using ArangoDB 3.0 it is required to set the transport protocol to HTTP and fetch the dependency `org.apache.httpcomponents:httpclient`.
 
-```java
+``` java
 @Override
 public ArangoDB.Builder arango() {
   ArangoDB.Builder arango = new ArangoDB.Builder()
@@ -105,7 +105,7 @@ public ArangoDB.Builder arango() {
   return arango;
 }
 ```
-```xml
+``` xml
 <dependency>
   <groupId>org.apache.httpcomponents</groupId>
   <artifactId>httpclient</artifactId>
