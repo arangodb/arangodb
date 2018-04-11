@@ -632,52 +632,52 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-
+      
       {
         MUTEX_LOCKER(locker, _lock);
-
-        // Get bunch of job IDs from agency for future jobs
-        if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
-          getUniqueIds();  // cannot fail but only hang
-        }
-
-        updateSnapshot();
-
-        if (_agent->leading()) {
-
-          if (!_upgraded) {
-            upgradeAgency();
-          }
-
-          // Do nothing unless leader for over 10 seconds
-          auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::steady_clock::now() - _agent->leaderSince()).count();
-          if (secondsSinceLeader > 10.0) {
-            try {
-              doChecks();
-            } catch (std::exception const& e) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << " " << __LINE__;
-            } catch (...) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION) <<
-                "Supervision::doChecks() generated an uncaught exception.";
-            }
-          }
-        }
 
         if (isShuttingDown()) {
           handleShutdown();
         } else if (_selfShutdown) {
           shutdown = true;
           break;
-        } else if (_agent->leading()) {
-          if (!handleJobs()) {
-            break;
+        }
+
+        // Only modifiy this condition with extreme care:
+        // Supervision needs to wait until the agent has finished leadership
+        // preparation or else the local agency snapshot might be behind its
+        // last state. 
+        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+
+          if (_jobId == 0 || _jobId == _jobIdMax) {
+            getUniqueIds();  // cannot fail but only hang
           }
+
+          updateSnapshot();
+
+          if (!_upgraded) {
+            upgradeAgency();
+          }
+
+          if (_agent->leaderFor() > 10) {
+            try {
+              doChecks();
+            } catch (std::exception const& e) {
+              LOG_TOPIC(ERR, Logger::SUPERVISION)
+                << e.what() << " " << __FILE__ << " " << __LINE__;
+            } catch (...) {
+              LOG_TOPIC(ERR, Logger::SUPERVISION) <<
+                "Supervision::doChecks() generated an uncaught exception.";
+            }
+          }
+
+          handleJobs();
         }
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
+  
   if (shutdown) {
     ApplicationServer::server->beginShutdown();
   }

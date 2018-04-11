@@ -221,13 +221,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
     auto identifier = definition.get(VIEW_ID_FIELD);
-    auto vocbase = collection()->vocbase();
 
-    if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+    if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
       auto viewId = identifier.getUInt();
 
       // NOTE: this will cause a deadlock if registering a link while view is being created
-      auto logicalView = vocbase->lookupView(viewId);
+      auto logicalView = collection()->vocbase().lookupView(viewId);
 
       if (!logicalView || IResearchView::type() != logicalView->type()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
