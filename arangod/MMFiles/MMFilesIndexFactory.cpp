@@ -187,12 +187,12 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
-                                    VPackBuilder& builder) {
+                                    VPackBuilder& builder,
+                                    bool geoJson) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
     // only add geoJson for indexes with a single field (with needs to be an array)
-    bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    geoJson = basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", geoJson);
     builder.add("geoJson", VPackValue(geoJson));
   }
 }
@@ -211,7 +211,7 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
     }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
-    ProcessIndexGeoJsonFlag(definition, builder);
+    ProcessIndexGeoJsonFlag(definition, builder, false);
   }
   return res;
 }
@@ -230,7 +230,7 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
     }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
-    ProcessIndexGeoJsonFlag(definition, builder);
+    ProcessIndexGeoJsonFlag(definition, builder, false);
   }
   return res;
 }
@@ -249,7 +249,7 @@ static int EnhanceJsonIndexGeoS2(VPackSlice const definition,
     }
     builder.add("sparse", VPackValue(true));
     builder.add("unique", VPackValue(false));
-    ProcessIndexGeoJsonFlag(definition, builder);
+    ProcessIndexGeoJsonFlag(definition, builder, true);
   }
   return res;
 }

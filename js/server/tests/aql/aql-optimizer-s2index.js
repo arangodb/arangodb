@@ -140,9 +140,9 @@ function optimizerRuleTestSuite() {
       /*geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
       geocol.ensureIndex({type:"geo", fields:["geo"]});
       geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});*/
-      geocol.ensureIndex({type: "s2index", fields:["lat","lon"]});
-      geocol.ensureIndex({type: "s2index", fields:["geo"]});
-      geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"]});
+      geocol.ensureIndex({type: "s2index", fields:["lat","lon"], geoJson: false});
+      geocol.ensureIndex({type: "s2index", fields:["geo"], geoJson: false});
+      geocol.ensureIndex({type: "s2index", fields:["loca.tion.lat","loca.tion.lon"], geoJson: false});
       var lat, lon;
       for (lat=-40; lat <=40 ; ++lat) {
           for (lon=-40; lon <= 40; ++lon) {
