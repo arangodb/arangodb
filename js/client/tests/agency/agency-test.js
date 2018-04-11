@@ -98,18 +98,47 @@ function agencyTestSuite () {
   var compactionConfig = findAgencyCompactionIntervals();
   require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
-  function accessAgency(api, list) {
+  function getCompactions() {
+    var ret = [];
+    agencyServers.forEach(function (url) {
+      var compaction = {
+        url: url + "/_api/cursor",
+        timeout: 240,
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ query : "FOR c IN compact SORT c._key RETURN c" })};
+      var state = {
+        url: url + "/_api/agency/state",
+        timeout: 240
+      };
+      
+      ret.push({compactions: JSON.parse(request(compaction).body),
+                state: JSON.parse(request(state).body), url: url});
+      
+    });
+    return ret;
+  }
+
+  function accessAgency(api, list = [], method = "POST") {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
     while (true) {
-      res = request({url: agencyLeader + "/_api/agency/" + api,
-                     method: "POST", followRedirect: false,
-                     body: JSON.stringify(list),
+
+      var payload = {url: agencyLeader + "/_api/agency/" + api,
+                     method: method, followRedirect: false,
                      headers: {"Content-Type": "application/json"},
                      timeout: 240  /* essentially for the huge trx package
-                                      running under ASAN in the CI */ });
+                                      running under ASAN in the CI */ };
+      
+      if (method == "POST") {
+        payload.body = JSON.stringify(list);
+      }
+      
+      res = request(payload);
+      
       if(res.statusCode === 307) {
+        require('console').topic("agency=info", '307 from ' + agencyLeader);
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
@@ -1033,7 +1062,90 @@ function agencyTestSuite () {
       for (i = 0; i < 100; ++i) {
         assertEqual(readAndCheck([["a" + i]]), [{["a" + i]:1}]);
       }
-    }
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, all different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompactionStepKeep : function() {
+      writeAndCheck([[{"foobar":{"op":"delete"}}]]); // cleanup first
+      var transaction = [], i;
+      for (i = 0; i < compactionConfig.compactionStepSize; i++) {
+        transaction.push([{"foobar":{"op":"increment"}}]);
+      }
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      var agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      for (i = 2; i < 27; ++i) {
+         writeAndCheck(transaction);
+      }
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+    }    
+    
   };
 }
 
