@@ -119,7 +119,7 @@ function appendHeader() {
   };
   addGoogleSrc();
 
-  $(".arangodb-navmenu a:lt(4)").on("click", function(e) {
+  $(".arangodb-navmenu a[data-book]").on("click", function(e) {
     e.preventDefault();
     var urlSplit = gitbook.state.root.split("/");
     urlSplit.pop(); // ""
