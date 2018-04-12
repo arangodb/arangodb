@@ -1703,13 +1703,13 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
     for (auto const& it : VPackObjectIterator(slice)) {
       arangodb::velocypack::ValueLength length;
       const char *str = it.key.getString(length);
-      matchPatterns.push_back(UnicodeString(str, length));
+      matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       if (!it.value.isString()) {
         RegisterInvalidArgumentWarning(query, AFN);
         return AqlValue(AqlValueHintNull());
       }
       str = it.value.getString(length);
-      replacePatterns.push_back(UnicodeString(str, length));
+      replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
   }
   else {
@@ -1730,7 +1730,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
         }
         arangodb::velocypack::ValueLength length;
         const char *str = it.getString(length);
-        matchPatterns.push_back(UnicodeString(str, length));
+        matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       }
     }
     else {
@@ -1740,7 +1740,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
       }
       arangodb::velocypack::ValueLength length;
       const char *str = slice.getString(length);
-      matchPatterns.push_back(UnicodeString(str, length));
+      matchPatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
     }
     if (parameters.size() > 2) {
       AqlValue replace = ExtractFunctionParameterValue(parameters, 2);
@@ -1753,7 +1753,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
           }
           arangodb::velocypack::ValueLength length;
           const char *str = it.getString(length);
-          replacePatterns.push_back(UnicodeString(str, length));
+          replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
         }
       }
       else if (replace.isString()) {
@@ -1762,7 +1762,7 @@ AqlValue Functions::Substitute(arangodb::aql::Query* query,
         replaceWasPlainString = true;
         arangodb::velocypack::ValueLength length;
         const char *str = rslice.getString(length);
-        replacePatterns.push_back(UnicodeString(str, length));
+        replacePatterns.push_back(UnicodeString(str, static_cast<int32_t>(length)));
       }
       else {
         RegisterInvalidArgumentWarning(query, AFN);
@@ -5687,7 +5687,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
 
     std::string jsName;
     size_t const n = invokeParams.size();
-    size_t const callArgs = (func == nullptr ? 3 : n);
+    int const callArgs = (func == nullptr ? 3 : n);
     v8::Handle<v8::Value> args[callArgs]; 
 
     if (func == nullptr) {
@@ -5762,11 +5762,12 @@ AqlValue Functions::Apply(
   SmallVector<AqlValue>::allocator_type::arena_type arena;
   VPackFunctionParameters invokeParams{arena};
   VPackSlice paramArray;
+  AqlValue rawParamArray;
   std::vector<bool> mustFree;
   if (parameters.size() == 2) {
     // We have a parameter that should be an array, whichs content we need to make
     // the sub functions parameters.
-    AqlValue rawParamArray = ExtractFunctionParameterValue(parameters, 1);
+    rawParamArray = ExtractFunctionParameterValue(parameters, 1);
 
     if (!rawParamArray.isArray()) {
       RegisterWarning(query, AFN, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);

@@ -912,7 +912,7 @@ AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
                                       std::string const& ucInvokeFN,
                                       char const* AFN,
                                       bool rethrowV8Exception,
-                                      size_t callArgs,
+                                      int callArgs,
                                       v8::Handle<v8::Value>* args,
                                       bool &mustDestroy
                                       ){
@@ -986,7 +986,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
 
     std::string jsName;
     size_t const n = member->numMembers();
-    size_t const callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+    int callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
     v8::Handle<v8::Value> args[callArgs];
 
     if (node->type == NODE_TYPE_FCALL_USER) {

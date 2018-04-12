@@ -169,7 +169,7 @@ class Expression {
                                    std::string const& ucInvokeFN,
                                    char const* AFN,
                                    bool rethrowV8Exception,
-                                   size_t callArgs,
+                                   int callArgs,
                                    v8::Handle<v8::Value>* args,
                                    bool &mustDestroy);
 
