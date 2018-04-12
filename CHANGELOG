@@ -13,6 +13,9 @@ v3.2.13 (XXXX-XX-XX)
 
 * fixed interal issue #2215 FailedLeader timeout bug
 
+* fixed agency's log compaction for internal issue #2249
+
+
 v3.2.12 (2018-02-27)
 --------------------
 

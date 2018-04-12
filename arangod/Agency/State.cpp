@@ -969,11 +969,12 @@ bool State::find(index_t prevIndex, term_t prevTerm) {
 }
 
 /// Log compaction
-bool State::compact(index_t cind) {
-  // We need to compute the state at index cind and 
+bool State::compact(index_t cind, index_t keep) {
+  // We need to compute the state at index cind and use:
   //   cind <= _commitIndex
-  // and usually it is < because compactionKeepSize > 0. We start at the
-  // latest compaction state and advance from there:
+  // We start at the latest compaction state and advance from there:
+  // We keep at least `keep` log entries before the compacted state,
+  // for forensic analysis and such that the log is never empty.
   {
     MUTEX_LOCKER(_logLocker, _logLock);
     if (cind <= _cur) {
@@ -986,7 +987,9 @@ bool State::compact(index_t cind) {
 
   // Move next compaction index forward to avoid a compaction wakeup 
   // whilst we are working:
-  _nextCompactionAfter += _agent->config().compactionStepSize();
+  _nextCompactionAfter 
+      = (std::max)(_nextCompactionAfter.load(),
+                   cind + _agent->config().compactionStepSize());
 
   Store snapshot(_agent, "snapshot");
   index_t index;
@@ -1017,8 +1020,8 @@ bool State::compact(index_t cind) {
 
   // Now clean up old stuff which is included in the latest compaction snapshot:
   try {
-    compactVolatile(cind);
-    compactPersisted(cind);
+    compactVolatile(cind, keep);
+    compactPersisted(cind, keep);
     removeObsolete(cind);
   } catch (std::exception const& e) {
     if (!_agent->isStopping()) {
@@ -1033,30 +1036,45 @@ bool State::compact(index_t cind) {
 }
 
 /// Compact volatile state
-bool State::compactVolatile(index_t cind) {
-  // Note that we intentionally keep the index cind although it is, strictly
-  // speaking, no longer necessary. This is to make sure that _log does not
-  // become empty! DO NOT CHANGE! This is used elsewhere in the code!
+bool State::compactVolatile(index_t cind, index_t keep) {
+  // Note that we intentionally keep some log entries before cind
+  // although it is, strictly speaking, no longer necessary. This is to
+  // make sure that _log does not become empty! DO NOT CHANGE! This is
+  // used elsewhere in the code! Furthermore, it allows for forensic
+  // analysis in case of bad things having happened.
+  if (keep >= cind) {   // simply keep everything
+    return true;
+  }
+  TRI_ASSERT(keep < cind);
+  index_t cut = cind - keep;
   MUTEX_LOCKER(mutexLocker, _logLock);
-  if (!_log.empty() && cind > _cur && cind - _cur < _log.size()) {
-    _log.erase(_log.begin(), _log.begin() + (cind - _cur));
-    TRI_ASSERT(_log.begin()->index == cind);
+  if (!_log.empty() && cut > _cur && cut - _cur < _log.size()) {
+    _log.erase(_log.begin(), _log.begin() + (cut - _cur));
+    TRI_ASSERT(_log.begin()->index == cut);
     _cur = _log.begin()->index;
   }
   return true;
 }
 
 /// Compact persisted state
-bool State::compactPersisted(index_t cind) {
-  // Note that we intentionally keep the index cind although it is, strictly
-  // speaking, no longer necessary. This is to make sure that _log does not
-  // become empty! DO NOT CHANGE! This is used elsewhere in the code!
+bool State::compactPersisted(index_t cind, index_t keep) {
+  // Note that we intentionally keep some log entries before cind
+  // although it is, strictly speaking, no longer necessary. This is to
+  // make sure that _log does not become empty! DO NOT CHANGE! This is
+  // used elsewhere in the code! Furthermore, it allows for forensic
+  // analysis in case of bad things having happened.
+  if (keep >= cind) {   // simply keep everything
+    return true;
+  }
+  TRI_ASSERT(keep < cind);
+  index_t cut = cind - keep;
+
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
   bindVars->close();
 
   std::stringstream i_str;
-  i_str << std::setw(20) << std::setfill('0') << cind;
+  i_str << std::setw(20) << std::setfill('0') << cut;
 
   std::string const aql(std::string("FOR l IN log FILTER l._key < \"") +
                         i_str.str() + "\" REMOVE l IN log");
@@ -1075,14 +1093,14 @@ bool State::compactPersisted(index_t cind) {
 
 /// Remove outdated compaction snapshots
 bool State::removeObsolete(index_t cind) {
-  if (cind > 3 * _agent->config().compactionStepSize()) {
+  if (cind > 3 * _agent->config().compactionKeepSize()) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->close();
 
     std::stringstream i_str;
     i_str << std::setw(20) << std::setfill('0')
-          << -3 * _agent->config().compactionStepSize() + cind;
+          << -3 * _agent->config().compactionKeepSize() + cind;
 
     std::string const aql(std::string("FOR c IN compact FILTER c._key < \"") +
                           i_str.str() + "\" REMOVE c IN compact");

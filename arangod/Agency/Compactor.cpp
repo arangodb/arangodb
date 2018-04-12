@@ -53,7 +53,7 @@ void Compactor::run() {
     {
       CONDITION_LOCKER(guard, _cv);
       if (!_wakeupCompactor) {
-        _cv.wait();
+        _cv.wait(5000000);   // just in case we miss a wakeup call!
       }
       _wakeupCompactor = false;
     }
@@ -63,7 +63,7 @@ void Compactor::run() {
     }
     
     try {
-      _agent->compact();
+      _agent->compact();  // Note that this checks nextCompactionAfter again!
     }
     catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << "Expection during compaction, details: "

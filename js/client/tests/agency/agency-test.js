@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var wait = require("internal").wait;
+var _ = require("lodash");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bogus UUIDs
@@ -87,18 +88,47 @@ function agencyTestSuite () {
   var compactionConfig = findAgencyCompactionIntervals();
   require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
-  function accessAgency(api, list) {
+  function getCompactions(servers) {
+    var ret = [];
+    servers.forEach(function (url) {
+      var compaction = {
+        url: url + "/_api/cursor",
+        timeout: 240,
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ query : "FOR c IN compact SORT c._key RETURN c" })};
+      var state = {
+        url: url + "/_api/agency/state",
+        timeout: 240
+      };
+      
+      ret.push({compactions: JSON.parse(request(compaction).body),
+                state: JSON.parse(request(state).body), url: url});
+      
+    });
+    return ret;
+  }
+
+  function accessAgency(api, list = [], method = "POST") {
     // We simply try all agency servers in turn until one gives us an HTTP
     // response:
     var res;
     while (true) {
-      res = request({url: agencyLeader + "/_api/agency/" + api,
-                     method: "POST", followRedirect: false,
-                     body: JSON.stringify(list),
+
+      var payload = {url: agencyLeader + "/_api/agency/" + api,
+                     method: method, followRedirect: false,
                      headers: {"Content-Type": "application/json"},
                      timeout: 240  /* essentially for the huge trx package
-                                      running under ASAN in the CI */ });
+                                      running under ASAN in the CI */ };
+      
+      if (method == "POST") {
+        payload.body = JSON.stringify(list);
+      }
+      
+      res = request(payload);
+      
       if(res.statusCode === 307) {
+        require('console').topic("agency=info", '307 from ' + agencyLeader);
         agencyLeader = res.headers.location;
         var l = 0;
         for (var i = 0; i < 3; ++i) {
@@ -167,6 +197,88 @@ function agencyTestSuite () {
     }
   }
 
+
+  function evalComp() {
+
+    var servers = _.clone(agencyServers), llogi;
+    var count = 0;
+
+    while (servers.length > 0) {
+      var agents = getCompactions(servers), i, old;
+      var ready = true;
+      for (i = 1; i < agents.length; ++i) {
+        if (agents[0].state[agents[0].state.length-1].index !==
+            agents[i].state[agents[i].state.length-1].index) {
+          ready = false;
+          break;
+        } 
+      }
+      if (!ready) {
+        continue;
+      }
+      agents.forEach( function (agent) {
+
+        var results = agent.compactions.result;         // All compactions 
+        var llog = agent.state[agent.state.length-1];   // Last log entry
+        llogi = llog.index;                         // Last log index
+        var lcomp = results[results.length-1];          // Last compaction entry
+        var lcompi = parseInt(lcomp._key);              // Last compaction index
+        var stepsize = compactionConfig.compactionStepSize;
+
+        if (lcompi > llogi - stepsize) { // agent has compacted
+
+          var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
+          var n = 0;
+          var keepsize = compactionConfig.compactionKeepSize;
+          var flog = agent.state[0];                      // First log entry
+          var flogi = flog.index;                         // First log index
+
+          // Expect to find last compaction maximally
+          // keep-size away from last RAFT index
+          assertTrue(lcompi > llogi - stepsize);
+
+          // log entries before compaction index - compaction keep size
+          // are dumped
+          if (lcompi > keepsize) {
+            assertTrue(flogi == lcompi - keepsize)
+          } else {
+            assertEqual(flogi, 0);
+          }
+
+          if(lcomp.readDB[0].hasOwnProperty("foobar")) {
+            // All log entries > last compaction index,
+            // which are {"foobar":{"op":"increment"}}
+            agent.state.forEach( function(log) {
+              if (log.index > lcompi) {
+                if (log.query.foobar !== undefined) {
+                  ++n;
+                }
+              }
+            });
+            
+            // Sum of relevant log entries > last compaction index and last
+            // compaction's foobar value must match foobar's value in agency
+            assertEqual(lcomp.readDB[0].foobar + n, foobar);
+            
+          }
+          // this agent is fine remove it from agents to be check this time
+          // around list
+          servers.splice(servers.indexOf(agent.url));
+
+        }
+      });
+      wait(0.1);
+      ++count;
+      if (count > 600) {
+        return 0;
+      }
+
+    }
+    
+    return llogi;
+    
+  }
+      
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -886,7 +998,89 @@ function agencyTestSuite () {
       }
       writeAndCheck(huge);
       assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
-    }
+    },
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package, all different keys
+////////////////////////////////////////////////////////////////////////////////
+
+    testCompactionStepKeep : function() {
+      writeAndCheck([[{"foobar":{"op":"delete"}}]]); // cleanup first
+      var transaction = [], i;
+      for (i = 0; i < compactionConfig.compactionStepSize; i++) {
+        transaction.push([{"foobar":{"op":"increment"}}]);
+      }
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      var agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      for (i = 2; i < 27; ++i) {
+         writeAndCheck(transaction);
+      }
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+      
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+      writeAndCheck(transaction);
+      wait(1.0);
+      agents = getCompactions();
+
+      agents.forEach( function (agent) {
+        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
+        agent.compactions.result.forEach( function (result) {
+          console.warn({key: result._key, foobar: result.readDB[0].foobar});
+        });
+      });
+
+    }        
 
   };
 }

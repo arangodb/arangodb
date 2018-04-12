@@ -1515,16 +1515,13 @@ void Agent::compact() {
     commitIndex = _commitIndex;
   }
 
-  if (commitIndex > _config.compactionKeepSize()) {
-    // If the keep size is too large, we do not yet compact
-    // TODO: check if there is at problem that we call State::compact()
-    // now with a commit index that may have been slightly modified by other
-    // threads
-    // TODO: the question is if we have to lock out others while we
-    // call compact or while we grab _commitIndex and then call compact
-    if (!_state.compact(commitIndex - _config.compactionKeepSize())) {
+  if (commitIndex >= _state.nextCompactionAfter()) {
+    // This check needs to be here, because the compactor thread wakes us
+    // up every 5 seconds.
+    // Note that it is OK to compact anywhere before or at _commitIndex.
+    if (!_state.compact(commitIndex, _config.compactionKeepSize())) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Compaction for index "
-        << commitIndex - _config.compactionKeepSize()
+        << commitIndex << " with keep size " << _config.compactionKeepSize()
         << " did not work.";
     }
   }
