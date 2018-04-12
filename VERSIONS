@@ -13,3 +13,4 @@ EXTERNAL_DOC_arangodbjs=master
 EXTERNAL_DOC_arangosync=master
 EXTERNAL_DOC_arangodb=master
 EXTERNAL_DOC_spring-data=master
+EXTERNAL_DOC_kube-arangodb=master
