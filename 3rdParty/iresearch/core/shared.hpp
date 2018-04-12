@@ -124,6 +124,13 @@
   #define MSVC2013_ONLY(...)
 #endif
 
+// hook for MSVC2015-only code
+#if defined(_MSC_VER) && _MSC_VER == 1900
+  #define MSVC2015_ONLY(...) __VA_ARGS__
+#else
+  #define MSVC2015_ONLY(...)
+#endif
+
 // hook for MSVC2015 optimized-only code
 #if defined(_MSC_VER) && !defined(_DEBUG) && _MSC_VER == 1900
   #define MSVC2015_OPTIMIZED_ONLY(...) __VA_ARGS__
