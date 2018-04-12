@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var wait = require("internal").wait;
+var _ = require("lodash");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bogus UUIDs
@@ -98,9 +99,9 @@ function agencyTestSuite () {
   var compactionConfig = findAgencyCompactionIntervals();
   require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
-  function getCompactions() {
+  function getCompactions(servers) {
     var ret = [];
-    agencyServers.forEach(function (url) {
+    servers.forEach(function (url) {
       var compaction = {
         url: url + "/_api/cursor",
         timeout: 240,
@@ -208,52 +209,87 @@ function agencyTestSuite () {
   }
 
 
-  function evalComp(agents) {
-    
-    agents.forEach( function (agent) {
+  function evalComp() {
 
-      var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
-      var i = 0, n = 0;
-      var keepsize = compactionConfig.compactionKeepSize;
-      var stepsize = compactionConfig.compactionStepSize;
-      var results = agent.compactions.result;         // All compactions 
-      var flog = agent.state[0];                      // First log entry
-      var flogi = flog.index;                         // First log index
-      var llog = agent.state[agent.state.length-1];   // Last log entry
-      var llogi = llog.index;                         // Last log index
-      var lcomp = results[results.length-1];          // Last compaction entry
-      var lcompi = parseInt(lcomp._key);              // Last compaction index
+    var servers = _.clone(agencyServers), llogi;
+    var count = 0;
 
-      // log entries before compaction index - compaction keep size
-      // are dumped
-      if (lcompi > keepsize) {
-        assertTrue(flogi == lcompi - keepsize)
-      } else {
-        assertEqual(flogi, 0);
+    while (servers.length > 0) {
+      var agents = getCompactions(servers), i, old;
+      var ready = true;
+      for (i = 1; i < agents.length; ++i) {
+        if (agents[0].state[agents[0].state.length-1].index !==
+            agents[i].state[agents[i].state.length-1].index) {
+          ready = false;
+          break;
+        } 
       }
-      
-      // Expect to find last compaction maximally
-      // keep-size away from last RAFT index
-      assertTrue(lcompi > llogi - stepsize);
+      if (!ready) {
+        continue;
+      }
+      agents.forEach( function (agent) {
 
-      // All log entries > last compaction index,
-      // which are {"foobar":{"op":"increment"}}
-      agent.state.forEach( function(log) {
-        if (log.index > lcompi) {
-          if (log.query.foobar !== undefined) {
-            ++n;
+        var results = agent.compactions.result;         // All compactions 
+        var llog = agent.state[agent.state.length-1];   // Last log entry
+        llogi = llog.index;                         // Last log index
+        var lcomp = results[results.length-1];          // Last compaction entry
+        var lcompi = parseInt(lcomp._key);              // Last compaction index
+        var stepsize = compactionConfig.compactionStepSize;
+
+        if (lcompi > llogi - stepsize) { // agent has compacted
+
+          var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
+          var n = 0;
+          var keepsize = compactionConfig.compactionKeepSize;
+          var flog = agent.state[0];                      // First log entry
+          var flogi = flog.index;                         // First log index
+
+          // Expect to find last compaction maximally
+          // keep-size away from last RAFT index
+          assertTrue(lcompi > llogi - stepsize);
+
+          // log entries before compaction index - compaction keep size
+          // are dumped
+          if (lcompi > keepsize) {
+            assertTrue(flogi == lcompi - keepsize)
+          } else {
+            assertEqual(flogi, 0);
           }
+
+          if(lcomp.readDB[0].hasOwnProperty("foobar")) {
+            // All log entries > last compaction index,
+            // which are {"foobar":{"op":"increment"}}
+            agent.state.forEach( function(log) {
+              if (log.index > lcompi) {
+                if (log.query.foobar !== undefined) {
+                  ++n;
+                }
+              }
+            });
+            
+            // Sum of relevant log entries > last compaction index and last
+            // compaction's foobar value must match foobar's value in agency
+            assertEqual(lcomp.readDB[0].foobar + n, foobar);
+            
+          }
+          // this agent is fine remove it from agents to be check this time
+          // around list
+          servers.splice(servers.indexOf(agent.url));
+
         }
       });
+      wait(0.1);
+      ++count;
+      if (count > 600) {
+        return 0;
+      }
 
-      // Sum of relevant log entries > last compaction index and
-      // last compaction's foobar value must match foobar's value in agency
-      assertEqual(lcomp.readDB[0].foobar + n, foobar);
-    });
+    }
+    
+    return llogi;
+    
   }
       
-
-
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1120,50 +1156,44 @@ function agencyTestSuite () {
 
     testCompactionStepKeep : function() {
 
-      writeAndCheck([[{"/":{"op":"delete"}}]]); // cleanup first
-      wait(1.0);
-      var agents = getCompactions(), n = 0, transaction = [], i;
-
-      // at this limit we should see keep size to kick in
-      var lim = compactionConfig.compactionKeepSize - agents[0].state[agents[0].state.length-1].index;
-
-      // prepare transaction package for tests 
+      // prepare transaction package for tests
+      var transaction = [], i;
       for (i = 0; i < compactionConfig.compactionStepSize; i++) {
         transaction.push([{"foobar":{"op":"increment"}}]);
       }
+      writeAndCheck([[{"/":{"op":"delete"}}]]); // cleanup first
+      writeAndCheck([[{"foobar":0}]]); // cleanup first
+      var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
+
+      var llogi = evalComp();
+      assertTrue(llogi > 0);
+
+      // at this limit we should see keep size to kick in
+      var lim = compactionConfig.compactionKeepSize - llogi;
 
       // 1st package
       writeAndCheck(transaction);
       lim -= transaction.length;
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
       
       writeAndCheck(transaction);
       lim -= transaction.length;
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
       
       while(lim > compactionConfig.compactionStepSize) {
         writeAndCheck(transaction);
         lim -= transaction.length;
       }
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
-      lim -= transaction.length;
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
       
       writeAndCheck(transaction);
-      lim -= transaction.length;
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
-      lim -= transaction.length;
-      wait(1.0);
-      evalComp(getCompactions());
+      assertTrue(evalComp()>0);
 
     }    
     
