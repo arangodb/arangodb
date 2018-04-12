@@ -1,5 +1,5 @@
 #!/bin/bash
-ALLBOOKS="HTTP AQL Manual Cookbook"
+ALLBOOKS="HTTP AQL Manual Cookbook Drivers"
 OTHER_MIME="pdf epub mobi"
 
 # shellcheck disable=SC2016
@@ -106,7 +106,7 @@ function book-check-restheader-leftovers()
 {
     NAME="$1"
     echo "${STD_COLOR}##### checking for restheader leftovers in ${NAME}${RESET}"
-    ERRORS=$(find "ppbooks/${NAME}" -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
+    ERRORS=$(find "ppbooks/${NAME}" -not \( -path "ppbooks/Drivers/SpringData/*" -prune \) -name "*.md" -exec grep -- '^@[A-Z]*' {} \; -print)
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
         echo "found these unconverted Swagger Restapi tags: "
@@ -218,7 +218,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md\"[ />]' {} \; -print | grep -v data-filepath)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md\"[ />]' {} \; -print | grep -v data-filepath)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"
@@ -229,7 +229,7 @@ function book-check-markdown-leftovers()
     fi
 
     set +e
-    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '\.md#' {} \; -print)
+    ERRORS=$(find "books/${NAME}" -name '*.html' -exec grep '"[a-zA-Z/\.]*\.md#' {} \; -print)
     set -e
     if test "$(echo -n "${ERRORS}" | wc -l)" -gt 0; then
         echo "${ERR_COLOR}"

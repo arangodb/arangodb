@@ -34,7 +34,7 @@ function appendHeader() {
       searcheable_versions[i] +
       '</option>\n';
   }
-
+    
   var div = document.createElement('div');
   div.innerHTML = '<div class="arangodb-header">\n' +
     '  <div class="arangodb-logo">\n' +
@@ -63,10 +63,10 @@ function appendHeader() {
     '    <li>\n' +
     '      <a href="#" data-book="HTTP">HTTP</a>\n' +
     '    </li>\n' +
-    '    <li class="active-tab">\n' +
+    '    <li>\n' +
     '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
     '    </li>\n' +
-    '    <li>\n' +
+    '    <li class="active-tab">\n' +
     '      <a href="#" data-book="Drivers">Drivers</a>\n' +
     '    </li>\n' +
     '    <li class="downloadIcon" title="Download">\n' +
@@ -97,13 +97,13 @@ function appendHeader() {
     '  </ul>\n' +
     '</div>\n';
 
-  $('.book').before(div.innerHTML);
+    $('.book').before(div.innerHTML);
 
   };
 
 
   function rerenderNavbar() {
-    $('.arangodb-header').remove();
+    $('#header').remove();
     appendHeader();
   };
 
