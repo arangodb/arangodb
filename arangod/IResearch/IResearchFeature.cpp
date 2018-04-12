@@ -131,9 +131,9 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 void registerIndexFactory() {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    return; // no registration required on coordinator (collections not instantiated)
-  }
+//  if (arangodb::ServerState::instance()->isCoordinator()) {
+//    return; // no registration required on coordinator (collections not instantiated)
+//  }
 
   static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
     { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },

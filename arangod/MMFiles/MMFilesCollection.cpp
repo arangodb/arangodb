@@ -2066,6 +2066,13 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     auto idx =
         idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
 
+    if (!idx) {
+      LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+        << "error creating index from definition '"
+        << indexesSlice.toString() << "'";
+      continue;
+    }
+
     if (ServerState::instance()->isRunningInCluster()) {
       addIndexCoordinator(idx);
     } else {

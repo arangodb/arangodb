@@ -283,28 +283,6 @@ size_t directoryMemory(irs::directory const& directory, TRI_voc_cid_t viewId) no
   return size;
 }
 
-std::shared_ptr<arangodb::iresearch::IResearchLink> findFirstMatchingLink(
-    arangodb::LogicalCollection const& collection,
-    arangodb::iresearch::IResearchView const& view
-) {
-  for (auto& index: collection.getIndexes()) {
-    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
-      continue; // not an iresearch Link
-    }
-
-    // TODO FIXME find a better way to retrieve an iResearch Link
-    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
-    auto link =
-      std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
-
-    if (link && *link == view) {
-      return link; // found required link
-    }
-  }
-
-  return nullptr;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the data path to user for iresearch persisted-store
 ///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
@@ -618,9 +596,7 @@ arangodb::Result updateLinks(
 
       namedJson.openObject();
 
-      if (!arangodb::iresearch::mergeSlice(namedJson, link)
-          || !arangodb::iresearch::IResearchLink::setType(namedJson)
-          || !arangodb::iresearch::IResearchLink::setView(namedJson, view.id())) {
+      if (!arangodb::iresearch::IResearchLink::buildIndexDefinition(namedJson, link, view.id())) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failed to update link definition with the view name while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"
@@ -699,7 +675,7 @@ arangodb::Result updateLinks(
           );
         }
 
-        state._link = findFirstMatchingLink(*(state._collection), view);
+        state._link = arangodb::iresearch::IResearchLink::find(*(state._collection), view);
 
         // remove modification state if removal of non-existant link
         if (!state._link // links currently does not exist
@@ -822,7 +798,7 @@ void validateLinks(
   for (auto itr = collections.begin(), end = collections.end(); itr != end;) {
     auto collection = vocbase.lookupCollection(*itr);
 
-    if (!collection || !findFirstMatchingLink(*collection, view)) {
+    if (!collection || !arangodb::iresearch::IResearchLink::find(*collection, view)) {
       itr = collections.erase(itr);
     } else {
       ++itr;
@@ -2264,7 +2240,7 @@ void IResearchView::verifyKnownCollections() {
       drop(cid);
     } else {
       // see if the link still exists, otherwise drop and move on
-      auto link = findFirstMatchingLink(*collection, *this);
+      auto link = IResearchLink::find(*collection, *this);
       if (!link) {
         LOG_TOPIC(TRACE, IResearchFeature::IRESEARCH)
           << "collection '" << cid

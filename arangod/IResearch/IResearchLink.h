@@ -38,13 +38,33 @@ NS_BEGIN(iresearch)
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLink {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finds first link between specified collection and view
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLink> find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+  );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief builds Index API compatible IResearch link definiton
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool buildIndexDefinition(
+    VPackBuilder& builder, // result
+    VPackSlice link, // link properties
+    TRI_voc_cid_t id // view id
+  );
+
   virtual ~IResearchLink();
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief does this iResearch Link reference the supplied view
+  /// @brief does this IResearch Link reference the supplied view
   ////////////////////////////////////////////////////////////////////////////////
-  bool operator==(IResearchView const& view) const noexcept;
-  bool operator!=(IResearchView const& view) const noexcept;
+  bool operator==(LogicalView const& view) const noexcept;
+  bool operator!=(LogicalView const& view) const noexcept {
+    return *this != view;
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief does this iResearch Link match the meta definition

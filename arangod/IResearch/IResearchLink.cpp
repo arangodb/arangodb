@@ -26,6 +26,7 @@
 #include "VelocyPackHelper.h"
 
 #include "Basics/LocalTaskQueue.h"
+#include "Cluster/ClusterInfo.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -89,15 +90,11 @@ IResearchLink::~IResearchLink() {
   unload(); // disassociate from view if it has not been done yet
 }
 
-bool IResearchLink::operator==(IResearchView const& view) const noexcept {
+bool IResearchLink::operator==(LogicalView const& view) const noexcept {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   return _view && _view->id() == view.id();
-}
-
-bool IResearchLink::operator!=(IResearchView const& view) const noexcept {
-  return !(*this == view);
 }
 
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
@@ -225,8 +222,18 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
       auto viewId = identifier.getUInt();
 
-      // NOTE: this will cause a deadlock if registering a link while view is being created
-      auto logicalView = collection()->vocbase().lookupView(viewId);
+      std::shared_ptr<LogicalView> logicalView;
+      auto& vocbase = collection()->vocbase();
+
+      if (ServerState::instance()->isCoordinator()) {
+        logicalView = ClusterInfo::instance()->getView(
+          vocbase.name(), // database ID
+          basics::StringUtils::itoa(viewId) // view ID
+        );
+      } else {
+        // NOTE: this will cause a deadlock if registering a link while view is being created
+        logicalView = vocbase.lookupView(viewId);
+      }
 
       if (!logicalView || IResearchView::type() != logicalView->type()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
@@ -338,7 +345,7 @@ bool IResearchLink::json(
     return false;
   }
 
-  builder.add("id", VPackValue(std::to_string(_id)));
+  builder.add(StaticStrings::IdString, VPackValue(std::to_string(_id)));
   builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
@@ -573,6 +580,41 @@ const IResearchView* IResearchLink::view() const {
   SCOPED_LOCK(mutex);
 
   return _view;
+}
+
+/*static*/ std::shared_ptr<IResearchLink> IResearchLink::find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+) {
+  for (auto& index : collection.getIndexes()) {
+    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an iresearch Link
+    }
+
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+
+    if (link && *link == view) {
+      return link; // found required link
+    }
+  }
+
+  return nullptr;
+}
+
+/*static*/ bool IResearchLink::buildIndexDefinition(
+    VPackBuilder& builder,
+    VPackSlice link,
+    TRI_voc_cid_t viewId
+) {
+  if (!builder.isOpenObject()) {
+    return false;
+  }
+
+  builder.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
+  builder.add(VIEW_ID_FIELD, arangodb::velocypack::Value(viewId));
+  return mergeSlice(builder, link);
 }
 
 NS_END // iresearch

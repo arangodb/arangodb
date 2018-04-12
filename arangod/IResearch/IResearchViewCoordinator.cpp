@@ -23,13 +23,36 @@
 
 #include "IResearchViewCoordinator.h"
 #include "IResearchView.h" // FIXME remove dependency
+#include "IResearchLink.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/VelocyPackHelper.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/Methods/Indexes.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
+
+namespace {
+
+// FIXME introduce common place for shared strings
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        corresponding link definitions
+////////////////////////////////////////////////////////////////////////////////
+const std::string LINKS_FIELD("links");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the name of the field in the IResearch View definition denoting the
+///        corresponding properties definitions
+////////////////////////////////////////////////////////////////////////////////
+const std::string PROPERTIES_FIELD("properties");
+
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -46,21 +69,32 @@ namespace iresearch {
 
   std::string error;
 
-  auto properties = info.get("properties");
+  auto properties = info.get(PROPERTIES_FIELD);
 
   if (!properties.isObject()) {
     // set to defaults
     properties = VPackSlice::emptyObjectSlice();
   }
 
-  if (view->_meta.init(properties, error)) {
-    return view;
+  auto& meta = view->_meta;
+
+  if (!meta.init(properties, error)) {
+    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+        << "failed to initialize IResearch view from definition, error: " << error;
+
+    return nullptr;
   }
 
-  LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
-    << "failed to initialize IResearch view from definition, error: " << error;
+  auto const links = info.get(LINKS_FIELD);
 
-  return nullptr;
+  if (links.isObject()) {
+    auto& builder = view->_links;
+    builder.openObject();
+    view->_links.add(links);
+    builder.close();
+  }
+
+  return view;
 }
 
 /*static*/ arangodb::LogicalDataSource::Type const& IResearchViewCoordinator::type() noexcept {
@@ -97,7 +131,7 @@ void IResearchViewCoordinator::toVelocyPack(
   TRI_ASSERT(result.isOpenObject());
 
   // Meta Information
-  result.add("id", VPackValue(std::to_string(id())));
+  result.add(StaticStrings::IdString, VPackValue(std::to_string(id())));
   result.add("name", VPackValue(name()));
   result.add("type", VPackValue(type().name()));
 
@@ -107,9 +141,18 @@ void IResearchViewCoordinator::toVelocyPack(
   }
 
   if (includeProperties) {
-    result.add("properties", VPackValue(VPackValueType::Object));
+    result.add("properties", VPackValue(VPackValueType::Object)); // properties: {
+
+    // regular properites
     _meta.json(result);
-    result.close();
+
+    // view links
+    auto const links = _links.slice();
+    if (links.isObject()) {
+      mergeSlice(result, links);
+    }
+
+    result.close(); // }
   }
 
   TRI_ASSERT(result.isOpenObject()); // We leave the object open
@@ -120,30 +163,132 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     bool partialUpdate,
     bool /*doSync*/
 ) {
-  IResearchViewMeta meta;
-  std::string error;
+  try {
+    IResearchViewMeta meta;
+    std::string error;
 
-  auto const& defaults = partialUpdate
-    ? _meta
-    : IResearchViewMeta::DEFAULT();
+    auto const& defaults = partialUpdate
+      ? _meta
+      : IResearchViewMeta::DEFAULT();
 
-  if (!meta.init(properties, error, defaults)) {
-    return { TRI_ERROR_BAD_PARAMETER, error };
+    if (!meta.init(properties, error, defaults)) {
+      return { TRI_ERROR_BAD_PARAMETER, error };
+    }
+
+    VPackBuilder builder;
+    builder.openObject(); // {
+    toVelocyPack(builder, false, true); // only system properties
+    builder.add(PROPERTIES_FIELD, VPackValue(VPackValueType::Object)); // "properties" : {
+    meta.json(builder);
+    builder.close(); // }
+    builder.close(); // }
+
+    auto res = ClusterInfo::instance()->setViewPropertiesCoordinator(
+      vocbase().name(), // database name,
+      basics::StringUtils::itoa(id()), // cluster-wide view id
+      builder.slice()
+    );
+
+    if (!res.ok()) {
+      return res;
+    }
+
+    auto links = properties.get(LINKS_FIELD);
+
+    if (links.isNone()) {
+      return res;
+    }
+
+    CollectionNameResolver resolver(&vocbase());
+    VPackBuilder indexDefinition;
+
+    for (VPackObjectIterator linksItr(links); linksItr.valid(); ++linksItr) {
+      auto const collectionNameOrIdSlice = linksItr.key();
+
+      if (!collectionNameOrIdSlice.isString()) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          std::string("error parsing link parameters from json for IResearch view '")
+            + std::to_string(id())
+            + "' offset '"
+            + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
+        };
+      }
+
+      auto const collectionNameOrId = collectionNameOrIdSlice.copyString();
+      auto const collection = resolver.getCollection(collectionNameOrId);
+
+      if (!collection) {
+        return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
+      }
+
+      auto const link = linksItr.value();
+      builder.clear();
+
+      if (link.isNull()) {
+        // only removal requested
+        builder.openObject();
+        builder.add(StaticStrings::IdString, collectionNameOrIdSlice);
+        builder.close();
+
+        res = methods::Indexes::drop(collection.get(), builder.slice());
+      } else {
+        auto const existingLink = IResearchLink::find(*collection, *this);
+
+        if (existingLink) {
+          // drop existing link
+          builder.openObject();
+          builder.add(StaticStrings::IdString, VPackValue(existingLink->id()));
+          builder.close();
+
+          res = methods::Indexes::drop(collection.get(), builder.slice());
+
+          if (!res.ok()) {
+            return res;
+          }
+        }
+
+        builder.clear();
+
+        // create new link
+        builder.openObject();
+        if (!IResearchLink::buildIndexDefinition(builder, link, id())) {
+          return arangodb::Result(
+            TRI_ERROR_INTERNAL,
+            std::string("failed to update link definition with the view name while updating IResearch view '")
+            + std::to_string(id()) + "' collection '" + collectionNameOrId + "'"
+          );
+        }
+        builder.close();
+
+        res = methods::Indexes::ensureIndex(
+          collection.get(), builder.slice(), true, indexDefinition
+        );
+      }
+
+      if (!res.ok()) {
+        return res;
+      }
+    }
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
+    IR_LOG_EXCEPTION();
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error updating properties for IResearch view '") + std::to_string(id()) + "'"
+    );
+  } catch (...) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while updating properties for IResearch view '" << id() << "'";
+    IR_LOG_EXCEPTION();
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error updating properties for IResearch view '") + std::to_string(id()) + "'"
+    );
   }
 
-  VPackBuilder builder;
-  builder.openObject(); // {
-  toVelocyPack(builder, false, true); // only system properties
-  builder.add("properties", VPackValue(VPackValueType::Object)); // "properties" : {
-  meta.json(builder);
-  builder.close(); // }
-  builder.close(); // }
-
-  return ClusterInfo::instance()->setViewPropertiesCoordinator(
-    vocbase().name(), // database name,
-    basics::StringUtils::itoa(id()), // cluster-wide view id
-    builder.slice()
-  );
+  return {};
 }
 
 Result IResearchViewCoordinator::drop() {
