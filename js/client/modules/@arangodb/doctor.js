@@ -28,24 +28,59 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
-let serverRole = 'UNKNOWN';
-let endpoint2role = {};
-let agencyPlan = undefined;
+const servers = {};
+
+function INFO() {
+  let args = Array.prototype.slice.call(arguments);
+  print.apply(print, ["INFO"].concat(args));
+}
+
+function WARN() {
+  let args = Array.prototype.slice.call(arguments);
+  print.apply(print, ["WARN"].concat(args));
+}
 
 function loadAgencyPlan(conn) {
   var plan = arango.POST("/_api/agency/read", '[["/"]]');
 
   if (plan.code === 404) {
-    print("ERROR not talking to an agent, got: " + JSON.stringify(plan));
+    WARN("not talking to an agent, got: " + JSON.stringify(plan));
     return {};
   }
 
   if (plan.code !== undefined) {
-    print("ERROR failed to load plan, got: " + JSON.stringify(plan));
+    WARN("failed to load plan, got: " + JSON.stringify(plan));
     return {};
   }
 
   return plan;
+}
+
+function defineAgent(status, endpoint) {
+  let id = status.agent.id;
+
+  if (id in servers) {
+  } else {
+    servers[id] = {
+      type: 'AGENT',
+      id: id,
+      endpoint: endpoint,
+      source: "status"
+    };
+  }
+
+  if (status.agent.leading) {
+    arango.reconnect(endpoint, "_system");
+
+    const cfg = db.configuration.toArray()[0].cfg;
+
+    print("active");
+    cfg.active.map(a => print(a));
+
+    print("pool");
+    Object.keys(cfg.pool).forEach(a => print(a));
+  } else {
+  }
 }
 
 function serverBasics(conn) {
@@ -56,23 +91,27 @@ function serverBasics(conn) {
   const version = conn.GET("/_admin/status");
   const role = version.serverInfo.role;
 
-  serverRole = role;
-
   if (role === 'AGENT') {
-    print("INFO talking to an agent");
+    INFO("talking to an agent");
+    defineAgent(version, conn.getEndpoint());
   } else if (role === 'PRIMARY') {
-    print("INFO talking to a primary db server");
+    INFO("talking to a primary db server");
+    definePrimary(version);
   } else if (role === 'COORDINATOR') {
-    print("INFO talking to a coordinator");
+    INFO("talking to a coordinator");
+    defineCoordinator(version);
   } else if (role === 'SINGLE') {
-    print("INFO talking to a single server");
+    INFO("talking to a single server");
+    defineSingle(version);
   } else {
-    print("INFO talking to a unknown server, role: " + role);
-    serverRole = "UNKNOWN";
+    INFO("talking to a unknown server, role: " + role);
   }
+}
 
-  endpoint2role[conn.getEndpoint()] = serverRole;
+function listServers() {
+  return servers;
 }
 
 exports.serverBasics = serverBasics;
 exports.loadAgencyPlan = loadAgencyPlan;
+exports.listServers = listServers;
