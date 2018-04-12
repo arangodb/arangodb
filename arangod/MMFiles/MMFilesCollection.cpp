@@ -593,7 +593,7 @@ int MMFilesCollection::close() {
               "Database")
               ->forceSyncProperties();
       engine->changeCollection(
-        &(_logicalCollection->vocbase()),
+        _logicalCollection->vocbase(),
         _logicalCollection->id(),
         _logicalCollection,
         doSync
@@ -1752,7 +1752,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   auto& vocbase = _logicalCollection->vocbase();
   auto cid = _logicalCollection->id();
-  engine->getCollectionInfo(&vocbase, cid, builder, true, 0);
+  engine->getCollectionInfo(vocbase, cid, builder, true, 0);
 
   VPackSlice initialCount =
       builder.slice().get(std::vector<std::string>({"parameters", "count"}));
@@ -1846,7 +1846,7 @@ void MMFilesCollection::open(bool ignoreErrors) {
             ->forceSyncProperties();
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->changeCollection(
-      &(_logicalCollection->vocbase()),
+      _logicalCollection->vocbase(),
       _logicalCollection->id(),
       _logicalCollection,
       doSync
@@ -2052,8 +2052,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
+  auto& idxFactory = engine->indexFactory();
 
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
@@ -2064,7 +2063,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
     }
 
     auto idx =
-        idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+        idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
     if (!idx) {
       LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
@@ -2124,10 +2123,9 @@ void MMFilesCollection::createInitialIndexes() {
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
-  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  engine->indexFactory().fillSystemIndexes(_logicalCollection, systemIndexes);
+
   for (auto const& it : systemIndexes) {
     addIndex(it);
   }
@@ -2172,16 +2170,16 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods* trx,
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine->indexFactory().prepareIndexFromSlice(
+    info, true, _logicalCollection, false
+  );
   TRI_ASSERT(idx != nullptr);
+
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
@@ -2255,7 +2253,7 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(&vocbase, collectionId, idx->id(), data);
+  engine->createIndex(vocbase, collectionId, idx->id(), data);
 
   if (!engine->inRecovery()) {
     // We need to write an index marker
@@ -2332,17 +2330,19 @@ int MMFilesCollection::restoreIndex(transaction::Methods* trx,
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
+
   try {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory();
-    TRI_ASSERT(idxFactory != nullptr);
-    newIdx = idxFactory->prepareIndexFromSlice(info, false, _logicalCollection,
-                                               false);
+
+    newIdx = engine->indexFactory().prepareIndexFromSlice(
+      info, false, _logicalCollection, false
+    );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
     // Just report.
     return e.code();
   }
+
   TRI_ASSERT(newIdx != nullptr);
 
   TRI_UpdateTickServer(newIdx->id());
@@ -3206,7 +3206,7 @@ int MMFilesCollection::detectIndexes(transaction::Methods* trx) {
   VPackBuilder builder;
 
   engine->getCollectionInfo(
-    &(_logicalCollection->vocbase()),
+    _logicalCollection->vocbase(),
     _logicalCollection->id(),
     builder,
     true,

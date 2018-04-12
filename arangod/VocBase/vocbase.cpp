@@ -760,7 +760,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       if (!collection->deleted()) {
         collection->deleted(true);
         try {
-          engine->changeCollection(this, collection->id(), collection, doSync);
+          engine->changeCollection(*this, collection->id(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -780,7 +780,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(this, collection);
+      engine->dropCollection(*this, collection);
 
       DropCollectionCallback(collection);
       break;
@@ -798,7 +798,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       VPackBuilder builder;
-      engine->getCollectionInfo(this, collection->id(), builder, false, 0);
+      engine->getCollectionInfo(*this, collection->id(), builder, false, 0);
       arangodb::Result res = collection->updateProperties(
           builder.slice().get("parameters"), doSync);
 
@@ -812,7 +812,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(this, collection);
+      engine->dropCollection(*this, collection);
       state = DROP_PERFORM;
       break;
     }
@@ -1177,7 +1177,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  arangodb::Result res2 = engine->persistCollection(this, collection.get());
+  auto res2 = engine->persistCollection(*this, collection.get());
   // API compatibility, we always return the collection, even if creation
   // failed.
 
@@ -1252,7 +1252,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(this, collection);
+  engine->unloadCollection(*this, collection);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1483,7 +1483,7 @@ int TRI_vocbase_t::renameCollection(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   arangodb::Result res2 =
-    engine->renameCollection(this, collection, oldName);
+    engine->renameCollection(*this, collection, oldName);
 
   return res2.errorNumber();
 }

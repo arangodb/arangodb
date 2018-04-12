@@ -153,17 +153,9 @@ void registerIndexFactory() {
     }
 
     // ok to const-cast since this should only be called on startup
-    auto* indexFactory =
-      const_cast<arangodb::IndexFactory*>(engine->indexFactory());
-
-    if (!indexFactory) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to retieve index factory from feature '") + entry.first + "' while registering index type '" + indexType + "'"
-      );
-    }
-
-    auto res = indexFactory->emplaceFactory(indexType, entry.second);
+    auto& indexFactory =
+      const_cast<arangodb::IndexFactory&>(engine->indexFactory());
+    auto res = indexFactory.emplaceFactory(indexType, entry.second);
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -172,7 +164,7 @@ void registerIndexFactory() {
       );
     }
 
-    res = indexFactory->emplaceNormalizer(
+    res = indexFactory.emplaceNormalizer(
       indexType, arangodb::iresearch::IResearchLink::normalize
     );
 

@@ -30,17 +30,24 @@ ExecStart=/usr/sbin/arangosync run master \
     --cluster.jwtSecret=${CLUSTERSECRET} \
     --server.keyfile=${CERTIFICATEDIR}/tls.keyfile \
     --server.client-cafile=${CERTIFICATEDIR}/client-auth-ca.crt \
-    --server.endpoint=https://${PUBLICIP}:${MASTERPORT} \
+    --server.endpoint=https://${PRIVATEIP}:${MASTERPORT} \
     --server.port=${MASTERPORT} \
+    --master.endpoint=${PUBLICMASTERENDPOINTS} \
     --master.jwtSecret=${MASTERSECRET} \
-    --mq.type=kafka \
-    --mq.kafka-addr=${KAFKAENDPOINTS} \
-    --mq.kafka-client-keyfile=${CERTIFICATEDIR}/kafka-client.key \
-    --mq.kafka-cacert=${CERTIFICATEDIR}/tls-ca.crt \
+    --mq.type=direct
 TimeoutStopSec=60
 
 [Install]
 WantedBy=multi-user.target
+```
+
+When using the `kafka` type message queue, replace `--mq.type=direct` with `--mq.type=kafka`
+and add the following arguments.
+
+```text
+    --mq.kafka-addr=${KAFKAENDPOINTS} \
+    --mq.kafka-client-keyfile=${CERTIFICATEDIR}/kafka-client.key \
+    --mq.kafka-cacert=${CERTIFICATEDIR}/tls-ca.crt
 ```
 
 The _sync master_ needs a TLS server certificate and a
@@ -56,7 +63,8 @@ ExecStartPre=/usr/sbin/arangosync create tls keyfile \
     --keyfile=${CERTIFICATEDIR}/tls.keyfile \
     --host=${PUBLICIP} \
     --host=${PRIVATEIP} \
-    --host=${HOST}
+    --host=${HOST} \
+    --host=${CLUSTERDNSNAME}
 ExecStartPre=/usr/sbin/arangosync create client-auth keyfile \
     --cacert=${CERTIFICATEDIR}/tls-ca.crt \
     --cakey=${CERTIFICATEDIR}/tls-ca.key \
@@ -69,6 +77,11 @@ ExecStartPre=/usr/sbin/arangosync create client-auth keyfile \
 The _ArangoSync Master_ must be reachable on a TCP port `${MASTERPORT}` (used with `--server.port` option).
 This port must be reachable from inside the datacenter (by sync workers and operations)
 and from inside of the other datacenter (by sync masters in the other datacenter).
+
+Note that other sync masters in the same datacenter will contact this sync master
+through the endpoint specified in `--server.endpoint`.
+Sync masters (&sync workers) from the other datacenter will contains this sync master
+through the endpoint specified in `--master.endpoint`.
 
 ## Recommended deployment environment
 
