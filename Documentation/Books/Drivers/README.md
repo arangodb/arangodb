@@ -1,6 +1,6 @@
-ArangoDB VERSION_NUMBER HTTP API Driver Documentation
-=====================================================
+ArangoDB VERSION_NUMBER Drivers Documentation
+=============================================
 
-Welcome to the ArangoDB Driver documentation! 
+Welcome to the ArangoDB Drivers documentation! 
 
 
