@@ -17,7 +17,7 @@ Below you'll find an overview of these connections and the TCP ports that should
    within the same datacenter:
 
    - ArangoDB agents and coordinators (default ports: `8531` and `8529`)
-   - Kafka brokers (default port `9092`)
+   - Kafka brokers (only when using `kafka` type message queue) (default port `9092`)
    - Sync workers (default port `8729`)
 
    Additionally the sync masters must be allowed to connect to the sync masters in the other datacenter.
@@ -27,14 +27,15 @@ Below you'll find an overview of these connections and the TCP ports that should
 1. The sync workers must be allowed to connect to the following components within the same datacenter:
 
    - ArangoDB coordinators (default port `8529`)
-   - Kafka brokers (default port `9092`)
+   - Kafka brokers (only when using `kafka` type message queue) (default port `9092`)
    - Sync masters (default port `8629`)
 
    By default the sync workers will operate on port `8729`.
 
-   Additionally the sync workers must be allowed to connect to the Kafka brokers in the other datacenter.
+   Additionally (when using `kafka` type message queue) the sync workers must be allowed to
+   connect to the Kafka brokers in the other datacenter.
 
-1. Kafka
+1. Kafka (when using `kafka` type message queue)
 
    The kafka brokers must be allowed to connect to the following components within the same datacenter:
 
@@ -45,7 +46,7 @@ Below you'll find an overview of these connections and the TCP ports that should
    metrics on port `7071`. To gain more insight into kafka open this port for your prometheus
    installation.
 
-1. Zookeeper
+1. Zookeeper (when using `kafka` type message queue)
 
    The zookeeper agents must be allowed to connect to the following components within the same datacenter:
 
