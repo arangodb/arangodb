@@ -431,6 +431,18 @@ setting the option `--query.tracking` to *false*.
 The default value is *10.0*.
 
 
+### Query registry timeout
+
+`--query.registry-ttl value`
+
+The default timeout for AQL query parts to stay alive in the cluster. The default
+value is 600 seconds. Query parts that are not used for the configured amount of
+time will expire automatically and will be aborted. The value of this option 
+normally only needs to be increased for queries that are running longer than the
+default timeout value (600 seconds) and that time out. The option has no effect
+in single-server mode.
+
+
 ### Throw collection not loaded error
 
 `--database.throw-collection-not-loaded-error flag`

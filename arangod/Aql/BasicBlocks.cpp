@@ -349,10 +349,7 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
 
   if (_state == 0) {
     if (_fullCount) {
-      // properly initialize fullcount value, which has a default of -1
-      if (_engine->_stats.fullCount == -1) {
-        _engine->_stats.fullCount = 0;
-      }
+      _engine->_stats.fullCount = 0;
     }
 
     if (_offset > 0) {
@@ -405,13 +402,11 @@ int LimitBlock::getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
       while (true) {
         skipped = 0;
         AqlItemBlock* ignore = nullptr;
-        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore,
-                                      skipped);
+        ExecutionBlock::getOrSkipSome(atLeast, atMost, skipping, ignore, skipped);
 
-        if (ignore != nullptr) {
-          _engine->_stats.fullCount += static_cast<int64_t>(ignore->size());
-          delete ignore;
-        }
+        TRI_ASSERT(ignore == nullptr || ignore->size() == skipped);
+        _engine->_stats.fullCount += skipped;
+        delete ignore;
 
         if (skipped == 0) {
           break;

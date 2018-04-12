@@ -96,7 +96,8 @@ documents. For each inserted document, the document key is returned:
 
 ```js
 FOR i IN 1..100
-  INSERT { value: i } 
+  INSERT { value: i }
+  IN users 
   LET inserted = NEW 
   RETURN inserted._key
 ```
