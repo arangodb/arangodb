@@ -32,6 +32,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <v8.h>
 
 namespace arangodb {
 namespace transaction {
@@ -50,6 +51,7 @@ class Ast;
 class AttributeAccessor;
 class ExecutionPlan;
 class ExpressionContext;
+class Query;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
@@ -160,6 +162,17 @@ class Expression {
     return "unknown";
   }
 
+  // @brief invoke javascript aql functions with args as param.
+  static AqlValue invokeV8Function(arangodb::aql::Query* query,
+                                   transaction::Methods* trx,
+                                   std::string const& jsName,
+                                   std::string const& ucInvokeFN,
+                                   char const* AFN,
+                                   bool rethrowV8Exception,
+                                   size_t callArgs,
+                                   v8::Handle<v8::Value>* args,
+                                   bool &mustDestroy);
+
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)
   bool isAttributeAccess() const;
@@ -269,7 +282,6 @@ class Expression {
   AqlValue executeSimpleExpressionFCallCxx(AstNode const*,
                                            transaction::Methods*,
                                            bool& mustDestroy);
-  
   /// @brief execute an expression of type SIMPLE with FCALL, JavaScript variant
   AqlValue executeSimpleExpressionFCallJS(AstNode const*,
                                           transaction::Methods*,
@@ -337,11 +349,6 @@ class Expression {
       AstNode const*, transaction::Methods*, 
       bool& mustDestroy);
 
-  /// @brief prepare a V8 context for execution for this expression
-  /// this needs to be called once before executing any V8 function in this
-  /// expression
-  void prepareV8Context();
-
  private:
   /// @brief the query execution plan. note: this may be a nullptr for expressions
   /// created in the early optimization stage!
@@ -373,11 +380,6 @@ class Expression {
 
   /// @brief whether or not the expression will make use of V8
   bool _willUseV8;
-
-  /// @brief whether or not the preparation routine for V8 contexts was run
-  /// once for this expression
-  /// it needs to be run once before any V8-based function is called
-  bool _preparedV8Context;
 
   /// @brief the top-level attributes used in the expression, grouped
   /// by variable name

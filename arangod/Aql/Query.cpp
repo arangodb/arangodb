@@ -90,7 +90,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
-      _isModificationQuery(false) {
+      _isModificationQuery(false),
+      _preparedV8Context(false) {
     
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
@@ -168,7 +169,8 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t* vocbase,
       _part(part),
       _contextOwnedByExterior(contextOwnedByExterior),
       _killed(false),
-      _isModificationQuery(false) {
+      _isModificationQuery(false),
+      _preparedV8Context(false) {
   
   AqlFeature* aql = AqlFeature::lease();
   if (aql == nullptr) {
@@ -1000,6 +1002,34 @@ void Query::releaseEngine() {
   _engine.release();
 }
 
+/// @brief prepare a V8 context for execution for this expression
+/// this needs to be called once before executing any V8 function in this
+/// expression
+void Query::prepareV8Context() {
+  if (_preparedV8Context) {
+    // already done
+    return;
+  }
+
+  TRI_ASSERT(_trx != nullptr);
+
+  ISOLATE;
+  TRI_ASSERT(isolate != nullptr);
+
+  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
+  
+  {
+    v8::HandleScope scope(isolate); 
+    v8::Handle<v8::Script> compiled = v8::Script::Compile(
+        TRI_V8_STD_STRING(isolate, body), TRI_V8_ASCII_STRING(isolate, "--script--"));
+  
+    if (!compiled.IsEmpty()) {
+      v8::Handle<v8::Value> func(compiled->Run());
+      _preparedV8Context = true;
+    }
+  }
+}
+
 /// @brief enter a V8 context
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
@@ -1022,6 +1052,7 @@ void Query::enterContext() {
         ctx->registerTransaction(_trx->state());
       }
     }
+    _preparedV8Context = false;
 
     TRI_ASSERT(_context != nullptr);
   }
@@ -1043,6 +1074,7 @@ void Query::exitContext() {
       V8DealerFeature::DEALER->exitContext(_context);
       _context = nullptr;
     }
+    _preparedV8Context = false;
   }
 }
 
