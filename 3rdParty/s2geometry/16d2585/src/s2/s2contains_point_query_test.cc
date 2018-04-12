@@ -30,74 +30,78 @@
 using absl::make_unique;
 using s2shapeutil::ShapeEdge;
 using s2shapeutil::ShapeEdgeId;
-using s2textformat::MakeIndex;
-using s2textformat::MakePoint;
+using s2textformat::MakeIndexOrDie;
+using s2textformat::MakePointOrDie;
 using std::vector;
 
 TEST(S2ContainsPointQuery, VertexModelOpen) {
-  auto index = MakeIndex("0:0 # 0:1, 0:2 # 0:5, 0:7, 2:6");
+  auto index = MakeIndexOrDie("0:0 # -1:1, 1:1 # 0:5, 0:7, 2:6");
   S2ContainsPointQueryOptions options(S2VertexModel::OPEN);
   auto q = MakeS2ContainsPointQuery(index.get(), options);
-  EXPECT_FALSE(q.Contains(MakePoint("0:0")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:1")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:2")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:5")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:7")));
-  EXPECT_FALSE(q.Contains(MakePoint("2:6")));
-  EXPECT_TRUE(q.Contains(MakePoint("1:6")));
-  EXPECT_FALSE(q.Contains(MakePoint("10:10")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:0")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("-1:1")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("1:1")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:2")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:3")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:5")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:7")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("2:6")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("1:6")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("10:10")));
 
   // Test the last few cases using the Init() method instead.
   S2ContainsPointQuery<MutableS2ShapeIndex> q2;
   q2.Init(index.get(), options);
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePoint("1:6")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("1:6")));
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePoint("0:5")));
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePoint("0:7")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePointOrDie("1:6")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("1:6")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:5")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:7")));
 }
 
 TEST(S2ContainsPointQuery, VertexModelSemiOpen) {
-  auto index = MakeIndex("0:0 # 0:1, 0:2 # 0:5, 0:7, 2:6");
+  auto index = MakeIndexOrDie("0:0 # -1:1, 1:1 # 0:5, 0:7, 2:6");
   S2ContainsPointQueryOptions options(S2VertexModel::SEMI_OPEN);
   auto q = MakeS2ContainsPointQuery(index.get(), options);
-  EXPECT_FALSE(q.Contains(MakePoint("0:0")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:1")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:2")));
-  EXPECT_FALSE(q.Contains(MakePoint("0:5")));
-  EXPECT_TRUE(q.Contains(MakePoint("0:7")));  // Contained vertex.
-  EXPECT_FALSE(q.Contains(MakePoint("2:6")));
-  EXPECT_TRUE(q.Contains(MakePoint("1:6")));
-  EXPECT_FALSE(q.Contains(MakePoint("10:10")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:0")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("-1:1")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("1:1")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:2")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:5")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("0:7")));  // Contained vertex.
+  EXPECT_FALSE(q.Contains(MakePointOrDie("2:6")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("1:6")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("10:10")));
 
   // Test the last few cases using the Init() method instead.
   S2ContainsPointQuery<MutableS2ShapeIndex> q2;
   q2.Init(index.get(), options);
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePoint("1:6")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("1:6")));
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePoint("0:5")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("0:7")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePointOrDie("1:6")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("1:6")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:5")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:7")));
 }
 
 TEST(S2ContainsPointQuery, VertexModelClosed) {
-  auto index = MakeIndex("0:0 # 0:1, 0:2 # 0:5, 0:7, 2:6");
+  auto index = MakeIndexOrDie("0:0 # -1:1, 1:1 # 0:5, 0:7, 2:6");
   S2ContainsPointQueryOptions options(S2VertexModel::CLOSED);
   auto q = MakeS2ContainsPointQuery(index.get(), options);
-  EXPECT_TRUE(q.Contains(MakePoint("0:0")));
-  EXPECT_TRUE(q.Contains(MakePoint("0:1")));
-  EXPECT_TRUE(q.Contains(MakePoint("0:2")));
-  EXPECT_TRUE(q.Contains(MakePoint("0:5")));
-  EXPECT_TRUE(q.Contains(MakePoint("0:7")));
-  EXPECT_TRUE(q.Contains(MakePoint("2:6")));
-  EXPECT_TRUE(q.Contains(MakePoint("1:6")));
-  EXPECT_FALSE(q.Contains(MakePoint("10:10")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("0:0")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("-1:1")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("1:1")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("0:2")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("0:5")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("0:7")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("2:6")));
+  EXPECT_TRUE(q.Contains(MakePointOrDie("1:6")));
+  EXPECT_FALSE(q.Contains(MakePointOrDie("10:10")));
 
   // Test the last few cases using the Init() method instead.
   S2ContainsPointQuery<MutableS2ShapeIndex> q2;
   q2.Init(index.get(), options);
-  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePoint("1:6")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("1:6")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("0:5")));
-  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePoint("0:7")));
+  EXPECT_FALSE(q2.ShapeContains(*index->shape(1), MakePointOrDie("1:6")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("1:6")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:5")));
+  EXPECT_TRUE(q2.ShapeContains(*index->shape(2), MakePointOrDie("0:7")));
 }
 
 TEST(S2ContainsPointQuery, GetContainingShapes) {
@@ -146,10 +150,11 @@ void ExpectIncidentEdgeIds(const EdgeIdVector& expected,
 }
 
 TEST(S2ContainsPointQuery, VisitIncidentEdges) {
-  auto index = MakeIndex("0:0 | 1:1 # 1:1, 1:2 # 1:2, 1:3, 2:2");
-  ExpectIncidentEdgeIds({{0, 0}}, *index, MakePoint("0:0"));
-  ExpectIncidentEdgeIds({{0, 1}, {1, 0}}, *index, MakePoint("1:1"));
-  ExpectIncidentEdgeIds({{1, 0}, {2, 0}, {2, 2}}, *index, MakePoint("1:2"));
-  ExpectIncidentEdgeIds({{2, 0}, {2, 1}}, *index, MakePoint("1:3"));
-  ExpectIncidentEdgeIds({{2, 1}, {2, 2}}, *index, MakePoint("2:2"));
+  auto index = MakeIndexOrDie("0:0 | 1:1 # 1:1, 1:2 # 1:2, 1:3, 2:2");
+  ExpectIncidentEdgeIds({{0, 0}}, *index, MakePointOrDie("0:0"));
+  ExpectIncidentEdgeIds({{0, 1}, {1, 0}}, *index, MakePointOrDie("1:1"));
+  ExpectIncidentEdgeIds({{1, 0}, {2, 0}, {2, 2}}, *index,
+                        MakePointOrDie("1:2"));
+  ExpectIncidentEdgeIds({{2, 0}, {2, 1}}, *index, MakePointOrDie("1:3"));
+  ExpectIncidentEdgeIds({{2, 1}, {2, 2}}, *index, MakePointOrDie("2:2"));
 }

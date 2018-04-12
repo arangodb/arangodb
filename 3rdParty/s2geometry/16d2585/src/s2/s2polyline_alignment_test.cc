@@ -16,6 +16,8 @@
 #include "s2/s2polyline_alignment.h"
 #include "s2/s2polyline_alignment_internal.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 #include "s2/base/stringprintf.h"

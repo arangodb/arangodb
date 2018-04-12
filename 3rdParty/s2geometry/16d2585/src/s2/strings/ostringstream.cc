@@ -1,4 +1,4 @@
-// Copyright 2005 Google Inc. All Rights Reserved.
+// Copyright 2018 Google Inc. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,23 @@
 // limitations under the License.
 //
 
-// Author: ericv@google.com (Eric Veach)
+#include <cassert>
 
-#include "s2/s2region.h"
+#include "s2/strings/ostringstream.h"
 
-#include <vector>
+namespace strings {
 
-#include "s2/s2cap.h"
-
-void S2Region::GetCellUnionBound(std::vector<S2CellId> *cell_ids) const {
-  return GetCapBound().GetCellUnionBound(cell_ids);
+OStringStream::Buf::int_type OStringStream::overflow(int c) {
+  assert(s_);
+  if (!Buf::traits_type::eq_int_type(c, Buf::traits_type::eof()))
+    s_->push_back(static_cast<char>(c));
+  return 1;
 }
+
+std::streamsize OStringStream::xsputn(const char* s, std::streamsize n) {
+  assert(s_);
+  s_->append(s, n);
+  return n;
+}
+
+}  // namespace strings

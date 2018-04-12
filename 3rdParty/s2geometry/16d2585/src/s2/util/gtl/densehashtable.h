@@ -93,7 +93,7 @@
 // where N is the number of data items in the table and M is the table size.
 // NUMBER OF PROBES / LOOKUP       Successful            Unsuccessful
 // Quadratic collision resolution   1 - ln(1-L) - L/2    1/(1-L) - L - ln(1-L)
-// Linear collision resolution     [1+1/(1-L)]/2         [1+1/(1-L)2]/2
+// Linear collision resolution     [1+1/(1-L)]/2         [1+1/(1-L)^2]/2
 //
 // -- enlarge_factor --           0.10  0.50  0.60  0.75  0.80  0.90  0.99
 // QUADRATIC COLLISION RES.
@@ -227,7 +227,7 @@ struct dense_hashtable_iterator {
     return *this;
   }
   iterator operator++(int /*unused*/) {
-    iterator tmp(*this);
+    auto tmp(*this);
     ++*this;
     return tmp;
   }
@@ -294,7 +294,7 @@ struct dense_hashtable_const_iterator {
     return *this;
   }
   const_iterator operator++(int /*unused*/) {
-    const_iterator tmp(*this);
+    auto tmp(*this);
     ++*this;
     return tmp;
   }

@@ -137,7 +137,7 @@ class S2VertexIdLaxLoopShape : public S2Shape {
   Edge edge(int e) const final;
   int dimension() const final { return 2; }
   ReferencePoint GetReferencePoint() const final;
-  int num_chains() const final { return 1; }
+  int num_chains() const final { return std::min(1, num_vertices_); }
   Chain chain(int i) const final { return Chain(0, num_vertices_); }
   Edge chain_edge(int i, int j) const final;
   ChainPosition chain_position(int e) const final {

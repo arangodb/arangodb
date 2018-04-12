@@ -62,17 +62,17 @@ class MutableS2ShapeIndexTest : public ::testing::Test {
 
   MutableS2ShapeIndex index_;
 
-  // Verify that that every cell of the index contains the correct edges, and
+  // Verifies that that every cell of the index contains the correct edges, and
   // that no cells are missing from the index.  The running time of this
   // function is quadratic in the number of edges.
   void QuadraticValidate();
 
-  // Given an edge and a cell id, determine whether or not the edge should be
+  // Given an edge and a cell id, determines whether or not the edge should be
   // present in that cell and verify that this matches "index_has_edge".
   void ValidateEdge(const S2Point& a, const S2Point& b,
                     S2CellId id, bool index_has_edge);
 
-  // Given a shape and a cell id, determine whether or not the shape contains
+  // Given a shape and a cell id, determines whether or not the shape contains
   // the cell center and verify that this matches "index_contains_center".
   void ValidateInterior(const S2Shape* shape, S2CellId id,
                         bool index_contains_center);
@@ -415,67 +415,6 @@ TEST_F(MutableS2ShapeIndexTest, RandomUpdates) {
   }
 }
 
-
-// Return true if any loop crosses any other loop (including vertex crossings
-// and duplicate edges), or any loop has a self-intersection (including
-// duplicate vertices).
-static bool HasSelfIntersection(const MutableS2ShapeIndex& index) {
-  S2Error error;
-  if (s2shapeutil::FindSelfIntersection(index, &error)) {
-    S2_VLOG(1) << error;
-    return true;
-  }
-  return false;
-}
-
-// This function recursively verifies that HasCrossing returns the given
-// result for all possible cyclic permutations of the loop vertices for the
-// given set of loops.
-void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
-                                 bool has_crossing) {
-  if (i == loops->size()) {
-    MutableS2ShapeIndex index;
-    S2Polygon polygon(std::move(*loops), S2Debug::DISABLE);
-    index.Add(make_unique<S2Polygon::Shape>(&polygon));
-    EXPECT_EQ(has_crossing, HasSelfIntersection(index));
-    *loops = polygon.Release();
-  } else {
-    unique_ptr<S2Loop> orig_loop = std::move((*loops)[i]);
-    for (int j = 0; j < orig_loop->num_vertices(); ++j) {
-      vector<S2Point> vertices;
-      for (int k = 0; k < orig_loop->num_vertices(); ++k) {
-        vertices.push_back(orig_loop->vertex(j + k));
-      }
-      (*loops)[i] = make_unique<S2Loop>(vertices, S2Debug::DISABLE);
-      TestHasCrossingPermutations(loops, i+1, has_crossing);
-    }
-    (*loops)[i] = std::move(orig_loop);
-  }
-}
-
-// Given a string reprsenting a polygon, and a boolean indicating whether this
-// polygon has any self-intersections or loop crossings, verify that all
-// HasSelfIntersection returns the expected result for all possible cyclic
-// permutations of the loop vertices.
-void TestHasCrossing(const string& polygon_str, bool has_crossing) {
-  // Set S2Debug::DISABLE to allow invalid polygons.
-  unique_ptr<S2Polygon> polygon =
-      s2textformat::MakePolygon(polygon_str, S2Debug::DISABLE);
-  vector<unique_ptr<S2Loop>> loops = polygon->Release();
-  TestHasCrossingPermutations(&loops, 0, has_crossing);
-}
-
-TEST_F(MutableS2ShapeIndexTest, HasCrossing) {
-  // Coordinates are (lat,lng), which can be visualized as (y,x).
-  TestHasCrossing("0:0, 0:1, 0:2, 1:2, 1:1, 1:0", false);
-  TestHasCrossing("0:0, 0:1, 0:2, 1:2, 0:1, 1:0", true);  // duplicate vertex
-  TestHasCrossing("0:0, 0:1, 1:0, 1:1", true);  // edge crossing
-  TestHasCrossing("0:0, 1:1, 0:1; 0:0, 1:1, 1:0", true);  // duplicate edge
-  TestHasCrossing("0:0, 1:1, 0:1; 1:1, 0:0, 1:0", true);  // reversed edge
-  TestHasCrossing("0:0, 0:2, 2:2, 2:0; 1:1, 0:2, 3:1, 2:0",
-                  true);  // vertex crossing
-}
-
 // A test that repeatedly updates "index_" in one thread and attempts to
 // concurrently read the index_ from several other threads.  When all threads
 // have finished reading, the first thread makes another update.
@@ -512,14 +451,14 @@ class LazyUpdatesTest : public ::testing::Test {
 
   MutableS2ShapeIndex index_;
   // The following fields are guarded by lock_.
-  Mutex lock_;
+  absl::Mutex lock_;
   int num_updates_;
   int num_readers_left_;
 
   // Signalled when a new update is ready to be processed.
-  CondVar update_ready_;
+  absl::CondVar update_ready_;
   // Signalled when all readers have processed the latest update.
-  CondVar all_readers_done_;
+  absl::CondVar all_readers_done_;
 };
 
 void LazyUpdatesTest::ReaderThread() {

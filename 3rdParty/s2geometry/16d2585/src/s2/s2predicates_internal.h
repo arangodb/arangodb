@@ -34,8 +34,8 @@ namespace s2pred {
 // Returns 2 ** (-digits).  This could be implemented using "ldexp" except
 // that std::ldexp is not constexpr in C++11.
 constexpr double epsilon_for_digits(int digits) {
-  return (digits < 64 ? 1.0 / (1ull << digits) :
-          epsilon_for_digits(digits - 63) / (1ull << 63));
+  return (digits < 64 ? 1.0 / (1ULL << digits) :
+          epsilon_for_digits(digits - 63) / (1ULL << 63));
 }
 
 // Returns the maximum rounding error for arithmetic operations in type T.

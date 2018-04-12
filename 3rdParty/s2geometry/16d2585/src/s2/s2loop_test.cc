@@ -1205,7 +1205,7 @@ static void CheckLoopIsInvalid(const vector<S2Point>& points,
 
 TEST(S2Loop, IsValidDetectsInvalidLoops) {
   // Not enough vertices.  Note that all single-vertex loops are valid; they
-  // are interpreted as being either "empty" or "full".
+  // are interpreted as being either empty or full.
   CheckLoopIsInvalid("", "at least 3 vertices");
   CheckLoopIsInvalid("20:20, 21:21", "at least 3 vertices");
 
@@ -1342,6 +1342,8 @@ TEST(S2LoopShape, Basic) {
   EXPECT_EQ("1:0", s2textformat::ToString(edge2.v0));
   EXPECT_EQ("0:0", s2textformat::ToString(edge2.v1));
   EXPECT_EQ(2, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_TRUE(shape.has_interior());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
@@ -1351,13 +1353,19 @@ TEST(S2LoopShape, EmptyLoop) {
   S2Loop::Shape shape(&loop);
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_chains());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
 TEST(S2LoopShape, FullLoop) {
   S2Loop loop(S2Loop::kFull());
   S2Loop::Shape shape(&loop);
   EXPECT_EQ(0, shape.num_edges());
-  EXPECT_EQ(0, shape.num_chains());
+  EXPECT_EQ(1, shape.num_chains());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_TRUE(shape.is_full());
+  EXPECT_TRUE(shape.GetReferencePoint().contained);
 }
 
 TEST(S2LoopOwningShape, Ownership) {

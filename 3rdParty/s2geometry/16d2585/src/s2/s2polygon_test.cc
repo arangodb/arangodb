@@ -23,6 +23,7 @@
 #include <cstdlib>
 #include <limits>
 #include <memory>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -2210,6 +2211,24 @@ TEST_F(S2PolygonTestBase, GetDistance) {
                       S2LatLng::FromDegrees(0, 1).ToPoint());
 }
 
+TEST_F(S2PolygonTestBase, Area) {
+  EXPECT_DOUBLE_EQ(0.0, empty_->GetArea());
+  EXPECT_DOUBLE_EQ(4 * M_PI, full_->GetArea());
+  EXPECT_DOUBLE_EQ(2 * M_PI, south_H_->GetArea());
+  EXPECT_DOUBLE_EQ(M_PI, far_H_south_H_->GetArea());
+
+  unique_ptr<S2Polygon> two_shells(
+      MakePolygon(kCross1SideHole + kCrossCenterHole));
+  EXPECT_DOUBLE_EQ(
+      two_shells->loop(0)->GetArea() + two_shells->loop(1)->GetArea(),
+      two_shells->GetArea());
+
+  unique_ptr<S2Polygon> holey_shell(MakePolygon(kCross1 + kCrossCenterHole));
+  EXPECT_DOUBLE_EQ(
+      holey_shell->loop(0)->GetArea() - holey_shell->loop(1)->GetArea(),
+      holey_shell->GetArea());
+}
+
 TEST(S2Polygon, UninitializedIsValid) {
   S2Polygon polygon;
   EXPECT_TRUE(polygon.IsValid());
@@ -2905,16 +2924,22 @@ TEST_F(S2PolygonTestBase, FullPolygonShape) {
   S2Polygon::Shape shape(full_.get());
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(2, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_TRUE(shape.is_full());
+  EXPECT_EQ(1, shape.num_chains());
+  EXPECT_EQ(0, shape.chain(0).start);
+  EXPECT_EQ(0, shape.chain(0).length);
   EXPECT_TRUE(shape.GetReferencePoint().contained);
-  EXPECT_EQ(0, shape.num_chains());
 }
 
 TEST_F(S2PolygonTestBase, EmptyPolygonShape) {
   S2Polygon::Shape shape(empty_.get());
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(2, shape.dimension());
-  EXPECT_FALSE(shape.GetReferencePoint().contained);
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_EQ(0, shape.num_chains());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
 void TestPolygonShape(const S2Polygon& polygon) {
@@ -2935,6 +2960,8 @@ void TestPolygonShape(const S2Polygon& polygon) {
   }
   EXPECT_EQ(2, shape.dimension());
   EXPECT_TRUE(shape.has_interior());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_EQ(polygon.Contains(S2::Origin()),
             shape.GetReferencePoint().contained);
 }

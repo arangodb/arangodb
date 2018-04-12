@@ -129,14 +129,27 @@ class S2Shape {
   //      of edge chains where each chain represents one polygon loop.
   //      Polygons may have degeneracies (e.g., degenerate edges or sibling
   //      pairs consisting of an edge and its corresponding reversed edge).
+  //      A polygon loop may also be full (containing all points on the
+  //      sphere); by convention this is represented as a chain with no edges.
+  //      (See S2LaxPolygonShape for details.)
   //
   // Note that this method allows degenerate geometry of different dimensions
   // to be distinguished, e.g. it allows a point to be distinguished from a
   // polyline or polygon that has been simplified to a single point.
   virtual int dimension() const = 0;
 
-  // Convenience function that returns true if this shape has an interior.
+  // Returns true if this shape type may have an interior.
   bool has_interior() const { return dimension() == 2; }
+
+  // Returns true if the shape contains no points.  (Note that the full
+  // polygon is represented as a chain with zero edges.)
+  bool is_empty() const {
+    return num_edges() == 0 && (!has_interior() || num_chains() == 0);
+  }
+  // Returns true if the shape contains all points on the sphere.
+  bool is_full() const {
+    return num_edges() == 0 && has_interior() && num_chains() > 0;
+  }
 
   // Returns an arbitrary point P along with a boolean indicating whether P is
   // contained by the shape.  (The boolean value must be false for shapes that

@@ -19,6 +19,7 @@
 
 #include <array>
 #include <memory>
+#include <vector>
 
 #include "s2/base/logging.h"
 #include <gtest/gtest.h>

@@ -17,8 +17,21 @@
 
 #include "s2/s2point_vector_shape.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 #include "s2/s2testing.h"
+
+TEST(S2PointVectorShape, Empty) {
+  std::vector<S2Point> points;
+  S2PointVectorShape shape(std::move(points));
+  EXPECT_EQ(0, shape.num_edges());
+  EXPECT_EQ(0, shape.num_chains());
+  EXPECT_EQ(0, shape.dimension());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
+}
 
 TEST(S2PointVectorShape, ConstructionAndAccess) {
   std::vector<S2Point> points;
@@ -32,6 +45,8 @@ TEST(S2PointVectorShape, ConstructionAndAccess) {
   EXPECT_EQ(kNumPoints, shape.num_edges());
   EXPECT_EQ(kNumPoints, shape.num_chains());
   EXPECT_EQ(0, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   S2Testing::rnd.Reset(FLAGS_s2_random_seed);
   for (int i = 0; i < kNumPoints; ++i) {
     EXPECT_EQ(i, shape.chain(i).start);

@@ -39,9 +39,10 @@ namespace gtl {
 template <typename Key, typename Value, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value>>,
           int TargetNodeSize = 256>
-class btree_map : public internal_btree::btree_map_container<
-                      internal_btree::btree<internal_btree::map_params<
-                          Key, Value, Compare, Alloc, TargetNodeSize>>> {
+class btree_map
+    : public internal_btree::btree_map_container<
+          internal_btree::btree<internal_btree::map_params<
+              Key, Value, Compare, Alloc, TargetNodeSize, /*Multi=*/false>>> {
   using Base = typename btree_map::btree_map_container;
 
  public:
@@ -52,9 +53,10 @@ class btree_map : public internal_btree::btree_map_container<
 template <typename Key, typename Value, typename Compare = std::less<Key>,
           typename Alloc = std::allocator<std::pair<const Key, Value>>,
           int TargetNodeSize = 256>
-class btree_multimap : public internal_btree::btree_multi_container<
-                           internal_btree::btree<internal_btree::map_params<
-                               Key, Value, Compare, Alloc, TargetNodeSize>>> {
+class btree_multimap
+    : public internal_btree::btree_multi_container<
+          internal_btree::btree<internal_btree::map_params<
+              Key, Value, Compare, Alloc, TargetNodeSize, /*Multi=*/true>>> {
   using Base = typename btree_multimap::btree_multi_container;
 
  public:

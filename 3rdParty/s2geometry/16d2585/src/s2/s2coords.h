@@ -335,7 +335,7 @@ inline int STtoIJ(double s) {
 }
 
 inline double SiTitoST(unsigned int si) {
-  S2_DCHECK(si <= kMaxSiTi);
+  S2_DCHECK_LE(si, kMaxSiTi);
   return (1.0 / kMaxSiTi) * si;
 }
 

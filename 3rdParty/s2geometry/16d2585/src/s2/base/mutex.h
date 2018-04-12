@@ -19,6 +19,8 @@
 #include <condition_variable>
 #include <mutex>
 
+namespace absl {
+
 class Mutex {
  public:
   Mutex() = default;
@@ -53,5 +55,7 @@ class CondVar {
  private:
   std::condition_variable cond_var_;
 };
+
+}  // namespace absl
 
 #endif  // S2_BASE_MUTEX_H_

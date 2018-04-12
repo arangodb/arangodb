@@ -20,6 +20,16 @@
 #include <gtest/gtest.h>
 #include "s2/s2testing.h"
 
+TEST(S2EdgeVectorShape, Empty) {
+  S2EdgeVectorShape shape;
+  EXPECT_EQ(0, shape.num_edges());
+  EXPECT_EQ(0, shape.num_chains());
+  EXPECT_EQ(1, shape.dimension());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
+}
+
 TEST(S2EdgeVectorShape, EdgeAccess) {
   S2EdgeVectorShape shape;
   S2Testing::rnd.Reset(FLAGS_s2_random_seed);
@@ -31,6 +41,8 @@ TEST(S2EdgeVectorShape, EdgeAccess) {
   EXPECT_EQ(kNumEdges, shape.num_edges());
   EXPECT_EQ(kNumEdges, shape.num_chains());
   EXPECT_EQ(1, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   S2Testing::rnd.Reset(FLAGS_s2_random_seed);
   for (int i = 0; i < kNumEdges; ++i) {
     EXPECT_EQ(i, shape.chain(i).start);
@@ -46,6 +58,8 @@ TEST(S2EdgeVectorShape, SingletonConstructor) {
   S2EdgeVectorShape shape(a, b);
   EXPECT_EQ(1, shape.num_edges());
   EXPECT_EQ(1, shape.num_chains());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   auto edge = shape.edge(0);
   EXPECT_EQ(a, edge.v0);
   EXPECT_EQ(b, edge.v1);

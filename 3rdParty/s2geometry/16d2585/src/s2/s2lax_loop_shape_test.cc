@@ -34,6 +34,9 @@ TEST(S2LaxLoopShape, EmptyLoop) {
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_chains());
   EXPECT_EQ(2, shape.dimension());
+  EXPECT_TRUE(shape.has_interior());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
@@ -54,6 +57,8 @@ TEST(S2LaxLoopShape, NonEmptyLoop) {
   }
   EXPECT_EQ(2, shape.dimension());
   EXPECT_TRUE(shape.has_interior());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
@@ -62,6 +67,8 @@ TEST(S2LaxClosedPolylineShape, NoInterior) {
   S2LaxClosedPolylineShape shape(vertices);
   EXPECT_EQ(1, shape.dimension());
   EXPECT_FALSE(shape.has_interior());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
@@ -69,9 +76,11 @@ TEST(S2VertexIdLaxLoopShape, EmptyLoop) {
   S2VertexIdLaxLoopShape shape(vector<int32>(), nullptr);
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_vertices());
-  EXPECT_EQ(1, shape.num_chains());
+  EXPECT_EQ(0, shape.num_chains());
   EXPECT_EQ(2, shape.dimension());
   EXPECT_TRUE(shape.has_interior());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
@@ -90,6 +99,8 @@ TEST(S2VertexIdLaxLoopShape, InvertedLoop) {
   EXPECT_EQ(&vertex_array[2], &shape.vertex(2));
   EXPECT_EQ(&vertex_array[1], &shape.vertex(3));
   EXPECT_EQ(2, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_TRUE(shape.has_interior());
   EXPECT_TRUE(s2shapeutil::ContainsBruteForce(shape, S2::Origin()));
 }

@@ -18,6 +18,7 @@
 #include "s2/id_set_lexicon.h"
 
 #include <algorithm>
+#include <vector>
 
 #include "s2/base/logging.h"
 

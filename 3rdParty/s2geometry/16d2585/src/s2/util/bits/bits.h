@@ -305,17 +305,15 @@ class Bits {
     SetBits(value, dest_offset, nbits, dest);
   }
 
-  // Reset high bits. Return a copy of 'value' with upper bits reset (set to
-  // zero), starting at position 'index'. Put differently: extract 'nbits' low
-  // bits from 'value'.
+  // Extract the lowest 'nbits' consecutive bits from 'src'.
   // Bits::GetLowBits(13, 3); /* = 5 (0b1101 => 0b101) */
   template<typename T>
-  static typename UnsignedType<T>::Type GetLowBits(const T value,
-                                                   const int index) {
+  static typename UnsignedType<T>::Type GetLowBits(const T src,
+                                                   const int nbits) {
     typedef typename UnsignedType<T>::Type UnsignedT;
-    const UnsignedT unsigned_value = absl::bit_cast<UnsignedT>(value);
-    S2_DCHECK_GT(sizeof(UnsignedT) * 8, index);
-    return GetLowBitsImpl(unsigned_value, index);
+    const UnsignedT unsigned_src = absl::bit_cast<UnsignedT>(src);
+    S2_DCHECK_GE(sizeof(UnsignedT) * 8, nbits);
+    return GetLowBitsImpl(unsigned_src, nbits);
   }
 
  private:
@@ -332,7 +330,7 @@ class Bits {
                                       const int offset,
                                       const int nbits);
   template <typename UnsignedT>
-  static inline UnsignedT GetLowBitsImpl(const UnsignedT n, const int index);
+  static inline UnsignedT GetLowBitsImpl(const UnsignedT src, const int nbits);
 
 #ifdef __GNUC__
   static int CountLeadingZerosWithBuiltin(unsigned n);
@@ -354,10 +352,10 @@ class Bits {
                                    const int nbits);
 #endif
 #if defined(__BMI2__) && (defined(__i386__) || defined(__x86_64__))
-  static inline uint32 GetLowBitsImpl(const uint32 n, const int index);
+  static inline uint32 GetLowBitsImpl(const uint32 src, const int nbits);
 #endif
 #if defined(__BMI2__) && defined(__x86_64__)
-  static inline uint64 GetLowBitsImpl(const uint64 n, const int index);
+  static inline uint64 GetLowBitsImpl(const uint64 src, const int nbits);
 #endif
 #endif  // __GNUC__
 
@@ -746,14 +744,14 @@ inline uint64 Bits::GetBitsImpl(const uint64 src,
 #endif
 
 #if defined(__BMI2__) && (defined(__i386__) || defined(__x86_64__))
-inline uint32 Bits::GetLowBitsImpl(const uint32 n, const int index) {
-  return _bzhi_u32(n, index);
+inline uint32 Bits::GetLowBitsImpl(const uint32 src, const int nbits) {
+  return _bzhi_u32(src, nbits);
 }
 #endif
 
 #if defined(__BMI2__) && defined(__x86_64__)
-inline uint64 Bits::GetLowBitsImpl(const uint64 n, const int index) {
-  return _bzhi_u64(n, index);
+inline uint64 Bits::GetLowBitsImpl(const uint64 src, const int nbits) {
+  return _bzhi_u64(src, nbits);
 }
 #endif
 
@@ -768,8 +766,8 @@ inline UnsignedT Bits::GetBitsImpl(const UnsignedT src,
 }
 
 template<typename UnsignedT>
-inline UnsignedT Bits::GetLowBitsImpl(const UnsignedT n, const int index) {
-  return GetBitsImpl(n, 0, index);
+inline UnsignedT Bits::GetLowBitsImpl(const UnsignedT src, const int nbits) {
+  return GetBitsImpl(src, 0, nbits);
 }
 
 #endif  // S2_UTIL_BITS_BITS_H_

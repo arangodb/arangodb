@@ -23,10 +23,12 @@
 #define S2_UTIL_GTL_CONTAINER_LOGGING_H_
 
 #include <ostream>
+#include <string>
 #include <type_traits>
 
 #include "s2/third_party/absl/base/integral_types.h"
 #include "s2/base/port.h"
+#include "s2/strings/ostringstream.h"
 
 namespace gtl {
 
@@ -195,6 +197,14 @@ class RangeLogger {
     return out;
   }
 
+  // operator<< above is generally recommended. However, some situations may
+  // require a string, so a convenience str() method is provided as well.
+  string str() const {
+    string s;
+    ::strings::OStringStream(&s) << *this;
+    return s;
+  }
+
  private:
   IteratorT begin_;
   IteratorT end_;
@@ -243,8 +253,7 @@ detail::RangeLogger<IteratorT, LogDefault> LogRange(
 
 // Log a container using "policy".  For example:
 //
-//   S2_LOG(INFO) << gtl::LogContainer(container,
-//                                        gtl::LogMultiline());
+//   S2_LOG(INFO) << gtl::LogContainer(container, gtl::LogMultiline());
 //
 // The above example will print the container using newlines between
 // elements, enclosed in [] braces.

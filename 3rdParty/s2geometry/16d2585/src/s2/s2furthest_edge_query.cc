@@ -15,6 +15,8 @@
 
 #include "s2/s2furthest_edge_query.h"
 
+#include <vector>
+
 #include "s2/s2edge_distances.h"
 
 void S2FurthestEdgeQuery::Options::set_conservative_min_distance(

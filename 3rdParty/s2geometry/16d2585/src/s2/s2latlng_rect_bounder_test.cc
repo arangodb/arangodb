@@ -19,6 +19,7 @@
 
 #include <cfloat>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include "s2/third_party/absl/strings/str_cat.h"

@@ -18,6 +18,8 @@
 #include "s2/s2polyline_simplifier.h"
 
 #include <cfloat>
+#include <vector>
+
 #include <gtest/gtest.h>
 #include "s2/s1angle.h"
 #include "s2/s1chord_angle.h"
