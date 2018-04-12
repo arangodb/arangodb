@@ -339,8 +339,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
 
   VPackBuilder defBuilder;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  int res = idxFactory->enhanceIndexDefinition(
+  int res = engine->indexFactory().enhanceIndexDefinition(
     definition, defBuilder, create, ServerState::instance()->isCoordinator()
   ).errorNumber();
 

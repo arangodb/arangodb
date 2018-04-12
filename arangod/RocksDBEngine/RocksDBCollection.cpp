@@ -302,10 +302,10 @@ void RocksDBCollection::prepareIndexes(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
+  auto& idxFactory = engine->indexFactory();
   bool splitEdgeIndex = false;
   TRI_idx_iid_t last = 0;
+
   for (auto const& v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error",
                                                             false)) {
@@ -359,8 +359,9 @@ void RocksDBCollection::prepareIndexes(
           }
           to.close();
 
-          auto idxFrom = idxFactory->prepareIndexFromSlice(
-              from.slice(), false, _logicalCollection, true);
+          auto idxFrom = idxFactory.prepareIndexFromSlice(
+            from.slice(), false, _logicalCollection, true
+          );
 
           if (ServerState::instance()->isRunningInCluster()) {
             addIndexCoordinator(idxFrom);
@@ -368,8 +369,9 @@ void RocksDBCollection::prepareIndexes(
             addIndex(idxFrom);
           }
 
-          auto idxTo = idxFactory->prepareIndexFromSlice(
-              to.slice(), false, _logicalCollection, true);
+          auto idxTo = idxFactory.prepareIndexFromSlice(
+            to.slice(), false, _logicalCollection, true
+          );
 
           if (ServerState::instance()->isRunningInCluster()) {
             addIndexCoordinator(idxTo);
@@ -394,8 +396,9 @@ void RocksDBCollection::prepareIndexes(
         }
         b.close();
 
-        auto idx = idxFactory->prepareIndexFromSlice(b.slice(), false,
-                                                     _logicalCollection, true);
+        auto idx = idxFactory.prepareIndexFromSlice(
+          b.slice(), false, _logicalCollection, true
+        );
 
         if (ServerState::instance()->isRunningInCluster()) {
           addIndexCoordinator(idx);
@@ -409,7 +412,7 @@ void RocksDBCollection::prepareIndexes(
 
     if (!alreadyHandled) {
       auto idx =
-          idxFactory->prepareIndexFromSlice(v, false, _logicalCollection, true);
+        idxFactory.prepareIndexFromSlice(v, false, _logicalCollection, true);
 
       if (ServerState::instance()->isRunningInCluster()) {
         addIndexCoordinator(idx);
@@ -491,16 +494,16 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock.
   // Create it
 
-  idx =
-      idxFactory->prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine->indexFactory().prepareIndexFromSlice(
+    info, true, _logicalCollection, false
+  );
   TRI_ASSERT(idx != nullptr);
+
   if (ServerState::instance()->isCoordinator()) {
     // In the coordinator case we do not fill the index
     // We only inform the others.
@@ -573,17 +576,19 @@ int RocksDBCollection::restoreIndex(transaction::Methods* trx,
   // We create a new Index object to make sure that the index
   // is not handed out except for a successful case.
   std::shared_ptr<Index> newIdx;
+
   try {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    IndexFactory const* idxFactory = engine->indexFactory();
-    TRI_ASSERT(idxFactory != nullptr);
-    newIdx = idxFactory->prepareIndexFromSlice(info, false, _logicalCollection,
-                                               false);
+
+    newIdx = engine->indexFactory().prepareIndexFromSlice(
+      info, false, _logicalCollection, false
+    );
   } catch (arangodb::basics::Exception const& e) {
     // Something with index creation went wrong.
     // Just report.
     return e.code();
   }
+
   TRI_ASSERT(newIdx != nullptr);
 
   auto const id = newIdx->id();
@@ -1292,10 +1297,9 @@ void RocksDBCollection::createInitialIndexes() {
 
   std::vector<std::shared_ptr<arangodb::Index>> systemIndexes;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  IndexFactory const* idxFactory = engine->indexFactory();
-  TRI_ASSERT(idxFactory != nullptr);
 
-  idxFactory->fillSystemIndexes(_logicalCollection, systemIndexes);
+  engine->indexFactory().fillSystemIndexes(_logicalCollection, systemIndexes);
+
   for (auto const& it : systemIndexes) {
     addIndex(it);
   }
@@ -1363,7 +1367,7 @@ int RocksDBCollection::saveIndex(transaction::Methods* trx,
   VPackSlice data = builder->slice();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->createIndex(&vocbase, collectionId, idx->id(), data);
+  engine->createIndex(vocbase, collectionId, idx->id(), data);
 
   return TRI_ERROR_NO_ERROR;
 }

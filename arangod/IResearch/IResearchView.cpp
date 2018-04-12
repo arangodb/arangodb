@@ -381,7 +381,7 @@ arangodb::Result persistProperties(
   if (!engine->inRecovery()) {
     // change view throws exception on error
     try {
-      engine->changeView(&(view.vocbase()), view.id(), view, true);
+      engine->changeView(view.vocbase(), view.id(), view, true);
     } catch (std::exception const& e) {
       return arangodb::Result(
         TRI_ERROR_INTERNAL,
@@ -436,7 +436,7 @@ arangodb::Result persistProperties(
 
       // change view throws exception on error
       try {
-        engine->changeView(&(view.vocbase()), view.id(), view, true);
+        engine->changeView(view.vocbase(), view.id(), view, true);
       } catch (std::exception const& e) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
@@ -1140,7 +1140,7 @@ IResearchView::~IResearchView() {
   if (deleted()) {
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     TRI_ASSERT(engine);
-    engine->destroyView(&vocbase(), this);
+    engine->destroyView(vocbase(), this);
   }
 }
 
@@ -2229,7 +2229,8 @@ void IResearchView::verifyKnownCollections() {
   {
     static const arangodb::transaction::Options defaults;
     struct State final: public arangodb::TransactionState {
-      State(): arangodb::TransactionState(nullptr, defaults) {}
+      State(TRI_vocbase_t& vocbase)
+        : arangodb::TransactionState(&vocbase, defaults) {}
       virtual arangodb::Result abortTransaction(
           arangodb::transaction::Methods*
       ) override { return TRI_ERROR_NOT_IMPLEMENTED; }
@@ -2242,7 +2243,7 @@ void IResearchView::verifyKnownCollections() {
       virtual bool hasFailedOperations() const override { return false; }
     };
 
-    State state;
+    State state(vocbase());
 
     if (!appendKnownCollections(cids, *snapshot(state, true))) {
       LOG_TOPIC(ERR, IResearchFeature::IRESEARCH)

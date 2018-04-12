@@ -1913,7 +1913,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
@@ -1941,7 +1941,7 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
 
