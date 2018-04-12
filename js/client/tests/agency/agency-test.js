@@ -207,6 +207,53 @@ function agencyTestSuite () {
     }
   }
 
+
+  function evalComp(agents) {
+    
+    agents.forEach( function (agent) {
+
+      var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
+      var i = 0, n = 0;
+      var keepsize = compactionConfig.compactionKeepSize;
+      var stepsize = compactionConfig.compactionStepSize;
+      var results = agent.compactions.result;         // All compactions 
+      var flog = agent.state[0];                      // First log entry
+      var flogi = flog.index;                         // First log index
+      var llog = agent.state[agent.state.length-1];   // Last log entry
+      var llogi = llog.index;                         // Last log index
+      var lcomp = results[results.length-1];          // Last compaction entry
+      var lcompi = parseInt(lcomp._key);              // Last compaction index
+
+      // log entries before compaction index - compaction keep size
+      // are dumped
+      if (lcompi > keepsize) {
+        assertTrue(flogi == lcompi - keepsize)
+      } else {
+        assertEqual(flogi, 0);
+      }
+      
+      // Expect to find last compaction maximally
+      // keep-size away from last RAFT index
+      assertTrue(lcompi > llogi - stepsize);
+
+      // All log entries > last compaction index,
+      // which are {"foobar":{"op":"increment"}}
+      agent.state.forEach( function(log) {
+        if (log.index > lcompi) {
+          if (log.query.foobar !== undefined) {
+            ++n;
+          }
+        }
+      });
+
+      // Sum of relevant log entries > last compaction index and
+      // last compaction's foobar value must match foobar's value in agency
+      assertEqual(lcomp.readDB[0].foobar + n, foobar);
+    });
+  }
+      
+
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1067,82 +1114,56 @@ function agencyTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Huge transaction package, all different keys
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+
+    
 
     testCompactionStepKeep : function() {
-      writeAndCheck([[{"foobar":{"op":"delete"}}]]); // cleanup first
-      var transaction = [], i;
+
+      writeAndCheck([[{"/":{"op":"delete"}}]]); // cleanup first
+      wait(1.0);
+      var agents = getCompactions(), n = 0, transaction = [], i;
+
+      // at this limit we should see keep size to kick in
+      var lim = compactionConfig.compactionKeepSize - agents[0].state[agents[0].state.length-1].index;
+
+      // prepare transaction package for tests 
       for (i = 0; i < compactionConfig.compactionStepSize; i++) {
         transaction.push([{"foobar":{"op":"increment"}}]);
       }
 
+      // 1st package
       writeAndCheck(transaction);
+      lim -= transaction.length;
       wait(1.0);
-      var agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
       
       writeAndCheck(transaction);
+      lim -= transaction.length;
       wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
       
-      for (i = 2; i < 27; ++i) {
-         writeAndCheck(transaction);
+      while(lim > compactionConfig.compactionStepSize) {
+        writeAndCheck(transaction);
+        lim -= transaction.length;
       }
       wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
 
       writeAndCheck(transaction);
+      lim -= transaction.length;
       wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
       
       writeAndCheck(transaction);
+      lim -= transaction.length;
       wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
 
       writeAndCheck(transaction);
+      lim -= transaction.length;
       wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      evalComp(getCompactions());
 
     }    
     
