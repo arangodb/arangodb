@@ -1006,81 +1006,47 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCompactionStepKeep : function() {
-      writeAndCheck([[{"foobar":{"op":"delete"}}]]); // cleanup first
+
+      // prepare transaction package for tests
       var transaction = [], i;
       for (i = 0; i < compactionConfig.compactionStepSize; i++) {
         transaction.push([{"foobar":{"op":"increment"}}]);
       }
+      writeAndCheck([[{"/":{"op":"delete"}}]]); // cleanup first
+      writeAndCheck([[{"foobar":0}]]); // cleanup first
+      var foobar = accessAgency("read", [["foobar"]]).bodyParsed[0].foobar;
 
+      var llogi = evalComp();
+      assertTrue(llogi > 0);
+
+      // at this limit we should see keep size to kick in
+      var lim = compactionConfig.compactionKeepSize - llogi;
+
+      // 1st package
       writeAndCheck(transaction);
-      wait(1.0);
-      var agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      lim -= transaction.length;
+      assertTrue(evalComp()>0);
       
       writeAndCheck(transaction);
-      wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      lim -= transaction.length;
+      assertTrue(evalComp()>0);
       
-      for (i = 2; i < 27; ++i) {
-         writeAndCheck(transaction);
+      while(lim > compactionConfig.compactionStepSize) {
+        writeAndCheck(transaction);
+        lim -= transaction.length;
       }
-      wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
-      wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      assertTrue(evalComp()>0);
       
       writeAndCheck(transaction);
-      wait(1.0);
-      agents = getCompactions();
-
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
+      assertTrue(evalComp()>0);
 
       writeAndCheck(transaction);
-      wait(1.0);
-      agents = getCompactions();
+      assertTrue(evalComp()>0);
 
-      agents.forEach( function (agent) {
-        console.error( {url: agent.url, first: agent.state[0].index, last: agent.state[agent.state.length-1].index} );
-        agent.compactions.result.forEach( function (result) {
-          console.warn({key: result._key, foobar: result.readDB[0].foobar});
-        });
-      });
-
-    }        
+    }    
 
   };
 }
