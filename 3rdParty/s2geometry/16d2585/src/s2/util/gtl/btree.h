@@ -1633,28 +1633,28 @@ void btree_node<P>::swap(btree_node *x) {
   assert(leaf() == x->leaf());
 
   // Determine which is the smaller/larger node.
-  btree_node *small = this, *large = x;
-  if (small->count() > large->count()) {
-    swap(small, large);
+  btree_node *smaller = this, *larger = x;
+  if (smaller->count() > larger->count()) {
+    swap(smaller, larger);
   }
 
   // Swap the values.
   std::swap_ranges(
-      small->mutable_value(0), small->mutable_value(small->count()),
-      large->mutable_value(0));
+      smaller->mutable_value(0), smaller->mutable_value(smaller->count()),
+      larger->mutable_value(0));
 
   // Move values that can't be swapped.
   std::uninitialized_copy(
-      std::make_move_iterator(large->mutable_value(small->count())),
-      std::make_move_iterator(large->mutable_value(large->count())),
-      small->mutable_value(small->count()));
-  large->value_destroy_n(small->count(), large->count() - small->count());
+      std::make_move_iterator(larger->mutable_value(smaller->count())),
+      std::make_move_iterator(larger->mutable_value(larger->count())),
+      smaller->mutable_value(smaller->count()));
+  larger->value_destroy_n(smaller->count(), larger->count() - smaller->count());
 
   if (!leaf()) {
     // Swap the child pointers.
-    std::swap_ranges(&small->mutable_child(0),
-                     &small->mutable_child(large->count() + 1),
-                     &large->mutable_child(0));
+    std::swap_ranges(&smaller->mutable_child(0),
+                     &smaller->mutable_child(larger->count() + 1),
+                     &larger->mutable_child(0));
     for (int i = 0; i <= count(); ++i) {
       x->child(i)->fields_.parent = x;
     }
