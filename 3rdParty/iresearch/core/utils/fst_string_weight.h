@@ -24,13 +24,22 @@
 #ifndef IRESEARCH_FST_STRING_WEIGHT_H
 #define IRESEARCH_FST_STRING_WEIGHT_H
 
+#if defined(_MSC_VER)
+  #pragma warning(disable : 4267) // conversion from 'size_t' to 'uint32_t', possible loss of data
+#endif
+
+  #include <fst/string-weight.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4267)
+#endif
+
 #include "shared.hpp"
 #include "utils/string.hpp"
 #include "utils/std.hpp"
 #include "utils/bytes_utils.hpp"
 
 #include <string>
-#include <fst/string-weight.h>
 
 NS_BEGIN(fst)
 
@@ -41,9 +50,9 @@ class StringLeftWeight {
   typedef StringLeftWeight<Label> ReverseWeight;
   typedef std::basic_string<Label> str_t;
   typedef typename str_t::const_iterator iterator;
-  
+
   static const StringLeftWeight<Label>& Zero() {
-    static const StringLeftWeight<Label> zero(kStringInfinity);
+    static const StringLeftWeight<Label> zero((Label)kStringInfinity); // cast same as in FST
     return zero;
   }
 
@@ -53,7 +62,7 @@ class StringLeftWeight {
   }
 
   static const StringLeftWeight<Label>& NoWeight() {
-    static const StringLeftWeight<Label> no_weight(kStringBad);
+    static const StringLeftWeight<Label> no_weight((Label)kStringBad); // cast same as in FST
     return no_weight;
   }
 
