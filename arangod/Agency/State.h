@@ -141,7 +141,8 @@ class State {
   }
 
   /// @brief compact state machine
-  bool compact(arangodb::consensus::index_t cind);
+  bool compact(arangodb::consensus::index_t cind,
+               arangodb::consensus::index_t keep);
 
  private:
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
@@ -220,10 +221,12 @@ class State {
   bool createCollection(std::string const& name);
 
   /// @brief Compact persisted logs
-  bool compactPersisted(arangodb::consensus::index_t cind);
+  bool compactPersisted(arangodb::consensus::index_t cind,
+                        arangodb::consensus::index_t keep);
 
   /// @brief Compact RAM logs
-  bool compactVolatile(arangodb::consensus::index_t cind);
+  bool compactVolatile(arangodb::consensus::index_t cind,
+                       arangodb::consensus::index_t keep);
 
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
