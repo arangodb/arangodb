@@ -146,7 +146,6 @@ actions.defineHttp({
       return;
     }
 
-
     var body = JSON.parse(req.requestBody);
     if (body === undefined) {
       res.responseCode = actions.HTTP_BAD;
@@ -167,7 +166,7 @@ actions.defineHttp({
       res.responseCode = actions.HTTP_BAD;
       res.body = JSON.stringify({
         'error': true,
-        'errorMessage': 'state string must be "on" or "off" not'
+        'errorMessage': 'state string must be "on" or "off"'
       });
       return;
     }
