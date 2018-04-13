@@ -21,15 +21,22 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
+
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
 
 #include "ApplicationServerHelper.h"
+#include "IResearchAnalyzerFeature.h"
+#include "IResearchFeature.h"
 #include "SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
-
 #include "Aql/AqlFunctionFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
@@ -45,9 +52,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
-
-#include "IResearchAnalyzerFeature.h"
-#include "IResearchFeature.h"
 
 NS_LOCAL
 
