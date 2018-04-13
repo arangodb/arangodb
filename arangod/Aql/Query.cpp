@@ -1046,6 +1046,7 @@ void Query::enterContext() {
 
       ISOLATE;
       TRI_GET_GLOBALS();
+      _preparedV8Context = false;
       auto ctx = static_cast<arangodb::transaction::V8Context*>(
           v8g->_transactionContext);
       if (ctx != nullptr) {
