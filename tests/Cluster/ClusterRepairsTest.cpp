@@ -157,12 +157,11 @@ void checkAgainstExpectedOperations(
     VPackBufferPtr const& supervisionHealth,
     std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         expectedRepairOperationsByCollection) {
-  DistributeShardsLikeRepairer repairer;
-
   ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>>
-      repairOperationsByCollectionResult = repairer.repairDistributeShardsLike(
-          VPackSlice(planCollections->data()),
-          VPackSlice(supervisionHealth->data()));
+      repairOperationsByCollectionResult =
+          DistributeShardsLikeRepairer::repairDistributeShardsLike(
+              VPackSlice(planCollections->data()),
+              VPackSlice(supervisionHealth->data()));
 
   INFO(repairOperationsByCollectionResult);
   REQUIRE(repairOperationsByCollectionResult.ok());
@@ -241,9 +240,6 @@ void checkAgainstExpectedOperations(
     }
   }
 }
-
-// TODO Add a test with a deleted collection
-// TODO Add a test with a satellite collection
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -381,6 +377,20 @@ SCENARIO("Broken distributeShardsLike collections",
       checkAgainstExpectedOperations(planCollections,
                                      supervisionHealth3Healthy0Bad,
                                      expectedResultsWithSmartGraph);
+    }
+
+    GIVEN("A satellite collection") {
+#include "ClusterRepairsTest.satelliteCollection.cpp"
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth3Healthy0Bad,
+                                     expectedResultsWithSatelliteCollection);
+    }
+
+    GIVEN("A collection that should usually be fixed but is deleted") {
+#include "ClusterRepairsTest.deletedCollection.cpp"
+      checkAgainstExpectedOperations(planCollections,
+                                     supervisionHealth3Healthy0Bad,
+                                     expectedResultsWithDeletedCollection);
     }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
