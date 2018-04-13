@@ -59,7 +59,7 @@ MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMF
 
 /// @brief open an existing logfile
 MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, MMFilesWalLogfile::IdType id,
-                               bool wasCollected, bool ignoreErrors) {
+                                                   bool wasCollected, bool ignoreErrors) {
   std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::open(filename, ignoreErrors));
 
   if (df == nullptr) {
@@ -67,11 +67,10 @@ MMFilesWalLogfile* MMFilesWalLogfile::openExisting(std::string const& filename, 
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "': " << TRI_errno_string(res);
-      return nullptr;
+    } else {
+      // cannot figure out the type of error
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "'";
     }
-
-    // cannot figure out the type of error
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to open logfile '" << filename << "'";
     return nullptr;
   }
 

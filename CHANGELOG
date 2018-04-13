@@ -1,6 +1,11 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* improve startup resilience in case there are datafile errors (MMFiles)
+
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
+
 * fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
 
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
