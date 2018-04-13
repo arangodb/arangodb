@@ -1,6 +1,11 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* improve startup resilience in case there are datafile errors (MMFiles)
+  
+  also allow repairing broken VERSION files automatically on startup by
+  specifying the option `--database.ignore-datafile-errors true`
+
 * fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
 
 * fixed internal issue #2148: Number of documents found by filter is misleading in web UI
