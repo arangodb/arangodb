@@ -119,6 +119,9 @@
       * [Authentication](Foxx/Reference/Modules/Auth.md)
       * [OAuth 1.0a](Foxx/Reference/Modules/OAuth1.md)
       * [OAuth 2.0](Foxx/Reference/Modules/OAuth2.md)
+  * [Deployment](Foxx/Deployment/README.md)
+#   https://@github.com/arangodb/foxx-cli.git;arangodb;docs/Manual;;/
+    * [Foxx CLI](Foxx/Deployment/FoxxCLI/README.md)
   * [Migrating 2.x services](Foxx/Migrating2x/README.md)
     * [Migrating from pre-2.8](Foxx/Migrating2x/Wayback.md)
     * [manifest.json](Foxx/Migrating2x/Manifest.md)
