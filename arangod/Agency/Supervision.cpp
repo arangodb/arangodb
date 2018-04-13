@@ -603,7 +603,6 @@ void Supervision::reportStatus(std::string const& status) {
           report->add("Mode", VPackValue(status));
           report->add("Timestamp",
             VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
-    LOG_TOPIC(WARN, Logger::SUPERVISION) << report->slice().toJson();
     write_ret_t res = singleWriteTransaction(_agent, *report);
   }
   
@@ -680,8 +679,6 @@ void Supervision::run() {
 
             reportStatus("Normal");
 
-            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Go go go";
-            
             if (!_upgraded) {
               upgradeAgency();
             }
