@@ -581,11 +581,11 @@ void Supervision::reportStatus(std::string const& status) {
   bool doReport = false;
   query_t report;
 
-  // Do I have to report to agency under 
-  {
+  
+  { // Do I have to report to agency under 
     _lock.assertLockedByCurrentThread();
     if (_snapshot.has("/Supervision/State/Mode") &&
-        _snapshot.has("/Supervision/State/Mode").isString()) {
+        _snapshot("/Supervision/State/Mode").isString()) {
       if (_snapshot("/Supervision/State/Mode").getString() != status) {
         doReport = true;
       }
@@ -596,11 +596,15 @@ void Supervision::reportStatus(std::string const& status) {
   
   if (doReport) {
     report = std::make_shared<VPackBuilder>();
-    { VPackObjectBuilder br(report.get());
-      report->add("Mode", VPackValue("Normal"));
-      report->add("Timestamp",
-        VPackValue(timepointToString(std::chrono::system_clock::now())));}
-    write_ret_t res = singleWriteTransaction(_agent, report);
+    { VPackArrayBuilder trx(report.get());
+      { VPackObjectBuilder br(report.get());
+        report->add(VPackValue("/Supervision/State"));
+        { VPackObjectBuilder bbr(report.get());
+          report->add("Mode", VPackValue(status));
+          report->add("Timestamp",
+            VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
+    LOG_TOPIC(WARN, Logger::SUPERVISION) << report->slice().toJson();
+    write_ret_t res = singleWriteTransaction(_agent, *report);
   }
   
 }
@@ -672,9 +676,11 @@ void Supervision::run() {
 
           updateSnapshot();
 
-          if (!_snapshot.has("Supervision/deavtivate")) {
+          if (!_snapshot.has("Supervision/Maintenance")) {
 
             reportStatus("Normal");
+
+            LOG_TOPIC(WARN, Logger::SUPERVISION) << "Go go go";
             
             if (!_upgraded) {
               upgradeAgency();
