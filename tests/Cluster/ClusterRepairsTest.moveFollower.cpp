@@ -89,7 +89,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"10000002",
          {{// rename distributeShardsLike to repairingDistributeShardsLike
            BeginRepairsOperation::create(
-               _database = {"someDb"}, _collectionId = "10000002",
+               _database = "someDb", _collectionId = "10000002",
                _collectionName = "follower", _protoCollectionId = "10000001",
                _protoCollectionName = "prototype",
                _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
