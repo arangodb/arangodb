@@ -635,7 +635,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
       }
 
       auto created =
-        AlgoRegistry::createWorker(&(_vocbaseGuard.database()), b.slice());
+        AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice());
 
       TRI_ASSERT(created.get() != nullptr);
       PregelFeature::instance()->addWorker(std::move(created), _executionNumber);
@@ -764,7 +764,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
       VPackBuilder response;
 
       PregelFeature::handleWorkerRequest(
-        &(_vocbaseGuard.database()), path, message.slice(), response
+        _vocbaseGuard.database(), path, message.slice(), response
       );
       handle(response.slice());
     } else {
@@ -774,7 +774,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
         VPackBuilder response;
 
         PregelFeature::handleWorkerRequest(
-          &(_vocbaseGuard.database()), path, message.slice(), response
+          _vocbaseGuard.database(), path, message.slice(), response
         );
       });
     }

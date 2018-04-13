@@ -34,9 +34,14 @@
 
 namespace arangodb {
 
-MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t* vocbase, CursorId id,
-                           arangodb::MMFilesCollectionExport* ex, size_t batchSize,
-                           double ttl, bool hasCount)
+MMFilesExportCursor::MMFilesExportCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    arangodb::MMFilesCollectionExport* ex,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+)
     : Cursor(id, batchSize, ttl, hasCount),
       _guard(vocbase),
       _ex(ex),

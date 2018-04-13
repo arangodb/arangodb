@@ -69,7 +69,7 @@ static uint64_t TRI_totalSystemMemory() {
 }
 
 template <typename V, typename E>
-GraphStore<V, E>::GraphStore(TRI_vocbase_t* vb, GraphFormat<V, E>* graphFormat)
+GraphStore<V, E>::GraphStore(TRI_vocbase_t& vb, GraphFormat<V, E>* graphFormat)
     : _vocbaseGuard(vb),
       _graphFormat(graphFormat),
       _localVerticeCount(0),

@@ -45,19 +45,25 @@
 using namespace arangodb;
 
 RocksDBExportCursor::RocksDBExportCursor(
-    TRI_vocbase_t* vocbase, std::string const& name,
-    CollectionExport::Restrictions const& restrictions, CursorId id,
-    size_t limit, size_t batchSize, double ttl, bool hasCount)
-    : Cursor(id, batchSize, ttl, hasCount),
-      _guard(vocbase),
-      _resolver(vocbase),
-      _restrictions(restrictions),
-      _name(name),
-      _trx(new SingleCollectionTransaction(
-          transaction::StandaloneContext::Create(vocbase), _name,
-                                     AccessMode::Type::READ)),
-      _position(0) {
-
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions,
+    CursorId id,
+    size_t limit,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+): Cursor(id, batchSize, ttl, hasCount),
+   _guard(vocbase),
+   _resolver(&vocbase),
+   _restrictions(restrictions),
+   _name(name),
+   _trx(new SingleCollectionTransaction(
+     transaction::StandaloneContext::Create(&vocbase),
+     _name,
+     AccessMode::Type::READ
+   )),
+   _position(0) {
   Result res = _trx->begin();
 
   if (!res.ok()) {
