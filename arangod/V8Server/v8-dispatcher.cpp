@@ -78,8 +78,13 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   static std::unordered_map<std::string, std::shared_ptr<V8Task>> _tasks;
 
  public:
-  V8Task(std::string const& id, std::string const& name, TRI_vocbase_t*,
-         std::string const& command, bool allowUseDatabase);
+  V8Task(
+    std::string const& id,
+    std::string const& name,
+    TRI_vocbase_t& vocbase,
+    std::string const& command,
+    bool allowUseDatabase
+  );
   ~V8Task();
 
  public:
@@ -137,6 +142,7 @@ std::shared_ptr<V8Task> V8Task::createTask(std::string const& id,
                                            bool allowUseDatabase, int& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
+
     return nullptr;
   }
 
@@ -144,13 +150,17 @@ std::shared_ptr<V8Task> V8Task::createTask(std::string const& id,
 
   if (_tasks.find(id) != _tasks.end()) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
+
     return {nullptr};
   }
 
-  auto task = std::make_shared<V8Task>(id, name, vocbase, command, allowUseDatabase);
+  TRI_ASSERT(nullptr != vocbase); // this check was previously in the DatabaseGuard constructor which on failure would fail V8Task constructor
+  auto task =
+    std::make_shared<V8Task>(id, name, *vocbase, command, allowUseDatabase);
   auto itr = _tasks.emplace(id, std::move(task));
 
   ec = TRI_ERROR_NO_ERROR;
+
   return itr.first->second;
 }
 
@@ -235,9 +245,13 @@ bool V8Task::databaseMatches(std::string const& name) const {
   return (_dbGuard->database().name() == name);
 }
 
-V8Task::V8Task(std::string const& id, std::string const& name,
-               TRI_vocbase_t* vocbase, std::string const& command,
-               bool allowUseDatabase)
+V8Task::V8Task(
+    std::string const& id,
+    std::string const& name,
+    TRI_vocbase_t& vocbase,
+    std::string const& command,
+    bool allowUseDatabase
+)
     : _id(id),
       _name(name),
       _created(TRI_microtime()),

@@ -43,11 +43,6 @@ class DatabaseGuard {
     }
   }
 
-  /// @brief create guard on existing db pointer (not nullptr)
-  /// @deprecated DO NOT USE for new code
-  /// FIXME TODO remove once V8Task is fixed
-  explicit DatabaseGuard(TRI_vocbase_t* vocbase);
-
   /// @brief create the guard, using a database id
   explicit DatabaseGuard(TRI_voc_tick_t id);
 

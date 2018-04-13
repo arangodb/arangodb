@@ -45,20 +45,9 @@ TRI_vocbase_t& vocbase(T& id) {
   return *vocbase;
 }
 
-template<>
-TRI_vocbase_t& vocbase(TRI_vocbase_t*& vocbase) {
-  // check from the original constructor of DatabaseGuard
-  TRI_ASSERT(vocbase != nullptr);
-
-  return *vocbase;
-}
-
 } // namespace
 
 namespace arangodb {
-
-DatabaseGuard::DatabaseGuard(TRI_vocbase_t* ptr): DatabaseGuard(vocbase(ptr)) {
-}
 
 /// @brief create the guard, using a database id
 DatabaseGuard::DatabaseGuard(TRI_voc_tick_t id): _vocbase(vocbase(id)) {
