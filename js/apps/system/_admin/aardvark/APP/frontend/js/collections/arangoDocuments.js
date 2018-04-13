@@ -36,7 +36,7 @@
       });
     },
 
-    setCollection: function (id) {
+    setCollection: function (id, page) {
       var callback = function (error) {
         if (error) {
           arangoHelper.arangoError('Documents', 'Could not fetch documents count');
@@ -44,7 +44,11 @@
       };
       this.resetFilter();
       this.collectionID = id;
-      this.setPage(1);
+      if (page) {
+        this.setPage(page);
+      } else {
+        this.setPage(1);
+      }
       this.loadTotal(callback);
     },
 
@@ -213,6 +217,12 @@
         query: query,
         bindVars: bindVars
       };
+
+      if (this.filters.length > 0) {
+        queryObj.options = {
+          fullCount: true
+        };
+      }
 
       var checkCursorStatus = function (jobid) {
         $.ajax({

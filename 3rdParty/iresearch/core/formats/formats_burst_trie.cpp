@@ -35,8 +35,6 @@
 
 #include "utils/timer_utils.hpp"
 #include "utils/fst.hpp"
-#include "utils/fst_utils.hpp"
-#include "utils/fst_decl.hpp"
 #include "utils/bit_utils.hpp"
 #include "utils/bitset.hpp"
 #include "utils/attributes.hpp"
@@ -45,30 +43,18 @@
 #include "utils/fst_matcher.hpp"
 
 #if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-  #if (__GNUC__ >= 6)
-    #pragma GCC diagnostic ignored "-Wmisleading-indentation"
-  #endif
-#endif
-
-#include <fst/equivalent.h>
-
-#if defined(_MSC_VER)
-  // NOOP
-#elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#if defined(_MSC_VER)
   #pragma warning(disable : 4291)
 #elif defined (__GNUC__)
   // NOOP
 #endif
 
 #include <fst/matcher.h>
+
+#if defined(_MSC_VER)
+  #pragma warning(default: 4291)
+#elif defined (__GNUC__)
+  // NOOP
+#endif
 
 #if defined(_MSC_VER)
   #pragma warning(disable : 4244)
@@ -1224,10 +1210,13 @@ NS_END // detail
 // --SECTION--                                       field_writer implementation
 // -----------------------------------------------------------------------------
 
+MSVC2015_ONLY(__pragma(warning(push)))
+MSVC2015_ONLY(__pragma(warning(disable: 4592))) // symbol will be dynamically initialized (implementation limitation) false positive bug in VS2015.1
 const string_ref field_writer::FORMAT_TERMS = "block_tree_terms_dict";
 const string_ref field_writer::TERMS_EXT = "tm";
 const string_ref field_writer::FORMAT_TERMS_INDEX = "block_tree_terms_index";
 const string_ref field_writer::TERMS_INDEX_EXT = "ti";
+MSVC2015_ONLY(__pragma(warning(pop)))
 
 void field_writer::write_term_entry(const detail::entry& e, size_t prefix, bool leaf) {
   using namespace detail;

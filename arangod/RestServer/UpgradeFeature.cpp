@@ -173,11 +173,21 @@ void UpgradeFeature::upgradeDatabase() {
 
   DatabaseFeature* databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
   
+  bool ignoreDatafileErrors = false;
+  {
+    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackSlice s = options.slice();
+    if (s.get("database.ignore-datafile-errors").isBoolean()) {
+      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
+    }
+  }
+
   for (auto& name : databaseFeature->getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
     TRI_ASSERT(vocbase != nullptr);
     
-    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade);
+    methods::UpgradeResult res = methods::Upgrade::startup(vocbase, _upgrade, ignoreDatafileErrors);
+    
     if (res.fail()) {
       char const* typeName = "initialization";
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {

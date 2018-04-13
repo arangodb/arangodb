@@ -215,6 +215,10 @@ struct IResearchOrderSetup {
 
     arangodb::tests::init();
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false);
@@ -244,9 +248,6 @@ struct IResearchOrderSetup {
     arangodb::aql::Function invalid("INVALID", "|.", false, true, true, false);
 
     functions.add(invalid);
-
-    // suppress log messages since tests check error conditions
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchOrderSetup() {

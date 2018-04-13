@@ -284,7 +284,7 @@ function geoVariationsTestSuite() {
         {"_key":"1232","_id":"test/1232","_rev":"_WjFgKfC---","location":[0,0]},
         {"_key":"1173","_id":"test/1173","_rev":"_WjFfvBC---","location":[10,10]},
         {"_key":"1197","_id":"test/1197","_rev":"_WjFf9AC---","location":[0,50]},
-        {"_key":"1256","_id":"test/1256","_rev":"_WjFgVtC---","location":[10,10]}
+        {"_key":"1256","_id":"test/1256","_rev":"_WjFgVtC---","location":[10,10.1]}
       ];
       geocol.insert(documents);
     },
