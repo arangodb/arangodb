@@ -89,7 +89,6 @@
   * [Write-ahead log](Architecture/WriteAheadLog.md)
   * [Storage Engines](Architecture/StorageEngines.md)
 * [Foxx Microservices](Foxx/README.md)
-  * [At a glance](Foxx/AtAGlance.md)
   * [Getting started](Foxx/GettingStarted.md)
   * [Reference](Foxx/Reference/README.md)
     * [Service manifest](Foxx/Reference/Manifest.md)
