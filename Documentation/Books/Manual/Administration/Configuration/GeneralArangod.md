@@ -357,6 +357,19 @@ directory as argument.
 /tmp/vocbase
 ```
 
+### Database directory state precondition
+
+`--database.require-directory-state state`
+  
+Using this option it is possible to require the database directory to be
+in a specific state on startup. the options for this value are:
+ 
+- non-existing: database directory must not exist
+- existing: database directory must exist
+- empty: database directory must exist but be empty
+- populated: database directory must exist and contain specific files already
+- any: any directory state allowed
+
 
 ### Journal size
 @startDocuBlock databaseMaximalJournalSize
@@ -429,6 +442,18 @@ specified in seconds. Tracking of slow queries can be turned off entirely by
 setting the option `--query.tracking` to *false*.
 
 The default value is *10.0*.
+
+
+### Query registry timeout
+
+`--query.registry-ttl value`
+
+The default timeout for AQL query parts to stay alive in the cluster. The default
+value is 600 seconds. Query parts that are not used for the configured amount of
+time will expire automatically and will be aborted. The value of this option 
+normally only needs to be increased for queries that are running longer than the
+default timeout value (600 seconds) and that time out. The option has no effect
+in single-server mode.
 
 
 ### Throw collection not loaded error
