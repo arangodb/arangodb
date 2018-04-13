@@ -30,16 +30,22 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+
 class MMFilesCollectionExport;
 
 class MMFilesExportCursor final : public Cursor {
  public:
-  MMFilesExportCursor(TRI_vocbase_t*, CursorId, arangodb::MMFilesCollectionExport*, size_t,
-               double, bool);
+  MMFilesExportCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    arangodb::MMFilesCollectionExport* ex,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+  );
 
   ~MMFilesExportCursor();
 
- public:
   CursorType type() const override final { return CURSOR_EXPORT; }
 
   bool hasNext();
@@ -58,6 +64,7 @@ class MMFilesExportCursor final : public Cursor {
   size_t _position;
   size_t const _size;
 };
+
 }
 
 #endif

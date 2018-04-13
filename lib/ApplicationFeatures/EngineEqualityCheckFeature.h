@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,39 +17,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_REGISTRY_H
-#define ARANGODB_PREGEL_REGISTRY_H 1
+#ifndef ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
+#define ARANGODB_APPLICATION_FEATURES_ENGINE_EQUALITY_CHECK_FEATURE_H
 
-#include <string>
-#include "Algorithm.h"
-#include "Worker.h"
-
-struct TRI_vocbase_t;
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace pregel {
+class EngineEqualityCheckFeature final : public application_features::ApplicationFeature {
+ public:
+  explicit EngineEqualityCheckFeature(application_features::ApplicationServer* server);
 
-struct AlgoRegistry {
-  static IAlgorithm* createAlgorithm(std::string const& algorithm,
-                                     VPackSlice userParams);
-  static std::unique_ptr<IWorker> createWorker(
-    TRI_vocbase_t& vocbase,
-    VPackSlice body
-  );
-
- private:
-  template <typename V, typename E, typename M>
-  static std::unique_ptr<IWorker> createWorker(
-    TRI_vocbase_t& vocbase,
-    Algorithm<V, E, M>* algo,
-    VPackSlice body
-  );
+ public:
+  void start() override final;
 };
-
-}
 }
 
 #endif

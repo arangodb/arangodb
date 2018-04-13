@@ -1,6 +1,16 @@
 devel
 -----
 
+* fixed internal issue #2147 - fixed database filter in UI
+
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
+* fix internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
 * removed option `--cluster.my-local-info` in favor of persisted server UUIDs
 
   The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
