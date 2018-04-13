@@ -577,29 +577,33 @@ void Supervision::run() {
     TRI_ASSERT(_agent != nullptr);
 
     while (!this->isStopping()) {
-      try {
+      {
         MUTEX_LOCKER(locker, _lock);
 
-        // Get bunch of job IDs from agency for future jobs
-        if (_agent->leading() && (_jobId == 0 || _jobId == _jobIdMax)) {
-          getUniqueIds();  // cannot fail but only hang
+        if (isShuttingDown()) {
+          handleShutdown();
+        } else if (_selfShutdown) {
+          shutdown = true;
+          break;
         }
 
-        updateSnapshot();
+        // Only modifiy this condition with extreme care:
+        // Supervision needs to wait until the agent has finished leadership
+        // preparation or else the local agency snapshot might be behind its
+        // last state. 
+        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
 
-        if (_agent->leading()) {
+          if (_jobId == 0 || _jobId == _jobIdMax) {
+            getUniqueIds();  // cannot fail but only hang
+          }
+          
+          updateSnapshot();
 
           if (!_upgraded) {
             upgradeAgency();
           }
 
-          // Do nothing unless leader for over 10 seconds
-          auto secondsSinceLeader = std::chrono::duration<double>(
-            std::chrono::system_clock::now() - _agent->leaderSince()).count();
-
-          // 10 seconds should be plenty of time for all servers to send
-          //  heartbeat status to new leader (heartbeat is once per second)
-          if (secondsSinceLeader > 10.0) {
+          if (_agent->leaderFor() > 10) {
             try {
             doChecks();
             } catch (std::exception const& e) {
@@ -609,22 +613,9 @@ void Supervision::run() {
                 "Supervision::doChecks() generated an uncaught exception.";
             }
           }
-        }
 
-        if (isShuttingDown()) {
-          handleShutdown();
-        } else if (_selfShutdown) {
-          shutdown = true;
-          break;
-        } else if (_agent->leading()) {
-          if (!handleJobs()) {
-            break;
-          }
+          handleJobs();
         }
-      } catch (std::exception const& ex) {
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught exception in supervision thread: " << ex.what();
-      } catch (...) {
-        LOG_TOPIC(WARN, Logger::SUPERVISION) << "caught unknown exception in supervision thread";
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }

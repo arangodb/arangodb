@@ -3,11 +3,11 @@ Using GraphQL in Foxx
 
 `const createGraphQLRouter = require('@arangodb/foxx/graphql');`
 
-Foxx bundles the [`graphql-sync` module](https://github.com/arangodb/graphql-sync), which is a synchronous wrapper for the official JavaScript GraphQL reference implementation, to allow writing GraphQL schemas directly inside Foxx.
+Foxx bundles version 0.6 of the [`graphql-sync` module](https://github.com/arangodb/graphql-sync), which is a synchronous wrapper for the official JavaScript GraphQL reference implementation, to allow writing GraphQL schemas directly inside Foxx.
 
 Additionally the `@arangodb/foxx/graphql` lets you create routers for serving GraphQL requests, which closely mimicks the behaviour of the [`express-graphql` module](https://github.com/graphql/express-graphql).
 
-For more information on `graphql-sync` see the [`graphql-js` API reference](http://graphql.org/docs/api-reference-graphql/) (note that `graphql-sync` always uses raw values instead of wrapping them in promises).
+For more information on `graphql-sync` see the [`graphql-js` API reference](http://graphql.org/docs/api-reference-graphql/) (note that `graphql-sync` never wraps results in promises).
 
 For an example of a GraphQL schema in Foxx that resolves fields using the database see [the GraphQL example service](https://github.com/arangodb-foxx/demo-graphql) (also available from the Foxx store).
 
@@ -41,7 +41,7 @@ router.use('/graphql', createGraphQLRouter({
 }));
 ```
 
-**Note**: ArangoDB aims for stability which means bundled dependencies will generally not be updated as quickly as their maintainers make updates available on GitHub or NPM. Starting with ArangoDB 3.2, if you want to use a newer release of `graphql-sync` than the one bundled with your target version of ArangoDB, you can provide your own version of the library by passing it via the `graphql` option:
+**Note**: ArangoDB aims for stability which means bundled dependencies will generally not be updated as quickly as their maintainers make updates available on GitHub or NPM. Starting with ArangoDB 3.2, if you want to use a newer version than the one bundled with your target version of ArangoDB, you can provide your own version of the library by passing it via the `graphql` option:
 
 ```js
 const graphql = require('graphql-sync');
@@ -55,7 +55,19 @@ module.context.use(createGraphQLRouter({
 }))
 ```
 
-This makes sure Foxx uses the `graphql-sync` module bundled in your service's `node_modules` folder (if available) instead of the built-in version. If you find `graphql-sync` itself lagging behind the official `graphql` module, consider [opening an issue on its GitHub repository](https://github.com/arangodb/graphql-sync/issues).
+Starting with `graphql` 0.12 you can also use [the official graphql library](https://github.com/graphql/graphql-js) if you include it in the `node_modules` folder of your service bundle:
+
+```js
+const graphql = require('graphql'); // 0.12 or later
+const graphqlSchema = new graphql.Schema({
+  //...
+});
+module.context.use(createGraphQLRouter({
+  schema: graphqlSchema,
+  graphiql: true,
+  graphql: graphql
+}))
+```
 
 Creating a router
 -----------------
