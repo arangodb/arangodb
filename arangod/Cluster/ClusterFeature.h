@@ -86,6 +86,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void stop() override final;
 
+  /// @brief Common routine to start heartbeat with or without cluster
+  void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
+                            uint64_t interval,
+                            uint64_t maxFailsBeforeWarning,
+                            const std::string & endpoints);
+
  private:
   bool _unregisterOnShutdown;
   bool _enableCluster;
