@@ -331,7 +331,7 @@ bool IResearchLink::json(
     return false;
   }
 
-  builder.add(StaticStrings::IdString, VPackValue(std::to_string(_id)));
+  builder.add("id", VPackValue(std::to_string(_id)));
   IResearchLinkHelper::setType(builder);
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified

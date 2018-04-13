@@ -155,7 +155,7 @@ void IResearchViewCoordinator::toVelocyPack(
   TRI_ASSERT(result.isOpenObject());
 
   // Meta Information
-  result.add(StaticStrings::IdString, VPackValue(std::to_string(id())));
+  result.add("id", VPackValue(std::to_string(id())));
   result.add("name", VPackValue(name()));
   result.add("type", VPackValue(type().name()));
 
@@ -252,7 +252,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       if (link.isNull()) {
         // only removal requested
         builder.openObject();
-        builder.add(StaticStrings::IdString, collectionNameOrIdSlice);
+        builder.add("id", collectionNameOrIdSlice);
         builder.close();
 
         res = methods::Indexes::drop(collection.get(), builder.slice());
@@ -263,7 +263,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
         if (existingLink) {
           // drop existing link
           builder.openObject();
-          builder.add(StaticStrings::IdString, VPackValue(existingLink->id()));
+          builder.add("id", VPackValue(existingLink->id()));
           builder.close();
 
           res = methods::Indexes::drop(collection.get(), builder.slice());

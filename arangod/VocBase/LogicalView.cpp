@@ -215,7 +215,7 @@ DBServerLogicalView::~DBServerLogicalView() {
         // We have not yet persisted this view
         for (auto entry: arangodb::velocypack::ArrayIterator(slice)) {
           auto id = arangodb::basics::VelocyPackHelper::getStringRef(
-            entry, StaticStrings::IdString, arangodb::velocypack::StringRef()
+            entry, "id", arangodb::velocypack::StringRef()
           );
 
           if (!id.compare(viewId)) {

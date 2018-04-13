@@ -184,7 +184,7 @@ class IResearchLinkMMFilesCoordinator final
       bool const success = _meta.json(builder);
       TRI_ASSERT(success);
     }
-    builder.add(arangodb::StaticStrings::IdString, VPackValue(std::to_string(id())));
+    builder.add("id", VPackValue(std::to_string(id())));
     IResearchLinkHelper::setType(builder);
 
     if (withFigures) {
@@ -323,7 +323,7 @@ class IResearchLinkRocksDBCoordinator final
       bool const success = _meta.json(builder);
       TRI_ASSERT(success);
     }
-    builder.add(arangodb::StaticStrings::IdString, VPackValue(std::to_string(id())));
+    builder.add("id", VPackValue(std::to_string(id())));
     IResearchLinkHelper::setType(builder);
 
     if (withFigures) {

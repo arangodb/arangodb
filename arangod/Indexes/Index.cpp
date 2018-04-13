@@ -130,8 +130,10 @@ void Index::validateFields(VPackSlice const& slice) {
   VPackSlice fields = slice.get("fields");
 
   if (!fields.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
-                                   "invalid index description");
+// FIXME
+    return;
+//    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
+//                                   "invalid index description");
   }
 
   for (auto const& name : VPackArrayIterator(fields)) {
