@@ -57,70 +57,54 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
     };
   }
 
-  auto const& projection = _node->projection();
-
-  if (projection.size() == 1) {
-    if (projection[0] == StaticStrings::IdString) {
-      // return _id attribute
-      return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
-        VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
-        if (found.isCustom()) {
-          // _id as a custom type needs special treatment
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice));
-        } else {
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            AqlValueHintCopy(found.begin()));
-        }
-        if (row != fromRow) {
-          // re-use already copied AQLValues
-          res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
-        }
-        ++row;
-      };
-    } else if (projection[0] == StaticStrings::KeyString) {
-      // return _key attribute
-      return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
-        VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
-        if (_useRawDocumentPointers) {
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            AqlValueHintDocumentNoCopy(found.begin()));
-        } else {
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            AqlValueHintCopy(found.begin()));
-        }
-        if (row != fromRow) {
-          // re-use already copied AQLValues
-          res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
-        }
-        ++row;
-      };
-    }
-  }
-
-  if (!projection.empty()) {
-    // return another projection
+  if (!_node->projections().empty()) {
+    // return a projection
     return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
-      slice = slice.get(_node->projection());
-      if (slice.isNone()) {
-        // attribute not found
-        res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          VPackSlice::nullSlice());
-      } else {
-        uint8_t const* vpack = slice.begin();
-        if (_useRawDocumentPointers) {
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            AqlValueHintDocumentNoCopy(vpack));
+      VPackBuilder b;
+      b.openObject();
+      for (auto const& it : _node->projections()) {
+        if (it == StaticStrings::IdString) {
+          VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
+          if (found.isCustom()) {
+            // _id as a custom type needs special treatment
+            b.add(it, VPackValue(transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice)));
+          } else {
+            b.add(it, found);
+          }
+        } else if (it == StaticStrings::KeyString) {
+          VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
+          if (_useRawDocumentPointers) {
+            b.add(VPackValue(it));
+            b.addExternal(found.begin());
+          } else {
+            b.add(it, found);
+          }
         } else {
-          res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                            AqlValueHintCopy(vpack));
+          slice = slice.get(it);
+          if (slice.isNone()) {
+            // attribute not found
+            b.add(it, VPackValue(VPackValueType::Null));
+          } else {
+            uint8_t const* found = slice.begin();
+            if (_useRawDocumentPointers) {
+              b.add(VPackValue(it));
+              b.addExternal(found);
+            } else {
+              b.add(it, VPackSlice(found));
+            }
+          }
         }
       }
+      b.close();
+            
+      res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId), AqlValue(b));
+      
       if (row != fromRow) {
         // re-use already copied AQLValues
         res->copyValuesFromRow(row, static_cast<RegisterId>(registerId), fromRow);
       }
       ++row;
+
     };
   }
 

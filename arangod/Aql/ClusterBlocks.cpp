@@ -60,11 +60,11 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()),
+      _isSimple(en->elements().empty()),
       _heap(en->_sortmode == 'h' ? new Heap : nullptr) {
 
   if (!_isSimple) {
-    for (auto const& p : en->getElements()) {
+    for (auto const& p : en->elements()) {
       // We know that planRegisters has been run, so
       // getPlanNode()->_registerPlan is set up
       auto it = en->getRegisterPlan()->varInfo.find(p.var->id);
@@ -844,7 +844,7 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
       _alternativeRegId(ExecutionNode::MaxRegisterId),
       _allowSpecifiedKeys(false) {
   // get the variable to inspect . . .
-  VariableId varId = ep->_varId;
+  VariableId varId = ep->_variable->id;
 
   // get the register id of the variable to inspect . . .
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
@@ -853,9 +853,9 @@ DistributeBlock::DistributeBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
 
-  if (ep->_alternativeVarId != ep->_varId) {
+  if (ep->_alternativeVariable != ep->_variable) {
     // use second variable
-    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
+    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVariable->id);
     TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
     _alternativeRegId = (*it).second.registerId;
 

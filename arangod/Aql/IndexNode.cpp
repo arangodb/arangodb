@@ -107,7 +107,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.add("collection", VPackValue(_collection->getName()));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
   
-  // add outvariable and projection
+  // add outvariable and projections
   DocumentProducingNode::toVelocyPack(nodes);
   
   nodes.add(VPackValue("indexes"));
@@ -135,6 +135,8 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new IndexNode(plan, _id, _vocbase, _collection, outVariable,
                          _indexes, _condition->clone(), _reverse);
+  
+  c->projections(_projections);
 
   cloneHelper(c, withDependencies, withProperties);
 

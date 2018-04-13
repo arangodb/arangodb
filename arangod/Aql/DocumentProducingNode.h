@@ -45,16 +45,16 @@ class DocumentProducingNode {
   /// @brief return the out variable
   Variable const* outVariable() const { return _outVariable; }
 
-  std::vector<std::string> const& projection() const {
-    return _projection;
+  std::vector<std::string> const& projections() const {
+    return _projections;
   }
   
-  void setProjection(std::vector<std::string> const& attributeNames) {
-    _projection = attributeNames;
+  void projections(std::vector<std::string> const& projections) {
+    _projections = projections;
   }
 
-  void setProjection(std::vector<std::string>&& attributeNames) {
-    _projection = std::move(attributeNames);
+  void projections(std::vector<std::string>&& projections) {
+    _projections = std::move(projections);
   }
   
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -62,8 +62,8 @@ class DocumentProducingNode {
  protected:
   Variable const* _outVariable;
 
-  /// @brief produce only the following attribute (with possible subattributes)
-  std::vector<std::string> _projection;
+  /// @brief produce only the following attributes
+  std::vector<std::string> _projections;
 };
 
 }

@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptimizerRules.h"
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
@@ -52,6 +53,16 @@ class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
     if (en->getType() == EN::CALCULATION) {
       auto node = static_cast<CalculationNode*>(en);
       node->expression()->replaceAttributeAccess(_variable, _attribute);
+    } else if (en->getType() == EN::GATHER) {
+      auto node = static_cast<GatherNode*>(en);
+      // intentional copy
+      auto sortVars = node->elements();
+      for (auto& it : sortVars) {
+        if (it.var == _variable && it.attributePath == _attribute) {
+          it.attributePath.clear();
+        }
+      }
+      node->elements(sortVars);
     }
 
     // always continue
@@ -65,7 +76,7 @@ class AttributeAccessReplacer final : public WalkerWorker<ExecutionNode> {
 
 void RocksDBOptimizerRules::registerResources() {
   OptimizerRulesFeature::registerRule("reduce-extraction-to-projection", reduceExtractionToProjectionRule, 
-               OptimizerRule::reduceExtractionToProjectionRule_pass6, false, true);
+               OptimizerRule::reduceExtractionToProjectionRule_pass10, false, true);
 }
 
 // simplify an EnumerationCollectionNode that fetches an entire document to a projection of this document
@@ -77,69 +88,57 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> nodes{a};
   
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION}; 
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
   plan->findNodesOfType(nodes, types, true);
 
   bool modified = false;
   std::unordered_set<Variable const*> vars;
-  std::vector<std::string> attributeNames;
+  std::unordered_set<std::string> attributes;
 
   for (auto const& n : nodes) {
     bool stop = false;
     bool optimize = false;
-    attributeNames.clear();
+    attributes.clear();
     DocumentProducingNode* e = dynamic_cast<DocumentProducingNode*>(n);
     if (e == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot convert node to DocumentProducingNode");
     }
-
     Variable const* v = e->outVariable();
-    Variable const* replaceVar = nullptr;
-              
+
     ExecutionNode* current = n->getFirstParent();
     while (current != nullptr) {
       if (current->getType() == EN::CALCULATION) {
         Expression* exp = static_cast<CalculationNode*>(current)->expression();
 
-        if (exp != nullptr) {
+        if (exp != nullptr && exp->node() != nullptr) {
           AstNode const* node = exp->node();
           vars.clear();
           current->getVariablesUsedHere(vars);
             
           if (vars.find(v) != vars.end()) {
-            if (attributeNames.empty()) {
-              vars.clear();
-              current->getVariablesUsedHere(vars);
-              
-              if (node != nullptr) {
-                if (Ast::populateSingleAttributeAccess(node, v, attributeNames)) {
-                  if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                    stop = true;
-                    break;
-                  }
-                  replaceVar = static_cast<CalculationNode*>(current)->outVariable();
-                  optimize = true;
-                  TRI_ASSERT(!attributeNames.empty());
-                } else {
-                  stop = true;
-                  break;
-                }
-              } else {
-                stop = true;
-                break;
-              }
-            } else if (node != nullptr) {
-              if (!Ast::variableOnlyUsedForSingleAttributeAccess(node, v, attributeNames)) {
-                stop = true;
-                break;
-              }
-            } else {
-              // don't know what to do
+            if (!Ast::getReferencedAttributes(node, v, attributes)) {
               stop = true;
               break;
             }
+            optimize = true;
           }
         }
+      } else if (current->getType() == EN::GATHER) {
+        // compare sort attributes of GatherNode
+        // TODO
+        stop = true;
+        /*
+        auto gn = static_cast<GatherNode*>(current);
+        auto const& sortVars = gn->elements();
+        for (auto& it : sortVars) {
+          auto path = it.attributePath;
+          std::reverse(path.begin(), path.end());
+          if (it.var == v && path != attributeNames) {
+            stop = true;
+            break;
+          }
+        }
+        */
       } else {
         vars.clear();
         current->getVariablesUsedHere(vars);
@@ -147,15 +146,27 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
         if (vars.find(v) != vars.end()) {
           // original variable is still used here
           stop = true;
-          break;
         }
       }
 
-      TRI_ASSERT(!stop);
+      if (stop) {
+        break;
+      }
 
       current = current->getFirstParent();
     }
 
+    if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
+      std::vector<std::string> r;
+      for (auto& it : attributes) {
+        r.emplace_back(std::move(it));
+      }
+      e->projections(std::move(r));
+      
+      modified = true;
+    }
+
+/*
     if (optimize && !stop) {
       TRI_ASSERT(replaceVar != nullptr);
 
@@ -163,10 +174,11 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       plan->root()->walk(&finder);
       
       std::reverse(attributeNames.begin(), attributeNames.end());
-      e->setProjection(std::move(attributeNames));
+      e->projections(std::move(attributeNames));
 
       modified = true;
     }
+    */
   }
     
   opt->addPlan(std::move(plan), rule, modified);

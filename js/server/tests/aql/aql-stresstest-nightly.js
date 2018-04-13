@@ -198,7 +198,6 @@ function stressTestSuite() {
           testMinArguments = 0;
         }
         var testMaxArguments = funcMaxArguments + 1;
-        console.log(aqlFunc, testMinArguments, testMaxArguments);
 
         // try up to 5 arguments for every query
         for (var i=testMinArguments;i<=testMaxArguments;i++) {

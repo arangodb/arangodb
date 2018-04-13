@@ -130,19 +130,19 @@ static ExecutionBlock* CreateBlock(
           static_cast<CollectNode const*>(en)->aggregationMethod();
 
       if (aggregationMethod ==
-          CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
+          CollectOptions::CollectMethod::HASH) {
         return new HashedCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
+                 CollectOptions::CollectMethod::SORTED) {
         return new SortedCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_DISTINCT) {
+                 CollectOptions::CollectMethod::DISTINCT) {
         return new DistinctCollectBlock(engine,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
-                 CollectOptions::CollectMethod::COLLECT_METHOD_COUNT) {
+                 CollectOptions::CollectMethod::COUNT) {
         return new CountCollectBlock(engine,
                                      static_cast<CollectNode const*>(en));
       }

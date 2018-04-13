@@ -69,7 +69,7 @@ class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
   std::vector<std::pair<ExecutionNode*, bool>> _myVars;
 
   explicit SortNodeFindMyExpressions(SortNode* me)
-      : _foundCalcNodes(0), _elms(me->getElements()) {
+      : _foundCalcNodes(0), _elms(me->elements()) {
     _myVars.resize(_elms.size());
   }
 
@@ -140,8 +140,8 @@ SortInformation SortNode::getSortInformation(
     ExecutionPlan* plan, arangodb::basics::StringBuffer* buffer) const {
   SortInformation result;
 
-  auto elements = getElements();
-  for (auto it = elements.begin(); it != elements.end(); ++it) {
+  auto const& elms = elements();
+  for (auto it = elms.begin(); it != elms.end(); ++it) {
     auto variable = (*it).var;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
