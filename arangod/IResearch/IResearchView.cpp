@@ -39,6 +39,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
+#include "IResearchLinkHelper.h"
 #include "ExpressionFilter.h"
 #include "AqlHelper.h"
 
@@ -596,7 +597,9 @@ arangodb::Result updateLinks(
 
       namedJson.openObject();
 
-      if (!arangodb::iresearch::IResearchLink::buildIndexDefinition(namedJson, link, view.id())) {
+      if (!arangodb::iresearch::mergeSlice(namedJson, link)
+          || !arangodb::iresearch::IResearchLinkHelper::setType(namedJson)
+          || !arangodb::iresearch::IResearchLinkHelper::setView(namedJson, view.id())) {
         return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failed to update link definition with the view name while updating iResearch view '") + std::to_string(view.id()) + "' collection '" + collectionName + "'"

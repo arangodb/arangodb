@@ -24,6 +24,7 @@
 #include "IResearchViewCoordinator.h"
 #include "IResearchView.h" // FIXME remove dependency
 #include "IResearchLink.h"
+#include "IResearchLinkHelper.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterFeature.h"
@@ -89,9 +90,32 @@ namespace iresearch {
 
   if (links.isObject()) {
     auto& builder = view->_links;
-    builder.openObject();
-    view->_links.add(links);
-    builder.close();
+
+    size_t idx = 0;
+    for (auto link : velocypack::ObjectIterator(links)) {
+      auto name = link.key;
+
+      if (!name.isString()) {
+        LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+            << "failed to initialize IResearch view link from definition at index " << idx
+            << ", link name is not string";
+
+        return nullptr;
+      }
+
+      builder.add(name);
+      builder.openObject();
+      auto const res = IResearchLinkHelper::normalize(builder, link.value, false);
+
+      if (!res.ok()) {
+        LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+            << "failed to initialize IResearch view link from definition at index " << idx
+            << ", error: " << error;
+
+        return nullptr;
+      }
+      builder.close();
+    }
   }
 
   return view;
@@ -233,6 +257,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
         res = methods::Indexes::drop(collection.get(), builder.slice());
       } else {
+        // FIXME use IResearchLinkCoordinator
         auto const existingLink = IResearchLink::find(*collection, *this);
 
         if (existingLink) {
@@ -252,7 +277,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
         // create new link
         builder.openObject();
-        if (!IResearchLink::buildIndexDefinition(builder, link, id())) {
+        if (!iresearch::mergeSlice(builder, link)
+            || !IResearchLinkHelper::setType(builder)
+            || !IResearchLinkHelper::setView(builder, id())) {
           return arangodb::Result(
             TRI_ERROR_INTERNAL,
             std::string("failed to update link definition with the view name while updating IResearch view '")

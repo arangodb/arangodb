@@ -36,20 +36,10 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
+#include "IResearchLinkHelper.h"
 #include "IResearchLink.h"
 
 NS_LOCAL
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& LINK_TYPE = arangodb::iresearch::IResearchFeature::type();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the name of the field in the iResearch Link definition denoting the
-///        iResearch Link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string LINK_TYPE_FIELD("type");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the id of the field in the iResearch Link definition denoting the
@@ -99,10 +89,6 @@ bool IResearchLink::operator==(LogicalView const& view) const noexcept {
 
 bool IResearchLink::operator==(IResearchLinkMeta const& meta) const noexcept {
   return _meta == meta;
-}
-
-bool IResearchLink::operator!=(IResearchLinkMeta const& meta) const noexcept {
-  return !(*this == meta);
 }
 
 bool IResearchLink::allowExpansion() const {
@@ -346,16 +332,16 @@ bool IResearchLink::json(
   }
 
   builder.add(StaticStrings::IdString, VPackValue(std::to_string(_id)));
-  builder.add(LINK_TYPE_FIELD, VPackValue(typeName()));
+  IResearchLinkHelper::setType(builder);
 
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
   if (_view) {
-    builder.add(VIEW_ID_FIELD, VPackValue(_view->id()));
+    IResearchLinkHelper::setView(builder, _view->id());
   } else if (_defaultId) { // '0' _defaultId == no view name in source jSON
   //if (_defaultId && forPersistence) { // MMFilesCollection::saveIndex(...) does not set 'forPersistence'
-    builder.add(VIEW_ID_FIELD, VPackValue(_defaultId));
+    IResearchLinkHelper::setView(builder, _defaultId);
   }
 
   return true;
@@ -416,44 +402,6 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
-/*static*/ arangodb::Result IResearchLink::normalize(
-  arangodb::velocypack::Builder& normalized,
-  velocypack::Slice definition,
-  bool // isCreation
-) {
-  if (!normalized.isOpenObject()) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("invalid output buffer provided for IResearch link normalized definition generation")
-    );
-  }
-
-  std::string error;
-  IResearchLinkMeta meta;
-
-  if (!meta.init(definition, error)) {
-    return arangodb::Result(
-      TRI_ERROR_BAD_PARAMETER,
-      std::string("error parsing IResearch link parameters from json: ") + error
-    );
-  }
-
-  normalized.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
-
-  // copy over IResearch View identifier
-  if (definition.hasKey(VIEW_ID_FIELD)) {
-    normalized.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD));
-  }
-
-  return meta.json(normalized)
-    ? arangodb::Result()
-    : arangodb::Result(
-        TRI_ERROR_BAD_PARAMETER,
-        std::string("error generating IResearch link normalized definition")
-      )
-    ;
-}
-
 Result IResearchLink::remove(
   transaction::Methods* trx,
   LocalDocumentId const& documentId,
@@ -503,36 +451,13 @@ Result IResearchLink::remove(
   return _view->remove(*trx, _collection->id(), documentId);
 }
 
-/*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
-
-  return true;
-}
-
-/*static*/ bool IResearchLink::setView(
-  arangodb::velocypack::Builder& builder,
-  TRI_voc_cid_t value
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(VIEW_ID_FIELD, arangodb::velocypack::Value(value));
-
-  return true;
-}
-
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
 }
 
 char const* IResearchLink::typeName() const {
-  return LINK_TYPE.c_str();
+  return IResearchLinkHelper::type().c_str();
 }
 
 int IResearchLink::unload() {
@@ -601,20 +526,6 @@ const IResearchView* IResearchLink::view() const {
   }
 
   return nullptr;
-}
-
-/*static*/ bool IResearchLink::buildIndexDefinition(
-    VPackBuilder& builder,
-    VPackSlice link,
-    TRI_voc_cid_t viewId
-) {
-  if (!builder.isOpenObject()) {
-    return false;
-  }
-
-  builder.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
-  builder.add(VIEW_ID_FIELD, arangodb::velocypack::Value(viewId));
-  return mergeSlice(builder, link);
 }
 
 NS_END // iresearch
