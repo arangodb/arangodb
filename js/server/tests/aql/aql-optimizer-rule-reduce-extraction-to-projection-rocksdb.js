@@ -68,20 +68,14 @@ function optimizerRuleTestSuite () {
 
     testNotActive : function () {
       var queries = [
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 && doc.value4 == 1 && doc.value5 == 1 && doc.value6 == 1 RETURN doc",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc",
-        "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value2",
         "FOR doc IN @@cn SORT doc.value1, doc.value2 RETURN doc",
-        "FOR doc IN @@cn SORT doc.value1 RETURN doc.value2",
         "FOR doc IN @@cn COLLECT v = doc.value1 INTO g RETURN g",
-        "FOR doc IN @@cn FILTER doc.value1 == 1 SORT doc.value2 RETURN doc.value1",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc",
-        "FOR doc IN @@cn FILTER doc.value1 == 1 FILTER doc.value2 == 1 RETURN doc.value1",
-        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc.value2",
-        "FOR doc IN @@cn FILTER doc.value1 >= 132 && doc.value <= 134 SORT doc.value1 RETURN doc.value1",
         "FOR doc IN @@cn FILTER doc == { value1: 1 } RETURN doc",
         "FOR doc IN @@cn FILTER doc && doc.value1 == 1 RETURN doc.value1",
-        "FOR doc IN @@cn RETURN [doc.value1, doc.value2]",
-        "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value2",
         "FOR doc IN @@cn INSERT MERGE(doc, { foo: doc.value }) INTO @@cn"
       ];
 
@@ -94,7 +88,21 @@ function optimizerRuleTestSuite () {
     testActive : function () {
       var queries = [
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value1",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value2",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 RETURN doc.value1", 
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 && doc.value4 == 1 RETURN doc.value1", 
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 && doc.value3 == 1 && doc.value4 == 1 && doc.value5 == 1 RETURN doc.value1", 
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc.value1",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc.value2",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN [ doc.value1, doc.value2 ]",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN doc.value2",
+        "FOR doc IN @@cn RETURN [doc.value1, doc.value2]",
+        "FOR doc IN @@cn FILTER doc.value1 >= 132 && doc.value <= 134 SORT doc.value1 RETURN doc.value1",
+        "FOR doc IN @@cn SORT doc.value1 RETURN doc.value2",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 SORT doc.value2 RETURN doc.value1",
         "FOR doc IN @@cn FILTER doc.value1 == 1 RETURN 1",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 FILTER doc.value2 == 1 RETURN doc.value1",
+        "FOR doc IN @@cn FILTER doc.value1 == 1 && doc.value2 == 1 RETURN doc.value2",
         "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1",
         "FOR doc IN @@cn SORT doc.value1 RETURN 1",
         "FOR doc IN @@cn COLLECT v = doc.value1 INTO g RETURN v", // g will be optimized away
@@ -214,46 +222,15 @@ function optimizerRuleTestSuite () {
       ];
       
       queries.forEach(function(query) {
+        db._explain(query[0], { "@cn" : cn });
         var result = AQL_EXPLAIN(query[0], { "@cn" : cn });
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query[0]);
         
         result = AQL_EXECUTE(query[0], { "@cn" : cn });
         assertEqual(query[1], result.json);
       });
-    },
-    
-    testOptimizeAwayCalculations : function () {
-      var queries = [
-        "FOR doc IN @@cn RETURN doc.value1",
-        "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1"
-      ];
-      
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        
-        assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("CalculationNode"));
-      });
-    },
-    
-    testOptimizeAwayCalculationsWithIndex : function () {
-      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
-
-      var queries = [
-        "FOR doc IN @@cn RETURN doc.value1",
-        "FOR doc IN @@cn FILTER doc.value1 == 2 RETURN doc.value1",
-        "FOR doc IN @@cn FILTER doc.value1 == 2 SORT doc.value1 RETURN doc.value1",
-        "FOR doc IN @@cn SORT doc.value1 RETURN doc.value1"
-      ];
-      
-      queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { "@cn" : cn });
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        
-        assertEqual(-1, result.plan.nodes.map(function(node) { return node.type; }).indexOf("CalculationNode"));
-      });
     }
-
+    
   };
 }
 

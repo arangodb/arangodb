@@ -126,7 +126,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       } else if (current->getType() == EN::GATHER) {
         // compare sort attributes of GatherNode
         // TODO
-        stop = true;
+ //       stop = true;
         /*
         auto gn = static_cast<GatherNode*>(current);
         auto const& sortVars = gn->elements();
@@ -165,20 +165,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(Optimizer* opt,
       
       modified = true;
     }
-
-/*
-    if (optimize && !stop) {
-      TRI_ASSERT(replaceVar != nullptr);
-
-      AttributeAccessReplacer finder(v, attributeNames);
-      plan->root()->walk(&finder);
-      
-      std::reverse(attributeNames.begin(), attributeNames.end());
-      e->projections(std::move(attributeNames));
-
-      modified = true;
-    }
-    */
   }
     
   opt->addPlan(std::move(plan), rule, modified);

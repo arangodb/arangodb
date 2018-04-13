@@ -80,17 +80,16 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
             b.add(it, found);
           }
         } else {
-          slice = slice.get(it);
-          if (slice.isNone()) {
+          VPackSlice found = slice.get(it);
+          if (found.isNone()) {
             // attribute not found
             b.add(it, VPackValue(VPackValueType::Null));
           } else {
-            uint8_t const* found = slice.begin();
             if (_useRawDocumentPointers) {
               b.add(VPackValue(it));
-              b.addExternal(found);
+              b.addExternal(slice.begin());
             } else {
-              b.add(it, VPackSlice(found));
+              b.add(it, found);
             }
           }
         }
