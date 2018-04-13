@@ -145,6 +145,122 @@ function ahuacatlModifySuite () {
       assertQueryError(errors.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, "REPLACE { _key: " + JSON.stringify(key) + ", id: 'test' } WITH { value: 2, id: 'bark' } IN " + cn);
     },
     
+    testInsertMainLevelWithCustomShardKeyConstant : function () {
+      let c = db._create(cn, {numberOfShards:5, shardKeys: ["id"]});
+
+      for (let i = 0; i < 30; ++i) {
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "INSERT { value: " + i + ", id: 'test" + i + "' } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query);
+        
+        if (isCluster) {
+          let plan = AQL_EXPLAIN(query).plan;
+          assertFalse(hasDistributeNode(plan.nodes));
+          assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        }
+      
+        assertEqual(0, actual.json.length);
+        assertEqual(expected, sanitizeStats(actual.stats));
+      } 
+      assertEqual(30, c.count());
+      
+      for (let i = 0; i < 30; ++i) {
+        let r = db._query("FOR doc IN " + cn + " FILTER doc.id == 'test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0].id);
+      }
+    },
+    
+    testInsertMainLevelWithCustomShardKeyMultiLevel : function () {
+      let c = db._create(cn, {numberOfShards:5, shardKeys: ["a.b"]});
+
+      for (let i = 0; i < 30; ++i) {
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "INSERT { value: " + i + ", a: { b: 'test" + i + "' } } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query);
+        
+        if (isCluster) {
+          let plan = AQL_EXPLAIN(query).plan;
+          assertTrue(hasDistributeNode(plan.nodes));
+          assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        }
+      
+        assertEqual(0, actual.json.length);
+        assertEqual(expected, sanitizeStats(actual.stats));
+      } 
+      assertEqual(30, c.count());
+      
+      for (let i = 0; i < 30; ++i) {
+        let r = db._query("FOR doc IN " + cn + " FILTER doc.a.b == 'test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0].a.b);
+      }
+    },
+    
+    testInsertMainLevelWithKeyConstant : function () {
+      let c = db._create(cn, {numberOfShards:5});
+
+      for (let i = 0; i < 30; ++i) {
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "INSERT { value: " + i + ", _key: 'test" + i + "' } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query);
+        
+        if (isCluster) {
+          let plan = AQL_EXPLAIN(query).plan;
+          assertFalse(hasDistributeNode(plan.nodes));
+          assertNotEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        }
+      
+        assertEqual(0, actual.json.length);
+        assertEqual(expected, sanitizeStats(actual.stats));
+      } 
+      assertEqual(30, c.count());
+      
+      for (let i = 0; i < 30; ++i) {
+        let r = db._query("FOR doc IN " + cn + " FILTER doc._key == 'test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0]._key);
+        assertEqual(cn + "/test" + i, r[0]._id);
+        
+        r = db._query("FOR doc IN " + cn + " FILTER doc._id == '" + cn + "/test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0]._key);
+        assertEqual(cn + "/test" + i, r[0]._id);
+      }
+    },
+  
+    testInsertMainLevelWithKeyExpression : function () {
+      let c = db._create(cn, {numberOfShards:5});
+
+      for (let i = 0; i < 30; ++i) {
+        let expected = { writesExecuted: 1, writesIgnored: 0 };
+        let query = "INSERT { value: " + i + ", _key: NOOPT(CONCAT('test', '" + i + "')) } IN " + cn;
+        let actual = getModifyQueryResultsRaw(query);
+        
+        if (isCluster) {
+          let plan = AQL_EXPLAIN(query).plan;
+          assertTrue(hasDistributeNode(plan.nodes));
+          assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
+        }
+      
+        assertEqual(0, actual.json.length);
+        assertEqual(expected, sanitizeStats(actual.stats));
+      } 
+      assertEqual(30, c.count());
+      
+      for (let i = 0; i < 30; ++i) {
+        let r = db._query("FOR doc IN " + cn + " FILTER doc._key == 'test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0]._key);
+        assertEqual(cn + "/test" + i, r[0]._id);
+        
+        r = db._query("FOR doc IN " + cn + " FILTER doc._id == '" + cn + "/test" + i + "' RETURN doc").toArray();
+        assertEqual(1, r.length);
+        assertEqual("test" + i, r[0]._key);
+        assertEqual(cn + "/test" + i, r[0]._id);
+      }
+    },
+    
     testInsertMainLevelWithKey : function () {
       let c = db._create(cn, {numberOfShards:5});
 
