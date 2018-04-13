@@ -708,6 +708,7 @@
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
+        arangoHelper.arangoMessage('Move documents', 'No documents selected!');
         return;
       }
 
@@ -753,10 +754,15 @@
       var self = this;
       var toCollection = $('#move-documents-to').val();
 
-      var callback = function () {
-        this.collection.getDocuments(this.getDocsCallback.bind(this));
-        $('#markDocuments').click();
-        window.modalView.hide();
+      var callback = function (error) {
+        if (error) {
+          arangoHelper.arangoError('Error', 'Could not move document.');
+        } else {
+          self.collection.setTotalMinusOne();
+          this.collection.getDocuments(this.getDocsCallback.bind(this));
+          $('#markDocuments').click();
+          window.modalView.hide();
+        }
       }.bind(this);
 
       _.each(toMove, function (key) {
@@ -769,6 +775,7 @@
       var toDelete = this.getSelectedDocs();
 
       if (toDelete.length === 0) {
+        arangoHelper.arangoMessage('Delete documents', 'No documents selected!');
         return;
       }
 
@@ -814,6 +821,7 @@
               window.modalView.hide();
             }
           }.bind(self);
+
           self.documentStore.deleteDocument(self.collection.collectionID, key, callback);
         } else if (self.type === 'edge') {
           var callback2 = function (error) {
@@ -1052,7 +1060,7 @@
     breadcrumb: function () {
       var self = this;
 
-      if (window.App.naviView) {
+      if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
           'Collection: ' + this.collectionName
         );
