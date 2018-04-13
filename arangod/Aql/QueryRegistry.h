@@ -36,7 +36,7 @@ class Query;
 
 class QueryRegistry {
  public:
-  QueryRegistry() {}
+  QueryRegistry(double defTTL) : _defaultTTL(defTTL) {}
 
   ~QueryRegistry();
 
@@ -81,6 +81,9 @@ class QueryRegistry {
 
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
+  
+  /// @brief return the default TTL value
+  double defaultTTL() const { return _defaultTTL; }
 
  private:
   /// @brief a struct for all information regarding one query in the registry
@@ -103,6 +106,9 @@ class QueryRegistry {
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;
+  
+  /// @brief the default TTL value
+  double const _defaultTTL;
 };
 
 }  // namespace arangodb::aql

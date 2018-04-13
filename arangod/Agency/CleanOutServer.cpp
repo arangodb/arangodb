@@ -206,7 +206,7 @@ bool CleanOutServer::start() {
   }
 
   // Check that the server is in state "GOOD":
-  std::string health = checkServerGood(_snapshot, _server);
+  std::string health = checkServerHealth(_snapshot, _server);
   if (health != "GOOD") {
     LOG_TOPIC(DEBUG, Logger::SUPERVISION) << "server " << _server
       << " is currently " << health << ", not starting CleanOutServer job "
@@ -317,7 +317,7 @@ bool CleanOutServer::start() {
     // Preconditions
     { VPackObjectBuilder objectForPrecondition(pending.get());
       addPreconditionServerNotBlocked(*pending, _server);
-      addPreconditionServerGood(*pending, _server);
+      addPreconditionServerHealth(*pending, _server, "GOOD");
       addPreconditionUnchanged(*pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(*pending, cleanedPrefix, cleanedServers);
     }
