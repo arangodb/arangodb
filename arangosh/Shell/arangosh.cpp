@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
     int ret = EXIT_SUCCESS;
     
     try {
-      server.addFeature(new ClientFeature(&server));
+      server.addFeature(new ClientFeature(&server, true));
       server.addFeature(new ConfigFeature(&server, name));
       server.addFeature(new ConsoleFeature(&server));
       server.addFeature(new LanguageFeature(&server));

@@ -167,10 +167,6 @@ struct OptimizerRule {
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
-    // simplify an EnumerationCollectionNode that fetches an
-    // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6,
-
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 
@@ -191,7 +187,7 @@ struct OptimizerRule {
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
-
+    
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -204,7 +200,7 @@ struct OptimizerRule {
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule_pass10,
-
+    
 #ifdef USE_ENTERPRISE
     // remove any superflous satellite collection joins...
     // put it after Scatter rule because we would do
@@ -213,9 +209,18 @@ struct OptimizerRule {
 #endif
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10
-  };
+    undistributeRemoveAfterEnumCollRule_pass10,
+    
+    // push collect operations to the db servers
+    collectInClusterRule_pass10,
 
+    // try to restrict fragments to a single shard if possible
+    restrictToSingleShardRule_pass10,
+    
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass6
+  };
 
   std::string name;
   RuleFunction func;

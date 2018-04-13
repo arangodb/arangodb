@@ -67,7 +67,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
 Job::~Job() {}
 
 // this will be initialized in the AgencyFeature
-std::string Job::agencyPrefix = "/arango";
+std::string Job::agencyPrefix = "arango";
 
 bool Job::finish(
   std::string const& server, std::string const& shard,
@@ -206,7 +206,7 @@ std::string Job::randomIdleGoodAvailableServer(Node const& snap,
 
 }
 
-
+/// @brief Get servers from plan, which are not failed or cleaned out
 std::vector<std::string> Job::availableServers(Node const& snapshot) {
 
   std::vector<std::string> ret;
@@ -216,8 +216,8 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
   for (auto const& srv : dbservers) {
     ret.push_back(srv.first);
   }
-  
-  // Remove cleaned servers from ist
+
+  // Remove cleaned servers from list
   try {
     for (auto const& srv :
            VPackArrayIterator(snapshot(cleanedPrefix).slice())) {
@@ -493,11 +493,12 @@ void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& serve
 	}
 }
 
-void Job::addPreconditionServerGood(Builder& pre, std::string const& server) {
-	pre.add(VPackValue(healthPrefix + server + "/Status"));
-	{ VPackObjectBuilder serverGood(&pre);
-		pre.add("old", VPackValue("GOOD"));
-	}
+void Job::addPreconditionServerHealth(Builder& pre, std::string const& server,
+                                      std::string const& health) {
+  pre.add(VPackValue(healthPrefix + server + "/Status"));
+  { VPackObjectBuilder serverGood(&pre);
+    pre.add("old", VPackValue(health));
+  }
 }
 
 void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
@@ -537,14 +538,11 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
-std::string Job::checkServerGood(Node const& snapshot,
-                                 std::string const& server) {
+std::string Job::checkServerHealth(Node const& snapshot,
+                                   std::string const& server) {
   if (!snapshot.has(healthPrefix + server + "/Status")) {
     return "UNCLEAR";
   }
-  if (snapshot(healthPrefix + server + "/Status").getString() != "GOOD") {
-    return "UNHEALTHY";
-  }
-  return "GOOD";
+  return snapshot(healthPrefix + server + "/Status").getString();
 }
 

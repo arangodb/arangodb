@@ -24,6 +24,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Cluster/ClusterInfo.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb::consensus;
@@ -168,7 +169,7 @@ bool RemoveFollower::start() {
   bool leaderBad = false;
   for (auto const& srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
-    if (checkServerGood(_snapshot, serverName) == "GOOD") {
+    if (checkServerHealth(_snapshot, serverName) == "GOOD") {
       overview.emplace(serverName, 0);
     } else {
       overview.emplace(serverName, -1);
@@ -234,7 +235,20 @@ bool RemoveFollower::start() {
   size_t currentReplFactor = actualReplFactor;  // will be counted down
   if (currentReplFactor > desiredReplFactor) {
     // First choose BAD servers:
-    for (auto const& pair : overview) {
+
+    // Iterate the list of planned servers in reverse order,
+    // because the last must be removed first
+    std::vector<ServerID> reversedPlannedServers { planned.length() };
+    {
+      auto rDbIt = reversedPlannedServers.rbegin();
+      for (auto const &vPackIt : VPackArrayIterator(planned)) {
+        *rDbIt = vPackIt.copyString();
+        rDbIt++;
+      }
+    }
+
+    for (auto const& it : reversedPlannedServers) {
+      auto const pair = *overview.find(it);
       if (pair.second == -1) {
         chosenToRemove.insert(pair.first);
         --currentReplFactor;
@@ -245,7 +259,8 @@ bool RemoveFollower::start() {
     }
     if (currentReplFactor > desiredReplFactor) {
       // Now choose servers that are not in sync for all shards:
-      for (auto const& pair : overview) {
+      for (auto const& it : reversedPlannedServers) {
+        auto const pair = *overview.find(it);
         if (pair.second >= 0 &&
             static_cast<size_t>(pair.second) < shardsLikeMe.size()) {
           chosenToRemove.insert(pair.first);
@@ -257,7 +272,8 @@ bool RemoveFollower::start() {
       }
       if (currentReplFactor > desiredReplFactor) {
         // Finally choose servers that are in sync, but are no leader:
-        for (auto const& pair : overview) {
+        for (auto const& it : reversedPlannedServers) {
+          auto const pair = *overview.find(it);
           if (pair.second >= 0 &&
               static_cast<size_t>(pair.second) >= shardsLikeMe.size() &&
               pair.first != planned[0].copyString()) {
@@ -341,7 +357,7 @@ bool RemoveFollower::start() {
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
       for (auto const& srv : kept) {
-        addPreconditionServerGood(trx, srv);
+        addPreconditionServerHealth(trx, srv, "GOOD");
       }
     }   // precondition done
   }  // array for transaction done

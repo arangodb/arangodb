@@ -835,8 +835,8 @@ AgencyCommResult AgencyComm::setValue(std::string const& key,
 }
 
 AgencyCommResult AgencyComm::setTransient(std::string const& key,
-                                      arangodb::velocypack::Slice const& slice,
-                                      double ttl) {
+                                          arangodb::velocypack::Slice const& slice,
+                                          double ttl) {
   AgencyOperation operation(key, AgencyValueOperationType::SET, slice);
   operation._ttl = static_cast<uint64_t>(ttl);
   AgencyTransientTransaction transaction(operation);

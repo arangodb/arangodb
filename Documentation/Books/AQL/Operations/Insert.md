@@ -88,7 +88,7 @@ the database (e.g. `_id`, `_key`, `_rev`).
 
 
 ```js
-INSERT document IN collection options RETURN NEW
+INSERT document IN collection RETURN NEW
 ```
 
 Following is an example using a variable named `inserted` to return the inserted
@@ -96,7 +96,8 @@ documents. For each inserted document, the document key is returned:
 
 ```js
 FOR i IN 1..100
-  INSERT { value: i } 
+  INSERT { value: i }
+  IN users 
   LET inserted = NEW 
   RETURN inserted._key
 ```

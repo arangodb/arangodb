@@ -10,7 +10,6 @@
 The index handle.
 
 @RESTDESCRIPTION
-
 Deletes an index with *index-handle*.
 
 @RESTRETURNCODES

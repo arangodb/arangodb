@@ -54,7 +54,7 @@ execute
 shell> arango-secure-installation
 ```
 
-This will asked for a root password and sets this password.
+This will ask for a root password and sets this password.
 
 ### Web interface
 

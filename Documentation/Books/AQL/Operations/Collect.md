@@ -161,13 +161,10 @@ FOR u IN users
   RETURN length
 ```
 
-The above is equivalent to, but more efficient than:
+The above is equivalent to, but less efficient than:
 
 ```
-RETURN LENGTH(
-  FOR u IN users
-    RETURN length
-)
+RETURN LENGTH(users)
 ```
 
 The *WITH COUNT* clause can also be used to efficiently count the number

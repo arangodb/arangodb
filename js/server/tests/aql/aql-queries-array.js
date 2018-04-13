@@ -200,6 +200,49 @@ function arrayIndexSuite () {
     tearDown : function () {
       db._drop(cName);
     },
+
+    testMultipleFilters : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [1, 2, 3] });
+
+      let query = `FOR x IN ${cName} FILTER x.a == true && 2 IN x.b && 4 IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && NOOPT(2) IN x.b && NOOPT(4) IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && 2 IN x.b && 3 IN x.c RETURN x`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR x IN ${cName} FILTER x.a == true && NOOPT(2) IN x.b && NOOPT(3) IN x.c RETURN x`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+    },
+    
+    testMultipleFiltersWithOuterLoop : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
+
+      let query = `FOR y IN [1, 2, 3] FOR x IN ${cName} FILTER x.a == true && y IN x.b && y IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `RETURN LENGTH(FOR y IN [1, 2, 3] FOR x IN ${cName} FILTER x.a == true && y IN x.b && y IN x.c RETURN x)`;
+      assertEqual(1, AQL_EXECUTE(query).json.length);
+      assertEqual(0, AQL_EXECUTE(query).json[0]);
+    },
+    
+    testMultipleFiltersWithOuterLoopAttributes : function () {
+      col.ensureHashIndex("a", "b[*]");
+      col.save({ a: true, b: [1, 2, 3], c: [4, 5, 6] });
+
+      let query = `FOR y IN [{ val: 1 }, { val: 2 }, { val: 3 }] FOR x IN ${cName} FILTER x.a == true && y.val IN x.b && y.val IN x.c RETURN x`;
+      assertEqual(0, AQL_EXECUTE(query).json.length);
+      
+      query = `FOR y IN [{ val: 1 }, { val: 2 }, { val: 3 }] RETURN LENGTH(FOR x IN ${cName} FILTER x.a == true && y.val IN x.b && y.val IN x.c RETURN x)`;
+      assertEqual(3, AQL_EXECUTE(query).json.length);
+      assertEqual(0, AQL_EXECUTE(query).json[0]);
+      assertEqual(0, AQL_EXECUTE(query).json[1]);
+      assertEqual(0, AQL_EXECUTE(query).json[2]);
+    },
     
     testHashPrefixMultiExpansion : function () {
       col.ensureHashIndex("something", "a[*]", "b[*]");
