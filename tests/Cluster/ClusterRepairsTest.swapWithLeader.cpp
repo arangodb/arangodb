@@ -54,64 +54,46 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"11111111",
          {{
              // rename distributeShardsLike to repairingDistributeShardsLike
-             BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "11111111",
-                 .collectionName = "_frontend",
-                 .protoCollectionId = "22222222",
-                 .protoCollectionName = "_graphs",
-                 .collectionReplicationFactor = 2,
-                 .protoReplicationFactor = 2,
-                 .renameDistributeShardsLike = true,
-             },
+             BeginRepairsOperation::create(
+                 _database = "someDb", _collectionId = "11111111",
+                 _collectionName = "_frontend", _protoCollectionId = "22222222",
+                 _protoCollectionName = "_graphs",
+                 _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
+                 _renameDistributeShardsLike = true),
              // shard s11 of collection 11111111
              // make room on the dbserver where the leader should be
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "11111111",
-                 .collectionName = "_frontend",
-                 .shard = "s11",
-                 .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "11111111",
+                 _collectionName = "_frontend", _shard = "s11",
+                 _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _isLeader = false),
              // move leader to the correct dbserver
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "11111111",
-                 .collectionName = "_frontend",
-                 .shard = "s11",
-                 .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .isLeader = true,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "11111111",
+                 _collectionName = "_frontend", _shard = "s11",
+                 _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _isLeader = true),
              // fix the remaining shard
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "11111111",
-                 .collectionName = "_frontend",
-                 .shard = "s11",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "11111111",
+                 _collectionName = "_frontend", _shard = "s11",
+                 _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _isLeader = false),
              // rename repairingDistributeShardsLike to distributeShardsLike
-             FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "11111111",
-                 .collectionName = "_frontend",
-                 .protoCollectionId = "22222222",
-                 .protoCollectionName = "_graphs",
-                 .shards =
-                     {
+             FinishRepairsOperation::create(
+                 _database = "someDb", _collectionId = "11111111",
+                 _collectionName = "_frontend", _protoCollectionId = "22222222",
+                 _protoCollectionName = "_graphs",
+                 _shards =
+                     std::vector<ShardWithProtoAndDbServers>{
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s11", "s22",
-                             {
-                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                             }),
+                             {"PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                              "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"}),
                      },
-                 .replicationFactor = 2,
-             },
+                 _replicationFactor = 2),
          }}},
     };

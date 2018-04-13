@@ -40,6 +40,10 @@ namespace cluster_repairs {
 using DBServers = std::vector<ServerID>;
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
+// Elements are (shardId, protoShardId, dbServers). The dbServers are
+// the same for both shard and protoShard at this point.
+using ShardWithProtoAndDbServers = std::tuple<ShardID, ShardID, DBServers>;
+
 class VersionSort {
   using CharOrInt = boost::variant<char, uint64_t>;
 
@@ -53,6 +57,82 @@ class VersionSort {
 // "proto collection" always means the collection referred to in the
 // "distributeShardsLike" attribute of "collection"
 
+// All RepairOperations use a named constructor ::create() with named
+// parameters, while the default constructor is deleted and one other
+// constructor specified to forbid braced initializer lists.
+// This is done to assure that all constructions initialize every member
+// (defaults really don't make sense here), make constructions more readable
+// and avoid mixing up arguments of the same type (most are std::string or
+// typedefs thereof).
+
+// The following are used for the named initializers mentioned above.
+template <typename Tag, typename Type>
+struct tagged_argument {
+  Type const& value;
+};
+
+template <typename Tag, typename Type>
+struct keyword {
+  struct tagged_argument<Tag, Type> const operator=(Type const& arg) const {
+    return tagged_argument<Tag, Type>{arg};
+  } static keyword<Tag, Type> const instance;
+};
+
+// Parameters used in Operation-constructors
+
+namespace tag {
+struct database;
+struct collectionId;
+struct collectionName;
+struct protoCollectionId;
+struct protoCollectionName;
+struct shard;
+struct protoShard;
+struct from;
+struct to;
+struct isLeader;
+struct protoReplicationFactor;
+struct collectionReplicationFactor;
+struct replicationFactor;
+struct renameDistributeShardsLike;
+struct shards;
+struct leader;
+struct followers;
+struct protoFollowers;
+}
+namespace {
+keyword<tag::database, std::string> _database = decltype(_database)::instance;
+keyword<tag::collectionId, std::string> _collectionId =
+    decltype(_collectionId)::instance;
+keyword<tag::collectionName, std::string> _collectionName =
+    decltype(_collectionName)::instance;
+keyword<tag::protoCollectionId, std::string> _protoCollectionId =
+    decltype(_protoCollectionId)::instance;
+keyword<tag::protoCollectionName, std::string> _protoCollectionName =
+    decltype(_protoCollectionName)::instance;
+keyword<tag::shard, std::string> _shard = decltype(_shard)::instance;
+keyword<tag::protoShard, std::string> _protoShard =
+    decltype(_protoShard)::instance;
+keyword<tag::from, std::string> _from = decltype(_from)::instance;
+keyword<tag::to, std::string> _to = decltype(_to)::instance;
+keyword<tag::isLeader, bool> _isLeader = decltype(_isLeader)::instance;
+keyword<tag::protoReplicationFactor, size_t> _protoReplicationFactor =
+    decltype(_protoReplicationFactor)::instance;
+keyword<tag::collectionReplicationFactor, size_t> _collectionReplicationFactor =
+    decltype(_collectionReplicationFactor)::instance;
+keyword<tag::replicationFactor, size_t> _replicationFactor =
+    decltype(_replicationFactor)::instance;
+keyword<tag::renameDistributeShardsLike, bool> _renameDistributeShardsLike =
+    decltype(_renameDistributeShardsLike)::instance;
+keyword<tag::shards, std::vector<ShardWithProtoAndDbServers>> _shards =
+    decltype(_shards)::instance;
+keyword<tag::leader, std::string> _leader = decltype(_leader)::instance;
+keyword<tag::followers, std::vector<std::string>> _followers =
+    decltype(_followers)::instance;
+keyword<tag::protoFollowers, std::vector<std::string>> _protoFollowers =
+    decltype(_protoFollowers)::instance;
+}
+
 struct BeginRepairsOperation {
   DatabaseID database;
   CollectionID collectionId;
@@ -64,11 +144,39 @@ struct BeginRepairsOperation {
   bool renameDistributeShardsLike;
 
   BeginRepairsOperation() = delete;
-};
 
-// Elements are (shardId, protoShardId, dbServers). The dbServers are
-// the same for both shard and protoShard at this point.
-using ShardWithProtoAndDbServers = std::tuple<ShardID, ShardID, DBServers>;
+  // named constructor with named parameters
+  static inline BeginRepairsOperation create(
+      const tagged_argument<tag::database, DatabaseID> database,
+      const tagged_argument<tag::collectionId, CollectionID> collectionId,
+      const tagged_argument<tag::collectionName, std::string> collectionName,
+      const tagged_argument<tag::protoCollectionId, CollectionID>
+          protoCollectionId,
+      const tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName,
+      const tagged_argument<tag::collectionReplicationFactor, size_t>
+          collectionReplicationFactor,
+      const tagged_argument<tag::protoReplicationFactor, size_t>
+          protoReplicationFactor,
+      const tagged_argument<tag::renameDistributeShardsLike, bool>
+          renameDistributeShardsLike) {
+    return BeginRepairsOperation(
+        database.value, collectionId.value, collectionName.value,
+        protoCollectionId.value, protoCollectionName.value,
+        collectionReplicationFactor.value, protoReplicationFactor.value,
+        renameDistributeShardsLike.value);
+  }
+
+ private:
+  BeginRepairsOperation(const DatabaseID& database,
+                        const CollectionID& collectionId,
+                        const std::string& collectionName,
+                        const CollectionID& protoCollectionId,
+                        const std::string& protoCollectionName,
+                        size_t collectionReplicationFactor,
+                        size_t protoReplicationFactor,
+                        bool renameDistributeShardsLike);
+};
 
 struct FinishRepairsOperation {
   DatabaseID database;
@@ -80,6 +188,37 @@ struct FinishRepairsOperation {
   size_t replicationFactor;
 
   FinishRepairsOperation() = delete;
+
+  // named constructor with named parameters
+  static FinishRepairsOperation create(
+      const tagged_argument<tag::database, DatabaseID> database,
+      const tagged_argument<tag::collectionId, CollectionID> collectionId,
+      const tagged_argument<tag::collectionName, std::string> collectionName,
+      const tagged_argument<tag::protoCollectionId, CollectionID>
+          protoCollectionId,
+      const tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName,
+      const tagged_argument<tag::shards,
+                            std::vector<ShardWithProtoAndDbServers>>
+          shards,
+      const tagged_argument<tag::replicationFactor, size_t> replicationFactor) {
+    return FinishRepairsOperation{database.value,
+                                  collectionId.value,
+                                  collectionName.value,
+                                  protoCollectionId.value,
+                                  protoCollectionName.value,
+                                  shards.value,
+                                  replicationFactor.value};
+  }
+
+ private:
+  FinishRepairsOperation(const DatabaseID& database,
+                         const CollectionID& collectionId,
+                         const std::string& collectionName,
+                         const CollectionID& protoCollectionId,
+                         const std::string& protoCollectionName,
+                         const std::vector<ShardWithProtoAndDbServers>& shards,
+                         size_t replicationFactor);
 };
 
 struct MoveShardOperation {
@@ -93,9 +232,29 @@ struct MoveShardOperation {
 
   MoveShardOperation() = delete;
 
+  // named constructor with named parameters
+  static MoveShardOperation create(
+      const tagged_argument<tag::database, DatabaseID> database,
+      const tagged_argument<tag::collectionId, CollectionID> collectionId,
+      const tagged_argument<tag::collectionName, std::string> collectionName,
+      const tagged_argument<tag::shard, ShardID> shard,
+      const tagged_argument<tag::from, ServerID> from,
+      const tagged_argument<tag::to, ServerID> to,
+      const tagged_argument<tag::isLeader, bool> isLeader) {
+    return MoveShardOperation(database.value, collectionId.value,
+                              collectionName.value, shard.value, from.value,
+                              to.value, isLeader.value);
+  }
+
   VPackBufferPtr toVpackTodo(
       uint64_t jobId,
       std::chrono::system_clock::time_point jobCreationTimestamp) const;
+
+ private:
+  MoveShardOperation(const DatabaseID& database,
+                     const CollectionID& collectionId,
+                     const std::string& collectionName, const ShardID& shard,
+                     const ServerID& from, const ServerID& to, bool isLeader);
 };
 
 struct FixServerOrderOperation {
@@ -111,6 +270,38 @@ struct FixServerOrderOperation {
   std::vector<ServerID> protoFollowers;
 
   FixServerOrderOperation() = delete;
+
+  // named constructor with named parameters
+  static FixServerOrderOperation create(
+      const tagged_argument<tag::database, DatabaseID> database,
+      const tagged_argument<tag::collectionId, CollectionID> collectionId,
+      const tagged_argument<tag::collectionName, std::string> collectionName,
+      const tagged_argument<tag::protoCollectionId, CollectionID>
+          protoCollectionId,
+      const tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName,
+      const tagged_argument<tag::shard, ShardID> shard,
+      const tagged_argument<tag::protoShard, ShardID> protoShard,
+      const tagged_argument<tag::leader, ServerID> leader,
+      const tagged_argument<tag::followers, std::vector<ServerID>> followers,
+      const tagged_argument<tag::protoFollowers, std::vector<ServerID>>
+          protoFollowers) {
+    return FixServerOrderOperation(
+        database.value, collectionId.value, collectionName.value,
+        protoCollectionId.value, protoCollectionName.value, shard.value,
+        protoShard.value, leader.value, followers.value, protoFollowers.value);
+  }
+
+ private:
+  FixServerOrderOperation(const DatabaseID& database,
+                          const CollectionID& collectionId,
+                          const std::string& collectionName,
+                          const CollectionID& protoCollectionId,
+                          const std::string& protoCollectionName,
+                          const ShardID& shard, const ShardID& protoShard,
+                          const ServerID& leader,
+                          const std::vector<ServerID>& followers,
+                          const std::vector<ServerID>& protoFollowers);
 };
 
 bool operator==(BeginRepairsOperation const& left,

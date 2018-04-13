@@ -102,84 +102,60 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
     expectedResultsWithMultipleShards{
         {"22222222",
          {{
-             BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .protoCollectionId = "11111111",
-                 .protoCollectionName = "prototype",
-                 .collectionReplicationFactor = 2,
-                 .protoReplicationFactor = 2,
-                 .renameDistributeShardsLike = true,
-             },
+             BeginRepairsOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _protoCollectionId = "11111111",
+                 _protoCollectionName = "prototype",
+                 _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
+                 _renameDistributeShardsLike = true),
              // "s1",   "s1"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s1",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .isLeader = true,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s1",
+                 _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _isLeader = true),
              // "s2",  "s2"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s2",
-                 .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s2",
+                 _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _isLeader = false),
              // "s11",   "s3"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s3",
-                 .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .isLeader = true,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s3",
+                 _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _isLeader = true),
              // "s20",  "s4"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s4",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s4",
+                 _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _isLeader = false),
              // "s35",  "s5"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s5",
-                 .from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .isLeader = true,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s5",
+                 _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _isLeader = true),
              // "s346", "s6"
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .shard = "s6",
-                 .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _shard = "s6",
+                 _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _isLeader = false),
 
-             FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "22222222",
-                 .collectionName = "follower",
-                 .protoCollectionId = "11111111",
-                 .protoCollectionName = "prototype",
-                 .shards =
+             FinishRepairsOperation::create(
+                 _database = "someDb", _collectionId = "22222222",
+                 _collectionName = "follower", _protoCollectionId = "11111111",
+                 _protoCollectionName = "prototype",
+                 _shards =
                      {
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s1", "s1",
@@ -206,7 +182,6 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                              {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
                               "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                      },
-                 .replicationFactor = 2,
-             },
+                 _replicationFactor = 2),
          }}},
     };

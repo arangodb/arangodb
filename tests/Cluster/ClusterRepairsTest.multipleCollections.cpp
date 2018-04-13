@@ -198,75 +198,59 @@ std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth4Healthy0Bad = R"=(
 std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
     expectedResultsWithMultipleCollections{
         {"10000001",
-         {{BeginRepairsOperation{
-               .database = "someDb",
-               .collectionId = "10000001",
-               .collectionName = "follower10000001of10000002",
-               .protoCollectionId = "10000002",
-               .protoCollectionName = "prototype10000002",
-               .collectionReplicationFactor = 2,
-               .protoReplicationFactor = 2,
-               .renameDistributeShardsLike = true,
-           },
-           MoveShardOperation{
-               .database = "someDb",
-               .collectionId = "10000001",
-               .collectionName = "follower10000001of10000002",
-               .shard = "s11",
-               .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-               .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-               .isLeader = false,
-           },
-           FinishRepairsOperation{
-               .database = "someDb",
-               .collectionId = "10000001",
-               .collectionName = "follower10000001of10000002",
-               .protoCollectionId = "10000002",
-               .protoCollectionName = "prototype10000002",
-               .shards =
+         {{BeginRepairsOperation::create(
+               _database = "someDb", _collectionId = "10000001",
+               _collectionName = "follower10000001of10000002",
+               _protoCollectionId = "10000002",
+               _protoCollectionName = "prototype10000002",
+               _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
+               _renameDistributeShardsLike = true),
+           MoveShardOperation::create(
+               _database = "someDb", _collectionId = "10000001",
+               _collectionName = "follower10000001of10000002", _shard = "s11",
+               _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+               _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+               _isLeader = false),
+           FinishRepairsOperation::create(
+               _database = "someDb", _collectionId = "10000001",
+               _collectionName = "follower10000001of10000002",
+               _protoCollectionId = "10000002",
+               _protoCollectionName = "prototype10000002",
+               _shards =
                    {
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s11", "s21",
                            {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                             "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                    },
-               .replicationFactor = 2,
-           }}}},
+               _replicationFactor = 2)}}},
         {"10000003",
-         {{BeginRepairsOperation{
-               .database = "someDb",
-               .collectionId = "10000003",
-               .collectionName = "follower10000003of10000002",
-               .protoCollectionId = "10000002",
-               .protoCollectionName = "prototype10000002",
-               .collectionReplicationFactor = 2,
-               .protoReplicationFactor = 2,
-               .renameDistributeShardsLike = true,
-           },
-           MoveShardOperation{
-               .database = "someDb",
-               .collectionId = "10000003",
-               .collectionName = "follower10000003of10000002",
-               .shard = "s31",
-               .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-               .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-               .isLeader = true,
-           },
-           FinishRepairsOperation{
-               .database = "someDb",
-               .collectionId = "10000003",
-               .collectionName = "follower10000003of10000002",
-               .protoCollectionId = "10000002",
-               .protoCollectionName = "prototype10000002",
-               .shards =
+         {{BeginRepairsOperation::create(
+               _database = "someDb", _collectionId = "10000003",
+               _collectionName = "follower10000003of10000002",
+               _protoCollectionId = "10000002",
+               _protoCollectionName = "prototype10000002",
+               _collectionReplicationFactor = 2, _protoReplicationFactor = 2,
+               _renameDistributeShardsLike = true),
+           MoveShardOperation::create(
+               _database = "someDb", _collectionId = "10000003",
+               _collectionName = "follower10000003of10000002", _shard = "s31",
+               _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+               _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+               _isLeader = true),
+           FinishRepairsOperation::create(
+               _database = "someDb", _collectionId = "10000003",
+               _collectionName = "follower10000003of10000002",
+               _protoCollectionId = "10000002",
+               _protoCollectionName = "prototype10000002",
+               _shards =
                    {
                        std::make_tuple<ShardID, ShardID, DBServers>(
                            "s31", "s21",
                            {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                             "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                    },
-               .replicationFactor = 2,
-           }}}},
+               _replicationFactor = 2)}}},
         {"10000005",
          ResultT<std::vector<RepairOperation>>::error(
              TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED,
@@ -289,37 +273,29 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"10000013", ResultT<std::vector<RepairOperation>>::error(
                          TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS)},
         {"10000099",
-         {{{BeginRepairsOperation{
-                .database = "someDb",
-                .collectionId = "10000099",
-                .collectionName = "follower10000099of10000098",
-                .protoCollectionId = "10000098",
-                .protoCollectionName = "prototype10000098",
-                .collectionReplicationFactor = 1,
-                .protoReplicationFactor = 1,
-                .renameDistributeShardsLike = true,
-            },
-            MoveShardOperation{
-                .database = "someDb",
-                .collectionId = "10000099",
-                .collectionName = "follower10000099of10000098",
-                .shard = "s991",
-                .from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                .to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                .isLeader = true,
-            },
-            FinishRepairsOperation{
-                .database = "someDb",
-                .collectionId = "10000099",
-                .collectionName = "follower10000099of10000098",
-                .protoCollectionId = "10000098",
-                .protoCollectionName = "prototype10000098",
-                .shards =
+         {{{BeginRepairsOperation::create(
+                _database = "someDb", _collectionId = "10000099",
+                _collectionName = "follower10000099of10000098",
+                _protoCollectionId = "10000098",
+                _protoCollectionName = "prototype10000098",
+                _collectionReplicationFactor = 1, _protoReplicationFactor = 1,
+                _renameDistributeShardsLike = true),
+            MoveShardOperation::create(
+                _database = "someDb", _collectionId = "10000099",
+                _collectionName = "follower10000099of10000098", _shard = "s991",
+                _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                _to = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                _isLeader = true),
+            FinishRepairsOperation::create(
+                _database = "someDb", _collectionId = "10000099",
+                _collectionName = "follower10000099of10000098",
+                _protoCollectionId = "10000098",
+                _protoCollectionName = "prototype10000098",
+                _shards =
                     {
                         std::make_tuple<ShardID, ShardID, DBServers>(
                             "s991", "s981",
                             {"PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"}),
                     },
-                .replicationFactor = 1,
-            }}}}},
+                _replicationFactor = 1)}}}},
     };

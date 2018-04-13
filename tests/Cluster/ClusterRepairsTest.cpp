@@ -243,6 +243,7 @@ void checkAgainstExpectedOperations(
 }
 
 // TODO Add a test with a deleted collection
+// TODO Add a test with a satellite collection
 
 SCENARIO("Broken distributeShardsLike collections",
          "[cluster][shards][repairs]") {
@@ -462,16 +463,12 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with equal replicationFactors and "
         "rename=true") {
-      BeginRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .collectionReplicationFactor = 3,
-          .protoReplicationFactor = 3,
-          .renameDistributeShardsLike = true,
-      };
+      BeginRepairsOperation operation = BeginRepairsOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _protoCollectionId = "789876",
+          _protoCollectionName = "myProtoCollection",
+          _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
+          _renameDistributeShardsLike = true);
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -555,16 +552,12 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with differing replicationFactors and "
         "rename=false") {
-      BeginRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .collectionReplicationFactor = 5,
-          .protoReplicationFactor = 4,
-          .renameDistributeShardsLike = false,
-      };
+      BeginRepairsOperation operation = BeginRepairsOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _protoCollectionId = "789876",
+          _protoCollectionName = "myProtoCollection",
+          _collectionReplicationFactor = 5, _protoReplicationFactor = 4,
+          _renameDistributeShardsLike = false);
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -609,16 +602,12 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with differing replicationFactors and "
         "rename=true") {
-      BeginRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .collectionReplicationFactor = 2,
-          .protoReplicationFactor = 5,
-          .renameDistributeShardsLike = true,
-      };
+      BeginRepairsOperation operation = BeginRepairsOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _protoCollectionId = "789876",
+          _protoCollectionName = "myProtoCollection",
+          _collectionReplicationFactor = 2, _protoReplicationFactor = 5,
+          _renameDistributeShardsLike = true);
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -678,21 +667,18 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     }
 
     GIVEN("A FinishRepairsOperation") {
-      FinishRepairsOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .shards =
-              {
+      FinishRepairsOperation operation = FinishRepairsOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _protoCollectionId = "789876",
+          _protoCollectionName = "myProtoCollection",
+          _shards =
+              std::vector<ShardWithProtoAndDbServers>{
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard1", "protoShard1", {"dbServer1", "dbServer2"}),
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard2", "protoShard2", {"dbServer2", "dbServer3"}),
               },
-          .replicationFactor = 3,
-      };
+          _replicationFactor = 3);
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -795,15 +781,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN("A MoveShardOperation") {
       ServerState::instance()->setId("CurrentCoordinatorServerId");
 
-      MoveShardOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .shard = "s1",
-          .from = "db-from-server",
-          .to = "db-to-server",
-          .isLeader = true,
-      };
+      MoveShardOperation operation = MoveShardOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _shard = "s1",
+          _from = "db-from-server", _to = "db-to-server", _isLeader = true);
 
       WHEN("Converted into an AgencyTransaction") {
         uint64_t nextJobId = 41;
@@ -888,26 +869,21 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     }
 
     GIVEN("A FixServerOrderOperation") {
-      FixServerOrderOperation operation{
-          .database = "myDbName",
-          .collectionId = "123456",
-          .collectionName = "myCollection",
-          .protoCollectionId = "789876",
-          .protoCollectionName = "myProtoCollection",
-          .shard = "s1",
-          .protoShard = "s7",
-          .leader = "db-leader-server",
-          .followers =
+      FixServerOrderOperation operation = FixServerOrderOperation::create(
+          _database = "myDbName", _collectionId = "123456",
+          _collectionName = "myCollection", _protoCollectionId = "789876",
+          _protoCollectionName = "myProtoCollection", _shard = "s1",
+          _protoShard = "s7", _leader = "db-leader-server",
+          _followers =
               {
                   "db-follower-3-server", "db-follower-2-server",
                   "db-follower-4-server", "db-follower-1-server",
               },
-          .protoFollowers =
+          _protoFollowers =
               {
                   "db-follower-1-server", "db-follower-2-server",
                   "db-follower-3-server", "db-follower-4-server",
-              },
-      };
+              });
 
       WHEN("Converted into an AgencyTransaction") {
         VPackBufferPtr previousServerOrderVpack = R"=([

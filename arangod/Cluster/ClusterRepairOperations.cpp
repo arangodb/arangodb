@@ -655,3 +655,35 @@ void RepairOperationToVPackVisitor::operator()(
     }
   }
 }
+
+BeginRepairsOperation::BeginRepairsOperation(
+  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
+  const CollectionID &protoCollectionId, const std::string &protoCollectionName, size_t collectionReplicationFactor,
+  size_t protoReplicationFactor, bool renameDistributeShardsLike
+) : database(database), collectionId(collectionId), collectionName(collectionName),
+    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName),
+    collectionReplicationFactor(collectionReplicationFactor), protoReplicationFactor(protoReplicationFactor),
+    renameDistributeShardsLike(renameDistributeShardsLike) {}
+
+FinishRepairsOperation::FinishRepairsOperation(
+  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
+  const CollectionID &protoCollectionId, const std::string &protoCollectionName,
+  const std::vector<ShardWithProtoAndDbServers> &shards, size_t replicationFactor
+) : database(database), collectionId(collectionId), collectionName(collectionName),
+    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName), shards(shards),
+    replicationFactor(replicationFactor) {}
+
+MoveShardOperation::MoveShardOperation(
+  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName, const ShardID &shard,
+  const ServerID &from, const ServerID &to, bool isLeader
+) : database(database), collectionId(collectionId), collectionName(collectionName), shard(shard), from(from), to(to),
+    isLeader(isLeader) {}
+
+FixServerOrderOperation::FixServerOrderOperation(
+  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
+  const CollectionID &protoCollectionId, const std::string &protoCollectionName, const ShardID &shard,
+  const ShardID &protoShard, const ServerID &leader, const std::vector<ServerID> &followers,
+  const std::vector<ServerID> &protoFollowers
+) : database(database), collectionId(collectionId), collectionName(collectionName),
+    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName), shard(shard),
+    protoShard(protoShard), leader(leader), followers(followers), protoFollowers(protoFollowers) {}

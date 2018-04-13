@@ -306,15 +306,15 @@ DBServers DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
     Collection& collection, ShardID const& shardId,
     ServerID const& fromServerId, ServerID const& toServerId, bool isLeader) {
-  MoveShardOperation moveShardOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .shard = shardId,
-      .from = fromServerId,
-      .to = toServerId,
-      .isLeader = isLeader,
-  };
+  MoveShardOperation moveShardOperation = MoveShardOperation::create(
+      _database = collection.database,
+      _collectionId = collection.id,
+      _collectionName = collection.name,
+      _shard = shardId,
+      _from = fromServerId,
+      _to = toServerId,
+      _isLeader = isLeader
+  );
 
   {  // "Move" the shard in `collection`
     DBServers& dbServers = collection.shardsById.at(shardId);
@@ -665,19 +665,19 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
     return {boost::none};
   }
 
-  FixServerOrderOperation fixServerOrderOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .shard = shardId,
-      .protoShard = protoShardId,
-      .leader = leader,
-      .followers = DBServers{dbServers.begin() + 1, dbServers.end()},
-      .protoFollowers =
-          DBServers{protoDbServers.begin() + 1, protoDbServers.end()},
-  };
+  FixServerOrderOperation fixServerOrderOperation = FixServerOrderOperation::create(
+      _database = collection.database,
+      _collectionId = collection.id,
+      _collectionName = collection.name,
+      _protoCollectionId = proto.id,
+      _protoCollectionName = proto.name,
+      _shard = shardId,
+      _protoShard = protoShardId,
+      _leader = leader,
+      _followers = DBServers{dbServers.begin() + 1, dbServers.end()},
+      _protoFollowers =
+          DBServers{protoDbServers.begin() + 1, protoDbServers.end()}
+  );
 
   // Change order for the rest of the repairs as well
   dbServers = protoDbServers;
@@ -721,16 +721,16 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
 
   collection.replicationFactor = proto.replicationFactor;
 
-  return BeginRepairsOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .collectionReplicationFactor = previousReplicationFactor,
-      .protoReplicationFactor = proto.replicationFactor,
-      .renameDistributeShardsLike = renameDistributeShardsLike,
-  };
+  return BeginRepairsOperation::create(
+      _database = collection.database,
+      _collectionId = collection.id,
+      _collectionName = collection.name,
+      _protoCollectionId = proto.id,
+      _protoCollectionName = proto.name,
+      _collectionReplicationFactor = previousReplicationFactor,
+      _protoReplicationFactor = proto.replicationFactor,
+      _renameDistributeShardsLike = renameDistributeShardsLike
+  );
 }
 
 ResultT<FinishRepairsOperation>
@@ -773,15 +773,15 @@ DistributeShardsLikeRepairer::createFinishRepairsOperation(
   collection.distributeShardsLike.swap(
       collection.repairingDistributeShardsLike);
 
-  return FinishRepairsOperation{
-      .database = collection.database,
-      .collectionId = collection.id,
-      .collectionName = collection.name,
-      .protoCollectionId = proto.id,
-      .protoCollectionName = proto.name,
-      .shards = createShardVector(collection.shardsById, proto.shardsById),
-      .replicationFactor = proto.replicationFactor,
-  };
+  return FinishRepairsOperation::create(
+      _database = collection.database,
+      _collectionId = collection.id,
+      _collectionName = collection.name,
+      _protoCollectionId = proto.id,
+      _protoCollectionName = proto.name,
+      _shards = createShardVector(collection.shardsById, proto.shardsById),
+      _replicationFactor = proto.replicationFactor
+  );
 }
 
 std::vector<cluster_repairs::ShardWithProtoAndDbServers>

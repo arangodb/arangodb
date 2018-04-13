@@ -87,87 +87,63 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"10000003",
          {{
              // rename distributeShardsLike to repairingDistributeShardsLike
-             BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000003",
-                 .collectionName = "_local_E",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "V",
-                 .collectionReplicationFactor = 2,
-                 .protoReplicationFactor = 2,
-                 .renameDistributeShardsLike = true,
-             },
+             BeginRepairsOperation::create(
+                 _database = "someDb", _collectionId = "10000003",
+                 _collectionName = "_local_E", _protoCollectionId = "10000001",
+                 _protoCollectionName = "V", _collectionReplicationFactor = 2,
+                 _protoReplicationFactor = 2,
+                 _renameDistributeShardsLike = true),
              // shard s31 of collection 10000003
              // move follower
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "10000003",
-                 .collectionName = "_local_E",
-                 .shard = "s31",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                 .isLeader = false,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "10000003",
+                 _collectionName = "_local_E", _shard = "s31",
+                 _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
+                 _isLeader = false),
              // rename repairingDistributeShardsLike to distributeShardsLike
-             FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000003",
-                 .collectionName = "_local_E",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "V",
-                 .shards =
+             FinishRepairsOperation::create(
+                 _database = "someDb", _collectionId = "10000003",
+                 _collectionName = "_local_E", _protoCollectionId = "10000001",
+                 _protoCollectionName = "V",
+                 _shards =
                      {
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s31", "s11",
-                             {
-                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                             }),
+                             {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                      },
-                 .replicationFactor = 2,
-             },
+                 _replicationFactor = 2),
          }}},
         {"10000005",
          {{
              // rename distributeShardsLike to repairingDistributeShardsLike
-             BeginRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000005",
-                 .collectionName = "_from_E",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "V",
-                 .collectionReplicationFactor = 2,
-                 .protoReplicationFactor = 2,
-                 .renameDistributeShardsLike = true,
-             },
+             BeginRepairsOperation::create(
+                 _database = "someDb", _collectionId = "10000005",
+                 _collectionName = "_from_E", _protoCollectionId = "10000001",
+                 _protoCollectionName = "V", _collectionReplicationFactor = 2,
+                 _protoReplicationFactor = 2,
+                 _renameDistributeShardsLike = true),
              // shard s51 of collection 10000005
              // move leader
-             MoveShardOperation{
-                 .database = "someDb",
-                 .collectionId = "10000005",
-                 .collectionName = "_from_E",
-                 .shard = "s51",
-                 .from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
-                 .to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                 .isLeader = true,
-             },
+             MoveShardOperation::create(
+                 _database = "someDb", _collectionId = "10000005",
+                 _collectionName = "_from_E", _shard = "s51",
+                 _from = "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC",
+                 _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                 _isLeader = true),
              // rename repairingDistributeShardsLike to distributeShardsLike
-             FinishRepairsOperation{
-                 .database = "someDb",
-                 .collectionId = "10000005",
-                 .collectionName = "_from_E",
-                 .protoCollectionId = "10000001",
-                 .protoCollectionName = "V",
-                 .shards =
+             FinishRepairsOperation::create(
+                 _database = "someDb", _collectionId = "10000005",
+                 _collectionName = "_from_E", _protoCollectionId = "10000001",
+                 _protoCollectionName = "V",
+                 _shards =
                      {
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s51", "s11",
-                             {
-                                 "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                                 "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-                             }),
+                             {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
+                              "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                      },
-                 .replicationFactor = 2,
-             },
+                 _replicationFactor = 2),
          }}},
     };
