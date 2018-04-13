@@ -1,6 +1,8 @@
 v3.2.13 (XXXX-XX-XX)
 --------------------
 
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
 * fix issue #4924: removeFollower now prefers to remove the last follower(s)
 
 * fixed issue #4934: Wrong used GeoIndex depending on FILTER order
