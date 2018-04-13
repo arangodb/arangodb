@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
 * removed option `--cluster.my-local-info` in favor of persisted server UUIDs
 
   The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
