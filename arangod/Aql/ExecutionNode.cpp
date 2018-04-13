@@ -130,7 +130,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
     // Is there an attribute path?
-    VPackSlice path = it.get("paths");
+    VPackSlice path = it.get("path");
     if (path.isArray()) {
       // Get a list of strings out and add to the path:
       auto& element = elements.back();
