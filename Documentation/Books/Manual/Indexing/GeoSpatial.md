@@ -76,9 +76,23 @@ details, including the index-identifier, is returned.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-### Example Queries
+### GeoSpatial Queries
 
-TODO
+The geo-spatial index supports a varity of AQL queries, which can build with the help
+of the [geo utility functions](../../AQL/Functions/Geo.html). There are three specific
+geo functions that can be otpimized, provided that they are used correctly:
+`GEO_DISTANCE, GEO_CONTAINS, GEO_INTERSECTS`. Additionally there is support to optimize
+the older geo functions `DISTANCE`, `NEAR` and `WITHIN` (the last two only if they are
+used in their 4 argument version, without *distanceName*).
+
+
+
+
+
+When in doubt check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html) 
+output to check for index usage.
+
+
 
 ### GeoJSON
 

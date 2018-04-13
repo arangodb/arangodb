@@ -4,7 +4,7 @@ Geo utility functions
 The following helper functions **can** use geo indexes, but do not have to in
 all cases. You can use all of these functions in combination with each other,
 and if you have  configured a geo index it may be used. For more information see
-the [geo index page](../../Manual/Indexing/Geo.html)
+the [geo index page](../../Manual/Indexing/GeoSpatial.html)
 
 ### GEO_DISTANCE()
 
@@ -12,7 +12,7 @@ the [geo index page](../../Manual/Indexing/Geo.html)
 
 Return the distance between two GeoJSON objects, measured from the **centroid**
 of each shape (For a list of supported Types see [geo index
-page](../../Manual/Indexing/Geo.html#GeoJSON)).
+page](../../Manual/Indexing/GeoSpatial.html#GeoJSON)).
 - **geoJSONA** first GeoJSON object
 - **geoJSONB** second GeoJSON object.
 - returns **double**: the distance between the centroid points of the two
@@ -55,18 +55,35 @@ FOR doc IN doc // e.g. documents returned by a traversal
 
 ### GEO_CONTAINS()
 
+`GEO_CONTAINS(geoJSONA, geoJSONB) → bool`
 
+Checks whether the [GeoJSON object](../../Manual/Indexing/GeoSpatial.html#GeoJSON) `geoJSONA`
+fully contains `geoJSONB` (Every point in B is also in A). The object `geoJSONA` has to be of type 
+`Polygon` or `MultiPolygon`, other types are not supported because containment is ill defined. 
+This function can be **optimized** via a S2 based geospatial index.
+
+- **geoJSONA** first GeoJSON object
+- **geoJSONB** second GeoJSON object.
+- returns **bool**: true when every point in B is also contained in A, false otherwise
 
 ### GEO_INTERSECTS()
 
+`GEO_INTERSECTS(geoJSONA, geoJSONB) → bool`
 
+Checks whether the [GeoJSON object](../../Manual/Indexing/GeoSpatial.html#GeoJSON) `geoJSONA`
+intersects with `geoJSONB` (At least one point in B is also A or vice-versa). 
+This function can be **optimized** via a S2 based geospatial index, please look at the [relevant](../../Manual/Indexing/GeoSpatial.html) manual section for more information.
+
+- **geoJSONA** first GeoJSON object
+- **geoJSONB** second GeoJSON object.
+- returns **bool**: true if B intersects A, false otherwise
 
 ### GEO_EQUALS()
 
 `GEO_EQUALS(geoJSONA, geoJSONB) → bool`
 
 Checks whether two GeoJSON objects are equal or not. (For a list of supported
-Types see [geo index page](../../Manual/Indexing/Geo.html#GeoJSON)).
+Types see [geo index page](../../Manual/Indexing/GeoSpatial.html#GeoJSON)).
 
 - **geoJSONA** first GeoJSON object
 - **geoJSONB** second GeoJSON object.
