@@ -1,6 +1,8 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
 * fixed internal issue #2148: Number of documents found by filter is misleading in web UI
 
 * added startup option `--database.required-directory-state`
