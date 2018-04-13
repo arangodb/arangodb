@@ -477,8 +477,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -490,7 +490,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     databaseName = _vocbase.name();
   }
 
-  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(body, databaseName);
   configuration._skipCreateDrop = false;
 
   // will throw if invalid
@@ -1724,14 +1724,13 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
   
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
 
-  VPackSlice const body = parsedBody->slice();
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
   if (endpoint.empty()) {
@@ -1830,9 +1829,8 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     return;
   }
 
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -1845,7 +1843,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   } 
 
   auto config = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
-                                                                parsedBody->slice(), databaseName);
+                                                                body, databaseName);
   // will throw if invalid
   config.validate();
 
@@ -1942,12 +1940,11 @@ void RestReplicationHandler::handleCommandApplierDeleteState() {
 
 void RestReplicationHandler::handleCommandAddFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2072,12 +2069,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
 
 void RestReplicationHandler::handleCommandRemoveFollower() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'followerId' "
@@ -2117,14 +2113,11 @@ void RestReplicationHandler::handleCommandRemoveFollower() {
 
 void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-
-  VPackSlice const body = parsedBody->slice();
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2260,12 +2253,12 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");
@@ -2310,12 +2303,12 @@ void RestReplicationHandler::handleCommandCheckHoldReadLockCollection() {
 
 void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   bool success = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attribute 'id'");

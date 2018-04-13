@@ -256,8 +256,8 @@ static Result StoreUser(auth::UserManager* um, int mode, std::string const& user
 RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess || !parsedBody->slice().isObject()) {
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || !body.isObject()) {
     generateResult(rest::ResponseCode::OK, VPackSlice());
     return RestStatus::DONE;
   }
@@ -265,10 +265,10 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
   if (suffixes.empty()) {
     // create a new user
     if (isAdminUser()) {
-      VPackSlice s = parsedBody->slice().get("user");
+      VPackSlice s = body.get("user");
       std::string user = s.isString() ? s.copyString() : "";
       // create user
-      Result r = StoreUser(um, 0, user, parsedBody->slice());
+      Result r = StoreUser(um, 0, user, body);
       if (r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::CREATED, doc);
@@ -283,7 +283,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     // validate username / password
     std::string const& user = suffixes[0];
     std::string password;
-    VPackSlice s = parsedBody->slice().get("passwd");
+    VPackSlice s = body.get("passwd");
     if (s.isString()) {
       password = s.copyString();
     }
@@ -301,7 +301,7 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
 RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
@@ -315,7 +315,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       return RestStatus::DONE;
     }
     
-    Result r = StoreUser(um, 1, user, parsedBody->slice());
+    Result r = StoreUser(um, 1, user, body);
     if (r.ok()) {
       VPackBuilder doc = um->serializeUser(user);
       generateUserResult(ResponseCode::OK, doc);
@@ -334,13 +334,13 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
         return RestStatus::DONE;
       }
 
-      if (!parsedBody->slice().isObject() ||
-          !parsedBody->slice().get("grant").isString()) {
+      if (!body.isObject() ||
+          !body.get("grant").isString()) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
         return RestStatus::DONE;
       }
 
-      VPackSlice grant = parsedBody->slice().get("grant");
+      VPackSlice grant = body.get("grant");
       auth::Level lvl = auth::convertToAuthLevel(grant);
 
       // contains response in case of success
@@ -370,14 +370,14 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
       }
       
       Result res;
-      if (!parsedBody->isEmpty()) {
+      if (!body.isNone()) {
         std::string const& key = suffixes[2];
         // The API expects: { value : <toStore> }
         // If we get sth else than the above it is translated
         // to a remove of the config option.
         res = um->updateUser(name, [&](auth::User& u) {
           
-          VPackSlice newVal = parsedBody->slice();
+          VPackSlice newVal = body;
           VPackSlice oldConf = u.userData();
           if (!newVal.isObject() || !newVal.hasKey("value")) {
             if (oldConf.isObject() && oldConf.hasKey(key)) {
@@ -413,7 +413,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return RestStatus::DONE;
@@ -423,7 +423,7 @@ RestStatus RestUsersHandler::patchRequest(auth::UserManager* um) {
     std::string const& user = suffixes[0];
     if (canAccessUser(user)) {
       // update a user
-      Result r = StoreUser(um, 2, user, parsedBody->slice());
+      Result r = StoreUser(um, 2, user, body);
       if (r.ok()) {
         VPackBuilder doc = um->serializeUser(user);
         generateUserResult(ResponseCode::OK, doc);
