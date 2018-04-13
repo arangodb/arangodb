@@ -140,7 +140,9 @@ DistributeShardsLikeRepairer::readCollections(
         } else if (key == "id") {
           std::string const id = it.value.copyString();
           TRI_ASSERT(id == collectionId);
-        } else if (key == "replicationFactor") {
+        } else if (key == "replicationFactor" && it.value.isInteger()) {
+          // replicationFactor may be "satellite" instead of an int.
+          // This can be ignored here.
           replicationFactor = it.value.getUInt();
         } else if (key == "distributeShardsLike") {
           distributeShardsLike.emplace(it.value.copyString());
