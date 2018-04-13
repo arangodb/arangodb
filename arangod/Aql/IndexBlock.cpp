@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
@@ -120,7 +121,8 @@ arangodb::aql::AstNode* IndexBlock::makeUnique(
     if (isSparse) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"),
+                                         array);
     }
     // a regular UNIQUE will do
     return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array);
@@ -141,24 +143,24 @@ void IndexBlock::executeExpressions() {
   AqlItemBlock* cur = _buffer.front();
   auto en = static_cast<IndexNode const*>(getPlanNode());
   auto ast = en->_plan->getAst();
+  AstNode const* oldCondition = _condition;
+  AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
+  _condition = newCondition;
+  TRI_DEFER(FINALIZE_SUBTREE(_condition));
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
     auto exp = toReplace->expression;
 
     bool mustDestroy;
-    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions], _inRegs[posInExpressions]);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions],
+                              _inRegs[posInExpressions]);
     AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
-
-    AstNode const* oldCondition = _condition;
-    AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
-    _condition = newCondition;
-    TRI_DEFER(FINALIZE_SUBTREE(_condition));
 
     AstNode* oldOrMember = _condition->getMember(toReplace->orMember);
     AstNode* orMember = ast->shallowCopyForModify(oldOrMember);
@@ -170,7 +172,21 @@ void IndexBlock::executeExpressions() {
     TRI_DEFER(FINALIZE_SUBTREE(andMember));
     orMember->changeMember(toReplace->andMember, andMember);
 
-    andMember->changeMember(toReplace->operatorMember, evaluatedNode);
+    if (toReplace->funcMember < 0) {
+      andMember->changeMember(toReplace->operatorMember, evaluatedNode);
+    } else {
+      AstNode* oldFuncMember = andMember->getMember(toReplace->funcMember);
+      AstNode* funcMember = ast->shallowCopyForModify(oldFuncMember);
+      TRI_DEFER(FINALIZE_SUBTREE(funcMember));
+      andMember->changeMember(toReplace->operatorMember, funcMember);
+
+      AstNode* oldArrayMember = funcMember->getMember(0);
+      AstNode* arrayMember = ast->shallowCopyForModify(oldArrayMember);
+      TRI_DEFER(FINALIZE_SUBTREE(arrayMember));
+      funcMember->changeMember(0, arrayMember);
+
+      arrayMember->changeMember(toReplace->funcMember, evaluatedNode);
+    }
   }
   DEBUG_END_BLOCK();
 }
@@ -183,8 +199,8 @@ int IndexBlock::initialize() {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&](size_t i, size_t j, size_t k,
-                                   AstNode* a) -> void {
+  auto instantiateExpression = [&](size_t i, size_t j, size_t k, AstNode* a,
+                                   ssize_t funcPos = -1) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -197,7 +213,7 @@ int IndexBlock::initialize() {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
-    auto nce = std::make_unique<NonConstExpression>(i, j, k, e.get());
+    auto nce = std::make_unique<NonConstExpression>(i, j, k, funcPos, e.get());
     e.release();
     _nonConstExpressions.push_back(nce.get());
     nce.release();
@@ -223,6 +239,19 @@ int IndexBlock::initialize() {
   }
 
   auto outVariable = en->outVariable();
+  std::function<bool(AstNode const*)> hasOutVariableAccess =
+      [&](AstNode const* node) -> bool {
+    if (node->isAttributeAccessForVariable(outVariable, true)) {
+      return true;
+    }
+
+    bool accessedInSubtree = false;
+    for (size_t i = 0; i < node->numMembers() && !accessedInSubtree; i++) {
+      accessedInSubtree = hasOutVariableAccess(node->getMemberUnchecked(i));
+    }
+
+    return accessedInSubtree;
+  };
 
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   // in case of a geo spatial index a might take the form
@@ -256,9 +285,24 @@ int IndexBlock::initialize() {
       } else {
         // Index is responsible for the right side, check if left side
         // has to be evaluated
-        
+
         if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
           // FIXME this is probably an S2 based index
+          auto funcName = static_cast<Function*>(lhs->getData())->name;
+          if ("GEO_DISTANCE" == funcName || "GEO_CONTAINS" == funcName ||
+              "GEO_INTERSECTS" == funcName || "GEO_EQUALS" == funcName) {
+            TRI_ASSERT(1 == lhs->numMembers());
+            AstNode* array = lhs->getMemberUnchecked(0);
+            for (size_t k = 0; k < array->numMembers(); k++) {
+              AstNode* child = array->getMemberUnchecked(k);
+              if (!hasOutVariableAccess(child)) {
+                instantiateExpression(i, j, 0, child, static_cast<ssize_t>(k));
+                TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                }
+              }
+            }
+          }
           continue;
         } else if (!lhs->isConstant()) {
           instantiateExpression(i, j, 0, lhs);
@@ -442,9 +486,8 @@ bool IndexBlock::skipIndex(size_t atMost) {
 }
 
 // this is called every time we need to fetch data from the indexes
-bool IndexBlock::readIndex(
-    size_t atMost,
-    IndexIterator::DocumentCallback const& callback) {
+bool IndexBlock::readIndex(size_t atMost,
+                           IndexIterator::DocumentCallback const& callback) {
   DEBUG_BEGIN_BLOCK();
   // this is called every time we want to read the index.
   // For the primary key index, this only reads the index once, and never
@@ -477,16 +520,18 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
- 
+
     bool res;
     if (produceResult()) {
       // fetch entire documents
       res = _cursor->nextDocument(callback, atMost - _returned);
     } else {
       // optimization: iterate over index, but do not fetch documents
-      res = _cursor->next([&callback](LocalDocumentId const& id) {
-        callback(id, VPackSlice::nullSlice());
-      }, atMost - _returned);
+      res = _cursor->next(
+          [&callback](LocalDocumentId const& id) {
+            callback(id, VPackSlice::nullSlice());
+          },
+          atMost - _returned);
     }
 
     if (res) {
@@ -534,11 +579,11 @@ AqlItemBlock* IndexBlock::getSome(size_t atMost) {
   TRI_ASSERT(atMost > 0);
   size_t curRegs;
 
-  std::unique_ptr<AqlItemBlock> res(
-      requestBlock(atMost,
+  std::unique_ptr<AqlItemBlock> res(requestBlock(
+      atMost,
       getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
-  _returned = 0;   // here we count how many of this AqlItemBlock we have
-                   // already filled
+  _returned = 0;       // here we count how many of this AqlItemBlock we have
+                       // already filled
   size_t copyFromRow;  // The row to copy values from
 
   // The following callbacks write one index lookup result into res at
