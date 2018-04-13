@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
 * fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
 
 * removed option `--cluster.my-local-info` in favor of persisted server UUIDs
