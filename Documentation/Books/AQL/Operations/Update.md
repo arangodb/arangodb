@@ -230,7 +230,8 @@ documents before modification. For each modified document, the document key is r
 
 ```js
 FOR u IN users
-  UPDATE u WITH { value: "test" } 
+  UPDATE u WITH { value: "test" }
+  IN users 
   LET previous = OLD 
   RETURN previous._key
 ```
@@ -241,6 +242,7 @@ without some of the system attributes:
 ```js
 FOR u IN users
   UPDATE u WITH { value: "test" } 
+  IN users
   LET updated = NEW 
   RETURN UNSET(updated, "_key", "_id", "_rev")
 ```
@@ -250,5 +252,6 @@ It is also possible to return both `OLD` and `NEW`:
 ```js
 FOR u IN users
   UPDATE u WITH { value: "test" } 
+  IN users
   RETURN { before: OLD, after: NEW }
 ```

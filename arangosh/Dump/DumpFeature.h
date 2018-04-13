@@ -78,6 +78,8 @@ class DumpFeature final : public application_features::ApplicationFeature,
   void beginEncryption(int fd);
   void endEncryption(int fd);
 
+  bool isIgnoredHiddenEnterpriseCollection(std::string const &name) const;
+
  private:
   int* _result;
   uint64_t _batchId;
@@ -91,6 +93,7 @@ class DumpFeature final : public application_features::ApplicationFeature,
     uint64_t _totalCollections;
     uint64_t _totalWritten;
   } _stats;
+
 };
 }
 
