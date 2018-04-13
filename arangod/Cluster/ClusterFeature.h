@@ -95,8 +95,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
-  // FIXME: remove in > 3.3
-  std::string _myLocalInfo;
 };
 }
 

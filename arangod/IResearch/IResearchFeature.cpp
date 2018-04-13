@@ -25,6 +25,8 @@
 #include "search/scorers.hpp"
 
 #include "IResearchFeature.h"
+#include "IResearchMMFilesLink.h"
+#include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
@@ -128,6 +130,53 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 }
 
+void registerIndexFactory() {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return; // no registration required on coordinator (collections not instantiated)
+  }
+
+  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
+    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
+  };
+  static const auto& indexType = arangodb::iresearch::IResearchFeature::type();
+
+  // register 'arangosearch' link
+  for (auto& entry: factories) {
+    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+
+    // valid situation if not running with the specified storage engine
+    if (!engine) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "failed to find feature '" << entry.first << "' while registering index type '" << indexType << "', skipping";
+      continue;
+    }
+
+    // ok to const-cast since this should only be called on startup
+    auto& indexFactory =
+      const_cast<arangodb::IndexFactory&>(engine->indexFactory());
+    auto res = indexFactory.emplaceFactory(indexType, entry.second);
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        std::string("failure registering IResearch link factory with index factory from feature '") + entry.first + "': " + res.errorMessage()
+      );
+    }
+
+    res = indexFactory.emplaceNormalizer(
+      indexType, arangodb::iresearch::IResearchLink::normalize
+    );
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        std::string("failure registering IResearch link normalizer with index factory from feature '") + entry.first + "': " + res.errorMessage()
+      );
+    }
+  }
+}
+
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   irs::scorers::visit([&functions](
      irs::string_ref const& name, irs::text_format::type_id const& args_format
@@ -161,6 +210,31 @@ void registerRecoveryHelper() {
   auto res = arangodb::RocksDBEngine::registerRecoveryHelper(helper);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), "failed to register RocksDB recovery helper");
+  }
+}
+
+void registerViewFactory() {
+  auto& viewType = arangodb::iresearch::IResearchView::type();
+  auto* viewTypes = arangodb::iresearch::getFeature<arangodb::ViewTypesFeature>();
+
+  if (!viewTypes) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "' while registering view type '" + viewType.name() + "'"
+    );
+  }
+
+  // DB server in custer or single-server
+  auto res = arangodb::ServerState::instance()->isCoordinator()
+    ? viewTypes->emplace(viewType, arangodb::iresearch::IResearchViewCoordinator::make)
+    : viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::make)
+    ;
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      res.errorNumber(),
+      std::string("failure registering IResearch view factory: ") + res.errorMessage()
+    );
   }
 }
 
@@ -261,23 +335,11 @@ void IResearchFeature::prepare() {
   // load all known scorers
   ::iresearch::scorers::init();
 
-  auto* viewTypes = getFeature<arangodb::ViewTypesFeature>();
-
-  if (!viewTypes) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      std::string("failed to find feature '") + arangodb::ViewTypesFeature::name() + "'  while starting " + name()
-    );
-  }
+  // register 'arangosearch' index
+  registerIndexFactory();
 
   // register 'arangosearch' view
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    viewTypes->emplace(IResearchView::type(), IResearchViewCoordinator::make);
-  } else {
-    // DB server in custer or single-server
-    viewTypes->emplace(IResearchView::type(), IResearchView::make);
-  }
-
+  registerViewFactory();
 
   // register 'arangosearch' TransactionState state-change callback factory
   arangodb::transaction::Methods::addStateRegistrationCallback(

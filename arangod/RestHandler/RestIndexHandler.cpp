@@ -62,12 +62,13 @@ LogicalCollection* RestIndexHandler::collection(
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       try {
-        coll = ClusterInfo::instance()->getCollection(_vocbase->name(), cName);
+        coll = ClusterInfo::instance()->getCollection(_vocbase.name(), cName);
+
         return coll.get();
       } catch (...) {
       }
     } else {
-      return _vocbase->lookupCollection(cName).get();
+      return _vocbase.lookupCollection(cName).get();
     }
   }
 

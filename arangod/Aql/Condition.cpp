@@ -317,7 +317,7 @@ static inline void clearAttributeAccess(
 Condition::Condition(Ast* ast)
     : _ast(ast), _root(nullptr), _isNormalized(false), _isSorted(false) {}
 
-    namespace {
+    /*namespace {
     size_t countNodes(AstNode* node) {
       if (node == nullptr) {
         return 0;
@@ -331,7 +331,7 @@ Condition::Condition(Ast* ast)
 
       return sum;
     }
-    }
+    }*/
 
 /// @brief destroy the condition
 Condition::~Condition() {

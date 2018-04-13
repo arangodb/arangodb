@@ -90,9 +90,10 @@ class IResearchRocksDBLink final
   /// @return nullptr on failure
   ////////////////////////////////////////////////////////////////////////////////
   static ptr make(
-    TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection,
-    arangodb::velocypack::Slice const& definition
+    arangodb::velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
   ) noexcept;
 
   virtual bool matchesDefinition(

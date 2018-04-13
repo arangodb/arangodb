@@ -171,10 +171,6 @@ struct OptimizerRule {
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
 
-    // simplify an EnumerationCollectionNode that fetches an
-    // entire document to a projection of this document
-    reduceExtractionToProjectionRule_pass6,
-
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 
@@ -195,7 +191,7 @@ struct OptimizerRule {
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,
-
+    
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
@@ -217,9 +213,15 @@ struct OptimizerRule {
 #endif
 
     // recognize that a RemoveNode can be moved to the shards
-    undistributeRemoveAfterEnumCollRule_pass10
-  };
+    undistributeRemoveAfterEnumCollRule_pass10,
+    
+    // push collect operations to the db servers
+    collectInClusterRule_pass10,
 
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass6
+  };
 
   std::string name;
   RuleFunction func;

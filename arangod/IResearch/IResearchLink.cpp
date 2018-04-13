@@ -76,11 +76,16 @@ IResearchLink::IResearchLink(
   arangodb::LogicalCollection* collection
 ): _collection(collection),
    _defaultId(0), // 0 is never a valid id
+   _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
 }
 
 IResearchLink::~IResearchLink() {
+  if (_dropCollectionInDestructor) {
+    drop();
+  }
+
   unload(); // disassociate from view if it has not been done yet
 }
 
@@ -181,7 +186,8 @@ int IResearchLink::drop() {
     }
   }
 
-  // FIXME TODO remove link via update properties on view
+  _dropCollectionInDestructor = false; // will do drop now
+
   return _view->drop(_collection->id());
 }
 
@@ -215,13 +221,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
     auto identifier = definition.get(VIEW_ID_FIELD);
-    auto vocbase = collection()->vocbase();
 
-    if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+    if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
       auto viewId = identifier.getUInt();
 
       // NOTE: this will cause a deadlock if registering a link while view is being created
-      auto logicalView = vocbase->lookupView(viewId);
+      auto logicalView = collection()->vocbase().lookupView(viewId);
 
       if (!logicalView || IResearchView::type() != logicalView->type()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
@@ -260,6 +265,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false;
       }
 
+      _dropCollectionInDestructor = view->emplace(collection()->id()); // track if this is the instance that called emplace
       _meta = std::move(meta);
       _view = std::move(view);
 
@@ -403,6 +409,44 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
+/*static*/ arangodb::Result IResearchLink::normalize(
+  arangodb::velocypack::Builder& normalized,
+  velocypack::Slice definition,
+  bool // isCreation
+) {
+  if (!normalized.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid output buffer provided for IResearch link normalized definition generation")
+    );
+  }
+
+  std::string error;
+  IResearchLinkMeta meta;
+
+  if (!meta.init(definition, error)) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error parsing IResearch link parameters from json: ") + error
+    );
+  }
+
+  normalized.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
+
+  // copy over IResearch View identifier
+  if (definition.hasKey(VIEW_ID_FIELD)) {
+    normalized.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD));
+  }
+
+  return meta.json(normalized)
+    ? arangodb::Result()
+    : arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("error generating IResearch link normalized definition")
+      )
+    ;
+}
+
 Result IResearchLink::remove(
   transaction::Methods* trx,
   LocalDocumentId const& documentId,
@@ -475,30 +519,6 @@ Result IResearchLink::remove(
   return true;
 }
 
-arangodb::Result IResearchLink::recover() {
-  if (!_collection) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // current link isn't associated with the collection
-  }
-
-  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
-  SCOPED_LOCK(mutex); // FIXME TODO check for deadlock
-
-  if (!_view) {
-    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}; // slice has identifier but the current object does not
-  }
-
-  arangodb::velocypack::Builder link;
-
-  link.openObject();
-  if (!json(link, false)) {
-    return {TRI_ERROR_INTERNAL};
-  }
-  link.close();
-
-  // re-insert link into the view
-  return _view->link(_collection->id(), link.slice());
-}
-
 Index::IndexType IResearchLink::type() const {
   // TODO: don't use enum
   return Index::TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -541,6 +561,7 @@ int IResearchLink::unload() {
     }
   }
 
+  _dropCollectionInDestructor = false; // valid link (since unload(..) called), should not be dropped
   _view = nullptr; // mark as unassociated
   _viewLock.unlock(); // release read-lock on the IResearch View
 
@@ -552,35 +573,6 @@ const IResearchView* IResearchLink::view() const {
   SCOPED_LOCK(mutex);
 
   return _view;
-}
-
-int EnhanceJsonIResearchLink(
-  VPackSlice const definition,
-  VPackBuilder& builder,
-  bool create
-) noexcept {
-  try {
-    std::string error;
-    IResearchLinkMeta meta;
-
-    if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error parsing view link parameters from json: " << error;
-
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-
-    if (definition.hasKey(VIEW_ID_FIELD)) {
-      builder.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD)); // copy over iResearch View identifier
-    }
-
-    return meta.json(builder) ? TRI_ERROR_NO_ERROR : TRI_ERROR_BAD_PARAMETER;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error serializaing view link parameters to json: " << e.what();
-  } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error serializaing view link parameters to json";
-  }
-
-  return TRI_ERROR_INTERNAL;
 }
 
 NS_END // iresearch

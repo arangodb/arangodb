@@ -122,6 +122,16 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const; // arangodb::Index override
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief validate and copy required fields from the 'definition' into
+  ///        'normalized'
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result normalize(
+    arangodb::velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  );
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
@@ -158,13 +168,6 @@ class IResearchLink {
     arangodb::velocypack::Builder& builder,
     TRI_voc_cid_t value
   );
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief recover IResearch Link index in a view by dropping existing and
-  ///        creating a new one
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result recover();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief iResearch Link index type enum value
@@ -205,29 +208,18 @@ class IResearchLink {
   // FIXME TODO remove once View::updateProperties(...) will be fixed to write
   // the update delta into the WAL marker instead of the full persisted state
   // FIXME TODO remove #include "IResearchView.h"
-//  friend arangodb::Result IResearchView::updatePropertiesImpl(
-//    arangodb::velocypack::Slice const&, bool, bool
-//  );
+  // friend arangodb::Result IResearchView::updateProperties(arangodb::velocypack::Slice const&, bool);
   friend class IResearchView;
-
 
   LogicalCollection* _collection; // the linked collection
   TRI_voc_cid_t _defaultId; // the identifier of the desired view (iff _view == nullptr)
+  bool _dropCollectionInDestructor; // collection should be dropped from view in the destructor (for the case where init(..) is called folowed by distructor)
   TRI_idx_iid_t const _id; // the index identifier
   IResearchLinkMeta _meta; // how this collection should be indexed
   mutable irs::async_utils::read_write_mutex _mutex; // for use with _view to allow asynchronous disassociation
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy required fields from the 'definition' into the 'builder'
-////////////////////////////////////////////////////////////////////////////////
-int EnhanceJsonIResearchLink(
-  VPackSlice const definition,
-  VPackBuilder& builder,
-  bool create
-) noexcept;
 
 NS_END // iresearch
 NS_END // arangodb

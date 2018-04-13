@@ -1,14 +1,14 @@
 devel
 -----
 
-* added option `--cluster.require-persisted-id`
+* removed option `--cluster.my-local-info` in favor of persisted server UUIDs
 
-  If set to true, then the instance will only start if a UUID file is found 
-  in the database on startup. Setting this option will make sure the instance 
-  is started using an already existing database directory from a previous
-  start, and not a new one. For the first start, the UUID file must either be 
-  created manually in the database directory, or the option must be set to 
-  false for the initial startup and only turned on for restarts.
+  The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
+* added /_admin/status for debugging
+
+* added new collection property `cacheEnabled` which enables in-memory caching for
+  documents and primary index entries. Available only when using RocksDB
 
 * arangodump now supports `--threads` option to dump collections in parallel
 
@@ -174,7 +174,13 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
-* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
+* fixed a bug where clusterinfo missed changes to plan after agency
+  callback is registred for create collection
+
+* fixed a bug related to internal issue #2215. supervision started
+  working before its agent's leadership preparation had not finished.
+
+* fixed internal #2215's failedleader timeout, when in todo
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

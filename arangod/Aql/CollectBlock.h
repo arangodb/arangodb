@@ -175,6 +175,21 @@ class DistinctCollectBlock : public ExecutionBlock {
   std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
 };
 
+class CountCollectBlock : public ExecutionBlock {
+ public:
+  CountCollectBlock(ExecutionEngine*, CollectNode const*);
+
+  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+ private:
+  int getOrSkipSome(size_t atMost, bool skipping, AqlItemBlock*& result, size_t& skipped) override;
+
+ private:
+  RegisterId _collectRegister;
+
+  size_t _count;
+};
+
 }  // namespace arangodb::aql
 }  // namespace arangodb
 

@@ -65,7 +65,9 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // try to acquire the exclusive lock on the compaction
-  engine->preventCompaction(_collection->vocbase(), [this](TRI_vocbase_t* vocbase) {
+  engine->preventCompaction(
+    &(_collection->vocbase()),
+    [this](TRI_vocbase_t* vocbase) {
     // create a ditch under the compaction lock
     _ditch = arangodb::MMFilesCollection::toMMFilesCollection(_collection)
                  ->ditches()
@@ -93,7 +95,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+    auto ctx = transaction::StandaloneContext::Create(&(_collection->vocbase()));
     SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     // already locked by guard above

@@ -81,7 +81,7 @@ class timer_states: public iresearch::singleton<timer_states> {
       (1000000. * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den;
 
     for (auto& entry: state_map_) {
-      if (!visitor(entry.first, entry.second.count, entry.second.time * usec)) {
+      if (!visitor(entry.first, entry.second.count, size_t(entry.second.time * usec))) { // truncate 'time_us'
         return false;
       }
     }

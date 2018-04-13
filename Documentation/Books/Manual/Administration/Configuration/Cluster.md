@@ -73,23 +73,6 @@ This server's role:
 The server's role. Is this instance a db server (backend data server)
 or a coordinator (frontend server for external and application access)
 
-Node ID (deprecated)
---------------------
-
-<!-- arangod/Cluster/ClusterFeature.h -->
-
-
-This server's id: `--cluster.my-local-info info`
-
-Some local information about the server in the cluster, this can for
-example be an IP address with a process ID or any string unique to
-the server. Specifying *info* is mandatory on startup if the server
-id (see below) is not specified. Each server of the cluster must
-have a unique local info. This is ignored if my-id below is specified.
-
-This option is deprecated and will be removed in a future release. The
-cluster node ids have been dropped in favour of once generated UUIDs.
-
 Require existing ID
 -------------------
  

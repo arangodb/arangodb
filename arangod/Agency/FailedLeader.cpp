@@ -79,34 +79,37 @@ void FailedLeader::rollback() {
   std::string planPath
     = planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   auto const& planned = _snapshot(planPath).slice();
+  std::shared_ptr<Builder> payload = nullptr;
 
-  VPackBuilder rb;
-  if (!_to.empty()) {
-    { VPackArrayBuilder r(&rb);
-      for (auto const i : VPackArrayIterator(planned)) {
-        TRI_ASSERT(i.isString());
-        auto istr = i.copyString();
-        if (istr == _from) {
-          rb.add(VPackValue(_to));
-        } else if (istr == _to) {
-          rb.add(VPackValue(_from));
-        } else {
-          rb.add(i);
+  if (_status == PENDING) { // Only payload if pending. Otherwise just fail.
+    VPackBuilder rb;
+    if (!_to.empty()) {
+      { VPackArrayBuilder r(&rb);
+        for (auto const i : VPackArrayIterator(planned)) {
+          TRI_ASSERT(i.isString());
+          auto istr = i.copyString();
+          if (istr == _from) {
+            rb.add(VPackValue(_to));
+          } else if (istr == _to) {
+            rb.add(VPackValue(_from));
+          } else {
+            rb.add(i);
+          }
         }
       }
+    } else {
+      rb.add(planned);
     }
-  } else {
-    rb.add(planned);
-  }
   
-  auto cs = clones(_snapshot, _database, _collection, _shard);
+    auto cs = clones(_snapshot, _database, _collection, _shard);
   
-  // Transactions
-  auto payload = std::make_shared<Builder>();
-  { VPackObjectBuilder b(payload.get());
-    for (auto const c : cs) {
-      payload->add(planColPrefix + _database + "/" + c.collection + "/shards/" +
-                   c.shard, rb.slice());
+    // Transactions
+    payload = std::make_shared<Builder>();
+    { VPackObjectBuilder b(payload.get());
+      for (auto const c : cs) {
+        payload->add(planColPrefix + _database + "/" + c.collection + "/shards/" +
+                     c.shard, rb.slice());
+      }
     }
   }
 
@@ -264,11 +267,9 @@ bool FailedLeader::start() {
       // Preconditions -------------------------------------------------------
       { VPackObjectBuilder preconditions(&pending);
         // Failed condition persists
-        pending.add(VPackValue(healthPrefix + _from + "/Status"));
-        { VPackObjectBuilder stillExists(&pending);
-          pending.add("old", VPackValue("FAILED")); }
+        addPreconditionServerHealth(pending, _from, "FAILED");
         // Destination server still in good condition
-        addPreconditionServerGood(pending, _to);
+        addPreconditionServerHealth(pending, _to, "GOOD"); 
         // Server list in plan still as before
         addPreconditionUnchanged(pending, planPath, planned);
         // Destination server should not be blocked by another job

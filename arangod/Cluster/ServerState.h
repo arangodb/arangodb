@@ -187,8 +187,7 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
-                            std::string const& myLocalInfo);
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
   
   bool unregister();
 

@@ -100,7 +100,8 @@ bool RestActionHandler::cancel() {
 
 TRI_action_result_t RestActionHandler::executeAction() {
   TRI_action_result_t result = _action->execute(
-      _vocbase, _request.get(), _response.get(), &_dataLock, &_data);
+    &_vocbase, _request.get(), _response.get(), &_dataLock, &_data
+  );
 
   if (!result.isValid) {
     if (result.canceled) {

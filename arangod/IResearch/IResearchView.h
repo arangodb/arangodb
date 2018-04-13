@@ -26,8 +26,6 @@
 
 #include "Containers.h"
 #include "IResearchViewMeta.h"
-#include "Basics/ReadWriteLock.h"
-#include "Basics/WriteLocker.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalView.h"
@@ -41,6 +39,7 @@
 
 NS_BEGIN(arangodb)
 
+class DatabasePathFeature; // forward declaration
 class TransactionState; // forward declaration
 class ViewIterator; // forward declaration
 
@@ -112,6 +111,7 @@ class PrimaryKeyIndexReader: public irs::index_reader {
 class IResearchView final: public arangodb::DBServerLogicalView,
                            public arangodb::FlushTransaction {
  public:
+
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief AsyncValue holding the view itself, modifiable by IResearchView
   ///////////////////////////////////////////////////////////////////////////////
@@ -139,17 +139,23 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result commit() override;
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief drop this iResearch View
-  ///////////////////////////////////////////////////////////////////////////////
-  void drop() override;
+  using LogicalView::drop;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove all documents matching collection 'cid' from this IResearch
   ///        View and the underlying IResearch stores
-  ///        also remove 'cid' from the runtime list of tracked collection IDs
+  ///        also remove 'cid' from the persisted list of tracked collection IDs
   ////////////////////////////////////////////////////////////////////////////////
   int drop(TRI_voc_cid_t cid);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief acquire locks on the specified 'cid' during read-transactions
+  ///        allowing retrieval of documents contained in the aforementioned
+  ///        collection
+  ///        also track 'cid' via the persisted list of tracked collection IDs
+  /// @return the 'cid' was newly added to the IResearch View
+  ////////////////////////////////////////////////////////////////////////////////
+  bool emplace(TRI_voc_cid_t cid);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief insert a document into this IResearch View and the underlying
@@ -179,15 +185,6 @@ class IResearchView final: public arangodb::DBServerLogicalView,
     IResearchLinkMeta const& meta
   );
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief link the specified 'cid' to the view using the specified 'link'
-  ///        definition (!link.isObject() == remove only)
-  ////////////////////////////////////////////////////////////////////////////////
-  arangodb::Result link(
-    TRI_voc_cid_t cid,
-    arangodb::velocypack::Slice const link
-  );
-
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief view factory
   /// @returns initialized view object
@@ -195,7 +192,8 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   static std::shared_ptr<LogicalView> make(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    bool isNew
+    uint64_t planVersion,
+    LogicalView::PreCommitCallback const& preCommit = LogicalView::PreCommitCallback()
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -246,20 +244,7 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   static arangodb::LogicalDataSource::Type const& type() noexcept;
 
-  void toVelocyPack(
-    velocypack::Builder& result,
-    bool includeProperties,
-    bool includeSystem
-  ) const override;
-
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief called when a view's properties are updated (i.e. delta-modified)
-  ///////////////////////////////////////////////////////////////////////////////
-  arangodb::Result updateProperties(
-    arangodb::velocypack::Slice const& slice,
-    bool partialUpdate,
-    bool doSync
-  ) override;
+  using LogicalView::updateProperties;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief visit all collection IDs that were added to the view
@@ -267,7 +252,33 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ///////////////////////////////////////////////////////////////////////////////
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
+ protected:
+
+  ///////////////////////////////////////////////////////////////////////////////
+  /// @brief drop this IResearch View
+  ///////////////////////////////////////////////////////////////////////////////
+  arangodb::Result dropImpl() override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief fill and return a JSON description of a IResearchView object
+  ///        only fields describing the view itself, not 'link' descriptions
+  //////////////////////////////////////////////////////////////////////////////
+  void getPropertiesVPack(
+    arangodb::velocypack::Builder& builder,
+    bool forPersistence
+  ) const override;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called when a view's properties are updated (i.e. delta-modified)
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result updateProperties(
+    arangodb::velocypack::Slice const& slice,
+    bool partialUpdate
+  ) override;
+
  private:
+  DECLARE_SPTR(LogicalView);
+
   struct DataStore {
     irs::directory::ptr _directory;
     irs::directory_reader _reader;
@@ -315,25 +326,13 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   > FlushTransactionPtr;
 
   IResearchView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& info,
-    irs::utf8_path&& persistedPath,
-    bool isNew
+    arangodb::DatabasePathFeature const& dbPathFeature,
+    uint64_t planVersion
   );
 
-  ///////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchView object
-  ///        only fields describing the view itself, not 'link' descriptions
-  ////////////////////////////////////////////////////////////////////////////////
-  void getPropertiesVPack(
-    arangodb::velocypack::Builder& builder,
-    bool forPersistence
-  ) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Called in post-recovery to remove any dangling documents old links
-  //////////////////////////////////////////////////////////////////////////////
-  void verifyKnownCollections();
+  MemoryStore& activeMemoryStore() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief process a finished transaction and release resources held by it
@@ -345,7 +344,10 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   ////////////////////////////////////////////////////////////////////////////////
   void registerFlushCallback();
 
-  MemoryStore& activeMemoryStore() const;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Called in post-recovery to remove any dangling documents old links
+  //////////////////////////////////////////////////////////////////////////////
+  void verifyKnownCollections();
 
   std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
@@ -365,11 +367,9 @@ class IResearchView final: public arangodb::DBServerLogicalView,
   std::function<void(arangodb::TransactionState& state)> _trxReadCallback; // for snapshot(...)
   std::function<void(arangodb::TransactionState& state)> _trxWriteCallback; // for insert(...)/remove(...)
   std::atomic<bool> _inRecovery;
-
-  // FIXME came from "LogicalView", check whether it needs to be there
-  mutable basics::ReadWriteLock _infoLock;  // lock protecting the properties
 };
 
 NS_END // iresearch
 NS_END // arangodb
+
 #endif
