@@ -78,6 +78,11 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
   /// @brief set reverse mode  
   void reverse(bool value) { _reverse = value; }
 
+  /// @brief whether or not the index node needs a post sort of the results
+  /// of multiple shards in the cluster
+  bool needsGatherNodeSort() const { return _needsGatherNodeSort; }
+  void needsGatherNodeSort(bool value) { _needsGatherNodeSort = value; }
+
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&,
                           bool) const override final;
@@ -119,6 +124,9 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode {
 
   /// @brief the index sort order - this is the same order for all indexes
   bool _reverse;
+
+  /// @brief the index sort order - this is the same order for all indexes
+  bool _needsGatherNodeSort;
 };
 
 }  // namespace arangodb::aql

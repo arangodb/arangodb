@@ -1,6 +1,9 @@
 v3.3.8 (XXXX-XX-XX)
 -------------------
 
+* remove post-sort from GatherNode in cluster AQL queries that do use indexes
+  but that do not require a sorted result
+
 * fixed internal issue #2148: Number of documents found by filter is misleading in web UI
 
 * added startup option `--database.required-directory-state`
