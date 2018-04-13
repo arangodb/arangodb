@@ -50,9 +50,9 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Cluster"),
       _unregisterOnShutdown(false),
       _enableCluster(false),
+      _requirePersistedId(false),
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
-      _disableHeartbeat(false),
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
@@ -106,6 +106,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
+  
+  options->addOption("--cluster.require-persisted-id",
+                     "if set to true, then the instance will only start if a UUID file is found in the database on startup. Setting this option will make sure the instance is started using an already existing database directory and not a new one. For the first start, the UUID file must either be created manually or the option must be set to false for the initial startup",
+                     new BooleanParameter(&_requirePersistedId));
 
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
@@ -221,6 +225,13 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 
 void ClusterFeature::prepare() {
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  
+  if (_enableCluster && 
+      _requirePersistedId && 
+      !ServerState::instance()->hasPersistedId()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "required persisted UUID file '" << ServerState::instance()->getUuidFilename() << "' not found. Please make sure this instance is started using an already existing database directory";
+    FATAL_ERROR_EXIT();
+  }
 
   v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
                          _systemReplicationFactor);
@@ -391,50 +402,45 @@ void ClusterFeature::start() {
             << "', internal address: " << _myAddress
             << ", role: " << role;
 
-  if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
+  AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
-    if (result.successful()) {
-      velocypack::Slice HeartbeatIntervalMs =
-          result.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
+  if (result.successful()) {
+    velocypack::Slice HeartbeatIntervalMs =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
 
-      if (HeartbeatIntervalMs.isInteger()) {
-        try {
-          _heartbeatInterval = HeartbeatIntervalMs.getUInt();
-          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "using heartbeat interval value '" << _heartbeatInterval
-                    << " ms' from agency";
-        } catch (...) {
-          // Ignore if it is not a small int or uint
-        }
+    if (HeartbeatIntervalMs.isInteger()) {
+      try {
+        _heartbeatInterval = HeartbeatIntervalMs.getUInt();
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "using heartbeat interval value '" << _heartbeatInterval
+                  << " ms' from agency";
+      } catch (...) {
+        // Ignore if it is not a small int or uint
       }
-    }
-
-    // no value set in agency. use default
-    if (_heartbeatInterval == 0) {
-      _heartbeatInterval = 5000;  // 1/s
-
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "unable to read heartbeat interval from agency. Using "
-                << "default value '" << _heartbeatInterval << " ms'";
-    }
-
-    // start heartbeat thread
-    _heartbeatThread = std::make_shared<HeartbeatThread>(_agencyCallbackRegistry.get(),
-                              std::chrono::microseconds(_heartbeatInterval * 1000), 5);
-
-    if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("
-                 << endpoints << ")";
-      FATAL_ERROR_EXIT();
-    }
-
-    while (!_heartbeatThread->isReady()) {
-      // wait until heartbeat is ready
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   }
 
-  AgencyCommResult result;
+  // no value set in agency. use default
+  if (_heartbeatInterval == 0) {
+    _heartbeatInterval = 5000;  // 1/s
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "unable to read heartbeat interval from agency. Using "
+              << "default value '" << _heartbeatInterval << " ms'";
+  }
+
+  // start heartbeat thread
+  _heartbeatThread = std::make_shared<HeartbeatThread>(
+      _agencyCallbackRegistry.get(), std::chrono::microseconds(_heartbeatInterval * 1000), 5);
+
+  if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("
+                << endpoints << ")";
+    FATAL_ERROR_EXIT();
+  }
+
+  while (!_heartbeatThread->isReady()) {
+    // wait until heartbeat is ready
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+  }
 
   while (true) {
     VPackBuilder builder;
@@ -447,6 +453,7 @@ void ClusterFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
+    result.clear();
     result = comm.setValue("Current/ServersRegistered/" + myId,
                            builder.slice(), 0.0);
 
