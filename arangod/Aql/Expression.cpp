@@ -95,7 +95,6 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _canRunOnDBServer(false),
       _isDeterministic(false),
       _willUseV8(false),
-      _preparedV8Context(false),
       _attributes(),
       _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
@@ -234,8 +233,6 @@ void Expression::invalidateAfterReplacements() {
 /// used and destroyed in the same context. when a V8 function is used across
 /// multiple V8 contexts, it must be invalidated in between
 void Expression::invalidate() {
-  // context may change next time, so "prepare for re-preparation"
-  _preparedV8Context = false;
 
   // V8 expressions need a special handling
   freeInternals();
@@ -909,28 +906,88 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(
   }
 }
 
+AqlValue Expression::invokeV8Function(arangodb::aql::Query* query,
+                                      transaction::Methods* trx,
+                                      std::string const& jsName,
+                                      std::string const& ucInvokeFN,
+                                      char const* AFN,
+                                      bool rethrowV8Exception,
+                                      int callArgs,
+                                      v8::Handle<v8::Value>* args,
+                                      bool &mustDestroy
+                                      ){
+  ISOLATE;
+  auto current = isolate->GetCurrentContext()->Global();
+
+  v8::Handle<v8::Value> module = current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL")); 
+  if (module.IsEmpty() || !module->IsObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find global _AQL module");
+  }
+
+  v8::Handle<v8::Value> function = v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
+  if (function.IsEmpty() || !function->IsFunction()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function '") + jsName + "'");
+  }
+
+  // actually call the V8 function
+  v8::TryCatch tryCatch;
+  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, callArgs, args); 
+
+  try {
+    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
+  }
+  catch (arangodb::basics::Exception const& ex) {
+    if (rethrowV8Exception) {
+      throw ex;
+    }
+    if (ex.code() == TRI_ERROR_QUERY_FUNCTION_NOT_FOUND) {
+      throw ex;
+    }
+    std::string message("While invoking '");
+    message +=  ucInvokeFN + "' via '" + AFN + "': " + ex.message();
+    query->registerWarning(ex.code(), message.c_str());
+    return AqlValue(AqlValueHintNull());
+  }
+  if (result.IsEmpty() || result->IsUndefined()) {
+    return AqlValue(AqlValueHintNull());
+  }
+
+  transaction::BuilderLeaser builder(trx);
+    
+  int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
+    
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  
+  mustDestroy = true; // builder = dynamic data       
+  return AqlValue(builder.get());
+}
+
 /// @brief execute an expression of type SIMPLE, JavaScript variant
 AqlValue Expression::executeSimpleExpressionFCallJS(
     AstNode const* node, transaction::Methods* trx, bool& mustDestroy) {
 
-  prepareV8Context();
-  
   auto member = node->getMemberUnchecked(0);
   TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
     
   mustDestroy = false;
-  
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_ASSERT(isolate != nullptr);
 
   {
 
-    v8::HandleScope scope(isolate); 
+    ISOLATE;
+    TRI_ASSERT(isolate != nullptr);
+    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+    _ast->query()->prepareV8Context();
     
+    auto old = v8g->_query;
+    v8g->_query = static_cast<void*>(_ast->query());
+    TRI_DEFER(v8g->_query = old);
+
     std::string jsName;
     size_t const n = member->numMembers();
-    size_t const callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
+    int callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
+    v8::Handle<v8::Value> args[callArgs];
 
     if (node->type == NODE_TYPE_FCALL_USER) {
       // a call to a user-defined function
@@ -951,6 +1008,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
       args[0] = TRI_V8_STD_STRING(isolate, node->getString());
       // call parameters
       args[1] = params;
+      // args[2] will be null
     } else {
       // a call to a built-in V8 function
       auto func = static_cast<Function*>(node->getData());
@@ -972,44 +1030,8 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
       }
     }
 
-    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
-    auto old = v8g->_query;
-    v8g->_query = static_cast<void*>(_ast->query());
-    TRI_DEFER(v8g->_query = old);
-
-    auto current = isolate->GetCurrentContext()->Global();
-
-    v8::Handle<v8::Value> module = current->Get(TRI_V8_ASCII_STRING(isolate, "_AQL")); 
-    if (module.IsEmpty() || !module->IsObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find global _AQL module");
-    }
-
-    v8::Handle<v8::Value> function = v8::Handle<v8::Object>::Cast(module)->Get(TRI_V8_STD_STRING(isolate, jsName));
-    if (function.IsEmpty() || !function->IsFunction()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("unable to find AQL function '") + jsName + "'");
-    }
-
-    // actually call the V8 function
-    v8::TryCatch tryCatch;
-    v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(function)->Call(current, callArgs, args.get()); 
-    
-    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
-
-    if (result.IsEmpty() || result->IsUndefined()) {
-      return AqlValue(AqlValueHintNull());
-    }
-
-    transaction::BuilderLeaser builder(trx);
-    
-    int res = TRI_V8ToVPack(isolate, *builder.get(), result, false);
-    
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  
-    mustDestroy = true; // builder = dynamic data
-    return AqlValue(builder.get());
-  }   
+    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args, mustDestroy);
+  }
 }
 
 /// @brief execute an expression of type SIMPLE with NOT
@@ -1653,32 +1675,4 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   
   // this will convert NaN, +inf & -inf to null
   return AqlValue(AqlValueHintDouble(result));
-}
-
-/// @brief prepare a V8 context for execution for this expression
-/// this needs to be called once before executing any V8 function in this
-/// expression
-void Expression::prepareV8Context() {
-  if (_preparedV8Context) {
-    // already done
-    return;
-  }
-  
-  TRI_ASSERT(_ast->query()->trx() != nullptr);
-
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
-  TRI_ASSERT(isolate != nullptr);
-
-  std::string body("if (_AQL === undefined) { _AQL = require(\"@arangodb/aql\"); _AQL.clearCaches(); }");
-  
-  {
-    v8::HandleScope scope(isolate); 
-    v8::Handle<v8::Script> compiled = v8::Script::Compile(
-        TRI_V8_STD_STRING(isolate, body), TRI_V8_ASCII_STRING(isolate, "--script--"));
-  
-    if (!compiled.IsEmpty()) {
-      v8::Handle<v8::Value> func(compiled->Run());
-      _preparedV8Context = true;
-    }
-  }
 }

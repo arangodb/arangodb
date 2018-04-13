@@ -34,3 +34,10 @@ REST API
 
 Miscellaneous
 -------------
+
+AQL Functions
+-------------
+- CALL / APPLY
+  - may emmit `ERROR_QUERY_FUNCTION_NAME_UNKNOWN` or `ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH`
+    instead of `ERROR_QUERY_FUNCTION_NOT_FOUND` in some situations.
+  - are now able to be invoked recursive
