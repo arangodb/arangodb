@@ -1,7 +1,7 @@
 Static file assets
 ==================
 
-The most flexible way to serve files in your Foxx service is to simply pass them through in your router using the [context object's `fileName` method](../Foxx/Context.md#filename) and the [response object's `sendFile` method](../Foxx/Router/Response.md#sendfile):
+The most flexible way to serve files in your Foxx service is to simply pass them through in your router using the [context object's `fileName` method](Context.md#filename) and the [response object's `sendFile` method](Router/Response.md#sendfile):
 
 ```js
 router.get('/some/filename.png', function (req, res) {
@@ -12,7 +12,7 @@ router.get('/some/filename.png', function (req, res) {
 
 While allowing for greater control of how the file should be sent to the client and who should be able to access it, doing this for all your static assets can get tedious.
 
-Alternatively you can specify file assets that should be served by your Foxx service directly in the [service manifest](../Foxx/Manifest.md) using the `files` attribute:
+Alternatively you can specify file assets that should be served by your Foxx service directly in the [service manifest](Manifest.md) using the `files` attribute:
 
 ```json
 "files": {
