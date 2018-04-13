@@ -1,4 +1,4 @@
-v3.2.13 (XXXX-XX-XX)
+v3.2.13 (2018-04-13)
 --------------------
 
 * improve startup resilience in case there are datafile errors (MMFiles)
@@ -19,6 +19,7 @@ v3.2.13 (XXXX-XX-XX)
   fully prepare before adding 10 second grace period after leadership change
 
 * fixed interal issue #2215 FailedLeader timeout bug
+
 
 v3.2.12 (2018-02-27)
 --------------------
