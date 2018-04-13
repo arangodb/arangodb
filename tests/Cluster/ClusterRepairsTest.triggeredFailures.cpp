@@ -132,20 +132,22 @@ std::shared_ptr<VPackBuffer<uint8_t>> supervisionHealth2Healthy0Bad = R"=(
 std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
     expectedResultsWithTriggeredFailures{
         {"10000001",
-         {{BeginRepairsOperation::create(
+         {{BeginRepairsOperation{
                _database = "someDb", _collectionId = "10000001",
                _collectionName = "follower10000001of10000002",
                _protoCollectionId = "10000002",
                _protoCollectionName = "prototype10000002",
                _collectionReplicationFactor = 1, _protoReplicationFactor = 1,
-               _renameDistributeShardsLike = true),
-           MoveShardOperation::create(
+               _renameDistributeShardsLike = true,
+           },
+           MoveShardOperation{
                _database = "someDb", _collectionId = "10000001",
                _collectionName = "follower10000001of10000002", _shard = "s11",
                _from = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
                _to = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
-               _isLeader = true),
-           FinishRepairsOperation::create(
+               _isLeader = true,
+           },
+           FinishRepairsOperation{
                _database = "someDb", _collectionId = "10000001",
                _collectionName = "follower10000001of10000002",
                _protoCollectionId = "10000002",
@@ -156,7 +158,8 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                            "s11", "s21",
                            {"PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB"}),
                    },
-               _replicationFactor = 1)}}},
+               _replicationFactor = 1,
+           }}}},
         {"10000003", ResultT<std::vector<RepairOperation>>::error(
                          TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS)},
         {"10000004", ResultT<std::vector<RepairOperation>>::error(
@@ -170,20 +173,22 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"10000008", Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS)},
         {"10000009", Result(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS)},
         {"10000099",
-         {{{BeginRepairsOperation::create(
+         {{{BeginRepairsOperation{
                 _database = "someDb", _collectionId = "10000099",
                 _collectionName = "follower10000099of10000098",
                 _protoCollectionId = "10000098",
                 _protoCollectionName = "prototype10000098",
                 _collectionReplicationFactor = 1, _protoReplicationFactor = 1,
-                _renameDistributeShardsLike = true),
-            MoveShardOperation::create(
+                _renameDistributeShardsLike = true,
+            },
+            MoveShardOperation{
                 _database = "someDb", _collectionId = "10000099",
                 _collectionName = "follower10000099of10000098", _shard = "s991",
                 _from = "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                 _to = "PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA",
-                _isLeader = true),
-            FinishRepairsOperation::create(
+                _isLeader = true,
+            },
+            FinishRepairsOperation{
                 _database = "someDb", _collectionId = "10000099",
                 _collectionName = "follower10000099of10000098",
                 _protoCollectionId = "10000098",
@@ -194,5 +199,6 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                             "s991", "s981",
                             {"PRMR-AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA"}),
                     },
-                _replicationFactor = 1)}}}},
+                _replicationFactor = 1,
+            }}}}},
     };

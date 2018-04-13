@@ -52,15 +52,16 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
         {"22222222",
          {{
              // begin without rename
-             BeginRepairsOperation::create(
+             BeginRepairsOperation{
                  _database = "someDb", _collectionId = "22222222",
                  _collectionName = "followingCollection",
                  _protoCollectionId = "11111111",
                  _protoCollectionName = "leadingCollection",
                  _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
-                 _renameDistributeShardsLike = false),
+                 _renameDistributeShardsLike = false,
+             },
              // rename repairingDistributeShardsLike to distributeShardsLike
-             FinishRepairsOperation::create(
+             FinishRepairsOperation{
                  _database = "someDb", _collectionId = "22222222",
                  _collectionName = "followingCollection",
                  _protoCollectionId = "11111111",
@@ -73,5 +74,6 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                               "PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
                               "PRMR-CCCCCCCC-CCCC-CCCC-CCCC-CCCCCCCCCCCC"}),
                      },
-                 _replicationFactor = 3),
+                 _replicationFactor = 3,
+             },
          }}}};

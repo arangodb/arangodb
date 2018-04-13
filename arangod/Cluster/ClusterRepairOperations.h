@@ -57,15 +57,13 @@ class VersionSort {
 // "proto collection" always means the collection referred to in the
 // "distributeShardsLike" attribute of "collection"
 
-// All RepairOperations use a named constructor ::create() with named
-// parameters, while the default constructor is deleted and one other
-// constructor specified to forbid braced initializer lists.
-// This is done to assure that all constructions initialize every member
-// (defaults really don't make sense here), make constructions more readable
-// and avoid mixing up arguments of the same type (most are std::string or
-// typedefs thereof).
+// All RepairOperations use a constructor with named parameters. This is done to
+// forbid braced initializer lists and assure that all constructions initialize
+// every member (defaults really don't make sense here), make constructions more
+// readable and avoid mixing up arguments of the same type (most are std::string
+// or typedefs thereof).
 
-// The following are used for the named initializers mentioned above.
+// The following are used for the named parameters mentioned above.
 template <typename Tag, typename Type>
 struct tagged_argument {
   Type const& value;
@@ -145,37 +143,20 @@ struct BeginRepairsOperation {
 
   BeginRepairsOperation() = delete;
 
-  // named constructor with named parameters
-  static inline BeginRepairsOperation create(
-      const tagged_argument<tag::database, DatabaseID> database,
-      const tagged_argument<tag::collectionId, CollectionID> collectionId,
-      const tagged_argument<tag::collectionName, std::string> collectionName,
-      const tagged_argument<tag::protoCollectionId, CollectionID>
-          protoCollectionId,
-      const tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName,
-      const tagged_argument<tag::collectionReplicationFactor, size_t>
-          collectionReplicationFactor,
-      const tagged_argument<tag::protoReplicationFactor, size_t>
-          protoReplicationFactor,
-      const tagged_argument<tag::renameDistributeShardsLike, bool>
-          renameDistributeShardsLike) {
-    return BeginRepairsOperation(
-        database.value, collectionId.value, collectionName.value,
-        protoCollectionId.value, protoCollectionName.value,
-        collectionReplicationFactor.value, protoReplicationFactor.value,
-        renameDistributeShardsLike.value);
-  }
-
- private:
-  BeginRepairsOperation(const DatabaseID& database,
-                        const CollectionID& collectionId,
-                        const std::string& collectionName,
-                        const CollectionID& protoCollectionId,
-                        const std::string& protoCollectionName,
-                        size_t collectionReplicationFactor,
-                        size_t protoReplicationFactor,
-                        bool renameDistributeShardsLike);
+  // constructor with named parameters
+  BeginRepairsOperation(
+      tagged_argument<tag::database, DatabaseID> database_,
+      tagged_argument<tag::collectionId, CollectionID> collectionId_,
+      tagged_argument<tag::collectionName, std::string> collectionName_,
+      tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+      tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName_,
+      tagged_argument<tag::collectionReplicationFactor, size_t>
+          collectionReplicationFactor_,
+      tagged_argument<tag::protoReplicationFactor, size_t>
+          protoReplicationFactor_,
+      tagged_argument<tag::renameDistributeShardsLike, bool>
+          renameDistributeShardsLike_);
 };
 
 struct FinishRepairsOperation {
@@ -189,36 +170,17 @@ struct FinishRepairsOperation {
 
   FinishRepairsOperation() = delete;
 
-  // named constructor with named parameters
-  static FinishRepairsOperation create(
-      const tagged_argument<tag::database, DatabaseID> database,
-      const tagged_argument<tag::collectionId, CollectionID> collectionId,
-      const tagged_argument<tag::collectionName, std::string> collectionName,
-      const tagged_argument<tag::protoCollectionId, CollectionID>
-          protoCollectionId,
-      const tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName,
-      const tagged_argument<tag::shards,
-                            std::vector<ShardWithProtoAndDbServers>>
-          shards,
-      const tagged_argument<tag::replicationFactor, size_t> replicationFactor) {
-    return FinishRepairsOperation{database.value,
-                                  collectionId.value,
-                                  collectionName.value,
-                                  protoCollectionId.value,
-                                  protoCollectionName.value,
-                                  shards.value,
-                                  replicationFactor.value};
-  }
-
- private:
-  FinishRepairsOperation(const DatabaseID& database,
-                         const CollectionID& collectionId,
-                         const std::string& collectionName,
-                         const CollectionID& protoCollectionId,
-                         const std::string& protoCollectionName,
-                         const std::vector<ShardWithProtoAndDbServers>& shards,
-                         size_t replicationFactor);
+  // constructor with named parameters
+  FinishRepairsOperation(
+      tagged_argument<tag::database, DatabaseID> database_,
+      tagged_argument<tag::collectionId, CollectionID> collectionId_,
+      tagged_argument<tag::collectionName, std::string> collectionName_,
+      tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+      tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName_,
+      tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
+          shards_,
+      tagged_argument<tag::replicationFactor, size_t> replicationFactor_);
 };
 
 struct MoveShardOperation {
@@ -232,29 +194,19 @@ struct MoveShardOperation {
 
   MoveShardOperation() = delete;
 
-  // named constructor with named parameters
-  static MoveShardOperation create(
-      const tagged_argument<tag::database, DatabaseID> database,
-      const tagged_argument<tag::collectionId, CollectionID> collectionId,
-      const tagged_argument<tag::collectionName, std::string> collectionName,
-      const tagged_argument<tag::shard, ShardID> shard,
-      const tagged_argument<tag::from, ServerID> from,
-      const tagged_argument<tag::to, ServerID> to,
-      const tagged_argument<tag::isLeader, bool> isLeader) {
-    return MoveShardOperation(database.value, collectionId.value,
-                              collectionName.value, shard.value, from.value,
-                              to.value, isLeader.value);
-  }
+  // constructor with named parameters
+  MoveShardOperation(
+      tagged_argument<tag::database, DatabaseID> database_,
+      tagged_argument<tag::collectionId, CollectionID> collectionId_,
+      tagged_argument<tag::collectionName, std::string> collectionName_,
+      tagged_argument<tag::shard, ShardID> shard_,
+      tagged_argument<tag::from, ServerID> from_,
+      tagged_argument<tag::to, ServerID> to_,
+      tagged_argument<tag::isLeader, bool> isLeader_);
 
   VPackBufferPtr toVpackTodo(
       uint64_t jobId,
       std::chrono::system_clock::time_point jobCreationTimestamp) const;
-
- private:
-  MoveShardOperation(const DatabaseID& database,
-                     const CollectionID& collectionId,
-                     const std::string& collectionName, const ShardID& shard,
-                     const ServerID& from, const ServerID& to, bool isLeader);
 };
 
 struct FixServerOrderOperation {
@@ -271,37 +223,20 @@ struct FixServerOrderOperation {
 
   FixServerOrderOperation() = delete;
 
-  // named constructor with named parameters
-  static FixServerOrderOperation create(
-      const tagged_argument<tag::database, DatabaseID> database,
-      const tagged_argument<tag::collectionId, CollectionID> collectionId,
-      const tagged_argument<tag::collectionName, std::string> collectionName,
-      const tagged_argument<tag::protoCollectionId, CollectionID>
-          protoCollectionId,
-      const tagged_argument<tag::protoCollectionName, std::string>
-          protoCollectionName,
-      const tagged_argument<tag::shard, ShardID> shard,
-      const tagged_argument<tag::protoShard, ShardID> protoShard,
-      const tagged_argument<tag::leader, ServerID> leader,
-      const tagged_argument<tag::followers, std::vector<ServerID>> followers,
-      const tagged_argument<tag::protoFollowers, std::vector<ServerID>>
-          protoFollowers) {
-    return FixServerOrderOperation(
-        database.value, collectionId.value, collectionName.value,
-        protoCollectionId.value, protoCollectionName.value, shard.value,
-        protoShard.value, leader.value, followers.value, protoFollowers.value);
-  }
-
- private:
-  FixServerOrderOperation(const DatabaseID& database,
-                          const CollectionID& collectionId,
-                          const std::string& collectionName,
-                          const CollectionID& protoCollectionId,
-                          const std::string& protoCollectionName,
-                          const ShardID& shard, const ShardID& protoShard,
-                          const ServerID& leader,
-                          const std::vector<ServerID>& followers,
-                          const std::vector<ServerID>& protoFollowers);
+  // constructor with named parameters
+  FixServerOrderOperation(
+      tagged_argument<tag::database, DatabaseID> database_,
+      tagged_argument<tag::collectionId, CollectionID> collectionId_,
+      tagged_argument<tag::collectionName, std::string> collectionName_,
+      tagged_argument<tag::protoCollectionId, CollectionID> protoCollectionId_,
+      tagged_argument<tag::protoCollectionName, std::string>
+          protoCollectionName_,
+      tagged_argument<tag::shard, ShardID> shard_,
+      tagged_argument<tag::protoShard, ShardID> protoShard_,
+      tagged_argument<tag::leader, ServerID> leader_,
+      tagged_argument<tag::followers, std::vector<ServerID>> followers_,
+      tagged_argument<tag::protoFollowers, std::vector<ServerID>>
+          protoFollowers_);
 };
 
 bool operator==(BeginRepairsOperation const& left,

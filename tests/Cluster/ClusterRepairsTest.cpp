@@ -473,12 +473,16 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with equal replicationFactors and "
         "rename=true") {
-      BeginRepairsOperation operation = BeginRepairsOperation::create(
-          _database = "myDbName", _collectionId = "123456",
-          _collectionName = "myCollection", _protoCollectionId = "789876",
+      BeginRepairsOperation operation{
+          _database = "myDbName",
+          _collectionId = "123456",
+          _collectionName = "myCollection",
+          _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection",
-          _collectionReplicationFactor = 3, _protoReplicationFactor = 3,
-          _renameDistributeShardsLike = true);
+          _collectionReplicationFactor = 3,
+          _protoReplicationFactor = 3,
+          _renameDistributeShardsLike = true,
+      };
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -562,12 +566,16 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with differing replicationFactors and "
         "rename=false") {
-      BeginRepairsOperation operation = BeginRepairsOperation::create(
-          _database = "myDbName", _collectionId = "123456",
-          _collectionName = "myCollection", _protoCollectionId = "789876",
+      BeginRepairsOperation operation{
+          _database = "myDbName",
+          _collectionId = "123456",
+          _collectionName = "myCollection",
+          _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection",
-          _collectionReplicationFactor = 5, _protoReplicationFactor = 4,
-          _renameDistributeShardsLike = false);
+          _collectionReplicationFactor = 5,
+          _protoReplicationFactor = 4,
+          _renameDistributeShardsLike = false,
+      };
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -612,12 +620,16 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN(
         "A BeginRepairsOperation with differing replicationFactors and "
         "rename=true") {
-      BeginRepairsOperation operation = BeginRepairsOperation::create(
-          _database = "myDbName", _collectionId = "123456",
-          _collectionName = "myCollection", _protoCollectionId = "789876",
+      BeginRepairsOperation operation{
+          _database = "myDbName",
+          _collectionId = "123456",
+          _collectionName = "myCollection",
+          _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection",
-          _collectionReplicationFactor = 2, _protoReplicationFactor = 5,
-          _renameDistributeShardsLike = true);
+          _collectionReplicationFactor = 2,
+          _protoReplicationFactor = 5,
+          _renameDistributeShardsLike = true,
+      };
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -677,7 +689,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     }
 
     GIVEN("A FinishRepairsOperation") {
-      FinishRepairsOperation operation = FinishRepairsOperation::create(
+      FinishRepairsOperation operation{
           _database = "myDbName", _collectionId = "123456",
           _collectionName = "myCollection", _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection",
@@ -688,7 +700,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
                   std::make_tuple<ShardID, ShardID, DBServers>(
                       "shard2", "protoShard2", {"dbServer2", "dbServer3"}),
               },
-          _replicationFactor = 3);
+          _replicationFactor = 3,
+      };
 
       WHEN("Converted into an AgencyTransaction") {
         AgencyWriteTransaction trx;
@@ -791,10 +804,10 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     GIVEN("A MoveShardOperation") {
       ServerState::instance()->setId("CurrentCoordinatorServerId");
 
-      MoveShardOperation operation = MoveShardOperation::create(
+      MoveShardOperation operation {
           _database = "myDbName", _collectionId = "123456",
           _collectionName = "myCollection", _shard = "s1",
-          _from = "db-from-server", _to = "db-to-server", _isLeader = true);
+          _from = "db-from-server", _to = "db-to-server", _isLeader = true,};
 
       WHEN("Converted into an AgencyTransaction") {
         uint64_t nextJobId = 41;
@@ -879,7 +892,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     }
 
     GIVEN("A FixServerOrderOperation") {
-      FixServerOrderOperation operation = FixServerOrderOperation::create(
+      FixServerOrderOperation operation{
           _database = "myDbName", _collectionId = "123456",
           _collectionName = "myCollection", _protoCollectionId = "789876",
           _protoCollectionName = "myProtoCollection", _shard = "s1",
@@ -893,7 +906,8 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
               {
                   "db-follower-1-server", "db-follower-2-server",
                   "db-follower-3-server", "db-follower-4-server",
-              });
+              },
+      };
 
       WHEN("Converted into an AgencyTransaction") {
         VPackBufferPtr previousServerOrderVpack = R"=([

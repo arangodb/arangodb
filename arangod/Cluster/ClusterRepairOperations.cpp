@@ -657,33 +657,83 @@ void RepairOperationToVPackVisitor::operator()(
 }
 
 BeginRepairsOperation::BeginRepairsOperation(
-  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
-  const CollectionID &protoCollectionId, const std::string &protoCollectionName, size_t collectionReplicationFactor,
-  size_t protoReplicationFactor, bool renameDistributeShardsLike
-) : database(database), collectionId(collectionId), collectionName(collectionName),
-    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName),
-    collectionReplicationFactor(collectionReplicationFactor), protoReplicationFactor(protoReplicationFactor),
-    renameDistributeShardsLike(renameDistributeShardsLike) {}
+    const tagged_argument<tag::database, DatabaseID> database_,
+    const tagged_argument<tag::collectionId, CollectionID> collectionId_,
+    const tagged_argument<tag::collectionName, std::string> collectionName_,
+    const tagged_argument<tag::protoCollectionId, CollectionID>
+        protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string>
+        protoCollectionName_,
+    const tagged_argument<tag::collectionReplicationFactor, size_t>
+        collectionReplicationFactor_,
+    const tagged_argument<tag::protoReplicationFactor, size_t>
+        protoReplicationFactor_,
+    const tagged_argument<tag::renameDistributeShardsLike, bool>
+        renameDistributeShardsLike_)
+    : database(database_.value),
+      collectionId(collectionId_.value),
+      collectionName(collectionName_.value),
+      protoCollectionId(protoCollectionId_.value),
+      protoCollectionName(protoCollectionName_.value),
+      collectionReplicationFactor(collectionReplicationFactor_.value),
+      protoReplicationFactor(protoReplicationFactor_.value),
+      renameDistributeShardsLike(renameDistributeShardsLike_.value) {}
 
 FinishRepairsOperation::FinishRepairsOperation(
-  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
-  const CollectionID &protoCollectionId, const std::string &protoCollectionName,
-  const std::vector<ShardWithProtoAndDbServers> &shards, size_t replicationFactor
-) : database(database), collectionId(collectionId), collectionName(collectionName),
-    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName), shards(shards),
-    replicationFactor(replicationFactor) {}
+    const tagged_argument<tag::database, DatabaseID> database_,
+    const tagged_argument<tag::collectionId, CollectionID> collectionId_,
+    const tagged_argument<tag::collectionName, std::string> collectionName_,
+    const tagged_argument<tag::protoCollectionId, CollectionID>
+        protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string>
+        protoCollectionName_,
+    const tagged_argument<tag::shards, std::vector<ShardWithProtoAndDbServers>>
+        shards_,
+    const tagged_argument<tag::replicationFactor, size_t> replicationFactor_)
+    : database(database_.value),
+      collectionId(collectionId_.value),
+      collectionName(collectionName_.value),
+      protoCollectionId(protoCollectionId_.value),
+      protoCollectionName(protoCollectionName_.value),
+      shards(shards_.value),
+      replicationFactor(replicationFactor_.value) {}
 
 MoveShardOperation::MoveShardOperation(
-  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName, const ShardID &shard,
-  const ServerID &from, const ServerID &to, bool isLeader
-) : database(database), collectionId(collectionId), collectionName(collectionName), shard(shard), from(from), to(to),
-    isLeader(isLeader) {}
+  const tagged_argument<tag::database, DatabaseID> database_,
+  const tagged_argument<tag::collectionId, CollectionID> collectionId_,
+  const tagged_argument<tag::collectionName, std::string> collectionName_,
+  const tagged_argument<tag::shard, ShardID> shard_, const tagged_argument<tag::from, ServerID> from_,
+  const tagged_argument<tag::to, ServerID> to_, const tagged_argument<tag::isLeader, bool> isLeader_
+)
+  : database(database_.value),
+    collectionId(collectionId_.value),
+    collectionName(collectionName_.value),
+    shard(shard_.value),
+    from(from_.value),
+    to(to_.value),
+    isLeader(isLeader_.value) {}
 
 FixServerOrderOperation::FixServerOrderOperation(
-  const DatabaseID &database, const CollectionID &collectionId, const std::string &collectionName,
-  const CollectionID &protoCollectionId, const std::string &protoCollectionName, const ShardID &shard,
-  const ShardID &protoShard, const ServerID &leader, const std::vector<ServerID> &followers,
-  const std::vector<ServerID> &protoFollowers
-) : database(database), collectionId(collectionId), collectionName(collectionName),
-    protoCollectionId(protoCollectionId), protoCollectionName(protoCollectionName), shard(shard),
-    protoShard(protoShard), leader(leader), followers(followers), protoFollowers(protoFollowers) {}
+    const tagged_argument<tag::database, DatabaseID> database_,
+    const tagged_argument<tag::collectionId, CollectionID> collectionId_,
+    const tagged_argument<tag::collectionName, std::string> collectionName_,
+    const tagged_argument<tag::protoCollectionId, CollectionID>
+        protoCollectionId_,
+    const tagged_argument<tag::protoCollectionName, std::string>
+        protoCollectionName_,
+    const tagged_argument<tag::shard, ShardID> shard_,
+    const tagged_argument<tag::protoShard, ShardID> protoShard_,
+    const tagged_argument<tag::leader, ServerID> leader_,
+    const tagged_argument<tag::followers, std::vector<ServerID>> followers_,
+    const tagged_argument<tag::protoFollowers, std::vector<ServerID>>
+        protoFollowers_)
+    : database(database_.value),
+      collectionId(collectionId_.value),
+      collectionName(collectionName_.value),
+      protoCollectionId(protoCollectionId_.value),
+      protoCollectionName(protoCollectionName_.value),
+      shard(shard_.value),
+      protoShard(protoShard_.value),
+      leader(leader_.value),
+      followers(followers_.value),
+      protoFollowers(protoFollowers_.value) {}
