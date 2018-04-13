@@ -530,6 +530,41 @@ function pointsTestSuite() {
     /// @brief test simple annulus on sphere (a donut)
     ////////////////////////////////////////////////////////////////////////////////
 
+    testContainsPolygonNested: function () {
+      const polygon1 = {
+        "type": "Polygon",
+        "coordinates": [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]]
+      };
+
+      const polygon2 = {
+        "type": "Polygon",
+        "coordinates": [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]]
+      };
+
+      runQuery({
+        string: `
+          FOR poly IN [GEO_POLYGON(@poly1), GEO_POLYGON(@poly2)]
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(poly, [doc.lng, doc.lat])
+              SORT doc.lat, doc.lng
+              RETURN doc
+        `,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly1": polygon1,
+          "poly2": polygon2
+        },
+        expected: [
+          { "lat": -13, "lng": 11 },
+          { "lat": 13, "lng": -11 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test simple annulus on sphere (a donut)
+    ////////////////////////////////////////////////////////////////////////////////
+
     testIntersectsPolygon: function () {
       const polygon = {
         "type": "Polygon",
