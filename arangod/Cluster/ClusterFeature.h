@@ -92,7 +92,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   bool _requirePersistedId;
   std::shared_ptr<HeartbeatThread> _heartbeatThread;
   uint64_t _heartbeatInterval;
-  bool _disableHeartbeat;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole;
 };
