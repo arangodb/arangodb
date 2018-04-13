@@ -1,16 +1,52 @@
-v3.3.6 (XXXX-XX-XX)
+v3.3.8 (XXXX-XX-XX)
 -------------------
 
 * return an empty result set instead of an "out of memory" exception when
   querying the geo index with invalid (out of range) coordinates
 
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
+* added startup option `--database.required-directory-state`
+  
+  using this option it is possible to require the database directory to be
+  in a specific state on startup. the options for this value are:
+ 
+  - non-existing: database directory must not exist
+  - existing: database directory must exist
+  - empty: database directory must exist but be empty
+  - populated: database directory must exist and contain specific files already
+  - any: any state allowed
+
+
+v3.3.7 (2018-04-11)
+-------------------
+
+* added hidden option `--query.registry-ttl` to control the lifetime of cluster AQL
+  query parts
+
+* fixed internal issue #2237: AQL queries on collections with replicationFactor:
+  "satellite" crashed arangod in single server mode
+
+* fixed restore of satellite collections: replicationFactor was set to 1 during
+  restore
+
+* fixed dump and restore of smart graphs:
+  a) The dump will not include the hidden shadow collections anymore, they were dumped
+     accidentially and only contain duplicated data.
+  b) Restore will now ignore hidden shadow collections as all data is contained
+     in the smart-edge collection. You can manually include these collections from an
+     old dump (3.3.5 or earlier) by using `--force`.
+  c) Restore of a smart-graph will now create smart collections properly instead
+     of getting into `TIMEOUT_IN_CLUSTER_OPERATION`
+
 * fixed issue in AQL query optimizer rule "restrict-to-single-shard", which
   may have sent documents to a wrong shard in AQL INSERT queries that specified
   the value for `_key` using an expression (and not a constant value)
-  
-* fix restoring of smart graph edge collections (may have run into timeout before)
+  Important: if you were affected by this bug in v3.3.5 it is required that you
+  recreate your dataset in v3.3.6 (i.e. dumping and restoring) instead of doing
+  a simple binary upgrade
 
-* added /_admin/status for debugging
+* added /_admin/status HTTP API for debugging purposes
 
 * added ArangoShell helper function for packaging all information about an
   AQL query so it can be run and analyzed elsewhere:
@@ -23,6 +59,11 @@ v3.3.6 (XXXX-XX-XX)
 
 * added hidden option `--server.ask-jwt-secret`. This is an internal option
   for debugging and should not be exposed to end-users.
+
+* fix for internal issue #2215. supervision will now wait for agent to
+  fully prepare before adding 10 second grace period after leadership change
+
+* fixed internal issue #2215's FailedLeader timeout bug
 
 
 v3.3.5 (2018-03-28)
