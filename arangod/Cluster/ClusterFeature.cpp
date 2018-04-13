@@ -148,6 +148,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   _enableCluster = !_agencyEndpoints.empty();
 
   if (!_enableCluster) {
+    _requestedRole = ServerState::ROLE_SINGLE;
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
     auto ss = ServerState::instance();
     ss->findHost("localhost");
@@ -206,6 +207,7 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
     }
+    ServerState::instance()->setRole(_requestedRole);
   }
 }
 
@@ -268,8 +270,6 @@ void ClusterFeature::prepare() {
   } else {
     reportRole(_requestedRole);
   }
-
-  ServerState::instance()->setClusterEnabled();
 
   // register the prefix with the communicator
   AgencyCommManager::initialize(_agencyPrefix);

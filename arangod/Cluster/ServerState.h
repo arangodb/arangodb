@@ -127,9 +127,6 @@ class ServerState {
   /// @brief whether or not the cluster was properly initialized
   bool initialized() const { return _initialized; }
 
-  /// @brief sets the initialized flag
-  void setClusterEnabled() { _clusterEnabled = true; }
-
   /// @brief flush the server state (used for testing)
   void flush();
   
@@ -179,6 +176,7 @@ class ServerState {
     return isClusterRole(role); 
   }
   
+  /// @brief check whether the server is a single server or coordinator
   bool isSingleServerOrCoordinator() {
     RoleEnum role = loadRole();
     return isCoordinator(role) || isSingleServer(role);
@@ -269,9 +267,6 @@ private:
 
   /// 
   std::string getUuidFilename();
-
-  /// @brief the pointer to the singleton instance
-  static ServerState* _theinstance;
   
   /// @brief the server's id, can be set just once
   std::string _id;
@@ -296,9 +291,6 @@ private:
 
   /// @brief whether or not the cluster was initialized
   bool _initialized;
-
-  /// @brief whether or not we are a cluster member
-  bool _clusterEnabled;
 
   std::string _foxxmaster;
   

@@ -60,7 +60,6 @@ ServerState::ServerState()
       _role(RoleEnum::ROLE_UNDEFINED),
       _state(STATE_UNDEFINED),
       _initialized(false),
-      _clusterEnabled(false),
       _foxxmaster(),
       _foxxmasterQueueupdate(false) {
   storeRole(ROLE_UNDEFINED);
@@ -747,6 +746,8 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
 bool ServerState::storeRole(RoleEnum role) {
   // this method will be called on a single server too
   if (AgencyCommManager::isEnabled()) {// isClusterRole(role)
+    TRI_ASSERT(false);
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "ABCDEFG";
     try {
       VPackBuilder builder;
       builder.add(VPackValue("none"));
@@ -764,7 +765,7 @@ bool ServerState::storeRole(RoleEnum role) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << __FUNCTION__
         << " out of memory storing server role";
       FATAL_ERROR_EXIT();
-    }
+    }*/
   }
 
   Logger::setRole(roleToString(role)[0]);

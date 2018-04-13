@@ -979,7 +979,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
   } else if (options.activefailover) {
-    // for now start just two (TODO config parameter)
     for (i = 0; i < options.singles; i++) {
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);

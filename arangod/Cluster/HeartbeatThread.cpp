@@ -671,10 +671,9 @@ void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runCoordinator() {
-  AuthenticationFeature* authentication =
-      application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
-  TRI_ASSERT(authentication != nullptr);
+  AuthenticationFeature* af = application_features::ApplicationServer::getFeature<
+            AuthenticationFeature>("Authentication");
+  TRI_ASSERT(af != nullptr);
 
   uint64_t oldUserVersion = 0;
 
@@ -814,9 +813,9 @@ void HeartbeatThread::runCoordinator() {
 
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
-            if (authentication->isActive()) {
-              authentication->userManager()->outdate();
-              authentication->tokenCache()->invalidateBasicCache();
+            if (af->isActive() && af->userManager() != nullptr) {
+              af->userManager()->outdate();
+              af->tokenCache()->invalidateBasicCache();
             }
           }
         }

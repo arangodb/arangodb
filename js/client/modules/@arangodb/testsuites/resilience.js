@@ -92,10 +92,23 @@ function clusterSync (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function activeFailover (options) {
+  if (options.cluster) {
+    return {
+      'active_failover': {
+        'status': true,
+        'message': 'skipped because of cluster',
+        'skipped': true
+      }
+    };
+  }
+
   let testCases = tu.scanTestPath('js/client/tests/active-failover');
   options.activefailover = true;
   options.singles = 4;
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh);
+  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann'
+  });
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {

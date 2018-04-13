@@ -915,7 +915,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
 
 void Syncer::reloadUsers() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
-  af->userManager()->outdate();
+  auth::UserManager* um = af->userManager();
+  if (um != nullptr) {
+    um->outdate();
+  }
 }
   
 bool Syncer::hasFailed(SimpleHttpResult* response) const {
