@@ -22,16 +22,29 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "search/scorers.hpp"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
 
+#include "search/scorers.hpp"
+#include "utils/log.hpp"
+
+#include "ApplicationServerHelper.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "ApplicationServerHelper.h"
-
+#include "Aql/AqlValue.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
+#include "Basics/SmallVector.h"
+#include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,18 +52,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
-#include "Cluster/ServerState.h"
-
-#include "Aql/AqlValue.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/Function.h"
-
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
-#include "Basics/SmallVector.h"
-
-#include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
 

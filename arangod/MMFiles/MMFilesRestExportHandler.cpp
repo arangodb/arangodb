@@ -264,9 +264,10 @@ void MMFilesRestExportHandler::createCursor() {
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
+
   {
     auto cursor = std::make_unique<MMFilesExportCursor>(
-      &_vocbase,
+      _vocbase,
       TRI_NewTickServer(),
       collectionExport.get(),
       batchSize,
