@@ -135,6 +135,57 @@ actions.defineHttp({
 // //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
+  url: '_admin/cluster/maintenance',
+  allowUseDatabase: true,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only GET and PUT requests are allowed');
+      return;
+    }
+
+
+    var body = JSON.parse(req.requestBody);
+    if (body === undefined) {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'empty body'
+      });
+      return;
+    }
+
+    let operations = {};
+    if (body === "on") {
+      operations['/arango/Supervision/Maintenance'] =
+        {"op":"set","new":true,"ttl":3600};
+    } else if (body === "off") {
+      operations['/arango/Supervision/Maintenance'] = {"op":"delete"};
+    } else {
+      res.responseCode = actions.HTTP_BAD;
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'state string must be "on" or "off" not'
+      });
+      return;
+    }
+    let preconditions = {};
+    try {
+      global.ArangoAgency.write([[operations, preconditions]]);
+    } catch (e) {
+      throw e;
+    }
+
+    return ; 
+
+  }});
+  // //////////////////////////////////////////////////////////////////////////////
+// / @brief was docuBlock JSF_cluster_node_version_GET
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
   url: '_admin/clusterNodeVersion',
   prefix: false,
 
