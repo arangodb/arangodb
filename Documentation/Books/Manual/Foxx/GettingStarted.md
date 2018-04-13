@@ -328,7 +328,7 @@ Next steps
 
 You now know how to create a Foxx service from scratch, how to handle user input and how to access the database from within your Foxx service to store, retrieve and query data you store inside ArangoDB. This should allow you to build meaningful APIs for your own applications but there are many more things you can do with Foxx:
 
-* Need to go faster? Turn on [development mode](AtAGlance.md) and hack on your code right on the server.
+* Need to go faster? Turn on [development mode](README.md) and hack on your code right on the server.
 
 * Concerned about security? You could add [authentication](Reference/Modules/Auth.md) to your service to protect access to the data before it even leaves the database.
 

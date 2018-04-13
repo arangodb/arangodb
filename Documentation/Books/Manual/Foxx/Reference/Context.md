@@ -64,7 +64,7 @@ The service context specifies the following properties:
 
 * **isDevelopment**: `boolean`
 
-  Indicates whether the service is running in [development mode](../AtAGlance.md).
+  Indicates whether the service is running in [development mode](../README.md).
 
 * **isProduction**: `boolean`
 
