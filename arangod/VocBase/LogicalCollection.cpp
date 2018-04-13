@@ -207,18 +207,21 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 
 // The Slice contains the part of the plan that
 // is relevant for this collection.
-LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     VPackSlice const& info,
-                                     bool isAStub)
-    : LogicalDataSource(
-        category(),
-        ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
-        vocbase,
-        ReadCid(info),
-        ReadPlanId(info, 0),
-        ReadStringValue(info, "name", ""),
-        Helper::readBooleanValue(info, "deleted", false)
-      ),
+LogicalCollection::LogicalCollection(
+    TRI_vocbase_t& vocbase,
+    VPackSlice const& info,
+    bool isAStub,
+    uint64_t planVersion /*= 0*/
+): LogicalDataSource(
+     category(),
+     ReadType(info, "type", TRI_COL_TYPE_UNKNOWN),
+     vocbase,
+     ReadCid(info),
+     ReadPlanId(info, 0),
+     ReadStringValue(info, "name", ""),
+     planVersion,
+     Helper::readBooleanValue(info, "deleted", false)
+   ),
       _internalVersion(0),
       _isAStub(isAStub),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
@@ -571,12 +574,15 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
   if (needEstimateUpdate()){
     readlock.unlock();
     WRITE_LOCKER(writelock, _clusterEstimatesLock);
+
     if(needEstimateUpdate()){
-      selectivityEstimatesOnCoordinator(vocbase()->name(), name(), _clusterEstimates);
+      selectivityEstimatesOnCoordinator(vocbase().name(), name(), _clusterEstimates);
       _clusterEstimateTTL = TRI_microtime();
     }
+
     return _clusterEstimates;
   }
+
   return _clusterEstimates;
 }
 
@@ -733,7 +739,7 @@ void LogicalCollection::unload() {
   _physical->unload();
 }
 
-void LogicalCollection::drop() {
+arangodb::Result LogicalCollection::drop() {
   // make sure collection has been closed
   this->close();
 
@@ -743,6 +749,8 @@ void LogicalCollection::drop() {
   engine->destroyCollection(vocbase(), this);
   deleted(true);
   _physical->drop();
+
+  return arangodb::Result();
 }
 
 void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
@@ -773,7 +781,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       result.add(p.value);
     }
     if (!_distributeShardsLike.empty()) {
-      CollectionNameResolver resolver(vocbase());
+      CollectionNameResolver resolver(&vocbase());
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -783,7 +791,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false, false);
-  result.add("planVersion", VPackValue(getPlanVersion()));
+  result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
   result.add("allInSync", VPackValue(allInSync));
   result.close();  // CollectionInfo
@@ -855,7 +863,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   if (!_distributeShardsLike.empty() &&
       ServerState::instance()->isCoordinator()) {
     if (translateCids) {
-      CollectionNameResolver resolver(vocbase());
+      CollectionNameResolver resolver(&vocbase());
       result.add("distributeShardsLike",
                  VPackValue(resolver.getCollectionNameCluster(
                      static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(
@@ -989,13 +997,13 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   if (!_isLocal) {
     // We need to inform the cluster as well
     return ClusterInfo::instance()->setCollectionPropertiesCoordinator(
-      vocbase()->name(), std::to_string(id()), this
+      vocbase().name(), std::to_string(id()), this
     );
   }
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   engine->changeCollection(vocbase(), id(), this, doSync);
-  
+
   if (DatabaseFeature::DATABASE != nullptr &&
       DatabaseFeature::DATABASE->versionTracker() != nullptr) {
     DatabaseFeature::DATABASE->versionTracker()->track("change collection");
@@ -1008,12 +1016,12 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
   if (ServerState::instance()->isCoordinator()) {
     auto builder = std::make_shared<VPackBuilder>();
+
     builder->openObject();
     builder->close();
-    TRI_ASSERT(vocbase());
 
     int res =
-      figuresOnCoordinator(vocbase()->name(), std::to_string(id()), builder);
+      figuresOnCoordinator(vocbase().name(), std::to_string(id()), builder);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1064,8 +1072,10 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
 #if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
 #endif
-  arangodb::aql::QueryCache::instance()->invalidate(vocbase(), name());
+  arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), name());
+
   bool result = _physical->dropIndex(iid);
+
   if (result) {
     if (DatabaseFeature::DATABASE != nullptr &&
         DatabaseFeature::DATABASE->versionTracker() != nullptr) {
@@ -1085,7 +1095,8 @@ void LogicalCollection::persistPhysicalCollection() {
   // We have not yet persisted this collection!
   TRI_ASSERT(getPhysical()->path().empty());
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::string path = engine->createCollection(vocbase(), id(), this);
+  auto path = engine->createCollection(vocbase(), id(), this);
+
   getPhysical()->setPath(path);
 }
 
@@ -1237,9 +1248,8 @@ VPackSlice LogicalCollection::keyOptions() const {
 }
 
 ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) const {
-  auto ctx = transaction::StandaloneContext::Create(vocbase());
+  auto ctx = transaction::StandaloneContext::Create(&vocbase());
   SingleCollectionTransaction trx(ctx, id(), AccessMode::Type::READ);
-
   Result res = trx.begin();
 
   if (!res.ok()) {

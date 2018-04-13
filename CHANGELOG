@@ -1,9 +1,21 @@
 devel
 -----
 
+* fixed internal issue #2147 - fixed database filter in UI
+
+* fixed internal issue #2149: number of documents in the UI is not adjusted after moving them
+
+* fixed internal issue #2148: Number of documents found by filter is misleading in web UI
+
+* fix internal issue #2150: UI - loading a saved query does not update the list of bind parameters
+
+* fix issue #4582: UI query editor now supports usage of empty string as bind parameter value
+
 * removed option `--cluster.my-local-info` in favor of persisted server UUIDs
 
   The option `--cluster.my-local-info` was deprecated since ArangoDB 3.3.
+
+* added /_admin/status for debugging
 
 * added new collection property `cacheEnabled` which enables in-memory caching for
   documents and primary index entries. Available only when using RocksDB
@@ -172,7 +184,13 @@ devel
 
 * fixed a bug where supervision tried to deal with shards of virtual collections
 
-* fixed a bug where clusterinfo missed changes to plan after agency callback is registred for create collection
+* fixed a bug where clusterinfo missed changes to plan after agency
+  callback is registred for create collection
+
+* fixed a bug related to internal issue #2215. supervision started
+  working before its agent's leadership preparation had not finished.
+
+* fixed internal #2215's failedleader timeout, when in todo
 
 v3.3.4 (XXXX-XX-XX)
 -------------------

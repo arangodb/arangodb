@@ -11,13 +11,15 @@ searchMDPaths = [
   "Manual",
   "AQL",
   "HTTP",
-  "Cookbook"
+  "Cookbook",
+  "Drivers"
 ]
 searchPaths = [
   "Documentation/Books/Manual/",
   "Documentation/Books/AQL/",
   "Documentation/Books/HTTP/",
   "Documentation/Books/Cookbook/",
+  "Documentation/Books/Drivers/",
   "Documentation/DocuBlocks/"
 ]
 fullSuccess = True
@@ -41,7 +43,8 @@ def file_content(filepath):
           (not searchMDPaths[0] in filepath) and
           (not searchMDPaths[1] in filepath) and
           (not searchMDPaths[2] in filepath) and
-          (not searchMDPaths[3] in filepath)):
+          (not searchMDPaths[3] in filepath) and
+          (not searchMDPaths[4] in filepath)):
         print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
         raise
       _start = line[0]
@@ -137,23 +140,23 @@ def example_content(filepath, fh, tag, blockType, placeIntoFilePath):
 
     if blockType == "AQL":
       if line.startswith("@Q"): # query part
-        blockCount = 0;
+        blockCount = 0
         aqlState = AQL_STATE_QUERY
         short += "<strong>Query:</strong>\n<pre>\n"
         longText += "<strong>Query:</strong>\n<pre>\n"
-        continue # skip this line - its only here for this.
+        continue # skip this line - it is only here for this.
       elif line.startswith("@B"): # bind values part
         short += "</pre>\n<strong>Bind Values:</strong>\n<pre>\n"
         longText += "</pre>\n<strong>Bind Values:</strong>\n<pre>\n"
-        blockCount = 0;
+        blockCount = 0
         aqlState = AQL_STATE_BINDV
-        continue # skip this line - its only here for this.
+        continue # skip this line - it is only here for this.
       elif line.startswith("@R"): # result part
         shortable = True
         longText += "</pre>\n<strong>Results:</strong>\n<pre>\n"
-        blockCount = 0;
+        blockCount = 0
         aqlState = AQL_STATE_RESULT
-        continue # skip this line - its only here for this.
+        continue # skip this line - it is only here for this.
 
       if aqlState == AQL_STATE_QUERY or aqlState == AQL_STATE_BINDV:
         short = short + line

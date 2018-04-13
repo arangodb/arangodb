@@ -52,7 +52,7 @@ the console, the starter uses the next few ports above the starter
 port. That is, if one uses port 8528 for the starter, the coordinator
 will use 8529 (=8528+1), the dbserver 8530 (=8528+2), and the agent 8531
 (=8528+3). You can change the default starter port with the `--starter.port`
-[option](../../Programs/Starter/options.md).
+[option](../../Programs/Starter/Options.md).
 
 Additional servers can be added in the same way.
 
@@ -195,12 +195,12 @@ docker run -it --name=adb --rm -p 8528:8528 \
 
 ## Starting a resilient single server pair
 
-If you want to start a resilient single database server, use `--starter.mode=resilientsingle`.
+If you want to start a resilient single database server, use `--starter.mode=activefailover`.
 In this mode a 3 machine agency is started and 2 single servers that perform
 asynchronous replication an failover if needed.
 
 ```bash
-arangodb --starter.mode=resilientsingle --starter.join A,B,C
+arangodb --starter.mode=activefailover --starter.join A,B,C
 ```
 
 Run this on machine A, B & C.
@@ -213,7 +213,7 @@ instance should NOT be scheduled.
 ## Starting a resilient single server pair in Docker
 
 If you want to start a resilient single database server running in docker containers,
-use the normal docker arguments, combined with `--starter.mode=resilientsingle`.
+use the normal docker arguments, combined with `--starter.mode=activefailover`.
 
 ```bash
 export IP=<IP of docker host>
@@ -223,7 +223,7 @@ docker run -it --name=adb --rm -p 8528:8528 \
     -v /var/run/docker.sock:/var/run/docker.sock \
     arangodb/arangodb-starter \
     --starter.address=$IP \
-    --starter.mode=resilientsingle \
+    --starter.mode=activefailover \
     --starter.join=A,B,C
 ```
 
@@ -240,7 +240,7 @@ If you want to start a local resilient server pair quickly, use the `--starter.l
 It will start all servers within the context of a single starter process.
 
 ```bash
-arangodb --starter.local --starter.mode=resilientsingle
+arangodb --starter.local --starter.mode=activefailover
 ```
 
 Note: When you restart the started, it remembers the original `--starter.local` flag.
@@ -271,6 +271,6 @@ Make sure to match the arguments given to start the starter (`--starter.port` & 
 
 ## More information
 
-- [Options](../../Programs/Starter/options.md) contains a list of all commandline options supported by the starter.
-- [Security](../../Programs/Starter/security.md) contains instructions of how to create certificates & tokens needed
+- [Options](../../Programs/Starter/Options.md) contains a list of all commandline options supported by the starter.
+- [Security](../../Programs/Starter/Security.md) contains instructions of how to create certificates & tokens needed
   to secure an ArangoDB deployment.

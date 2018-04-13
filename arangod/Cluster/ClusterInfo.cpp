@@ -529,27 +529,31 @@ void ClusterInfo::loadPlan() {
 
             try {
               std::shared_ptr<LogicalCollection> newCollection;
-#ifndef USE_ENTERPRISE
-              newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice, true);
-#else
+
+            #if defined(USE_ENTERPRISE)
               VPackSlice isSmart = collectionSlice.get("isSmart");
+
               if (isSmart.isTrue()) {
                 VPackSlice type = collectionSlice.get("type");
                 if (type.isInteger() && type.getUInt() == TRI_COL_TYPE_EDGE) {
                   newCollection = std::make_shared<VirtualSmartEdgeCollection>(
-                      vocbase, collectionSlice);
+                    *vocbase, collectionSlice, newPlanVersion
+                  );
                 } else {
                   newCollection = std::make_shared<SmartVertexCollection>(
-                      vocbase, collectionSlice);
+                    *vocbase, collectionSlice, newPlanVersion
+                  );
                 }
-              } else {
+              } else
+            #endif
+              {
                 newCollection = std::make_shared<LogicalCollection>(
-                    vocbase, collectionSlice, true);
+                  *vocbase, collectionSlice, true, newPlanVersion
+                );
               }
-#endif
-              newCollection->setPlanVersion(newPlanVersion);
-              std::string const collectionName = newCollection->name();
+
+              auto& collectionName = newCollection->name();
+
               if (isCoordinator && !selectivityEstimates.empty()){
                 LOG_TOPIC(TRACE, Logger::CLUSTER) << "copy index estimates";
                 newCollection->clusterIndexEstimates(std::move(selectivityEstimates));
@@ -671,7 +675,7 @@ void ClusterInfo::loadPlan() {
 
             try {
               const auto newView = LogicalView::create(
-                *vocbase, viewPairSlice.value, false
+                *vocbase, viewPairSlice.value, newPlanVersion
               );
 
               if (!newView) {
@@ -682,7 +686,6 @@ void ClusterInfo::loadPlan() {
                   << viewSlice.toJson();
               }
 
-              newView->setPlanVersion(newPlanVersion);
               std::string const viewName = newView->name();
               // register with name as well as with id:
               databaseViews.emplace(std::make_pair(viewName, newView));
@@ -1336,7 +1339,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
 
   std::string const name =
       arangodb::basics::VelocyPackHelper::getStringValue(json, "name", "");
-
+      
   {
     // check if a collection with the same name is already planned
     loadPlan();
@@ -1451,7 +1454,7 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
         }
         return true;
       };
-
+      
   // ATTENTION: The following callback calls the above closure in a
   // different thread. Nevertheless, the closure accesses some of our
   // local variables. Therefore we have to protect all accesses to them
@@ -1543,8 +1546,14 @@ int ClusterInfo::createCollectionCoordinator(std::string const& databaseName,
     // Update our cache:
     loadPlan();
   }
+      
+  bool isSmart = false;
+  VPackSlice smartSlice = json.get("isSmart");
+  if (smartSlice.isBool() && smartSlice.getBool()) {
+    isSmart = true;
+  }
 
-  if (numberOfShards == 0) {
+  if (numberOfShards == 0 || isSmart) {
     loadCurrent();
     events::CreateCollection(name, TRI_ERROR_NO_ERROR);
     return TRI_ERROR_NO_ERROR;

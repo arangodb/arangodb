@@ -246,8 +246,10 @@ class ServerState {
 
   /// @brief sets server mode and propagates new mode to agency
   Result propagateClusterServerMode(Mode);
+  
+  std::string getUuidFilename();
 
-private:
+ private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
@@ -266,9 +268,6 @@ private:
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-
-  /// 
-  std::string getUuidFilename();
 
   /// @brief the pointer to the singleton instance
   static ServerState* _theinstance;
