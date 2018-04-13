@@ -222,4 +222,4 @@ Foxx now officially provides a module for implementing OAuth2 clients, see [Foxx
 
 ### Per-route middleware
 
-It's now possible to specify middleware functions for a route when defining a route handler. These middleware functions only apply to the single route and share the route's parameter definitions. Check out the [Foxx Router documentation](../Foxx/Reference/Router/README.md) for more information.
+It's now possible to specify middleware functions for a route when defining a route handler. These middleware functions only apply to the single route and share the route's parameter definitions. Check out the [Foxx Router documentation](../Foxx/Reference/Routers/README.md) for more information.

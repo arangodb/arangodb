@@ -1,13 +1,13 @@
 Foxx at a glance
 ================
 
-Each Foxx service is defined by a [JSON manifest](Manifest.md) specifying the entry point, any scripts defined by the service, possible configuration options and Foxx dependencies, as well as other metadata. Within a service, these options are exposed as the [service context](Context.md).
+Each Foxx service is defined by a [JSON manifest](Reference/Manifest.md) specifying the entry point, any scripts defined by the service, possible configuration options and Foxx dependencies, as well as other metadata. Within a service, these options are exposed as the [service context](Reference/Context.md).
 
-At the heart of the Foxx framework lies the [Foxx Router](Router/README.md) which is used to define HTTP endpoints. A service can access the database either directly from its context using prefixed collections or the [ArangoDB database API](Modules.md).
+At the heart of the Foxx framework lies the [Foxx Router](Reference/Routers/README.md) which is used to define HTTP endpoints. A service can access the database either directly from its context using prefixed collections or the [ArangoDB database API](Reference/Modules.md).
 
-While Foxx is primarily designed to be used to access the database itself, ArangoDB also provides an [API to make HTTP requests](Modules.md) to external services.
+While Foxx is primarily designed to be used to access the database itself, ArangoDB also provides an [API to make HTTP requests](Reference/Modules.md) to external services.
 
-[Scripts](Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
+[Scripts](Reference/Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
 
 Finally, Foxx services can be installed and managed over the Web-UI or through
 ArangoDBs [HTTP API](../../HTTP/Foxx/Management.html).
@@ -21,7 +21,7 @@ If you're coming from another JavaScript environment like Node.js this is simila
 
 Because the JavaScript code is running inside the database another difference is that all Foxx and ArangoDB APIs are purely synchronous and should be considered blocking. This is especially important for transactions, which in ArangoDB can execute arbitrary code but may have to lock entire collections (effectively preventing any data to be written) until the code has completed.
 
-For information on how this affects interoperability with third-party JavaScript modules written for other JavaScript environments see [the chapter on dependencies](./Dependencies.md).
+For information on how this affects interoperability with third-party JavaScript modules written for other JavaScript environments see [the chapter on dependencies](Reference/Dependencies.md).
 
 Development mode
 ----------------

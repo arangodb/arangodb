@@ -64,7 +64,7 @@ The service context specifies the following properties:
 
 * **isDevelopment**: `boolean`
 
-  Indicates whether the service is running in [development mode](AtAGlance.md).
+  Indicates whether the service is running in [development mode](../AtAGlance.md).
 
 * **isProduction**: `boolean`
 
@@ -278,6 +278,6 @@ Mounts a given router on the service to expose the router's routes on the servic
 
   A router or middleware to mount.
 
-Returns an [Endpoint](Router/Endpoints.md) for the given router or middleware.
+Returns an [Endpoint](Routers/Endpoints.md) for the given router or middleware.
 
 **Note**: Mounting services at run time (e.g. within request handlers or queued jobs) is not supported.
