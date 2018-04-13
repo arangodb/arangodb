@@ -122,6 +122,16 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   size_t memory() const; // arangodb::Index override
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief validate and copy required fields from the 'definition' into
+  ///        'normalized'
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result normalize(
+    arangodb::velocypack::Builder& normalized,
+    velocypack::Slice definition,
+    bool isCreation
+  );
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an ArangoDB document from an iResearch View
   ////////////////////////////////////////////////////////////////////////////////
@@ -210,15 +220,6 @@ class IResearchLink {
   IResearchView* _view; // effectively the IResearch datastore itself (nullptr == not associated)
   std::unique_lock<irs::async_utils::read_write_mutex::read_mutex> _viewLock; // prevent view deallocation (lock @ AsyncSelf)
 }; // IResearchLink
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy required fields from the 'definition' into the 'builder'
-////////////////////////////////////////////////////////////////////////////////
-int EnhanceJsonIResearchLink(
-  VPackSlice const definition,
-  VPackBuilder& builder,
-  bool create
-) noexcept;
 
 NS_END // iresearch
 NS_END // arangodb

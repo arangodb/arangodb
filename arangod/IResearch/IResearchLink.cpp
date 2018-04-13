@@ -221,13 +221,12 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
   if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
     auto identifier = definition.get(VIEW_ID_FIELD);
-    auto vocbase = collection()->vocbase();
 
-    if (vocbase && identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+    if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
       auto viewId = identifier.getUInt();
 
       // NOTE: this will cause a deadlock if registering a link while view is being created
-      auto logicalView = vocbase->lookupView(viewId);
+      auto logicalView = collection()->vocbase().lookupView(viewId);
 
       if (!logicalView || IResearchView::type() != logicalView->type()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error looking up view '" << viewId << "': no such view";
@@ -410,6 +409,44 @@ size_t IResearchLink::memory() const {
   return size;
 }
 
+/*static*/ arangodb::Result IResearchLink::normalize(
+  arangodb::velocypack::Builder& normalized,
+  velocypack::Slice definition,
+  bool // isCreation
+) {
+  if (!normalized.isOpenObject()) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid output buffer provided for IResearch link normalized definition generation")
+    );
+  }
+
+  std::string error;
+  IResearchLinkMeta meta;
+
+  if (!meta.init(definition, error)) {
+    return arangodb::Result(
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("error parsing IResearch link parameters from json: ") + error
+    );
+  }
+
+  normalized.add(LINK_TYPE_FIELD, arangodb::velocypack::Value(LINK_TYPE));
+
+  // copy over IResearch View identifier
+  if (definition.hasKey(VIEW_ID_FIELD)) {
+    normalized.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD));
+  }
+
+  return meta.json(normalized)
+    ? arangodb::Result()
+    : arangodb::Result(
+        TRI_ERROR_BAD_PARAMETER,
+        std::string("error generating IResearch link normalized definition")
+      )
+    ;
+}
+
 Result IResearchLink::remove(
   transaction::Methods* trx,
   LocalDocumentId const& documentId,
@@ -536,35 +573,6 @@ const IResearchView* IResearchLink::view() const {
   SCOPED_LOCK(mutex);
 
   return _view;
-}
-
-int EnhanceJsonIResearchLink(
-  VPackSlice const definition,
-  VPackBuilder& builder,
-  bool create
-) noexcept {
-  try {
-    std::string error;
-    IResearchLinkMeta meta;
-
-    if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error parsing view link parameters from json: " << error;
-
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-
-    if (definition.hasKey(VIEW_ID_FIELD)) {
-      builder.add(VIEW_ID_FIELD, definition.get(VIEW_ID_FIELD)); // copy over iResearch View identifier
-    }
-
-    return meta.json(builder) ? TRI_ERROR_NO_ERROR : TRI_ERROR_BAD_PARAMETER;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error serializaing view link parameters to json: " << e.what();
-  } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error serializaing view link parameters to json";
-  }
-
-  return TRI_ERROR_INTERNAL;
 }
 
 NS_END // iresearch

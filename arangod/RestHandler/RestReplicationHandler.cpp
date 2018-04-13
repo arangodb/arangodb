@@ -1088,7 +1088,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
       collectionType,
-      &_vocbase,
+      _vocbase,
       merged,
       ignoreDistributeShardsLikeErrors,
       createWaitsForSyncReplication,
@@ -1755,13 +1755,15 @@ void RestReplicationHandler::handleCommandSync() {
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;
+
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config));
   } else {
-    syncer.reset(new DatabaseInitialSyncer(&_vocbase, config));
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
   }
 
   Result r = syncer->run(config._incremental);
+
   if (r.fail()) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
       << "failed to sync: " << r.errorMessage();

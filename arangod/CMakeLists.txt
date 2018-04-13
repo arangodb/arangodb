@@ -97,7 +97,6 @@ if (USE_IRESEARCH)
 
   target_link_libraries(${LIB_ARANGO_IRESEARCH}
     ${IRESEARCH_TARGET_DEPENDENCY}
-    boost_filesystem # required by iResearch
     boost_locale # required by iResearch
   )
 
@@ -401,6 +400,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
+  RestHandler/RestStatusHandler.cpp
   RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
   RestHandler/RestUsersHandler.cpp

@@ -473,7 +473,7 @@ Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
 /// @brief called when the index is dropped
 int MMFilesPersistentIndex::drop() {
   return MMFilesPersistentIndexFeature::instance()->dropIndex(
-    _collection->vocbase()->id(), _collection->id(), _iid
+    _collection->vocbase().id(), _collection->id(), _iid
   );
 }
 

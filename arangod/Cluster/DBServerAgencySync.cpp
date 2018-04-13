@@ -58,10 +58,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
-
   TRI_vocbase_t* const vocbase = database->systemDatabase();
-
   DBServerAgencySyncResult result;
+
   if (vocbase == nullptr) {
     LOG_TOPIC(DEBUG, Logger::HEARTBEAT)
       << "DBServerAgencySync::execute no vocbase";
@@ -71,9 +70,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto clusterInfo = ClusterInfo::instance();
   auto plan = clusterInfo->getPlan();
   auto current = clusterInfo->getCurrent();
-  
-  DatabaseGuard guard(vocbase);
-
+  DatabaseGuard guard(*vocbase);
   double startTime = TRI_microtime();
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);
 
@@ -81,16 +78,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute: no V8 context";
     return result;
   }
-  
+
   TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
   double now = TRI_microtime();
+
   if (now - startTime > 5.0) {
     LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute took " << Logger::FIXED(now - startTime) << " to get free V8 context, starting handlePlanChange now";
   }
 
   auto isolate = context->_isolate;
-  
+
   try {
     v8::HandleScope scope(isolate);
 

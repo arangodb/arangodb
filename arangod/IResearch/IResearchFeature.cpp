@@ -22,14 +22,29 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "search/scorers.hpp"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
 
+#include "search/scorers.hpp"
+#include "utils/log.hpp"
+
+#include "ApplicationServerHelper.h"
 #include "IResearchFeature.h"
+#include "IResearchMMFilesLink.h"
+#include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "ApplicationServerHelper.h"
-
+#include "Aql/AqlValue.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
+#include "Basics/SmallVector.h"
+#include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -37,18 +52,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
-#include "Cluster/ServerState.h"
-
-#include "Aql/AqlValue.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/Function.h"
-
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
-#include "Basics/SmallVector.h"
-
-#include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
 
@@ -126,6 +129,53 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
     true,          // can pass arguments by reference
     &noop          // function implementation (use function name as placeholder)
   });
+}
+
+void registerIndexFactory() {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    return; // no registration required on coordinator (collections not instantiated)
+  }
+
+  static const std::map<std::string, arangodb::IndexFactory::IndexTypeFactory> factories = {
+    { "MMFilesEngine", arangodb::iresearch::IResearchMMFilesLink::make },
+    { "RocksDBEngine", arangodb::iresearch::IResearchRocksDBLink::make },
+  };
+  static const auto& indexType = arangodb::iresearch::IResearchFeature::type();
+
+  // register 'arangosearch' link
+  for (auto& entry: factories) {
+    auto* engine = arangodb::iresearch::getFeature<arangodb::StorageEngine>(entry.first);
+
+    // valid situation if not running with the specified storage engine
+    if (!engine) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "failed to find feature '" << entry.first << "' while registering index type '" << indexType << "', skipping";
+      continue;
+    }
+
+    // ok to const-cast since this should only be called on startup
+    auto& indexFactory =
+      const_cast<arangodb::IndexFactory&>(engine->indexFactory());
+    auto res = indexFactory.emplaceFactory(indexType, entry.second);
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        std::string("failure registering IResearch link factory with index factory from feature '") + entry.first + "': " + res.errorMessage()
+      );
+    }
+
+    res = indexFactory.emplaceNormalizer(
+      indexType, arangodb::iresearch::IResearchLink::normalize
+    );
+
+    if (!res.ok()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        std::string("failure registering IResearch link normalizer with index factory from feature '") + entry.first + "': " + res.errorMessage()
+      );
+    }
+  }
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
@@ -285,6 +335,9 @@ void IResearchFeature::prepare() {
 
   // load all known scorers
   ::iresearch::scorers::init();
+
+  // register 'arangosearch' index
+  registerIndexFactory();
 
   // register 'arangosearch' view
   registerViewFactory();

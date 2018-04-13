@@ -378,11 +378,11 @@ bool Index::Compare(VPackSlice const& lhs, VPackSlice const& rhs) {
 
 /// @brief return a contextual string for logging
 std::string Index::context() const {
-  TRI_ASSERT(_collection->vocbase());
+  TRI_ASSERT(_collection);
   std::ostringstream result;
 
   result << "index { id: " << id() << ", type: " << oldtypeName()
-         << ", collection: " << _collection->vocbase()->name() << "/"
+         << ", collection: " << _collection->vocbase().name() << "/"
          << _collection->name() << ", unique: " << (_unique ? "true" : "false")
          << ", fields: ";
   result << "[";

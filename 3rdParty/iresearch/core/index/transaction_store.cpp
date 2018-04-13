@@ -670,7 +670,7 @@ class store_term_iterator: public irs::seek_term_iterator {
   }
 
   virtual bool seek(
-    const irs::bytes_ref& term,
+    const irs::bytes_ref& /*term*/,
     const irs::seek_term_iterator::seek_cookie& cookie
   ) override {
     #ifdef IRESEARCH_DEBUG

@@ -465,7 +465,7 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
       res = DumpCollection(
         dump,
         collection,
-        collection->vocbase()->id(),
+        collection->vocbase().id(),
         collection->id(),
         dataMin,
         dataMax,

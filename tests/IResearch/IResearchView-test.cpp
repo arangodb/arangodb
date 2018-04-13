@@ -134,6 +134,11 @@ struct IResearchViewSetup {
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
+    // suppress log messages since tests check error conditions
+    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::FATAL); // suppress ERROR recovery failure due to error from callback
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
+
     // setup required application features
     features.emplace_back(new arangodb::V8DealerFeature(&server), false);
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
@@ -185,11 +190,6 @@ struct IResearchViewSetup {
     long systemError;
     std::string systemErrorStr;
     TRI_CreateDirectory(testFilesystemPath.c_str(), systemError, systemErrorStr);
-
-    // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
-    irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchViewSetup() {
@@ -440,7 +440,6 @@ SECTION("test_drop_cid") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
-    CHECK((s.engine.persistView(&vocbase, *view).ok())); // register view with engine
 
     // fill with test data
     {
@@ -753,7 +752,6 @@ SECTION("test_emplace_cid") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
-    CHECK((s.engine.persistView(&vocbase, *view).ok())); // register view with engine
 
     // collection in view before
     {
@@ -1452,7 +1450,7 @@ SECTION("test_register_link") {
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link));
 
@@ -1512,7 +1510,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
+    auto link = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
     CHECK((true == persisted)); // link instantiation does modify and persist view meta
     CHECK((false == !link));
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -1568,7 +1566,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
+    auto link0 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link0));
 
@@ -1594,7 +1592,7 @@ SECTION("test_register_link") {
     }
 
     persisted = false;
-    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
+    auto link1 = arangodb::iresearch::IResearchMMFilesLink::make(logicalCollection, linkJson->slice(), 1, false);
     CHECK((false == persisted));
     CHECK((false == !link1)); // duplicate link creation is allowed
     std::unordered_set<TRI_voc_cid_t> cids;
@@ -1915,10 +1913,9 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
-    CHECK((s.engine.persistView(&vocbase, *logicalView).ok())); // register view with engine
 
     CHECK((viewImpl->updateProperties(updateJson->slice(), false, false).ok()));
 
@@ -1944,10 +1941,9 @@ SECTION("test_tracked_cids") {
     REQUIRE((nullptr != logicalCollection));
     auto logicalView = arangodb::iresearch::IResearchView::make(vocbase, viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
-    StorageEngineMock().registerView(&vocbase, logicalView); // ensure link can find view
+    StorageEngineMock().registerView(vocbase, logicalView); // ensure link can find view
     auto* viewImpl = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
     REQUIRE((nullptr != viewImpl));
-    CHECK((s.engine.persistView(&vocbase, *logicalView).ok())); // register view with engine
 
     // create link
     {

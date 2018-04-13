@@ -597,11 +597,9 @@ void MMFilesCollectorThread::clearQueuedOperations() {
       for (auto const& cache : operations) {
         {
           arangodb::DatabaseGuard dbGuard(cache->databaseId);
-          TRI_vocbase_t* vocbase = dbGuard.database();
-          TRI_ASSERT(vocbase != nullptr);
-
-          arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId,
-                                                    true);
+          arangodb::CollectionGuard collectionGuard(
+            &(dbGuard.database()), cache->collectionId, true
+          );
           arangodb::LogicalCollection* collection = collectionGuard.collection();
 
           TRI_ASSERT(collection != nullptr);
@@ -732,10 +730,10 @@ void MMFilesCollectorThread::processCollectionMarker(
 /// @brief process all operations for a single collection
 int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* cache) {
   arangodb::DatabaseGuard dbGuard(cache->databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, cache->collectionId, true);
+  auto& vocbase = dbGuard.database();
+  arangodb::CollectionGuard collectionGuard(
+    &vocbase, cache->collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
 
   TRI_ASSERT(collection != nullptr);
@@ -753,7 +751,7 @@ int MMFilesCollectorThread::processCollectionOperations(MMFilesCollectorCache* c
   }
 
   arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
+      arangodb::transaction::StandaloneContext::Create(&(collection->vocbase())),
       collection->id(),
       AccessMode::Type::WRITE
   );
@@ -983,10 +981,9 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
 
   // prepare database and collection
   arangodb::DatabaseGuard dbGuard(databaseId);
-  TRI_vocbase_t* vocbase = dbGuard.database();
-  TRI_ASSERT(vocbase != nullptr);
-
-  arangodb::CollectionGuard collectionGuard(vocbase, collectionId, true);
+  arangodb::CollectionGuard collectionGuard(
+    &(dbGuard.database()), collectionId, true
+  );
   arangodb::LogicalCollection* collection = collectionGuard.collection();
   TRI_ASSERT(collection != nullptr);
 
@@ -1006,13 +1003,14 @@ int MMFilesCollectorThread::transferMarkers(MMFilesWalLogfile* logfile,
   int res = TRI_ERROR_INTERNAL;
 
   uint64_t numBytesTransferred = 0;
+
   try {
     auto en = static_cast<MMFilesEngine*>(engine);
     res = en->transferMarkers(collection, cache.get(), operations, numBytesTransferred);
-  
+
     LOG_TOPIC(TRACE, Logger::COLLECTOR) << "wal collector transferred markers for '"
              << collection->name() << ", number of bytes transferred: " << numBytesTransferred;
-    
+
     if (res == TRI_ERROR_NO_ERROR && !cache->operations->empty()) {
       queueOperations(logfile, cache);
     }

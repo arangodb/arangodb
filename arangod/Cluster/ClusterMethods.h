@@ -261,7 +261,8 @@ class ClusterMethods {
   // transferred
   // to the caller, which is expressed by the returned unique_ptr.
   static std::shared_ptr<LogicalCollection> createCollectionOnCoordinator(
-      TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
+      TRI_col_type_e collectionType,
+      TRI_vocbase_t& vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
       bool waitForSyncReplication,

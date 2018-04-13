@@ -428,26 +428,26 @@ bool TRI_vocbase_t::DropCollectionCallback(
   }  // release status lock
 
   // remove from list of collections
-  TRI_vocbase_t* vocbase = collection->vocbase();
+  auto& vocbase = collection->vocbase();
 
   {
-    RECURSIVE_WRITE_LOCKER(vocbase->_dataSourceLock, vocbase->_dataSourceLockWriteOwner);
-    auto it = vocbase->_collections.begin();
+    RECURSIVE_WRITE_LOCKER(vocbase._dataSourceLock, vocbase._dataSourceLockWriteOwner);
+    auto it = vocbase._collections.begin();
 
-    for (auto end = vocbase->_collections.end(); it != end; ++it) {
+    for (auto end = vocbase._collections.end(); it != end; ++it) {
       if (it->get() == collection) {
         break;
       }
     }
 
-    if (it != vocbase->_collections.end()) {
+    if (it != vocbase._collections.end()) {
       auto col = *it;
 
-      vocbase->_collections.erase(it);
+      vocbase._collections.erase(it);
 
       // we need to clean up the pointers later so we insert it into this vector
       try {
-        vocbase->_deadCollections.emplace_back(col);
+        vocbase._deadCollections.emplace_back(col);
       } catch (...) {
       }
     }
@@ -467,8 +467,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 
   // Try to create a new collection. This is not registered yet
 
-  std::shared_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
+  auto collection =
+    std::make_shared<arangodb::LogicalCollection>(*this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
   RECURSIVE_WRITE_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
@@ -760,7 +760,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       if (!collection->deleted()) {
         collection->deleted(true);
         try {
-          engine->changeCollection(this, collection->id(), collection, doSync);
+          engine->changeCollection(*this, collection->id(), collection, doSync);
         } catch (arangodb::basics::Exception const& ex) {
           collection->deleted(false);
           events::DropCollection(colName, ex.code());
@@ -780,7 +780,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       writeLocker.unlock();
 
       TRI_ASSERT(engine != nullptr);
-      engine->dropCollection(this, collection);
+      engine->dropCollection(*this, collection);
 
       DropCollectionCallback(collection);
       break;
@@ -798,7 +798,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
               ->forceSyncProperties();
 
       VPackBuilder builder;
-      engine->getCollectionInfo(this, collection->id(), builder, false, 0);
+      engine->getCollectionInfo(*this, collection->id(), builder, false, 0);
       arangodb::Result res = collection->updateProperties(
           builder.slice().get("parameters"), doSync);
 
@@ -812,7 +812,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
       locker.unlock();
       writeLocker.unlock();
 
-      engine->dropCollection(this, collection);
+      engine->dropCollection(*this, collection);
       state = DROP_PERFORM;
       break;
     }
@@ -1179,7 +1179,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollection(
     return nullptr;
   }
 
-  arangodb::Result res2 = engine->persistCollection(this, collection.get());
+  auto res2 = engine->persistCollection(*this, collection.get());
   // API compatibility, we always return the collection, even if creation
   // failed.
 
@@ -1254,7 +1254,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
 
   // wake up the cleanup thread
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->unloadCollection(this, collection);
+  engine->unloadCollection(*this, collection);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1284,9 +1284,9 @@ int TRI_vocbase_t::dropCollection(arangodb::LogicalCollection* collection,
       } else {
         collection->deferDropCollection(DropCollectionCallback);
         // wake up the cleanup thread
-        engine->signalCleanup(collection->vocbase());
+        engine->signalCleanup(&(collection->vocbase()));
       }
-      
+
       if (DatabaseFeature::DATABASE != nullptr &&
           DatabaseFeature::DATABASE->versionTracker() != nullptr) {
         DatabaseFeature::DATABASE->versionTracker()->track("drop collection");
@@ -1485,7 +1485,7 @@ int TRI_vocbase_t::renameCollection(
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   arangodb::Result res2 =
-    engine->renameCollection(this, collection, oldName);
+    engine->renameCollection(*this, collection, oldName);
 
   return res2.errorNumber();
 }
@@ -1773,7 +1773,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _deadlockDetector(false),
       _userStructures(nullptr) {
   _queries.reset(new arangodb::aql::QueryList(this));
-  _cursorRepository.reset(new arangodb::CursorRepository(this));
+  _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
 
   // init collections
@@ -1856,7 +1856,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
-  DatabaseReplicationApplier* applier = DatabaseReplicationApplier::create(this);
+  auto* applier = DatabaseReplicationApplier::create(*this);
+
   _replicationApplier.reset(applier);
 }
 
@@ -1866,6 +1867,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
   if (ttl <= 0.0) {
     ttl = InitialSyncer::defaultBatchTimeout;
   }
+
   double const expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);

@@ -480,11 +480,14 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
 }
 
 // fills the provided builder with information about the collection
-void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-                                      arangodb::velocypack::Builder& builder,
-                                      bool includeIndexes,
-                                      TRI_voc_tick_t maxTick) {
-  std::string const path = collectionDirectory(vocbase->id(), id);
+void MMFilesEngine::getCollectionInfo(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::velocypack::Builder& builder,
+    bool includeIndexes,
+    TRI_voc_tick_t maxTick
+) {
+  auto path = collectionDirectory(vocbase.id(), id);
 
   builder.openObject();
 
@@ -544,11 +547,14 @@ void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // indexes) that were detected by the storage engine. called at server start
 // only
 int MMFilesEngine::getCollectionsAndIndexes(
-    TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result,
-    bool wasCleanShutdown, bool isUpgrade) {
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result,
+    bool wasCleanShutdown,
+    bool isUpgrade
+) {
   result.openArray();
 
-  std::string const path = databaseDirectory(vocbase->id());
+  auto path = databaseDirectory(vocbase.id());
   std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
 
   for (auto const& name : files) {
@@ -593,7 +599,7 @@ int MMFilesEngine::getCollectionsAndIndexes(
 
     try {
       LOG_TOPIC(TRACE, Logger::FIXME) << "loading collection info from directory '" << directory << "'";
-      VPackBuilder builder = loadCollectionInfo(vocbase, directory);
+      VPackBuilder builder = loadCollectionInfo(&vocbase, directory);
       VPackSlice info = builder.slice();
 
       if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
@@ -629,11 +635,12 @@ int MMFilesEngine::getCollectionsAndIndexes(
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
-                            arangodb::velocypack::Builder& result) {
+int MMFilesEngine::getViews(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result
+) {
   result.openArray();
 
-  std::string const path = databaseDirectory(vocbase->id());
+  std::string const path = databaseDirectory(vocbase.id());
   std::vector<std::string> files = TRI_FilesDirectory(path.c_str());
 
   for (auto const& name : files) {
@@ -668,7 +675,7 @@ int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      VPackBuilder builder = loadViewInfo(vocbase, directory);
+      VPackBuilder builder = loadViewInfo(&vocbase, directory);
       VPackSlice info = builder.slice();
 
       LOG_TOPIC(TRACE, Logger::FIXME) << "got view slice: " << info.toJson();
@@ -827,9 +834,11 @@ void MMFilesEngine::waitUntilDeletion(TRI_voc_tick_t id, bool force,
 // the WAL entry for the collection creation will be written *after* the call
 // to "createCollection" returns
 std::string MMFilesEngine::createCollection(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-    arangodb::LogicalCollection const* parameters) {
-  std::string const path = databasePath(vocbase);
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* parameters
+) {
+  auto path = databasePath(&vocbase);
 
   // sanity check
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
@@ -851,7 +860,7 @@ std::string MMFilesEngine::createCollection(
   TRI_ASSERT(id != 0);
   std::string const dirname = createCollectionDirectoryName(path, id);
 
-  registerCollectionPath(vocbase->id(), id, dirname);
+  registerCollectionPath(vocbase.id(), id, dirname);
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
@@ -931,7 +940,8 @@ std::string MMFilesEngine::createCollection(
       application_features::ApplicationServer::getFeature<DatabaseFeature>(
           "Database")
           ->forceSyncProperties();
-  saveCollectionInfo(vocbase, id, parameters, doSync);
+
+  saveCollectionInfo(&vocbase, id, parameters, doSync);
 
   return dirname;
 }
@@ -940,9 +950,11 @@ std::string MMFilesEngine::createCollection(
 // After this call the collection is persisted over recovery.
 // This call will write wal markers.
 arangodb::Result MMFilesEngine::persistCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection
+) {
   TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(vocbase != nullptr);
+
   if (inRecovery()) {
     // Nothing to do. In recovery we do not write markers.
     return {};
@@ -958,9 +970,9 @@ arangodb::Result MMFilesEngine::persistCollection(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CREATE_COLLECTION,
-                                   vocbase->id(), cid, slice);
-
+    MMFilesCollectionMarker marker(
+      TRI_DF_MARKER_VPACK_CREATE_COLLECTION, vocbase.id(), cid, slice
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -988,7 +1000,9 @@ arangodb::Result MMFilesEngine::persistCollection(
 // still be readers of the collection's data.
 // This call will write the WAL entry for collection deletion
 arangodb::Result MMFilesEngine::dropCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+) {
   if (inRecovery()) {
     // nothing to do here
     return {};
@@ -1005,7 +1019,7 @@ arangodb::Result MMFilesEngine::dropCollection(
 
     MMFilesCollectionMarker marker(
       TRI_DF_MARKER_VPACK_DROP_COLLECTION,
-      vocbase->id(),
+      vocbase.id(),
       collection->id(),
       builder.slice()
     );
@@ -1033,17 +1047,18 @@ arangodb::Result MMFilesEngine::dropCollection(
 // perform a physical deletion of the collection
 // After this call data of this collection is corrupted, only perform if
 // assured that no one is using the collection anymore
-void MMFilesEngine::destroyCollection(TRI_vocbase_t* vocbase,
-                                      arangodb::LogicalCollection* collection) {
+void MMFilesEngine::destroyCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+) {
   std::string const name(collection->name());
   auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
   TRI_ASSERT(physical != nullptr);
-  unregisterCollectionPath(vocbase->id(), collection->id());
+
+  unregisterCollectionPath(vocbase.id(), collection->id());
 
   // delete persistent indexes
-  MMFilesPersistentIndexFeature::dropCollection(
-    vocbase->id(), collection->id()
-  );
+  MMFilesPersistentIndexFeature::dropCollection(vocbase.id(), collection->id());
 
   // rename collection directory
   if (physical->path().empty()) {
@@ -1138,21 +1153,28 @@ void MMFilesEngine::destroyCollection(TRI_vocbase_t* vocbase,
 // the WAL entry for the propery change will be written *after* the call
 // to "changeCollection" returns
 void MMFilesEngine::changeCollection(
-    TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
-    arangodb::LogicalCollection const* parameters, bool doSync) {
-  saveCollectionInfo(vocbase, id, parameters, doSync);
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* parameters,
+    bool doSync
+) {
+  saveCollectionInfo(&vocbase, id, parameters, doSync);
 }
 
 // asks the storage engine to persist renaming of a collection
 // This will write a renameMarker if not in recovery
 Result MMFilesEngine::renameCollection(
-    TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
-    std::string const& oldName) {
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection,
+    std::string const& oldName
+) {
   if (inRecovery()) {
     // Nothing todo. Marker already there
     return {};
   }
+
   int res = TRI_ERROR_NO_ERROR;
+
   try {
     VPackBuilder builder;
     builder.openObject();
@@ -1163,7 +1185,7 @@ Result MMFilesEngine::renameCollection(
 
     MMFilesCollectionMarker marker(
       TRI_DF_MARKER_VPACK_RENAME_COLLECTION,
-      vocbase->id(),
+      vocbase.id(),
       collection->id(),
       builder.slice()
     );
@@ -1192,7 +1214,7 @@ Result MMFilesEngine::renameCollection(
 // asks the storage engine to persist renaming of a view
 // This will write a renameMarker if not in recovery
 Result MMFilesEngine::renameView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& oldName
 ) {
@@ -1213,7 +1235,7 @@ Result MMFilesEngine::renameView(
     builder.close();
 
     MMFilesViewMarker marker(
-      TRI_DF_MARKER_VPACK_RENAME_VIEW, vocbase->id(), view.id(), builder.slice()
+      TRI_DF_MARKER_VPACK_RENAME_VIEW, vocbase.id(), view.id(), builder.slice()
     );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
@@ -1239,11 +1261,11 @@ Result MMFilesEngine::renameView(
 }
 
 void MMFilesEngine::createView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
 ) {
-  std::string const path = databasePath(vocbase);
+  std::string const path = databasePath(&vocbase);
 
   if (!TRI_IsDirectory(path.c_str())) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
@@ -1255,7 +1277,7 @@ void MMFilesEngine::createView(
   TRI_ASSERT(id != 0);
   std::string const dirname = createViewDirectoryName(path, id);
 
-  registerViewPath(vocbase->id(), id, dirname);
+  registerViewPath(vocbase.id(), id, dirname);
 
   // directory must not exist
   if (TRI_ExistsFile(dirname.c_str())) {
@@ -1337,24 +1359,22 @@ void MMFilesEngine::createView(
           "Database")
           ->forceSyncProperties();
 
-  saveViewInfo(vocbase, id, &view, doSync);
+  saveViewInfo(&vocbase, id, &view, doSync);
 }
 
 void MMFilesEngine::getViewProperties(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const* view,
     VPackBuilder& result
 ) {
   TRI_ASSERT(result.isOpenObject());
-  result.add("path", VPackValue(viewDirectory(vocbase->id(), view->id())));
+  result.add("path", VPackValue(viewDirectory(vocbase.id(), view->id())));
 }
 
 arangodb::Result MMFilesEngine::persistView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view
 ) {
-  TRI_ASSERT(vocbase != nullptr);
-
   if (inRecovery()) {
     // Nothing to do. In recovery we do not write markers.
     return {};
@@ -1375,9 +1395,9 @@ arangodb::Result MMFilesEngine::persistView(
   int res = TRI_ERROR_NO_ERROR;
 
   try {
-    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_CREATE_VIEW, vocbase->id(), id,
-                             slice);
-
+    MMFilesViewMarker marker(
+      TRI_DF_MARKER_VPACK_CREATE_VIEW, vocbase.id(), id, slice
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -1399,11 +1419,12 @@ arangodb::Result MMFilesEngine::persistView(
 }
 
 arangodb::Result MMFilesEngine::dropView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView* view) {
   auto* db = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
+
   TRI_ASSERT(db);
-  saveViewInfo(vocbase, view->id(), view, db->forceSyncProperties());
+  saveViewInfo(&vocbase, view->id(), view, db->forceSyncProperties());
 
   if (inRecovery()) {
     // nothing to do here
@@ -1418,9 +1439,9 @@ arangodb::Result MMFilesEngine::dropView(
     builder.add("name", VPackValue(view->name()));
     builder.close();
 
-    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_DROP_VIEW, vocbase->id(),
-                             view->id(), builder.slice());
-
+    MMFilesViewMarker marker(
+      TRI_DF_MARKER_VPACK_DROP_VIEW, vocbase.id(), view->id(), builder.slice()
+    );
     MMFilesWalSlotInfoCopy slotInfo =
         MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
 
@@ -1442,10 +1463,10 @@ arangodb::Result MMFilesEngine::dropView(
 }
 
 void MMFilesEngine::destroyView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView* view) noexcept {
   try {
-    std::string const directory = viewDirectory(vocbase->id(), view->id());
+    auto directory = viewDirectory(vocbase.id(), view->id());
 
     if (directory.empty()) {
       return;
@@ -1489,7 +1510,7 @@ void MMFilesEngine::saveViewInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 // the WAL entry for the propery change will be written *after* the call
 // to "changeView" returns
 void MMFilesEngine::changeView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
@@ -1503,7 +1524,7 @@ void MMFilesEngine::changeView(
     infoBuilder.close();
 
     MMFilesViewMarker marker(
-      TRI_DF_MARKER_VPACK_CHANGE_VIEW, vocbase->id(), id, infoBuilder.slice()
+      TRI_DF_MARKER_VPACK_CHANGE_VIEW, vocbase.id(), id, infoBuilder.slice()
     );
 
     MMFilesWalSlotInfoCopy slotInfo =
@@ -1517,7 +1538,7 @@ void MMFilesEngine::changeView(
     }
   }
 
-  saveViewInfo(vocbase, id, &view, doSync);
+  saveViewInfo(&vocbase, id, &view, doSync);
 }
 
 // asks the storage engine to create an index as specified in the VPack
@@ -1530,11 +1551,14 @@ void MMFilesEngine::changeView(
 // creation requests will not fail.
 // the WAL entry for the index creation will be written *after* the call
 // to "createIndex" returns
-void MMFilesEngine::createIndex(TRI_vocbase_t* vocbase,
-                                TRI_voc_cid_t collectionId, TRI_idx_iid_t id,
-                                arangodb::velocypack::Slice const& data) {
+void MMFilesEngine::createIndex(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t id,
+    arangodb::velocypack::Slice const& data
+) {
   // construct filename
-  std::string const filename = indexFilename(vocbase->id(), collectionId, id);
+  auto filename = indexFilename(vocbase.id(), collectionId, id);
 
   // and save
   bool const doSync =
@@ -1619,7 +1643,8 @@ static bool UnloadCollectionCallback(LogicalCollection* collection) {
     // as the cleanup thread has already popped the unload ditch from the
     // ditches list,
     // we need to insert a new one to really execute the unload
-    collection->vocbase()->unloadCollection(collection, false);
+    collection->vocbase().unloadCollection(collection, false);
+
     return false;
   }
 
@@ -1637,15 +1662,17 @@ static bool UnloadCollectionCallback(LogicalCollection* collection) {
   return true;
 }
 
-void MMFilesEngine::unloadCollection(TRI_vocbase_t* vocbase,
-                                     LogicalCollection* collection) {
+void MMFilesEngine::unloadCollection(
+    TRI_vocbase_t& vocbase,
+    LogicalCollection* collection
+) {
   // add callback for unload
   arangodb::MMFilesCollection::toMMFilesCollection(collection)
       ->ditches()
       ->createMMFilesUnloadCollectionDitch(collection, UnloadCollectionCallback,
                                            __FILE__, __LINE__);
 
-  signalCleanup(vocbase);
+  signalCleanup(&vocbase);
 }
 
 void MMFilesEngine::signalCleanup(TRI_vocbase_t* vocbase) {
@@ -2058,7 +2085,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
   // scan the database path for views
   try {
     VPackBuilder builder;
-    int res = getViews(vocbase.get(), builder);
+    int res = getViews(*vocbase, builder);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2090,7 +2117,7 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message.c_str());
       }
 
-      StorageEngine::registerView(vocbase.get(), view);
+      StorageEngine::registerView(*vocbase, view);
 
       registerViewPath(vocbase->id(), view->id(), viewPath);
 
@@ -2109,8 +2136,8 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
   // scan the database path for collections
   try {
     VPackBuilder builder;
-    int res = getCollectionsAndIndexes(vocbase.get(), builder, wasCleanShutdown,
-                                       isUpgrade);
+    int res =
+      getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown, isUpgrade);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2125,11 +2152,10 @@ TRI_vocbase_t* MMFilesEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-        std::make_shared<arangodb::LogicalCollection>(vocbase.get(), it, false);
+        std::make_shared<arangodb::LogicalCollection>(*vocbase, it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
-      StorageEngine::registerCollection(vocbase.get(), uniqCol);
-
+      StorageEngine::registerCollection(*vocbase, uniqCol);
       auto physical =
           static_cast<MMFilesCollection*>(collection->getPhysical());
       TRI_ASSERT(physical != nullptr);

@@ -45,7 +45,15 @@ class Builder;
 class LogicalView : public LogicalDataSource {
  public:
   typedef std::function<bool(TRI_voc_cid_t)> CollectionVisitor;
-  typedef std::function<bool(std::shared_ptr<LogicalView>const& view)> PreCommitCallback;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief typedef for a LogicalView pre-commit callback
+  ///        called before completing view creation
+  ///        e.g. before persisting definition to filesystem
+  //////////////////////////////////////////////////////////////////////////////
+  typedef std::function<bool(
+    std::shared_ptr<LogicalView>const& view // a pointer to the created view
+  )> PreCommitCallback;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical view
@@ -108,15 +116,10 @@ class LogicalView : public LogicalDataSource {
 
  protected:
   LogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     velocypack::Slice const& definition,
     uint64_t planVersion
   );
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief called during view creation to complete creation e.g. persist to FS
-  //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result create() noexcept = 0;
 
  private:
   // FIXME seems to be ugly
@@ -154,12 +157,16 @@ class DBServerLogicalView : public LogicalView {
 
  protected:
   DBServerLogicalView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     velocypack::Slice const& definition,
     uint64_t planVersion
   );
 
-  virtual arangodb::Result create() noexcept override final;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief called by view factories during view creation to persist the view
+  ///        to the storage engine
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::Result create(DBServerLogicalView const& view) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view

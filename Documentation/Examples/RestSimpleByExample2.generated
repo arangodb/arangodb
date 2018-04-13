@@ -18,6 +18,7 @@ x-content-type-options: nosniff
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13090"</span>, 
       <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6mW--_"</span>, 
       <span class="hljs-string">"a"</span> : { 
+        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 
@@ -27,7 +28,6 @@ x-content-type-options: nosniff
       <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/13086"</span>, 
       <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_WnWW6mS--_"</span>, 
       <span class="hljs-string">"a"</span> : { 
-        <span class="hljs-string">"k"</span> : <span class="hljs-number">1</span>, 
         <span class="hljs-string">"j"</span> : <span class="hljs-number">1</span> 
       }, 
       <span class="hljs-string">"i"</span> : <span class="hljs-number">1</span> 

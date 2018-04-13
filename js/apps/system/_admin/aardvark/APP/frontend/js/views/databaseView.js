@@ -7,6 +7,7 @@
   window.DatabaseView = Backbone.View.extend({
     users: null,
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('databaseView.ejs'),
 
@@ -68,6 +69,9 @@
 
     continueRender: function (readOnly) {
       var self = this;
+      if (readOnly) {
+        this.readOnly = readOnly;
+      }
 
       var callback = function (error, db) {
         if (error) {
@@ -252,7 +256,8 @@
       $(this.el).html(this.template.render({
         collection: reducedCollection,
         searchString: searchString,
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        readOnly: this.readOnly
       }));
       this.replaceSVGs();
 
