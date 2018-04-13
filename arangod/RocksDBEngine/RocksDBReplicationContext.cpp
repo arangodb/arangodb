@@ -102,10 +102,12 @@ uint64_t RocksDBReplicationContext::count() const {
 
 TRI_vocbase_t* RocksDBReplicationContext::vocbase() const {
   MUTEX_LOCKER(locker, _contextLock);
+
   if (!_guard) {
     return nullptr;
   }
-  return _guard->database();
+
+  return &(_guard->database());
 }
 
 // creates new transaction/snapshot
@@ -116,7 +118,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
 
 void RocksDBReplicationContext::internalBind(TRI_vocbase_t* vocbase,
                                              bool allowChange) {
-  if (!_trx || !_guard || (_guard->database() != vocbase)) {
+  if (!_trx || !_guard || (&(_guard->database()) != vocbase)) {
     TRI_ASSERT(allowChange);
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
@@ -177,7 +179,8 @@ int RocksDBReplicationContext::bindCollection(
 int RocksDBReplicationContext::chooseDatabase(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(_users > 0);
   MUTEX_LOCKER(locker, _contextLock);
-  if (_guard->database() == vocbase) {
+
+  if (&(_guard->database()) == vocbase) {
     return TRI_ERROR_NO_ERROR;  // nothing to do here
   }
 
@@ -242,17 +245,23 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     }
   };
   TRI_DEFER(release());
+
   {
     MUTEX_LOCKER(writeLocker, _contextLock);
     TRI_ASSERT(vocbase != nullptr);
-    if (!_trx || !_guard || (_guard->database() != vocbase)) {
+
+    if (!_trx || !_guard || (&(_guard->database()) != vocbase)) {
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }
+
     TRI_voc_cid_t const id{::normalizeIdentifier(*_trx, collectionName)};
+
     if (0 == id) {
       return RocksDBReplicationResult{TRI_ERROR_BAD_PARAMETER, _lastTick};
     }
+
     collection = getCollectionIterator(id);
+
     if (!collection) {
       return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
     }

@@ -191,25 +191,24 @@ static void SynchronizeReplication(
 
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-  
   VPackBuilder builder;
   int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-    
+
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-    
+
   std::string databaseName;
   if (applierType == APPLIER_DATABASE) { 
     databaseName = vocbase->name();
   } 
-  
+
   bool keepBarrier = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "keepBarrier"))) {
     keepBarrier =
@@ -221,12 +220,11 @@ static void SynchronizeReplication(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   std::unique_ptr<InitialSyncer> syncer;
-  
 
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
-    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
-    
+    syncer.reset(new DatabaseInitialSyncer(*vocbase, configuration));
+
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
       syncer->setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
     }

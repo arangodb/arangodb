@@ -32,16 +32,21 @@ namespace arangodb {
 ///        dropped while still using it.
 class DatabaseGuard {
  public:
+  DatabaseGuard(DatabaseGuard&&) = delete;
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
 
   /// @brief create guard on existing db
-  explicit DatabaseGuard(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {
-    TRI_ASSERT(vocbase != nullptr);
-    if (!_vocbase->use()) {
+  explicit DatabaseGuard(TRI_vocbase_t& vocbase): _vocbase(vocbase) {
+    if (!_vocbase.use()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
   }
+
+  /// @brief create guard on existing db pointer (not nullptr)
+  /// @deprecated DO NOT USE for new code
+  /// FIXME TODO remove once V8Task and arangodb::pregel::GraphStore are fixed
+  explicit DatabaseGuard(TRI_vocbase_t* vocbase);
 
   /// @brief create the guard, using a database id
   explicit DatabaseGuard(TRI_voc_tick_t id);
@@ -51,22 +56,18 @@ class DatabaseGuard {
 
   /// @brief destroy the guard
   ~DatabaseGuard() {
-    if (_vocbase != nullptr) {
-      TRI_ASSERT(!_vocbase->isDangling());
-      _vocbase->release();
-    }
+    TRI_ASSERT(!_vocbase.isDangling());
+    _vocbase.release();
   }
 
-  DatabaseGuard(DatabaseGuard&&);
-
- public:
   /// @brief return the database pointer
-  inline TRI_vocbase_t* database() const { return _vocbase; }
+  inline TRI_vocbase_t& database() const { return _vocbase; }
 
  private:
   /// @brief pointer to database
-  TRI_vocbase_t* _vocbase;
+  TRI_vocbase_t& _vocbase;
 };
+
 }
 
 #endif
