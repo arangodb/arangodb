@@ -527,7 +527,8 @@ filter::prepared::ptr by_granular_range::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx) const {
+    const attribute_view& //ctx
+) const {
   if (!rng_.min.empty() && !rng_.max.empty()) {
     const auto& min = rng_.min.begin()->second;
     const auto& max = rng_.max.begin()->second;

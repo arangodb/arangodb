@@ -62,7 +62,7 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // call internal function that does the work
     bool replacedExisting = false;
-    auto res = registerUserFunction(_vocbase, body, replacedExisting);
+    auto res = registerUserFunction(&_vocbase, body, replacedExisting);
 
     if (res.ok()) {
       auto code = (replacedExisting)? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
@@ -92,9 +92,9 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     bool deleteGroup = extractBooleanParameter(StaticStrings::Group, false);
     if (deleteGroup) {
-      res = unregisterUserFunctionsGroup(_vocbase, suffixes[0], deletedCount);
+      res = unregisterUserFunctionsGroup(&_vocbase, suffixes[0], deletedCount);
     } else { // delete single
-      res = unregisterUserFunction(_vocbase,suffixes[0]);
+      res = unregisterUserFunction(&_vocbase, suffixes[0]);
       ++deletedCount;
     }
 
@@ -137,7 +137,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
 
     // internal get
     VPackBuilder arrayOfFunctions;
-    auto res = toArrayUserFunctions(_vocbase, functionNamespace, arrayOfFunctions);
+    auto res =
+      toArrayUserFunctions(&_vocbase, functionNamespace, arrayOfFunctions);
 
     // error handling
     if (res.ok()) {

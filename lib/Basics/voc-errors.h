@@ -355,7 +355,7 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
 /// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
-/// "collection not found"
+/// "collection or view not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
 constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
@@ -950,6 +950,12 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 
+/// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
+/// "could not create view in plan"
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new view in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1467,7 +1473,7 @@ constexpr int TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT                      
 
 /// 1935: ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS
 /// "Invalid number of arguments. Expected: "
-/// Invalid number of arguments. Expected:
+/// Invalid number of arguments. Expected: 
 constexpr int TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS                       = 1935;
 
 /// 1936: ERROR_GRAPH_INVALID_PARAMETER

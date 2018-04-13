@@ -58,7 +58,7 @@ int main(int argc, char* argv[]) {
 
     int ret;
 
-    server.addFeature(new ClientFeature(&server));
+    server.addFeature(new ClientFeature(&server, false));
     server.addFeature(new ConfigFeature(&server, "arangodump"));
     server.addFeature(new DumpFeature(&server, ret));
     server.addFeature(new LoggerFeature(&server, false));

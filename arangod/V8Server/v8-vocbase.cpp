@@ -1387,7 +1387,7 @@ static void MapGetVocBase(v8::Local<v8::String> const name,
         value, WRP_VOCBASE_COL_TYPE);
 
     // check if the collection is from the same database
-    if (collection != nullptr && collection->vocbase() == vocbase) {
+    if (collection != nullptr && &(collection->vocbase()) == vocbase) {
       // we cannot use collection->getStatusLocked() here, because we
       // have no idea who is calling us (db[...]). The problem is that
       // if we are called from within a JavaScript transaction, the
