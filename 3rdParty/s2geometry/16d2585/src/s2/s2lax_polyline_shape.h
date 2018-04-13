@@ -19,6 +19,8 @@
 #define S2_S2LAX_POLYLINE_SHAPE_H_
 
 #include <memory>
+#include <vector>
+
 #include "s2/s2polyline.h"
 #include "s2/s2shape.h"
 

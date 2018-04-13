@@ -75,6 +75,21 @@ TEST(S2Polyline, Basic) {
   EXPECT_EQ(S2Point(1, 0, 0), semi_equator.vertex(2));
 }
 
+TEST(S2Polyline, MoveConstruct) {
+  unique_ptr<S2Polyline> line = MakePolyline("1:1, 4:4");
+  S2Polyline moved(std::move(*line));
+  ASSERT_EQ(0, line->num_vertices());
+  ASSERT_EQ(2, moved.num_vertices());
+}
+
+TEST(S2Polyline, MoveAssign) {
+  unique_ptr<S2Polyline> line = MakePolyline("1:1, 4:4");
+  S2Polyline copied;
+  copied = std::move(*line);
+  ASSERT_EQ(0, line->num_vertices());
+  ASSERT_EQ(2, copied.num_vertices());
+}
+
 TEST(S2Polyline, GetLengthAndCentroid) {
   // Construct random great circles and divide them randomly into segments.
   // Then make sure that the length and centroid are correct.  Note that
@@ -290,10 +305,10 @@ static string JoinInts(const vector<int>& ints) {
   string result;
   int n = ints.size();
   for (int i = 0; i + 1 < n; ++i) {
-    StrAppend(&result, ints[i], ",");
+    absl::StrAppend(&result, ints[i], ",");
   }
   if (n > 0) {
-    StrAppend(&result, ints[n - 1]);
+    absl::StrAppend(&result, ints[n - 1]);
   }
   return result;
 }
@@ -413,6 +428,8 @@ TEST(S2PolylineShape, Basic) {
   EXPECT_EQ(S2LatLng::FromDegrees(1, 1).ToPoint(), edge2.v0);
   EXPECT_EQ(S2LatLng::FromDegrees(2, 1).ToPoint(), edge2.v1);
   EXPECT_EQ(1, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   EXPECT_FALSE(shape.has_interior());
   EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
@@ -422,6 +439,9 @@ TEST(S2PolylineShape, EmptyPolyline) {
   S2Polyline::Shape shape(&polyline);
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_chains());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
 TEST(S2PolylineOwningShape, Ownership) {

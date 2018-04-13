@@ -58,8 +58,8 @@ static bool GetReferencePointAtVertex(
 S2Shape::ReferencePoint GetReferencePoint(const S2Shape& shape) {
   S2_DCHECK(shape.has_interior());
   if (shape.num_edges() == 0) {
-    // A shape with no edges is defined to be "full" if and only if it
-    // contains an empty loop.
+    // A shape with no edges is defined to be full if and only if it
+    // contains at least one chain.
     return ReferencePoint::Contained(shape.num_chains() > 0);
   }
   // Define a "matched" edge as one that can be paired with a corresponding
@@ -95,8 +95,9 @@ S2Shape::ReferencePoint GetReferencePoint(const S2Shape& shape) {
       return result;
     }
   }
-  // All vertices are balanced, so this polygon is either empty or full.  By
-  // convention it is defined to be "full" if it contains any empty loop.
+  // All vertices are balanced, so this polygon is either empty or full except
+  // for degeneracies.  By convention it is defined to be full if it contains
+  // any chain with no edges.
   for (int i = 0; i < shape.num_chains(); ++i) {
     if (shape.chain(i).length == 0) return ReferencePoint::Contained(true);
   }

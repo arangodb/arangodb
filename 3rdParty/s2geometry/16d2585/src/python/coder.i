@@ -1,7 +1,8 @@
 //
-// Exposes only Encoder and Decoder functionality to set and get internal
-// buffer. This allows passing them into other SWIG'd methods, such as
-// those in the S2 SWIG library. For example:
+// Exposes Encoder and Decoder a subset of functionality plus the
+// ability to set and get internal buffer. This allows passing them
+// into other SWIG'd methods, such as those in the S2 SWIG library.
+// For example:
 //
 // class S2Polygon {
 //   ...
@@ -37,6 +38,17 @@
     PyErr_Format(PyExc_TypeError,
                  "bytes or bytearray needed, %s found",
                  $input->ob_type->tp_name);
+    return nullptr;
+  }
+};
+// For Encoder::reset to accept a bytearray object.
+%typemap(in) (void* buf, size_t maxn) {
+  if (PyByteArray_Check($input)) {
+    $1 = (void *) PyByteArray_AsString($input);
+    $2 = PyByteArray_Size($input);
+  } else {
+    PyErr_Format(PyExc_TypeError,
+                 "bytearray needed, %s found", $input->ob_type->tp_name);
     return nullptr;
   }
 };
@@ -79,14 +91,34 @@
 %ignoreall
 
 %unignore Decoder;
-%unignore Decoder::Decoder;
+%unignore Decoder::Decoder();
+%unignore Decoder::Decoder(const void*, size_t);
 %unignore Decoder::~Decoder;
-%unignore Decoder::reset;
+%unignore Decoder::avail() const;
+%unignore Decoder::get8();
+%unignore Decoder::get16();
+%unignore Decoder::get32();
+%unignore Decoder::get64();
+%unignore Decoder::getfloat();
+%unignore Decoder::getdouble();
+%unignore Decoder::pos() const;
+%unignore Decoder::reset(const void*, size_t);
 %unignore Encoder;
-%unignore Encoder::Encoder;
+%unignore Encoder::Encoder();
+%unignore Encoder::Encoder(void*, size_t);
 %unignore Encoder::~Encoder;
-%unignore Encoder::buffer;
-%unignore Encoder::clear;
+%unignore Encoder::Ensure(size_t);
+%unignore Encoder::avail() const;
+%unignore Encoder::buffer();
+%unignore Encoder::clear();
+%unignore Encoder::length() const;
+%unignore Encoder::put8(unsigned char);
+%unignore Encoder::put16(uint16);
+%unignore Encoder::put32(uint32);
+%unignore Encoder::put64(uint64);
+%unignore Encoder::putdouble(double);
+%unignore Encoder::putfloat(float);
+%unignore Encoder::reset(void *, size_t);
 
 %include "s2/util/coding/coder.h"
 

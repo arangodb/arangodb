@@ -17,6 +17,8 @@
 
 #include "s2/id_set_lexicon.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 void ExpectIdSet(const std::vector<int32>& expected,

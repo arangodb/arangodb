@@ -17,6 +17,10 @@ cmake_dependent_option(WITH_GLOG "Use glog for logging." ON
                        "WITH_GFLAGS" OFF)
 add_feature_info(GLOG WITH_GLOG "provides logging configurability.")
 
+option(BUILD_SHARED_LIBS "Build shared libraries instead of static." ON)
+add_feature_info(SHARED_LIBS BUILD_SHARED_LIBS
+                 "builds shared libraries instead of static.")
+
 feature_summary(WHAT ALL)
 
 if (WITH_GLOG)
@@ -52,14 +56,7 @@ if (APPLE)
     set(CMAKE_MACOSX_RPATH TRUE)
 endif()
 
-add_definitions(-std=c++11)
-
-if(WIN32)
-    add_definitions(-J -D_USE_MATH_DEFINES -DNOMINMAX -DNEED_ALT_SSIZE)
-else()
-    add_definitions(-Wno-deprecated-declarations)
-endif()
-
+add_definitions(-Wno-deprecated-declarations -std=c++11)
 
 # If OpenSSL is installed in a non-standard location, configure with
 # something like:
@@ -69,9 +66,10 @@ include_directories(
     ${PYTHON_INCLUDE_DIRS})
 include_directories(src)
 
-add_library(s2 STATIC
+add_library(s2
             src/s2/base/stringprintf.cc
             src/s2/base/strtoint.cc
+            src/s2/base/sysinfo.cc
             src/s2/id_set_lexicon.cc
             src/s2/mutable_s2shape_index.cc
             src/s2/r2rect.cc
@@ -146,6 +144,7 @@ add_library(s2 STATIC
             src/s2/s2shapeutil_visit_crossing_edge_pairs.cc
             src/s2/s2text_format.cc
             src/s2/s2wedge_relations.cc
+            src/s2/strings/ostringstream.cc
             src/s2/strings/serialize.cc
             src/s2/third_party/absl/base/dynamic_annotations.cc
             src/s2/third_party/absl/base/internal/raw_logging.cc
@@ -286,6 +285,8 @@ install(FILES src/s2/base/casts.h
               src/s2/base/port.h
               src/s2/base/spinlock.h
         DESTINATION include/s2/base)
+install(FILES src/s2/strings/ostringstream.h
+        DESTINATION include/s2/strings)
 install(FILES src/s2/third_party/absl/algorithm/algorithm.h
         DESTINATION include/s2/third_party/absl/algorithm)
 install(FILES src/s2/third_party/absl/base/attributes.h

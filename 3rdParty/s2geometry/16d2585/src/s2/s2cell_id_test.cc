@@ -152,12 +152,10 @@ TEST(S2CellId, Wrapping) {
   EXPECT_EQ(S2CellId::End(0).prev(), S2CellId::Begin(0).prev_wrap());
 
   EXPECT_EQ(S2CellId::FromFacePosLevel(
-                5, ~static_cast<uint64>(0) >> S2CellId::kFaceBits,
-                S2CellId::kMaxLevel),
+                5, ~0ULL >> S2CellId::kFaceBits, S2CellId::kMaxLevel),
             S2CellId::Begin(S2CellId::kMaxLevel).prev_wrap());
   EXPECT_EQ(S2CellId::FromFacePosLevel(
-                5, ~static_cast<uint64>(0) >> S2CellId::kFaceBits,
-                S2CellId::kMaxLevel),
+                5, ~0ULL >> S2CellId::kFaceBits, S2CellId::kMaxLevel),
             S2CellId::Begin(S2CellId::kMaxLevel).advance_wrap(-1));
 
   EXPECT_EQ(S2CellId::Begin(4), S2CellId::End(4).prev().next_wrap());
@@ -184,7 +182,7 @@ TEST(S2CellId, Advance) {
             id.child_begin(S2CellId::kMaxLevel).advance(256));
   EXPECT_EQ(S2CellId::FromFacePosLevel(5, 0, S2CellId::kMaxLevel),
             S2CellId::FromFacePosLevel(1, 0, S2CellId::kMaxLevel)
-            .advance(static_cast<int64>(4) << (2 * S2CellId::kMaxLevel)));
+            .advance(4ULL << (2 * S2CellId::kMaxLevel)));
 
   // Check basic properties of advance_wrap().
   EXPECT_EQ(S2CellId::FromFace(1), S2CellId::Begin(0).advance_wrap(7));
@@ -197,7 +195,7 @@ TEST(S2CellId, Advance) {
             id.child_begin(S2CellId::kMaxLevel).advance_wrap(256));
   EXPECT_EQ(S2CellId::FromFacePosLevel(1, 0, S2CellId::kMaxLevel),
             S2CellId::FromFacePosLevel(5, 0, S2CellId::kMaxLevel)
-            .advance_wrap(static_cast<int64>(2) << (2 * S2CellId::kMaxLevel)));
+            .advance_wrap(2ULL << (2 * S2CellId::kMaxLevel)));
 }
 
 TEST(S2CellId, DistanceFromBegin) {
@@ -645,7 +643,7 @@ TEST(S2CellId, ToPointBenchmark) {
   S2CellId begin = S2CellId::Begin(S2CellId::kMaxLevel);
   S2CellId end = S2CellId::End(S2CellId::kMaxLevel);
   uint64 delta = (end.id() - begin.id()) / FLAGS_iters;
-  delta &= ~static_cast<uint64>(1);  // Make sure all ids are leaf cells.
+  delta &= ~1ULL;  // Make sure all ids are leaf cells.
 
   S2CellId id = begin;
   double sum = 0;

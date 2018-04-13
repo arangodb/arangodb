@@ -356,7 +356,7 @@ int S2CellId::ToFaceIJOrientation(int* pi, int* pj, int* orientation) const {
     // the kSwapMask bit.
     S2_DCHECK_EQ(0, kPosToOrientation[2]);
     S2_DCHECK_EQ(kSwapMask, kPosToOrientation[0]);
-    if (lsb() & GG_ULONGLONG(0x1111111111111110)) {
+    if (lsb() & 0x1111111111111110ULL) {
       bits ^= kSwapMask;
     }
     *orientation = bits;

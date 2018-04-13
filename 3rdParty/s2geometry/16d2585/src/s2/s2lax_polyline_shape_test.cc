@@ -28,6 +28,9 @@ TEST(S2LaxPolylineShape, NoVertices) {
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_chains());
   EXPECT_EQ(1, shape.dimension());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
+  EXPECT_FALSE(shape.GetReferencePoint().contained);
 }
 
 TEST(S2LaxPolylineShape, OneVertex) {
@@ -36,6 +39,8 @@ TEST(S2LaxPolylineShape, OneVertex) {
   EXPECT_EQ(0, shape.num_edges());
   EXPECT_EQ(0, shape.num_chains());
   EXPECT_EQ(1, shape.dimension());
+  EXPECT_TRUE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
 }
 
 TEST(S2LaxPolylineShape, EdgeAccess) {
@@ -46,6 +51,8 @@ TEST(S2LaxPolylineShape, EdgeAccess) {
   EXPECT_EQ(0, shape.chain(0).start);
   EXPECT_EQ(2, shape.chain(0).length);
   EXPECT_EQ(1, shape.dimension());
+  EXPECT_FALSE(shape.is_empty());
+  EXPECT_FALSE(shape.is_full());
   auto edge0 = shape.edge(0);
   EXPECT_EQ(vertices[0], edge0.v0);
   EXPECT_EQ(vertices[1], edge0.v1);

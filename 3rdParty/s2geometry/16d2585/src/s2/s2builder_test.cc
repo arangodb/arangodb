@@ -24,6 +24,8 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <vector>
+
 #include "s2/base/commandlineflags.h"
 #include "s2/base/log_severity.h"
 #include "s2/base/timer.h"

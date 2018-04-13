@@ -229,10 +229,9 @@ class sh_hashtable_settings : public HashFunc {
   unsigned int num_ht_copies_;
 };
 
-// This traits class checks whether T::goog_is_transparent exists and names a
-// type.
+// This traits class checks whether T::is_transparent exists and names a type.
 //
-//   struct Foo { typedef void goog_is_transparent; };
+//   struct Foo { using is_transparent = void; };
 //   struct Bar {};
 //   static_assert(sh_is_transparent<Foo>::value, "Foo is transparent.");
 //   staitc_assert(!sh_is_transparent<Bar>::value, "Bar is not transparent.");
@@ -242,7 +241,8 @@ struct sh_is_transparent {
   struct No { char x; };
   struct Yes { No x[2]; };
 
-  template<class U> static Yes Test(typename U::goog_is_transparent*);
+  template <class U>
+  static Yes Test(typename U::is_transparent*);
   template<class U> static No Test(...);
 
  public:

@@ -26,6 +26,9 @@
 
 namespace absl {
 
+// Four severity levels are defined.  Logging APIs should terminate the program
+// when a message is logged at severity `kFatal`; the other levels have no
+// special semantics.
 enum class LogSeverity : int {
   kInfo = 0,
   kWarning = 1,
@@ -40,12 +43,14 @@ constexpr std::array<absl::LogSeverity, 4> LogSeverities() {
            absl::LogSeverity::kError, absl::LogSeverity::kFatal}};
 }
 
-// absl::kLogDebugFatal equals absl::LogSeverity::kFatal in debug builds (i.e.
-// when NDEBUG is not defined) and absl::LogSeverity::kError otherwise.
-// It is extern to prevent ODR violations when compilation units with different
-// build settings are linked together.
+// `absl::kLogDebugFatal` equals `absl::LogSeverity::kFatal` in debug builds
+// (i.e. when `NDEBUG` is not defined) and `absl::LogSeverity::kError`
+// otherwise.  It is extern to prevent ODR violations when compilation units
+// with different build settings are linked together.
 ABSL_CONST_INIT extern const absl::LogSeverity kLogDebugFatal;
 
+// Returns the all-caps string representation (e.g. "INFO") of the specified
+// severity level if it is one of the normal levels and "UNKNOWN" otherwise.
 constexpr const char* LogSeverityName(absl::LogSeverity s) {
   return s == absl::LogSeverity::kInfo
              ? "INFO"
@@ -56,7 +61,8 @@ constexpr const char* LogSeverityName(absl::LogSeverity s) {
                          : s == absl::LogSeverity::kFatal ? "FATAL" : "UNKNOWN";
 }
 
-// Note that out-of-range severities normalize to kInfo or kError, never kFatal.
+// Values less than `kInfo` normalize to `kInfo`; values greater than `kFatal`
+// normalize to `kError` (**NOT** `kFatal`).
 constexpr absl::LogSeverity NormalizeLogSeverity(absl::LogSeverity s) {
   return s < absl::LogSeverity::kInfo
              ? absl::LogSeverity::kInfo

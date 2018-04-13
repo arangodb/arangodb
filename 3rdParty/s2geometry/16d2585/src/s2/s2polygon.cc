@@ -915,7 +915,7 @@ void S2Polygon::InitToIntersection(
     //   max(0, A + B - 4*Pi) <= Intersection(A, B) <= min(A, B)
     //
     // where A, B can refer to a polygon or its area.  Note that if either A
-    // or B is at most 2*Pi, the result must be "empty".  We can use the
+    // or B is at most 2*Pi, the result must be empty.  We can use the
     // bounding rectangle areas as upper bounds on the polygon areas.
     if (a.bound_.Area() <= 2 * M_PI || b.bound_.Area() <= 2 * M_PI) return;
     double a_area = a.GetArea(), b_area = b.GetArea();
@@ -1560,7 +1560,7 @@ S2Shape::ReferencePoint S2Polygon::Shape::GetReferencePoint() const {
 }
 
 int S2Polygon::Shape::num_chains() const {
-  return polygon_->is_full() ? 0 : polygon_->num_loops();
+  return polygon_->num_loops();
 }
 
 S2Shape::Chain S2Polygon::Shape::chain(int i) const {
@@ -1570,7 +1570,10 @@ S2Shape::Chain S2Polygon::Shape::chain(int i) const {
   } else {
     int e = 0;
     for (int j = 0; j < i; ++j) e += polygon_->loop(j)->num_vertices();
-    return Chain(e, polygon_->loop(i)->num_vertices());
+    // S2Polygon represents a full loop as a loop with one vertex, while
+    // S2Shape represents a full loop as a chain with no vertices.
+    int num_vertices = polygon_->loop(i)->num_vertices();
+    return Chain(e, (num_vertices == 1) ? 0 : num_vertices);
   }
 }
 

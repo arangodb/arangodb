@@ -161,7 +161,7 @@ void TestAllCrossings(const vector<TestEdge>& edges) {
         ++num_nearby_pairs;
         if (!std::binary_search(candidates.begin(), candidates.end(),
                                 ShapeEdgeId{0, i})) {
-          StrAppend(&missing_candidates, " ", i);
+          absl::StrAppend(&missing_candidates, " ", i);
         }
       } else {
         const double kMaxDist = S2::kMaxDiag.GetValue(S2::kMaxCellLevel);

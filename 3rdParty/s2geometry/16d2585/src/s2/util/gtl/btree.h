@@ -14,16 +14,16 @@
 //
 
 //
-// A btree implementation of the STL set and map interfaces. A btree is both
-// smaller and faster than STL set/map. The red-black tree implementation of
-// STL set/map has an overhead of 3 pointers (left, right and parent) plus the
-// node color information for each stored value. So a set<int32> consumes 40
-// bytes for each value stored in 64-bit mode. This btree implementation stores
-// multiple values on fixed size nodes (usually 256 bytes) and doesn't store
-// child pointers for leaf nodes. The result is that a btree_set<int32> may use
-// much less memory per stored value. For the random insertion benchmark in
-// btree_test.cc, a btree_set<int32> with node-size of 256 uses 4.9 bytes per
-// stored value.
+// A btree implementation of the STL set and map interfaces. A btree is smaller
+// and generally also faster than STL set/map (refer to the benchmarks below).
+// The red-black tree implementation of STL set/map has an overhead of 3
+// pointers (left, right and parent) plus the node color information for each
+// stored value. So a set<int32> consumes 40 bytes for each value stored in
+// 64-bit mode. This btree implementation stores multiple values on fixed
+// size nodes (usually 256 bytes) and doesn't store child pointers for leaf
+// nodes. The result is that a btree_set<int32> may use much less memory per
+// stored value. For the random insertion benchmark in btree_test.cc, a
+// btree_set<int32> with node-size of 256 uses 5.2 bytes per stored value.
 //
 // The packing of multiple values on to each node of a btree has another effect
 // besides better space utilization: better cache locality due to fewer cache
@@ -46,80 +46,8 @@
 
 // PERFORMANCE
 //
-//   btree_bench --benchmarks=. 2>&1 | ./benchmarks.awk
-//
-// NOTE(user): My warpstation (pmattis-warp.nyc) often produces slower
-// results when running the benchmarks on CPUs 0 and 1 vs CPUs 2 and 3. To get
-// consistent benchmark results, I run "taskset 0xc <command>" to run the
-// benchmark on CPUs 2 and 3.
-//
-// Run on pmattis-warp.nyc (4 X 2200 MHz CPUs); 2010/03/04-15:23:06
-// Benchmark                 STL(ns) B-Tree(ns) @    <size>
-// --------------------------------------------------------
-// BM_set_int32_insert        1516      608  +59.89%  <256>    [40.0,  5.2]
-// BM_set_int32_lookup        1160      414  +64.31%  <256>    [40.0,  5.2]
-// BM_set_int32_fulllookup     960      410  +57.29%  <256>    [40.0,  4.4]
-// BM_set_int32_delete        1741      528  +69.67%  <256>    [40.0,  5.2]
-// BM_set_int32_queueaddrem   3078     1046  +66.02%  <256>    [40.0,  5.5]
-// BM_set_int32_mixedaddrem   3600     1384  +61.56%  <256>    [40.0,  5.3]
-// BM_set_int32_fifo           227      113  +50.22%  <256>    [40.0,  4.4]
-// BM_set_int32_fwditer        158       26  +83.54%  <256>    [40.0,  5.2]
-// BM_map_int32_insert        1551      636  +58.99%  <256>    [48.0, 10.5]
-// BM_map_int32_lookup        1200      508  +57.67%  <256>    [48.0, 10.5]
-// BM_map_int32_fulllookup     989      487  +50.76%  <256>    [48.0,  8.8]
-// BM_map_int32_delete        1794      628  +64.99%  <256>    [48.0, 10.5]
-// BM_map_int32_queueaddrem   3189     1266  +60.30%  <256>    [48.0, 11.6]
-// BM_map_int32_mixedaddrem   3822     1623  +57.54%  <256>    [48.0, 10.9]
-// BM_map_int32_fifo           151      134  +11.26%  <256>    [48.0,  8.8]
-// BM_map_int32_fwditer        161       32  +80.12%  <256>    [48.0, 10.5]
-// BM_set_int64_insert        1546      636  +58.86%  <256>    [40.0, 10.5]
-// BM_set_int64_lookup        1200      512  +57.33%  <256>    [40.0, 10.5]
-// BM_set_int64_fulllookup     971      487  +49.85%  <256>    [40.0,  8.8]
-// BM_set_int64_delete        1745      616  +64.70%  <256>    [40.0, 10.5]
-// BM_set_int64_queueaddrem   3163     1195  +62.22%  <256>    [40.0, 11.6]
-// BM_set_int64_mixedaddrem   3760     1564  +58.40%  <256>    [40.0, 10.9]
-// BM_set_int64_fifo           146      103  +29.45%  <256>    [40.0,  8.8]
-// BM_set_int64_fwditer        162       31  +80.86%  <256>    [40.0, 10.5]
-// BM_map_int64_insert        1551      720  +53.58%  <256>    [48.0, 20.7]
-// BM_map_int64_lookup        1214      612  +49.59%  <256>    [48.0, 20.7]
-// BM_map_int64_fulllookup     994      592  +40.44%  <256>    [48.0, 17.2]
-// BM_map_int64_delete        1778      764  +57.03%  <256>    [48.0, 20.7]
-// BM_map_int64_queueaddrem   3189     1547  +51.49%  <256>    [48.0, 20.9]
-// BM_map_int64_mixedaddrem   3779     1887  +50.07%  <256>    [48.0, 21.6]
-// BM_map_int64_fifo           147      145   +1.36%  <256>    [48.0, 17.2]
-// BM_map_int64_fwditer        162       41  +74.69%  <256>    [48.0, 20.7]
-// BM_set_string_insert       1989     1966   +1.16%  <256>    [64.0, 44.5]
-// BM_set_string_lookup       1709     1600   +6.38%  <256>    [64.0, 44.5]
-// BM_set_string_fulllookup   1573     1529   +2.80%  <256>    [64.0, 35.4]
-// BM_set_string_delete       2520     1920  +23.81%  <256>    [64.0, 44.5]
-// BM_set_string_queueaddrem  4706     4309   +8.44%  <256>    [64.0, 48.3]
-// BM_set_string_mixedaddrem  5080     4654   +8.39%  <256>    [64.0, 46.7]
-// BM_set_string_fifo          318      512  -61.01%  <256>    [64.0, 35.4]
-// BM_set_string_fwditer       182       93  +48.90%  <256>    [64.0, 44.5]
-// BM_map_string_insert       2600     2227  +14.35%  <256>    [72.0, 55.8]
-// BM_map_string_lookup       2068     1730  +16.34%  <256>    [72.0, 55.8]
-// BM_map_string_fulllookup   1859     1618  +12.96%  <256>    [72.0, 44.0]
-// BM_map_string_delete       3168     2080  +34.34%  <256>    [72.0, 55.8]
-// BM_map_string_queueaddrem  5840     4701  +19.50%  <256>    [72.0, 59.4]
-// BM_map_string_mixedaddrem  6400     5200  +18.75%  <256>    [72.0, 57.8]
-// BM_map_string_fifo          398      596  -49.75%  <256>    [72.0, 44.0]
-// BM_map_string_fwditer       243      113  +53.50%  <256>    [72.0, 55.8]
-// BM_set_cord_insert         3661     2680  +26.80%  <256>    [40.0, 10.5]
-// BM_set_cord_lookup         2920     2293  +21.47%  <256>    [40.0, 10.5]
-// BM_set_cord_fulllookup     2960     2267  +23.41%  <256>    [40.0,  8.8]
-// BM_set_cord_delete         4679     2535  +45.82%  <256>    [40.0, 10.5]
-// BM_set_cord_queueaddrem    8230     5600  +31.96%  <256>    [40.0, 11.3]
-// BM_set_cord_mixedaddrem    8497     6080  +28.45%  <256>    [40.0, 10.7]
-// BM_set_cord_fifo            358      370   -3.35%  <256>    [40.0,  8.8]
-// BM_set_cord_fwditer         352      193  +45.17%  <256>    [40.0, 10.5]
-// BM_map_cord_insert         3680     2927  +20.46%  <256>    [48.0, 20.7]
-// BM_map_cord_lookup         3018     2466  +18.29%  <256>    [48.0, 20.7]
-// BM_map_cord_fulllookup     2943     2466  +16.21%  <256>    [48.0, 17.2]
-// BM_map_cord_delete         4675     2775  +40.64%  <256>    [48.0, 20.7]
-// BM_map_cord_queueaddrem    8383     6360  +24.13%  <256>    [48.0, 22.2]
-// BM_map_cord_mixedaddrem    8952     6760  +24.49%  <256>    [48.0, 21.2]
-// BM_map_cord_fifo            444      463   -4.28%  <256>    [48.0, 17.2]
-// BM_map_cord_fwditer         391      225  +42.46%  <256>    [48.0, 20.7]
+// See the latest benchmark results at:
+// https://paste.googleplex.com/4570690598469632
 //
 
 #ifndef UTIL_GTL_BTREE_H__
@@ -127,7 +55,6 @@
 
 #include <cstddef>
 #include <cstring>
-#include <sys/types.h>
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -144,14 +71,6 @@
 #include "s2/third_party/absl/meta/type_traits.h"
 #include "s2/third_party/absl/strings/string_view.h"
 #include "s2/util/gtl/subtle/compressed_tuple.h"
-
-#if defined(_WIN32) || defined(_WIN64)
-#undef small
-#ifdef NEED_ALT_SSIZE
-#include <BaseTsd.h>
-typedef SSIZE_T ssize_t;
-#endif
-#endif
 
 namespace gtl {
 
@@ -180,7 +99,7 @@ using btree_is_key_compare_to =
     std::is_convertible<Compare, btree_key_compare_to_tag>;
 
 namespace internal_btree {
-// A helper class used to indicates if the comparator provided is transparent
+// A helper class used to indicate if the comparator provided is transparent
 // and thus supports heterogeneous lookups. This is only used internally to
 // check if the Compare parameter has a valid is_transparent member.
 // A transparent comparator will see lookup keys with any type (lookup_type)
@@ -314,7 +233,7 @@ struct prefers_linear_node_search<
     : T::goog_btree_prefer_linear_node_search {};
 
 template <typename Key, typename Compare, typename Alloc, int TargetNodeSize,
-          int ValueSize>
+          int ValueSize, bool Multi>
 struct common_params {
   // If Compare is derived from btree_key_compare_to_tag then use it as the
   // key_compare type. Otherwise, use key_compare_to_adapter<> which will
@@ -328,8 +247,11 @@ struct common_params {
 
   using allocator_type = Alloc;
   using key_type = Key;
-  using size_type = ssize_t;
+  using size_type = std::make_signed<size_t>::type;
   using difference_type = ptrdiff_t;
+
+  // True if this is a multiset or multimap.
+  using is_multi_container = std::integral_constant<bool, Multi>;
 
   enum {
     kTargetNodeSize = TargetNodeSize,
@@ -348,13 +270,14 @@ struct common_params {
 // A parameters structure for holding the type parameters for a btree_map.
 // Compare and Alloc should be nothrow copy-constructible.
 template <typename Key, typename Data, typename Compare, typename Alloc,
-          int TargetNodeSize>
+          int TargetNodeSize, bool Multi>
 struct map_params : common_params<Key, Compare, Alloc, TargetNodeSize,
-                                  sizeof(std::pair<const Key, Data>)> {
+                                  sizeof(std::pair<const Key, Data>), Multi> {
   using data_type = Data;
   using mapped_type = Data;
   using value_type = std::pair<const Key, data_type>;
-  // TODO(user): Remove this and use std::move() in the right places instead.
+  // TODO(user): Stop supporting move-only keys and get rid of
+  // mutable_value_type.
   using mutable_value_type = std::pair<Key, data_type>;
   using pointer = value_type *;
   using const_pointer = const value_type *;
@@ -367,9 +290,10 @@ struct map_params : common_params<Key, Compare, Alloc, TargetNodeSize,
 
 // A parameters structure for holding the type parameters for a btree_set.
 // Compare and Alloc should be nothrow copy-constructible.
-template <typename Key, typename Compare, typename Alloc, int TargetNodeSize>
+template <typename Key, typename Compare, typename Alloc, int TargetNodeSize,
+          bool Multi>
 struct set_params
-    : common_params<Key, Compare, Alloc, TargetNodeSize, sizeof(Key)> {
+    : common_params<Key, Compare, Alloc, TargetNodeSize, sizeof(Key), Multi> {
   using data_type = void;
   using mapped_type = void;
   using value_type = Key;
@@ -403,9 +327,11 @@ struct upper_bound_adapter {
 template <typename Params>
 class btree_node {
   using is_key_compare_to = typename Params::is_key_compare_to;
+  using is_multi_container = typename Params::is_multi_container;
 
  public:
   using params_type = Params;
+  // TODO(user): replace `self_type` with the injected class name.
   using self_type = btree_node<Params>;
   using key_type = typename Params::key_type;
   using data_type = typename Params::data_type;
@@ -440,6 +366,9 @@ class btree_node {
                        std::is_same<std::greater<key_type>,
                                     key_compare>::value),
       std::true_type, std::false_type>;
+
+  btree_node(btree_node const &) = delete;
+  void operator=(btree_node const &) = delete;
 
   struct base_fields {
     using field_type = typename Params::node_count_type;
@@ -515,8 +444,8 @@ class btree_node {
   }
 
   // Getter for the rightmost root node field. Only valid on the root node.
-  btree_node* rightmost() const { return fields_.rightmost; }
-  btree_node** mutable_rightmost() { return &fields_.rightmost; }
+  btree_node *rightmost() const { return fields_.rightmost; }
+  btree_node *&mutable_rightmost() { return fields_.rightmost; }
 
   // Getter for the size root node field. Only valid on the root node.
   size_type size() const { return fields_.size; }
@@ -543,10 +472,10 @@ class btree_node {
   }
 
   // Getters/setter for the child at position i in the node.
-  btree_node* child(int i) const { return fields_.children[i]; }
-  btree_node** mutable_child(int i) { return &fields_.children[i]; }
+  btree_node *child(int i) const { return fields_.children[i]; }
+  btree_node *&mutable_child(int i) { return fields_.children[i]; }
   void set_child(int i, btree_node *c) {
-    *mutable_child(i) = c;
+    mutable_child(i) = c;
     c->fields_.parent = this;
     c->fields_.position = i;
   }
@@ -582,8 +511,8 @@ class btree_node {
   // Returns the position of the first value whose key is not less than k using
   // linear search performed using plain compare.
   template <typename K, typename Compare>
-  int linear_search_plain_compare(
-      const K &k, int s, int e, const Compare &comp) const {
+  int linear_search_plain_compare(const K &k, int s, const int e,
+                                  const Compare &comp) const {
     while (s < e) {
       if (!bool_compare_keys(comp, key(s), k)) {
         break;
@@ -596,10 +525,10 @@ class btree_node {
   // Returns the position of the first value whose key is not less than k using
   // linear search performed using compare-to.
   template <typename K, typename Compare>
-  int linear_search_compare_to(
-      const K &k, int s, int e, const Compare &comp) const {
+  int linear_search_compare_to(const K &k, int s, const int e,
+                               const Compare &comp) const {
     while (s < e) {
-      int c = comp(key(s), k);
+      const int c = comp(key(s), k);
       if (c == 0) {
         return s | kExactMatch;
       } else if (c > 0) {
@@ -613,10 +542,10 @@ class btree_node {
   // Returns the position of the first value whose key is not less than k using
   // binary search performed using plain compare.
   template <typename K, typename Compare>
-  int binary_search_plain_compare(
-      const K &k, int s, int e, const Compare &comp) const {
+  int binary_search_plain_compare(const K &k, int s, int e,
+                                  const Compare &comp) const {
     while (s != e) {
-      int mid = (s + e) >> 1;
+      const int mid = (s + e) >> 1;
       if (bool_compare_keys(comp, key(mid), k)) {
         s = mid + 1;
       } else {
@@ -631,23 +560,38 @@ class btree_node {
   template <typename K, typename CompareTo>
   int binary_search_compare_to(
       const K &k, int s, int e, const CompareTo &comp) const {
-    while (s != e) {
-      int mid = (s + e) >> 1;
-      int c = comp(key(mid), k);
-      if (c < 0) {
-        s = mid + 1;
-      } else if (c > 0) {
-        e = mid;
-      } else {
-        // Need to return the first value whose key is not less than k, which
-        // requires continuing the binary search. Note that we are guaranteed
-        // that the result is an exact match because if "key(mid-1) < k" the
-        // call to binary_search_compare_to() will return "mid".
-        s = binary_search_compare_to(k, s, mid, comp);
-        return s | kExactMatch;
+    if (is_multi_container::value) {
+      int exact_match = 0;
+      while (s != e) {
+        const int mid = (s + e) >> 1;
+        const int c = comp(key(mid), k);
+        if (c < 0) {
+          s = mid + 1;
+        } else {
+          e = mid;
+          if (c == 0) {
+            // Need to return the first value whose key is not less than k,
+            // which requires continuing the binary search if this is a
+            // multi-container.
+            exact_match = kExactMatch;
+          }
+        }
       }
+      return s | exact_match;
+    } else {  // Not a multi-container.
+      while (s != e) {
+        const int mid = (s + e) >> 1;
+        const int c = comp(key(mid), k);
+        if (c < 0) {
+          s = mid + 1;
+        } else if (c > 0) {
+          e = mid;
+        } else {
+          return mid | kExactMatch;
+        }
+      }
+      return s;
     }
-    return s;
   }
 
   // Emplaces a value at position i, shifting all existing values and
@@ -660,11 +604,11 @@ class btree_node {
   void remove_value(int i);
 
   // Rebalances a node with its right sibling.
-  void rebalance_right_to_left(btree_node *sibling, int to_move);
-  void rebalance_left_to_right(btree_node *sibling, int to_move);
+  void rebalance_right_to_left(btree_node *right, int to_move);
+  void rebalance_left_to_right(btree_node *right, int to_move);
 
   // Splits a node, moving a portion of the node's values to its right sibling.
-  void split(btree_node *sibling, int insert_position);
+  void split(btree_node *dest, int insert_position);
 
   // Merges a node with its right sibling, moving all of the values and the
   // delimiting key in the parent node onto itself.
@@ -674,14 +618,15 @@ class btree_node {
   void swap(btree_node *src);
 
   // Node allocation/deletion routines.
-  static btree_node* init_leaf(
-      leaf_fields *f, btree_node *parent, int max_count) {
+  static btree_node *init_leaf(leaf_fields *f, btree_node *parent,
+                               int max_count) {
     btree_node *n = reinterpret_cast<btree_node*>(f);
     f->leaf = 1;
     f->position = 0;
     f->max_count = max_count;
     f->count = 0;
     f->parent = parent;
+    // TODO(user): use sanitizer hooks to poison the regions of unused memory.
     if (google::DEBUG_MODE) {
       // Zeroing out f->values here is correct, even if mutable_value_type has a
       // vtable as objects are constructed via placement new later.
@@ -718,6 +663,7 @@ class btree_node {
  private:
   template <typename... Args>
   void value_init(size_type i, Args &&... args) {
+    // TODO(user): use the allocator to construct/destruct the objects.
     ::new (static_cast<void *>(&fields_.values[i]))
         mutable_value_type(std::forward<Args>(args)...);
   }
@@ -741,31 +687,22 @@ class btree_node {
 
  private:
   root_fields fields_;
-
- private:
-  btree_node(btree_node const&) = delete;
-  void operator=(btree_node const&) = delete;
 };
 
 template <typename Node, typename Reference, typename Pointer>
 struct btree_iterator {
+ private:
   using key_type = typename Node::key_type;
   using size_type = typename Node::size_type;
-  using difference_type = typename Node::difference_type;
   using params_type = typename Node::params_type;
 
   using node_type = Node;
   using normal_node = typename std::remove_const<Node>::type;
   using const_node = const Node;
-  using value_type = typename params_type::value_type;
   using normal_pointer = typename params_type::pointer;
   using normal_reference = typename params_type::reference;
   using const_pointer = typename params_type::const_pointer;
   using const_reference = typename params_type::const_reference;
-
-  using pointer = Pointer;
-  using reference = Reference;
-  using iterator_category = std::bidirectional_iterator_tag;
 
   using iterator =
       btree_iterator<normal_node, normal_reference, normal_pointer>;
@@ -773,19 +710,31 @@ struct btree_iterator {
       btree_iterator<const_node, const_reference, const_pointer>;
   using self_type = btree_iterator<Node, Reference, Pointer>;
 
-  btree_iterator()
-      : node(nullptr),
-        position(-1) {
-  }
-  btree_iterator(Node *n, int p)
-      : node(n),
-        position(p) {
-  }
-  btree_iterator(const iterator &x)
-      : node(x.node),
-        position(x.position) {
-  }
+ public:
+  // These aliases are public for std::iterator_traits.
+  using difference_type = typename Node::difference_type;
+  using value_type = typename params_type::value_type;
+  using pointer = Pointer;
+  using reference = Reference;
+  using iterator_category = std::bidirectional_iterator_tag;
 
+  btree_iterator() : node(nullptr), position(-1) {}
+  btree_iterator(Node *n, int p) : node(n), position(p) {}
+
+  // NOTE: this SFINAE allows for implicit conversions from iterator to
+  // const_iterator, but it specifically avoids defining copy constructors so
+  // that btree_iterator can be trivially copyable. This is for performance and
+  // binary size reasons.
+  template <
+      typename N, typename R, typename P,
+      absl::enable_if_t<
+          std::is_same<btree_iterator<N, R, P>, iterator>::value &&
+              !std::is_same<btree_iterator<N, R, P>, btree_iterator>::value,
+          int> = 0>
+  btree_iterator(const btree_iterator<N, R, P> &x)  // NOLINT
+      : node(x.node), position(x.position) {}
+
+ private:
   // Increment/decrement the iterator.
   void increment() {
     if (node->leaf() && ++position < node->count()) {
@@ -793,7 +742,6 @@ struct btree_iterator {
     }
     increment_slow();
   }
-  void increment_by(int count);
   void increment_slow();
 
   void decrement() {
@@ -804,6 +752,7 @@ struct btree_iterator {
   }
   void decrement_slow();
 
+ public:
   bool operator==(const const_iterator &x) const {
     return node == x.node && position == x.position;
   }
@@ -812,9 +761,6 @@ struct btree_iterator {
   }
 
   // Accessors for the key/value the iterator is pointing at.
-  const key_type& key() const {
-    return node->key(position);
-  }
   reference operator*() const {
     return node->value(position);
   }
@@ -841,11 +787,29 @@ struct btree_iterator {
     return tmp;
   }
 
+ private:
+  template <typename Params>
+  friend class btree;
+  template <typename N, typename R, typename P>
+  friend struct btree_iterator;
+  template <typename TreeType, typename CheckerType>
+  friend class base_checker;
+
+  const key_type &key() const { return node->key(position); }
+
   // The node in the tree the iterator is pointing at.
   Node *node;
   // The position within the node of the tree the iterator is pointing at.
   int position;
 };
+
+// Approximation of std::is_trivially_copyable (which is currently unsupported).
+template <typename T>
+using is_trivially_copyable = absl::conjunction<
+    absl::is_trivially_copy_constructible<T>,
+    absl::disjunction<absl::is_trivially_copy_assignable<T>,
+                      absl::negation<std::is_copy_assignable<T>>>,
+    absl::is_trivially_destructible<T>>;
 
 template <typename Params>
 class btree {
@@ -870,7 +834,9 @@ class btree {
   };
 
   struct node_stats {
-    node_stats(ssize_t l, ssize_t i)
+    using size_type = typename Params::size_type;
+
+    node_stats(size_type l, size_type i)
         : leaf_nodes(l),
           internal_nodes(i) {
     }
@@ -881,8 +847,8 @@ class btree {
       return *this;
     }
 
-    ssize_t leaf_nodes;
-    ssize_t internal_nodes;
+    size_type leaf_nodes;
+    size_type internal_nodes;
   };
 
  public:
@@ -926,8 +892,8 @@ class btree {
   btree(const key_compare &comp, const allocator_type &alloc);
 
   btree(const btree &x);
-  btree(btree &&x) noexcept : root_(x.root_) {
-    *x.mutable_root() = nullptr;
+  btree(btree &&x) noexcept : root_(std::move(x.root_)) {
+    x.mutable_root() = nullptr;
   }
 
   ~btree() {
@@ -938,6 +904,8 @@ class btree {
     static_assert(
         std::is_nothrow_copy_constructible<internal_allocator_type>::value,
         "Rebound allocator must be nothrow copy constructible");
+    static_assert(is_trivially_copyable<iterator>::value,
+                  "iterator not trivially copyable.");
     clear();
   }
 
@@ -1227,7 +1195,7 @@ class btree {
   // Internal accessor routines.
   node_type *root() { return root_.template get<2>(); }
   const node_type *root() const { return root_.template get<2>(); }
-  node_type **mutable_root() noexcept { return &root_.template get<2>(); }
+  node_type *&mutable_root() noexcept { return root_.template get<2>(); }
   key_compare *mutable_key_comp() noexcept { return &root_.template get<0>(); }
 
   // The rightmost node is stored in the root node.
@@ -1237,7 +1205,7 @@ class btree {
   const node_type *rightmost() const {
     return (!root() || root()->leaf()) ? root() : root()->rightmost();
   }
-  node_type **mutable_rightmost() { return root()->mutable_rightmost(); }
+  node_type *&mutable_rightmost() { return root()->mutable_rightmost(); }
 
   // The leftmost node is stored as the parent of the root node.
   node_type *leftmost() { return root() ? root()->parent() : nullptr; }
@@ -1257,6 +1225,7 @@ class btree {
   }
 
   // Node creation/deletion routines.
+  // TODO(user): use allocator_traits for all allocator usage.
   node_type* new_internal_node(node_type *parent) {
     internal_fields *p = reinterpret_cast<internal_fields*>(
         mutable_internal_allocator()->allocate(sizeof(internal_fields)));
@@ -1272,6 +1241,7 @@ class btree {
   // sizeof(leaf_fields) might not equal this trivial expression,
   // and it is invalid to build a leaf_fields out of a short node
   // as in new_leaf_root_node.
+  // TODO(user): use gtl::Layout here.
   node_type* new_leaf_node(node_type *parent) {
     leaf_fields *p = reinterpret_cast<leaf_fields*>(
         mutable_internal_allocator()->allocate(
@@ -1442,10 +1412,10 @@ inline void btree_node<P>::emplace_value(size_type i, Args &&... args) {
   if (!leaf()) {
     ++i;
     for (int j = count(); j > i; --j) {
-      *mutable_child(j) = child(j - 1);
+      mutable_child(j) = child(j - 1);
       child(j)->set_position(j);
     }
-    *mutable_child(i) = nullptr;
+    mutable_child(i) = nullptr;
   }
 }
 
@@ -1453,11 +1423,11 @@ template <typename P>
 inline void btree_node<P>::remove_value(int i) {
   if (!leaf()) {
     assert(child(i + 1)->count() == 0);
-    for (int j = i + 1; j < count(); ++j) {
-      *mutable_child(j) = child(j + 1);
+    for (size_type j = i + 1; j < count(); ++j) {
+      mutable_child(j) = child(j + 1);
       child(j)->set_position(j);
     }
-    *mutable_child(count()) = nullptr;
+    mutable_child(count()) = nullptr;
   }
 
   std::move(mutable_value(i + 1), mutable_value(count()), mutable_value(i));
@@ -1466,53 +1436,53 @@ inline void btree_node<P>::remove_value(int i) {
 }
 
 template <typename P>
-void btree_node<P>::rebalance_right_to_left(btree_node *src, int to_move) {
-  assert(parent() == src->parent());
-  assert(position() + 1 == src->position());
-  assert(src->count() >= count());
+void btree_node<P>::rebalance_right_to_left(btree_node *right, int to_move) {
+  assert(parent() == right->parent());
+  assert(position() + 1 == right->position());
+  assert(right->count() >= count());
   assert(to_move >= 1);
-  assert(to_move <= src->count());
+  assert(to_move <= right->count());
 
   // 1) Move the delimiting value in the parent to the left node.
   value_init(count(), std::move(*parent()->mutable_value(position())));
 
   // 2) Move the (to_move - 1) values from the right node to the left node.
-  std::uninitialized_copy_n(std::make_move_iterator(src->mutable_value(0)),
+  std::uninitialized_copy_n(std::make_move_iterator(right->mutable_value(0)),
                             to_move - 1, mutable_value(count() + 1));
 
   // 3) Move the new delimiting value to the parent from the right node.
   *parent()->mutable_value(position()) =
-      std::move(*src->mutable_value(to_move - 1));
+      std::move(*right->mutable_value(to_move - 1));
 
   // 4) Shift the values in the right node to their correct position.
-  std::move(src->mutable_value(to_move), src->mutable_value(src->count()),
-            src->mutable_value(0));
+  std::move(right->mutable_value(to_move), right->mutable_value(right->count()),
+            right->mutable_value(0));
 
   // 5) Destroy the now-empty to_move entries in the right node.
-  src->value_destroy_n(src->count() - to_move, to_move);
+  right->value_destroy_n(right->count() - to_move, to_move);
 
   if (!leaf()) {
     // Move the child pointers from the right to the left node.
     for (int i = 0; i < to_move; ++i) {
-      set_child(1 + count() + i, src->child(i));
+      set_child(1 + count() + i, right->child(i));
     }
-    for (int i = 0; i <= src->count() - to_move; ++i) {
-      assert(i + to_move <= src->max_count());
-      src->set_child(i, src->child(i + to_move));
-      *src->mutable_child(i + to_move) = nullptr;
+    for (int i = 0; i <= right->count() - to_move; ++i) {
+      assert(i + to_move <= right->max_count());
+      right->set_child(i, right->child(i + to_move));
+      right->mutable_child(i + to_move) = nullptr;
     }
   }
 
-  // Fixup the counts on the src and dest nodes.
+  // Fixup the counts on the left and right nodes.
   set_count(count() + to_move);
-  src->set_count(src->count() - to_move);
+  right->set_count(right->count() - to_move);
 }
 
 template <typename P>
-void btree_node<P>::rebalance_left_to_right(btree_node *dest, int to_move) {
-  assert(parent() == dest->parent());
-  assert(position() + 1 == dest->position());
-  assert(count() >= dest->count());
+void btree_node<P>::rebalance_left_to_right(btree_node *right, int to_move) {
+  assert(parent() == right->parent());
+  assert(position() + 1 == right->position());
+  assert(count() >= right->count());
   assert(to_move >= 1);
   assert(to_move <= count());
 
@@ -1522,44 +1492,44 @@ void btree_node<P>::rebalance_left_to_right(btree_node *dest, int to_move) {
   // Lastly, a new delimiting value is moved from the left node into the
   // parent, and the remaining empty left node entries are destroyed.
 
-  if (dest->count() >= to_move) {
-    // The original location of the dest->count() values are sufficient to hold
+  if (right->count() >= to_move) {
+    // The original location of the right->count() values are sufficient to hold
     // the new to_move entries from the parent and left node.
 
     // 1) Shift existing values in the right node to their correct positions.
-    auto *init_move_start = dest->mutable_value(dest->count() - to_move);
+    auto *init_move_start = right->mutable_value(right->count() - to_move);
     std::uninitialized_copy_n(std::make_move_iterator(init_move_start), to_move,
-                              dest->mutable_value(dest->count()));
-    std::move_backward(dest->mutable_value(0), init_move_start,
-                       dest->mutable_value(dest->count()));
+                              right->mutable_value(right->count()));
+    std::move_backward(right->mutable_value(0), init_move_start,
+                       right->mutable_value(right->count()));
 
     // 2) Move the delimiting value in the parent to the right node.
-    *dest->mutable_value(to_move - 1) =
+    *right->mutable_value(to_move - 1) =
         std::move(*parent()->mutable_value(position()));
 
     // 3) Move the (to_move - 1) values from the left node to the right node.
     std::move(mutable_value(count() - (to_move - 1)), mutable_value(count()),
-              dest->mutable_value(0));
+              right->mutable_value(0));
   } else {
     // The right node does not have enough initialized space to hold the new
     // to_move entries, so part of them will move to uninitialized space.
 
     // 1) Shift existing values in the right node to their correct positions.
-    std::uninitialized_copy_n(std::make_move_iterator(dest->mutable_value(0)),
-                              dest->count(), dest->mutable_value(to_move));
+    std::uninitialized_copy_n(std::make_move_iterator(right->mutable_value(0)),
+                              right->count(), right->mutable_value(to_move));
 
     // 2) Move the delimiting value in the parent to the right node.
-    dest->value_init(to_move - 1,
-                     std::move(*parent()->mutable_value(position())));
+    right->value_init(to_move - 1,
+                      std::move(*parent()->mutable_value(position())));
 
     // 3) Move the (to_move - 1) values from the left node to the right node.
-    const size_type uninitialized_remaining = to_move - dest->count() - 1;
+    const size_type uninitialized_remaining = to_move - right->count() - 1;
     auto *init_move_start = mutable_value(count() - uninitialized_remaining);
     std::uninitialized_copy_n(std::make_move_iterator(init_move_start),
                               uninitialized_remaining,
-                              dest->mutable_value(dest->count()));
+                              right->mutable_value(right->count()));
     std::move(mutable_value(count() - (to_move - 1)), init_move_start,
-              dest->mutable_value(0));
+              right->mutable_value(0));
   }
 
   // 4) Move the new delimiting value to the parent from the left node.
@@ -1571,19 +1541,19 @@ void btree_node<P>::rebalance_left_to_right(btree_node *dest, int to_move) {
 
   if (!leaf()) {
     // Move the child pointers from the left to the right node.
-    for (int i = dest->count(); i >= 0; --i) {
-      dest->set_child(i + to_move, dest->child(i));
-      *dest->mutable_child(i) = nullptr;
+    for (int i = right->count(); i >= 0; --i) {
+      right->set_child(i + to_move, right->child(i));
+      right->mutable_child(i) = nullptr;
     }
     for (int i = 1; i <= to_move; ++i) {
-      dest->set_child(i - 1, child(count() - to_move + i));
-      *mutable_child(count() - to_move + i) = nullptr;
+      right->set_child(i - 1, child(count() - to_move + i));
+      mutable_child(count() - to_move + i) = nullptr;
     }
   }
 
-  // Fixup the counts on the src and dest nodes.
+  // Fixup the counts on the left and right nodes.
   set_count(count() - to_move);
-  dest->set_count(dest->count() + to_move);
+  right->set_count(right->count() + to_move);
 }
 
 template <typename P>
@@ -1621,7 +1591,7 @@ void btree_node<P>::split(btree_node *dest, int insert_position) {
     for (int i = 0; i <= dest->count(); ++i) {
       assert(child(count() + i + 1) != nullptr);
       dest->set_child(i, child(count() + i + 1));
-      *mutable_child(count() + i + 1) = nullptr;
+      mutable_child(count() + i + 1) = nullptr;
     }
   }
 }
@@ -1645,7 +1615,7 @@ void btree_node<P>::merge(btree_node *src) {
     // Move the child pointers from the right to the left node.
     for (int i = 0; i <= src->count(); ++i) {
       set_child(1 + count() + i, src->child(i));
-      *src->mutable_child(i) = nullptr;
+      src->mutable_child(i) = nullptr;
     }
   }
 
@@ -1663,28 +1633,28 @@ void btree_node<P>::swap(btree_node *x) {
   assert(leaf() == x->leaf());
 
   // Determine which is the smaller/larger node.
-  btree_node *small = this, *large = x;
-  if (small->count() > large->count()) {
-    swap(small, large);
+  btree_node *smaller = this, *larger = x;
+  if (smaller->count() > larger->count()) {
+    swap(smaller, larger);
   }
 
   // Swap the values.
   std::swap_ranges(
-      small->mutable_value(0), small->mutable_value(small->count()),
-      large->mutable_value(0));
+      smaller->mutable_value(0), smaller->mutable_value(smaller->count()),
+      larger->mutable_value(0));
 
   // Move values that can't be swapped.
   std::uninitialized_copy(
-      std::make_move_iterator(large->mutable_value(small->count())),
-      std::make_move_iterator(large->mutable_value(large->count())),
-      small->mutable_value(small->count()));
-  large->value_destroy_n(small->count(), large->count() - small->count());
+      std::make_move_iterator(larger->mutable_value(smaller->count())),
+      std::make_move_iterator(larger->mutable_value(larger->count())),
+      smaller->mutable_value(smaller->count()));
+  larger->value_destroy_n(smaller->count(), larger->count() - smaller->count());
 
   if (!leaf()) {
     // Swap the child pointers.
-    std::swap_ranges(
-        small->mutable_child(0), small->mutable_child(large->count() + 1),
-        large->mutable_child(0));
+    std::swap_ranges(&smaller->mutable_child(0),
+                     &smaller->mutable_child(larger->count() + 1),
+                     &larger->mutable_child(0));
     for (int i = 0; i <= count(); ++i) {
       x->child(i)->fields_.parent = x;
     }
@@ -1719,23 +1689,6 @@ void btree_iterator<N, R, P>::increment_slow() {
       node = node->child(0);
     }
     position = 0;
-  }
-}
-
-template <typename N, typename R, typename P>
-void btree_iterator<N, R, P>::increment_by(int count) {
-  while (count > 0) {
-    if (node->leaf()) {
-      int rest = node->count() - position;
-      position += std::min(rest, count);
-      count = count - rest;
-      if (position < node->count()) {
-        return;
-      }
-    } else {
-      --count;
-    }
-    increment_slow();
   }
 }
 
@@ -1796,7 +1749,7 @@ template <typename... Args>
 auto btree<P>::insert_unique(const key_type &key, Args &&... args)
     -> std::pair<iterator, bool> {
   if (empty()) {
-    *mutable_root() = new_leaf_root_node(1);
+    mutable_root() = new_leaf_root_node(1);
   }
 
   std::pair<iterator, int> res = internal_locate(key, iterator(root(), 0));
@@ -1854,7 +1807,7 @@ template <typename P>
 template <typename ValueType>
 auto btree<P>::insert_multi(const key_type &key, ValueType &&v) -> iterator {
   if (empty()) {
-    *mutable_root() = new_leaf_root_node(1);
+    mutable_root() = new_leaf_root_node(1);
   }
 
   iterator iter = internal_upper_bound(key, iterator(root(), 0));
@@ -2008,7 +1961,7 @@ void btree<P>::clear() {
   if (root() != nullptr) {
     internal_clear(root());
   }
-  *mutable_root() = nullptr;
+  mutable_root() = nullptr;
 }
 
 template <typename P>
@@ -2108,8 +2061,8 @@ void btree<P>::rebalance_or_split(iterator *iter) {
       // the current root node as the child of the new root.
       parent = new_internal_root_node();
       parent->set_child(0, root());
-      *mutable_root() = parent;
-      assert(*mutable_rightmost() == parent->child(0));
+      mutable_root() = parent;
+      assert(rightmost() == parent->child(0));
     } else {
       // The root node is an internal node. We do not want to create a new root
       // node because the root node is special and holds the size of the tree
@@ -2128,7 +2081,7 @@ void btree<P>::rebalance_or_split(iterator *iter) {
     split_node = new_leaf_node(parent);
     node->split(split_node, insert_position);
     if (rightmost() == node) {
-      *mutable_rightmost() = split_node;
+      mutable_rightmost() = split_node;
     }
   } else {
     split_node = new_internal_node(parent);
@@ -2146,7 +2099,7 @@ void btree<P>::merge_nodes(node_type *left, node_type *right) {
   left->merge(right);
   if (right->leaf()) {
     if (rightmost() == right) {
-      *mutable_rightmost() = left;
+      mutable_rightmost() = left;
     }
     delete_leaf_node(right);
   } else {
@@ -2215,14 +2168,14 @@ void btree<P>::try_shrink() {
   if (root()->leaf()) {
     assert(size() == 0);
     delete_leaf_node(root());
-    *mutable_root() = nullptr;
+    mutable_root() = nullptr;
   } else {
     node_type *child = root()->child(0);
     if (child->leaf()) {
       // The child is a leaf node so simply make it the root node in the tree.
       child->make_root();
       delete_internal_root_node();
-      *mutable_root() = child;
+      mutable_root() = child;
     } else {
       // The child is an internal node. We want to keep the existing root node
       // so we move all of the values from the child node into the existing
@@ -2265,7 +2218,7 @@ inline auto btree<P>::internal_emplace(iterator iter, Args &&... args)
           std::min<int>(kNodeValues, 2 * iter.node->max_count()));
       iter.node->swap(root());
       delete_leaf_node(root());
-      *mutable_root() = iter.node;
+      mutable_root() = iter.node;
     } else {
       rebalance_or_split(&iter);
       ++*mutable_size();

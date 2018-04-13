@@ -18,6 +18,8 @@
 #ifndef S2_S2CONTAINS_POINT_QUERY_H_
 #define S2_S2CONTAINS_POINT_QUERY_H_
 
+#include <vector>
+
 #include "s2/s2edge_crosser.h"
 #include "s2/s2shape_index.h"
 #include "s2/s2shapeutil_shape_edge.h"
@@ -290,10 +292,16 @@ bool S2ContainsPointQuery<IndexType>::ShapeContains(
   bool inside = clipped.contains_center();
   const int num_edges = clipped.num_edges();
   if (num_edges > 0) {
-    // Points and polylines can be ignored unless the vertex model is CLOSED.
     const S2Shape& shape = *index_->shape(clipped.shape_id());
-    if (!shape.has_interior() &&
-        options_.vertex_model() != S2VertexModel::CLOSED) {
+    if (!shape.has_interior()) {
+      // Points and polylines can be ignored unless the vertex model is CLOSED.
+      if (options_.vertex_model() != S2VertexModel::CLOSED) return false;
+
+      // Otherwise, the point is contained if and only if it matches a vertex.
+      for (int i = 0; i < num_edges; ++i) {
+        auto edge = shape.edge(clipped.edge(i));
+        if (edge.v0 == p || edge.v1 == p) return true;
+      }
       return false;
     }
     // Test containment by drawing a line segment from the cell center to the

@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iosfwd>
+#include <vector>
 
 #include "s2/base/logging.h"
 #include "s2/_fp_contract_off.h"
@@ -47,9 +48,9 @@ class S2LatLngRect;
 // interior).  Thus a cap of radius Pi/2 is a hemisphere, and a cap of radius
 // Pi covers the entire sphere.
 //
-// A cap can also be defined by its center point and height.  The height
-// is simply the distance from the center point to the cutoff plane.  There is
-// also support for "empty" and "full" caps, which contain no points and all
+// A cap can also be defined by its center point and height.  The height is
+// simply the distance from the center point to the cutoff plane.  There is
+// also support for empty and full caps, which contain no points and all
 // points respectively.
 //
 // This class is intended to be copied by value as desired.  It uses the

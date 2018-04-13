@@ -25,10 +25,15 @@
 #include "s2/mutable_s2shape_index.h"
 #include "s2/s2edge_crossings.h"
 #include "s2/s2edge_vector_shape.h"
+#include "s2/s2error.h"
+#include "s2/s2loop.h"
+#include "s2/s2polygon.h"
 #include "s2/s2shapeutil_contains_brute_force.h"
 #include "s2/s2shapeutil_edge_iterator.h"
+#include "s2/s2text_format.h"
 
 using absl::make_unique;
+using std::unique_ptr;
 using std::vector;
 
 namespace s2shapeutil {
@@ -114,6 +119,66 @@ TEST(GetCrossingEdgePairs, EdgeGrid) {
   index.Add(std::move(shape));
   TestGetCrossingEdgePairs(index, CrossingType::ALL);
   TestGetCrossingEdgePairs(index, CrossingType::INTERIOR);
+}
+
+// Return true if any loop crosses any other loop (including vertex crossings
+// and duplicate edges), or any loop has a self-intersection (including
+// duplicate vertices).
+static bool HasSelfIntersection(const MutableS2ShapeIndex& index) {
+  S2Error error;
+  if (s2shapeutil::FindSelfIntersection(index, &error)) {
+    S2_VLOG(1) << error;
+    return true;
+  }
+  return false;
+}
+
+// This function recursively verifies that HasCrossing returns the given
+// result for all possible cyclic permutations of the loop vertices for the
+// given set of loops.
+void TestHasCrossingPermutations(vector<unique_ptr<S2Loop>>* loops, int i,
+                                 bool has_crossing) {
+  if (i == loops->size()) {
+    MutableS2ShapeIndex index;
+    S2Polygon polygon(std::move(*loops), S2Debug::DISABLE);
+    index.Add(make_unique<S2Polygon::Shape>(&polygon));
+    EXPECT_EQ(has_crossing, HasSelfIntersection(index));
+    *loops = polygon.Release();
+  } else {
+    unique_ptr<S2Loop> orig_loop = std::move((*loops)[i]);
+    for (int j = 0; j < orig_loop->num_vertices(); ++j) {
+      vector<S2Point> vertices;
+      for (int k = 0; k < orig_loop->num_vertices(); ++k) {
+        vertices.push_back(orig_loop->vertex(j + k));
+      }
+      (*loops)[i] = make_unique<S2Loop>(vertices, S2Debug::DISABLE);
+      TestHasCrossingPermutations(loops, i+1, has_crossing);
+    }
+    (*loops)[i] = std::move(orig_loop);
+  }
+}
+
+// Given a string reprsenting a polygon, and a boolean indicating whether this
+// polygon has any self-intersections or loop crossings, verify that all
+// HasSelfIntersection returns the expected result for all possible cyclic
+// permutations of the loop vertices.
+void TestHasCrossing(const string& polygon_str, bool has_crossing) {
+  // Set S2Debug::DISABLE to allow invalid polygons.
+  unique_ptr<S2Polygon> polygon =
+      s2textformat::MakePolygonOrDie(polygon_str, S2Debug::DISABLE);
+  vector<unique_ptr<S2Loop>> loops = polygon->Release();
+  TestHasCrossingPermutations(&loops, 0, has_crossing);
+}
+
+TEST(FindSelfIntersection, Basic) {
+  // Coordinates are (lat,lng), which can be visualized as (y,x).
+  TestHasCrossing("0:0, 0:1, 0:2, 1:2, 1:1, 1:0", false);
+  TestHasCrossing("0:0, 0:1, 0:2, 1:2, 0:1, 1:0", true);  // duplicate vertex
+  TestHasCrossing("0:0, 0:1, 1:0, 1:1", true);  // edge crossing
+  TestHasCrossing("0:0, 1:1, 0:1; 0:0, 1:1, 1:0", true);  // duplicate edge
+  TestHasCrossing("0:0, 1:1, 0:1; 1:1, 0:0, 1:0", true);  // reversed edge
+  TestHasCrossing("0:0, 0:2, 2:2, 2:0; 1:1, 0:2, 3:1, 2:0",
+                  true);  // vertex crossing
 }
 
 }  // namespace s2shapeutil

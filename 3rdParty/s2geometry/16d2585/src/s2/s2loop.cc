@@ -158,7 +158,7 @@ bool S2Loop::FindValidationErrorNoIndex(S2Error* error) const {
       return true;
     }
   }
-  // Loops must have at least 3 vertices (except for "empty" and "full").
+  // Loops must have at least 3 vertices (except for the empty and full loops).
   if (num_vertices() < 3) {
     if (is_empty_or_full()) {
       return false;  // Skip remaining tests.
@@ -191,7 +191,7 @@ bool S2Loop::FindValidationErrorNoIndex(S2Error* error) const {
 
 void S2Loop::InitOriginAndBound() {
   if (num_vertices() < 3) {
-    // Check for the special "empty" and "full" loops (which have one vertex).
+    // Check for the special empty and full loops (which have one vertex).
     if (!is_empty_or_full()) {
       origin_inside_ = false;
       return;  // Bail out without trying to access non-existent vertices.
@@ -240,7 +240,7 @@ void S2Loop::InitOriginAndBound() {
 }
 
 void S2Loop::InitBound() {
-  // Check for the special "empty" and "full" loops.
+  // Check for the special empty and full loops.
   if (is_empty_or_full()) {
     if (is_empty()) {
       subregion_bound_ = bound_ = S2LatLngRect::Empty();
@@ -1649,7 +1649,7 @@ size_t S2Loop::SpaceUsed() const {
 }
 
 int S2Loop::Shape::num_chains() const {
-  return loop_->is_empty_or_full() ? 0 : 1;
+  return loop_->is_empty() ? 0 : 1;
 }
 
 S2Shape::Chain S2Loop::Shape::chain(int i) const {

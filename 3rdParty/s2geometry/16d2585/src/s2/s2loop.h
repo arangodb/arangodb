@@ -63,12 +63,12 @@ namespace s2builderutil { class S2PolygonLayer; }
 // Loops are not allowed to have any duplicate vertices (whether adjacent or
 // not).  Non-adjacent edges are not allowed to intersect, and furthermore edges
 // of length 180 degrees are not allowed (i.e., adjacent vertices cannot be
-// antipodal).  Loops must have at least 3 vertices (except for the "empty" and
-// "full" loops discussed below).  Although these restrictions are not enforced
+// antipodal).  Loops must have at least 3 vertices (except for the empty and
+// full loops discussed below).  Although these restrictions are not enforced
 // in optimized code, you may get unexpected results if they are violated.
 //
-// There are two special loops: the "empty" loop contains no points, while the
-// "full" loop contains all points.  These loops do not have any edges, but to
+// There are two special loops: the "empty loop" contains no points, while the
+// "full loop" contains all points.  These loops do not have any edges, but to
 // preserve the invariant that every loop can be represented as a vertex
 // chain, they are defined as having exactly one vertex each (see kEmpty and
 // kFull).
@@ -107,7 +107,7 @@ class S2Loop final : public S2Region {
 
   // Initialize a loop with given vertices.  The last vertex is implicitly
   // connected to the first.  All points should be unit length.  Loops must
-  // have at least 3 vertices (except for the "empty" and "full" loops, see
+  // have at least 3 vertices (except for the empty and full loops, see
   // kEmpty and kFull).  This method may be called multiple times.
   void Init(const std::vector<S2Point>& vertices);
 
@@ -195,13 +195,13 @@ class S2Loop final : public S2Region {
     return vertices_[j];
   }
 
-  // Return true if this is the special "empty" loop that contains no points.
+  // Return true if this is the special empty loop that contains no points.
   bool is_empty() const;
 
-  // Return true if this is the special "full" loop that contains all points.
+  // Return true if this is the special full loop that contains all points.
   bool is_full() const;
 
-  // Return true if this loop is either "empty" or "full".
+  // Return true if this loop is either empty or full.
   bool is_empty_or_full() const;
 
   // The depth of a loop is defined as its nesting level within its containing

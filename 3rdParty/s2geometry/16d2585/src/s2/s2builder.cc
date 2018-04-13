@@ -75,6 +75,8 @@
 #include <memory>
 #include <numeric>
 #include <string>
+#include <vector>
+
 #include "s2/base/casts.h"
 #include "s2/base/logging.h"
 #include "s2/third_party/absl/memory/memory.h"

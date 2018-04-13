@@ -528,7 +528,7 @@ inline int S2CellId::GetCenterSiTi(int* psi, int* pti) const {
 }
 
 inline bool S2CellId::is_valid() const {
-  return (face() < kNumFaces && (lsb() & GG_ULONGLONG(0x1555555555555555)));
+  return (face() < kNumFaces && (lsb() & 0x1555555555555555ULL));
 }
 
 inline int S2CellId::face() const {
@@ -540,7 +540,7 @@ inline uint64 S2CellId::pos() const {
 }
 
 inline int S2CellId::level() const {
-  // We can't just S2_DCHECK(is_valid()) because we want level() to be to be
+  // We can't just S2_DCHECK(is_valid()) because we want level() to be
   // defined for end-iterators, i.e. S2CellId::End(kLevel).  However there is
   // no good way to define S2CellId::None().level(), so we do prohibit that.
   S2_DCHECK(id_ != 0);
