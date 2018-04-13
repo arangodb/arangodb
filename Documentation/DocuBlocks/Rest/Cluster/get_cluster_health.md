@@ -5,7 +5,6 @@
 @RESTHEADER{GET /_admin/cluster/health, Queries the health of cluster for monitoring}
 
 @RESTDESCRIPTION
-
 Queries the health of the cluster for monitoring purposes. The response is a JSON object, containing the standard `code`, `error`, `errorNum`, and `errorMessage` fields as appropriate. The endpoint-specific fields are as follows:
 
 - `ClusterId`: A UUID string identifying the cluster

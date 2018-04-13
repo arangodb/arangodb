@@ -38,7 +38,7 @@ namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
 class SimpleHttpResult;
-}
+}  // namespace httpclient
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief class for http requests
@@ -47,6 +47,13 @@ class SimpleHttpResult;
 class V8ClientConnection {
   V8ClientConnection(V8ClientConnection const&) = delete;
   V8ClientConnection& operator=(V8ClientConnection const&) = delete;
+
+ public:
+  static void setJwtSecret(std::string const& jwtSecret) { JWT_SECRET = jwtSecret; }
+  static std::string jwtToken(std::string const& secret);
+
+ private:
+  static std::string JWT_SECRET;
 
  public:
   V8ClientConnection(
@@ -104,7 +111,8 @@ class V8ClientConnection {
   static std::string rewriteLocation(void*, std::string const&);
 
  private:
-  void init(std::unique_ptr<httpclient::GeneralClientConnection>&, std::string const&, std::string const&, std::string const&);
+  void init(std::unique_ptr<httpclient::GeneralClientConnection>&,
+            std::string const&, std::string const&, std::string const&);
 
   v8::Handle<v8::Value> requestData(
       v8::Isolate* isolate, rest::RequestType method,
@@ -132,6 +140,6 @@ class V8ClientConnection {
   std::string _version;
   std::string _mode;
 };
-}
+}  // namespace arangodb
 
 #endif

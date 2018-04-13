@@ -29,7 +29,6 @@
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestBaseHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
-#include "RestHandler/RestVersionHandler.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;

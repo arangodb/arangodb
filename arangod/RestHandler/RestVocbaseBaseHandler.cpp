@@ -208,12 +208,15 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request,
-                                               GeneralResponse* response)
-    : RestBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
-      _nolockHeaderSet(nullptr) {}
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(
+    GeneralRequest* request,
+    GeneralResponse* response
+): RestBaseHandler(request, response),
+   _context(*static_cast<VocbaseContext*>(request->requestContext())),
+   _vocbase(_context.vocbase()),
+   _nolockHeaderSet(nullptr) {
+  TRI_ASSERT(request->requestContext());
+}
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
 
@@ -353,7 +356,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  auto ctx = transaction::StandaloneContext::Create(&_vocbase);
+
   writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
 

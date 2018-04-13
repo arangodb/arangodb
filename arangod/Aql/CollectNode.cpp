@@ -134,6 +134,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       return std::make_unique<SortedCollectBlock>(&engine, this);
     case CollectOptions::CollectMethod::DISTINCT:
       return std::make_unique<DistinctCollectBlock>(&engine, this);
+    case CollectOptions::CollectMethod::COUNT:
+      return std::make_unique<CountCollectBlock>(&engine, this);
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
@@ -286,6 +288,11 @@ void CollectNode::getVariablesUsedHere(
       }
     }
   }
+}
+  
+void CollectNode::setAggregateVariables(
+    std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables) {
+  _aggregateVariables = aggregateVariables;
 }
 
 /// @brief estimateCost

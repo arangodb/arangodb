@@ -177,9 +177,15 @@ bool delimited_token_stream::next() {
 
   auto size = find_delimiter(data_, delim_);
   auto next = std::max(size_t(1), size + delim_.size());
+  auto start = offset_.end + uint32_t(delim_.size()); // value is allowed to overflow, will only produce invalid result
+  auto end = start + size;
 
-  offset_.start = offset_.end + delim_.size();
-  offset_.end = offset_.start + size;
+  if (irs::integer_traits<uint32_t>::const_max < end) {
+    return false; // cannot fit the next token into offset calculation
+  }
+
+  offset_.start = start;
+  offset_.end = uint32_t(end);
   payload_.value = bytes_ref(data_.c_str(), size);
   term_.value(
     delim_.null()
@@ -197,7 +203,7 @@ bool delimited_token_stream::next() {
 bool delimited_token_stream::reset(const string_ref& data) {
   data_ = ref_cast<byte_type>(data);
   offset_.start = 0;
-  offset_.end = 0 - delim_.size();
+  offset_.end = 0 - uint32_t(delim_.size()); // counterpart to computation in next() above
 
   return true;
 }
