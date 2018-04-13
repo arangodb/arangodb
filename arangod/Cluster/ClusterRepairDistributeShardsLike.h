@@ -74,7 +74,7 @@ class ResultT : public arangodb::Result {
   }
 
   ResultT static error(int errorNumber,
-                       std::__cxx11::string const& errorMessage) {
+                       std::string const& errorMessage) {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
@@ -145,7 +145,7 @@ class ResultT : public arangodb::Result {
       : Result(errorNumber), _val(val_) {}
 
   ResultT(boost::optional<T>&& val_, int errorNumber,
-          std::__cxx11::string const& errorMessage)
+          std::string const& errorMessage)
       : Result(errorNumber, errorMessage), _val(val_) {}
 };
 
