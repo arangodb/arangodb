@@ -53,7 +53,6 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer* server)
       _requirePersistedId(false),
       _heartbeatThread(nullptr),
       _heartbeatInterval(0),
-      _disableHeartbeat(false),
       _agencyCallbackRegistry(nullptr),
       _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
   setOptional(true);
@@ -403,50 +402,46 @@ void ClusterFeature::start() {
             << "', internal address: " << _myAddress
             << ", role: " << role;
 
-  if (!_disableHeartbeat) {
-    AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
+  AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
-    if (result.successful()) {
-      velocypack::Slice HeartbeatIntervalMs =
-          result.slice()[0].get(std::vector<std::string>(
-              {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
+  if (result.successful()) {
+    velocypack::Slice HeartbeatIntervalMs =
+        result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Sync", "HeartbeatIntervalMs"}));
 
-      if (HeartbeatIntervalMs.isInteger()) {
-        try {
-          _heartbeatInterval = HeartbeatIntervalMs.getUInt();
-          LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "using heartbeat interval value '" << _heartbeatInterval
-                    << " ms' from agency";
-        } catch (...) {
-          // Ignore if it is not a small int or uint
-        }
+    if (HeartbeatIntervalMs.isInteger()) {
+      try {
+        _heartbeatInterval = HeartbeatIntervalMs.getUInt();
+        LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "using heartbeat interval value '" << _heartbeatInterval
+                  << " ms' from agency";
+      } catch (...) {
+        // Ignore if it is not a small int or uint
       }
-    }
-
-    // no value set in agency. use default
-    if (_heartbeatInterval == 0) {
-      _heartbeatInterval = 5000;  // 1/s
-
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "unable to read heartbeat interval from agency. Using "
-                << "default value '" << _heartbeatInterval << " ms'";
-    }
-
-    // start heartbeat thread
-    _heartbeatThread = std::make_shared<HeartbeatThread>(
-        _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5);
-
-    if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("
-                 << endpoints << ")";
-      FATAL_ERROR_EXIT();
-    }
-
-    while (!_heartbeatThread->isReady()) {
-      // wait until heartbeat is ready
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
     }
   }
 
-  AgencyCommResult result;
+  // no value set in agency. use default
+  if (_heartbeatInterval == 0) {
+    _heartbeatInterval = 5000;  // 1/s
+
+    LOG_TOPIC(WARN, arangodb::Logger::CLUSTER) << "unable to read heartbeat interval from agency. Using "
+              << "default value '" << _heartbeatInterval << " ms'";
+  }
+
+  // start heartbeat thread
+  _heartbeatThread = std::make_shared<HeartbeatThread>(
+      _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5);
+
+  if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("
+                << endpoints << ")";
+    FATAL_ERROR_EXIT();
+  }
+
+  while (!_heartbeatThread->isReady()) {
+    // wait until heartbeat is ready
+    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+  }
 
   while (true) {
     VPackBuilder builder;
@@ -459,6 +454,7 @@ void ClusterFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
+    result.clear();
     result = comm.setValue("Current/ServersRegistered/" + myId,
                            builder.slice(), 0.0);
 

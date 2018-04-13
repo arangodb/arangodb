@@ -236,9 +236,10 @@ void RocksDBRestExportHandler::createCursor() {
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
+
   {
     auto cursor = std::make_unique<RocksDBExportCursor>(
-      &_vocbase,
+      _vocbase,
       name,
       _restrictions,
       TRI_NewTickServer(),

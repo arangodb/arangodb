@@ -203,6 +203,7 @@ function ahuacatlFunctionsBruteTestSuite () {
       errors.ERROR_ARANGO_CROSS_COLLECTION_REQUEST.code,
       errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code,
       errors.ERROR_QUERY_FUNCTION_NOT_FOUND.code,
+      errors.ERROR_QUERY_FUNCTION_NAME_UNKNOWN.code,
       errors.ERROR_GRAPH_NOT_FOUND.code,
       errors.ERROR_GRAPH_INVALID_GRAPH.code,
     ].indexOf(err.errorNum) !== -1;

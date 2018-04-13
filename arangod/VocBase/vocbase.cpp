@@ -1773,7 +1773,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, TRI_voc_tick_t id,
       _deadlockDetector(false),
       _userStructures(nullptr) {
   _queries.reset(new arangodb::aql::QueryList(this));
-  _cursorRepository.reset(new arangodb::CursorRepository(this));
+  _cursorRepository.reset(new arangodb::CursorRepository(*this));
   _collectionKeys.reset(new arangodb::CollectionKeysRepository());
 
   // init collections
@@ -1856,7 +1856,8 @@ bool TRI_vocbase_t::IsAllowedName(
 }
 
 void TRI_vocbase_t::addReplicationApplier() {
-  DatabaseReplicationApplier* applier = DatabaseReplicationApplier::create(this);
+  auto* applier = DatabaseReplicationApplier::create(*this);
+
   _replicationApplier.reset(applier);
 }
 
@@ -1866,6 +1867,7 @@ void TRI_vocbase_t::updateReplicationClient(TRI_server_id_t serverId, double ttl
   if (ttl <= 0.0) {
     ttl = InitialSyncer::defaultBatchTimeout;
   }
+
   double const expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _replicationClientsLock);
