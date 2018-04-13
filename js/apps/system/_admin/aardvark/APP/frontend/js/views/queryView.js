@@ -1063,6 +1063,7 @@
 
       var counter = 0;
 
+      this.checkForNewBindParams();
       _.each(this.bindParamTableObj, function (val, key) {
         $('#arangoBindParamTable tbody').append(
           '<tr>' +
@@ -1580,17 +1581,6 @@
 
       if (quit === true) {
         return quit;
-      }
-
-      var keys = [];
-      _.each(this.bindParamTableObj, function (val, key) {
-        if (val === '') {
-          quit = true;
-          keys.push(key);
-        }
-      });
-      if (keys.length > 0) {
-        arangoHelper.arangoError('Bind Parameter', JSON.stringify(keys) + ' not defined.');
       }
 
       return quit;

@@ -252,10 +252,11 @@ var helpArangoDatabase = arangosh.createHelpHeadline('ArangoDatabase (db) help')
   '  _createStatement(<data>)              create and return AQL query       ' + '\n' +
   '                                                                          ' + '\n' +
   'View Functions:                                                           ' + '\n' +
-  '  _views()                                  list all views                ' + '\n' +
-  '  _view(<name>)                             get view by name              ' + '\n' +
-  '  _createView(<name>, <type>, <properties>) creates a new view            ' + '\n' +
-  '  _dropView(<name>)                         delete a view                 ';
+  '  _views()                              list all views                    ' + '\n' +
+  '  _view(<name>)                         get view by name                  ' + '\n' +
+  '  _createView(<name>, <type>,           creates a new view                ' + '\n' +
+  '              <properties>)                                               ' + '\n' +
+  '  _dropView(<name>)                     delete a view                     ';
 
 ArangoDatabase.prototype._help = function () {
   internal.print(helpArangoDatabase);
@@ -283,7 +284,7 @@ ArangoDatabase.prototype._collections = function () {
     var result = [];
     var i;
 
-    // add all collentions to object
+    // add all collections to object
     for (i = 0;  i < collections.length;  ++i) {
       var collection = new this._collectionConstructor(this, collections[i]);
       this._registerCollection(collection._name, collection);

@@ -64,18 +64,13 @@ void RestExplainHandler::explainQuery() {
     return;
   }
 
-  if (_vocbase == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    return;
-  }
-
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
+
   VPackSlice body = parsedBody.get()->slice();
 
   auto badParamError = [&](std::string const& msg) -> void {
@@ -114,10 +109,14 @@ void RestExplainHandler::explainQuery() {
   auto optionsBuilder = std::make_shared<VPackBuilder>();
   optionsBuilder->add(optionsSlice);
 
-  arangodb::aql::Query query(false, _vocbase, aql::QueryString(queryString),
-                             bindBuilder, optionsBuilder,
-                             arangodb::aql::PART_MAIN);
-
+  arangodb::aql::Query query(
+    false,
+    &_vocbase,
+    aql::QueryString(queryString),
+    bindBuilder,
+    optionsBuilder,
+    arangodb::aql::PART_MAIN
+  );
   auto queryResult = query.explain();
 
   if (queryResult.code != TRI_ERROR_NO_ERROR) {

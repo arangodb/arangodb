@@ -482,8 +482,6 @@ def generic_handler_desc(cargo, r, message, op, para, name):
         line = Typography(line)
         para[name] += line + '\n'
 
-    para[name] = removeTrailingBR.sub("", para[name])
-
 def start_docublock(cargo, r=Regexen()):
     global currentDocuBlock
     (fp, last) = cargo
@@ -521,7 +519,7 @@ def restheader(cargo, r=Regexen()):
 
     temp = parameters(last).split(',')
     if temp == "":
-        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + path)
+        raise Exception("Invalid restheader value. got empty string. Maybe missing closing bracket? " + last)
 
     (ucmethod, path) = temp[0].split()
 
