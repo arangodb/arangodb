@@ -259,12 +259,11 @@ void GeneralServerFeature::start() {
     server->startListening();
   }
 
-  // populate the authentication cache. otherwise no one can access the new
-  // database
-  auto authentication = AuthenticationFeature::instance();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
-    authentication->userManager()->outdate();
+  // initially populate the authentication cache. otherwise no one
+  // can access the new database
+  auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->outdate();
   }
 }
 
