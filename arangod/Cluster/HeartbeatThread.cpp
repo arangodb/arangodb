@@ -611,6 +611,8 @@ void HeartbeatThread::runSingleServer() {
         config._endpoint = endpoint;
         config._autoResync = true;
         config._autoResyncRetries = 2;
+        config._requireFromPresent = true;
+        config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
 
         applier->forget(); // forget about any existingconfiguration

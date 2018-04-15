@@ -254,9 +254,6 @@ class ServerState {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
 
-  /// @brief store the server role
-  bool storeRole(RoleEnum role);
-
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
 
