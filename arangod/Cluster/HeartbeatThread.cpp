@@ -579,9 +579,7 @@ void HeartbeatThread::runSingleServer() {
         std::this_thread::sleep_for(std::chrono::seconds(10));
       }
 
-      if (applier->isActive() && applier->endpoint() == endpoint) {
-        lastTick = applier->lastTick();
-      } else if (applier->endpoint() != endpoint) { // configure applier for new endpoint
+      if (applier->endpoint() != endpoint) { // configure applier for new endpoint
         if (applier->isActive()) {
           applier->stopAndJoin();
         }
@@ -601,7 +599,7 @@ void HeartbeatThread::runSingleServer() {
         config._incremental = true;
         TRI_ASSERT(!config._skipCreateDrop);
 
-        applier->forget(); // forget about any existingconfiguration
+        applier->forget(); // forget about any existing configuration
         applier->reconfigure(config);
         applier->startReplication();
         
