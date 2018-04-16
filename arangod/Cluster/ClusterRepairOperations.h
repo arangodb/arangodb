@@ -45,12 +45,27 @@ using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 using ShardWithProtoAndDbServers = std::tuple<ShardID, ShardID, DBServers>;
 
 class VersionSort {
-  using CharOrInt = boost::variant<char, uint64_t>;
-
  public:
   bool operator()(std::string const& a, std::string const& b) const;
 
  private:
+  // boost::variant cannot discern between ambiguously convertible types
+  // (unlike std::variant from C++17). So, for compilers where char is unsigned,
+  // using uint64_t results in a compile error (vice versa for signed chars and
+  // int64_t) and therefore this distinct type is needed.
+  class WrappedUInt64 {
+   public:
+    uint64_t value;
+
+    explicit inline WrappedUInt64(uint64_t value_) : value(value_) {}
+
+    bool inline operator<(WrappedUInt64 const& other) const {
+      return this->value < other.value;
+    }
+  };
+
+  using CharOrInt = boost::variant<char, WrappedUInt64>;
+
   std::vector<CharOrInt> static splitVersion(std::string const& str);
 };
 
