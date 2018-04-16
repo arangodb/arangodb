@@ -453,7 +453,7 @@ SCENARIO("Cluster RepairOperations", "[cluster][shards][repairs]") {
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
 
-    uint64_t (*mockJobIdGenerator)() = []() {
+    uint64_t (*mockJobIdGenerator)() = []() -> uint64_t {
       REQUIRE(false);
       return 0ul;
     };
