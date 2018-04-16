@@ -18,6 +18,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
@@ -26,21 +27,34 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
-#include "Shell/ClientFeature.h"
+#include "Utils/ClientManager.h"
+#include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
-#include "V8Client/ArangoClientHelper.h"
 
 namespace arangodb {
 namespace httpclient {
 class SimpleHttpResult;
 }
-
 class EncryptionFeature;
+class ManagedDirectory;
 
-class RestoreFeature final : public application_features::ApplicationFeature,
-                             public ArangoClientHelper {
+class RestoreFeature final : public application_features::ApplicationFeature {
  public:
-  RestoreFeature(application_features::ApplicationServer* server, int* result);
+  // statistics
+  struct Stats {
+    uint64_t totalBatches;
+    uint64_t totalCollections;
+    uint64_t totalRead;
+  };
+
+  struct JobData {
+    RestoreFeature& feature;
+    ManagedDirectory& directory;
+    Stats& stats;
+  };
+
+ public:
+  RestoreFeature(application_features::ApplicationServer* server, int& exitCode);
 
  public:
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -49,7 +63,25 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   void prepare() override;
   void start() override;
 
+public:
+ /**
+  * @brief Returns the feature name (for registration with `ApplicationServer`)
+  * @return The name of the feature
+  */
+ static std::string featureName();
+
+ /**
+  * @brief Saves a worker error for later handling and clears queued jobs
+  * @param error Error from a client worker
+  */
+ void reportError(Result const& error);
+
  private:
+   int& _exitCode;
+
+ private:
+  ClientManager _clientManager;
+  ClientTaskQueue<JobData> _clientTaskQueue;
   std::vector<std::string> _collections;
   std::string _inputDirectory;
   uint64_t _chunkSize;
@@ -67,9 +99,12 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   bool _clusterMode;
   uint64_t _defaultNumberOfShards;
   uint64_t _defaultReplicationFactor;
+  Stats _stats;
+  Mutex _workerErrorLock;
+  std::queue<Result> _workerErrors;
 
  private:
-  int tryCreateDatabase(ClientFeature*, std::string const& name);
+  int tryCreateDatabase(std::string const& name);
   int sendRestoreCollection(VPackSlice const& slice, std::string const& name,
                             std::string& errorMsg);
   int sendRestoreIndexes(VPackSlice const& slice, std::string& errorMsg);
@@ -78,17 +113,7 @@ class RestoreFeature final : public application_features::ApplicationFeature,
   Result checkEncryption();
   Result readDumpInfo();
   int processInputDirectory(std::string& errorMsg);
-
- private:
-  int* _result;
-
-  // statistics
-  struct {
-    uint64_t _totalBatches;
-    uint64_t _totalCollections;
-    uint64_t _totalRead;
-  } _stats;
 };
-}
+}  // namespace arangodb
 
 #endif
