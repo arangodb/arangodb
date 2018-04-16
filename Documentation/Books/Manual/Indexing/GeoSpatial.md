@@ -76,7 +76,7 @@ details, including the index-identifier, is returned.
 In case that the index was successfully created, an object with the index
 details, including the index-identifier, is returned.
 
-### GeoSpatial Queries
+### Indexed GeoSpatial Queries
 
 The geo-spatial index supports a varity of AQL queries, which can build with the help
 of the [geo utility functions](../../AQL/Functions/Geo.html). There are three specific
@@ -85,13 +85,82 @@ geo functions that can be otpimized, provided that they are used correctly:
 the older geo functions `DISTANCE`, `NEAR` and `WITHIN` (the last two only if they are
 used in their 4 argument version, without *distanceName*).
 
+When in doubt whether your query is beeing properly optimized, 
+check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html) output to check for index usage.
+
+#### Query for Results near Origin (NEAR type query)
+
+A basic example of a query for results near an origin point:
+
+```
+FOR x IN geo_collection
+  FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 100000
+  RETURN x._key
+```
+The first parameter can be a GeoJSON object or a coordinate array in `[longitude, latitude]` ordering.
+The second parameter is the documents field on which the index was created. The function
+`GEO_DISTANCE` always returns the distance in meters, so will receive results
+up until _100km_.
 
 
+#### Query for Sorted Results near Origin (NEAR type query)
+
+A basic example of a query for results near an origin point, sorted ascending:
+
+```
+FOR x IN geo_collection
+  SORT GEO_DISTANCE([@lng, @lat], x.geometry) ASC
+  LIMIT 1000
+  RETURN x._key
+```
+
+The first parameter can be a GeoJSON object or a coordinate array in `[longitude, latitude]` ordering.
+The second parameter is the documents field on which the index was created.
+
+You may also get results sorted in a descending order:
+
+```
+FOR x IN geo_collection
+  SORT GEO_DISTANCE([@lng, @lat], x.geometry) DESC
+  LIMIT 1000
+  RETURN x._key
+```
+
+#### Query for Results within Distance
+
+A query which returns documents within a distance of _1km_ until _100km_.
+This will return the documents with a GeoJSON value that is located in the specified search annulus.
+```
+FOR x IN geo_collection
+  FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 100000
+  FILTER GEO_DISTANCE([@lng, @lat], x.geometry) <= 1000
+  RETURN x
+```
+
+#### Query for Results contained in Polygon
+
+A query which returns documents contained within a GeoJSON Polygon.
+```
+LET polygon = GEO_POLYGON([[[60,35],[50,5],[75,10],[70,35]]])
+FOR x IN geo_collection
+  FILTER GEO_CONTAINS(polygon, x.geometry)
+  RETURN x
+```
+The first parameter of `GEO_CONTAINS` must be a polygon other types are not valid. 
+The second parameter must contain the document field on which the index was created.
 
 
-When in doubt check the [AQL explain](../../AQL/ExecutionAndPerformance/ExplainingQueries.html) 
-output to check for index usage.
+#### Query for Results Intersecting a Polygon
 
+A query which returns documents contained within a GeoJSON Polygon.
+```
+LET polygon = GEO_POLYGON([[[60,35],[50,5],[75,10],[70,35]]])
+FOR x IN geo_collection
+  FILTER GEO_INTERSECTS(polygon, x.geometry)
+  RETURN x
+```
+The first parameter of `GEO_CONTAINS` must be a polygon other types are not valid. 
+The second parameter must contain the document field on which the index was created.
 
 
 ### GeoJSON

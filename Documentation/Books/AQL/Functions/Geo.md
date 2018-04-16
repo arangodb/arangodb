@@ -41,7 +41,7 @@ which is sufficient for most use cases such as location-aware services.
 - **longitude1** (number): the longitude portion of the first coordinate
 - **latitude2** (number): the latitude portion of the second coordinate
 - **longitude2** (number): the longitude portion of the second coordinate
-- returns **distance** (number): the distance between both coordinates in meters
+- returns **distance** (number): the distance between both coordinates in **meters**
 
 ```js
 // Distance from Brandenburg Gate (Berlin) to ArangoDB headquarters (Cologne)
@@ -62,8 +62,8 @@ fully contains `geoJSONB` (Every point in B is also in A). The object `geoJSONA`
 `Polygon` or `MultiPolygon`, other types are not supported because containment is ill defined. 
 This function can be **optimized** via a S2 based geospatial index.
 
-- **geoJSONA** first GeoJSON object
-- **geoJSONB** second GeoJSON object.
+- **geoJSONA** first GeoJSON object or coordinate array (in longitude, latitude order)
+- **geoJSONB** second GeoJSON object or coordinate array (in longitude, latitude order)
 - returns **bool**: true when every point in B is also contained in A, false otherwise
 
 ### GEO_INTERSECTS()
