@@ -23,7 +23,6 @@
 
 #include "ApplicationServerHelper.h"
 #include "IResearchCommon.h"
-#include "IResearchViewCluster.h"
 #include "VelocyPackHelper.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Logger/Logger.h"
