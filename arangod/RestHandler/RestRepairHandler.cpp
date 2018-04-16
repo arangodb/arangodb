@@ -24,7 +24,9 @@
 #include <arangod/Cluster/ServerState.h>
 #include <arangod/GeneralServer/AsyncJobManager.h>
 #include <arangod/VocBase/LogicalCollection.h>
+#include <chrono>
 #include <list>
+#include <thread>
 #include <valarray>
 
 using namespace arangodb;
@@ -387,7 +389,7 @@ Result RestRepairHandler::executeRepairOperations(
         LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::executeRepairOperations: "
             << "Sleeping for 1s (still waiting for job)";
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
       }
 
       LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
@@ -408,7 +410,7 @@ Result RestRepairHandler::executeRepairOperations(
         LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::executeRepairOperations: "
             << "Sleeping for 1s (still waiting for replicationFactor to match)";
-        sleep(1);
+        std::this_thread::sleep_for(std::chrono::seconds(1));
       }
     }
   }
