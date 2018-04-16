@@ -92,7 +92,7 @@ std::map<CollectionID, ResultT<std::vector<RepairOperation>>>
                  _collectionName = "_frontend", _protoCollectionId = "22222222",
                  _protoCollectionName = "_graphs",
                  _shards =
-                     std::vector<ShardWithProtoAndDbServers>{
+                     {
                          std::make_tuple<ShardID, ShardID, DBServers>(
                              "s11", "s22",
                              {"PRMR-BBBBBBBB-BBBB-BBBB-BBBB-BBBBBBBBBBBB",
