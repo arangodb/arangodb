@@ -632,11 +632,9 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateError(rv);
       return;
     }
-  } else {
-    bool success;
-    
-    bool parseSuccess = false;
-    VPackSlice const parsedIds = this->parseVPackBody(parseSuccess);
+  } else {    
+    bool success = false;
+    VPackSlice const parsedIds = this->parseVPackBody(success);
     if (!success) {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
