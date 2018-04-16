@@ -164,6 +164,23 @@ struct Collection {
   }
 
   Collection() = delete;
+
+  // constructor with named parameters
+  Collection(
+      tagged_argument<tag::database, DatabaseID> database_,
+      tagged_argument<tag::collectionId, CollectionID> collectionId_,
+      tagged_argument<tag::collectionName, std::string> collectionName_,
+      tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_,
+      tagged_argument<tag::deleted, bool> deleted_,
+      tagged_argument<tag::isSmart, bool> isSmart_,
+      tagged_argument<tag::distributeShardsLike, boost::optional<CollectionID>>
+          distributeShardsLike_,
+      tagged_argument<tag::repairingDistributeShardsLike,
+                      boost::optional<CollectionID>>
+          repairingDistributeShardsLike_,
+      tagged_argument<tag::shardsById,
+                      std::map<ShardID, DBServers, VersionSort>>
+          shardsById_);
 };
 
 class DistributeShardsLikeRepairer {

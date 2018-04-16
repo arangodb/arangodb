@@ -73,8 +73,13 @@ template <typename Tag, typename Type>
 struct keyword {
   struct tagged_argument<Tag, Type> const operator=(Type const& arg) const {
     return tagged_argument<Tag, Type>{arg};
-  } static keyword<Tag, Type> const instance;
+  }
+
+  static keyword<Tag, Type> const instance;
 };
+
+template <typename Tag, typename Type>
+struct keyword<Tag, Type> const keyword<Tag, Type>::instance = {};
 
 // Parameters used in Operation-constructors
 
@@ -97,6 +102,11 @@ struct shards;
 struct leader;
 struct followers;
 struct protoFollowers;
+struct distributeShardsLike;
+struct repairingDistributeShardsLike;
+struct shardsById;
+struct deleted;
+struct isSmart;
 }
 namespace {
 keyword<tag::database, std::string> _database = decltype(_database)::instance;
@@ -129,6 +139,15 @@ keyword<tag::followers, std::vector<std::string>> _followers =
     decltype(_followers)::instance;
 keyword<tag::protoFollowers, std::vector<std::string>> _protoFollowers =
     decltype(_protoFollowers)::instance;
+keyword<tag::distributeShardsLike, boost::optional<CollectionID>>
+    _distributeShardsLike = decltype(_distributeShardsLike)::instance;
+keyword<tag::repairingDistributeShardsLike, boost::optional<CollectionID>>
+    _repairingDistributeShardsLike =
+        decltype(_repairingDistributeShardsLike)::instance;
+keyword<tag::shardsById, std::map<ShardID, DBServers, VersionSort>>
+    _shardsById = decltype(_shardsById)::instance;
+keyword<tag::deleted, bool> _deleted = decltype(_deleted)::instance;
+keyword<tag::isSmart, bool> _isSmart = decltype(_isSmart)::instance;
 }
 
 struct BeginRepairsOperation {

@@ -161,11 +161,15 @@ DistributeShardsLikeRepairer::readCollections(
           readShards(shardsSlice);
 
       struct Collection collection {
-        .database = databaseId, .name = collectionName, .id = collectionId,
-        .replicationFactor = replicationFactor, .deleted = deleted,
-        .isSmart = isSmart, .distributeShardsLike = distributeShardsLike,
-        .repairingDistributeShardsLike = repairingDistributeShardsLike,
-        .shardsById = std::move(shardsById),
+        _database = databaseId,
+        _collectionId = collectionId,
+        _collectionName = collectionName,
+        _replicationFactor = replicationFactor,
+        _deleted = deleted,
+        _isSmart = isSmart,
+        _distributeShardsLike = distributeShardsLike,
+        _repairingDistributeShardsLike = repairingDistributeShardsLike,
+        _shardsById = shardsById
       };
 
       collections.emplace(std::make_pair(collectionId, std::move(collection)));
@@ -878,3 +882,27 @@ DistributeShardsLikeRepairer::fixAllShardsOfCollection(
 
   return shardRepairOperations;
 }
+
+cluster_repairs::Collection::Collection(
+    tagged_argument<tag::database, DatabaseID> database_,
+    tagged_argument<tag::collectionId, CollectionID> collectionId_,
+    tagged_argument<tag::collectionName, std::string> collectionName_,
+    tagged_argument<tag::replicationFactor, uint64_t> replicationFactor_,
+    tagged_argument<tag::deleted, bool> deleted_,
+    tagged_argument<tag::isSmart, bool> isSmart_,
+    tagged_argument<tag::distributeShardsLike, boost::optional<CollectionID>>
+        distributeShardsLike_,
+    tagged_argument<tag::repairingDistributeShardsLike,
+                    boost::optional<CollectionID>>
+        repairingDistributeShardsLike_,
+    tagged_argument<tag::shardsById, std::map<ShardID, DBServers, VersionSort>>
+        shardsById_)
+    : database(database_.value),
+      name(collectionName_.value),
+      id(collectionId_.value),
+      replicationFactor(replicationFactor_.value),
+      deleted(deleted_.value),
+      isSmart(isSmart_.value),
+      distributeShardsLike(distributeShardsLike_.value),
+      repairingDistributeShardsLike(repairingDistributeShardsLike_.value),
+      shardsById(shardsById_.value) {}
