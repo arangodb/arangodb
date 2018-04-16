@@ -4471,8 +4471,7 @@ AqlValue Functions::GeoPolygon(arangodb::aql::Query* query,
   }
 
   VPackBuilder b;
-
-  b.add(VPackValue(VPackValueType::Object));
+  b.openObject();
   b.add("type", VPackValue("Polygon"));
   b.add("coordinates", VPackValue(VPackValueType::Array));
 

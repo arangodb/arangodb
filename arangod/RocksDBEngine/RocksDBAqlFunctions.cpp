@@ -190,23 +190,15 @@ static arangodb::RocksDBGeoS2Index* getGeoIndex(
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
-
-  auto document = trx->documentCollection(cid);
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, "'%s'",
-                                  collectionName.c_str());
-  }
-
+  
   arangodb::RocksDBGeoS2Index* index = nullptr;
-  for (auto const& idx : document->getIndexes()) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {
+  auto indexes = trx->indexesForCollection(collectionName);
+  for (auto const& idx : indexes) {
+    if (arangodb::Index::isGeoIndex(idx->type())) {
       index = static_cast<arangodb::RocksDBGeoS2Index*>(idx.get());
       break;
     }
   }
-
   if (index == nullptr) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_GEO_INDEX_MISSING,
                                   collectionName.c_str());

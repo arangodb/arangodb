@@ -47,6 +47,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+  /// resolve constant attribute accesses
+  static void resolveFCallConstAttributes(AstNode *fcall) {
+    TRI_ASSERT(fcall->type == NODE_TYPE_FCALL);
+    TRI_ASSERT(fcall->numMembers() == 1);
+    AstNode* array = fcall->getMemberUnchecked(0);
+    for (size_t x = 0; x < array->numMembers(); x++) {
+      AstNode* child = array->getMemberUnchecked(x);
+      if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
+        child = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(child));
+        array->changeMember(x, child);
+      }
+    }
+  }
+}
+
 IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
     : ExecutionBlock(engine, en),
       DocumentProducingBlock(en, _trx),
@@ -69,14 +85,17 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
       for (size_t j = 0; j < andCond->numMembers(); ++j) {
         auto leaf = andCond->getMemberUnchecked(j);
 
-        if (leaf->numMembers() != 2) {
-          continue;
+        // geo index condition i.e. GEO_CONTAINS, GEO_INTERSECTS
+        if (leaf->type == NODE_TYPE_FCALL) {
+          ::resolveFCallConstAttributes(leaf);
+          continue; //
+        } else if (leaf->numMembers() != 2) {
+          continue; // Otherwise we only support binary conditions
         }
-        // We only support binary conditions
+        
         TRI_ASSERT(leaf->numMembers() == 2);
-        AstNode* lhs = leaf->getMember(0);
-        AstNode* rhs = leaf->getMember(1);
-
+        AstNode* lhs = leaf->getMemberUnchecked(0);
+        AstNode* rhs = leaf->getMemberUnchecked(1);
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->isConstant()) {
           lhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(lhs));
           leaf->changeMember(0, lhs);
@@ -85,17 +104,9 @@ IndexBlock::IndexBlock(ExecutionEngine* engine, IndexNode const* en)
           rhs = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
           leaf->changeMember(1, rhs);
         }
-        if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
-          // in this case try to resolve constant attribute accesses
-          TRI_ASSERT(lhs->numMembers() == 1);
-          AstNode* fargs = lhs->getMemberUnchecked(0);
-          for (size_t x = 0; x < fargs->numMembers(); x++) {
-            AstNode* arg = fargs->getMemberUnchecked(x);
-            if (arg->type == NODE_TYPE_ATTRIBUTE_ACCESS && arg->isConstant()) {
-              arg = const_cast<AstNode*>(Ast::resolveConstAttributeAccess(rhs));
-              fargs->changeMember(x, arg);
-            }
-          }
+        // geo index condition i.e. `GEO_DISTANCE(x, y) <= d`
+        if (lhs->type == NODE_TYPE_FCALL) {
+          ::resolveFCallConstAttributes(lhs);
         }
       }
     }
@@ -146,7 +157,8 @@ void IndexBlock::executeExpressions() {
   AstNode const* oldCondition = _condition;
   AstNode* newCondition = ast->shallowCopyForModify(oldCondition);
   _condition = newCondition;
-  TRI_DEFER(FINALIZE_SUBTREE(_condition));
+  TRI_DEFER(FINALIZE_SUBTREE(newCondition));
+  
   for (size_t posInExpressions = 0;
        posInExpressions < _nonConstExpressions.size(); ++posInExpressions) {
     NonConstExpression* toReplace = _nonConstExpressions[posInExpressions];
@@ -161,8 +173,21 @@ void IndexBlock::executeExpressions() {
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
+    
+    AstNode* tmp = newCondition;
+    for (size_t x = 0; x < toReplace->indexPath.size(); x++) {
+      size_t idx = toReplace->indexPath[x];
+      AstNode* old = tmp->getMember(idx);
+      if (x + 1 < toReplace->indexPath.size()) {
+        AstNode* cpy = ast->shallowCopyForModify(old);
+        tmp->changeMember(idx, cpy);
+        tmp = cpy;
+      } else {
+        tmp->changeMember(idx, evaluatedNode);
+      }
+    }
 
-    AstNode* oldOrMember = _condition->getMember(toReplace->orMember);
+    /*AstNode* oldOrMember = _condition->getMember(toReplace->orMember);
     AstNode* orMember = ast->shallowCopyForModify(oldOrMember);
     TRI_DEFER(FINALIZE_SUBTREE(orMember));
     newCondition->changeMember(toReplace->orMember, orMember);
@@ -186,7 +211,7 @@ void IndexBlock::executeExpressions() {
       funcMember->changeMember(0, arrayMember);
 
       arrayMember->changeMember(toReplace->funcMember, evaluatedNode);
-    }
+    }*/
   }
   DEBUG_END_BLOCK();
 }
@@ -199,8 +224,8 @@ int IndexBlock::initialize() {
   auto ast = en->_plan->getAst();
 
   // instantiate expressions:
-  auto instantiateExpression = [&](size_t i, size_t j, size_t k, AstNode* a,
-                                   ssize_t funcPos = -1) -> void {
+  auto instantiateExpression = [&](AstNode* a,
+                                   std::vector<size_t>&& idxs) -> void {
     // all new AstNodes are registered with the Ast in the Query
     auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
@@ -213,7 +238,7 @@ int IndexBlock::initialize() {
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
 
-    auto nce = std::make_unique<NonConstExpression>(i, j, k, funcPos, e.get());
+    auto nce = std::make_unique<NonConstExpression>(e.get(), std::move(idxs));
     e.release();
     _nonConstExpressions.push_back(nce.get());
     nce.release();
@@ -240,7 +265,7 @@ int IndexBlock::initialize() {
 
   auto outVariable = en->outVariable();
   std::function<bool(AstNode const*)> hasOutVariableAccess =
-      [&](AstNode const* node) -> bool {
+    [&](AstNode const* node) -> bool {
     if (node->isAttributeAccessForVariable(outVariable, true)) {
       return true;
     }
@@ -252,6 +277,25 @@ int IndexBlock::initialize() {
 
     return accessedInSubtree;
   };
+  
+  auto instFCallArgExpressions = [&](AstNode* fcall,
+                                     std::vector<size_t>&& indexPath) {
+    TRI_ASSERT(1 == fcall->numMembers());
+    indexPath.emplace_back(0); // for the arguments array
+    AstNode* array = fcall->getMemberUnchecked(0);
+    for (size_t k = 0; k < array->numMembers(); k++) {
+      AstNode* child = array->getMemberUnchecked(k);
+      if (!child->isConstant() && !hasOutVariableAccess(child)) {
+        std::vector<size_t> idx = indexPath;
+        idx.emplace_back(k);
+        instantiateExpression(child, std::move(idx));
+        
+        TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+      }
+    }
+  };
 
   // conditions can be of the form (a [<|<=|>|=>] b) && ...
   // in case of a geo spatial index a might take the form
@@ -261,7 +305,11 @@ int IndexBlock::initialize() {
     for (size_t j = 0; j < andCond->numMembers(); ++j) {
       auto leaf = andCond->getMemberUnchecked(j);
 
-      if (leaf->numMembers() != 2) {
+      // FCALL at this level is most likely a geo index
+      if (leaf->type == NODE_TYPE_FCALL) {
+        instFCallArgExpressions(leaf, {i, j});
+        continue;
+      } else if (leaf->numMembers() != 2) {
         continue;
       }
 
@@ -271,13 +319,13 @@ int IndexBlock::initialize() {
       AstNode* rhs = leaf->getMember(1);
 
       if (lhs->isAttributeAccessForVariable(outVariable, false)) {
-        // Index is responsible for the left side, check if right side has to be
-        // evaluated
+        // Index is responsible for the left side, check if right side
+        // has to be evaluated
         if (!rhs->isConstant()) {
           if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
             rhs = makeUnique(rhs);
           }
-          instantiateExpression(i, j, 1, rhs);
+          instantiateExpression(rhs, {i, j, 1});
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -287,25 +335,10 @@ int IndexBlock::initialize() {
         // has to be evaluated
 
         if (lhs->type == NODE_TYPE_FCALL && !en->options().evaluateFCalls) {
-          // FIXME this is probably an S2 based index
-          auto funcName = static_cast<Function*>(lhs->getData())->name;
-          if ("GEO_DISTANCE" == funcName || "GEO_CONTAINS" == funcName ||
-              "GEO_INTERSECTS" == funcName || "GEO_EQUALS" == funcName) {
-            TRI_ASSERT(1 == lhs->numMembers());
-            AstNode* array = lhs->getMemberUnchecked(0);
-            for (size_t k = 0; k < array->numMembers(); k++) {
-              AstNode* child = array->getMemberUnchecked(k);
-              if (!hasOutVariableAccess(child)) {
-                instantiateExpression(i, j, 0, child, static_cast<ssize_t>(k));
-                TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-                }
-              }
-            }
-          }
-          continue;
+          // most likely a geo index condition
+          instFCallArgExpressions(lhs, {i, j, 0});
         } else if (!lhs->isConstant()) {
-          instantiateExpression(i, j, 0, lhs);
+          instantiateExpression(lhs, {i, j, 0});
           TRI_IF_FAILURE("IndexBlock::initializeExpressions") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }

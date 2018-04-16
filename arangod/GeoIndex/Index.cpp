@@ -223,7 +223,8 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
                  (symbol->isArray() && symbol->numMembers() == 2 &&
                  symbol->getMember(0)->getAttributeAccessForVariable(true) != nullptr &&
                  symbol->getMember(1)->getAttributeAccessForVariable(true) != nullptr));
-
+      TRI_ASSERT(geoJson->type != aql::NODE_TYPE_REFERENCE);
+      
       // arrays can't occur only handle real GeoJSON
       VPackBuilder bb;
       geoJson->toVelocyPackValue(bb);

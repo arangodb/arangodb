@@ -279,11 +279,15 @@ function pointsTestSuite() {
 
   // Test queries with index usage and without
   function runQuery(query) {
-    var result1 = getQueryResults(query.string, query.bindVars || {}, false);
-    var result2 = getQueryResults(query.string, query.bindVars || {}, false,
+    let result1 = getQueryResults(query.string, query.bindVars || {}, false);
+    let result2 = getQueryResults(query.string, query.bindVars || {}, false,
       { optimizer: { rules: ["-all"] } });
+    // due to bad experiences with interchange-adjacent-enumerations
+    let result3 = getQueryResults(query.string, query.bindVars || {}, false,
+       { optimizer: { rules: ["-interchange-adjacent-enumerations"] } });
     assertEqual(query.expected, result1, query.string);
     assertEqual(query.expected, result2, query.string);
+    assertEqual(query.expected, result3, "Breaks with 'interchange-adjacent-enumerations': " + query.string);
   }
 
   let locations;
@@ -476,7 +480,7 @@ function pointsTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
+    /// @brief test simple annulus on a sphere (a donut)
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsAnnulus4: function () {
@@ -496,7 +500,29 @@ function pointsTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
+    /// @brief test simple annulus on a sphere (a donut) with nested FOR loops
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsAnnulusNested: function () {
+      runQuery({
+        string: `LET coords = [[25, -10], [150, 70]]
+                 FOR latLng IN coords
+                   FOR x IN @@cc
+                      FILTER GEO_DISTANCE(latLng, [x.lng, x.lat]) <= 150000
+                      FILTER GEO_DISTANCE(latLng, [x.lng, x.lat]) > 109545
+                      SORT x.lat, x.lng RETURN x`,
+        bindVars: {
+          "@cc": locations.name(),
+        },
+        expected: [
+          { "lat": -11, "lng": 25 },
+          { "lat": -9, "lng": 25 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test containment with a polygon
     ////////////////////////////////////////////////////////////////////////////////
 
     testContainsPolygon: function () {
@@ -527,42 +553,7 @@ function pointsTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testContainsPolygonNested: function () {
-      const polygon1 = {
-        "type": "Polygon",
-        "coordinates": [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]]
-      };
-
-      const polygon2 = {
-        "type": "Polygon",
-        "coordinates": [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]]
-      };
-
-      runQuery({
-        string: `
-          FOR poly IN [GEO_POLYGON(@poly1), GEO_POLYGON(@poly2)]
-            FOR doc IN @@cc
-              FILTER GEO_CONTAINS(poly, [doc.lng, doc.lat])
-              SORT doc.lat, doc.lng
-              RETURN doc
-        `,
-        bindVars: {
-          "@cc": locations.name(),
-          "poly1": polygon1,
-          "poly2": polygon2
-        },
-        expected: [
-          { "lat": -13, "lng": 11 },
-          { "lat": 13, "lng": -11 }
-        ]
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test simple annulus on sphere (a donut)
+    /// @brief test intersection with a polygon
     ////////////////////////////////////////////////////////////////////////////////
 
     testIntersectsPolygon: function () {
@@ -588,6 +579,62 @@ function pointsTestSuite() {
           { "lat": 26, "lng": -8 },
           { "lat": 26, "lng": -7 },
           { "lat": 26, "lng": -6 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test containment in a nested FOR loop
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testContainsPolygonNested: function () {
+      const polygon1 = [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]];
+      const polygon2 = [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]];
+
+      runQuery({
+        string: `
+          FOR poly IN [GEO_POLYGON(@poly1), GEO_POLYGON(@poly2)]
+            FOR doc IN @@cc
+              FILTER GEO_CONTAINS(poly, [doc.lng, doc.lat])
+              SORT doc.lat, doc.lng
+              RETURN doc
+        `,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly1": polygon1,
+          "poly2": polygon2
+        },
+        expected: [
+          { "lat": -13, "lng": 11 },
+          { "lat": 13, "lng": -11 }
+        ]
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test intersection in a nested FOR loop
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testIntersectsPolygonNested: function () {
+      const polygon1 = [[[-11.5, 12.5], [-11.5, 13.5], [-10.5, 13.5], [-10.5, 12.5], [-11.5, 12.5]]];
+      const polygon2 = [[[11.5, -12.5], [11.5, -13.5], [10.5, -13.5], [10.5, -12.5], [11.5, -12.5]]];
+
+      runQuery({
+        string: `
+          FOR poly IN [GEO_POLYGON(@poly1), GEO_POLYGON(@poly2)]
+            FOR doc IN @@cc
+              FILTER GEO_INTERSECTS(poly, [doc.lng, doc.lat])
+              SORT doc.lat, doc.lng
+              RETURN doc
+        `,
+        bindVars: {
+          "@cc": locations.name(),
+          "poly1": polygon1,
+          "poly2": polygon2
+        },
+        expected: [
+          { "lat": -13, "lng": 11 },
+          { "lat": 13, "lng": -11 }
         ]
       });
     },

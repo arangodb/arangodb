@@ -344,7 +344,6 @@ IndexIterator* RocksDBGeoS2Index::iteratorForCondition(
     arangodb::aql::Variable const* reference,
     IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
-  TRI_ASSERT(!opts.evaluateFCalls);  // should not get here without
   TRI_ASSERT(node != nullptr);
 
   geo::QueryParams params;

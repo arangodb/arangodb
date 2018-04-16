@@ -59,17 +59,10 @@ static arangodb::MMFilesGeoS2Index* getGeoIndex(
   // It is save to return the Raw pointer.
   // It can only be used until trx is finished.
   trx->addCollectionAtRuntime(cid, collectionName);
-
-  auto document = trx->documentCollection(cid);
-
-  if (document == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
-  }
-
+  
   arangodb::MMFilesGeoS2Index* index = nullptr;
-
-  for (auto const& idx : document->getIndexes()) {
+  auto indexes = trx->indexesForCollection(collectionName);
+  for (auto const& idx : indexes) {
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX ||
         idx->type() == arangodb::Index::TRI_IDX_TYPE_S2_INDEX) {

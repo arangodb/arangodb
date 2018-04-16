@@ -4872,12 +4872,16 @@ struct GeoIndexInfo {
   std::set<AstNode const*> nodesToRemove;
 
   // ============ Distance ============
-  AstNode const* distanceCenter = nullptr;
-  AstNode const* distanceCenterLat = nullptr;
-  AstNode const* distanceCenterLng = nullptr;
-  AstNode const* minDistance = nullptr;
+  AstNode const* distCenterExpr = nullptr;
+  AstNode const* distCenterLatExpr = nullptr;
+  AstNode const* distCenterLngExpr = nullptr;
+  // Expression representing minimum distance
+  AstNode const* minDistanceExpr = nullptr;
+  // Was operator < or <= used
   bool minInclusive = true;
-  AstNode const* maxDistance = nullptr;
+  // Expression representing maximum distance
+  AstNode const* maxDistanceExpr = nullptr;
+  // Was operator > or >= used
   bool maxInclusive = true;
   /// for WITHIN, we know we need to scan the full range, so do it in one pass
   bool fullRange = false;
@@ -4889,14 +4893,15 @@ struct GeoIndexInfo {
 
   // ============ Filter Info ===========
   geo::FilterType filterMode = geo::FilterType::NONE;
-  AstNode const* filterMask = nullptr;
+  /// variable using the filter mask
+  AstNode const* filterExpr = nullptr;
 
   // ============ Limit Info ============
   size_t actualLimit = SIZE_MAX;
 
   // ============ Accessed Fields ============
   AstNode const* locationVar = nullptr;// access to location field
-  AstNode const* latitudeVar = nullptr;// access path to longitude
+  AstNode const* latitudeExpr = nullptr;// access path to longitude
   AstNode const* longitudeVar = nullptr;// access path to latitude
 
   /// contains this node a valid condition
@@ -4956,7 +4961,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
           return false;
         }
         info.index = idx;
-        info.latitudeVar = latArg;
+        info.latitudeExpr = latArg;
         info.longitudeVar = lngArg;
         return true;
       }
@@ -4975,7 +4980,7 @@ static bool distanceFuncArgCheck(ExecutionPlan* plan, AstNode const* latArg,
           return false;
         }
         info.index = idx;
-        info.latitudeVar = latArg;
+        info.latitudeExpr = latArg;
         info.longitudeVar = lngArg;
         return true;
       }
@@ -5040,9 +5045,12 @@ static bool isValidGeoArg(AstNode const* lhs, AstNode const* rhs) {
   } else if (lhs->isArray()) { // expect `[doc.lng, doc.lat]`
     if (lhs->numMembers() >= 2 && rhs->numMembers() >= 2) {
       return isValidGeoArg(lhs->getMemberUnchecked(0), rhs->getMemberUnchecked(0)) &&
-      isValidGeoArg(lhs->getMemberUnchecked(1), rhs->getMemberUnchecked(1));
+             isValidGeoArg(lhs->getMemberUnchecked(1), rhs->getMemberUnchecked(1));
     }
     return false;
+  } else if (lhs->type == NODE_TYPE_REFERENCE) {
+    return static_cast<Variable const*>(lhs->getData())->id ==
+           static_cast<Variable const*>(rhs->getData())->id;
   }
   // CompareAstNodes does not handle non const attribute access
   std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> res1, res2;
@@ -5073,35 +5081,35 @@ static bool checkDistanceFunc(ExecutionPlan* plan, AstNode const* funcNode,
   AstNode* fargs = funcNode->getMemberUnchecked(0);
   auto func = static_cast<Function const*>(funcNode->getData());
   if (fargs->numMembers() >= 4 && func->name == "DISTANCE") { // allow DISTANCE(a,b,c,d)
-    if (info.distanceCenter != nullptr) {
+    if (info.distCenterExpr != nullptr) {
       return false; // do not allow mixing of DISTANCE and GEO_DISTANCE
     }
-    if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(2)) &&
-        isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(3)) &&
+    if (isValidGeoArg(info.distCenterLatExpr, fargs->getMemberUnchecked(2)) &&
+        isValidGeoArg(info.distCenterLngExpr, fargs->getMemberUnchecked(3)) &&
         distanceFuncArgCheck(plan, fargs->getMemberUnchecked(0),
                              fargs->getMemberUnchecked(1), legacy, info)) {
-      info.distanceCenterLat = fargs->getMemberUnchecked(2);
-      info.distanceCenterLng = fargs->getMemberUnchecked(3);
+      info.distCenterLatExpr = fargs->getMemberUnchecked(2);
+      info.distCenterLngExpr = fargs->getMemberUnchecked(3);
       return true;
-    } else if (isValidGeoArg(info.distanceCenterLat, fargs->getMemberUnchecked(0)) &&
-               isValidGeoArg(info.distanceCenterLng, fargs->getMemberUnchecked(1)) &&
+    } else if (isValidGeoArg(info.distCenterLatExpr, fargs->getMemberUnchecked(0)) &&
+               isValidGeoArg(info.distCenterLngExpr, fargs->getMemberUnchecked(1)) &&
                distanceFuncArgCheck(plan, fargs->getMemberUnchecked(2),
                                     fargs->getMemberUnchecked(3), legacy, info)) {
-      info.distanceCenterLat = fargs->getMemberUnchecked(0);
-      info.distanceCenterLng = fargs->getMemberUnchecked(1);
+      info.distCenterLatExpr = fargs->getMemberUnchecked(0);
+      info.distCenterLngExpr = fargs->getMemberUnchecked(1);
       return true;
     }
   } else if (fargs->numMembers() == 2 && func->name == "GEO_DISTANCE") {
-    if (info.distanceCenterLat || info.distanceCenterLng) {
+    if (info.distCenterLatExpr || info.distCenterLngExpr) {
       return false; // do not allow mixing of DISTANCE and GEO_DISTANCE
     }
-    if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(1)) &&
+    if (isValidGeoArg(info.distCenterExpr, fargs->getMemberUnchecked(1)) &&
         geoFuncArgCheck(plan, fargs->getMemberUnchecked(0), legacy, info)) {
-      info.distanceCenter = fargs->getMemberUnchecked(1);
+      info.distCenterExpr = fargs->getMemberUnchecked(1);
       return true;
-    } else if (isValidGeoArg(info.distanceCenter, fargs->getMemberUnchecked(0)) &&
+    } else if (isValidGeoArg(info.distCenterExpr, fargs->getMemberUnchecked(0)) &&
                geoFuncArgCheck(plan, fargs->getMemberUnchecked(1), legacy, info)) {
-      info.distanceCenter = fargs->getMemberUnchecked(0);
+      info.distCenterExpr = fargs->getMemberUnchecked(0);
       return true;
     }
   }
@@ -5147,17 +5155,17 @@ static bool checkLegacyGeoFunc(ExecutionPlan* plan, AstNode const* funcNode, Geo
     }
   }
 
-  if (info.index && info.distanceCenter == nullptr) {
+  if (info.index && info.distCenterExpr == nullptr) {
     info.collection = addCollectionToQuery(query, cname);
     info.sorted = true; // legacy functions are alwasy sorted
     info.ascending = true; // always ascending
-    info.distanceCenterLat = latArg;
-    info.distanceCenterLng = lngArg;
+    info.distCenterLatExpr = latArg;
+    info.distCenterLngExpr = lngArg;
     if (func->name == "NEAR" && rArg != nullptr) {
       info.actualLimit = rArg->isNumericValue() ? rArg->getIntValue() : 100;
     } else if (func->name == "WITHIN") {
       TRI_ASSERT(rArg != nullptr);
-      info.maxDistance = rArg;
+      info.maxDistanceExpr = rArg;
       info.maxInclusive = true;
       info.fullRange = true;
     }
@@ -5191,7 +5199,7 @@ static bool checkEnumerateListNode(ExecutionPlan* plan, EnumerateListNode* el, G
     if (fields.size() == 1) {
       info.locationVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
     } else {
-      info.latitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
+      info.latitudeExpr = ast->createNodeAccess(info.collectionNodeOutVar, fields[0]);
       info.longitudeVar = ast->createNodeAccess(info.collectionNodeOutVar, fields[1]);
     }
     calcNode->canRemoveIfThrows(true);
@@ -5221,7 +5229,7 @@ static bool checkGeoFilterFunction(ExecutionPlan* plan, AstNode const* funcNode,
   if (geoFuncArgCheck(plan, arg, /*legacy*/true, info)) {
     TRI_ASSERT(contains || intersect);
     info.filterMode = contains ? geo::FilterType::CONTAINS : geo::FilterType::INTERSECTS;
-    info.filterMask = fargs->getMemberUnchecked(0);
+    info.filterExpr = fargs->getMemberUnchecked(0);
     TRI_ASSERT(info.index);
     return true;
   }
@@ -5234,17 +5242,17 @@ bool checkGeoFilterExpression(ExecutionPlan* plan, AstNode const* node, GeoIndex
   // checks @first `smaller` @second
   auto eval = [&](AstNode const* first, AstNode const* second, bool lessequal) -> bool{
     if (isValueOrReference(second) && // no attribute access
-        info.maxDistance == nullptr && // max distance is not yet set
+        info.maxDistanceExpr == nullptr && // max distance is not yet set
         checkDistanceFunc(plan, first, /*legacy*/true, info)) {
       TRI_ASSERT(info.index);
-      info.maxDistance = second;
+      info.maxDistanceExpr = second;
       info.maxInclusive = info.maxInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
     } else if (isValueOrReference(first) && // no attribute access
-               info.minDistance == nullptr && // min distance is not yet set
+               info.minDistanceExpr == nullptr && // min distance is not yet set
                checkDistanceFunc(plan, second, /*legacy*/true, info)) {
-      info.minDistance = first;
+      info.minDistanceExpr = first;
       info.minInclusive = info.minInclusive && lessequal;
       info.nodesToRemove.insert(node);
       return true;
@@ -5373,10 +5381,10 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   auto addLocationArg = [ast, &info] (AstNode* args) {
     if (info.locationVar) {
       args->addMember(info.locationVar);
-    } else if (info.latitudeVar && info.longitudeVar) {
+    } else if (info.latitudeExpr && info.longitudeVar) {
       AstNode* array = ast->createNodeArray(2);
       array->addMember(info.longitudeVar); // GeoJSON ordering
-      array->addMember(info.latitudeVar);
+      array->addMember(info.latitudeExpr);
       args->addMember(array);
     } else {TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
@@ -5385,38 +5393,38 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
   TRI_ASSERT(info.index);
   auto cond = std::make_unique<Condition>(ast);
-  bool hasCenter = info.distanceCenterLat || info.distanceCenter;
-  bool hasDistLimit = info.maxDistance || info.minDistance;
+  bool hasCenter = info.distCenterLatExpr || info.distCenterExpr;
+  bool hasDistLimit = info.maxDistanceExpr || info.minDistanceExpr;
   TRI_ASSERT(!hasCenter || hasDistLimit || info.sorted);
   if (hasCenter && (hasDistLimit || info.sorted)) {
     // create GEO_DISTANCE(...) [<|<=|>=|>] Var
     AstNode* args = ast->createNodeArray(2);
-    if (info.distanceCenterLat && info.distanceCenterLng) { // legacy
-      TRI_ASSERT(!info.distanceCenter);
+    if (info.distCenterLatExpr && info.distCenterLngExpr) { // legacy
+      TRI_ASSERT(!info.distCenterExpr);
       // info.sorted && info.ascending &&
       AstNode* array = ast->createNodeArray(2);
-      array->addMember(info.distanceCenterLng); // GeoJSON ordering
-      array->addMember(info.distanceCenterLat);
+      array->addMember(info.distCenterLngExpr); // GeoJSON ordering
+      array->addMember(info.distCenterLatExpr);
       args->addMember(array);
     } else {
-      TRI_ASSERT(info.distanceCenter);
-      TRI_ASSERT(!info.distanceCenterLat && !info.distanceCenterLng);
-      args->addMember(info.distanceCenter);  // center location
+      TRI_ASSERT(info.distCenterExpr);
+      TRI_ASSERT(!info.distCenterLatExpr && !info.distCenterLngExpr);
+      args->addMember(info.distCenterExpr);  // center location
     }
 
     addLocationArg(args);
     AstNode* func = ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
 
-    TRI_ASSERT(info.maxDistance || info.minDistance || info.sorted);
-    if (info.minDistance != nullptr) {
+    TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
+    if (info.minDistanceExpr != nullptr) {
       AstNodeType t = info.minInclusive ? NODE_TYPE_OPERATOR_BINARY_GE : NODE_TYPE_OPERATOR_BINARY_GT;
-      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.minDistance));
+      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.minDistanceExpr));
     }
-    if (info.maxDistance != nullptr) {
+    if (info.maxDistanceExpr != nullptr) {
       AstNodeType t = info.maxInclusive ? NODE_TYPE_OPERATOR_BINARY_LE : NODE_TYPE_OPERATOR_BINARY_LT;
-      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.maxDistance));
+      cond->andCombine(ast->createNodeBinaryOperator(t, func, info.maxDistanceExpr));
     }
-    if (info.minDistance == nullptr && info.maxDistance == nullptr && info.sorted) {
+    if (info.minDistanceExpr == nullptr && info.maxDistanceExpr == nullptr && info.sorted) {
       // hack to pass on the sort-to-point info
       AstNodeType t = NODE_TYPE_OPERATOR_BINARY_LT;
       std::string const& u = StaticStrings::Unlimited;
@@ -5426,11 +5434,11 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
   }
   if (info.filterMode != geo::FilterType::NONE) {
     // create GEO_CONTAINS / GEO_INTERSECTS
-    TRI_ASSERT(info.filterMask);
-    TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeVar));
+    TRI_ASSERT(info.filterExpr);
+    TRI_ASSERT(info.locationVar || (info.longitudeVar && info.latitudeExpr));
 
     AstNode* args = ast->createNodeArray(2);
-    args->addMember(info.filterMask);
+    args->addMember(info.filterExpr);
     addLocationArg(args);
     if (info.filterMode == geo::FilterType::CONTAINS) {
       cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args));
@@ -5449,8 +5457,28 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
                                  GeoIndexInfo const& info) {
   TRI_ASSERT(info.collection != nullptr);
+  TRI_ASSERT(info.collectionNodeToReplace != nullptr);
   TRI_ASSERT(info.index);
-
+  
+  // verify that all vars used in the index condition are valid
+  auto const& valid = info.collectionNodeToReplace->getVarsValid();
+  auto checkVars = [&valid](AstNode const* expr) {
+    if (expr != nullptr) {
+      std::unordered_set<Variable const*> varsUsed;
+      Ast::getReferencedVariables(expr, varsUsed);
+      for (Variable const* v : varsUsed) {
+        if (valid.find(v) == valid.end()) {
+          return false; // invalid variable foud
+        }
+      }
+    }
+    return true;
+  };
+  if (!checkVars(info.distCenterExpr) || !checkVars(info.distCenterLatExpr) ||
+      !checkVars(info.distCenterLngExpr) || !checkVars(info.filterExpr)) {
+    return false;
+  }
+  
   IndexIteratorOptions opts;
   opts.sorted = info.sorted;
   opts.ascending = info.ascending;
@@ -5564,11 +5592,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
           break;
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wimplicit-fallthrough"
-        case EN::ENUMERATE_LIST:{
-          EnumerateListNode* el = static_cast<EnumerateListNode*>(current);
-          checkEnumerateListNode(plan.get(), el, info);
+        case EN::ENUMERATE_LIST:
+          checkEnumerateListNode(plan.get(), static_cast<EnumerateListNode*>(current), info);
           // intentional fallthrough
-        }
 #pragma GCC diagnostic pop
         case EN::ENUMERATE_COLLECTION: {
           if (info && info.collectionNodeToReplace == current) {

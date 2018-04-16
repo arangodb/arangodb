@@ -48,19 +48,11 @@ class ExecutionEngine;
 
 /// @brief struct to hold the member-indexes in the _condition node
 struct NonConstExpression {
-  size_t const orMember;
-  size_t const andMember;
-  size_t const operatorMember;
-  ssize_t funcMember;
   Expression* expression;
+  std::vector<size_t> const indexPath;
 
-  NonConstExpression(size_t orM, size_t andM, size_t opM, ssize_t funcM,
-                     Expression* exp)
-      : orMember(orM),
-        andMember(andM),
-        operatorMember(opM),
-        funcMember(funcM),
-        expression(exp) {}
+  NonConstExpression(Expression* exp, std::vector<size_t>&& idxPath)
+    : expression(exp), indexPath(std::move(idxPath)){}
 
   ~NonConstExpression() { delete expression; }
 };

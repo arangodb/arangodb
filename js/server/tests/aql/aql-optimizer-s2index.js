@@ -543,6 +543,76 @@ function optimizerRuleTestSuite() {
       hasSortNode(result, query);
     },
 
+    testContainsGeoConstructorPolygon1: function() {
+      var query = {
+        string: `
+          LET poly = GEO_POLYGON(@coords)
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": rectEmea1.coordinates
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    testContainsGeoConstructorPolygon2: function() {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_CONTAINS(GEO_POLYGON(@coords), x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": rectEmea1.coordinates
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    testIntersectsGeoConstructorPolygon1: function() {
+      var query = {
+        string: `
+          LET poly = GEO_POLYGON(@coords)
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(poly, x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": rectEmea1.coordinates
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    },
+
+    testIntersectsGeoConstructorPolygon2: function() {
+      var query = {
+        string: `
+          FOR x IN @@cc
+            FILTER GEO_INTERSECTS(GEO_POLYGON(@coords), x.geometry)
+            RETURN x._key`,
+        bindVars: {
+          "@cc": locations.name(),
+          "coords": rectEmea1.coordinates
+        }
+      };
+
+      var result = AQL_EXPLAIN(query.string, query.bindVars);
+      hasIndexNode(result, query);
+      hasNoFilterNode(result, query);
+    }
+
   }; // test dictionary (return)
 } // optimizerRuleTestSuite
 
