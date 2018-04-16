@@ -40,6 +40,7 @@
 #include "Basics/files.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -79,7 +80,7 @@ struct IResearchLinkSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // suppress log messages since tests check error conditions
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
 
     // setup required application features
@@ -134,7 +135,7 @@ struct IResearchLinkSetup {
   ~IResearchLinkSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
@@ -219,7 +220,7 @@ SECTION("test_defaults") {
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
     CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    CHECK((arangodb::iresearch::IResearchFeature::type() == link->typeName()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
     CHECK((false == link->unique()));
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -272,7 +273,7 @@ SECTION("test_defaults") {
     CHECK((0 < link->memory()));
     CHECK((true == link->sparse()));
     CHECK((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    CHECK((arangodb::iresearch::IResearchFeature::type() == link->typeName()));
+    CHECK((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
     CHECK((false == link->unique()));
 
     {

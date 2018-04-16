@@ -5686,9 +5686,9 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
     TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
-    size_t const n = invokeParams.size();
+    int const n = static_cast<int>(invokeParams.size());
     int const callArgs = (func == nullptr ? 3 : n);
-    v8::Handle<v8::Value> args[callArgs]; 
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
     if (func == nullptr) {
       // a call to a user-defined function
@@ -5713,7 +5713,7 @@ AqlValue Functions::CallApplyBackend(arangodb::aql::Query* query,
     }
 
     bool dummy;
-    return Expression::invokeV8Function(query, trx, jsName, ucInvokeFN, AFN, false, callArgs, args, dummy);
+    return Expression::invokeV8Function(query, trx, jsName, ucInvokeFN, AFN, false, callArgs, args.get(), dummy);
   }
 }
 

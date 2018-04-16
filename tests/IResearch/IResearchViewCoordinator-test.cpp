@@ -47,6 +47,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Agency/AgencyFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
+#include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/SystemDatabaseFeature.h"
@@ -163,14 +164,14 @@ struct IResearchViewCoordinatorSetup {
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::ERR); // suppress ERROR recovery failure due to error from callback
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::FATAL);
     irs::logger::output_le(iresearch::logger::IRL_FATAL, stderr);
   }
 
   ~IResearchViewCoordinatorSetup() {
     system.reset(); // destroy before reseting the 'ENGINE'
     TRI_RemoveDirectory(testFilesystemPath.c_str());
-    arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
+    arangodb::LogTopic::setLogLevel(arangodb::iresearch::TOPIC.name(), arangodb::LogLevel::DEFAULT);
     arangodb::LogTopic::setLogLevel(arangodb::Logger::FIXME.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
@@ -207,7 +208,7 @@ TEST_CASE("IResearchViewCoordinatorTest", "[iresearch][iresearch-view-coordinato
   UNUSED(s);
 
 SECTION("test_type") {
-  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::IResearchViewCoordinator::type()));
+  CHECK((arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("arangosearch")) == arangodb::iresearch::DATA_SOURCE_TYPE));
 }
 
 SECTION("visit_collections") {
@@ -224,7 +225,7 @@ SECTION("visit_collections") {
   CHECK("testView" == view->name());
   CHECK(false == view->deleted());
   CHECK(1 == view->id());
-  CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
 
@@ -251,7 +252,7 @@ SECTION("test_defaults") {
   CHECK("testView" == view->name());
   CHECK(false == view->deleted());
   CHECK(1 == view->id());
-  CHECK(arangodb::iresearch::IResearchViewCoordinator::type() == view->type());
+  CHECK(arangodb::iresearch::DATA_SOURCE_TYPE == view->type());
   CHECK(arangodb::LogicalView::category() == view->category());
   CHECK(&vocbase == &view->vocbase());
 
@@ -272,7 +273,7 @@ SECTION("test_defaults") {
     CHECK(6 == slice.length());
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(slice.hasKey("planId"));
     CHECK(false == slice.get("deleted").getBool());
     slice = slice.get("properties");
@@ -296,7 +297,7 @@ SECTION("test_defaults") {
     CHECK(4 == slice.length());
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(!slice.hasKey("planId"));
     CHECK(!slice.hasKey("deleted"));
     slice = slice.get("properties");
@@ -319,7 +320,7 @@ SECTION("test_defaults") {
     CHECK(3 == slice.length());
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(!slice.hasKey("planId"));
     CHECK(!slice.hasKey("deleted"));
     CHECK(!slice.hasKey("properties"));
@@ -336,7 +337,7 @@ SECTION("test_defaults") {
     CHECK(5 == slice.length());
     CHECK(slice.get("id").copyString() == "1");
     CHECK(slice.get("name").copyString() == "testView");
-    CHECK(slice.get("type").copyString() == arangodb::iresearch::IResearchViewCoordinator::type().name());
+    CHECK(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
     CHECK(false == slice.get("deleted").getBool());
     CHECK(slice.hasKey("planId"));
     CHECK(!slice.hasKey("properties"));

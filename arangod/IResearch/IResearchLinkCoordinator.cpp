@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkCoordinator.h"
+#include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchFeature.h"
@@ -45,7 +46,7 @@ class IResearchLinkCoordinator {
     IResearchLinkMeta meta;
 
     if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
           << "error parsing view link parameters from json: " << error;
       TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
 

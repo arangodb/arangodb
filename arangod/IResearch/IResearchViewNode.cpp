@@ -21,7 +21,7 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchFeature.h"
+#include "IResearchCommon.h"
 #include "IResearchViewNode.h"
 #include "IResearchViewBlock.h"
 #include "IResearchOrderFactory.h"
@@ -139,7 +139,7 @@ IResearchViewNode::IResearchViewNode(
     // set it to surrogate 'RETURN ALL' node
     _filterCondition(filterCondition ? filterCondition : &ALL),
     _sortCondition(std::move(sortCondition)) {
-  TRI_ASSERT(IResearchView::type() == _view->type());
+  TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
 
   view.visitCollections([this](TRI_voc_cid_t cid)->bool{
     _collections.emplace_back(
@@ -164,7 +164,7 @@ IResearchViewNode::IResearchViewNode(
   auto view = _vocbase->lookupView(
     basics::StringUtils::uint64(base.get("viewId").copyString())
   );
-  TRI_ASSERT(view && IResearchView::type() == view->type());
+  TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
   _view = view.get();
 
   auto const filterSlice = base.get("condition");
@@ -341,7 +341,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto* trx = engine.getQuery()->trx();
 
   if (!trx || !(trx->state())) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get transaction state while creating IResearchView ExecutionBlock";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -354,7 +354,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   auto* reader = view.snapshot(state);
 
   if (!reader) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
       << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << view.name() << "' tid '" << state.id() << "'";
 
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -392,7 +392,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
 ) : ExecutionNode(&plan, id),
     _vocbase(&vocbase),
     _view(&view) {
-  TRI_ASSERT(IResearchView::type() == _view->type());
+  TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
 }
 
 IResearchViewScatterNode::IResearchViewScatterNode(
@@ -407,7 +407,7 @@ IResearchViewScatterNode::IResearchViewScatterNode(
   );
 
   // FIXME how to check properly
-  TRI_ASSERT(view && IResearchView::type() == view->type());
+  TRI_ASSERT(view && iresearch::DATA_SOURCE_TYPE == view->type());
   _view = view.get();
 }
 

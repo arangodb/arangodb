@@ -97,6 +97,7 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _willUseV8(false),
       _attributes(),
       _expressionContext(nullptr) {
+  _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
@@ -233,6 +234,8 @@ void Expression::invalidateAfterReplacements() {
 /// used and destroyed in the same context. when a V8 function is used across
 /// multiple V8 contexts, it must be invalidated in between
 void Expression::invalidate() {
+  // context may change next time, so "prepare for re-preparation"
+  _ast->query()->unPrepareV8Context();
 
   // V8 expressions need a special handling
   freeInternals();
@@ -985,9 +988,9 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
     TRI_DEFER(v8g->_query = old);
 
     std::string jsName;
-    size_t const n = member->numMembers();
+    int const n = static_cast<int>(member->numMembers());
     int callArgs = (node->type == NODE_TYPE_FCALL_USER ? 2 : n);
-    v8::Handle<v8::Value> args[callArgs];
+    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs); 
 
     if (node->type == NODE_TYPE_FCALL_USER) {
       // a call to a user-defined function
@@ -1030,7 +1033,7 @@ AqlValue Expression::executeSimpleExpressionFCallJS(
       }
     }
 
-    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args, mustDestroy);
+    return invokeV8Function(_ast->query(), trx, jsName, "", "", true, callArgs, args.get(), mustDestroy);
   }
 }
 

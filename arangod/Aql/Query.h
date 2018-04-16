@@ -235,6 +235,11 @@ class Query {
     return (_contextOwnedByExterior || _context != nullptr);
   }
 
+  // @brief resets the contexts load-state of the AQL functions.
+  void unPrepareV8Context() {
+    _preparedV8Context = false;
+  }
+
   /// @brief returns statistics for current query.
   void getStats(arangodb::velocypack::Builder&);
 

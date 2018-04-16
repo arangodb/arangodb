@@ -51,11 +51,6 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
     LogicalView::PreCommitCallback const& preCommit
   );
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief the view type as used when selecting which view to instantiate
-  ////////////////////////////////////////////////////////////////////////////////
-  static arangodb::LogicalDataSource::Type const& type() noexcept;
-
   bool visitCollections(CollectionVisitor const& visitor) const override;
 
   void open() override {

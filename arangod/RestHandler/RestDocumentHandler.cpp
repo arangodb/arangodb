@@ -105,13 +105,11 @@ bool RestDocumentHandler::createDocument() {
     return false;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
-
-  VPackSlice body = parsedBody->slice();
 
   arangodb::OperationOptions opOptions;
   opOptions.isRestore =
@@ -360,13 +358,11 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
     key = suffixes[1];
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     return false;
   }
-
-  VPackSlice body = parsedBody->slice();
 
   if ((!isArrayCase && !body.isObject()) || (isArrayCase && !body.isArray())) {
     generateTransactionError(collectionName,

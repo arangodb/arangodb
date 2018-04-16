@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchViewCoordinator.h"
-#include "IResearchView.h" // FIXME remove dependency
+#include "IResearchCommon.h"
 #include "IResearchLink.h"
 #include "IResearchLinkHelper.h"
 #include "Basics/StringUtils.h"
@@ -80,7 +80,7 @@ namespace iresearch {
   auto& meta = view->_meta;
 
   if (!meta.init(properties, error)) {
-    LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, iresearch::TOPIC)
         << "failed to initialize IResearch view from definition, error: " << error;
 
     return nullptr;
@@ -96,7 +96,7 @@ namespace iresearch {
       auto name = link.key;
 
       if (!name.isString()) {
-        LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+        LOG_TOPIC(WARN, iresearch::TOPIC)
             << "failed to initialize IResearch view link from definition at index " << idx
             << ", link name is not string";
 
@@ -108,7 +108,7 @@ namespace iresearch {
       auto const res = IResearchLinkHelper::normalize(builder, link.value, false);
 
       if (!res.ok()) {
-        LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
+        LOG_TOPIC(WARN, iresearch::TOPIC)
             << "failed to initialize IResearch view link from definition at index " << idx
             << ", error: " << error;
 
@@ -119,11 +119,6 @@ namespace iresearch {
   }
 
   return view;
-}
-
-/*static*/ arangodb::LogicalDataSource::Type const& IResearchViewCoordinator::type() noexcept {
-  // retrieve type from IResearchFeature
-  return IResearchView::type();
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(
@@ -298,7 +293,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       }
     }
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "': " << e.what();
     IR_LOG_EXCEPTION();
     return arangodb::Result(
@@ -306,7 +301,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       std::string("error updating properties for IResearch view '") + std::to_string(id()) + "'"
     );
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+    LOG_TOPIC(WARN, iresearch::TOPIC)
       << "caught exception while updating properties for IResearch view '" << id() << "'";
     IR_LOG_EXCEPTION();
     return arangodb::Result(

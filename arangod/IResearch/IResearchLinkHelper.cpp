@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchLinkHelper.h"
+#include "IResearchCommon.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchFeature.h"
 
@@ -30,7 +31,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the string representing the link type
 ////////////////////////////////////////////////////////////////////////////////
-static const std::string& LINK_TYPE = arangodb::iresearch::IResearchFeature::type();
+static const std::string& LINK_TYPE =
+    arangodb::iresearch::DATA_SOURCE_TYPE.name();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the name of the field in the iResearch Link definition denoting the

@@ -198,16 +198,14 @@ void RocksDBRestExportHandler::createCursor() {
     return;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   VPackBuilder optionsBuilder;
-
   if (!body.isNone()) {
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
