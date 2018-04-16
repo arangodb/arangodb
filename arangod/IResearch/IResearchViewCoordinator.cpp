@@ -23,7 +23,7 @@
 
 #include "IResearchViewCoordinator.h"
 #include "IResearchCommon.h"
-#include "IResearchLink.h"
+#include "IResearchLinkCoordinator.h"
 #include "IResearchLinkHelper.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
@@ -56,6 +56,9 @@ const std::string PROPERTIES_FIELD("properties");
 }
 
 namespace arangodb {
+
+using namespace basics;
+
 namespace iresearch {
 
 /*static*/ std::shared_ptr<LogicalView> IResearchViewCoordinator::make(
@@ -150,7 +153,7 @@ void IResearchViewCoordinator::toVelocyPack(
   TRI_ASSERT(result.isOpenObject());
 
   // Meta Information
-  result.add("id", VPackValue(std::to_string(id())));
+  result.add("id", VPackValue(StringUtils::itoa(id())));
   result.add("name", VPackValue(name()));
   result.add("type", VPackValue(type().name()));
 
@@ -204,7 +207,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
     auto res = ClusterInfo::instance()->setViewPropertiesCoordinator(
       vocbase().name(), // database name,
-      basics::StringUtils::itoa(id()), // cluster-wide view id
+      StringUtils::itoa(id()), // cluster-wide view id
       builder.slice()
     );
 
@@ -228,9 +231,9 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
         return {
           TRI_ERROR_BAD_PARAMETER,
           std::string("error parsing link parameters from json for IResearch view '")
-            + std::to_string(id())
+            + StringUtils::itoa(id())
             + "' offset '"
-            + arangodb::basics::StringUtils::itoa(linksItr.index()) + '"'
+            + StringUtils::itoa(linksItr.index()) + '"'
         };
       }
 
@@ -240,6 +243,8 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
       if (!collection) {
         return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
       }
+
+      // FIXME properly handle partial/full update for links
 
       auto const link = linksItr.value();
       builder.clear();
@@ -252,8 +257,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 
         res = methods::Indexes::drop(collection.get(), builder.slice());
       } else {
-        // FIXME use IResearchLinkCoordinator
-        auto const existingLink = IResearchLink::find(*collection, *this);
+        auto const existingLink = IResearchLinkCoordinator::find(*collection, *this);
 
         if (existingLink) {
           // drop existing link
@@ -298,7 +302,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     IR_LOG_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + std::to_string(id()) + "'"
+      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
     );
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::TOPIC)
@@ -306,7 +310,7 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
     IR_LOG_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
-      std::string("error updating properties for IResearch view '") + std::to_string(id()) + "'"
+      std::string("error updating properties for IResearch view '") + StringUtils::itoa(id()) + "'"
     );
   }
 
@@ -314,11 +318,23 @@ arangodb::Result IResearchViewCoordinator::updateProperties(
 }
 
 Result IResearchViewCoordinator::drop() {
+  // drop links first
+  {
+    auto const res = updateProperties(
+      VPackSlice::emptyObjectSlice(), false, true
+    );
+
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  // drop view then
   std::string errorMsg;
 
   int const res = ClusterInfo::instance()->dropViewCoordinator(
     vocbase().name(), // database name
-    basics::StringUtils::itoa(id()), // cluster-wide view id
+    StringUtils::itoa(id()), // cluster-wide view id
     errorMsg
   );
 
@@ -332,5 +348,35 @@ Result IResearchViewCoordinator::drop() {
 
   return {};
 }
+
+Result IResearchViewCoordinator::drop(TRI_voc_cid_t cid) {
+  auto cid_itr = _meta._collections.find(cid);
+
+  if (cid_itr == _meta._collections.end()) {
+    // no such cid
+    return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
+  }
+
+  // build link removal request:
+  // {
+  //   properties : {
+  //     links : {
+  //       <cid> : nullptr
+  //     }
+  //   }
+  // }
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("properties", VPackValue(VPackValueType::Object));
+  builder.add("links", VPackValue(VPackValueType::Object));
+  builder.add(StringUtils::itoa(cid), VPackSlice::nullSlice());
+  builder.close();
+  builder.close();
+  builder.close();
+
+  return updateProperties(builder.slice(), true, true);
+}
+
 } // iresearch
 } // arangodb

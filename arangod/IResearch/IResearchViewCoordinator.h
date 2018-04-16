@@ -59,6 +59,9 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
   Result drop() override;
 
+  // drops collection from a view
+  Result drop(TRI_voc_cid_t cid);
+
   virtual Result rename(
       std::string&& /*newName*/,
       bool /*doSync*/

@@ -58,10 +58,13 @@ struct IResearchLinkHelper {
   ///        specified value
   /// @return success
   ////////////////////////////////////////////////////////////////////////////////
-  static bool setView(
-    velocypack::Builder& builder,
-    TRI_voc_cid_t value
-  );
+  static bool setView(velocypack::Builder& builder, TRI_voc_cid_t value);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @returns view field from a specified link definition, or none slice if
+  ///          there is no such field
+  ////////////////////////////////////////////////////////////////////////////////
+  static velocypack::Slice getView(velocypack::Slice definition) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief IResearch Link index type string value

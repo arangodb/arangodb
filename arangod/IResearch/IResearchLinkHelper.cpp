@@ -132,6 +132,16 @@ namespace iresearch {
   return true;
 }
 
+/*static*/ velocypack::Slice IResearchLinkHelper::getView(
+    velocypack::Slice definition
+) noexcept {
+  try {
+    return definition.get(VIEW_ID_FIELD);
+  } catch (...) {
+    return VPackSlice::noneSlice();
+  }
+}
+
 /*static*/ std::string const& IResearchLinkHelper::type() noexcept {
   return LINK_TYPE;
 }

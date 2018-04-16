@@ -25,23 +25,123 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_LINK_COORDINATOR_H 1
 
 #include "Indexes/Index.h"
+#include "IResearchLinkMeta.h"
 
 namespace arangodb {
 namespace iresearch {
 
-std::shared_ptr<Index> createIResearchMMFilesLinkCoordinator(
-  arangodb::LogicalCollection* collection,
-  arangodb::velocypack::Slice const& definition,
-  TRI_idx_iid_t id,
-  bool isClusterConstructor
-) noexcept;
+class IResearchViewCoordinator;
 
-std::shared_ptr<Index> createIResearchRocksDBLinkCoordinator(
-  arangodb::LogicalCollection* collection,
-  arangodb::velocypack::Slice const& definition,
-  TRI_idx_iid_t id,
-  bool isClusterConstructor
-) noexcept;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief common base class for functionality required to link an ArangoDB
+///        LogicalCollection with an IResearchView on a coordinator in cluster
+////////////////////////////////////////////////////////////////////////////////
+class IResearchLinkCoordinator {
+ public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief finds first link between specified collection and view
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<IResearchLinkCoordinator> find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+  );
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory method for MMFiles engine
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<Index> createLinkMMFiles(
+    LogicalCollection* collection,
+    velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  ) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief factory method for RocksDB engine
+  ////////////////////////////////////////////////////////////////////////////////
+  static std::shared_ptr<Index> createLinkRocksDB(
+    LogicalCollection* collection,
+    velocypack::Slice const& definition,
+    TRI_idx_iid_t id,
+    bool isClusterConstructor
+  ) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief destructor
+  ////////////////////////////////////////////////////////////////////////////////
+  virtual ~IResearchLinkCoordinator() = default;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief does this IResearch Link reference the supplied view
+  ////////////////////////////////////////////////////////////////////////////////
+  bool operator==(LogicalView const& view) const noexcept;
+  bool operator!=(LogicalView const& view) const noexcept {
+    return !(*this == view);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief does this iResearch Link match the meta definition
+  ////////////////////////////////////////////////////////////////////////////////
+  bool operator==(IResearchLinkMeta const& meta) const noexcept {
+    return _meta == meta;
+  }
+
+  bool operator!=(IResearchLinkMeta const& meta) const noexcept {
+    return !(*this == meta);
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief drops underlying link
+  ////////////////////////////////////////////////////////////////////////////////
+  Result drop();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the identifier for this link
+  ////////////////////////////////////////////////////////////////////////////////
+  TRI_idx_iid_t id() const noexcept {
+    return _id;
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief index comparator, used by the coordinator to detect if the specified
+  ///        definition is the same as this link
+  ////////////////////////////////////////////////////////////////////////////////
+  bool matchesDefinition(VPackSlice const& slice) const;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief amount of memory in bytes occupied by this iResearch Link
+  ////////////////////////////////////////////////////////////////////////////////
+  size_t memory() const noexcept {
+    return _meta.memory();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief the collection of this link
+  ////////////////////////////////////////////////////////////////////////////////
+  LogicalCollection const& collection() const noexcept {
+    return *_collection;
+  }
+
+ protected:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...) after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLinkCoordinator(
+    TRI_idx_iid_t id,
+    LogicalCollection* collection
+  ) noexcept;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief initialize from the specified definition
+  /// @return success
+  ////////////////////////////////////////////////////////////////////////////////
+  bool init(VPackSlice definition);
+
+  IResearchLinkMeta _meta; // how this collection should be indexed
+  arangodb::LogicalCollection const* _collection; // the linked collection
+  TRI_idx_iid_t const _id; // the index identifier
+  IResearchViewCoordinator* _view{}; // effectively the IResearch view itself (nullptr == not associated)
+}; // IResearchLinkCoordinator
 
 } // iresearch
 } // arangodb

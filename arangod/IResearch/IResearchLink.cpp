@@ -41,16 +41,6 @@
 NS_LOCAL
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the string representing the link type
-////////////////////////////////////////////////////////////////////////////////
-static const std::string& LINK_TYPE =
-  arangodb::iresearch::DATA_SOURCE_TYPE.name();
-/// @brief the id of the field in the iResearch Link definition denoting the
-///        corresponding iResearch View
-////////////////////////////////////////////////////////////////////////////////
-static const std::string VIEW_ID_FIELD("view");
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief an IResearchView token not associated with any view
 ///        used to reduce null checks by always having '_view' initialized
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,6 +63,7 @@ IResearchLink::IResearchLink(
    _dropCollectionInDestructor(false),
    _id(iid),
    _view(nullptr) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 IResearchLink::~IResearchLink() {
@@ -206,24 +197,16 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
     return false; // failed to parse metadata
   }
 
-  if (collection() && definition.hasKey(VIEW_ID_FIELD)) {
-    auto identifier = definition.get(VIEW_ID_FIELD);
+  auto const identifier = IResearchLinkHelper::getView(definition);
 
+  if (collection() && !identifier.isNone()) {
     if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
       auto viewId = identifier.getUInt();
 
-      std::shared_ptr<LogicalView> logicalView;
       auto& vocbase = collection()->vocbase();
 
-      if (ServerState::instance()->isCoordinator()) {
-        logicalView = ClusterInfo::instance()->getView(
-          vocbase.name(), // database ID
-          basics::StringUtils::itoa(viewId) // view ID
-        );
-      } else {
-        // NOTE: this will cause a deadlock if registering a link while view is being created
-        logicalView = vocbase.lookupView(viewId);
-      }
+      // NOTE: this will cause a deadlock if registering a link while view is being created
+      auto logicalView = vocbase.lookupView(viewId);
 
       if (!logicalView
           || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
@@ -232,7 +215,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
         return false; // no such view
       }
 
-      // TODO FIXME find a better way to look up an iResearch View
+      // TODO FIXME find a better way to look up an IResearch View
       #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         auto* view = dynamic_cast<IResearchView*>(logicalView.get());
       #else
@@ -279,9 +262,9 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
           _defaultId = view->id();
         }
       }
-
-      return true;
     }
+
+    return true;
   }
 
   LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
@@ -364,12 +347,12 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
   SCOPED_LOCK(mutex);
 
-  if (slice.hasKey(VIEW_ID_FIELD)) {
+  auto const identifier = IResearchLinkHelper::getView(slice);
+
+  if (!identifier.isNone()) {
     if (!_view) {
       return false; // slice has identifier but the current object does not
     }
-
-    auto identifier = slice.get(VIEW_ID_FIELD);
 
     if (!identifier.isNumber()
         || uint64_t(identifier.getInt()) != identifier.getUInt()

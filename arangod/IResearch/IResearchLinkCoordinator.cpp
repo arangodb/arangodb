@@ -24,55 +24,22 @@
 #include "IResearchLinkCoordinator.h"
 #include "IResearchCommon.h"
 #include "IResearchLinkHelper.h"
-#include "IResearchLinkMeta.h"
 #include "IResearchFeature.h"
+#include "IResearchViewCoordinator.h"
+#include "VelocyPackHelper.h"
+#include "Cluster/ClusterInfo.h"
+#include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-
+#include "VocBase/LogicalCollection.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
 
 namespace {
 
 using namespace arangodb::iresearch;
-
-class IResearchLinkCoordinator {
- public:
-  virtual ~IResearchLinkCoordinator() = default;
-
-  bool init(VPackSlice definition) {
-    std::string error;
-    IResearchLinkMeta meta;
-
-    if (!meta.init(definition, error)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
-          << "error parsing view link parameters from json: " << error;
-      TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
-
-      return false; // failed to parse metadata
-    }
-
-    return true;
-  }
-
-  bool matchesDefinition(VPackSlice const& slice) const {
-    IResearchLinkMeta rhs;
-    std::string errorField;
-
-    return rhs.init(slice, errorField) && _meta == rhs;
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief amount of memory in bytes occupied by this iResearch Link
-  ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const noexcept {
-    return _meta.memory();
-  }
-
- protected:
-  IResearchLinkMeta _meta;
-}; // IResearchLinkCoordinator
+using namespace arangodb::basics;
 
 class IResearchLinkMMFilesCoordinator final
     : public arangodb::Index,
@@ -81,7 +48,8 @@ class IResearchLinkMMFilesCoordinator final
   IResearchLinkMMFilesCoordinator(
     TRI_idx_iid_t iid,
     arangodb::LogicalCollection* collection
-  ) : Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()) {
+  ) : arangodb::Index(iid, collection, IResearchLinkHelper::emptyIndexSlice()),
+      IResearchLinkCoordinator(iid, collection) {
     _unique = false; // cannot be unique since multiple fields are indexed
     _sparse = true;  // always sparse
   }
@@ -93,7 +61,7 @@ class IResearchLinkMMFilesCoordinator final
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue>
+      std::shared_ptr<LocalTaskQueue>
   ) override {
     TRI_ASSERT(false); // should not be called
   }
@@ -103,8 +71,7 @@ class IResearchLinkMMFilesCoordinator final
   }
 
   int drop() {
-    // FIXME
-    return TRI_ERROR_NO_ERROR;
+    return IResearchLinkCoordinator::drop().errorNumber();
   }
 
   bool hasBatchInsert() const noexcept override {
@@ -185,7 +152,7 @@ class IResearchLinkMMFilesCoordinator final
       bool const success = _meta.json(builder);
       TRI_ASSERT(success);
     }
-    builder.add("id", VPackValue(std::to_string(id())));
+    builder.add("id", VPackValue(StringUtils::itoa(Index::id())));
     IResearchLinkHelper::setType(builder);
 
     if (withFigures) {
@@ -218,7 +185,8 @@ class IResearchLinkRocksDBCoordinator final
         IResearchLinkHelper::emptyIndexSlice(),
         arangodb::RocksDBColumnFamily::invalid(),
         false
-      ) {
+      ),
+      IResearchLinkCoordinator(iid, collection) {
     _unique = false; // cannot be unique since multiple fields are indexed
     _sparse = true;  // always sparse
   }
@@ -231,7 +199,7 @@ class IResearchLinkRocksDBCoordinator final
   void batchInsert(
       arangodb::transaction::Methods*,
       std::vector<std::pair<arangodb::LocalDocumentId, VPackSlice>> const&,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue>
+      std::shared_ptr<LocalTaskQueue>
   ) override {
     TRI_ASSERT(false); // should not be called
   }
@@ -241,8 +209,7 @@ class IResearchLinkRocksDBCoordinator final
   }
 
   int drop() {
-    // FIXME
-    return TRI_ERROR_NO_ERROR;
+    return IResearchLinkCoordinator::drop().errorNumber();
   }
 
   bool hasBatchInsert() const noexcept override {
@@ -324,7 +291,7 @@ class IResearchLinkRocksDBCoordinator final
       bool const success = _meta.json(builder);
       TRI_ASSERT(success);
     }
-    builder.add("id", VPackValue(std::to_string(id())));
+    builder.add("id", VPackValue(StringUtils::itoa(Index::id())));
     IResearchLinkHelper::setType(builder);
 
     if (withFigures) {
@@ -352,7 +319,28 @@ class IResearchLinkRocksDBCoordinator final
 namespace arangodb {
 namespace iresearch {
 
-std::shared_ptr<Index> createIResearchMMFilesLinkCoordinator(
+/*static*/ std::shared_ptr<IResearchLinkCoordinator> IResearchLinkCoordinator::find(
+    LogicalCollection const& collection,
+    LogicalView const& view
+) {
+  for (auto& index : collection.getIndexes()) {
+    if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+      continue; // not an iresearch Link
+    }
+
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto link = std::dynamic_pointer_cast<IResearchLinkCoordinator>(index);
+
+    if (link && *link == view) {
+      return link; // found required link
+    }
+  }
+
+  return nullptr;
+}
+
+/*static*/ std::shared_ptr<Index> IResearchLinkCoordinator::createLinkMMFiles(
     arangodb::LogicalCollection* collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
@@ -373,7 +361,7 @@ std::shared_ptr<Index> createIResearchMMFilesLinkCoordinator(
   return nullptr;
 }
 
-std::shared_ptr<Index> createIResearchRocksDBLinkCoordinator(
+/*static*/ std::shared_ptr<Index> IResearchLinkCoordinator::createLinkRocksDB(
     arangodb::LogicalCollection* collection,
     arangodb::velocypack::Slice const& definition,
     TRI_idx_iid_t id,
@@ -385,13 +373,112 @@ std::shared_ptr<Index> createIResearchRocksDBLinkCoordinator(
     return link->init(definition) ? link : nullptr;
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'" << e.what();
+      << "caught exception while creating IResearch view RocksDB link '" << id << "'" << e.what();
   } catch (...) {
     LOG_TOPIC(WARN, Logger::DEVEL)
-      << "caught exception while creating IResearch view MMFiles link '" << id << "'";
+      << "caught exception while creating IResearch view RocksDB link '" << id << "'";
   }
 
   return nullptr;
+}
+
+IResearchLinkCoordinator::IResearchLinkCoordinator(
+    TRI_idx_iid_t id,
+    LogicalCollection* collection
+) noexcept : _collection(collection), _id(id) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(_collection);
+}
+
+Result IResearchLinkCoordinator::drop() {
+  if (!_view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // IResearchView required
+  }
+
+  // if the collection is in the process of being removed then drop it from the view
+  if (_collection->deleted()) {
+    // revalidate all links
+    auto const result = _view->updateProperties(
+      emptyObjectSlice(), true, false
+    );
+
+    if (!result.ok()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "failed to force view link revalidation while unloading dropped IResearch link '" << _id
+        << "' for IResearch view '" << _view->id() << "'";
+
+      return result.errorNumber();
+    }
+  }
+
+  // drop it from view
+  return _view->drop(_collection->id());
+}
+
+bool IResearchLinkCoordinator::operator==(LogicalView const& view) const noexcept {
+  return _view && _view->id() == view.id();
+}
+
+bool IResearchLinkCoordinator::init(VPackSlice definition) {
+  std::string error;
+  IResearchLinkMeta meta;
+
+  if (!meta.init(definition, error)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error parsing view link parameters from json: " << error;
+    TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
+
+    return false; // failed to parse metadata
+  }
+
+  auto const identifier = IResearchLinkHelper::getView(definition);
+
+  if (identifier.isNumber() && uint64_t(identifier.getInt()) == identifier.getUInt()) {
+    auto const viewId = identifier.getUInt();
+    auto& vocbase = collection().vocbase();
+
+    auto logicalView = ClusterInfo::instance()->getView(
+      vocbase.name(), // database ID
+      basics::StringUtils::itoa(viewId) // view ID
+    );
+
+    if (!logicalView
+        || arangodb::iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error looking up view '" << viewId << "': no such view";
+      return false; // no such view
+    }
+
+    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      auto* view = dynamic_cast<IResearchViewCoordinator*>(logicalView.get());
+    #else
+      auto* view = static_cast<IResearchViewCoordinator*>(logicalView.get());
+    #endif
+
+    if (!view) {
+      LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+        << "error finding view: '" << viewId << "' for link '" << _id << "'";
+
+      return false;
+    }
+
+    _view = view;
+
+    return true;
+  }
+
+  LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+      << "error finding view for link '" << _id << "'";
+  TRI_set_errno(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+
+  return false;
+}
+
+bool IResearchLinkCoordinator::matchesDefinition(VPackSlice const& slice) const {
+  IResearchLinkMeta rhs;
+  std::string errorField;
+
+  return rhs.init(slice, errorField) && _meta == rhs;
 }
 
 } // iresearch
