@@ -217,28 +217,28 @@ class DistributeShardsLikeRepairer {
   DBServers static serverSetSymmetricDifference(DBServers setA, DBServers setB);
 
   MoveShardOperation static createMoveShardOperation(
-      Collection& collection, ShardID const& shardId,
+      struct Collection& collection, ShardID const& shardId,
       ServerID const& fromServerId, ServerID const& toServerId, bool isLeader);
 
   // "proto collection" always means the collection referred to in the
   // "distributeShardsLike" attribute of "collection"
 
   ResultT<std::list<RepairOperation>> static fixLeader(
-      DBServers const& availableDbServers, Collection& collection,
-      Collection const& proto, ShardID const& shardId,
+      DBServers const& availableDbServers, struct Collection& collection,
+      struct Collection const& proto, ShardID const& shardId,
       ShardID const& protoShardId);
 
   ResultT<std::list<RepairOperation>> static fixShard(
-      DBServers const& availableDbServers, Collection& collection,
-      Collection const& proto, ShardID const& shardId,
+      DBServers const& availableDbServers, struct Collection& collection,
+      struct Collection const& proto, ShardID const& shardId,
       ShardID const& protoShardId);
 
   ResultT<boost::optional<FixServerOrderOperation>> static createFixServerOrderOperation(
-      Collection& collection, Collection const& proto, ShardID const& shardId,
-      ShardID const& protoShardId);
+      struct Collection& collection, struct Collection const& proto,
+      ShardID const& shardId, ShardID const& protoShardId);
 
   ResultT<BeginRepairsOperation> static createBeginRepairsOperation(
-      Collection& collection, Collection const& proto);
+      struct Collection& collection, struct Collection const& proto);
 
   std::
       vector<cluster_repairs::ShardWithProtoAndDbServers> static createShardVector(
@@ -246,10 +246,10 @@ class DistributeShardsLikeRepairer {
           std::map<ShardID, DBServers, VersionSort> const& protoShardsById);
 
   ResultT<FinishRepairsOperation> static createFinishRepairsOperation(
-      Collection& collection, Collection const& proto);
+      struct Collection& collection, struct Collection const& proto);
 
   ResultT<std::list<RepairOperation>> static fixAllShardsOfCollection(
-      Collection& collection, Collection const& proto,
+      struct Collection& collection, struct Collection const& proto,
       DBServers const& availableDbServers);
 };
 }

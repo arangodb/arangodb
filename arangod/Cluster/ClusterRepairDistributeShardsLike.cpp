@@ -161,13 +161,10 @@ DistributeShardsLikeRepairer::readCollections(
           readShards(shardsSlice);
 
       struct Collection collection {
-        _database = databaseId,
-        _collectionId = collectionId,
+        _database = databaseId, _collectionId = collectionId,
         _collectionName = collectionName,
-        _replicationFactor = replicationFactor,
-        _deleted = deleted,
-        _isSmart = isSmart,
-        _distributeShardsLike = distributeShardsLike,
+        _replicationFactor = replicationFactor, _deleted = deleted,
+        _isSmart = isSmart, _distributeShardsLike = distributeShardsLike,
         _repairingDistributeShardsLike = repairingDistributeShardsLike,
         _shardsById = shardsById
       };
@@ -181,7 +178,7 @@ DistributeShardsLikeRepairer::readCollections(
 
 std::vector<std::pair<CollectionID, Result>>
 DistributeShardsLikeRepairer::findCollectionsToFix(
-    std::map<CollectionID, struct Collection> collections) {
+    std::map<CollectionID, struct cluster_repairs::Collection> collections) {
   LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::findCollectionsToFix: started";
 
@@ -310,7 +307,7 @@ DBServers DistributeShardsLikeRepairer::serverSetSymmetricDifference(
 }
 
 MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
-    Collection& collection, ShardID const& shardId,
+    struct cluster_repairs::Collection& collection, ShardID const& shardId,
     ServerID const& fromServerId, ServerID const& toServerId, bool isLeader) {
   MoveShardOperation moveShardOperation{
       _database = collection.database,
@@ -349,8 +346,9 @@ MoveShardOperation DistributeShardsLikeRepairer::createMoveShardOperation(
 }
 
 ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixLeader(
-    DBServers const& availableDbServers, Collection& collection,
-    Collection const& proto, ShardID const& shardId,
+    DBServers const& availableDbServers,
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
   LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::fixLeader("
@@ -406,8 +404,9 @@ ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixLeader(
 }
 
 ResultT<std::list<RepairOperation>> DistributeShardsLikeRepairer::fixShard(
-    DBServers const& availableDbServers, Collection& collection,
-    Collection const& proto, ShardID const& shardId,
+    DBServers const& availableDbServers,
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::fixShard: "
@@ -599,7 +598,8 @@ DistributeShardsLikeRepairer::repairDistributeShardsLike(
 
 ResultT<boost::optional<FixServerOrderOperation>>
 DistributeShardsLikeRepairer::createFixServerOrderOperation(
-    Collection& collection, Collection const& proto, ShardID const& shardId,
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto, ShardID const& shardId,
     ShardID const& protoShardId) {
   LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::createFixServerOrderOperation: "
@@ -689,7 +689,8 @@ DistributeShardsLikeRepairer::createFixServerOrderOperation(
 
 ResultT<BeginRepairsOperation>
 DistributeShardsLikeRepairer::createBeginRepairsOperation(
-    Collection& collection, Collection const& proto) {
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto) {
   bool distributeShardsLikeExists =
       collection.distributeShardsLike.is_initialized();
   bool repairingDistributeShardsLikeExists =
@@ -734,7 +735,8 @@ DistributeShardsLikeRepairer::createBeginRepairsOperation(
 
 ResultT<FinishRepairsOperation>
 DistributeShardsLikeRepairer::createFinishRepairsOperation(
-    Collection& collection, Collection const& proto) {
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto) {
   bool onlyRepairingDslIsSet = collection.repairingDistributeShardsLike &&
                                !collection.distributeShardsLike;
   TRI_ASSERT(onlyRepairingDslIsSet);
@@ -808,7 +810,8 @@ DistributeShardsLikeRepairer::createShardVector(
 
 ResultT<std::list<RepairOperation>>
 DistributeShardsLikeRepairer::fixAllShardsOfCollection(
-    Collection& collection, Collection const& proto,
+    struct cluster_repairs::Collection& collection,
+    struct cluster_repairs::Collection const& proto,
     DBServers const& availableDbServers) {
   std::list<RepairOperation> shardRepairOperations;
 
