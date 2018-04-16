@@ -106,10 +106,14 @@ class Conductor {
   void finishedRecoveryStep(VPackSlice const& data);
 
  public:
-  Conductor(uint64_t executionNumber, TRI_vocbase_t* vocbase,
-            std::vector<CollectionID> const& vertexCollections,
-            std::vector<CollectionID> const& edgeCollections,
-            std::string const& algoName, VPackSlice const& userConfig);
+  Conductor(
+    uint64_t executionNumber,
+    TRI_vocbase_t& vocbase,
+    std::vector<CollectionID> const& vertexCollections,
+    std::vector<CollectionID> const& edgeCollections,
+    std::string const& algoName,
+    VPackSlice const& userConfig
+  );
 
   ~Conductor();
 

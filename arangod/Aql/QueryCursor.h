@@ -39,12 +39,17 @@ class Query;
 /// Should be used in conjunction with the RestCursorHandler
 class QueryResultCursor final : public arangodb::Cursor {
  public:
-  QueryResultCursor(TRI_vocbase_t*, CursorId, aql::QueryResult&&, size_t,
-                    double ttl, bool hasCount);
+  QueryResultCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    aql::QueryResult&& result,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+  );
 
   ~QueryResultCursor() = default;
 
- public:
   aql::QueryResult const* result() const { return &_result; }
 
   CursorType type() const override final { return CURSOR_VPACK; }
@@ -79,14 +84,18 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(TRI_vocbase_t*, CursorId, std::string const& query,
-                    std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts, size_t,
-                    double ttl);
+  QueryStreamCursor(
+    TRI_vocbase_t& vocbase,
+    CursorId id,
+    std::string const& query,
+    std::shared_ptr<velocypack::Builder> bindVars,
+    std::shared_ptr<velocypack::Builder> opts,
+    size_t batchSize,
+    double ttl
+  );
 
   ~QueryStreamCursor();
 
- public:
   CursorType type() const override final { return CURSOR_VPACK; }
 
   size_t count() const override final { return 0; }

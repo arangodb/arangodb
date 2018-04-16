@@ -1913,6 +1913,8 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  TRI_ASSERT(vocbase != nullptr); // for clarity assert duplicated from v8-util.cpp GetContextVocBase(...)
+
   for (std::string const& name : paramVertices) {
     if (ss->isCoordinator()) {
       try {
@@ -1982,8 +1984,9 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   uint64_t en = pregel::PregelFeature::instance()->createExecutionNumber();
-  auto c = std::make_unique<pregel::Conductor>(en, vocbase, paramVertices, edgeColls,
-                                               algorithm, paramBuilder.slice());
+  auto c = std::make_unique<pregel::Conductor>(
+    en, *vocbase, paramVertices, edgeColls, algorithm, paramBuilder.slice()
+  );
   pregel::PregelFeature::instance()->addConductor(std::move(c), en);
   TRI_ASSERT(pregel::PregelFeature::instance()->conductor(en));
   pregel::PregelFeature::instance()->conductor(en)->start();

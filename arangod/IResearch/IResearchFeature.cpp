@@ -22,16 +22,29 @@
 /// @author Vasily Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "search/scorers.hpp"
+// otherwise define conflict between 3rdParty\date\include\date\date.h and 3rdParty\iresearch\core\shared.hpp
+#if defined(_MSC_VER)
+  #include "date/date.h"
+  #undef NOEXCEPT
+#endif
 
+#include "search/scorers.hpp"
+#include "utils/log.hpp"
+
+#include "ApplicationServerHelper.h"
 #include "IResearchFeature.h"
 #include "IResearchMMFilesLink.h"
 #include "IResearchRocksDBLink.h"
 #include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "IResearchViewCoordinator.h"
-#include "ApplicationServerHelper.h"
-
+#include "Aql/AqlValue.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Function.h"
+#include "Basics/SmallVector.h"
+#include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,18 +52,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalView.h"
-#include "Cluster/ServerState.h"
-
-#include "Aql/AqlValue.h"
-#include "Aql/AqlFunctionFeature.h"
-#include "Aql/Function.h"
-
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
-#include "Basics/SmallVector.h"
-
-#include "utils/log.hpp"
 
 NS_BEGIN(arangodb)
 
@@ -153,17 +154,9 @@ void registerIndexFactory() {
     }
 
     // ok to const-cast since this should only be called on startup
-    auto* indexFactory =
-      const_cast<arangodb::IndexFactory*>(engine->indexFactory());
-
-    if (!indexFactory) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to retieve index factory from feature '") + entry.first + "' while registering index type '" + indexType + "'"
-      );
-    }
-
-    auto res = indexFactory->emplaceFactory(indexType, entry.second);
+    auto& indexFactory =
+      const_cast<arangodb::IndexFactory&>(engine->indexFactory());
+    auto res = indexFactory.emplaceFactory(indexType, entry.second);
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -172,7 +165,7 @@ void registerIndexFactory() {
       );
     }
 
-    res = indexFactory->emplaceNormalizer(
+    res = indexFactory.emplaceNormalizer(
       indexType, arangodb::iresearch::IResearchLink::normalize
     );
 

@@ -972,25 +972,29 @@ void StorageEngineMock::addV8Functions() {
   TRI_ASSERT(false);
 }
 
-void StorageEngineMock::changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const* parameters, bool doSync) {
+void StorageEngineMock::changeCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* parameters,
+    bool doSync
+) {
   // NOOP, assume physical collection changed OK
 }
 
 void StorageEngineMock::changeView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view,
     bool doSync
 ) {
   before();
-  TRI_ASSERT(vocbase);
-  TRI_ASSERT(views.find(std::make_pair(vocbase->id(), view.id())) != views.end());
+  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) != views.end());
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
   view.toVelocyPack(builder, true, true);
   builder.close();
-  views[std::make_pair(vocbase->id(), view.id())] = std::move(builder);
+  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 }
 
 std::string StorageEngineMock::collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const {
@@ -998,7 +1002,11 @@ std::string StorageEngineMock::collectionPath(TRI_vocbase_t const* vocbase, TRI_
   return "<invalid>";
 }
 
-std::string StorageEngineMock::createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const*) {
+std::string StorageEngineMock::createCollection(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t id,
+    arangodb::LogicalCollection const* collection
+) {
   return "<invalid>"; // physical path of the new collection
 }
 
@@ -1007,7 +1015,12 @@ TRI_vocbase_t* StorageEngineMock::createDatabase(TRI_voc_tick_t id, arangodb::ve
   return nullptr;
 }
 
-void StorageEngineMock::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collectionId, TRI_idx_iid_t id, arangodb::velocypack::Slice const& data) {
+void StorageEngineMock::createIndex(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t collectionId,
+    TRI_idx_iid_t id,
+    arangodb::velocypack::Slice const& data
+) {
   TRI_ASSERT(false);
 }
 
@@ -1045,7 +1058,7 @@ arangodb::TransactionState* StorageEngineMock::createTransactionState(TRI_vocbas
 }
 
 void StorageEngineMock::createView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     TRI_voc_cid_t id,
     arangodb::LogicalView const& view
 ) {
@@ -1053,7 +1066,11 @@ void StorageEngineMock::createView(
   // NOOP, assume physical view created OK
 }
 
-void StorageEngineMock::getViewProperties(TRI_vocbase_t* vocbase, arangodb::LogicalView const* view, VPackBuilder& builder) {
+void StorageEngineMock::getViewProperties(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView const* view,
+    VPackBuilder& builder
+) {
   before();
  // NOOP
 }
@@ -1068,16 +1085,25 @@ std::string StorageEngineMock::databasePath(TRI_vocbase_t const* vocbase) const 
   return ""; // no valid path filesystem persisted, return empty string
 }
 
-void StorageEngineMock::destroyCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+void StorageEngineMock::destroyCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+) {
   // NOOP, assume physical collection destroyed OK
 }
 
-void StorageEngineMock::destroyView(TRI_vocbase_t* vocbase, arangodb::LogicalView* view) noexcept {
+void StorageEngineMock::destroyView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+) noexcept {
   before();
   // NOOP, assume physical view destroyed OK
 }
 
-arangodb::Result StorageEngineMock::dropCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+arangodb::Result StorageEngineMock::dropCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+) {
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume physical collection dropped OK
 }
 
@@ -1086,12 +1112,14 @@ arangodb::Result StorageEngineMock::dropDatabase(TRI_vocbase_t*) {
   return arangodb::Result();
 }
 
-arangodb::Result StorageEngineMock::dropView(TRI_vocbase_t* vocbase, arangodb::LogicalView* view) {
+arangodb::Result StorageEngineMock::dropView(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalView* view
+) {
   before();
-  TRI_ASSERT(vocbase);
   TRI_ASSERT(view);
-  TRI_ASSERT(views.find(std::make_pair(vocbase->id(), view->id())) != views.end());
-  views.erase(std::make_pair(vocbase->id(), view->id()));
+  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view->id())) != views.end());
+  views.erase(std::make_pair(vocbase.id(), view->id()));
 
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view dropped OK
 }
@@ -1101,7 +1129,13 @@ arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
   return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-void StorageEngineMock::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, arangodb::velocypack::Builder& result, bool includeIndexes, TRI_voc_tick_t maxTick) {
+void StorageEngineMock::getCollectionInfo(
+    TRI_vocbase_t& vocbase,
+    TRI_voc_cid_t cid,
+    arangodb::velocypack::Builder& result,
+    bool includeIndexes,
+    TRI_voc_tick_t maxTick
+) {
   arangodb::velocypack::Builder parameters;
 
   parameters.openObject();
@@ -1114,7 +1148,12 @@ void StorageEngineMock::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t 
   // nothing more required, assume info used for PhysicalCollectionMock
 }
 
-int StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result, bool wasCleanShutdown, bool isUpgrade) {
+int StorageEngineMock::getCollectionsAndIndexes(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result,
+    bool wasCleanShutdown,
+    bool isUpgrade
+) {
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;
 }
@@ -1147,7 +1186,10 @@ arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfigurat
   return arangodb::velocypack::Builder();
 }
 
-int StorageEngineMock::getViews(TRI_vocbase_t* vocbase, arangodb::velocypack::Builder& result) {
+int StorageEngineMock::getViews(
+    TRI_vocbase_t& vocbase,
+    arangodb::velocypack::Builder& result
+) {
   result.openArray();
 
   for (auto& entry: views) {
@@ -1193,24 +1235,26 @@ TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const
   return vocbases.back().get();
 }
 
-arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
+arangodb::Result StorageEngineMock::persistCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection
+) {
   before();
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock collection persisted OK
 }
 
 arangodb::Result StorageEngineMock::persistView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view
 ) {
   before();
-  TRI_ASSERT(vocbase);
-  TRI_ASSERT(views.find(std::make_pair(vocbase->id(), view.id())) == views.end()); // called after createView()
+  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) == views.end()); // called after createView()
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
   view.toVelocyPack(builder, true, true);
   builder.close();
-  views[std::make_pair(vocbase->id(), view.id())] = std::move(builder);
+  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view persisted OK
 }
@@ -1239,25 +1283,28 @@ int StorageEngineMock::removeReplicationApplierConfiguration() {
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result StorageEngineMock::renameCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection, std::string const& oldName) {
+arangodb::Result StorageEngineMock::renameCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection const* collection,
+    std::string const& oldName
+) {
   TRI_ASSERT(false);
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
 
 arangodb::Result StorageEngineMock::renameView(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     arangodb::LogicalView const& view,
     std::string const& newName
 ) {
   before();
-  TRI_ASSERT(vocbase);
-  TRI_ASSERT(views.find(std::make_pair(vocbase->id(), view.id())) != views.end());
+  TRI_ASSERT(views.find(std::make_pair(vocbase.id(), view.id())) != views.end());
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
   view.toVelocyPack(builder, true, true);
   builder.close();
-  views[std::make_pair(vocbase->id(), view.id())] = std::move(builder);
+  views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 
   return arangodb::Result(TRI_ERROR_NO_ERROR); // assume mock view renames OK
 }
@@ -1287,7 +1334,10 @@ bool StorageEngineMock::supportsDfdb() const {
   return false;
 }
 
-void StorageEngineMock::unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
+void StorageEngineMock::unloadCollection(
+    TRI_vocbase_t& vocbase,
+    arangodb::LogicalCollection* collection
+) {
   before();
   // NOOP assume collection unloaded OK
 }
