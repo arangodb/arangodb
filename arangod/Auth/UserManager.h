@@ -53,8 +53,8 @@ typedef std::unordered_map<std::string, auth::User> UserMap;
 /// UserManager is the sole point of access for users and permissions
 /// stored in `_system/_users` as well as in external authentication
 /// systems like LDAP. The permissions are cached locally if possible,
-/// to avoid unecessary disk access. An instance of this should only
-/// exist on Coordinators and single severs.
+/// to avoid unnecessary disk access. An instance of this should only
+/// exist on Coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager();
