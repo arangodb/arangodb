@@ -45,18 +45,25 @@
 using namespace arangodb;
 
 RocksDBExportCursor::RocksDBExportCursor(
-    TRI_vocbase_t* vocbase, std::string const& name,
-    CollectionExport::Restrictions const& restrictions, CursorId id,
-    size_t limit, size_t batchSize, double ttl, bool hasCount)
-    : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _guard(vocbase),
-      _resolver(vocbase),
-      _restrictions(restrictions),
-      _name(name) {
-  _trx.reset(new SingleCollectionTransaction(
-      transaction::StandaloneContext::Create(vocbase), _name,
-      AccessMode::Type::READ));
-
+    TRI_vocbase_t& vocbase,
+    std::string const& name,
+    CollectionExport::Restrictions const& restrictions,
+    CursorId id,
+    size_t limit,
+    size_t batchSize,
+    double ttl,
+    bool hasCount
+): Cursor(id, batchSize, ttl, hasCount),
+   _guard(vocbase),
+   _resolver(&vocbase),
+   _restrictions(restrictions),
+   _name(name),
+   _trx(new SingleCollectionTransaction(
+     transaction::StandaloneContext::Create(&vocbase),
+     _name,
+     AccessMode::Type::READ
+   )),
+   _position(0) {
   Result res = _trx->begin();
 
   if (!res.ok()) {
@@ -105,9 +112,10 @@ VPackSlice RocksDBExportCursor::next() {
 
 size_t RocksDBExportCursor::count() const { return _size; }
 
-void RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(_guard.database());
+Result RocksDBExportCursor::dump(VPackBuilder& builder) {
+  auto ctx = transaction::StandaloneContext::Create(&(_guard.database()));
   VPackOptions const* oldOptions = builder.options;
+
   builder.options = ctx->getVPackOptions();
 
   TRI_ASSERT(_iter.get() != nullptr);
@@ -162,22 +170,22 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
       builder.add("count", VPackValue(static_cast<uint64_t>(count())));
     }
 
-    if (extra().isObject()) {
-      builder.add("extra", extra());
-    }
-
     if (!hasNext()) {
       // mark the cursor as deleted
       _iter.reset();
       this->deleted();
     }
   } catch (arangodb::basics::Exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), ex.what());
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, ex.what());
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "internal error during RocksDBExportCursor::dump");
+    return Result(TRI_ERROR_INTERNAL, "internal error during RocksDBExportCursor::dump");
   }
   builder.options = oldOptions;
+  return Result();
+}
+
+std::shared_ptr<transaction::Context> RocksDBExportCursor::context() const {
+  return _trx->transactionContext(); // likely not used
 }

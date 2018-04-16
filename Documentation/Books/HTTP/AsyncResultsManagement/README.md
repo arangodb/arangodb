@@ -122,9 +122,9 @@ rejected instantly in the same way as a "regular", non-queued request.
 Managing Async Results via HTTP
 -------------------------------
 
-@startDocuBlock JSF_job_fetch_result
-@startDocuBlock JSF_job_cancel
-@startDocuBlock JSF_job_delete
-@startDocuBlock JSF_job_getStatusById
-@startDocuBlock JSF_job_getByType
+@startDocuBlock job_fetch_result
+@startDocuBlock job_cancel
+@startDocuBlock job_delete
+@startDocuBlock job_getStatusById
+@startDocuBlock job_getByType
 

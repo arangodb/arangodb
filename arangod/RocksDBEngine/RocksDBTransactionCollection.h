@@ -87,7 +87,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
 
   /// @brief add an operation for a transaction collection
   void addOperation(TRI_voc_document_operation_e operationType,
-                    uint64_t operationSize, TRI_voc_rid_t revisionId);
+                    TRI_voc_rid_t revisionId);
 
   /**
    * @brief Prepare collection for commit by placing index blockers
@@ -132,7 +132,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
-  uint64_t _operationSize;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;

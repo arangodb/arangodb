@@ -28,6 +28,7 @@ endif ()
 set(ARANGODB_PACKAGE_ARCHITECTURE ${CMAKE_SYSTEM_PROCESSOR})
 # eventually the package string will be modified later on:
 
+set(LOGROTATE_GROUP "arangodb")
 if ("${PACKAGING}" STREQUAL "DEB")
   if(CMAKE_TARGET_ARCHITECTURES MATCHES ".*x86_64.*")
     set(ARANGODB_PACKAGE_ARCHITECTURE "amd64")
@@ -75,6 +76,29 @@ elseif (MSVC)
 else ()
   set(CPACK_PACKAGE_FILE_NAME "${CPACK_PACKAGE_NAME}-${CPACK_PACKAGE_VERSION}-${ARANGODB_PACKAGE_REVISION}_${ARANGODB_PACKAGE_ARCHITECTURE}")
   include(packages/tar)
+endif ()
+
+if (UNIX)
+  if (SYSTEMD_FOUND)
+    # configure and install logrotate file
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.systemd
+      ${PROJECT_BINARY_DIR}/arangod.systemd
+      NEWLINE_STYLE UNIX
+      )
+    install(
+      FILES ${PROJECT_BINARY_DIR}/arangod.systemd
+      PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
+      DESTINATION ${CMAKE_INSTALL_FULL_SYSCONFDIR}/logrotate.d
+      RENAME ${SERVICE_NAME}
+      )
+  else ()
+    configure_file (
+      ${ARANGODB_SOURCE_DIR}/Installation/logrotate.d/arangod.sysv
+      ${PROJECT_BINARY_DIR}/arangod.sysv
+      NEWLINE_STYLE UNIX
+      )
+  endif ()
 endif ()
 
 

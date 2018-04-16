@@ -42,7 +42,7 @@ struct ExecutionStats {
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
 
   /// @brief convert the statistics to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
 
   /// @brief create empty statistics for VelocyPack
   static void toVelocyPackStatic(arangodb::velocypack::Builder&);
@@ -59,7 +59,6 @@ struct ExecutionStats {
     filtered += summand.filtered;
     httpRequests += summand.httpRequests;
     if (summand.fullCount > 0) {
-      // fullCount may be negative, don't add it then
       fullCount += summand.fullCount;
     }
     // intentionally no modification of executionTime
@@ -72,7 +71,7 @@ struct ExecutionStats {
     scannedIndex = 0;
     filtered = 0;
     httpRequests = 0;
-    fullCount = -1;
+    fullCount = 0;
     executionTime = 0.0;
   }
 

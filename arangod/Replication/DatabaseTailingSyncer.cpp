@@ -56,15 +56,27 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(
-    TRI_vocbase_t* vocbase,
+    TRI_vocbase_t& vocbase,
     ReplicationApplierConfiguration const& configuration,
-    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(vocbase->replicationApplier(),
-                    configuration, initialTick, useTick, barrierId),
-                    _vocbase(vocbase) {
-  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+    TRI_voc_tick_t initialTick,
+    bool useTick,
+    TRI_voc_tick_t barrierId
+): TailingSyncer(
+     vocbase.replicationApplier(),
+     configuration,
+     initialTick,
+     useTick,
+     barrierId
+   ),
+   _vocbase(&vocbase) {
+  _vocbases.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(vocbase.name()),
+    std::forward_as_tuple(vocbase)
+  );
+
   if (configuration._database.empty()) {
-    _databaseName = vocbase->name();
+    _databaseName = vocbase.name();
   }
 }
 

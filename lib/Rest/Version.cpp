@@ -105,6 +105,9 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#if defined(ARCHITECTURE_OPTIMIZATIONS)
+  Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
+#endif
   Values["endianness"] = getEndianness();
   Values["fd-setsize"] = arangodb::basics::StringUtils::itoa(FD_SETSIZE);
   Values["full-version-string"] = getVerboseVersionString();
@@ -372,10 +375,14 @@ std::string Version::getVerboseVersionString() {
 #ifdef ARANGODB_HAVE_JEMALLOC
           << "jemalloc, "
 #endif
+#ifdef HAVE_ARANGODB_BUILD_REPOSITORY 
+          << "build " << getBuildRepository() << ", " 
+#endif
           << "VPack " << getVPackVersion() << ", "
           << "RocksDB " << getRocksDBVersion() << ", "
           << "ICU " << getICUVersion() << ", "
-          << "V8 " << getV8Version() << ", " << getOpenSSLVersion();
+          << "V8 " << getV8Version() << ", " 
+          << getOpenSSLVersion();
 
   return version.str();
 }

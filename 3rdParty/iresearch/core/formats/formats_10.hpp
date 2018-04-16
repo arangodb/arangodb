@@ -34,7 +34,6 @@
 #include "store/data_output.hpp"
 #include "store/memory_directory.hpp"
 #include "store/store_utils.hpp"
-#include "store/checksum_io.hpp"
 
 #include "index/field_meta.hpp"
 #include "utils/compression.hpp"
@@ -128,7 +127,7 @@ struct index_meta_reader final: public iresearch::index_meta_reader {
   virtual void read( 
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename = string_ref::nil // null == use meta
+    const string_ref& filename = string_ref::NIL // null == use meta
   ) override;
 };
 
@@ -159,7 +158,7 @@ struct segment_meta_reader final : public iresearch::segment_meta_reader{
   virtual void read(
     const directory& dir,  
     segment_meta& meta,
-    const string_ref& filename = string_ref::nil // null == use meta
+    const string_ref& filename = string_ref::NIL // null == use meta
   ) override;
 };
 
@@ -207,7 +206,8 @@ public:
   virtual void end() override;
 
 private:
-  checksum_index_input<::boost::crc_32_type> in_;
+  uint64_t checksum_{};
+  index_input::ptr in_;
 };
 
 /* -------------------------------------------------------------------
@@ -277,10 +277,10 @@ class IRESEARCH_PLUGIN postings_writer final: public iresearch::postings_writer 
   }; // stream
 
   struct doc_stream : stream {
+    void doc(doc_id_t delta) { deltas[size] = delta; }
     void flush(uint64_t* buf, bool freq);
     bool full() const { return BLOCK_SIZE == size; }
     void next(doc_id_t id) { last = id, ++size; }
-    void doc(int32_t delta) { deltas[size] = delta; }
     void freq(uint64_t frq) { freqs[size] = frq; }
 
     void reset() {

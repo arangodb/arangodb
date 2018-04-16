@@ -273,20 +273,25 @@ void IResearchViewNode::getVariablesUsedHere(
   }
 }
 
-aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
-    aql::ExecutionEngine& engine
+std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
 ) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto* impl = dynamic_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = dynamic_cast<IResearchView*>(view().get());
 #else
-  auto* impl = static_cast<IResearchView*>(view()->getImplementation());
+  auto* impl = static_cast<IResearchView*>(view().get());
 #endif
 
   if (!impl) {
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get view implementation while creating IResearchView ExecutionBlock";
 
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get view implementation while creating IResearchView ExecutionBlock"
+    );
   }
 
   auto* trx = engine.getQuery()->trx();
@@ -295,8 +300,10 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get transaction state while creating IResearchView ExecutionBlock";
 
-    // FIXME better to return `NoResultsNode`
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get transaction state while creating IResearchView ExecutionBlock"
+    );
   }
 
   auto& state = *(trx->state());
@@ -306,12 +313,15 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
     LOG_TOPIC(WARN, IResearchFeature::IRESEARCH)
       << "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView '" << impl->name() << "' tid '" << state.id() << "'";
 
-    return nullptr;
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      "failed to get snapshot while creating IResearchView ExecutionBlock for IResearchView"
+    );
   }
 
   if (_sortCondition.empty()) {
     // unordered case
-    return new IResearchViewUnorderedBlock(*reader, engine, *this);
+    return std::make_unique<IResearchViewUnorderedBlock>(*reader, engine, *this);
   }
 
 //FIXME uncomment when the following method will be there:
@@ -323,7 +333,7 @@ aql::ExecutionBlock* IResearchViewNode::createExecutionBlock(
 //  }
 
   // generic case
-  return new IResearchViewBlock(*reader, engine, *this);
+  return std::make_unique<IResearchViewBlock>(*reader, engine, *this);
 }
 
 NS_END // iresearch

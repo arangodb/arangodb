@@ -75,10 +75,13 @@ class timer_states: public iresearch::singleton<timer_states> {
   }
 
   bool visit(
-    const std::function<bool(const key_type& key, size_t count, size_t time)>& visitor
+      const std::function<bool(const key_type& key, size_t count, size_t time_us)>& visitor
   ) {
+    static const auto usec =
+      (1000000. * std::chrono::system_clock::period::num) / std::chrono::system_clock::period::den;
+
     for (auto& entry: state_map_) {
-      if (!visitor(entry.first, entry.second.count, entry.second.time)) {
+      if (!visitor(entry.first, entry.second.count, size_t(entry.second.time * usec))) { // truncate 'time_us'
         return false;
       }
     }
@@ -130,10 +133,14 @@ void init_stats(
 }
 
 bool visit(
-  const std::function<bool(const std::string& key, size_t count, size_t time)>& visitor
+    const std::function<bool(const std::string& key, size_t count, size_t time_us)>& visitor
 ) {
   return timer_states::instance().visit(visitor);
 }
 
-NS_END // NS_BEGIN(timer_utils)
-NS_END
+NS_END // timer_utils
+NS_END // NS_ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

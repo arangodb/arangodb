@@ -83,7 +83,7 @@ static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
 static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, AstNode* tmpVar) {
   AstNodeType type = BuildSingleComparatorType(condition);
 
-  auto replaceReference = [&tmpVar](AstNode* node, void*) -> AstNode* {
+  auto replaceReference = [&tmpVar](AstNode* node) -> AstNode* {
     if (node->type == NODE_TYPE_REFERENCE) {
       return tmpVar;
     }
@@ -91,8 +91,6 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
   };
 
   // Now we need to traverse down and replace the reference
-  void* unused = nullptr;
-
   auto lhs = condition->getMemberUnchecked(0);
   auto rhs = condition->getMemberUnchecked(1);
   // We can only optimize if path.edges[*] is on the left hand side
@@ -103,7 +101,7 @@ static AstNode* BuildExpansionReplacement(Ast* ast, AstNode const* condition, As
 
   // We have to take the return-value if LHS already is the refence.
   // otherwise the point will not be relocated.
-  lhs = Ast::traverseAndModify(lhs, replaceReference, unused);
+  lhs = Ast::traverseAndModify(lhs, replaceReference);
   return ast->createNodeBinaryOperator(type, lhs, rhs);
 }
 
@@ -237,11 +235,10 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   //   C) var.vertices[*] (.*) (ALL|NONE) (.*)
   //   D) var.vertices[*] (.*) (ALL|NONE) (.*)
 
-  auto unusedWalker = [](AstNode const* n, void*) {};
+  auto unusedWalker = [](AstNode const* n) {};
   bool isEdge = false;
   // We define that depth == UINT64_MAX is "ALL depths"
   uint64_t depth = UINT64_MAX;
-  void* unused = nullptr;
   AstNode* parentOfReplace = nullptr;
   size_t replaceIdx = 0;
   bool notSupported = false;
@@ -249,7 +246,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   // We define that patternStep >= 6 is complete Match.
   unsigned char patternStep = 0;
 
-  auto supportedGuard = [&notSupported, pathVar](AstNode const* n, void*) -> bool {
+  auto supportedGuard = [&notSupported, pathVar](AstNode const* n) -> bool {
     if (notSupported) {
       return false;
     }
@@ -262,7 +259,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
                         &parentOfReplace, &replaceIdx,
-                        &indexedAccessDepth](AstNode* node, void* unused) -> AstNode* {
+                        &indexedAccessDepth](AstNode* node) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -411,7 +408,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   size_t numMembers = node->numMembers();
   for (size_t i = 0; i < numMembers; ++i) {
     Ast::traverseAndModify(node->getMemberUnchecked(i), supportedGuard,
-                           searchPattern, unusedWalker, unused);
+                           searchPattern, unusedWalker);
     if (notSupported) {
       return false;
     }

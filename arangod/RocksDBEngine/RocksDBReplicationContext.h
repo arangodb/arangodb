@@ -25,6 +25,7 @@
 #define ARANGO_ROCKSDB_ROCKSDB_REPLICATION_CONTEXT_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -44,6 +45,22 @@ class RocksDBReplicationContext {
   typedef std::function<void(LocalDocumentId const& token)>
       LocalDocumentIdCallback;
 
+  struct CollectionIterator {
+    CollectionIterator(
+        LogicalCollection& collection, transaction::Methods& trx) noexcept;
+    LogicalCollection& logical;
+    std::unique_ptr<IndexIterator> iter;
+    uint64_t currentTick;
+    std::atomic<bool> isUsed;
+    bool hasMore;
+    ManagedDocumentResult mdr;
+    /// @brief type handler used to render documents
+    std::shared_ptr<arangodb::velocypack::CustomTypeHandler> customTypeHandler;
+    arangodb::velocypack::Options vpackOptions;
+
+    void release();
+  };
+
  public:
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
@@ -55,20 +72,19 @@ class RocksDBReplicationContext {
   uint64_t lastTick() const;
   uint64_t count() const;
 
-  TRI_vocbase_t* vocbase() const {
-    if (!_guard) {
-      return nullptr;
-    }
-    return _guard->database();
-  }
+  TRI_vocbase_t* vocbase() const;
 
   // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*);
-  int bindCollection(TRI_vocbase_t*, std::string const& collectionIdentifier);
+  void bind(TRI_vocbase_t& vocbase);
+  int bindCollection(
+    TRI_vocbase_t& vocbase,
+    std::string const& collectionIdentifier
+  );
+  int chooseDatabase(TRI_vocbase_t& vocbase);
 
   // returns inventory
-  std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
+  Result getInventory(TRI_vocbase_t* vocbase, bool includeSystem,
+                      bool global, velocypack::Builder&);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -87,50 +103,43 @@ class RocksDBReplicationContext {
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
   arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
+                                 size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
                                  std::string const& lowKey, velocypack::Slice const& ids);
 
   double expires() const;
   bool isDeleted() const;
   void deleted();
   bool isUsed() const;
-  void use(double ttl);
-  bool more() const;
+  bool use(double ttl, bool exclusive);
   /// remove use flag
   void release();
+  bool more(std::string const& collectionIdentifier);
 
  private:
   void releaseDumpingResources();
+  CollectionIterator* getCollectionIterator(TRI_voc_cid_t id);
+  void internalBind(TRI_vocbase_t& vocbase, bool allowChange = true);
 
- private:
+  mutable Mutex _contextLock;
   TRI_vocbase_t* _vocbase;
   TRI_server_id_t const _serverId;
+
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
-  uint64_t _currentTick; // shows how often dump was called
   std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
-  
-  /// @brief Collection used in dump and incremental sync
-  LogicalCollection* _collection;
-  
-  /// @brief Iterator on collection
-  std::unique_ptr<IndexIterator> _iter;
+  std::unordered_map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
+
+  /// @brief bound collection iterator for single-threaded methods
+  CollectionIterator* _collection;
 
   /// @brief offset in the collection used with the incremental sync
   uint64_t _lastIteratorOffset;
-  
-  /// @brief holds last document
-  ManagedDocumentResult _mdr;
-  /// @brief type handler used to render documents
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
-  arangodb::velocypack::Options _vpackOptions;
-
   double const _ttl;
   double _expires;
   bool _isDeleted;
-  bool _isUsed;
-  bool _hasMore; //used during dump to check if there are more documents
+  bool _exclusive;
+  size_t _users;
 };
 
 }  // namespace arangodb

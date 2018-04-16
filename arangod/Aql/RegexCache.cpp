@@ -24,6 +24,11 @@
 #include "RegexCache.h"
 #include "Basics/Utf8Helper.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb::aql;
 
 RegexCache::~RegexCache() {
@@ -45,6 +50,56 @@ icu::RegexMatcher* RegexCache::buildLikeMatcher(char const* ptr, size_t length, 
   buildLikePattern(_temp, ptr, length, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
+}
+
+static void escapeRegexParams(std::string &out, const char* ptr, size_t length) {
+  for (size_t i = 0; i < length; ++i) {
+    char const c = ptr[i];
+    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
+                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
+                 c == '.' || c == '*' || c == '\\') {
+      // character with special meaning in a regex
+      out.push_back('\\');
+    }
+    out.push_back(c);
+  }
+}
+      
+icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue splitExpression, arangodb::transaction::Methods* trx, bool& isEmptyExpression) {
+
+  std::string rx;
+  
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(splitExpression, false);
+  if (splitExpression.isArray()) {
+    for (auto const& it : VPackArrayIterator(slice)) {
+      if (!it.isString() || it.getStringLength() == 0) {
+        // one empty string rules them all
+        isEmptyExpression = true;
+        rx = "";
+        break;
+      }
+      if (rx.size() != 0) {
+        rx += '|';
+      }
+      
+      arangodb::velocypack::ValueLength length;
+      const char *str = it.getString(length);
+      escapeRegexParams(rx, str, length);
+    }
+  }
+  else if (splitExpression.isString()) {
+    arangodb::velocypack::ValueLength length;
+    const char* str = slice.getString(length);
+    escapeRegexParams(rx, str, length);
+    if (rx.length() == 0) {
+      isEmptyExpression = true;
+    }
+  }
+  else {
+    rx.clear();
+  }
+  return fromCache(rx, _likeCache);
 }
                                          
 void RegexCache::clear(std::unordered_map<std::string, icu::RegexMatcher*>& cache) noexcept {

@@ -7,6 +7,7 @@
   window.DatabaseView = Backbone.View.extend({
     users: null,
     el: '#content',
+    readOnly: false,
 
     template: templateEngine.createTemplate('databaseView.ejs'),
 
@@ -58,8 +59,19 @@
       $('#' + clicked).click();
     },
 
+    setReadOnly: function () {
+      $('#createDatabase').parent().parent().addClass('disabled');
+    },
+
     render: function () {
+      arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
+    },
+
+    continueRender: function (readOnly) {
       var self = this;
+      if (readOnly) {
+        this.readOnly = readOnly;
+      }
 
       var callback = function (error, db) {
         if (error) {
@@ -75,8 +87,13 @@
               $(self.el).html(self.template.render({
                 collection: self.collection,
                 searchString: '',
-                currentDB: self.currentDB
+                currentDB: self.currentDB,
+                readOnly: readOnly
               }));
+
+              if (readOnly) {
+                self.setReadOnly();
+              }
 
               if (self.dropdownVisible === true) {
                 $('#dbSortDesc').attr('checked', self.collection.sortOptions.desc);
@@ -146,7 +163,9 @@
 
     createDatabase: function (e) {
       e.preventDefault();
-      this.createAddDatabaseModal();
+      if (!$('#createDatabase').parent().parent().hasClass('disabled')) {
+        this.createAddDatabaseModal();
+      }
     },
 
     switchDatabase: function (e) {
@@ -237,7 +256,8 @@
       $(this.el).html(this.template.render({
         collection: reducedCollection,
         searchString: searchString,
-        currentDB: this.currentDB
+        currentDB: this.currentDB,
+        readOnly: this.readOnly
       }));
       this.replaceSVGs();
 

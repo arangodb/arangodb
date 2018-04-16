@@ -62,6 +62,26 @@ std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success
   return std::make_shared<VPackBuilder>();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the body as VelocyPack
+////////////////////////////////////////////////////////////////////////////////
+
+arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
+  try {
+    success = true;
+    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+    return _request->payload(&optionsWithUniquenessCheck);
+  } catch (VPackException const& e) {
+    std::string errmsg("VPackError error: ");
+    errmsg.append(e.what());
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
+                  errmsg);
+  }
+  success = false;
+  return VPackSlice::noneSlice();
+}
+
 void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
@@ -107,7 +127,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   try {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder tmp(buffer);
-    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.add("result", payload);
@@ -127,7 +147,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   
   try {
     VPackBuilder tmp;
-    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
     tmp.close();

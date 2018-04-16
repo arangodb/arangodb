@@ -29,6 +29,7 @@
 namespace arangodb {
 
 namespace aql {
+class ExecutionBlock;
 class ExecutionEngine;
 }
 
@@ -161,9 +162,12 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     unsigned int depth
   ) const;
 
-  aql::ExecutionBlock* createExecutionBlock(
-    aql::ExecutionEngine& engine
-  ) const;
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<aql::ExecutionBlock> createBlock(
+    aql::ExecutionEngine& engine,
+    std::unordered_map<aql::ExecutionNode*, aql::ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+  ) const override;
 
  private:
   void init();

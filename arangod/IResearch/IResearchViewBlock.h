@@ -91,12 +91,12 @@ class IResearchViewBlockBase : public aql::ExecutionBlock {
     IResearchViewNode const&
   );
 
-  aql::AqlItemBlock* getSome(size_t atLeast, size_t atMost) override final;
+  aql::AqlItemBlock* getSome(size_t atMost) override final;
 
   // skip between atLeast and atMost returns the number actually skipped . . .
   // will only return less than atLeast if there aren't atLeast many
   // things to skip overall.
-  size_t skipSome(size_t atLeast, size_t atMost) override final;
+  size_t skipSome(size_t atMost) override final;
 
   // here we release our docs from this collection
   int initializeCursor(aql::AqlItemBlock* items, size_t pos) override;

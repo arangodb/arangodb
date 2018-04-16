@@ -161,6 +161,7 @@ struct AqlValue final {
   /// RANGE: a managed range object. The memory is managed by the AqlValue
  private:
   union {
+    uint64_t words[2];
     uint8_t internal[16];
     uint8_t const* pointer;
     uint8_t* slice;
@@ -172,10 +173,14 @@ struct AqlValue final {
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  AqlValue() noexcept {
+  inline AqlValue() noexcept {
     // construct a slice of type None
-    _data.internal[0] = '\x00';
-    setType(AqlValueType::VPACK_INLINE);
+    // we will simply zero-initialize the two 64 bit words
+    _data.words[0] = 0;
+    _data.words[1] = 0;
+
+    // VPACK_INLINE must have a value of 0, and VPackSlice::None must be equal to a NUL byte too 
+    static_assert(AqlValueType::VPACK_INLINE == 0, "invalid value for VPACK_INLINE");
   }
   
   // construct from pointer, not copying!

@@ -42,7 +42,6 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/SystemDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "velocypack/Builder.h"
@@ -97,9 +96,8 @@ struct IResearchLinkMetaSetup {
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::WARN);
 
     // setup required application features
-    features.emplace_back(new arangodb::AuthenticationFeature(&server), true); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::DatabaseFeature(&server), false); // required for FeatureCacheFeature
-    features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(new arangodb::AuthenticationFeature(&server), true);
+    features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
@@ -151,7 +149,6 @@ struct IResearchLinkMetaSetup {
       f.first->unprepare();
     }
 
-    arangodb::FeatureCacheFeature::reset();
     arangodb::LogTopic::setLogLevel(arangodb::Logger::AUTHENTICATION.name(), arangodb::LogLevel::DEFAULT);
   }
 };
@@ -191,12 +188,12 @@ SECTION("test_inheritDefaults") {
 
   analyzers.start();
 
-  defaults._fields["abc"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  defaults._fields["abc"] = arangodb::iresearch::IResearchLinkMeta();
   defaults._includeAllFields = true;
   defaults._trackListPositions = true;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(analyzers.ensure("empty"));
-  defaults._fields["abc"]->_fields["xyz"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
 
   auto json = arangodb::velocypack::Parser::fromJson("{}");
   CHECK(true == meta.init(json->slice(), tmpString, defaults));
@@ -413,8 +410,8 @@ SECTION("test_writeCustomizedValues") {
   auto& overrideNone = *(meta._fields["c"]->_fields["none"]);
 
   overrideAll._fields.clear(); // do not inherit fields to match jSon inheritance
-  overrideAll._fields["x"] = std::move(arangodb::iresearch::IResearchLinkMeta());
-  overrideAll._fields["y"] = std::move(arangodb::iresearch::IResearchLinkMeta());
+  overrideAll._fields["x"] = arangodb::iresearch::IResearchLinkMeta();
+  overrideAll._fields["y"] = arangodb::iresearch::IResearchLinkMeta();
   overrideAll._includeAllFields = false;
   overrideAll._trackListPositions = false;
   overrideAll._analyzers.clear();

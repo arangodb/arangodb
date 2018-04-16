@@ -128,6 +128,7 @@ class Logger {
  public:
   static LogTopic AGENCY;
   static LogTopic AGENCYCOMM;
+  static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
   static LogTopic CACHE;
@@ -138,6 +139,7 @@ class Logger {
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
   static LogTopic DEVEL;
+  static LogTopic DUMP;
   static LogTopic ENGINES;
   static LogTopic FIXME;
   static LogTopic GRAPHS;
@@ -168,7 +170,7 @@ class Logger {
     double _value;
     int _precision;
   };
-  
+
   struct CHARS {
     CHARS(char const* data, size_t size)
         : data(data), size(size) {}

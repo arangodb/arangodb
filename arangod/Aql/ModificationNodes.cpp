@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/ModificationBlocks.h"
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 
@@ -42,7 +43,8 @@ ModificationNode::ModificationNode(ExecutionPlan* plan,
       _outVariableOld(
           Variable::varFromVPack(plan->getAst(), base, "outVariableOld", Optional)),
       _outVariableNew(
-          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)) {
+          Variable::varFromVPack(plan->getAst(), base, "outVariableNew", Optional)), 
+      _countStats(base.get("countStats").getBool()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
 }
@@ -55,6 +57,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
   // Now put info about vocbase and cid in there
   builder.add("database", VPackValue(_vocbase->name()));
   builder.add("collection", VPackValue(_collection->getName()));
+  builder.add("countStats", VPackValue(_countStats));
 
   // add out variables
   if (_outVariableOld != nullptr) {
@@ -66,6 +69,7 @@ void ModificationNode::toVelocyPackHelper(VPackBuilder& builder,
     _outVariableNew->toVelocyPack(builder);
   }
   builder.add(VPackValue("modificationFlags"));
+
   _options.toVelocyPack(builder);
 }
 
@@ -98,6 +102,15 @@ void RemoveNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<RemoveBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -114,6 +127,9 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new RemoveNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableOld);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -137,6 +153,15 @@ void InsertNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<InsertBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -153,6 +178,9 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   auto c = new InsertNode(plan, _id, _vocbase, _collection, _options,
                           inVariable, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -182,6 +210,15 @@ void UpdateNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<UpdateBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -209,6 +246,9 @@ ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c =
       new UpdateNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                      inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -239,6 +279,15 @@ void ReplaceNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<ReplaceBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
                                   bool withProperties) const {
@@ -266,6 +315,9 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c =
       new ReplaceNode(plan, _id, _vocbase, _collection, _options, inDocVariable,
                       inKeyVariable, outVariableOld, outVariableNew);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 
@@ -296,6 +348,15 @@ void UpsertNode::toVelocyPackHelper(VPackBuilder& nodes,
   nodes.close();
 }
 
+/// @brief creates corresponding ExecutionBlock
+std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
+    ExecutionEngine& engine,
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
+    std::unordered_set<std::string> const&
+) const {
+  return std::make_unique<UpsertBlock>(&engine, this);
+}
+
 /// @brief clone ExecutionNode recursively
 ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
                                  bool withProperties) const {
@@ -319,6 +380,9 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
   auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options,
                           inDocVariable, insertVariable, updateVariable,
                           outVariableNew, _isReplace);
+  if (!_countStats) {
+    c->disableStatistics();
+  }
 
   cloneHelper(c, withDependencies, withProperties);
 

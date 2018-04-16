@@ -24,6 +24,7 @@
 
 #include "IndexBlock.h"
 #include "Aql/AqlItemBlock.h"
+#include "Aql/BaseExpressionContext.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
@@ -32,6 +33,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/Index.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -133,8 +135,8 @@ void IndexBlock::executeExpressions() {
     auto exp = toReplace->expression;
 
     bool mustDestroy;
-    AqlValue a = exp->execute(_trx, cur, _pos, _inVars[posInExpressions],
-                              _inRegs[posInExpressions], mustDestroy);
+    BaseExpressionContext ctx(_pos, cur, _inVars[posInExpressions], _inRegs[posInExpressions]);
+    AqlValue a = exp->execute(_trx, &ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(_trx);
@@ -178,7 +180,7 @@ int IndexBlock::initialize() {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    _hasV8Expression |= e->isV8();
+    _hasV8Expression |= e->willUseV8();
 
     std::unordered_set<Variable const*> inVars;
     e->variables(inVars);
@@ -456,11 +458,17 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
-
-
-    // TODO: optimize for the case when produceResult() is false
-    // in this case we do not need to fetch the documents at all
-    bool res = _cursor->nextDocument(callback, atMost - _returned);
+ 
+    bool res;
+    if (produceResult()) {
+      // fetch entire documents
+      res = _cursor->nextDocument(callback, atMost - _returned);
+    } else {
+      // optimization: iterate over index, but do not fetch documents
+      res = _cursor->next([&callback](LocalDocumentId const& id) {
+        callback(id, VPackSlice::nullSlice());
+      }, atMost - _returned);
+    }
 
     if (res) {
       // We have returned enough.
@@ -496,9 +504,9 @@ int IndexBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 }
 
 /// @brief getSome
-AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
+AqlItemBlock* IndexBlock::getSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
-  traceGetSomeBegin(atLeast, atMost);
+  traceGetSomeBegin(atMost);
   if (_done) {
     traceGetSomeEnd(nullptr);
     return nullptr;
@@ -518,7 +526,22 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   // position _returned:
 
   IndexIterator::DocumentCallback callback;
-  if (_indexes.size() > 1) {
+
+  size_t expansions = 0;
+  {
+    // count how many attributes in the index are expanded (array index)
+    // if more than a single attribute, we always need to deduplicate the
+    // result later on
+    auto mainIndex = _indexes[0].getIndex();
+    auto const& fields = mainIndex->fields();
+    for (size_t i = 0; i < fields.size(); ++i) {
+      if (mainIndex->isAttributeExpanded(i)) {
+        ++expansions;
+      }
+    }
+  }
+
+  if (_indexes.size() > 1 || expansions > 1) {
     // Activate uniqueness checks
     callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res != nullptr);
@@ -540,7 +563,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     };
   } else {
     // No uniqueness checks
-    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
+    callback = [&](LocalDocumentId const&, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
@@ -549,7 +572,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   do {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -563,7 +586,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
           _done = true;
           break;
         }
@@ -627,7 +650,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
 }
 
 /// @brief skipSome
-size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
+size_t IndexBlock::skipSome(size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   if (_done) {
     return 0;
@@ -635,10 +658,10 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
 
   _returned = 0;
 
-  while (_returned < atLeast) {
+  while (_returned < atMost) {
     if (_buffer.empty()) {
       size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-      if (!ExecutionBlock::getBlock(toFetch, toFetch) || (!initIndexes())) {
+      if (!ExecutionBlock::getBlock(toFetch) || (!initIndexes())) {
         _done = true;
         break;
       }
@@ -653,7 +676,7 @@ size_t IndexBlock::skipSome(size_t atLeast, size_t atMost) {
         _pos = 0;
       }
       if (_buffer.empty()) {
-        if (!ExecutionBlock::getBlock(DefaultBatchSize(), DefaultBatchSize())) {
+        if (!ExecutionBlock::getBlock(DefaultBatchSize())) {
           _done = true;
           break;
         }

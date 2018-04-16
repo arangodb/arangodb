@@ -315,6 +315,46 @@ class VelocyPackHelper {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the default ref if slice is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    arangodb::velocypack::StringRef const& defaultValue
+  ) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the default ref if slice is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    char const* defaultValue
+  ) noexcept {
+    return getStringRef(slice, arangodb::velocypack::StringRef(defaultValue));
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the defaultValue if slice[key] is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    std::string const& key,
+    arangodb::velocypack::StringRef const& defaultValue
+  ) noexcept;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @return string ref, or the defaultValue if slice[key] is not a string
+  //////////////////////////////////////////////////////////////////////////////
+  static arangodb::velocypack::StringRef getStringRef(
+    arangodb::velocypack::Slice slice,
+    std::string const& key,
+    char const* defaultValue
+  ) noexcept {
+    return getStringRef(
+      slice, key, arangodb::velocypack::StringRef(defaultValue)
+    );
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a string value, or the default value if it is not a string
   //////////////////////////////////////////////////////////////////////////////
 

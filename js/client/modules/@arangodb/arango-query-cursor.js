@@ -36,7 +36,7 @@ var arangosh = require('@arangodb/arangosh');
 // / @brief constructor
 // //////////////////////////////////////////////////////////////////////////////
 
-function ArangoQueryCursor (database, data) {
+function ArangoQueryCursor (database, data, stream) {
   this._database = database;
   this._dbName = database._name();
   this.data = data;
@@ -45,6 +45,7 @@ function ArangoQueryCursor (database, data) {
   this._pos = 0;
   this._count = 0;
   this._total = 0;
+  this._stream = stream || false;
 
   if (data.result !== undefined) {
     this._count = data.result.length;
@@ -76,15 +77,19 @@ ArangoQueryCursor.prototype.toString = function () {
 
   var result = '[object ArangoQueryCursor';
 
-  if (this.data.id) {
+  if (this.data.id) { // should always exist for streaming cursors
     result += ' ' + this.data.id;
   }
 
-  if (this._count !== null && this._count !== undefined) {
-    result += ', count: ' + this._count;
+  if (this._stream) {
+    // a streaming query has no count and will not be cached
+    result += ', stream: true';
+  } else {
+    if (this._count !== null && this._count !== undefined) {
+      result += ', count: ' + this._count;
+    }
+    result += ', cached: ' + (this.data.cached ? 'true' : 'false');
   }
-
-  result += ', cached: ' + (this.data.cached ? 'true' : 'false');
 
   result += ', hasMore: ' + (this.hasNext() ? 'true' : 'false');
 

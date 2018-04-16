@@ -125,11 +125,15 @@ class IRESEARCH_API_TEMPLATE raw_block_vector: util::noncopyable {
     buffers_.clear();
   }
 
-  FORCE_INLINE buffer_t get_buffer(size_t i) const NOEXCEPT {
+  FORCE_INLINE const buffer_t& get_buffer(size_t i) const NOEXCEPT {
     return buffers_[i];
   }
 
-  buffer_t push_buffer() {
+  FORCE_INLINE buffer_t& get_buffer(size_t i) NOEXCEPT {
+    return buffers_[i];
+  }
+
+  buffer_t& push_buffer() {
     static const auto& meta = get_bucket_meta();
 
     if (buffers_.size() < meta.size()) { // one of the precomputed buckets

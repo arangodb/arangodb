@@ -198,16 +198,14 @@ void RocksDBRestExportHandler::createCursor() {
     return;
   }
 
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
     return;
   }
-  VPackSlice body = parsedBody.get()->slice();
 
   VPackBuilder optionsBuilder;
-
   if (!body.isNone()) {
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
@@ -232,41 +230,45 @@ void RocksDBRestExportHandler::createCursor() {
   bool count = arangodb::basics::VelocyPackHelper::getBooleanValue(
       options, "count", false);
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   Cursor* c = nullptr;
+
   {
     auto cursor = std::make_unique<RocksDBExportCursor>(
-        _vocbase, name, _restrictions, TRI_NewTickServer(), limit, batchSize,
-        ttl, count);
+      _vocbase,
+      name,
+      _restrictions,
+      TRI_NewTickServer(),
+      limit,
+      batchSize,
+      ttl,
+      count
+    );
 
     cursor->use();
     c = cursors->addCursor(std::move(cursor));
   }
-
   TRI_ASSERT(c != nullptr);
+  TRI_DEFER(cursors->release(c));
 
   resetResponse(rest::ResponseCode::CREATED);
 
-  try {
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add(StaticStrings::Error, VPackValue(false));
-    builder.add(StaticStrings::Code,
-                VPackValue(static_cast<int>(_response->responseCode())));
-    c->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, std::move(buffer));
-
-    cursors->release(c);
-  } catch (...) {
-    cursors->release(c);
-    throw;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::CREATED)));
+  Result r = c->dump(builder);
+  if (r.fail()) {
+    generateError(r);
+    return;
   }
+  builder.close();
+
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::CREATED, std::move(buffer));
 }
 
 void RocksDBRestExportHandler::modifyCursor() {
@@ -280,14 +282,13 @@ void RocksDBRestExportHandler::modifyCursor() {
 
   std::string const& id = suffixes[0];
 
-  auto cursors = _vocbase->cursorRepository();
+  auto cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
       arangodb::basics::StringUtils::uint64(id));
   bool busy;
   auto cursor = cursors->find(cursorId, Cursor::CURSOR_EXPORT, busy);
-
   if (cursor == nullptr) {
     if (busy) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY),
@@ -298,26 +299,22 @@ void RocksDBRestExportHandler::modifyCursor() {
     }
     return;
   }
+  TRI_DEFER(cursors->release(cursor));
 
-  try {
-    resetResponse(rest::ResponseCode::OK);
-
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
-    builder.openObject();
-    builder.add(StaticStrings::Error, VPackValue(false));
-    builder.add(StaticStrings::Code, VPackValue((int)_response->responseCode()));
-    cursor->dump(builder);
-    builder.close();
-
-    _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, std::move(buffer));
-
-    cursors->release(cursor);
-  } catch (...) {
-    cursors->release(cursor);
-    throw;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  builder.openObject();
+  builder.add(StaticStrings::Error, VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::OK)));
+  Result r = cursor->dump(builder);
+  if (r.fail()) {
+    generateError(r);
+    return;
   }
+  builder.close();
+
+  _response->setContentType(rest::ContentType::JSON);
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 void RocksDBRestExportHandler::deleteCursor() {
@@ -331,7 +328,7 @@ void RocksDBRestExportHandler::deleteCursor() {
 
   std::string const& id = suffixes[0];
 
-  auto cursors = _vocbase->cursorRepository();
+  CursorRepository* cursors = _vocbase.cursorRepository();
   TRI_ASSERT(cursors != nullptr);
 
   auto cursorId = static_cast<arangodb::CursorId>(
@@ -347,8 +344,7 @@ void RocksDBRestExportHandler::deleteCursor() {
   result.openObject();
   result.add("id", VPackValue(id));
   result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code,
-             VPackValue(static_cast<int>(rest::ResponseCode::ACCEPTED)));
+  result.add(StaticStrings::Code, VPackValue(static_cast<int>(ResponseCode::ACCEPTED)));
   result.close();
 
   generateResult(rest::ResponseCode::ACCEPTED, result.slice());

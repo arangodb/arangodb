@@ -26,24 +26,8 @@
 #include "directory_test_case.hpp"
 
 #include "store/fs_directory.hpp"
-#include "utils/locale_utils.hpp"
-#include "utils/file_utils.hpp"
 #include "utils/process_utils.hpp"
 #include "utils/network_utils.hpp"
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-#include <boost/locale.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-#include <boost/locale/generator.hpp>
-#include <boost/locale/conversion.hpp>
 
 #include <fstream>
 
@@ -57,20 +41,9 @@ class fs_directory_test : public directory_test_case,
   public test_base {
   public:
   explicit fs_directory_test(const std::string& name = "directory") {
-    static auto utf8_locale = iresearch::locale_utils::locale("", true);
-
     test_base::SetUp();
-    codecvt_ = &std::use_facet<boost::filesystem::path::codecvt_type>(utf8_locale);
     path_ = test_case_dir();
-#ifdef _WIN32
-    // convert utf8->ucs2
-    auto native_name = boost::locale::conv::utf_to_utf<wchar_t>(
-      name.c_str(), name.c_str() + name.size()
-      );
-    path_.append(std::move(native_name));
-#else
-    path_.append(name);
-#endif
+    path_ /= name;
   }
 
   void check_files() {
@@ -79,7 +52,9 @@ class fs_directory_test : public directory_test_case,
     // create empty file
     {
       auto file = path_;
-      file.append(file_name);
+
+      file /= file_name;
+
       std::ofstream f(file.native());
     }
 
@@ -95,26 +70,23 @@ class fs_directory_test : public directory_test_case,
   }
 
   virtual void SetUp() override {
-    auto str = path_.string(*codecvt_);
-
-    dir_ = directory::make<fs_directory>(str);
-    iresearch::fs_directory::remove_directory(str);
-    iresearch::fs_directory::create_directory(str);
+    dir_ = directory::make<fs_directory>(path_.utf8());
+    path_.remove();
+    path_.mkdir();
   }
 
   virtual void TearDown() override {
-    iresearch::fs_directory::remove_directory(path_.string(*codecvt_));
+    path_.remove();
   }
 
   virtual void TestBody() override {}
 
-  const boost::filesystem::path& path() const {
+  const irs::utf8_path& path() const {
     return path_;
   }
 
   private:
-  const boost::filesystem::path::codecvt_type* codecvt_;
-  boost::filesystem::path path_;
+  irs::utf8_path path_;
 };
 
 TEST_F(fs_directory_test, read_multiple_streams) {
@@ -289,9 +261,8 @@ TEST_F(fs_directory_test, orphaned_lock) {
 
 TEST_F(fs_directory_test, utf8_chars) {
   std::wstring path_ucs2 = L"\u0442\u0435\u0441\u0442\u043E\u0432\u0430\u044F_\u0434\u0438\u0440\u0435\u043A\u0442\u043E\u0440\u0438\u044F";
-  auto path_utf8 = boost::locale::conv::utf_to_utf<char>(path_ucs2);
-  string_ref path_utf8x((char*) path_ucs2.c_str(), path_ucs2.size() * 2);
-  fs_directory_test dir(path_utf8);
+  irs::utf8_path path(path_ucs2);
+  fs_directory_test dir(path.utf8());
 
   // create directory via iResearch functions
   {
@@ -305,10 +276,10 @@ TEST_F(fs_directory_test, utf8_chars) {
   // create directory via native functions
   {
     #ifdef _WIN32
-      auto native_path = test_case_dir().native() + boost::filesystem::path::preferred_separator + path_ucs2;
+      auto native_path = test_case_dir().native() + L'\\' + path.native();
       ASSERT_EQ(0, _wmkdir(native_path.c_str()));
     #else
-      auto native_path = test_case_dir().native() + boost::filesystem::path::preferred_separator + path_utf8;
+      auto native_path = test_case_dir().native() + '/' + path.utf8();
       ASSERT_EQ(0, mkdir(native_path.c_str(), S_IRWXU | S_IRWXG | S_IRWXO));
     #endif
 

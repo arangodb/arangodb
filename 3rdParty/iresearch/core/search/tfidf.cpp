@@ -34,7 +34,8 @@ NS_LOCAL
 
 irs::sort::ptr make_from_bool(
     const rapidjson::Document& json,
-    const irs::string_ref& args) {
+    const irs::string_ref& //args
+) {
   assert(json.IsBool());
 
   PTR_NAMED(irs::tfidf_sort, ptr, json.GetBool());
@@ -175,25 +176,25 @@ class collector final : public iresearch::sort::collector {
   }
 
   virtual void collect(
-      const sub_reader& segment,
+      const sub_reader& /*segment*/,
       const term_reader& field,
       const attribute_view& term_attrs
   ) override {
-    UNUSED(segment);
-    UNUSED(field);
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
+    docs_with_field += field.docs_count();
+
     if (meta) {
-      docs_count += meta->docs_count;
+      docs_with_term += meta->docs_count;
     }
   }
 
   virtual void finish(
       attribute_store& filter_attrs,
-      const iresearch::index_reader& index
+      const iresearch::index_reader& /*index*/
   ) override {
     filter_attrs.emplace<tfidf::idf>()->value =
-      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
+      float_t(std::log((docs_with_field + 1) / double_t(docs_with_term + 1)) + 1.0);
 
     // add norm attribute if requested
     if (normalize_) {
@@ -202,7 +203,8 @@ class collector final : public iresearch::sort::collector {
   }
 
  private:
-  uint64_t docs_count = 0; // document frequency
+  uint64_t docs_with_field = 0; // number of documents containing at least one term for processed field
+  uint64_t docs_with_term = 0; // number of documents containing processed term
   bool normalize_;
 }; // collector
 

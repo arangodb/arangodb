@@ -78,18 +78,19 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump,
   }
 
   // collection name not in cache yet
-  std::string name(dump->_vocbase->collectionName(cid));
+  auto collection = dump->_vocbase->lookupCollection(cid);
+  std::string name = collection ? collection->name() : std::string();
 
   if (!name.empty()) {
     // insert into cache
     try {
       dump->_collectionNames.emplace(cid, std::move(name));
+
       // and look it up again
       return nameFromCid(dump, cid);
     } catch (...) {
       // fall through to returning empty string
     }
-
   }
 
   return StaticStrings::Empty;
@@ -365,8 +366,9 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
                           TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
                           TRI_voc_tick_t dataMin, TRI_voc_tick_t dataMax,
                           bool withTicks, bool useVst = false) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping collection " << collection->cid() << ", tick range "
-             << dataMin << " - " << dataMax;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    << "dumping collection " << collection->id()
+    << ", tick range " << dataMin << " - " << dataMax;
 
   bool const isEdgeCollection = (collection->type() == TRI_COL_TYPE_EDGE);
 
@@ -460,8 +462,15 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
     MMFilesCompactionPreventer compactionPreventer(mmfiles);
 
     try {
-      res = DumpCollection(dump, collection, collection->vocbase()->id(),
-                           collection->cid(), dataMin, dataMax, withTicks);
+      res = DumpCollection(
+        dump,
+        collection,
+        collection->vocbase().id(),
+        collection->id(),
+        dataMin,
+        dataMax,
+        withTicks
+      );
     } catch (...) {
       res = TRI_ERROR_INTERNAL;
     }

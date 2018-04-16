@@ -33,7 +33,6 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -224,12 +223,13 @@ ClusterComm::ClusterComm()
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(auth != nullptr);
-  if (auth->isActive()) {
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  TRI_ASSERT(af != nullptr);
+  if (af->isActive()) {
+    std::string token = af->tokenCache()->jwtToken();
+    TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
-
-    _jwtAuthorization = "bearer " + auth->jwtToken();
+    _jwtAuthorization = "bearer " + token;
   }
 
   _communicator = std::make_shared<communicator::Communicator>();
@@ -988,7 +988,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           VPackSlice payload = res.answer->payload();
           VPackSlice errorNum = payload.get(StaticStrings::ErrorNum);
           if (errorNum.isInteger() &&
-              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+              errorNum.getInt() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
             res.status = CL_COMM_BACKEND_UNAVAILABLE;
             // This is a fake, but it will lead to a retry. If we timeout
             // here and now, then the customer will get this result.
@@ -1057,6 +1057,37 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   drop("", coordinatorTransactionID, 0, "");
   return nrGood;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this method performs the given requests described by the vector
+/// of ClusterCommRequest structs in the following way: 
+/// Each request is done with asyncRequest.
+/// After each request is successfully send out we drop all requests.
+/// Hence it is guaranteed that all requests are send, but
+/// we will not wait for answers of those requests.
+/// Also all reporting for the responses is lost, because we do not care.
+/// NOTE: The requests can be in any communication state after this function
+/// and you should not read them. If you care for response use performRequests
+/// instead.
+////////////////////////////////////////////////////////////////////////////////
+
+void ClusterComm::fireAndForgetRequests(std::vector<ClusterCommRequest>& requests) {
+  if (requests.size() == 0) {
+    return;
+  }
+
+  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
+
+  double const shortTimeout = 10.0; // Picked arbitrarily
+  for (auto& req : requests) {
+    asyncRequest("", coordinatorTransactionID, req.destination, req.requestType,
+                 req.path, req.body, req.headerFields, nullptr, shortTimeout, false,
+                 2.0);
+  }
+  // Forget about it
+  drop("", coordinatorTransactionID, 0, "");
+}
+
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief this is the fast path method for performRequests for the case

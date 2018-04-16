@@ -158,6 +158,16 @@ constexpr int TRI_ERROR_ONLY_ENTERPRISE                                         
 /// configured maximum value.
 constexpr int TRI_ERROR_RESOURCE_LIMIT                                          = 32;
 
+/// 33: ERROR_ARANGO_ICU_ERROR
+/// "icu error: %s"
+/// will be raised if icu operations failed
+constexpr int TRI_ERROR_ARANGO_ICU_ERROR                                        = 33;
+
+/// 34: ERROR_CANNOT_READ_FILE
+/// "cannot read file"
+/// Will be raised when a file cannot be read.
+constexpr int TRI_ERROR_CANNOT_READ_FILE                                        = 34;
+
 /// 400: ERROR_HTTP_BAD_PARAMETER
 /// "bad parameter"
 /// Will be raised when the HTTP request does not fulfill the requirements.
@@ -204,6 +214,12 @@ constexpr int TRI_ERROR_HTTP_SERVER_ERROR                                       
 /// "service unavailable"
 /// Will be raised when a service is temporarily unavailable.
 constexpr int TRI_ERROR_HTTP_SERVICE_UNAVAILABLE                                = 503;
+
+/// 504: ERROR_HTTP_GATEWAY_TIMEOUT
+/// "gateway timeout"
+/// Will be raised when a service contacted by ArangoDB does not respond in a
+/// timely manner.
+constexpr int TRI_ERROR_HTTP_GATEWAY_TIMEOUT                                    = 504;
 
 /// 600: ERROR_HTTP_CORRUPTED_JSON
 /// "invalid JSON object"
@@ -338,11 +354,11 @@ constexpr int TRI_ERROR_ARANGO_DATADIR_INVALID                                  
 /// Will be raised when a document with a given identifier or handle is unknown.
 constexpr int TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND                               = 1202;
 
-/// 1203: ERROR_ARANGO_COLLECTION_NOT_FOUND
-/// "collection not found"
+/// 1203: ERROR_ARANGO_DATA_SOURCE_NOT_FOUND
+/// "collection or view not found"
 /// Will be raised when a collection with the given identifier or name is
 /// unknown.
-constexpr int TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND                             = 1203;
+constexpr int TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND                            = 1203;
 
 /// 1204: ERROR_ARANGO_COLLECTION_PARAMETER_MISSING
 /// "parameter 'collection' not found"
@@ -378,11 +394,6 @@ constexpr int TRI_ERROR_ARANGO_NO_INDEX                                         
 /// "unique constraint violated"
 /// Will be raised when there is a unique constraint violation.
 constexpr int TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED                       = 1210;
-
-/// 1211: ERROR_ARANGO_VIEW_NOT_FOUND
-/// "view not found"
-/// Will be raised when a view with the given identifier or name is unknown.
-constexpr int TRI_ERROR_ARANGO_VIEW_NOT_FOUND                                   = 1211;
 
 /// 1212: ERROR_ARANGO_INDEX_NOT_FOUND
 /// "index not found"
@@ -939,6 +950,12 @@ constexpr int TRI_ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING                    
 /// Will be raised when an operation is sent to a non-leading server.
 constexpr int TRI_ERROR_CLUSTER_NOT_LEADER                                      = 1496;
 
+/// 1497: ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN
+/// "could not create view in plan"
+/// Will be raised when a coordinator in a cluster cannot create an entry for a
+/// new view in the Plan hierarchy in the agency.
+constexpr int TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN                   = 1497;
+
 /// 1500: ERROR_QUERY_KILLED
 /// "query killed"
 /// Will be raised when a running query is killed by an explicit admin command.
@@ -1161,6 +1178,16 @@ constexpr int TRI_ERROR_QUERY_NOT_FOUND                                         
 /// Will be raised when an Id of a query is found by the HTTP API but the query
 /// is in use.
 constexpr int TRI_ERROR_QUERY_IN_USE                                            = 1592;
+
+/// 1593: ERROR_QUERY_USER_ASSERT
+/// "%s"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       = 1593;
+
+/// 1594: ERROR_QUERY_USER_WARN
+/// "%s"
+/// Will be raised if and user provided expression fails to evalutate to true
+constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"

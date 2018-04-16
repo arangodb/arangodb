@@ -366,8 +366,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
       return ResponseCode::FORBIDDEN;
 
     case TRI_ERROR_ARANGO_DATABASE_NOT_FOUND:
-    case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
-    case TRI_ERROR_ARANGO_VIEW_NOT_FOUND:
+    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
     case TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
     case TRI_ERROR_ARANGO_ENDPOINT_NOT_FOUND:
@@ -412,6 +411,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_DEBUG:
     case TRI_ERROR_OUT_OF_MEMORY:
     case TRI_ERROR_INTERNAL:
+    case TRI_ERROR_TRANSACTION_INTERNAL:
       return ResponseCode::SERVER_ERROR;
 
     case TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE:

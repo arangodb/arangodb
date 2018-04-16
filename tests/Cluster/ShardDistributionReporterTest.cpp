@@ -111,6 +111,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
   std::string dbname = "UnitTestDB";
   std::string colName = "UnitTestCollection";
+  TRI_voc_cid_t cid = 1337;
   std::string cidString = "1337";
 
   std::string s1 = "s1234";
@@ -166,11 +167,11 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         return cic;
       });
 
-  fakeit::When(Method(colMock, name)).AlwaysReturn(colName);
+  const_cast<std::string&>(col.name()).assign(colName);
   fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
-  fakeit::When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
+  const_cast<TRI_voc_cid_t&>(col.id()) = cid;
 
   ShardDistributionReporter testee(
       std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -1916,3 +1917,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     }
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

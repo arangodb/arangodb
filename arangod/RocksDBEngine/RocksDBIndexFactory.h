@@ -30,18 +30,8 @@ namespace arangodb {
 
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  RocksDBIndexFactory() : IndexFactory() {}
-
-  ~RocksDBIndexFactory() {}
-
-  int enhanceIndexDefinition(arangodb::velocypack::Slice const definition,
-                             arangodb::velocypack::Builder& enhanced,
-                             bool isCreation,
-                             bool isCoordinator) const override;
-
-  std::shared_ptr<arangodb::Index> prepareIndexFromSlice(
-      arangodb::velocypack::Slice info, bool generateKey,
-      LogicalCollection* col, bool isClusterConstructor) const override;
+  RocksDBIndexFactory();
+  ~RocksDBIndexFactory() = default;
 
   void fillSystemIndexes(arangodb::LogicalCollection* col,
                          std::vector<std::shared_ptr<arangodb::Index>>&
@@ -49,6 +39,7 @@ class RocksDBIndexFactory final : public IndexFactory {
 
   std::vector<std::string> supportedIndexes() const override;
 };
+
 }
 
 #endif
