@@ -77,12 +77,14 @@ class ResultT : public arangodb::Result {
     return ResultT(boost::none, errorNumber, errorMessage);
   }
 
+  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
   ResultT(Result const& other) : Result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
     TRI_ASSERT(other.fail());
   }
 
+  // NOLINTNEXTLINE(google-explicit-constructor,hicpp-explicit-conversions)
   ResultT(T&& val) : ResultT(std::forward<T>(val), TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;

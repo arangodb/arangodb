@@ -263,9 +263,7 @@ SCENARIO("Broken distributeShardsLike collections",
       WHEN("The unused DBServer is marked as non-healthy") {
 #include "ClusterRepairsTest.unusedServerUnhealthy.cpp"
 
-        DistributeShardsLikeRepairer repairer;
-
-        auto result = repairer.repairDistributeShardsLike(
+        auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
             VPackSlice(supervisionHealth2Healthy1Bad->data()));
 
@@ -288,9 +286,7 @@ SCENARIO("Broken distributeShardsLike collections",
       WHEN("The replicationFactor equals the number of DBServers") {
 #include "ClusterRepairsTest.replicationFactorTooHigh.cpp"
 
-        DistributeShardsLikeRepairer repairer;
-
-        auto result = repairer.repairDistributeShardsLike(
+        auto result = DistributeShardsLikeRepairer::repairDistributeShardsLike(
             VPackSlice(planCollections->data()),
             VPackSlice(supervisionHealth2Healthy0Bad->data()));
 

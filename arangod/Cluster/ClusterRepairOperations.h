@@ -71,6 +71,7 @@ struct tagged_argument {
 
 template <typename Tag, typename Type>
 struct keyword {
+  // NOLINTNEXTLINE(cppcoreguidelines-c-copy-assignment-signature,misc-unconventional-assign-operator)
   struct tagged_argument<Tag, Type> const operator=(Type const& arg) const {
     return tagged_argument<Tag, Type>{arg};
   }

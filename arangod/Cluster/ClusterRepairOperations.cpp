@@ -22,6 +22,7 @@
 
 #include "ClusterRepairOperations.h"
 #include "ServerState.h"
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -206,7 +207,8 @@ class StreamRepairOperationVisitor
     : public boost::static_visitor<std::ostream&> {
  public:
   StreamRepairOperationVisitor() = delete;
-  StreamRepairOperationVisitor(std::ostream& stream_) : _stream(stream_){};
+
+  explicit StreamRepairOperationVisitor(std::ostream& stream_) : _stream(stream_){};
 
   std::ostream& operator()(BeginRepairsOperation const& op) {
     return _stream << op;
@@ -559,8 +561,8 @@ RepairOperationToTransactionVisitor::RepairOperationToTransactionVisitor(
     std::function<uint64_t()> getJobId_,
     std::function<std::chrono::system_clock::time_point()>
         getJobCreationTimestamp_)
-    : _getJobId(getJobId_),
-      _getJobCreationTimestamp(getJobCreationTimestamp_) {}
+    : _getJobId(std::move(getJobId_)),
+      _getJobCreationTimestamp(std::move(getJobCreationTimestamp_)) {}
 
 std::vector<VPackBufferPtr>&& RepairOperationToTransactionVisitor::steal() {
   return std::move(_vpackBufferArray);
