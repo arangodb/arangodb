@@ -38,6 +38,7 @@
 #include "velocypack/Iterator.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 #include "Transaction/Helpers.h"

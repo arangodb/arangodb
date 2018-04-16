@@ -216,13 +216,13 @@ void RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+
   VPackSlice nameSlice;
   if (!body.isObject() || !(nameSlice = body.get("name")).isString() ||
       nameSlice.getStringLength() == 0) {
@@ -250,7 +250,7 @@ void RestCollectionHandler::handleCommandPost() {
 
   // for some "security" a white-list of allowed parameters
   VPackBuilder filtered = VPackCollection::keep(
-      parsedBody->slice(),
+      body,
       std::unordered_set<std::string>{
           "doCompact", "isSystem", "id", "isVolatile", "journalSize",
           "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
@@ -289,13 +289,13 @@ void RestCollectionHandler::handleCommandPut() {
                   "expected PUT /_api/collection/<collection-name>/<action>");
     return;
   }
-  bool parseSuccess = true;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
+  bool parseSuccess = false;
+  VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return;
   }
-  VPackSlice body = parsedBody->slice();
+
   if (!body.isObject()) {
     body = VPackSlice::emptyObjectSlice();
   }

@@ -97,6 +97,7 @@ Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
       _willUseV8(false),
       _attributes(),
       _expressionContext(nullptr) {
+  _ast->query()->unPrepareV8Context();
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
@@ -233,6 +234,8 @@ void Expression::invalidateAfterReplacements() {
 /// used and destroyed in the same context. when a V8 function is used across
 /// multiple V8 contexts, it must be invalidated in between
 void Expression::invalidate() {
+  // context may change next time, so "prepare for re-preparation"
+  _ast->query()->unPrepareV8Context();
 
   // V8 expressions need a special handling
   freeInternals();
