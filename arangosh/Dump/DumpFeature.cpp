@@ -27,6 +27,7 @@
 #include <iostream>
 #include <thread>
 
+#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <boost/algorithm/clamp.hpp>
@@ -404,7 +405,21 @@ arangodb::Result processJob(arangodb::httpclient::SimpleHttpClient& client,
       return ::fileError(file.get(), true);
     }
 
-    std::string const collectionInfo = jobData.collectionInfo.toJson();
+    VPackBuilder excludes;
+    { // { parameters: { shadowCollections: null } }
+      excludes.add(VPackValue(VPackValueType::Object));
+      excludes.add("parameters", VPackValue(VPackValueType::Object));
+      excludes.add("shadowCollections", VPackSlice::nullSlice());
+      excludes.close();
+      excludes.close();
+    }
+
+    VPackBuilder collectionWithExcludedParametersBuilder
+      = VPackCollection::merge(jobData.collectionInfo, excludes.slice(), true, true);
+
+    std::string const collectionInfo =
+      collectionWithExcludedParametersBuilder.slice().toJson();
+
     file->write(collectionInfo.c_str(), collectionInfo.size());
     if (file->status().fail()) {
       // close file and bail out
@@ -830,6 +845,10 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client) {
       continue;
     }
 
+    if (isIgnoredHiddenEnterpriseCollection(name)) {
+      continue;
+    }
+
     // verify distributeShardsLike info
     if (!_ignoreDistributeShardsLikeErrors) {
       std::string prototypeCollection =
@@ -980,6 +999,26 @@ void DumpFeature::start() {
           << "Processed " << _stats.totalCollections << " collection(s)";
     }
   }
+}
+
+bool DumpFeature::isIgnoredHiddenEnterpriseCollection(
+    std::string const& name) const {
+#ifdef USE_ENTERPRISE
+  if (!_force && name[0] == '_') {
+    if (strncmp(name.c_str(), "_local_", 7) == 0 ||
+        strncmp(name.c_str(), "_from_", 6) == 0 ||
+        strncmp(name.c_str(), "_to_", 4) == 0) {
+      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+          << "Dump ignoring collection " << name
+          << ". Will be created via SmartGraphs of a full dump. If you want to "
+             "dump this collection anyway use 'arangodump --force'. "
+             "However this is not recommended and you should instead dump "
+             "the EdgeCollection of the SmartGraph instead.";
+      return true;
+    }
+  }
+#endif
+  return false;
 }
 
 }  // namespace arangodb
