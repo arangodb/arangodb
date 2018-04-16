@@ -309,5 +309,4 @@ arangodb::Result AddFollower::abort() {
 
   TRI_ASSERT(false);  // cannot happen, since job moves directly to FINISHED
   return result;
-
 }

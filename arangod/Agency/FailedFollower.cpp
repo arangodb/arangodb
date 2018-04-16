@@ -233,7 +233,6 @@ bool FailedFollower::start() {
         // toServer in good condition
         addPreconditionServerHealth(job, _to, "GOOD");
       }
-
     }
   }
 

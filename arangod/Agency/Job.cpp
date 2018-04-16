@@ -217,7 +217,6 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-
   // Remove cleaned servers from list (test first to avoid warning log
   if (snapshot.has(cleanedPrefix)) try {
     for (auto const& srv :
@@ -554,5 +553,8 @@ std::string Job::checkServerHealth(Node const& snapshot,
   if (!status.second) {
     return "UNCLEAR";
   }
-  return status.first;
+  if (status.first != "GOOD") {
+    return "UNHEALTHY";
+  }
+  return "GOOD";
 }
