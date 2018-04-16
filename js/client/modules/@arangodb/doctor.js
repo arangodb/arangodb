@@ -28,6 +28,8 @@
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
 // /////////////////////////////////////////////////////////////////////////////
 
+var request = require("@arangodb/request");
+
 const servers = {};
 
 function INFO() {
@@ -40,20 +42,27 @@ function WARN() {
   print.apply(print, ["WARN"].concat(args));
 }
 
-function loadAgencyPlan(conn) {
-  var plan = arango.POST("/_api/agency/read", '[["/"]]');
+function loadAgencyConfig() {
+  var configuration = arango.GET("/_api/agency/config");
+  return configuration;
+}
 
-  if (plan.code === 404) {
-    WARN("not talking to an agent, got: " + JSON.stringify(plan));
+function loadAgency(conn) {
+
+  
+  var agency = arango.POST("/_api/agency/read", '[["/"]]');
+
+  if (agency.code === 404) {
+    WARN("not talking to an agent, got: " + JSON.stringify(agency));
     return {};
   }
 
-  if (plan.code !== undefined) {
-    WARN("failed to load plan, got: " + JSON.stringify(plan));
+  if (agency.code !== undefined) {
+    WARN("failed to load agency, got: " + JSON.stringify(agency));
     return {};
   }
 
-  return plan;
+  return agency;
 }
 
 function defineAgent(status, endpoint) {
@@ -112,6 +121,7 @@ function listServers() {
   return servers;
 }
 
+exports.loadAgencyConfig = loadAgencyConfig;
 exports.serverBasics = serverBasics;
-exports.loadAgencyPlan = loadAgencyPlan;
+exports.loadAgency = loadAgency;
 exports.listServers = listServers;
