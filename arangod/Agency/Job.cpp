@@ -217,13 +217,9 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
     ret.push_back(srv.first);
   }
 
-<<<<<<< HEAD
+
   // Remove cleaned servers from list (test first to avoid warning log
   if (snapshot.has(cleanedPrefix)) try {
-=======
-  // Remove cleaned servers from list
-  try {
->>>>>>> devel
     for (auto const& srv :
            VPackArrayIterator(snapshot.hasAsSlice(cleanedPrefix).first)) {
       ret.erase(
@@ -287,44 +283,30 @@ std::vector<Job::shard_t> Job::clones(
   std::string databasePath = planColPrefix + database,
     planPath = databasePath + "/" + collection + "/shards";
 
-<<<<<<< HEAD
   auto myshards = sortedShardList(snapshot.hasAsNode(planPath).first);
   auto steps = std::distance(
     myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
 
   for (const auto& colptr : snapshot.hasAsChildren(databasePath).first) { // collections
-=======
-  auto myshards = sortedShardList(snapshot(planPath));
-  auto steps = std::distance(
-    myshards.begin(), std::find(myshards.begin(), myshards.end(), shard));
-
-  for (const auto& colptr : snapshot(databasePath).children()) { // collections
->>>>>>> devel
 
     auto const col = *colptr.second;
     auto const otherCollection = colptr.first;
 
     if (otherCollection != collection &&
-<<<<<<< HEAD
         col.has("distributeShardsLike") && // use .has() form to prevent logging of missing
         col.hasAsSlice("distributeShardsLike").first.copyString() == collection) {
-      ret.emplace_back(otherCollection, sortedShardList(col.hasAsNode("shards").first)[steps]);
-=======
-        col.has("distributeShardsLike") &&
-        col("distributeShardsLike").slice().copyString() == collection) {
       auto const theirshards = sortedShardList(col("shards"));
-      if (theirshards.size() > 0) { // do not care about virtual collections 
-        if (theirshards.size() == myshards.size()) { 
-          ret.emplace_back(otherCollection, sortedShardList(col("shards"))[steps]);
+      if (theirshards.size() > 0) { // do not care about virtual collections
+        if (theirshards.size() == myshards.size()) {
+          ret.emplace_back(otherCollection,
+                           sortedShardList(col.hasAsNode("shards").first)[steps]);
         } else {
           LOG_TOPIC(ERR, Logger::SUPERVISION)
             << "Shard distribution of clone(" << otherCollection
             << ") does not match ours (" << collection << ")";
-        } 
+        }
       }
->>>>>>> devel
     }
-
   }
 
   return ret;
@@ -352,9 +334,6 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       planColPrefix + db + "/" + clone.collection + "/shards/"
       + clone.shard;
     size_t i = 0;
-<<<<<<< HEAD
-    for (const auto& server : VPackArrayIterator(snap.hasAsArray(currentShardPath).first)) {
-=======
 
     // start up race condition  ... current might not have everything in plan
     if (!snap.has(currentShardPath) || !snap.has(plannedShardPath)) {
@@ -362,8 +341,7 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
       continue;
     } // if
 
-    for (const auto& server : VPackArrayIterator(snap(currentShardPath).getArray())) {
->>>>>>> devel
+    for (const auto& server : VPackArrayIterator(snap.hasAsArray(currentShardPath).first)) {
       auto id = server.copyString();
       if (i++ == 0) {
         // Skip leader
@@ -569,24 +547,12 @@ void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   }
 }
 
-<<<<<<< HEAD
-std::string Job::checkServerGood(Node const& snapshot,
-                                 std::string const& server) {
+std::string Job::checkServerHealth(Node const& snapshot,
+                                   std::string const& server) {
   auto status = snapshot.hasAsString(healthPrefix + server + "/Status");
 
   if (!status.second) {
     return "UNCLEAR";
   }
-  if (status.first != "GOOD") {
-    return "UNHEALTHY";
-  }
-  return "GOOD";
-=======
-std::string Job::checkServerHealth(Node const& snapshot,
-                                   std::string const& server) {
-  if (!snapshot.has(healthPrefix + server + "/Status")) {
-    return "UNCLEAR";
-  }
-  return snapshot(healthPrefix + server + "/Status").getString();
->>>>>>> devel
+  return status.first;
 }
