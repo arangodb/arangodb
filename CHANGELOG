@@ -45,6 +45,9 @@ v3.3.7 (2018-04-11)
 
 * fixed internal issue #2215's FailedLeader timeout bug
 
+* feature added, which allows to stop agency's supervision for
+  maintenance
+  
 
 v3.3.5 (2018-03-28)
 -------------------

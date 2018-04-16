@@ -481,8 +481,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Take necessary actions if any
       std::shared_ptr<VPackBuilder> envelope;
       if (changed) {
-        handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
-                       envelope);
+        handleOnStatus(
+          _agent, _snapshot, persist, transist, serverID, _jobId, envelope);
       }
 
       persist = transist; // Now copy Status, SyncStatus from transient to persited
@@ -576,6 +576,38 @@ bool Supervision::doChecks() {
   return true;
 }
 
+void Supervision::reportStatus(std::string const& status) {
+
+  bool doReport = false;
+  query_t report;
+
+  
+  { // Do I have to report to agency under 
+    _lock.assertLockedByCurrentThread();
+    if (_snapshot.has("/Supervision/State/Mode") &&
+        _snapshot("/Supervision/State/Mode").isString()) {
+      if (_snapshot("/Supervision/State/Mode").getString() != status) {
+        doReport = true;
+      }
+    } else {
+      doReport = true;
+    }
+  }
+  
+  if (doReport) {
+    report = std::make_shared<VPackBuilder>();
+    { VPackArrayBuilder trx(report.get());
+      { VPackObjectBuilder br(report.get());
+        report->add(VPackValue("/Supervision/State"));
+        { VPackObjectBuilder bbr(report.get());
+          report->add("Mode", VPackValue(status));
+          report->add("Timestamp",
+            VPackValue(timepointToString(std::chrono::system_clock::now())));}}}
+    write_ret_t res = singleWriteTransaction(_agent, *report);
+  }
+  
+}
+
 void Supervision::run() {
   // First wait until somebody has initialized the ArangoDB data, before
   // that running the supervision does not make sense and will indeed
@@ -633,8 +665,9 @@ void Supervision::run() {
         // Only modifiy this condition with extreme care:
         // Supervision needs to wait until the agent has finished leadership
         // preparation or else the local agency snapshot might be behind its
-        // last state. 
-        if (_agent->leading() && _agent->getPrepareLeadership() == 0) {
+        // last state.
+        if (
+          _agent->leading() && _agent->getPrepareLeadership() == 0) {
 
           if (_jobId == 0 || _jobId == _jobIdMax) {
             getUniqueIds();  // cannot fail but only hang
@@ -642,33 +675,43 @@ void Supervision::run() {
 
           updateSnapshot();
 
-          if (!_upgraded) {
-            upgradeAgency();
-          }
+          if (!_snapshot.has("Supervision/Maintenance")) {
 
-          if (_agent->leaderFor() > 10) {
-            try {
-              doChecks();
-            } catch (std::exception const& e) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION)
-                << e.what() << " " << __FILE__ << " " << __LINE__;
-            } catch (...) {
-              LOG_TOPIC(ERR, Logger::SUPERVISION) <<
-                "Supervision::doChecks() generated an uncaught exception.";
+            reportStatus("Normal");
+
+            if (!_upgraded) {
+              upgradeAgency();
             }
-          }
 
-          handleJobs();
+            if (_agent->leaderFor() > 10) {
+              try {
+                doChecks();
+              } catch (std::exception const& e) {
+                LOG_TOPIC(ERR, Logger::SUPERVISION)
+                  << e.what() << " " << __FILE__ << " " << __LINE__;
+              } catch (...) {
+                LOG_TOPIC(ERR, Logger::SUPERVISION) <<
+                  "Supervision::doChecks() generated an uncaught exception.";
+              }
+            }
+
+            handleJobs();
+            
+          } else {
+
+            reportStatus("Maintenance");
+            
+          }
         }
       }
       _cv.wait(static_cast<uint64_t>(1000000 * _frequency));
     }
   }
   
-  if (shutdown) {
-    ApplicationServer::server->beginShutdown();
+    if (shutdown) {
+      ApplicationServer::server->beginShutdown();
+    }
   }
-}
 
 // Guarded by caller
 bool Supervision::isShuttingDown() {
