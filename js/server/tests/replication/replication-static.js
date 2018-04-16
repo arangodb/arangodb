@@ -34,7 +34,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 
 const replication = require("@arangodb/replication");
-const compareTicks = replication.compareTicks;
+const compareTicks = require("@arangodb/replication-common").compareTicks;
 const console = require("console");
 const internal = require("internal");
 const masterEndpoint = arango.getEndpoint();
